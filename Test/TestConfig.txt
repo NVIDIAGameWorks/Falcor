@@ -1,0 +1,7 @@
+{
+    \\netapp-wa02\public\Falcor\ReferenceResultsHub\, Test, TestListD3D12.txt, https://github.com/NVIDIA/Falcor.git, C:\Falcor\FalcorD3D12, master
+}
+
+{
+    \\netapp-wa02\public\Falcor\ReferenceResultsHub\, Test, TestListVK.txt, https://github.com/NVIDIA/Falcor.git, C:\Falcor\FalcorVulkan, master
+}

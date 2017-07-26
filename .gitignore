@@ -1,0 +1,32 @@
+Test/Bin/*
+Test/TestResults/*
+Test/.vs/*
+Bin/*
+*.user
+*.sdf
+*.opensdf
+*.suo
+*.ptx
+*.pyc
+Falcor.VC.db
+FalcorTest.VC.db
+FalcorTest/TestResults/*
+Falcor.VC.VC.opendb
+Framework/Externals/NVAPI/
+.vs/*
+Test/OutputTestingHtml.pyc
+Test/TestingUtil.pyc
+Test/RunAllTests.pyc
+
+# A bit of a song and dance to ignore all the files
+# in the Slang codebase except for the ones we need.
+Framework/Externals/slang/*
+!Framework/Externals/slang/source/
+Framework/Externals/slang/source/**/*.vcxproj
+Framework/Externals/slang/source/**/*.filters
+Framework/Externals/slang/source/**/*.natvis
+!Framework/Externals/slang/source/**/*.cpp
+!Framework/Externals/slang/source/**/*.cpp
+!Framework/Externals/slang/source/**/*.h
+Framework/Externals/
+Media/

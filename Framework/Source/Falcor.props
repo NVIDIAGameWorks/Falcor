@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <FALCOR_PROJECT_DIR>$(SolutionDir)\.\framework\source\\..\</FALCOR_PROJECT_DIR>
+    <FALCOR_BACKEND>FALCOR_VK</FALCOR_BACKEND>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Bin\Int\$(PlatformShortName)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>$(FALCOR_PROJECT_DIR)\Externals\nvapi;$(FALCOR_PROJECT_DIR);$(FALCOR_PROJECT_DIR)\Externals\GLM;$(FALCOR_PROJECT_DIR)\Source;$(FALCOR_PROJECT_DIR)\Externals\OptiX\include;$(CUDA_PATH_V7_5)\include;$(FALCOR_PROJECT_DIR)\Externals\Cuda\include;$(FALCOR_PROJECT_DIR)\Externals\VulkanSDK\Include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(FALCOR_PROJECT_DIR)\Externals\FreeImage;$(FALCOR_PROJECT_DIR)\Externals\Assimp\lib\$(PlatformName)\;$(FALCOR_PROJECT_DIR)\Externals\FFMpeg\lib\$(PlatformName);$(FALCOR_PROJECT_DIR)\Externals\openvr\lib\win64;$(FALCOR_PROJECT_DIR)\Externals\nvapi\amd64;$(FALCOR_PROJECT_DIR)\Externals\VulkanSDK\Lib;$(FALCOR_PROJECT_DIR)\Externals\Slang\bin\windows-x64\release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>"$(OutDir)\CopyData.bat" "$(ProjectDir)" "$(OutDir)"</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="FALCOR_PROJECT_DIR">
+      <Value>$(FALCOR_PROJECT_DIR)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

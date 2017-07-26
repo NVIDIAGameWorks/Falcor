@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="ModelViewer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ModelViewer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Data">
+      <UniqueIdentifier>{8f4b49db-cf13-4168-abde-51760776cfd1}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Data\ModelViewer.ps.hlsl">
+      <Filter>Data</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\ModelViewer.ps.glsl">
+      <Filter>Data</Filter>
+    </None>
+  </ItemGroup>
+</Project>
