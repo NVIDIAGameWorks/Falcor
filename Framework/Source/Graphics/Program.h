@@ -60,7 +60,7 @@ namespace Falcor
             Desc();
 
             /** Begin building a description, based on a single path for source code.
-            This is equivalent to: `Desc().sourceFile(path)`
+                This is equivalent to: `Desc().sourceFile(path)`
             */
             explicit Desc(std::string const& path);
 
@@ -86,25 +86,23 @@ namespace Falcor
             inline Desc& fragmentEntryPoint()   { return entryPoint(ShaderType::Pixel); }
             inline Desc& pixelEntryPoint()      { return entryPoint(ShaderType::Pixel); }
 
-            inline Desc& computeEntryPoint()      { return entryPoint(ShaderType::Compute); }
+            inline Desc& computeEntryPoint()    { return entryPoint(ShaderType::Compute); }
 
         private:
             friend class Program;
             friend class GraphicsProgram;
 
             /** Convenience routine that optionally adds a source file and entry point.
-            If `path` is empty, this function does nothing.
-            Otherwise, is equivalent to:
-            
-                sourceFile(path).entryPoint(shaderType)
+                If `path` is empty, this function does nothing.
+                Otherwise, is equivalent to:
+                    sourceFile(path).entryPoint(shaderType)
             */
             Desc& maybeSourceFile(std::string const& path, ShaderType shaderType);
 
             /** Convenience routine that optionally adds a source file and entry point.
-            If `code` is empty, this function does nothing.
-            Otherwise, is equivalent to:
-            
-                sourceString(code).entryPoint(shaderType)
+                If `code` is empty, this function does nothing.
+                Otherwise, is equivalent to:
+                    sourceString(code).entryPoint(shaderType)
             */
             Desc& maybeSourceString(std::string const& code, ShaderType shaderType);
 
@@ -119,8 +117,8 @@ namespace Falcor
                 enum class Kind { File, String };
 
                 /** The input path or source text
-                If `kind` is `File`, this is the path to the file.
-                If `kind` is `String`, this is the raw text.
+                    If `kind` is `File`, this is the path to the file.
+                    If `kind` is `String`, this is the raw text.
                 */
                 std::string value;
 
@@ -135,12 +133,14 @@ namespace Falcor
             */
             struct EntryPoint
             {
-                // The name of the entry-point function
+                /** The name of the entry-point function
+                */
                 std::string name;
 
-                // The index of the source file/string that
-                // this entry point will use, or `-1` to
-                // indicate that this entry point is disabled.
+                /** The index of the source file/string that
+                    this entry point will use, or `-1` to
+                    indicate that this entry point is disabled.
+                */
                 int sourceIndex = -1;
 
                 bool isValid() { return sourceIndex >= 0; }
@@ -161,22 +161,20 @@ namespace Falcor
             int activeSourceIndex = -1;
         };
 
-
         virtual ~Program() = 0;
 
         /** Get the API handle of the active program
         */
         ProgramVersion::SharedConstPtr getActiveVersion() const;
 
-        /** Adds a macro definition to the program. If the macro already exists, its will be replaced.
-
-            \param[in] name The name of define. Must be valid
+        /** Adds a macro definition to the program. If the macro already exists, it will be replaced.
+            \param[in] name The name of define
             \param[in] value Optional. The value of the define string
         */
         void addDefine(const std::string& name, const std::string& value = "");
 
         /** Remove a macro definition from the program. If the definition doesn't exist, the function call will be silently ignored.
-            \param[in] name The name of define. Must be valid
+            \param[in] name The name of define
         */
         void removeDefine(const std::string& name);
 
@@ -192,7 +190,7 @@ namespace Falcor
         */
         static void reloadAllPrograms();
 
-        /** update define list
+        /** Update define list
         */
         void replaceAllDefines(const DefineList& dl) { mDefineList = dl; }
 
