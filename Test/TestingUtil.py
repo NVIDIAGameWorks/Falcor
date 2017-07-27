@@ -1,3 +1,4 @@
+import subprocess
 import os
 import shutil
 import stat
@@ -48,20 +49,10 @@ def cleanDir(cleanedDir, prefix, suffix):
 #this changes permissions as it traverses the dir tree to delete EVERYTHING in the dir
 def removeDirTree(dirRoot):
     filesToDelete = [f for f in os.listdir(dirRoot)]
-    for f in filesToDelete:
-        path = dirRoot + '\\' + f
-        # change permissions to allow deletion
-        os.chmod(path, stat.S_IWUSR)
-        if os.path.isdir(path):
-            # change permissions to allow deletion in the dir tree
-            for root, subdirs, files in os.walk(path):
-                for s in subdirs:
-                    os.chmod(os.path.join(root, s), stat.S_IWUSR)
-                for x in files:
-                    os.chmod(os.path.join(root, x), stat.S_IWUSR)
-            shutil.rmtree(path)
-        else:
-            os.remove(path)
+    batchArgs = []
+    batchArgs.insert(0, "RemoveDirectoryTree.bat ")
+    batchArgs.insert(1, dirRoot)
+    subprocess.call(batchArgs)
 
 
 def cleanupString(string):
