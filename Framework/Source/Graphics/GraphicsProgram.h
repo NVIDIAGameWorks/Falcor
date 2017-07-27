@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    /** Graphics program.
+    /** Graphics program. See ComputeProgram to manage compute shaders.
     */
     class GraphicsProgram : public Program, inherit_shared_from_this<Program, GraphicsProgram>
     {
@@ -48,8 +48,8 @@ namespace Falcor
         */
         static SharedPtr create(Desc const& desc, const Program::DefineList& programDefines = DefineList());
 
-        /** create a new program object.
-            \param[in] vertexFile Vertex shader filename. If this string is empty (""), it will use a default vertex shader which transforms and outputs all the vertex attributes.
+        /** Create a new program object.
+            \param[in] vertexFile Vertex shader filename. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
             \param[in] fragmentFile Fragment shader filename.
             \param[in] programDefines A list of macro definitions to set into the shaders. The macro definitions will be assigned to all the shaders.
             \return A new object, or nullptr if creation failed.
@@ -58,18 +58,18 @@ namespace Falcor
         */
         static SharedPtr createFromFile(const std::string& vertexFile, const std::string& fragmentFile, const DefineList& programDefines = DefineList());
 
-        /** create a new program object.
-        \param[in] vertexFile Vertex shader string.
-        \param[in] fragmentFile Fragment shader string.
-        \param[in] programDefines A list of macro definitions to set into the shaders. The macro definitions will be assigned to all the shaders.
+        /** Create a new program object.
+            \param[in] vertexFile Vertex shader string. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
+            \param[in] fragmentFile Fragment shader string.
+            \param[in] programDefines A list of macro definitions to set into the shaders. The macro definitions will be assigned to all the shaders.
 
-        \return A new object, or nullptr if creation failed.
-        Note that this call merely creates a program object. The actual compilation and link happens when calling Program#getActiveVersion().
+            \return A new object, or nullptr if creation failed.
+            Note that this call merely creates a program object. The actual compilation and link happens when calling Program#getActiveVersion().
         */
         static SharedPtr createFromString(const std::string& vertexShader, const std::string& fragmentShader, const DefineList& programDefines = DefineList());
 
-        /** create a new program object.
-            \param[in] vertexFile Vertex shader filename. If this string is empty (""), it will use a default vertex shader which transforms and outputs all the vertex attributes.
+        /** Create a new program object.
+            \param[in] vertexFile Vertex shader filename. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
             \param[in] fragmentFile Fragment shader filename.
             \param[in] geometryFile Geometry shader filename.
             \param[in] hullFile Hull shader filename.
@@ -82,16 +82,16 @@ namespace Falcor
         */
         static SharedPtr createFromFile(const std::string& vertexFile, const std::string& fragmentFile, const std::string& geometryFile, const std::string& hullFile, const std::string& domainFile, const DefineList& programDefines = DefineList());
 
-        /** create a new program object.
-        \param[in] vertexShader Vertex shader string.
-        \param[in] fragmentShader Fragment shader string.
-        \param[in] geometryShader Geometry shader string.
-        \param[in] hullShader Hull shader string.
-        \param[in] domainShader Domain shader string.
-        \param[in] programDefines A list of macro definitions to set into the shaders.
-        \return A new object, or nullptr if creation failed.
+        /** Create a new program object.
+            \param[in] vertexShader Vertex shader string. If this string is empty (""), it will use a default vertex shader which transforms and outputs all default vertex attributes.
+            \param[in] fragmentShader Fragment shader string.
+            \param[in] geometryShader Geometry shader string.
+            \param[in] hullShader Hull shader string.
+            \param[in] domainShader Domain shader string.
+            \param[in] programDefines A list of macro definitions to set into the shaders.
+            \return A new object, or nullptr if creation failed.
 
-        Note that this call merely creates a program object. The actual compilation and link happens when calling Program#getActiveVersion().
+            Note that this call merely creates a program object. The actual compilation and link happens when calling Program#getActiveVersion().
         */
         static SharedPtr createFromString(const std::string& vertexShader, const std::string& fragmentShader, const std::string& geometryShader, const std::string& hullShader, const std::string& domainShader, const DefineList& programDefines = DefineList());
 
