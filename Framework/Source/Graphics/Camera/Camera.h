@@ -38,7 +38,7 @@ namespace Falcor
     struct BoundingBox;
     class ConstantBuffer;
 
-    /** Camera class
+    /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
     */
     class Camera : public IMovableObject, public std::enable_shared_from_this<Camera>
     {
@@ -49,127 +49,154 @@ namespace Falcor
         // Default dimensions of full frame cameras and 35mm film
         static const float kDefaultFrameHeight;
 
-        /** create a new camera object
+        /** Create a new camera object.
         */
         static SharedPtr create();
         ~Camera();
 
-        /** Name the camera
+        /** Name the camera.
         */
         void setName(const std::string& name) { mName = name; }
 
-        /** Get the camera's name
+        /** Get the camera's name.
         */
         const std::string& getName() const { return mName; }
 
-        /** Set the camera's aspect ratio (Width/Height)
+        /** Set the camera's aspect ratio (width/height).
         */
         void setAspectRatio(float aspectRatio) { mData.aspectRatio = aspectRatio; mDirty = true; }
 
-        /** Get the camera's aspect ratio
+        /** Get the camera's aspect ratio.
         */
         float getAspectRatio() const { return mData.aspectRatio; }
 
-        /** Set camera focal length in mm
+        /** Set camera focal length in mm. See FalcorMath.h for helper functions to convert between fovY angles.
         */
         void setFocalLength(float length) { mData.focalLength = length; mDirty = true; }
 
-        /** Get the camera's focal length
+        /** Get the camera's focal length. See FalcorMath.h for helper functions to convert between fovY angles.
         */
         float getFocalLength() const { return mData.focalLength; }
 
-        /** Get the camera's world space position
+        /** Get the camera's world space position.
         */
         const glm::vec3& getPosition() const { return mData.position; }
 
-        /** Get the camera's world space up vector
+        /** Get the camera's world space up vector.
         */
         const glm::vec3& getUpVector() const {return mData.up;}
 
-        /** Get the camera's world space target position
+        /** Get the camera's world space target position.
         */
         const glm::vec3& getTarget() const { return mData.target; }
 
-        /** Set the camera's world space position
+        /** Set the camera's world space position.
         */
         void setPosition(const glm::vec3& pos) { mData.position = pos; mDirty = true; }
 
-        /** Set the camera's world space up vector
+        /** Set the camera's world space up vector.
         */
         void setUpVector(const glm::vec3& up) { mData.up = up; mDirty = true; }
 
-        /** Set the camera's world space target position
+        /** Set the camera's world space target position.
         */
         void setTarget(const glm::vec3& target) { mData.target = target; mDirty = true; }
 
-        /** IMovable object interface
+        /** IMovable object interface.
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
 
-        /** Set the camera's depth range
+        /** Set the camera's depth range.
         */
         void setDepthRange(float nearZ, float farZ) { mData.farZ = farZ; mData.nearZ = nearZ; mDirty = true; }
 
-        /** Get the near plane depth
+        /** Get the near plane depth.
         */
         float getNearPlane() const { return mData.nearZ; }
 
-        /** Get the far plane depth
+        /** Get the far plane depth.
         */
         float getFarPlane() const { return mData.farZ; }
 
-        /** Set camera jitter
-            \param[in] JitterX subpixel offset along X axis divided by screen width
-            \param[in] JitterY subpixel offset along Y axis divided by screen height
+        /** Set the camera's jitter.
+            \param[in] jitterX Subpixel offset along X axis divided by screen width
+            \param[in] jitterY Subpixel offset along Y axis divided by screen height
         */
         void setJitter(float jitterX, float jitterY) { mData.jitterX = jitterX; mData.jitterY = jitterY; mDirty = true; }
         float getJitterX() const { return mData.jitterX; }
         float getJitterY() const { return mData.jitterY; }
 
-        /** Get the view matrix
+        /** Get the view matrix.
         */
         const glm::mat4& getViewMatrix() const;
-        /** Get the projection matrix
+
+        /** Get the projection matrix.
         */
         const glm::mat4& getProjMatrix() const;
 
-        /** Get the view-projection matrix
+        /** Get the view-projection matrix.
         */
         const glm::mat4& getViewProjMatrix() const;
 
-        /** Get the inverse of the view-projection matrix
+        /** Get the inverse of the view-projection matrix.
         */
         const glm::mat4& getInvViewProjMatrix() const;
 
-        /** Set projection matrix
-            \param[in] proj new projection matrix. This matrix will be maintained until overridden with this call.
+        /** Set the persistent projection matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
         */
         void setProjectionMatrix(const glm::mat4& proj);
 
+        /** Set the persistent view matrix and sets camera to use the persistent matrix instead of calculating the matrix from its other settings.
+        */
         void setViewMatrix(const glm::mat4& view);
 
-        /** Toggle persistent projection matrix
-        \param[in] persistent whether to set it persistent
+        /** Enable or disable usage of persistent projection matrix
+            \param[in] persistent whether to set it persistent
         */
         void togglePersistentProjectionMatrix(bool persistent);
         void togglePersistentViewMatrix(bool persistent);
 
         /** Check if an object should be culled
+            \param[in] box Bounding box of the object to check
         */
         bool isObjectCulled(const BoundingBox& box) const;
 
+        /** Set camera data into a program's constant buffer.
+            \param[in] pBuffer The constant buffer to set the parameters into.
+            \param[in] varName The name of the light variable in the program.
+        */
         void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName) const;
+
+        /** Set camera data into a program's constant buffer.
+            \param[in] pBuffer The constant buffer to set the parameters into.
+            \param[in] offset Byte offset into the constant buffer to set data to.
+        */
         void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::size_t& offset) const;
 
         /** Returns the raw camera data
         */
-        const CameraData& getData() const     { calculateCameraParameters(); return  mData; }
+        const CameraData& getData() const { calculateCameraParameters(); return  mData; }
 
+        /** Set transform matrices for the right eye
+            \param[in] view Right eye view matrix
+            \param[in] proj Right eye projection matrix
+        */
         void setRightEyeMatrices(const glm::mat4& view, const glm::mat4& proj);
+
+        /** Get the right eye view matrix.
+        */
         const glm::mat4& getRightEyeViewMatrix() const { return mData.rightEyeViewMat; }
+
+        /** Get the right eye projection matrix.
+        */
         const glm::mat4& getRightEyeProjMatrix() const { return mData.rightEyeProjMat; }
+
+        /** get the right eye view-projection matrix.
+        */
         const glm::mat4& getRightEyeViewProjMatrix() const { return mData.rightEyeViewProjMat; }
 
+        /** Get the size of the CameraData struct in bytes.
+        */
         static uint32_t getShaderDataSize() 
         {
             static const size_t dataSize = sizeof(CameraData);

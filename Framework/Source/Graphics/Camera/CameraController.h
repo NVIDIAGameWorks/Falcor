@@ -45,19 +45,22 @@ namespace Falcor
         /** Attach a camera to this controller
         */
         virtual void attachCamera(const Camera::SharedPtr& pCamera) { mpCamera = pCamera; };
+
         /** Handle mouse events
         */
-        virtual bool onMouseEvent(const MouseEvent& mouseEvent) {return false;}
+        virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
+
         /* Handle keyboard events
         */
         virtual bool onKeyEvent(const KeyboardEvent& keyboardEvent) { return false; }
-        /** Update the camera position and orientation
-            Returns whether the camera was updated/changed
+
+        /** Update the camera position and orientation.
+            \return Whether the camera was updated/changed
         */
-        virtual bool update() = 0;        
+        virtual bool update() = 0;
 
         /** Set the camera's speed
-        \param[in] Speed Camera speed. Measured in WorldUnits per second.
+            \param[in] Speed Camera speed. Measured in WorldUnits per second.
         */
         void setCameraSpeed(float speed) { mSpeed = speed; }
 
@@ -68,8 +71,8 @@ namespace Falcor
     };
 
     /** Model-view camera controller. Orbits around a given point.
-        To controll the camera:
-        * Left mouse click+movement will orbit around the model.
+        To control the camera:
+        * Left mouse click + movement will orbit around the model.
         * Mouse wheel zooms in/out.
     */
     class ModelViewCameraController : public CameraController
@@ -78,14 +81,16 @@ namespace Falcor
         /** Handle mouse events
         */
         bool onMouseEvent(const MouseEvent& mouseEvent) override;
+
         /** Set the model parameters
             \param[in] Center The model's center. This is the position in which the camera will orbit around.
             \param[in] Radius The model's radius. Used to determin the speed of movement when zooming in/out.
             \param[in] InitialDistanceInRadius The initial distance of the camera from the model, measured in the model's radius.
         */
         void setModelParams(const glm::vec3& center, float radius, float initialDistanceInRadius);
-        /** Update the camera position and orientation
-            Returns whether the camera was updated/changed
+
+        /** Update the camera position and orientation.
+            \return Whether the camera was updated/changed
         */
         bool update() override;
 
@@ -102,14 +107,14 @@ namespace Falcor
     };
 
     /** First person camera controller.
-        if b6DoF is false, camera will behave like a regular FPS camera (up vector doesn't change). If b6DoF is true, camera can rotate in all direction
+        If b6DoF is false, camera will behave like a regular FPS camera. If b6DoF is true, camera will be able to roll as well.
         Controls:
-        - W/S/A/D to move forward/backward/stride left/stride right.
+        - W/S/A/D to move forward/backward/strafe left/strafe right.
         - Q/E to move down/up.
-        - Left mouse button+mouse movement to rotate camera.
-        - Right mouse button+mouse movement to roll camera (for 6DoF camera controller only).
-        - Ctrl for slower movement.
+        - Left mouse button + mouse movement to rotate camera.
+        - Right mouse button + mouse movement to roll camera (for 6DoF camera controller only).
         - Shift for faster movement.
+        - Ctrl for slower movement.
     */
     template<bool b6DoF>
     class FirstPersonCameraControllerCommon : public CameraController
@@ -120,11 +125,13 @@ namespace Falcor
         /** Handle mouse events
         */
         bool onMouseEvent(const MouseEvent& mouseEvent) override;
+
         /** Handle keyboard events
         */
         bool onKeyEvent(const KeyboardEvent& keyboardEvent) override;
-        /** Update the camera position and orientation
-            Returns whether the camera was updated/changed
+
+        /** Update the camera position and orientation.
+            \return Whether the camera was updated/changed
         */
         bool update() override;
 
@@ -156,14 +163,20 @@ namespace Falcor
     using FirstPersonCameraController = FirstPersonCameraControllerCommon<false>;
     using SixDoFCameraController = FirstPersonCameraControllerCommon<true>;
 
+    /** Queries the VR system to control cameras based on the HMD position and orientation
+    */
     class HmdCameraController : public SixDoFCameraController
     {
     public:
+
+        /** Attach a camera to this controller
+        */
         virtual void attachCamera(const Camera::SharedPtr& pCamera) override;
+
         ~HmdCameraController();
 
-        /** Update the camera position and orientation
-        Returns whether the camera was updated/changed
+        /** Update the camera position and orientation.
+            \return Whether the camera was updated/changed
         */
         bool update() override;
 
