@@ -51,11 +51,6 @@ namespace Falcor
             MPEG4,
         };
 
-        enum class InputFormat
-        {
-            R8G8B8A8,
-        };
-
         struct Desc
         {
             uint32_t fps = 60;
@@ -64,7 +59,7 @@ namespace Falcor
             float bitrateMbps = 4;
             uint32_t gopSize = 10;
             CodecID codec = CodecID::RawVideo;
-            InputFormat format = InputFormat::R8G8B8A8;
+            ResourceFormat format = ResourceFormat::BGRA8UnormSrgb;
             bool flipY = false;
             std::string filename;
         };
@@ -87,7 +82,7 @@ namespace Falcor
         AVCodecContext*  mpCodecContext = nullptr;
 
         const std::string mFilename;
-        InputFormat mForamt;
+        ResourceFormat mFormat;
         uint32_t mRowPitch = 0;
         uint8_t* mpFlippedImage = nullptr; // Used in case the image memory layout if bottom->top
     };

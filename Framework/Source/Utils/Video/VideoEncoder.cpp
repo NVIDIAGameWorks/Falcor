@@ -56,27 +56,19 @@ namespace Falcor
         }
     }
 
-    AVPixelFormat getPictureFormatFromFalcorFormat(VideoEncoder::InputFormat format)
+    AVPixelFormat getPictureFormatFromFalcorFormat(ResourceFormat format)
     {
         switch(format)
         {
-        case VideoEncoder::InputFormat::R8G8B8A8:
+        case ResourceFormat::RGBA8Unorm:
+        case ResourceFormat::RGBA8UnormSrgb:
             return AV_PIX_FMT_RGBA;
+        case ResourceFormat::BGRA8Unorm:
+        case ResourceFormat::BGRA8UnormSrgb:
+            return AV_PIX_FMT_BGRA;
         default:
             should_not_get_here();
             return AV_PIX_FMT_NONE;
-        }
-    }
-
-    int32_t getInputFormatBytesPerPixel(VideoEncoder::InputFormat format)
-    {
-        switch(format)
-        {
-        case VideoEncoder::InputFormat::R8G8B8A8:
-            return 4;
-        default:
-            should_not_get_here();
-            return 0;
         }
     }
 
@@ -290,8 +282,8 @@ namespace Falcor
             return error(mFilename, "Can't write file header.");
         }
 
-        mForamt = desc.format;
-        mRowPitch = getInputFormatBytesPerPixel(desc.format) * desc.width;
+        mFormat = desc.format;
+        mRowPitch = getFormatBytesPerBlock(desc.format) * desc.width;
         if(desc.flipY)
         {
             mpFlippedImage = new uint8_t[desc.height * mRowPitch];

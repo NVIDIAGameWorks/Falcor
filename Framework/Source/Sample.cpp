@@ -451,7 +451,7 @@ namespace Falcor
         desc.flipY = false;
         desc.codec = mVideoCapture.pUI->getCodec();
         desc.filename = mVideoCapture.pUI->getFilename();
-        desc.format = VideoEncoder::InputFormat::R8G8B8A8;
+        desc.format = mpDefaultFBO->getColorTexture(0)->getFormat();
         desc.fps = mVideoCapture.pUI->getFPS();
         desc.height = mpDefaultFBO->getHeight();
         desc.width = mpDefaultFBO->getWidth();

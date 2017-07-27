@@ -114,6 +114,8 @@ namespace Falcor
                 mCaptureUI = true;
             }
 
+            mCapturing = true;
+
             // Call the users callback
             mStartCB();
         }
@@ -127,7 +129,9 @@ namespace Falcor
             if (pGui->addButton("End Recording"))
             {
                 mEndCB();
+                mCapturing = false;
             }
+            pGui->popWindow();
         }
 
     }
