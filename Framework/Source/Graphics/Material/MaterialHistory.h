@@ -36,6 +36,8 @@ namespace Falcor
     class Mesh;
     class Model;
 
+    /** Helper class for the Scene and Scene Editor to track how custom material overrides are applied to meshes.
+    */
     class MaterialHistory
     {
     public:
@@ -43,21 +45,32 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<MaterialHistory>;
         using SharedConstPtr = std::shared_ptr<MaterialHistory>;
 
+        /** Create an instance.
+        */
         static SharedPtr create() { return SharedPtr(new MaterialHistory()); }
 
-        // Override a material on a mesh and saves the original
+        /** Sets a new material on a mesh, and saves the original
+            \param[in] pMesh Mesh to override material of
+            \param[in] pNewMaterial Material to set on the mesh
+        */
         void replace(Mesh* pMesh, const Material::SharedPtr& pNewMaterial);
 
-        // Revert a mesh's material to its original
+        /** Restores a mesh's material to its original. Does nothing if the mesh's material is not currently overridden
+            \param[in] pMesh Mesh to restore original material to
+        */
         void revert(Mesh* pMesh);
 
-        // Check whether a mesh has its material overridden
+        /** Check whether a mesh's material has been overridden
+        */
         bool hasOverride(const Mesh* pMesh) const;
 
-        // Revert all mesh material overrides for a model
+        /** Restores materials on all meshes with overridden materials. Does not affect meshes without overrides.
+        */
         void onModelRemoved(const Model* pModel);
 
-        // Call when a material is removed from the scene. Reverts all meshes using the material
+        /** Restores materials on all meshes currently using an overriding material.
+            \param[in] pMaterial Overriding material to remove from meshes
+        */
         void onMaterialRemoved(const Material* pMaterial);
 
     private:

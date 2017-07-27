@@ -33,6 +33,9 @@ namespace Falcor
     class Texture;
     class ConstantBuffer;
 
+    /** Basic container for material property values. Primarily used as a helper for import/export operations.
+        For regular use cases, see Material in Material.h.
+    */
     struct BasicMaterial
     {
         /** Material map Type. All maps are 2D textures.
@@ -50,25 +53,26 @@ namespace Falcor
             Count
         };
 
-        glm::vec3	diffuseColor = glm::vec3(0, 0, 0);		///< Diffuse albedo of a Lambertian BRDF
+        glm::vec3   diffuseColor = glm::vec3(0, 0, 0);      ///< Diffuse albedo of a Lambertian BRDF
+        glm::vec3   specularColor = glm::vec3(0, 0, 0);     ///< Specular reflection color
+        float       shininess = 2.f;                        ///< Specular power, i.e. an exponent of a Phong BRDF
+        float       opacity = 1.f;                          ///< Opacity of the material
+        glm::vec3   transparentColor = glm::vec3(0, 0, 0);  ///< Refraction color of a transparent dielectric material
+        float       IoR = 1.f;                              ///< Index of refraction
+        glm::vec3   emissiveColor = glm::vec3(0, 0, 0);     ///< Emissive color of the material
+        float       bumpScale = 1.f;                        ///< Object-space scale of a bump/displacement map
+        float       bumpOffset = 0.f;                       ///< Object-space zero-based offset of a bump/displacement map
 
-        glm::vec3	specularColor = glm::vec3(0, 0, 0);		///< Specular reflection color
-        float		shininess = 2.f;						///< Specular power, i.e. an exponent of a Phong BRDF
-
-        float		opacity = 1.f;							///< Opacity of the material
-        glm::vec3	transparentColor = glm::vec3(0, 0, 0);	///< Refraction color of a transparent dielectric material
-        float		IoR = 1.f;								///< Index of refraction
-
-        glm::vec3	emissiveColor = glm::vec3(0, 0, 0);		///< Emissive color of the material
-
-        float		bumpScale = 1.f;						///< Object-space scale of a bump/displacement map
-        float		bumpOffset = 0.f;						///< Object-space zero-based offset of a bump/displacement map
-
-        Texture::SharedPtr	pTextures[MapType::Count];		    ///< Set of available types of textures
+        Texture::SharedPtr  pTextures[MapType::Count];      ///< Array of available types of textures
 
         BasicMaterial() { memset(pTextures, 0x00, sizeof(pTextures)); }
 
+        /** Returns a regular Material object containing the same properties.
+        */
         Material::SharedPtr convertToMaterial();
+
+        /** Initializes values from a regular Material object.
+        */
         void initializeFromMaterial(const Material* pMaterial);
     };
 }

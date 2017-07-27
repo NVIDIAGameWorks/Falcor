@@ -35,9 +35,14 @@ namespace Falcor
 
     namespace MaterialSystem
     {
+        /** Deprecated
+        */
         void reset();
-        void patchProgram(Program* pProgram, const Material* pMaterial);
         void removeMaterial(uint64_t descIdentifier);
         void removeProgramVersion(const ProgramVersion* pProgramVersion);
+
+        /** Updates shader program defines controlling the material system
+        */
+        void patchProgram(Program* pProgram, const Material* pMaterial);
     };
 }

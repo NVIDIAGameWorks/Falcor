@@ -42,55 +42,48 @@ namespace Falcor
     class ProgramVars;
     class ConstantBuffer;
 
-    /** A surface material object
-        The core part of material is the 'SMaterial m_Material' data structure. It consists of multiple layers and modifiers.
-        Modifiers can modify shading attributes *before* performing the actual shading. So far only two modifiers are supported:
-            - SMaterial::AlphaMap               - Alpha test. 
-                                                    Decides whether to shade at all. 
-                                                    It invalidates the shading hit based on the threshold of opacity coming from the alpha texture.
-                                                    'ConstantColor.x' is used as alpha threshold for alpha testing (from 0 to 1).
-            - SMaterial::NormalMap              - Normal mapping. Rotates the shading frame before performing shading.
-                                                    'ConstantColor' is not used, only the texture slot.
-            - [Reserved] SMaterial::HeightMap   - Moves the shading hit point along the shading normal by the amount fetched from height map texture. 
-                                                    Can be used in parallax and relief mapping in pixel shader, or as a displacement map during tessellation stage.
-                                                    'ConstantColor' contains bias (level offset) of the height map in 'x' component and scale of the height map in 'y' component. 
-                                                    Height is meant to be computed as h = ConstantColor.x + fetch(HeightMap).x * ConstantColor.y
-        After modifiers are applied, the shading is performed with 'MatMaxLayers' number of layers (MatMaxLayers can be adjusted, by default is 3). Each layer can be one of the following types (SMaterialLayer::Type variable):
-            - kMatLambert                        - The simplest Lambertian diffuse BRDF. 
-                                                    'Albedo' is used as albedo color. 
-                                                        .ConstantColor.rgb      - constant base color.
-                                                        .Texture.rgb            - spatially-varying albedo modulator. 
-                                                    Other SMaterialValue parameters are not used for this Type of layer.
-            - kMatConductor                        - The conductor BRDF. Has metallic glossy look, designed for metals and compute corresponding conductor Fresnel.
-                                                    'NDF'                   - Normal Distribution Function (NDF) Type, which is responsible for rough look of the material and takes roughness as an input. Can take on the following values
-                                                                                'kNDFGGX'        - (default value) modern distribution model, characterized by a more smooth highlight
-                                                                                'kNDFBeckmann'   - Blinn-Phong normal distribution, defined as 2D Gaussian distribution of microfacets' slopes, has sharp highlight.
-                                                    'Albedo' is used as specular reflection color.
-                                                    .ConstantColor.rgb      - constant base color.
-                                                    .Texture.rgb            - spatially-varying modulator.
-                                                    'Roughness' is used as material roughness, takes values from 0 (perfect smooth specular) to 1 (highest roughness, diffuse-alike).
-                                                    .ConstantColor.x      - constant base roughness.
-                                                    .Texture.x            - spatially-varying modulator.
-                                                    'ExtraParam.ConstantColor' is used to store Fresnel parameters of the conductor.
-                                                    .x              - real part of complex index of refraction for conductors (actual values are a common knowledge for many metals).
-                                                    .y              - imaginary part of complex index of refraction for conductors.
-                                                    Other SMaterialValue parameters are not used for this Type of layer.
-            - kMatDielectric                       - The dielectric BSDF. Has plastic specular/glossy transparent look, designed for transparent dielectrics (like glass, water, coatings etc.) and compute corresponding dielectric Fresnel.
-                                                    'Albedo' is used as transmission/reflection color. 
-                                                    .ConstantColor.rgb      - constant base color.
-                                                    .Texture.rgb            - spatially-varying modulator.
-                                                    'Roughness' is used as material roughness, takes values from 0 (perfect smooth specular) to 1 (highest roughness, diffuse-alike).
-                                                    .ConstantColor.x      - constant base roughness.
-                                                    .Texture.x            - spatially-varying modulator.
-                                                    'ExtraParam.ConstantColor.x' is used to store index of refraction for dielectric Fresnel parameter (common knowledge, e.g. ~1.3 for unsalted water).
-                                                    Other SMaterialValue parameters are not used for this Type of layer.
-        Besides that, each layer defines how it will compose its shading results with the results of previous layers. 
-        The shading happens in a last-to-first order, so each next layer with smaller index composits its shading results with the previous results according to the value of 'Blending' variable of this layer:
-            - kBlendFresnel                        - Composite the results of this layer according to the Fresnel value of the layer. Available only for layers with Fresnel (conductor/dielectric).
-                                                    Useful for describing a material with e.g. a dielectric coating, where the underlying material layer is blended according to the dielectric Fresnel-based transmission.
-            - BlendConstant                       - Constant-weight blending between this layer and the previous result. The constant value is taken from ConstantColor.a component of the current layer.
-                                                    Useful for mixing multiple BSDFs, e.g. diffuse+conductor, or a multi-lobe conductor.
-            - BlendAdd                            - Just add the shading results of this layer to the results of previous shading.
+    /** A surface material object.
+        The core part of material is the 'MaterialData' data structure which consists of multiple layers and additional modifiers.
+        Modifiers can modify shading attributes *before* performing the actual shading. So far only two modifiers are supported natively:
+            - Alpha Map                     - Alpha test. Decides whether to shade at all.
+                                                Invalidates the shading hit based on the opacity sampled from the alpha texture.
+                                                'MaterialValues#alphaThreshold' is used as alpha threshold for alpha testing (from 0 to 1).
+            - Normal Map                    - Normal mapping. Rotates the shading frame before performing shading.
+            - Height Map [Unimplemented]    - Moves the shading hit point along the shading normal by the amount fetched from height map texture.
+                                                Can be used in parallax and relief mapping in pixel shader, or as a displacement map during tessellation stage.
+
+        After modifiers are applied, the shading is performed with 'MatMaxLayers' number of layers (MatMaxLayers can be adjusted, by default is 3). Each layer can be one of the following types:
+            - MatLambert        - The simplest Lambertian diffuse BRDF.
+                                    'MaterialLayerValues#albedo' is used as albedo color if no texture is applied.
+                                    Other MaterialLayerValues parameters are not used for this Type of layer.
+
+            - MatConductor      - The conductor BRDF. Has metallic glossy look, designed for metals and compute corresponding conductor Fresnel.
+                                    Normal Distribution Function (NDF) Type, which is responsible for rough look of the material and takes roughness as an input. Can take on the following values:
+                                    'NDFGGX'        - Modern distribution model, characterized by a more smooth highlight.
+                                    'NDFBeckmann'   - Beckmann normal distribution.
+
+                                    The layer's texture is used as specular reflection color if available. Otherwise 'MaterialLayerValues#albedo' is used.
+                                    'MaterialLayerValues#roughness' is used as material roughness, takes values from 0 (perfect smooth specular) to 1 (highest roughness, diffuse-like).
+                                        If a texture is set in the layer, the alpha channel of the texture will be used as roughness.
+                                    'MaterialLayerValues#extraParam' is used to store Fresnel parameters of the conductor.
+                                        X - real part of complex index of refraction for conductors (actual values are a common knowledge for many metals).
+                                        Y - imaginary part of complex index of refraction for conductors.
+                                    Other MaterialLayerValues parameters are not used for this type of layer.
+
+            - MatDielectric     - The dielectric BSDF. Has plastic specular/glossy transparent look, designed for transparent dielectrics (like glass, water, coatings etc.) and compute corresponding dielectric Fresnel.
+                                    'MaterialLayerValues#albedo' is used as albedo color if no texture is applied.
+                                    'MaterialLayerValues#roughness' is used as material roughness, takes values from 0 (perfect smooth specular) to 1 (highest roughness, diffuse-like).
+                                        If a texture is set in the layer, the alpha channel of the texture will be used as roughness.
+                                    'MaterialLayerValues#extraParam' is used to store index of refraction for dielectric Fresnel parameter (common knowledge, e.g. ~1.3 for unsalted water).
+                                    Other MaterialLayerValues parameters are not used for this Type of layer.
+
+        Besides that, each layer defines how it will compose its shading results with the results of previous layers.
+        The shading happens in a last-to-first order, so each next layer with smaller index composites its shading results with the previous results according to the value of 'Blending' variable of this layer:
+            - BlendFresnel  - Composite the results of this layer according to the Fresnel value of the layer. Available only for layers with Fresnel (conductor/dielectric).
+                                Useful for describing a material with e.g. a dielectric coating, where the underlying material layer is blended according to the dielectric Fresnel-based transmission.
+            - BlendConstant - Constant-weight blending between this layer and the previous result. The constant value is taken from albedo.a component of the current layer.
+                                Useful for mixing multiple BSDFs, e.g. diffuse+conductor, or a multi-lobe conductor.
+            - BlendAdd      - Just add the shading results of this layer to the results of previous shading.
     */
     class Material : public std::enable_shared_from_this<Material>
     {
@@ -100,74 +93,78 @@ namespace Falcor
 
         struct Layer
         {
+            /** Layer type
+            */
             enum class Type
             {
-                Lambert = MatLambert,
-                Conductor = MatConductor,
-                Dielectric = MatDielectric,
-                Emissive = MatEmissive,
-                User = MatUser
+                Lambert = MatLambert,           ///< Lambert layer
+                Conductor = MatConductor,       ///< Conductor layer
+                Dielectric = MatDielectric,     ///< Dialectric layer
+                Emissive = MatEmissive,         ///< Emissive layer
+                User = MatUser                  ///< User-defined shading layer
             };
 
+            /** Normal Distribution Functions
+            */
             enum class NDF
             {
-                Beckmann = NDFBeckmann,
-                GGX      = NDFGGX,
-                User     = NDFUser
+                Beckmann = NDFBeckmann, ///< Beckmann function
+                GGX = NDFGGX,           ///< GGX function
+                User = NDFUser          ///< User-defined function
             };
 
+            /** Blend modes for blending between layers
+            */
             enum class Blend
             {
-                Fresnel = BlendFresnel,
-                Additive = BlendAdd,
-                Constant = BlendConstant
+                Fresnel = BlendFresnel,     ///< Blend based on fresnel value. Available for conductor and dialectric layers.
+                Additive = BlendAdd,        ///< Regular additive blending. Add results for this layer to the previous.
+                Constant = BlendConstant    ///< Constant blending using value from the layer texture's alpha channel, or the albedo's alpha value if no texture is bound.
             };
 
             Type type = Type::Lambert;
             NDF ndf = NDF::GGX;
             Blend blend = Blend::Fresnel;
-            glm::vec4 albedo;
-            glm::vec4 roughness;
-            glm::vec4 extraParam;
-            Texture::SharedPtr pTexture;
+            glm::vec4 albedo;               ///< Base albedo color. Used when no texture is specified.
+            glm::vec4 roughness;            ///< Material layer roughness.
+            glm::vec4 extraParam;           ///< Extra parameters interpreted differently depending on layer type.
+            Texture::SharedPtr pTexture;    ///< Color texture map for a layer.
             float pmf = 1;
         };
-        
-        /** create a new material
-            \param[in] name the material name
+
+        /** Create a new material.
+            \param[in] name The material name
         */
         static SharedPtr create(const std::string& name);
 
         ~Material();
 
-        /** Set the material name
+        /** Set the material name.
         */
         void setName(const std::string& name) { mName = name; }
 
-        /** Get the material name
+        /** Get the material name.
         */
         const std::string& getName() const { return mName; }
 
-        /** Get the material ID. 
+        /** Get the material ID.
         */
         const int32_t getId() const { return mData.values.id; }
 
         /** Set the material ID
         */
         void setID(int32_t id) { mData.values.id = id; }
-        
+
         /** Reset all global id counter of model, mesh and material
         */
         static void resetGlobalIdCounter();
-
-        /** API for working with layers */
 
         /** Returns the number of active layers in the material
         */
         uint32_t getNumLayers() const;
 
         /** Returns a material layer descriptor. If the index is out-of-bound, will return a default layer
-            \param[in] layerIdx The index of the material layer
+            \param[in] layerIdx Material layer index
         */
         Layer getLayer(uint32_t layerIdx) const;
 
@@ -177,71 +174,87 @@ namespace Falcor
         bool addLayer(const Layer& layer);
 
         /** Removes a layer of the material.
-            \param[in] layerIdx The index of the material layer
+            \param[in] layerIdx Material layer index
         */
         void removeLayer(uint32_t layerIdx);
 
         /** Set a layer's type.
+            \param[in] layerId Material layer index
+            \param[in] type Layer type
         */
         void setLayerType(uint32_t layerId, Layer::Type type) { mData.desc.layers[layerId].type = (uint32_t)type; mDescDirty = true; }
 
         /** Set a layer's NDF
+            \param[in] layerId Material layer index
+            \param[in] ndf NDF type
         */
         void setLayerNdf(uint32_t layerId, Layer::NDF ndf) { mData.desc.layers[layerId].ndf = (uint32_t)ndf; mDescDirty = true; }
 
         /** Set a layer's blend
+            \param[in] layerId Material layer index
+            \param[in] blend Layer blend mode
         */
         void setLayerBlend(uint32_t layerId, Layer::Blend blend) { mData.desc.layers[layerId].blending = (uint32_t)blend; mDescDirty = true; }
 
         /** Set a layer's albedo color
+            \param[in] layerId Material layer index
+            \param[in] albedo RGBA color
         */
         void setLayerAlbedo(uint32_t layerId, const glm::vec4& albedo) { mData.values.layers[layerId].albedo = albedo; }
 
         /** Set a layer's roughness
+            \param[in] layerId Material layer index
         */
         void setLayerRoughness(uint32_t layerId, const glm::vec4& roughness) { mData.values.layers[layerId].roughness = roughness; }
 
         /** Set extra parameters on a layer interpreted based on layer type (IoR, etc.)
+            \param[in] layerId Material layer index
+            \param[in] data Extra parameter data
         */
         void setLayerUserParam(uint32_t layerId, const glm::vec4& data) { mData.values.layers[layerId].extraParam = data; }
 
         /** Set a layer's texture
+            \param[in] layerId Material layer index
+            \param[in] pTexture Texture
         */
         void setLayerTexture(uint32_t layerId, const Texture::SharedPtr& pTexture);
 
-        /** Returns the number of textures in the material
+        /** Gets number of textures in the material
         */
         uint32_t getTextureCount() const { return mTextureCount; }
-        
+
         /** Set the normal map
+            \param[in] pNormalMap Normal map texture
         */
         void setNormalMap(Texture::SharedPtr& pNormalMap);
-    
-        /** Returns the normal map
+
+        /** Get the normal map texture
         */
         Texture::SharedPtr getNormalMap() const { return mData.textures.normalMap; }
 
-        /** Set the alpha map
+        /** Set the alpha map used for alpha testing.
+            \param[in] pAlphaMap Alpha map texture
         */
         void setAlphaMap(const Texture::SharedPtr& pAlphaMap);
 
-        /** Get the alpha map
+        /** Get the alpha map texture
         */
         Texture::SharedPtr getAlphaMap() const { return mData.textures.alphaMap; }
 
         /** Set the alpha threshold value
         */
         void setAlphaThreshold(float threshold) { mData.values.alphaThreshold = threshold; }
-        
+
         /** Get the alpha threshold value
         */
         float getAlphaThreshold() const { return mData.values.alphaThreshold; }
 
-        /** Set the ambient occlusion value
+        /** Set the ambient occlusion map
+            \param[in] pAoMap Ambient occlusion map texture
         */
         void setAmbientOcclusionMap(const Texture::SharedPtr& pAoMap);
 
-        /** Returns the ambient value
+        /** Gets the ambient occlusion texture
         */
         Texture::SharedPtr getAmbientOcclusionMap() const { return mData.textures.ambientMap; }
 
@@ -254,13 +267,14 @@ namespace Falcor
         Texture::SharedPtr getHeightMap() const { return mData.textures.heightMap; }
 
         /** Set the height scale values
+            \param[in] mod Two modifier values for the height map. X = scale, Y = offset.
         */
         void setHeightModifiers(const glm::vec2& mod) { mData.values.height = mod; }
 
-        /** Get the height scale value
+        /** Get the height scale values
         */
         glm::vec2 getHeightModifiers() const { return mData.values.height; }
-        
+
         /** Check if this is a double-sided material. Meshes with double sided materials should be drawn without culling, and for backfacing polygons, the normal has to be inverted.
         */
         bool isDoubleSided() const { return mDoubleSided; }
@@ -269,22 +283,22 @@ namespace Falcor
         */
         void setDoubleSided(bool doubleSided) { mDoubleSided = doubleSided; mDescDirty = true; }
 
-        /** Set the material parameters into a constant buffer. To use this you need to include 'Falcor.h' inside your shader.
+        /** Set the material parameters into a constant buffer. To use this you need to include/import 'ShaderCommon' inside your shader.
             \param[in] pVars The graphics vars of the shader to set material into.
             \param[in] pCB The constant buffer to set the parameters into.
-            \param[in] varName The name of the material variable in the buffer
+            \param[in] varName The name of the MaterialData member in the buffer.
         */
         void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCB, const char varName[]) const;
 
-        /** Override all sampling types of materials
+        /** Set the sampler used when rendering this material.
         */
         void setSampler(const Sampler::SharedPtr& pSampler) { mData.samplerState = pSampler; }
-                
-        /** Return global sampler override 
+
+        /** Get this material's sampler.
         */
         Sampler::SharedPtr getSampler() const { return mData.samplerState; }
 
-        /** Comparison operator
+        /** Comparison operator. Compares Materials by their data values.
         */
         bool operator==(const Material& other) const;
 
@@ -305,8 +319,8 @@ namespace Falcor
         static_assert(sizeof(MaterialTextures) == (sizeof(Texture::SharedPtr) * kTexCount), "Wrong number of textures in Material::mTextures");
 
         Material(const std::string& name);
-        mutable MaterialData mData;         ///< Material data shared between host and device
-        bool mDoubleSided = false;          ///< Used for culling 
+        mutable MaterialData mData; ///< Material data shared between host and device
+        bool mDoubleSided = false;  ///< Used for culling
         std::string mName;
         mutable uint32_t mTextureCount = 0;
 

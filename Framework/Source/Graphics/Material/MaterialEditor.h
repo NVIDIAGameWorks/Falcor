@@ -41,10 +41,17 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<MaterialEditor>;
         using UniqueConstPtr = std::unique_ptr<const MaterialEditor>;
 
+        /** Create an editor instance.
+            \param[in] pMaterial Material to edit
+            \param[in] editorFinishedCB Optional function callback that occurs when editor is closed by the UI
+        */
         static UniquePtr create(const Material::SharedPtr& pMaterial, std::function<void(void)> editorFinishedCB = nullptr);
 
         ~MaterialEditor() {};
 
+        /** Render GUI elements for the editor
+            \param[in] pGui GUI to render the editor's elements with
+        */
         void renderGui(Gui* pGui);
 
     private:
