@@ -7,7 +7,7 @@ import stat
 import sys
 #custom written modules
 import RunAllTests
-import TestingUtil as testUtil
+import TestingUtil as testUtil	
 
 class TestSetInfo(object):
     def __init__(self, testDir, testList, summaryFile, passedTests, repoSrc, pullBranch, name):

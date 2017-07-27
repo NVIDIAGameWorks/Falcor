@@ -52,6 +52,7 @@ def removeDirTree(dirRoot):
     batchArgs = []
     batchArgs.insert(0, "RemoveDirectoryTree.bat ")
     batchArgs.insert(1, dirRoot)
+    subprocess.call(batchArgs)
 
 
 def cleanupString(string):
