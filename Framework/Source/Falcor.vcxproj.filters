@@ -492,7 +492,6 @@
     <ClCompile Include="API\Buffer.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\SlangSupport.cpp" />
     <ClCompile Include="API\Vulkan\VkSmartHandle.cpp">
       <Filter>API\Vulkan</Filter>
     </ClCompile>

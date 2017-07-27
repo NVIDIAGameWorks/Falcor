@@ -51,7 +51,7 @@ namespace Falcor
             pLayout->addBufferLayout(0, pBufLayout);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(buffers, pLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::TriangleStrip);
+            return Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
         }
 
         GraphicsState::SharedPtr getOnePixelState(RenderContext* pCtx)
