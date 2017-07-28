@@ -41,23 +41,53 @@ namespace Falcor
     class Scene;
     class Gui;
 
+    /** Used by the Scene Editor utility app to edit scenes. Contains a separate internal Scene instance to manage
+        editor-specific objects such as light bulbs, camera models, and gizmos.
+    */
     class SceneEditor
     {
     public:
         using UniquePtr = std::unique_ptr<SceneEditor>;
         using UniqueConstPtr = std::unique_ptr<const SceneEditor>;
 
+        /** Create a Scene Editor instance
+            \param[in] pScene Scene to edit
+            \param[in] modelLoadFlags Flags to use when adding new models to the scene
+        */
         static UniquePtr create(const Scene::SharedPtr& pScene, Model::LoadFlags modelLoadFlags = Model::LoadFlags::None);
         ~SceneEditor();
 
+        /** Get the internal camera used for rendering editor-specific objects. This is also typically the
+            camera used to render the application in the SceneEditor utility app.
+        */
         const Camera::SharedPtr getEditorCamera() const { return mpEditorScene->getActiveCamera(); }
 
+        /** Updates the internal scene containing editor-specific objects
+        */
         void update(double currentTime);
+
+        /** Render the scene editor
+            \param[in] pContext Render context
+        */
         void render(RenderContext* pContext);
+
+        /** Render the editor's UI elements
+            \param[in] pGui GUI instance to render the editor UI with
+        */
         void renderGui(Gui* pGui);
 
+        /** Handles mouse events including object picking.
+            \param[in] pContext Render context. Used for object picking
+            \param[in] mouseEvent Mouse event
+        */
         bool onMouseEvent(RenderContext* pContext, const MouseEvent& mouseEvent);
+
+        /** Handles keyboard events
+        */
         bool onKeyEvent(const KeyboardEvent& keyEvent);
+
+        /** Updates the internal graphics objects used by the editor. Call this whenever Sample::onResizeSwapChain() is called.
+        */
         void onResizeSwapChain();
 
     private:

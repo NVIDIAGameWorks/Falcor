@@ -49,21 +49,24 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<SceneRenderer>;
         using SharedConstPtr = std::shared_ptr<const SceneRenderer>;
 
+        /** Create a renderer instance
+            \param[in] pScene Scene this renderer is responsible for rendering
+        */
         static SharedPtr create(const Scene::SharedPtr& pScene);
         virtual ~SceneRenderer() = default;
 
-        /** Renders the full scene, does update of the camera internally
-            Call update() before using this function, otherwise camera will not move and models will not be animated
+        /** Renders the full scene using the scene's active camera.
+            Call update() before using this function, otherwise camera will not move and models will not be animated.
         */
         virtual void renderScene(RenderContext* pContext);
 
-        /** Renders the full scene, overriding the internal camera
+        /** Renders the full scene, overriding the internal camera.
             Call update() before using this function otherwise model animation will not work
         */
         virtual void renderScene(RenderContext* pContext, Camera* pCamera);
 
         /** Update the camera and model animation.
-            Should be called before renderScene(), unless not animations are used and you update the camera manualy
+            Should be called before renderScene(), unless not animations are used and you update the camera manually
         */
         bool update(double currentTime);
 
