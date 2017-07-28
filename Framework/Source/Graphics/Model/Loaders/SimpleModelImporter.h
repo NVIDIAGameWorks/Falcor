@@ -38,6 +38,10 @@ namespace Falcor
 {
     class Texture;
 
+    /** 
+        DEPRECATED
+    */
+
     // Prior Falcor classes load models from disk via some format.  Chris wanted some way to create
     //     models on the fly from memory resources.  This class is a start at doing this.
     //     Note 1:  this is pretty simplistic and may not correctly integrate with fancy materials, etc.

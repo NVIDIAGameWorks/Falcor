@@ -46,13 +46,17 @@ namespace Falcor
     class VertexBufferLayout;
     class Texture;
 
+    /** Implements model import functionality through ASSIMP.
+        Typically, the user should use Model::createFromFile() to load a model instead of this class.
+    */
     class AssimpModelImporter : public ModelImporter
     {
     public:
-        /** create a new model using ASSIMP
-            \param[in] filename Model's filename. Loader will look for it in the data directories.
+        /** Load a model using ASSIMP
+            \param[out] model Model object to load into
+            \param[in] filename Model's filename. Can include a full path or a relative path from the working directory
             \param[in] flags Flags controlling model creation
-            returns nullptr if loading failed, otherwise a new Model object
+            \return Whether import succeeded
         */
         static bool import(Model& model, const std::string& filename, Model::LoadFlags flags);
 

@@ -43,9 +43,8 @@ namespace Falcor
     {
     public:
         /** Export a model into a binary file
-            \param[in] filename Model's filename. Loader will look for it in the data directories.
+            \param[in] filename Model's filename or full path
             \param[in] pModel The model to export
-            returns nullptr if loading failed, otherwise a new Model object
         */
         static void exportToFile(const std::string& filename, const Model* pModel);
 

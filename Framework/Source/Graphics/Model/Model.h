@@ -60,14 +60,14 @@ namespace Falcor
         enum class LoadFlags
         {
             None,
-            DontGenerateTangentSpace    = 0x1,    ///< Do not attemp to generate tangents if they are missing
+            DontGenerateTangentSpace    = 0x1,    ///< Do not attempt to generate tangents if they are missing
             FindDegeneratePrimitives    = 0x2,    ///< Replace degenerate triangles/lines with lines/points. This can create a meshes with topology that wasn't present in the original model.
             AssumeLinearSpaceTextures   = 0x4,    ///< By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.
             DontMergeMeshes             = 0x8,    ///< Preserve the original list of meshes in the scene, don't merge meshes with the same material
             BuffersAsShaderResource     = 0x10,   ///< Generate the VBs and IB with the shader-resource-view bind flag
         };
 
-        /** create a new model from file
+        /** Create a new model from file
         */
         static SharedPtr createFromFile(const char* filename, LoadFlags flags = LoadFlags::None);
 
@@ -81,117 +81,117 @@ namespace Falcor
         */
         void exportToBinaryFile(const std::string& filename);
 
-        /** Get the model radius
+        /** Get the model radius, calculated based on bounding box size.
         */
         float getRadius() const { return mRadius; }
 
-        /** Get the model center
+        /** Get the model center.
         */
         const glm::vec3& getCenter() const { return mBoundingBox.center; }
 
-        /** Get the model's AABB
+        /** Get the model's AABB.
         */
         const BoundingBox& getBoundingBox() const { return mBoundingBox; }
 
-        /** Get the number of vertices in the model
+        /** Get the number of vertices in the model.
         */
         uint32_t getVertexCount() const { return mVertexCount; }
 
-        /** Get the number of indices in the model
+        /** Get the number of indices in the model.
         */
         uint32_t getIndexCount() const { return mIndexCount; }
 
-        /** Get the number of primitives in the model
+        /** Get the number of primitives in the model.
         */
         uint32_t getPrimitiveCount() const { return mPrimitiveCount; }
 
-        /** Get the number of meshes in the model
+        /** Get the number of meshes in the model.
         */
         uint32_t getMeshCount() const { return uint32_t(mMeshes.size()); }
 
-        /** Get the total number of mesh instances in the model
+        /** Get the total number of mesh instances in the model.
         */
         uint32_t getInstanceCount() const { return mMeshInstanceCount; }
 
-        /** Get the number of unique textures in the model
+        /** Get the number of unique textures in the model.
         */
         uint32_t getTextureCount() const { return mTextureCount; }
 
-        /** Get the number of unique materials in the model
+        /** Get the number of unique materials in the model.
         */
         uint32_t getMaterialCount() const { return mMaterialCount; }
 
-        /** Get the number of unique buffers in the model
+        /** Get the number of unique buffers in the model.
         */
         uint32_t getBufferCount() const { return mBufferCount; }
 
-        /** Gets a mesh instance
+        /** Gets a mesh instance.
             \param[in] meshID ID of the mesh
             \param[in] instanceID ID of the instance
             \return Mesh instance
         */
         const MeshInstance::SharedPtr& getMeshInstance(uint_t meshID, uint_t instanceID) const { return mMeshes[meshID][instanceID]; }
 
-        /** Gets a mesh
+        /** Gets a mesh.
             \param[in] meshID ID of the mesh
             \return Mesh object
         */
         const Mesh::SharedPtr& getMesh(uint32_t meshID) const { return mMeshes[meshID][0]->getObject(); };
 
-        /** Gets how many instances exist of a mesh
+        /** Gets how many instances exist of a mesh.
             \param[in] meshID ID of the mesh
             \return Number of instances
         */
         uint32_t getMeshInstanceCount(uint32_t meshID) const { return meshID >= mMeshes.size() ? 0 : (uint32_t)(mMeshes[meshID].size()); }
 
-        /** Adds a new mesh instance
+        /** Adds a new mesh instance.
             \param[in] pMesh Mesh geometry
             \param[in] baseTransform Base transform for the instance
         */
         void addMeshInstance(const Mesh::SharedPtr& pMesh, const glm::mat4& baseTransform);
 
-        /** Check if the model contains animations
+        /** Check if the model contains animations.
         */
         bool hasAnimations() const;
 
-        /** Get the number of animations in the model
+        /** Get the number of animations in the model.
         */
         uint32_t getAnimationsCount() const;
 
-        /** Animate the active animation. Use SetActiveAnimation() to switch between different animations.
-            \param[in] CurrentTime The current global time
+        /** Animate the active animation. Use setActiveAnimation() to switch between different animations.
+            \param[in] currentTime The current global time
         */
         void animate(double currentTime);
 
-        /** Get the animation name from animation ID
+        /** Get the animation name from animation ID.
         */
         const std::string& getAnimationName(uint32_t animationID) const;
 
-        /** Turn animations off and use bind pose for rendering
+        /** Turn animations off and use bind pose for rendering.
         */
         void setBindPose();
         
-        /** Turn animation on and select active animation. Changing the active animation will cause the new animation to play from the beginning
+        /** Turn animation on and select active animation. Changing the active animation will cause the new animation to play from the beginning.
         */
         void setActiveAnimation(uint32_t animationID);
 
-        /** Turn animation on and select active animation. Changing the active animation will cause the new animation to play from the beginning
+        /** Get the active animation.
         */
         uint32_t getActiveAnimation() const;
 
-        /** Set the animation controller for the model
+        /** Set the animation controller for the model.
         */
         void setAnimationController(AnimationController::UniquePtr pAnimController);
 
-        /** Check if the model has bones
+        /** Check if the model has bones.
         */
         bool hasBones() const;
 
-        /** Get the number of bone matrices
+        /** Get the number of bone matrices.
         */
         uint32_t getBonesCount() const;
 
-        /** Get a pointer to the bone matrices
+        /** Get a pointer to the array of bone matrices.
         */
         const glm::mat4* getBonesMatrices() const;
 
@@ -200,7 +200,7 @@ namespace Falcor
         */
         void bindSamplerToMaterials(const Sampler::SharedPtr& pSampler);
 
-        /** Delete meshes from the model culled by the camera's frustum.\n
+        /** Delete meshes from the model culled by the camera's frustum.
             The function will also delete buffers, textures and materials not in use anymore.
         */
         void deleteCulledMeshes(const Camera* pCamera);

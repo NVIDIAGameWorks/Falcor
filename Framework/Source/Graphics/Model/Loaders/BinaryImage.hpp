@@ -31,6 +31,9 @@
 #include <vector>
 using namespace Falcor;
 
+/** Mostly deprecated file although ImageFormat is currently still used in BinaryModelExporter.
+    You may have been looking for Bitmap.h.
+*/
 namespace FW
 {
 //------------------------------------------------------------------------

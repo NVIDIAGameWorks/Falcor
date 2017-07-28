@@ -33,16 +33,16 @@ namespace Falcor
     class RenderContext;
     class Camera;
 
-	/**
-	* This is deprecated and has performance issues
-	**/
+    /**
+    * This is deprecated and has performance issues
+    **/
     class ModelRenderer
     {
     public:
         /** Render a model.  Uses frustum culling, if enabled.
             \param[in] pRenderContext The render context
-            \param[in] pModel         The model to render
-            \param[in] pCamera        The camera to use
+            \param[in] pModel The model to render
+            \param[in] pCamera The camera to use
             \param[in] frustumCulling Enable/disable per-mesh frustum culling
         */
         static void render(RenderContext* pRenderContext, Model::SharedPtr pModel, Camera* pCamera, bool frustumCulling = true);

@@ -40,6 +40,9 @@ namespace Falcor
     class SceneRenderer;
     class Model;
 
+    /** Handles transformations for Mesh and Model instances. Primary transform is stored in the "Base" transform. An additional "Movable"
+        transform is applied after the Base transform can be set through the IMovableObject interface. This is currently used by paths.
+    */
     template<typename ObjectType>
     class ObjectInstance : public IMovableObject, public inherit_shared_from_this<IMovableObject, ObjectInstance<typename ObjectType>>
     {
@@ -47,7 +50,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ObjectInstance<typename ObjectType>>;
         using SharedConstPtr = std::shared_ptr<const ObjectInstance<typename ObjectType>>;
 
-        /** Constructs a object instance with a transform
+        /** Constructs an object instance with a transform
             \param[in] pObject Object to create an instance of
             \param[in] baseTransform Base transform matrix of the instance
             \param[in] name Name of the instance
@@ -59,7 +62,7 @@ namespace Falcor
             return SharedPtr(new ObjectInstance<ObjectType>(pObject, baseTransform, name));
         }
 
-        /** Constructs a object instance with a transform
+        /** Constructs an object instance with a transform
             \param[in] pObject Object to create an instance of
             \param[in] translation Base translation of the instance
             \param[in] target Base look-at target of the instance
@@ -73,7 +76,7 @@ namespace Falcor
              return SharedPtr(new ObjectInstance<ObjectType>(pObject, translation, target, up, scale, name));
         }
 
-        /** Constructs a object instance with a transform
+        /** Constructs an object instance with a transform
             \param[in] pObject Object to create an instance of
             \param[in] translation Base translation of the instance
             \param[in] yawPitchRoll Rotation of the instance in radians
@@ -170,9 +173,12 @@ namespace Falcor
             return result;
         }
 
-// #toodo comments
+        /** Sets the up vector orientation
+        */
         void setUpVector(const glm::vec3& up) { mBase.up = glm::normalize(up); mBase.matrixDirty = true; }
 
+        /** Sets the look-at target
+        */
         void setTarget(const glm::vec3& target) { mBase.target = target; mBase.matrixDirty = true; }
 
         /** Gets the up vector of the instance

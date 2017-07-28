@@ -33,11 +33,18 @@
 
 namespace Falcor
 {
+    /** Base class for Model importer implementations. Stores common functionality and data.
+    */
     class ModelImporter
     {
     protected:
 
         // If a similar material already exists, will return the existing one. Otherwise, will cache the material in pMaterial and return it
+        /** Handles caching of materials while importing. If pMaterial is new, it will be cached and returned. 
+            Otherwise, if a material with equivalent properties has been loaded, the cached material will be returned instead.
+            \param[in] pMaterial Material to check
+            \return If pMaterial has been cached, return the cached material instance. Otherwise return pMaterial.
+        */
         Material::SharedPtr checkForExistingMaterial(const Material::SharedPtr& pMaterial);
 
         std::vector<Material::SharedPtr> mLoadedMaterials; // vector because we make use of operator==, and it's only for the importers
