@@ -3,9 +3,9 @@ Falcor 2.0 beta
 
 Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.
 Its features include:
-* Abstract many common graphics operations, such as shader compilation, model loading and scene rendering.
-* VR support using OpenVR.
-* Common rendering effects such as shadows and post-processing effects.
+* Abstracting many common graphics operations, such as shader compilation, model loading and scene rendering
+* VR support using OpenVR
+* Common rendering effects such as shadows and post-processing effects
 
 This is a beta version. The interfaces are not final yet and there might be some performance/stability issues.
 
@@ -32,10 +32,10 @@ run `update_dependencies.bat` to download the required dependencies then follow 
 
 Creating a New Project
 ------------------------
-- If you haven't done so already, create a Visual Studio solution and project for your code. Falcor only supports 64-bit builds, so make sure you have a 64-bit build configuration.
-- Add Falcor.props to your project (Property Manager -> Right click your project -> Add existing property sheet).
-- Add Falcor.vcxproj to your solution.
-- Add a reference to Falcor in your project (Solution Explorer -> Right click your project -> Properties -> Common Properties -> References -> Add new reference -> Choose Falcor).
+- If you haven't done so already, create a Visual Studio solution and project for your code. Falcor only supports 64-bit builds, so make sure you have a 64-bit build configuration
+- Add Falcor.props to your project (Property Manager -> Right click your project -> Add existing property sheet)
+- Add Falcor.vcxproj to your solution
+- Add a reference to Falcor in your project (Solution Explorer -> Right click your project -> Properties -> Common Properties -> References -> Add new reference -> Choose Falcor)
 
 *Sample* Class
 -------------------
@@ -56,7 +56,7 @@ Release builds disable logging and most runtime error checks. Use this configura
 
 Setting Up Debug Layers
 ------------------------
-To use DirectX 12 debug layers:
+To use the DirectX 12 debug layer:
 - Open the Start menu
 - Type "Manage optional features" and press Enter
 - Click "Add a feature"
@@ -68,18 +68,18 @@ To use Vulkan debug layers:
 Falcor Configuration
 --------------------
 `FalcorConfig.h` contains some flags which control Falcor's behavior.
-- `_LOG_ENABLED` - Enable/disable log messages. By default, it is set to `false` for release build and `true` for debug builds.
-- `_PROFILING_ENABLED` - Enable/Disable the internal CPU/GPU profiler. By default, it is set to `true`.
+- `_LOG_ENABLED` - Enable/disable log messages. By default, it is set to `false` for release build and `true` for debug builds
+- `_PROFILING_ENABLED` - Enable/Disable the internal CPU/GPU profiler. By default, it is set to `true`
 
 Data Files
 --------------------
 Data files include shader files, textures, and models.
 By default, Falcor looks for data files in the following locations:
-- The working directory. In some cases this is not the same as the executable directory. For example, if you launch the application from Visual Studio, by default the working directory is the directory containing the project file.
-- The executable directory.
-- An optional environment variable named `FALCOR_MEDIA_FOLDERS`. It is a semicolon-separated list of folders.
-- Any directory that was added to the data directories list by calling `addDataDirectory()`.
-- A directory called "Data/" under any of the above directories.
+- The working directory. In some cases this is not the same as the executable directory. For example, if you launch the application from Visual Studio, by default the working directory is the directory containing the project file
+- The executable directory
+- An optional environment variable named `FALCOR_MEDIA_FOLDERS`. It is a semicolon-separated list of folders
+- Any directory that was added to the data directories list by calling `addDataDirectory()`
+- A directory called "Data/" under any of the above directories
 
 To search for a data file, call `findFileInDataDirectories()`.
 
