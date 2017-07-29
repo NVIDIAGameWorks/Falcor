@@ -50,13 +50,15 @@ namespace Falcor
         ~GaussianBlur();
 
         /** Create a new object
+            \param[in] kernelSize Number of samples taken along each axis
+            \param[in] sigma Gaussian distribution sigma value used to calculate sample weights. Values smaller than twice the sigma are ineffective
         */
         static UniquePtr create(uint32_t kernelSize = 5, float sigma = 1.0f);
 
-        /** Run the tone-mapping program
-            \param pRenderContext Render-context to use
-            \param pSrc The source FBO
-            \param pDst The destination FBO
+        /** Apply gaussian blur by rendering one texture into another.
+            \param pRenderContext Render context to use
+            \param pSrc The source texture
+            \param pDst The destination texture
         */
         void execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Fbo::SharedPtr pDst);
 
@@ -74,11 +76,13 @@ namespace Falcor
         */
         void setSigma(float sigma) { mSigma = sigma; mDirty = true; }
 
-        /** Get the sigma
+        /** Get the sigma value.
         */
         float getSigma() const { return mSigma; }
 
-        /** Render the UI
+        /** Render UI controls for blur settings.
+            \param[in] pGui GUI instance to render UI elements with
+            \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 

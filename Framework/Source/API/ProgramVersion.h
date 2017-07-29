@@ -39,14 +39,14 @@ namespace Falcor
 
     /** Low-level program object
         This class abstracts the API's program creation and management
-        */
+    */
     class ProgramVersion : public std::enable_shared_from_this<ProgramVersion>
     {
     public:
         using SharedPtr = std::shared_ptr<ProgramVersion>;
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
 
-        /** create a new program object for graphics
+        /** Create a new program object for graphics.
             \param[in] pVS Vertex shader object
             \param[in] pPS Fragment shader object
             \param[in] pGS Geometry shader object
@@ -55,7 +55,7 @@ namespace Falcor
             \param[out] Log In case of error, this will contain the error log string
             \param[in] DebugName Optional. A meaningful name to use with log messages
             \return New object in case of success, otherwise nullptr
-            */
+        */
         static SharedPtr create(
             ProgramReflection::SharedPtr const& pReflector,
             const Shader::SharedPtr& pVS,
@@ -66,11 +66,11 @@ namespace Falcor
             std::string& log, 
             const std::string& name = "");
 
-        /** create a new program object for compute
-        \param[in] pCs Compute shader object
-        \param[out] Log In case of error, this will contain the error log string
-        \param[in] DebugName Optional. A meaningful name to use with log messages
-        \return New object in case of success, otherwise nullptr
+        /** Create a new program object for compute.
+            \param[in] pCs Compute shader object
+            \param[out] Log In case of error, this will contain the error log string
+            \param[in] DebugName Optional. A meaningful name to use with log messages
+            \return New object in case of success, otherwise nullptr
         */
         static SharedPtr create(
             ProgramReflection::SharedPtr const& pReflector,
@@ -92,9 +92,6 @@ namespace Falcor
         */
         const std::string& getName() const {return mName;}
 
-        /** Write the shader assembly to file
-            Not really. This dumps the binary, which on NVIDIA GPUs contains the assembly in text form.
-        */
         void dumpProgramBinaryToFile(const std::string& filename) const;
 
         /** Get the reflection object

@@ -79,34 +79,40 @@ namespace Falcor
         {
         public:
             friend class Sampler;
-            /** Set the filter mode
-                \param minFilter Filter mode in case of minification.
-                \param magFilter Filter mode in case of magnification.
-                \param mipFilter Mip-level sampling mode
 
+            /** Set the filter mode
+                \param[in] minFilter Filter mode in case of minification.
+                \param[in] magFilter Filter mode in case of magnification.
+                \param[in] mipFilter Mip-level sampling mode
             */
             Desc& setFilterMode(Filter minFilter, Filter magFilter, Filter mipFilter);
+
             /** Set the maximum anisotropic filtering value. If MaxAnisotropy > 1, min/mag/mip filter modes are ignored
             */
             Desc& setMaxAnisotropy(uint32_t maxAnisotropy);
+
             /** Set the lod clamp parameters
-                \param minLod - Minimum LOD that will be used when sampling
-                \param maxLod - Maximum LOD that will be used when sampling
-                \param lodBias - Bias to apply to the LOD
+                \param[in] minLod Minimum LOD that will be used when sampling
+                \param[in] maxLod Maximum LOD that will be used when sampling
+                \param[in] lodBias Bias to apply to the LOD
             */
             Desc& setLodParams(float minLod, float maxLod, float lodBias);
+
             /** Set the sampler comparison mode
             */
             Desc& setComparisonMode(ComparisonMode mode);
+
             /** Set the sampler addressing mode
-                \param modeU Addressing mode for U texcoord channel
-                \param modeV Addressing mode for V texcoord channel
-                \param modeW Addressing mode for W texcoord channel
+                \param[in] modeU Addressing mode for U texcoord channel
+                \param[in] modeV Addressing mode for V texcoord channel
+                \param[in] modeW Addressing mode for W texcoord channel
             */
             Desc& setAddressingMode(AddressMode modeU, AddressMode modeV, AddressMode modeW);
+
             /** Set the border color. Only applies when the addressing mode is ClampToBorder
             */
             Desc& setBorderColor(const glm::vec4& borderColor);
+
         protected:
             Filter mMagFilter = Filter::Point;
             Filter mMinFilter = Filter::Point;
@@ -122,7 +128,8 @@ namespace Falcor
             glm::vec4 mBorderColor = glm::vec4(0, 0, 0, 0);
         };
 
-        /** create a new sampler object
+        /** Create a new sampler object
+            \param[in] desc Describes sampler settings
             \return A new object, or nullptr if an error occurred
         */
         static SharedPtr create(const Desc& desc);
@@ -135,6 +142,7 @@ namespace Falcor
         /** Get the magnification filter
         */
         Filter getMagFilter() const { return mDesc.mMagFilter; }
+
         /** Get the minification filter
         */
         Filter getMinFilter() const { return mDesc.mMinFilter; }
@@ -150,9 +158,11 @@ namespace Falcor
         /** Get the minimum LOD value
         */
         float getMinLod() const { return mDesc.mMinLod; }
+
         /** Get the maximum LOD value
         */
         float getMaxLod() const { return mDesc.mMaxLod; }
+
         /** Get the LOD bias
         */
         float getLodBias() const { return mDesc.mLodBias; }
@@ -164,9 +174,11 @@ namespace Falcor
         /** Get the addressing mode for the U texcoord
         */
         AddressMode getAddressModeU() const { return mDesc.mModeU; }
+
         /** Get the addressing mode for the V texcoord
         */
         AddressMode getAddressModeV() const { return mDesc.mModeV; }
+
         /** Get the addressing mode for the W texcoord
         */
         AddressMode getAddressModeW() const { return mDesc.mModeW; }
@@ -178,6 +190,7 @@ namespace Falcor
         /** Get an object that represents a default sampler
         */
         static Sampler::SharedPtr getDefault();
+
     private:
         Sampler(const Desc& desc);
         Desc mDesc;

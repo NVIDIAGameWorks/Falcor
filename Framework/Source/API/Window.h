@@ -38,19 +38,19 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const Window>;
         using ApiHandle = WindowHandle;
 
-		/** Window configuration configuration
-		*/
+        /** Window configuration configuration
+        */
         struct Desc
         {
-			uint32_t width = 1920;           ///< The width of the client area size
-			uint32_t height = 1080;          ///< The height of the client area size
-            bool fullScreen = false;               ///< Set to true to run the sample in full-screen mode
+            uint32_t width = 1920;                  ///< The width of the client area size
+            uint32_t height = 1080;                 ///< The height of the client area size
+            bool fullScreen = false;                ///< Set to true to run the sample in full-screen mode
             std::string title = "Falcor Sample";    ///< Window title
-            bool resizableWindow = false;          ///< Allow the user to resize the window.
+            bool resizableWindow = false;           ///< Allow the user to resize the window.
         };
 
-		/** Callbacks interface to be used when creating a new object
-		*/
+        /** Callbacks interface to be used when creating a new object
+        */
         class ICallbacks
         {
         public:
@@ -60,58 +60,59 @@ namespace Falcor
             virtual void handleMouseEvent(const MouseEvent& mouseEvent) = 0;
         };
 
-		/** Create a new window
-		\param[in] desc Window configuration
-		\param[in] pCallbacks User callbacks
-		\return A new object if creation succeeded, otherwise nullptr
-		*/
+        /** Create a new window.
+            \param[in] desc Window configuration
+            \param[in] pCallbacks User callbacks
+            \return A new object if creation succeeded, otherwise nullptr
+        */
         static SharedPtr create(const Desc& desc, ICallbacks* pCallbacks);
 
-		/** Destructor
-		*/
+        /** Destructor
+        */
         ~Window();
 
-		/** Destroy the window. This will cause the msgLoop() to stop its execution
-		*/
+        /** Destroy the window. This will cause the msgLoop() to stop its execution
+        */
         void shutdown();
 
-		/** Resize the window
-		\param[in] width The new width of the client-area
-		\param[in] height The new height of the client-area
-		There is not guarntee that the call will succeed. You should call getClientAreaHeight() and getClientAreaWidth() to get the actual new size of the window
-		*/
+        /** Resize the window
+            \param[in] width The new width of the client-area
+            \param[in] height The new height of the client-area
+            There is not guarantee that the call will succeed. You should call getClientAreaHeight() and getClientAreaWidth() to get the actual new size of the window
+        */
         void resize(uint32_t width, uint32_t height);
 
-		/** Start executing the msgLoop. The only way to stop it is to call shutdown()
-		*/
+        /** Start executing the msgLoop. The only way to stop it is to call shutdown()
+        */
         void msgLoop();
 
-		/** Force event polling. Useful if your rendering loop is slow and you would like to get a recent keyboard/mouse status
-		*/
+        /** Force event polling. Useful if your rendering loop is slow and you would like to get a recent keyboard/mouse status
+        */
         void pollForEvents();
 
-		/** Change the window's title
-		*/
+        /** Change the window's title
+        */
         void setWindowTitle(std::string title);
 
-		/** Get the native window handle
-		*/
+        /** Get the native window handle
+        */
         ApiHandle getApiHandle() const { return mApiHandle; }
 
-		/** Get the width of the window's client area
-		*/
-		uint32_t getClientAreaWidth() const { return mWidth; }
+        /** Get the width of the window's client area
+        */
+        uint32_t getClientAreaWidth() const { return mWidth; }
 
-		/** Get the height of the window's client area
-		*/
-		uint32_t getClientAreaHeight() const { return mHeight; }
-	private:
+        /** Get the height of the window's client area
+        */
+        uint32_t getClientAreaHeight() const { return mHeight; }
+
+    private:
         friend class ApiCallbacks;
-		Window(ICallbacks * pCallbacks, uint32_t width, uint32_t height);        
+        Window(ICallbacks * pCallbacks, uint32_t width, uint32_t height);
 
         ApiHandle mApiHandle;
-		uint32_t mWidth;
-		uint32_t mHeight;
+        uint32_t mWidth;
+        uint32_t mHeight;
         glm::vec2 mMouseScale;
         const glm::vec2& getMouseScale() const { return mMouseScale; }
         ICallbacks* mpCallbacks = nullptr;

@@ -38,20 +38,20 @@ namespace Falcor
     class ParticleSystem
     {
     public:
-        static const char* kVertexShader;
-        static const char* kSortShader;
-        static const char* kEmitShader;
-        static const char* kDefaultPixelShader;
-        static const char* kDefaultSimulateShader;
+        static const char* kVertexShader;           ///< Filename for the vertex shader
+        static const char* kSortShader;             ///< Filename for the sorting compute shader
+        static const char* kEmitShader;             ///< Filename for the emit compute shader
+        static const char* kDefaultPixelShader;     ///< Filename for the default pixel shader
+        static const char* kDefaultSimulateShader;  ///< Filename for the particle update/simulation compute shader
 
         using SharedPtr = std::shared_ptr<ParticleSystem>;
 
         /** Creates a new particle system
-        \params[in] pCtx The render context
-        \params[in] maxParticles the max number of particles allowed at once, emits will be blocked if the system is maxxed out 
-        \params[in] drawPixelShader the pixel shader used to draw the particles
-        \params[in] simulateComputeShader the compute shader used to update the particles
-        \params[in] sorted whether or not the particles should be sorted by depth before render
+            \params[in] pCtx The render context
+            \params[in] maxParticles The max number of particles allowed at once, emits will be blocked if the system is maxxed out 
+            \params[in] drawPixelShader The pixel shader used to draw the particles
+            \params[in] simulateComputeShader The compute shader used to update the particles
+            \params[in] sorted Whether or not the particles should be sorted by depth before render
         */
         static SharedPtr create(RenderContext* pCtx, uint32_t maxParticles, uint32_t maxEmitPerFrame,
             std::string drawPixelShader = kDefaultPixelShader,
@@ -61,71 +61,85 @@ namespace Falcor
         /** Updates the particle system, emitting if it's time to do so and simulating particles 
         */
         void update(RenderContext* pCtx, float dt, glm::mat4 view);
+
         /** Render the particle system, sorting if necessary and drawing the particles
         */
         void render(RenderContext* pCtx, glm::mat4 view, glm::mat4 proj);
-        /** Set UI elements
+
+        /** Render UI controls for this particle system.
+            \param[in] pGui GUI instance to render UI elements with
         */
         void renderUi(Gui* pGui);
 
-        /** Returns a ptr to the gfx vars for drawing
+        /** Gets the graphics vars for drawing.
         */
         GraphicsVars::SharedPtr getDrawVars() { return mDrawResources.pVars; }
-        /** Returns a ptr to the simulate shader 
+
+        /** Gets the simulation shader program
         */
         ComputeProgram::SharedPtr getSimulateProgram() { return mSimulateResources.pState->getProgram(); }
-        /** Returns a ptr to the gfx vars for simulate
+
+        /** Get the graphics vars used for the particle simulation shader
         */
         ComputeVars::SharedPtr getSimulateVars() { return mSimulateResources.pVars; }
 
-        /** Sets how long a particle will remain alive after spawning
-        \params[in] dur the new base duration 
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
+        /** Sets how long a particle will remain alive after spawning.
+            \params[in] dur The new base duration 
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setParticleDuration(float dur, float offset);
-        /** Returns the particle emitter's current duration 
+
+        /** Returns the particle emitter's current duration.
         */
         float getParticleDuration() { return mEmitter.duration; }
+
         /** Sets data associated with the emitting of particles
-        \params[in] dur the new base emit count
-        \params[in] emitCountOffset the new random offset to be applied. final value is base + randRange(-offset, offset)
-        \params[in] emitFrequency the frequency at which particles should be emitted
+            \params[in] emitCount The new base emit count
+            \params[in] emitCountOffset The new random offset to be applied. final value is base + randRange(-offset, offset)
+            \params[in] emitFrequency The frequency at which particles should be emitted
         */
         void setEmitData(uint32_t emitCount, uint32_t emitCountOffset, float emitFrequency);
-        /** Sets particles' spawn position
-        \params[in] dur the new base spawn position
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
+
+        /** Sets particles' spawn position.
+            \params[in] spawnPos The new base spawn position
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setSpawnPos(vec3 spawnPos, vec3 offset);
-        /** Sets the velocity particles spawn with
-        \params[in] dur the new base velocity
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
+
+        /** Sets the velocity particles spawn with.
+            \params[in] velocity The new base velocity
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setVelocity(vec3 velocity, vec3 offset);
-        /** Sets the acceleration particles spawn with
-        \params[in] dur the new base acceleration
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
+
+        /** Sets the acceleration particles spawn with.
+            \params[in] accel The new base acceleration
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setAcceleration(vec3 accel, vec3 offset);
-        /** Sets the scale particles spawn with
-        \params[in] dur the new base scale
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
+
+        /** Sets the scale particles spawn with.
+            \params[in] scale The new base scale
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setScale(float scale, float offset);
-        /** Sets the rate of change of the particles' scale
-        \params[in] dur the new base growth
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
+
+        /** Sets the rate of change of the particles' scale.
+            \params[in] growth The new base growth
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setGrowth(float growth, float offset);
-        /** Sets the rotation particles spawn with
-        \params[in] dur the new base rotation in radians
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
+
+        /** Sets the rotation particles spawn with.
+            \params[in] rot The new base rotation in radians
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
         */
         void setBillboardRotation(float rot, float offset);
-        /** Sets the the rate of change of the particles' rotation
-        \params[in] dur the new base rotational velocity in radians/second
-        \params[in] offset the new random offset to be applied. final value is base + randRange(-offset, offset)
-        */        
+
+        /** Sets the the rate of change of the particles' rotation.
+            \params[in] rotVel The new base rotational velocity in radians/second
+            \params[in] offset The new random offset to be applied. final value is base + randRange(-offset, offset)
+        */
         void setBillboardRotationVelocity(float rotVel, float offset);
 
     private:

@@ -47,6 +47,8 @@ namespace Falcor
         }
     };
 
+    /** Abstracts API resource views.
+    */
     template<typename ApiHandleType>
     class ResourceView
     {
@@ -58,8 +60,16 @@ namespace Falcor
         ResourceView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
             : mApiHandle(handle), mpResource(pResource), mViewInfo(mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
 
+        /** Get the raw API handle.
+        */
         ApiHandle getApiHandle() const { return mApiHandle; }
+
+        /** Get information about the view.
+        */
         const ResourceViewInfo& getViewInfo() const { return mViewInfo; }
+
+        /** Get the resource referenced by the view.
+        */
         const Resource* getResource() const { return mpResource.lock().get(); }
     protected:
         ApiHandle mApiHandle;

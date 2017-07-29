@@ -33,6 +33,8 @@
 
 namespace Falcor
 {
+    /** Used by the SceneEditor to render helper objects.
+    */
     class SceneEditorRenderer : public SceneRenderer
     {
     public:

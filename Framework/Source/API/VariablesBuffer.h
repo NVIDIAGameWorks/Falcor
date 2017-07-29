@@ -36,10 +36,10 @@ namespace Falcor
 {
     class Sampler;
 
-    /** Variable naming rules are very similar to OpenGL variable naming rules.\n
-        When accessing a variable by name, you can only use a name which points to a basic Type, or an array of basic Type (so if you want the start of a structure, ask for the first field in the struct).\n
-        Note that Falcor has 2 flavors of setting variable by names - SetVariable() and SetVariableArray(). Naming rules for N-dimensional arrays of a basic Type are a little different between the two.\n
-        SetVariable() must include N indices. SetVariableArray() can include N indices, or N-1 indices (implicit [0] as last index).\n\n
+    /** Manages shader buffers containing named data, such as Constant/Uniform Buffers and Structured Buffers.
+        When accessing a variable by name, you can only use a name which points to a basic Type, or an array of basic Type (so if you want the start of a structure, ask for the first field in the struct).
+        Note that Falcor has 2 flavors of setting variable by names - SetVariable() and SetVariableArray(). Naming rules for N-dimensional arrays of a basic Type are a little different between the two.
+        SetVariable() must include N indices. SetVariableArray() can include N indices, or N-1 indices (implicit [0] as last index).
     */
     class VariablesBuffer : public Buffer, public inherit_shared_from_this<Buffer, VariablesBuffer>
     {
@@ -54,9 +54,9 @@ namespace Falcor
         virtual ~VariablesBuffer() = 0;
 
         /** Apply the changes to the actual GPU buffer.
-        Note that it is possible to use this function to update only part of the GPU copy of the buffer. This might lead to inconsistencies between the GPU and CPU buffer, so make sure you know what you are doing.
-        \param[in] offset Offset into the buffer to write to
-        \param[in] size   Number of bytes to upload. If this value is -1, will update the [Offset, EndOfBuffer] range.
+            Note that it is possible to use this function to update only part of the GPU copy of the buffer. This might lead to inconsistencies between the GPU and CPU buffer, so make sure you know what you are doing.
+            \param[in] offset Offset into the buffer to write to
+            \param[in] size Number of bytes to upload. If this value is -1, will update the [Offset, EndOfBuffer] range.
         */
         virtual bool uploadToGPU(size_t offset = 0, size_t size = -1);
 
@@ -65,10 +65,10 @@ namespace Falcor
         ProgramReflection::BufferReflection::SharedConstPtr getBufferReflector() const { return mpReflector; }
 
         /** Set a block of data into the constant buffer.\n
-        If Offset + Size will result in buffer overflow, the call will be ignored and log an error.
-        \param[in] pSrc Pointer to the source data.
-        \param[in] offset Destination offset inside the buffer.
-        \param[in] size Number of bytes in the source data.
+            If Offset + Size will result in buffer overflow, the call will be ignored and log an error.
+            \param[in] pSrc Pointer to the source data.
+            \param[in] offset Destination offset inside the buffer.
+            \param[in] size Number of bytes in the source data.
         */
         void setBlob(const void* pSrc, size_t offset, size_t size);
 

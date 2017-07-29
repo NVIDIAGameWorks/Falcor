@@ -53,23 +53,23 @@ namespace Falcor
         */
         enum class BlendFunc
         {
-            Zero,               ///< (0, 0, 0, 0)
-            One,                ///< (1, 1, 1, 1)
-            SrcColor,           ///< The fragment-shader output color
-            OneMinusSrcColor,   ///< One minus the fragment-shader output color
-            DstColor,           ///< The render-target color
-            OneMinusDstColor,   ///< One minus the render-target color
-            SrcAlpha,           ///< The fragment-shader output alpha value
-            OneMinusSrcAlpha,   ///< One minus the fragment-shader output alpha value
-            DstAlpha,           ///< The render-target alpha value
-            OneMinusDstAlpha,   ///< One minue the render-target alpha value
-            BlendFactor,         ///< Constant color, set using Desc#SetBlendFactor()
-            OneMinusBlendFactor, ///< One minus constant color, set using Desc#SetBlendFactor()
-            SrcAlphaSaturate,   ///< (f, f, f, 1), where f = min(fragment shader output alpha, 1 - render-target pixel alpha)
-            Src1Color,          ///< Fragment-shader output color 1
-            OneMinusSrc1Color,  ///< One minus fragment-shader output color 1
-            Src1Alpha,          ///< Fragment-shader output alpha 1
-            OneMinusSrc1Alpha   ///< One minus fragment-shader output alpha 1
+            Zero,                   ///< (0, 0, 0, 0)
+            One,                    ///< (1, 1, 1, 1)
+            SrcColor,               ///< The fragment-shader output color
+            OneMinusSrcColor,       ///< One minus the fragment-shader output color
+            DstColor,               ///< The render-target color
+            OneMinusDstColor,       ///< One minus the render-target color
+            SrcAlpha,               ///< The fragment-shader output alpha value
+            OneMinusSrcAlpha,       ///< One minus the fragment-shader output alpha value
+            DstAlpha,               ///< The render-target alpha value
+            OneMinusDstAlpha,       ///< One minus the render-target alpha value
+            BlendFactor,            ///< Constant color, set using Desc#SetBlendFactor()
+            OneMinusBlendFactor,    ///< One minus constant color, set using Desc#SetBlendFactor()
+            SrcAlphaSaturate,       ///< (f, f, f, 1), where f = min(fragment shader output alpha, 1 - render-target pixel alpha)
+            Src1Color,              ///< Fragment-shader output color 1
+            OneMinusSrc1Color,      ///< One minus fragment-shader output color 1
+            Src1Alpha,              ///< Fragment-shader output alpha 1
+            OneMinusSrc1Alpha       ///< One minus fragment-shader output alpha 1
         };
 
         /** Descriptor used to create new blend-state
@@ -85,8 +85,8 @@ namespace Falcor
             */
             Desc& setBlendFactor(const glm::vec4& factor) { mBlendFactor = factor; return *this; }
 
-            /** Enable/disable independent RT blending. Only used when multiple render-targets are bound. 
-            \param[in] enabled True If false, will use RenderTargetDesc[0] for all the bound render-targets. Otherwise, will use the entire RenderTargetDesc[] array.
+            /** Enable/disable independent blend modes for different render target. Only used when multiple render-targets are bound. 
+                \param[in] enabled True If false, will use RenderTargetDesc[0] for all the bound render-targets. Otherwise, will use the entire RenderTargetDesc[] array.
             */
             Desc& setIndependentBlend(bool enabled) { mEnableIndependentBlend = enabled; return *this; }
 
@@ -98,7 +98,7 @@ namespace Falcor
                 \param[in] dstRgbFunc Blend function for the render-target RGB channels
                 \param[in] srcAlphaFunc Blend function for the fragment-shader output alpha channel
                 \param[in] dstAlphaFunc Blend function for the render-target alpha channel
-                */
+            */
             Desc& setRtParams(uint32_t rtIndex, BlendOp rgbOp, BlendOp alphaOp, BlendFunc srcRgbFunc, BlendFunc dstRgbFunc, BlendFunc srcAlphaFunc, BlendFunc dstAlphaFunc);
 
             /** Enable/disable blending for a specific render-target. If independent blending is disabled, only the index 0 is used.
@@ -109,6 +109,7 @@ namespace Falcor
                 \param[in] enabled True to enable alpha-to-coverage, false to disable it
             */
             Desc& setAlphaToCoverage(bool enabled) { mAlphaToCoverageEnabled = enabled; return *this; }
+
             /** Set color write-mask
             */
             Desc& setRenderTargetWriteMask(uint32_t rtIndex, bool writeRed, bool writeGreen, bool writeBlue, bool writeAlpha);
@@ -139,7 +140,7 @@ namespace Falcor
             glm::vec4 mBlendFactor       = glm::vec4(0, 0, 0, 0);
         };
 
-        /** create a new blend state object
+        /** Create a new blend state object
             \param[in] Desc Blend state descriptor
         */
         static BlendState::SharedPtr create(const Desc& desc);
@@ -148,9 +149,11 @@ namespace Falcor
         /** Get the constant blend factor color
         */
         const glm::vec4& getBlendFactor() const { return mDesc.mBlendFactor; }
+
         /** Get the RGB blend operation
         */
         BlendOp getRgbBlendOp(uint32_t rtIndex) const { return mDesc.mRtDesc[rtIndex].rgbBlendOp; }
+
         /** Get the alpha blend operation
         */
         BlendOp getAlphaBlendOp(uint32_t rtIndex) const { return mDesc.mRtDesc[rtIndex].alphaBlendOp; }
@@ -158,24 +161,31 @@ namespace Falcor
         /** Get the fragment-shader RGB blend func
         */
         BlendFunc getSrcRgbFunc(uint32_t rtIndex)   const { return mDesc.mRtDesc[rtIndex].srcRgbFunc; }
+
         /** Get the fragment-shader alpha blend func
         */
         BlendFunc getSrcAlphaFunc(uint32_t rtIndex) const { return mDesc.mRtDesc[rtIndex].srcAlphaFunc; }
+
         /** Get the render-target RGB blend func
         */
         BlendFunc getDstRgbFunc(uint32_t rtIndex)   const { return mDesc.mRtDesc[rtIndex].dstRgbFunc; }
+
         /** Get the render-target alpha blend func
         */
         BlendFunc getDstAlphaFunc(uint32_t rtIndex) const { return mDesc.mRtDesc[rtIndex].dstAlphaFunc; }
+
         /** Check if blend is enabled
         */
         bool isBlendEnabled(uint32_t rtIndex) const { return mDesc.mRtDesc[rtIndex].blendEnabled; }
+
         /** Check if alpha-to-coverage is enabled
         */
         bool isAlphaToCoverageEnabled() const { return mDesc.mAlphaToCoverageEnabled; }
+
         /** Check if independent blending is enabled
         */
         bool isIndependentBlendEnabled() const {return mDesc.mEnableIndependentBlend;}
+
         /** Get a render-target descriptor
         */
         const Desc::RenderTargetDesc& getRtDesc(size_t rtIndex) const { return mDesc.mRtDesc[rtIndex]; }

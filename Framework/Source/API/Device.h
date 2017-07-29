@@ -78,9 +78,9 @@ namespace Falcor
         };
 
         /** Create a new device.
-        \param[in] pWindow a previously-created window object
-        \param[in] desc Device configuration descriptor.
-        \return nullptr if the function failed, otherwise a new device object
+            \param[in] pWindow a previously-created window object
+            \param[in] desc Device configuration descriptor.
+            \return nullptr if the function failed, otherwise a new device object
         */
         static SharedPtr create(Window::SharedPtr& pWindow, const Desc& desc);
 
@@ -142,7 +142,8 @@ namespace Falcor
         QueryHeap::SharedPtr getTimestampQueryHeap() const { return mTimestampQueryHeap; }
         void releaseResource(ApiObjectHandle pResource);
         double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
-		bool isRgb32FloatSupported() const { return mRgb32FloatSupported; }
+        bool isRgb32FloatSupported() const { return mRgb32FloatSupported; }
+
 #ifdef FALCOR_VK
         enum class MemoryType
         {
@@ -186,7 +187,7 @@ namespace Falcor
         size_t mFrameID = 0;
         QueryHeap::SharedPtr mTimestampQueryHeap;
         double mGpuTimestampFrequency;
-		bool mRgb32FloatSupported = true;
+        bool mRgb32FloatSupported = true;
         std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
         // API specific functions

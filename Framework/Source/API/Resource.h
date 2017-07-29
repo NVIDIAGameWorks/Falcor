@@ -57,12 +57,12 @@ namespace Falcor
         */
         enum class Type
         {
-            Buffer,                     ///< Buffer. Can be bound to all shader-stages
-            Texture1D,                  ///< 1D texture. Can be bound as render-target, shader-resource and UAV
-            Texture2D,                  ///< 2D texture. Can be bound as render-target, shader-resource and UAV
-            Texture3D,                  ///< 3D texture. Can be bound as render-target, shader-resource and UAV
-            TextureCube,                ///< Texture-cube. Can be bound as render-target, shader-resource and UAV
-            Texture2DMultisample,       ///< 2D multi-sampled texture. Can be bound as render-target, shader-resource and UAV
+            Buffer,                 ///< Buffer. Can be bound to all shader-stages
+            Texture1D,              ///< 1D texture. Can be bound as render-target, shader-resource and UAV
+            Texture2D,              ///< 2D texture. Can be bound as render-target, shader-resource and UAV
+            Texture3D,              ///< 3D texture. Can be bound as render-target, shader-resource and UAV
+            TextureCube,            ///< Texture-cube. Can be bound as render-target, shader-resource and UAV
+            Texture2DMultisample,   ///< 2D multi-sampled texture. Can be bound as render-target, shader-resource and UAV
         };
 
         /** Resource state. Keeps track of how the resource was last used
@@ -93,7 +93,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<Resource>;
         using SharedConstPtr = std::shared_ptr<const Resource>;
 
-        /** Value used in create*() methods
+        /** Default value used in create*() methods
         */
         static const uint32_t kMaxPossible = RenderTargetView::kMaxPossible;
 

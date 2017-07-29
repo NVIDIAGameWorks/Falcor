@@ -40,14 +40,32 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<PathEditor>;
         using UniqueConstPtr = std::unique_ptr<const PathEditor>;
 
+        /** Create a path editor instance
+            \param[in] pPath Path to edit
+            \param[in] pCamera Camera being used in the scene. Allows user to update key frame orientation based on a camera
+            \param[in] frameChangedCB Function that is called when a key frame's data has been updated
+            \param[in] addRemoveKeyframeCB Function that is called when a key frame has been added or removed
+            \param[in] editCompleteCB Function that is called when the path editor is closed
+        */
         static UniquePtr create(const ObjectPath::SharedPtr& pPath, const Camera::SharedPtr& pCamera, PathEditorCallback frameChangedCB, PathEditorCallback addRemoveKeyframeCB, PathEditorCallback editCompleteCB);
         ~PathEditor();
 
+        /** Render the editor UI elements.
+            \param[in] pGui GUI object to render the editor UI with
+        */
         void render(Gui* pGui);
 
+        /** Set the active key frame to edit.
+            \param[in] id Key frame id
+        */
         void setActiveFrame(uint32_t id);
+
+        /** Get the active key frame
+        */
         uint32_t getActiveFrame() const { return mActiveFrame; }
 
+        /** Get the path being edited.
+        */
         const ObjectPath::SharedPtr& getPath() const { return mpPath; }
 
     private:

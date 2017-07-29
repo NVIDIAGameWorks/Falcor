@@ -42,12 +42,31 @@ namespace Falcor
     {
     public:
         using UniquePtr = std::unique_ptr<LeanMap>;
+
+        /** Create Lean maps from materials used in a scene
+        */
         static UniquePtr create(const Falcor::Scene* pScene);
+
+        /** Create a Lean map from a normal map
+        */
         static Falcor::Texture::SharedPtr createFromNormalMap(const Falcor::Texture* pNormalMap);
 
+        /** Get a generated Lean map.
+            \param[in] sceneMaterialID Material ID to get Lean map for. Use Material::getId.
+        */
         Falcor::Texture* getLeanMap(uint32_t sceneMaterialID) { return mpLeanMaps[sceneMaterialID].get(); }
+
+        /** Set Lean map texture into a program.
+            \param[in] pVars Program vars to set into
+            \param[in] pSampler Sampler to use when sampling the Lean map
+        */
         void setIntoProgramVars(ProgramVars* pVars, const Sampler::SharedPtr& pSampler) const;
+
+        /** Get the array size required in the shader to hold Lean maps. Lean map index in shaders
+            match 1:1 with the material ID, but Lean maps for a contiguous range of materials may not have been generated.
+        */
         uint32_t getRequiredLeanMapShaderArraySize() const { return mShaderArraySize; }
+
     private:
         LeanMap() = default;
         bool createLeanMap(const Falcor::Material* pMaterial);

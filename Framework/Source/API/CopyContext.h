@@ -55,7 +55,7 @@ namespace Falcor
         virtual void reset();
 
         /** Flush the command list. This doesn't reset the command allocator, just submits the commands
-        \param[in] wait If true, will block execution until the GPU finished processing the commands
+            \param[in] wait If true, will block execution until the GPU finished processing the commands
         */
         virtual void flush(bool wait = false);
 

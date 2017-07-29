@@ -61,7 +61,9 @@ namespace Falcor
         */
         static UniquePtr create(Operator op);
 
-        /** Set UI elements into a give GUI and UI group
+        /** Render UI elements
+            \param[in] pGui GUI instance to render UI with
+            \param[in] uiGroup Name for the group to render UI elements within
         */
         void renderUI(Gui* pGui, const char* uiGroup);
 
@@ -72,12 +74,12 @@ namespace Falcor
         */
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrc, Fbo::SharedPtr pDst);
 
-        /** Set a new operator
+        /** Set a new operator. Triggers shader recompilation if operator has not been set on this instance before.
         */
         void setOperator(Operator op);
 
         /** Sets the middle-gray luminance used for normalizing each pixel's luminance. 
-            Middle gray is usually in the range of[0.045, 0.72].
+            Middle gray is usually in the range of [0.045, 0.72].
             Lower values maximize contrast. Useful for night scenes.
             Higher values minimize contrast, resulting in brightly lit objects.
         */

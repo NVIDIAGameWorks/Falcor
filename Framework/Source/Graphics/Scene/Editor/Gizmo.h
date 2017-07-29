@@ -34,6 +34,8 @@
 
 namespace Falcor
 {
+    /** Used by the Scene Editor to allow users to modify object transforms through mouse interactions.
+    */
     class Gizmo
     {
     public:

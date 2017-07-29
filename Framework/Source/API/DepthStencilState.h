@@ -41,9 +41,9 @@ namespace Falcor
         */
         enum class Face
         {
-            Front,              ///< Front-facing primitives
-            Back,               ///< Back-facing primitives
-            FrontAndBack        ///< Front and back-facing primitives
+            Front,          ///< Front-facing primitives
+            Back,           ///< Back-facing primitives
+            FrontAndBack    ///< Front and back-facing primitives
         };
 
         /** Comparison function
@@ -79,7 +79,7 @@ namespace Falcor
         */
         struct StencilDesc
         {
-            Func func = Func::Always;                       ///< Stencil comparison function                    
+            Func func = Func::Always;                       ///< Stencil comparison function
             StencilOp stencilFailOp = StencilOp::Keep;      ///< Stencil operation in case stencil test fails
             StencilOp depthFailOp = StencilOp::Keep;        ///< Stencil operation in case stencil test passes but depth test fails
             StencilOp depthStencilPassOp = StencilOp::Keep; ///< Stencil operation in case stencil and depth tests pass
@@ -146,7 +146,8 @@ namespace Falcor
         };
 
         ~DepthStencilState();
-        /** create a new depth-stencil state object
+
+        /** Create a new depth-stencil state object
             \param desc Depth-stencil descriptor
             \return New object, or nullptr if an error occurred
         */
@@ -155,9 +156,11 @@ namespace Falcor
         /** Check if depth test is enabled or disabled
         */
         bool isDepthTestEnabled() const { return mDesc.mDepthEnabled; }
+
         /** Check if depth write is enabled or disabled
         */
         bool isDepthWriteEnabled() const { return mDesc.mWriteDepth; }
+
         /** Get the depth comparison function
         */
         Func getDepthFunc() const { return mDesc.mDepthFunc; }
@@ -165,9 +168,11 @@ namespace Falcor
         /** Check if stencil is enabled or disabled
         */
         bool isStencilTestEnabled() const { return mDesc.mStencilEnabled; }
+
         /** Get the stencil descriptor for the selected face
         */
         const StencilDesc& getStencilDesc(Face face) const;
+
         /** Get the stencil read mask
         */
         uint8_t getStencilReadMask() const { return mDesc.mStencilReadMask; }

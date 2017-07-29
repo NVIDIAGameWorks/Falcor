@@ -41,9 +41,9 @@ namespace Falcor
         */
         enum class CullMode
         {
-            None,               ///< No culling
-            Front,              ///< Cull front-facing primitives
-            Back,               ///< Cull back-facing primitives
+            None,   ///< No culling
+            Front,  ///< Cull front-facing primitives
+            Back,   ///< Cull back-facing primitives
         };
 
         /** Polygon fill mode
@@ -60,16 +60,19 @@ namespace Falcor
         {
         public:
             friend class RasterizerState;
+
             /** Set the cull mode
             */
             Desc& setCullMode(CullMode mode) { mCullMode = mode; return *this; }
             /** Set the fill mode
             */
             Desc& setFillMode(FillMode mode) { mFillMode = mode; return *this; }
+
             /** Determines how to interpret triangle direction.
                 \param isFrontCCW If true, a triangle is front-facing if is vertices are counter-clockwise. If false, the opposite.
             */
             Desc& setFrontCounterCW(bool isFrontCCW) { mIsFrontCcw = isFrontCCW; return *this; }
+
             /** Set the depth-bias. The depth bias is calculated as 
                 \code
                 bias = (float)depthBias * r + slopeScaledBias * maxDepthSlope
@@ -83,18 +86,23 @@ namespace Falcor
                 \param clampDepth If true, clamp depth value to the viewport extent. If false, clip primitives to near/far Z-planes
             */
             Desc& setDepthClamp(bool clampDepth) { mClampDepth = clampDepth; return *this; }
-            /** Enable/disable anti-aliased lines. Actual anti-alisaing algorithm is implementation dependent, but usually uses quadrilateral lines.
+
+            /** Enable/disable anti-aliased lines. Actual anti-aliasing algorithm is implementation dependent, but usually uses quadrilateral lines.
             */
             Desc& setLineAntiAliasing(bool enableLineAA) { mEnableLinesAA = enableLineAA; return *this; };
+
             /** Enable/disable scissor test
             */
             Desc& setScissorTest(bool enabled) {mScissorEnabled = enabled ; return *this;}
+
             /** Enable/disable conservative rasterization
             */
             Desc& setConservativeRasterization(bool enabled) { mConservativeRaster = enabled; return *this; }
+
             /** Set the forced sample count. Useful when using UAV
             */
             Desc& setForcedSampleCount(uint32_t samples) { mForcedSampleCount = samples; return *this; }
+
         protected:
             CullMode mCullMode = CullMode::Back;
             FillMode mFillMode = FillMode::Solid;

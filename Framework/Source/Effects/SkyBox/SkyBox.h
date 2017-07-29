@@ -44,17 +44,43 @@ namespace Falcor
     {
     public:
         using UniquePtr = std::unique_ptr<SkyBox>;
+
+        /** Create a sky box using an existing texture
+            \param[in] pTexture Sky box texture
+            \param[in] pSampler Sampler to use when rendering this sky box
+            \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
+        */
         static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+
+        /** Load a texture and create a sky box using it.
+            \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
+            \param[in] loadAsSrgb Whether to load the texture into an sRGB format
+            \param[in] pSampler Sampler to use when rendering this sky box
+            \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
+        */
         static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
 
+        /** Render the sky box.
+            \param[in] pRenderCtx Render context
+            \param[in] pCamera Camera to use when rendering
+        */
         void render(RenderContext* pRenderCtx, Camera* pCamera);
+
+        /** Set the sampler used to render the sky box.
+        */
         void setSampler(Sampler::SharedPtr pSampler);
 
+        /** Get the sky box texture.
+        */
         Texture::SharedPtr getTexture() const;
+
+        /** Get the sampler used to render the sky box.
+        */
         Sampler::SharedPtr getSampler() const;
 
         void setScale(float scale) { mScale = scale; }
         float getScale() const { return mScale; }
+
     private:
         SkyBox() = default;
         bool createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo);

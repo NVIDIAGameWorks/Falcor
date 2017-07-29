@@ -50,7 +50,7 @@ namespace Falcor
         ~FullScreenPass();
 
         /** Create a new object.
-            \param[in] psFile Pixel shader filename. Can also be an absolute path or a relative path to the working directory.
+            \param[in] psFile Pixel shader filename. Can also be an absolute path or a relative path from a data directory.
             \param[in] shaderDefines Optional. A list of macro definitions to be patched into the shaders.
             \param[in] disableDepth Optional. Disable depth test (and therefore depth writes).  This is the common case; however, e.g. writing depth in fullscreen passes can sometimes be useful.
             \param[in] disableStencil Optional. As DisableDepth for stencil.
@@ -60,8 +60,8 @@ namespace Falcor
         static UniquePtr create(const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false);
         
         /** Create a new object
-            \param[in] vsFile Vertex shader filename. Can also be an absolute path or a relative path to the working directory.
-            \param[in] psFile Pixel shader filename. Can also be an absolute path or a relative path to the working directory.
+            \param[in] vsFile Vertex shader filename. Can also be an absolute path or a relative path from a data directory.
+            \param[in] psFile Pixel shader filename. Can also be an absolute path or a relative path from a data directory.
             \param[in] shaderDefines Optional. A list of macro definitions to be patched into the shaders.
             \param[in] disableDepth Optional. Disable depth test (and therefore depth writes).  This is the common case; however, e.g. writing depth in fullscreen passes can sometimes be useful.
             \param[in] disableStencil Optional. As DisableDepth for stencil.

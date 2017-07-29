@@ -37,8 +37,10 @@ namespace Falcor
     class Texture;
     class Sampler;
 
+    /** Manages an array-of-structs style shader buffer, known as Structured Buffers in DirectX.
+        Even though the buffer is created with a specific reflection object, it can be used with other programs as long as the buffer declarations are the same across programs.
+    */
     class StructuredBuffer : public VariablesBuffer, public inherit_shared_from_this<VariablesBuffer, StructuredBuffer>
-
     {
     public:
         class SharedPtr : public std::shared_ptr<StructuredBuffer>
@@ -77,8 +79,7 @@ namespace Falcor
 
         using SharedConstPtr = std::shared_ptr<const StructuredBuffer>;
 
-        /** create a new shader storage buffer.\n
-            Even though the buffer is created with a specific reflection object, it can be used with other programs as long as the buffer declarations are the same across programs.
+        /** Create a structured buffer.
             \param[in] pReflector A buffer-reflection object describing the buffer layout
             \param[in] elementCount - the number of struct elements in the buffer
             \param[in] bindFlags The bind flags for the resource
@@ -86,10 +87,9 @@ namespace Falcor
         */
         static SharedPtr create(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementCount = 1, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         
-        /** create a new shader storage buffer.\n
-            This function is purely syntactic sugar. It will fetch the requested buffer reflector from the active program version and create the buffer from it
+        /** Create a structured buffer. Fetches the requested buffer reflector from the active program version and create the buffer from it
             \param[in] pProgram A program object which defines the buffer
-            \param[in] elementCount - the number of struct elements in the buffer
+            \param[in] elementCount The number of struct elements in the buffer
             \param[in] bindFlags The bind flags for the resource
             \return A new buffer object if the operation was successful, otherwise nullptr
         */
@@ -115,9 +115,9 @@ namespace Falcor
         void getVariableArray(size_t offset, size_t count, size_t elementIndex, T value[]);
 
         /** Read a variable from the buffer.
-        The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] offset The byte offset of the variable inside the buffer
-        \param[out] value The value read from the buffer
+            The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] offset The byte offset of the variable inside the buffer
+            \param[out] value The value read from the buffer
         */
         template<typename T>
         void getVariable(size_t offset, size_t elementIndex, T& value);
@@ -131,7 +131,7 @@ namespace Falcor
         template<typename T>
         void getVariableArray(const std::string& name, size_t count, size_t elementIndex, T value[]);
 
-        /** Read a block of data from the buffer.\n
+        /** Read a block of data from the buffer.
             If Offset + Size will result in buffer overflow, the call will be ignored and log an error.
             \param pDst Pointer to a buffer to write the data into
             \param offset Byte offset to start reading from the buffer
@@ -150,8 +150,12 @@ namespace Falcor
         */
         void setGpuCopyDirty() const { mGpuCopyDirty = true; }
 
+        /** If the buffer can be used as a UAV, checks whether it has an associated counter.
+        */
         bool hasUAVCounter() const;
 
+        /** Get the UAV counter buffer.
+        */
         const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
     private:
