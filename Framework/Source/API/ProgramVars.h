@@ -135,32 +135,37 @@ namespace Falcor
         */
         Texture::SharedPtr getTexture(const std::string& name) const;
 
-        /** Bind an SRV
-            \param[in] index The index of the SRV object in the shader
-            \param[in] pSrv The SRV object to bind 
+        /** Bind an SRV.
+            \param[in] regSpace Register space the SRV is located in
+            \param[in] baseRegIndex Register index the SRV is located at
+            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
         */
         bool setSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv);
 
-        /** Bind a UAV
-            \param[in] index The index of the UAV object in the shader
-            \param[in] pSrv The UAV object to bind
+        /** Bind a UAV.
+            \param[in] regSpace Register space the UAV is located in
+            \param[in] baseRegIndex Register index the UAV is located at
+            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
         */
         bool setUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav);
 
-        /** Get an SRV object
-            \param[in] index The index of the SRV
+        /** Get an SRV object.
+            \param[in] regSpace Register space the SRV is located in
+            \param[in] baseRegIndex Register index the SRV is located at
+            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
             \return If the index is valid, a shared pointer to the SRV. Otherwise returns nullptr
         */
         ShaderResourceView::SharedPtr getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Get a UAV object
-            \param[in] index The index of the UAV
+            \param[in] regSpace Register space the UAV is located in
+            \param[in] baseRegIndex Register index the UAV is located at
+            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
             \return If the index is valid, a shared pointer to the UAV. Otherwise returns nullptr
         */
         UnorderedAccessView::SharedPtr getUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Bind a sampler to the program in the global namespace.
-            If you are using bindless textures, than this is not the right call for you. You should use the ConstantBuffer::setTexture() method instead.
             \param[in] name The name of the sampler object in the shader
             \param[in] pSampler The sampler object to bind
             \return false if the sampler was not found in the program, otherwise true
@@ -168,9 +173,9 @@ namespace Falcor
         bool setSampler(const std::string& name, const Sampler::SharedPtr& pSampler);
 
         /** Bind a sampler to the program in the global namespace.
-            If you are using bindless textures, than this is not the right call for you. You should use the ConstantBuffer::setTexture() method instead.
-            \param[in] name The name of the sampler object in the shader
-            \param[in] pSampler The sampler object to bind
+            \param[in] regSpace Register space the sampler is located in
+            \param[in] baseRegIndex Register index the sampler is located at
+            \param[in] arrayIndex Index into sampler array, if applicable. Use 0 otherwise
             \return false if the sampler was not found in the program, otherwise true
         */
         bool setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler);

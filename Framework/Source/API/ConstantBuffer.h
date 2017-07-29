@@ -36,10 +36,10 @@ namespace Falcor
 {
     class Sampler;
 
-    /** Variable naming rules are very similar to OpenGL variable naming rules.\n
-        When accessing a variable by name, you can only use a name which points to a basic Type, or an array of basic Type (so if you want the start of a structure, ask for the first field in the struct).\n
-        Note that Falcor has 2 flavors of setting variable by names - SetVariable() and SetVariableArray(). Naming rules for N-dimensional arrays of a basic Type are a little different between the two.\n
-        SetVariable() must include N indices. SetVariableArray() can include N indices, or N-1 indices (implicit [0] as last index).\n\n
+    /** Abstracts a Constant/Uniform buffer.
+        When accessing a variable by name, you can only use a name which points to a basic Type, or an array of basic Type (so if you want the start of a structure, ask for the first field in the struct).
+        Note that Falcor has 2 flavors of setting variable by names - SetVariable() and SetVariableArray(). Naming rules for N-dimensional arrays of a basic Type are a little different between the two.
+        SetVariable() must include N indices. SetVariableArray() can include N indices, or N-1 indices (implicit [0] as last index).
     */
     class ConstantBuffer : public VariablesBuffer, public inherit_shared_from_this<VariablesBuffer, ConstantBuffer>
     {
@@ -69,29 +69,28 @@ namespace Falcor
 
         using SharedConstPtr = std::shared_ptr<const ConstantBuffer>;
 
-        /** create a new constant buffer.\n
+        /** Create a new constant buffer.
             Even though the buffer is created with a specific reflection object, it can be used with other programs as long as the buffer declarations are the same across programs.
             \param[in] pReflector A buffer-reflection object describing the buffer layout
-            \param[in] overrideSize - if 0, will use the buffer size as declared in the shader. Otherwise, will use this value as the buffer size. Useful when using buffers with dynamic arrays.
+            \param[in] overrideSize If 0, will use the buffer size as declared in the shader. Otherwise, will use this value as the buffer size. Useful when using buffers with dynamic arrays.
             \return A new buffer object if the operation was successful, otherwise nullptr
         */
         static SharedPtr create(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t overrideSize = 0);
 
-        /** create a new constant buffer from a program object.\n
-        This function is purely syntactic sugar. It will fetch the requested buffer reflector from the active program version and create the buffer from it
-        \param[in] pProgram A program object which defines the buffer
-        \param[in] name The buffer's name
-        \param[in] overrideSize - if 0, will use the buffer size as declared in the shader. Otherwise, will use this value as the buffer size. Useful when using buffers with dynamic arrays.
-        \return A new buffer object if the operation was successful, otherwise nullptr
+        /** Create a new constant buffer from a program object. Fetches the requested buffer reflector from the active program version and create the buffer from it
+            \param[in] pProgram A program object which defines the buffer
+            \param[in] name The buffer's name
+            \param[in] overrideSize If 0, will use the buffer size as declared in the shader. Otherwise, will use this value as the buffer size. Useful when using buffers with dynamic arrays.
+            \return A new buffer object if the operation was successful, otherwise nullptr
         */
         static SharedPtr create(Program::SharedPtr& pProgram, const std::string& name, size_t overrideSize = 0);
 
         ~ConstantBuffer();
 
         /** Set a variable into the buffer.
-        The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] name The variable name. See notes about naming in the ConstantBuffer class description.
-        \param[in] value Value to set
+            The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] name The variable name. See notes about naming in the ConstantBuffer class description.
+            \param[in] value Value to set
         */
         template<typename T>
         void setVariable(const std::string& name, const T& value)
@@ -100,10 +99,10 @@ namespace Falcor
         }
 
         /** Set a variable array in the buffer.
-        The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] offset The variable byte offset inside the buffer
-        \param[in] pValue Pointer to an array of values to set
-        \param[in] count pValue array size
+            The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] offset The variable byte offset inside the buffer
+            \param[in] pValue Pointer to an array of values to set
+            \param[in] count pValue array size
         */
         template<typename T>
         void setVariableArray(size_t offset, const T* pValue, size_t count)
@@ -112,9 +111,9 @@ namespace Falcor
         }
 
         /** Set a variable into the buffer.
-        The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] offset The variable byte offset inside the buffer
-        \param[in] value Value to set
+            The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] offset The variable byte offset inside the buffer
+            \param[in] value Value to set
         */
         template<typename T>
         void setVariable(size_t offset, const T& value)
@@ -123,10 +122,10 @@ namespace Falcor
         }
 
         /** Set a variable array in the buffer.
-        The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] name The variable name. See notes about naming in the ConstantBuffer class description.
-        \param[in] pValue Pointer to an array of values to set
-        \param[in] count pValue array size
+            The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] name The variable name. See notes about naming in the ConstantBuffer class description.
+            \param[in] pValue Pointer to an array of values to set
+            \param[in] count pValue array size
         */
         template<typename T>
         void setVariableArray(const std::string& name, const T* pValue, size_t count)
@@ -135,10 +134,10 @@ namespace Falcor
         }
 
         /** Set a texture or image.
-        The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] name The variable name in the program. See notes about naming in the ConstantBuffer class description.
-        \param[in] pTexture The resource to bind. If bBindAsImage is set, binds as image.
-        \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
+            The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] name The variable name in the program. See notes about naming in the ConstantBuffer class description.
+            \param[in] pTexture The resource to bind. If bBindAsImage is set, binds as image.
+            \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
         */
         void setTexture(const std::string& name, const Texture* pTexture, const Sampler* pSampler)
         {
@@ -146,11 +145,11 @@ namespace Falcor
         }
 
         /** Set a texture or image.
-        The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] name The variable name in the program. See notes about naming in the ConstantBuffer class description.
-        \param[in] pTexture The resource to bind
-        \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
-        \param[in] count Number of textures to bind
+            The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] name The variable name in the program. See notes about naming in the ConstantBuffer class description.
+            \param[in] pTexture The resource to bind
+            \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
+            \param[in] count Number of textures to bind
         */
         void setTextureArray(const std::string& name, const Texture* pTexture[], const Sampler* pSampler, size_t count)
         {
@@ -158,10 +157,10 @@ namespace Falcor
         }
 
         /** Set a texture or image.
-        The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-        \param[in] offset The variable byte offset inside the buffer
-        \param[in] pTexture The resource to bind. If bBindAsImage is set, binds as image.
-        \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
+            The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
+            \param[in] offset The variable byte offset inside the buffer
+            \param[in] pTexture The resource to bind. If bBindAsImage is set, binds as image.
+            \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
         */
         void setTexture(size_t Offset, const Texture* pTexture, const Sampler* pSampler)
         {

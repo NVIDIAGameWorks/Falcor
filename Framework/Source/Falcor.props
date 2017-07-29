@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <FALCOR_PROJECT_DIR>$(SolutionDir)\.\framework\source\\..\</FALCOR_PROJECT_DIR>
-    <FALCOR_BACKEND>FALCOR_VK</FALCOR_BACKEND>
+    <FALCOR_BACKEND>FALCOR_D3D12</FALCOR_BACKEND>
   </PropertyGroup>
   <PropertyGroup>
     <OutDir>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\</OutDir>

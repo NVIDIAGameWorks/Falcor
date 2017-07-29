@@ -89,7 +89,7 @@ namespace Falcor
         */
         ResourceFormat getFormat() const { return mFormat; }
 
-        /** create a 1D texture
+        /** Create a 1D texture
             \param Width The width of the texture.
             \param Format The format of the texture.
             \param ArraySize The array size of the texture.
@@ -100,7 +100,7 @@ namespace Falcor
         */
         static SharedPtr create1D(uint32_t width, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
 
-        /** create a 2D texture
+        /** Create a 2D texture
             \param width The width of the texture.
             \param height The height of the texture.
             \param Format The format of the texture.
@@ -112,7 +112,7 @@ namespace Falcor
         */
         static SharedPtr create2D(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
 
-        /** create a 3D texture
+        /** Create a 3D texture
             \param width The width of the texture.
             \param height The height of the texture.
             \param depth The depth of the texture.
@@ -120,12 +120,13 @@ namespace Falcor
             \param mipLevels if equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is given then the data for at least that number of miplevels must be provided.
             \param pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
             \param bindFlags The requested bind flags for the resource
-            \param isSparse If true, the texture is created as a sparse texture (GL_ARB_sparse_texture) without any physical memory allocated. pInitData must be null in this case.
+            \param isSparse If true, the texture is created using sparse texture options supported by the API
             \return A pointer to a new texture, or nullptr if creation failed
         */
 
         static SharedPtr create3D(uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource, bool isSparse = false);
-        /** create a texture-cube
+
+        /** Create a texture-cube
             \param width The width of the texture.
             \param height The height of the texture.
             \param format The format of the texture.
@@ -135,9 +136,9 @@ namespace Falcor
             \param bindFlags The requested bind flags for the resource
             \return A pointer to a new texture, or nullptr if creation failed
         */
-
         static SharedPtr createCube(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize = 1, uint32_t mipLevels = kMaxPossible, const void* pInitData = nullptr, BindFlags bindFlags = BindFlags::ShaderResource);
-        /** create a multi-sampled 2D texture
+
+        /** Create a multi-sampled 2D texture
             \param width The width of the texture.
             \param height The height of the texture.
             \param format The format of the texture.
@@ -148,10 +149,10 @@ namespace Falcor
 
         static SharedPtr create2DMS(uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize = 1, BindFlags bindFlags = BindFlags::ShaderResource);
         
-        /** Capture the texture to a PNG image.\n
+        /** Capture the texture to an image file.
             \param[in] mipLevel Requested mip-level
             \param[in] arraySlice Requested array-slice
-            \param[in] filename Name of the PNG file to save.
+            \param[in] filename Name of the file to save.
             \param[in] fileFormat Destination image file format (e.g., PNG, PFM, etc.)
             \param[in] exportFlags Save flags, see Bitmap::ExportFlags
         */

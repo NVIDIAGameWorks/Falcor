@@ -65,17 +65,17 @@ namespace Falcor
 
         enum class MapType
         {
-            Read,               ///< Map the buffer for read access. Buffer had to be created with AccessFlags#MapWrite flag.
-            WriteDiscard,       ///< Map the buffer for write access, discarding the previous content of the entire buffer. Buffer had to be created with AccessFlags#MapWrite flag.
+            Read,           ///< Map the buffer for read access. Buffer had to be created with AccessFlags#MapWrite flag.
+            WriteDiscard,   ///< Map the buffer for write access, discarding the previous content of the entire buffer. Buffer had to be created with AccessFlags#MapWrite flag.
         };
         
         ~Buffer();
 
-        /** create a new buffer.
-            \param[in] size The size in bytes of the buffer.
+        /** Create a new buffer
+            \param[in] size Size of the buffer in bytes
             \param[in] bind Buffer bind flags
-            \param[in] update Flags indicating how the buffer can be updated
-            \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer size should be at least Size bytes.
+            \param[in] cpuAccess Flags indicating how the buffer can be updated
+            \param[in] pInitData Optional parameter. Initial buffer data. Pointed buffer size should be at least 'size' bytes.
             \return A pointer to a new buffer object, or nullptr if creation failed.
         */
         static SharedPtr create(size_t size, Resource::BindFlags bind, CpuAccess cpuAccess, const void* pInitData = nullptr);

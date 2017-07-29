@@ -32,15 +32,27 @@
 
 namespace Falcor
 {
+    /** Manages a shader buffer containing a simple array of data.
+    */
     class TypedBufferBase : public Buffer
     {
     public:
         using SharedPtr = std::shared_ptr<TypedBufferBase>;
         using SharedConstPtr = std::shared_ptr<const TypedBufferBase>;
 
+        /** Upload data to GPU
+            \return true if successful.
+        */
         bool uploadToGPU();
+
+        /** Get how many elements are in the buffer.
+        */
         uint32_t getElementCount() const { return mElementCount; }
+
         void setGpuCopyDirty() { mGpuDirty = true; }
+
+        /** Get the resource format associated with this buffer
+        */
         ResourceFormat getResourceFormat() const { return mFormat; }
     protected:
         TypedBufferBase(uint32_t elementCount, ResourceFormat format, Resource::BindFlags bindFlags);
@@ -79,11 +91,17 @@ namespace Falcor
         };
 
         using SharedConstPtr = std::shared_ptr<const TypedBuffer>;
+
+        /** Create a buffer.
+            \param[in] elementCount Number of elements the buffer can hold. Essentially an array size.
+        */
         static SharedPtr create(uint32_t elementCount, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess)
         {
             return SharedPtr(new TypedBuffer(elementCount, bindFlags));
         }
-
+        
+        /** Set buffer data.
+        */
         void setElement(uint32_t index, const BufferType& value)
         {
             assert(index < mElementCount);
@@ -92,6 +110,8 @@ namespace Falcor
             mCpuDirty = true;
         }
 
+        /** Get buffer data.
+        */
         const BufferType& getElement(uint32_t index)
         {
             readFromGpu();
@@ -99,6 +119,8 @@ namespace Falcor
             return pData[index];
         }
 
+        /** Get the corresponding graphics resource format for commonly used C++ types
+        */
         static ResourceFormat type2format()
         {
 #define t2f(_type, _format) if(typeid(BufferType) == typeid(_type)) return ResourceFormat::_format;

@@ -145,7 +145,7 @@ namespace Falcor
             uint32_t arraySize = 0;                         ///< Array size , or 0 if not an array
             uint32_t shaderMask = 0;                        ///< A mask indicating in which shader stages the buffer is used
             uint32_t regSpace = 0;                          ///< The register space
-			uint32_t descOffset = 0;						///< The offset to the element in the descriptor set
+            uint32_t descOffset = 0;						///< The offset to the element in the descriptor set
             Resource(Dimensions d, ReturnType r, ResourceType t, ShaderAccess s) : dims(d), retType(r), type(t), shaderAccess(s) {}
             Resource() {}
         };

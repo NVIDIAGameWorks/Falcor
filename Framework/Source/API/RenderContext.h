@@ -53,11 +53,11 @@ namespace Falcor
 
         ~RenderContext();
 
-        /** create a new object
+        /** Create a new object.
         */
         static SharedPtr create(CommandQueueHandle queue);
 
-        /** Clear an FBO
+        /** Clear an FBO.
             \param[in] pFbo The FBO to clear
             \param[in] color The clear color for the bound render-targets
             \param[in] depth The depth clear value
@@ -67,43 +67,43 @@ namespace Falcor
         */
         void clearFbo(const Fbo* pFbo, const glm::vec4& color, float depth, uint8_t stencil, FboAttachmentType flags = FboAttachmentType::All);
 
-        /** Clear a render-target view
+        /** Clear a render-target view.
             \param[in] pRtv The RTV to clear
             \param[in] color The clear color
         */
         void clearRtv(const RenderTargetView* pRtv, const glm::vec4& color);
 
-        /** Clear a depth-stencil view
+        /** Clear a depth-stencil view.
             \param[in] pDsv The DSV to clear
             \param[in] depth The depth clear value
             \param[in] stencil The stencil clear value
             \param[in] clearDepth Optional. Controls whether or not to clear the depth channel
             \param[in] clearStencil Optional. Controls whether or not to clear the stencil channel
-            */
+        */
         void clearDsv(const DepthStencilView* pDsv, float depth, uint8_t stencil, bool clearDepth = true, bool clearStencil = true);
 
-        /** Ordered draw call
+        /** Ordered draw call.
             \param[in] vertexCount Number of vertices to draw
             \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
         */
         void draw(uint32_t vertexCount, uint32_t startVertexLocation);
 
-        /** Ordered instanced draw call
-        \param[in] vertexCount Number of vertices to draw
-        \param[in] instanceCount Number of instances to draw
-        \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
-        \param[in] startInstanceLocation A value which is added to each index before reading per-instance data from the vertex buffer
+        /** Ordered instanced draw call.
+            \param[in] vertexCount Number of vertices to draw
+            \param[in] instanceCount Number of instances to draw
+            \param[in] startVertexLocation The location of the first vertex to read from the vertex buffers (offset in vertices)
+            \param[in] startInstanceLocation A value which is added to each index before reading per-instance data from the vertex buffer
         */
         void drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation);
 
-        /** Indexed draw call
+        /** Indexed draw call.
             \param[in] indexCount Number of indices to draw
             \param[in] startIndexLocation The location of the first index to read from the index buffer (offset in indices)
             \param[in] baseVertexLocation A value which is added to each index before reading a vertex from the vertex buffer
         */
         void drawIndexed(uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
 
-        /** Indexed instanced draw call
+        /** Indexed instanced draw call.
             \param[in] indexCount Number of indices to draw per instance
             \param[in] instanceCount Number of instances to draw
             \param[in] startIndexLocation The location of the first index to read from the index buffer (offset in indices)
@@ -112,21 +112,24 @@ namespace Falcor
         */
         void drawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation);
 
-        /** Blits (low-level copy) an SRV into an RTV
+        /** Executes an indirect draw call.
+            \param[in] pArgBuffer Buffer containing draw arguments
+            \param[in] argBufferOffset Offset into buffer to read arguments from
+        */
+        void drawIndirect(const Buffer* pArgBuffer, uint64_t argBufferOffset);
+
+        /** Executes an indirect draw-indexed call.
+            \param[in] pArgBuffer Buffer containing draw arguments
+            \param[in] argBufferOffset Offset into buffer to read arguments from
+        */
+        void drawIndexedIndirect(const Buffer* pArgBuffer, uint64_t argBufferOffset);
+
+        /** Blits (low-level copy) an SRV into an RTV.
             \param[in] pSrc Source view to copy from
             \param[in] pDst Target view to copy to
             \param[in] srcRect Source rectangle to blit from, specified by [left, up, right, down]
             \param[in] dstRect Target rectangle to blit to, specified by [left, up, right, down]
         */
-
-        /** Executes a draw call. Args to the draw call are contained in argbuffer
-        */
-        void drawIndirect(const Buffer* pArgBuffer, uint64_t argBufferOffset);
-
-        /** Executes a drawIndexed call. Args to the drawIndexed call are contained in argbuffer
-        */
-        void drawIndexedIndirect(const Buffer* pArgBuffer, uint64_t argBufferOffset);
-
         void blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uvec4& srcRect = uvec4(-1), const uvec4& dstRect = uvec4(-1), Sampler::Filter = Sampler::Filter::Linear);
 
         /** Set the program variables for graphics

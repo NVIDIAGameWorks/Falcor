@@ -32,7 +32,8 @@
 
 namespace Falcor
 {
-    /** Abstracts vertex array objects
+    /** Abstracts vertex array objects. A VAO must at least specify a primitive topology. You may additionally specify a number of Vertex buffer layouts 
+        corresponding to the number of vertex buffers to be bound. The number of vertex buffers to be bound must match the number described in the layout.
     */
     class Vao : public std::enable_shared_from_this<Vao>
     {
@@ -40,6 +41,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<Vao>;
         using WeakPtr = std::weak_ptr<Vao>;
         using SharedConstPtr = std::shared_ptr<const Vao>;
+
         /** Primitive topology
         */
         enum class Topology
@@ -59,6 +61,7 @@ namespace Falcor
         };
 
         using BufferVec = std::vector<Buffer::SharedPtr>;
+
         /** create a new object
             \param primTopology The primitive topology
             \param pLayout The vertex layout description
