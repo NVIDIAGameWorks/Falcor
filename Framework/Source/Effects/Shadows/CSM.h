@@ -56,36 +56,75 @@ namespace Falcor
         */
         ~CascadedShadowMaps();
 
-        /** Create a new instance
+        /** Create a new instance.
+            \param[in] mapWidth Shadow map width
+            \param[in] mapHeight Shadow map height
+            \param[in] pLight Light to generate shadows for
+            \param[in] pScene Scene to render when generating shadow maps
+            \param[in] cascadeCount Number of cascades
+            \param[in] shadowMapFormat Shadow map texture format
         */
         static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
 
-        /** Set UI elements
+        /** Render UI controls
+            \param[in] pGui GUI instance to render UI elements with
+            \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
         void renderUi(Gui* pGui, const char* uiGroup = nullptr);
 
         /** Run the shadow-map generation pass
-        \params[in] pScene The scene to render
-        \params[in] pCamera The camera that will be used to render the scene
-        \params[in] pSceneDepthBuffer Valid only when SDSM is enabled. The depth map to run SDSM analysis on. If this is nullptr, SDSM will run a depth pass
+            \params[in] pScene The scene to render
+            \params[in] pCamera The camera that will be used to render the scene
+            \params[in] pSceneDepthBuffer Valid only when SDSM is enabled. The depth map to run SDSM analysis on. If this is nullptr, SDSM will run a depth pass
         */
         void setup(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pSceneDepthBuffer);
 
+        /** Get the shadow map texture.
+        */
         Texture::SharedPtr getShadowMap() const;
 
+        /** Set shadow map generation parameters into a program.
+            \param[in] pVars GraphicsVars of the program to set data into
+            \param[in] varName Name of the CsmData variable in the program
+        */
         void setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName);
+
+        /** Set number of cascade partitions.
+        */
         void setCascadeCount(uint32_t cascadeCount);
+
+        /** Get the number of partitions.
+        */
         uint32_t getCascadeCount() { return mCsmData.cascadeCount; }
+
+        /** Set whether to use SDSM.
+        */
         void toggleMinMaxSdsm(bool enable) { mControls.useMinMaxSdsm = enable; }
+
+        /** Set the min and max distance from the camera to generate shadows for.
+        */
         void setDistanceRange(const glm::vec2& range) { mControls.distanceRange = range; }
+
+        /** Set the filter mode. Options are defined in CsmData.h
+        */
         void setFilterMode(uint32_t filterMode);
+
+        /** Get the filter mode.
+        */
         uint32_t getFilterMode() const { return mCsmData.filterMode; }
+
         void setPcfKernelWidth(uint32_t width) { mCsmData.pcfKernelWidth = width | 1; }
+
         void setConcentricCascades(bool enabled) { mControls.concentricCascades = enabled; }
+
         void setVsmMaxAnisotropy(uint32_t maxAniso) { createVsmSampleState(maxAniso); }
+
         void setVsmLightBleedReduction(float reduction) { mCsmData.lightBleedingReduction = reduction; }
+
         void setDepthBias(float depthBias) { mCsmData.depthBias = depthBias; }
+
         void setSdsmReadbackLatency(uint32_t latency);
+
     private:
         CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
         Light::SharedConstPtr mpLight;
