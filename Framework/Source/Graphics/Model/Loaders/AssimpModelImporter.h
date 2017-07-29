@@ -54,7 +54,7 @@ namespace Falcor
     public:
         /** Load a model using ASSIMP
             \param[out] model Model object to load into
-            \param[in] filename Model's filename. Can include a full path or a relative path from the working directory
+            \param[in] filename Model's filename. Can include a full path or a relative path from a data directory
             \param[in] flags Flags controlling model creation
             \return Whether import succeeded
         */

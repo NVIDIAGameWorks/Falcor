@@ -36,12 +36,12 @@ namespace Falcor
     */
 
     /** Create a new texture object from a file.
-        \param[in] filename Filename of the image. Can also include a full path or relative path from the working directory
+        \param[in] filename Filename of the image. Can also include a full path or relative path from a data directory
         \param[in] generateMipLevels Whether the mip-chain should be generated
         \param[in] loadAsSrgb Load the texture using sRGB format. Only valid for 3 or 4 component textures.
         \param[in] bindFlags The bind flags to create the texture with
     */
-	Texture::SharedPtr createTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource);
-    
+    Texture::SharedPtr createTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource);
+
     /*! @} */
 }

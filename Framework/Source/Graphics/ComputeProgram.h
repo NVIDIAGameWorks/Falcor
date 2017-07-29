@@ -40,7 +40,7 @@ namespace Falcor
         ~ComputeProgram() = default;
 
         /** Create a new program object.
-            \param[in] filename Compute shader filename. Can also include a full path or relative path from the working directory.
+            \param[in] filename Compute shader filename. Can also include a full path or relative path from a data directory.
             \param[in] programDefines A list of macro definitions to set into the shader
             \return A new object, or nullptr if creation failed.
 
