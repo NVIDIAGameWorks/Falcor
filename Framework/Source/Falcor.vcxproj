@@ -1588,7 +1588,8 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <Command>$(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release</Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_VK</Command>
+      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
+$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_VK</Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
