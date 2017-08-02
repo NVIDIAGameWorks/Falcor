@@ -1,1 +1,1 @@
-rmdir /s %1
+rmdir /s /q %1
