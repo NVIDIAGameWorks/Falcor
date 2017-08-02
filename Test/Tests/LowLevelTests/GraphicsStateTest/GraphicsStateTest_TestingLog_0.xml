@@ -1,0 +1,19 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+<TestLog>
+<Summary
+	TotalTests="2"
+	PassedTests="0"
+	FailedTests="2"
+	CrashedTests="0"
+/>
+<TestResult
+	TestName="TestGraphicsProgramBasic"
+	Passed="0"
+	ErrorMessage="Output Color Not Equal to Expected Color - Graphics Vars!"
+/>
+<TestResult
+	TestName="TestGraphicsProgramChanges"
+	Passed="0"
+	ErrorMessage="Output Color Not Equal to Expected Color - Graphics Vars!"
+/>
+</TestLog>

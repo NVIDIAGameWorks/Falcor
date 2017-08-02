@@ -1,0 +1,19 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+<TestLog>
+<Summary
+	TotalTests="2"
+	PassedTests="1"
+	FailedTests="1"
+	CrashedTests="0"
+/>
+<TestResult
+	TestName="TestDefaultRC"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestDefaultRCGraphicsProgram"
+	Passed="0"
+	ErrorMessage="Output Color Not Equal to Expected Color - Active VAO State!"
+/>
+</TestLog>

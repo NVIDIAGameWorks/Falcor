@@ -1,0 +1,29 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+<TestLog>
+<Summary
+	TotalTests="4"
+	PassedTests="4"
+	FailedTests="0"
+	CrashedTests="0"
+/>
+<TestResult
+	TestName="TestSimpleCreate"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestIndexedCreate"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestMultiBufferCreate"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestLayout"
+	Passed="1"
+	ErrorMessage=""
+/>
+</TestLog>

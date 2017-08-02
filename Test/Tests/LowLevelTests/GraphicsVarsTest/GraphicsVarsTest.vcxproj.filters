@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\Source\GraphicsVarsTest.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\Source\GraphicsVarsTest.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Data">
+      <UniqueIdentifier>{822e9c07-a28b-4740-b512-08d125c53182}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\PS.ps.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\VS.vs.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\PS.frag">
+      <Filter>Data</Filter>
+    </None>
+  </ItemGroup>
+</Project>

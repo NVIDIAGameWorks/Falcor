@@ -1,0 +1,59 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+<TestLog>
+<Summary
+	TotalTests="10"
+	PassedTests="10"
+	FailedTests="0"
+	CrashedTests="0"
+/>
+<TestResult
+	TestName="TestGetCBs"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestSetCBsBasic"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestSetSamplers"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestGetSamplers"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestSetTextures"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestGetTextures"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestSetStructuredBuffers"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestGetStructuredBuffers"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestGetShaderResourceViews"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestSetShaderResourceViews"
+	Passed="1"
+	ErrorMessage=""
+/>
+</TestLog>

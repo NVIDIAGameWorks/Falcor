@@ -1,0 +1,21 @@
+{
+    "version" : "DX5.0", 
+    "stages" : "vs/ps", 
+    "random seed" : 203,
+
+    "constant buffers" : 2,
+
+    "rw structured buffers" : 2,
+    "structured buffers" : 1,
+
+    "rw raw buffers" : 5,
+    "raw buffers" : 3,
+
+    "rw textures" : 1,
+    "textures" : 2,
+
+    "samplers" : 0,
+
+    "mode" : "valid",
+    "invalidResourceType" : "uavs"
+}

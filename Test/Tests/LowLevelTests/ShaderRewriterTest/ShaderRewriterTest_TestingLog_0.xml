@@ -1,0 +1,34 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+<TestLog>
+<Summary
+	TotalTests="5"
+	PassedTests="5"
+	FailedTests="0"
+	CrashedTests="0"
+/>
+<TestResult
+	TestName="TestShaderRewriter1"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestShaderRewriter2"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestShaderRewriter3"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestShaderRewriter4"
+	Passed="1"
+	ErrorMessage=""
+/>
+<TestResult
+	TestName="TestShaderRewriter5"
+	Passed="1"
+	ErrorMessage=""
+/>
+</TestLog>

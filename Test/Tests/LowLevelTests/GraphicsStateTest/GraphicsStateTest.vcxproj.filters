@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\Source\GraphicsStateTest.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\Source\GraphicsStateTest.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Data">
+      <UniqueIdentifier>{05b918e5-f202-4042-b341-09609c2f778b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\DSPS.ps.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\DSVS.vs.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\MultipleOutPS.ps.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\MultipleOutVS.vs.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\GPPS.ps.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\GPVS.vs.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\Copy.ps.hlsl">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\Copy.vs.hlsl">
+      <Filter>Data</Filter>
+    </None>
+  </ItemGroup>
+</Project>
