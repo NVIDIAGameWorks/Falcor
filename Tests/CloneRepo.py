@@ -25,8 +25,12 @@ def clone(repository=gDefaultCloneRepository, branch=gDefaultCloneBranch, destin
     # Clone the Specified Repository and Branch.
     try: 
         cloneReturnCode = subprocess.call(['git', 'clone', repository, destination, '-b', branch])
-        return cloneReturnCode
 
+        if cloneReturnCode != 0 :
+            print 'Error Cloning Repository : ' + repository + ' Branch : ' + branch + ' Destination : ' + destination + ' '
+
+        return cloneReturnCode 
+            
     except subprocess.CalledProcessError:
         print 'Error Cloning Repository : ' + repository + ' Branch : ' + branch + ' Destination : ' + destination + ' ' 
         return -1

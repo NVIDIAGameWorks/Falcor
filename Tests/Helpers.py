@@ -10,8 +10,11 @@ def directoryCleanOrMake(destination) :
     if not os.path.isdir(destination):
         try:
             os.makedirs(destination)
+            return 0
+
         except OSError, info:
             print "Error trying to Create Directory : " + destination
+            return -1
 
     else:
         try:
@@ -22,11 +25,14 @@ def directoryCleanOrMake(destination) :
             removeDirectoryReturnCode = subprocess.call(batchArgs)
 
             # Check if it was success.            
-            if removeDirectoryReturnCode != 0
+            if removeDirectoryReturnCode != 0:
                 print "Error trying to clean Directory : " + destination
+
+            return removeDirectoryReturnCode
 
         except subprocess.CalledProcessError:
             print "Error trying to clean Directory : " + destination
-            
+
+            return - 1
 
 

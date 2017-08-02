@@ -2,7 +2,7 @@ import CloneRepo
 
 
 def main():
-    CloneRepo.clone(destination="C:\Falcor\")
+    CloneRepo.clone(destination="C:\\Falcor\\")
 
 
 if __name__ == '__main__':
