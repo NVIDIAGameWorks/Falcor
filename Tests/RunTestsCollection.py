@@ -15,11 +15,11 @@ import CloneRepo as cloneRepo
 # Default Clone Repositories.
 gDefaultCloneRepository = 'https://github.com/NVIDIAGameworks/Falcor.git';
 gDefaultCloneBranch = 'master';
-gDefaultCloneDestination = 'C:\\Falcor\\'
+gDefaultCloneDestination = 'C:\\Falcor/'
 
 
 # Parse the Test Collection.
-def runTestCollection(json_filename="TestsCollection.json"):
+def runTestCollection(json_filename="TestsCollectionsAndSets/TestsCollection.json"):
     
     try:
         # Try and open the json file.
@@ -34,6 +34,8 @@ def runTestCollection(json_filename="TestsCollection.json"):
                 print "Error parsing Tests Set file : " + json_filename
                 return -1;
 
+            # pp = pprint.PrettyPrinter(indent=4)
+            # pp.pprint(json_data)
 
             # Check if the Tests Name is defined.
             if not json_data['Tests Name']:
@@ -51,21 +53,23 @@ def runTestCollection(json_filename="TestsCollection.json"):
 
             # Check if the Repository Target is defined.
             if json_data['Repository Target']:
-                repositoryTarget = json_data['Repository Target']
+                if json_data['Repository Target'] != "" : 
+                    repositoryTarget = json_data['Repository Target']
 
             # Check if the Branch Target is defined.
             if json_data['Branch Target']:
-                branchTarget = json_data['Branch Target']
+                if json_data['Branch Target'] != "" :
+                    branchTarget = json_data['Branch Target']
 
             # Check if the Destination Target is defined.
             if json_data['Destination Target']:
-                destinationTarget = json_data['Destination Target']
+                if json_data['Destination Target'] != "" :
+                    destinationTarget = json_data['Destination Target']
 
 
-
-            if cloneRepo.clone(repositoryTarget, branchTarget, destinationTarget) != 0
+            #   Check if we can clone a repository.
+            if cloneRepo.clone(repositoryTarget, branchTarget, destinationTarget) != 0:
                 return -1
-
 
             # Initialize the Test Results.
             testResults = []
@@ -73,11 +77,35 @@ def runTestCollection(json_filename="TestsCollection.json"):
             # Run the Test Set.
             for currentTestsSet in (json_data["Tests"]):
 
+                # Check if a solution target is defined.
+                if currentTestsSet['Solution Target'] :
+                    if currentTestsSet['Solution Target'] != "" :
+                        continue
+                else :
+                    continue
+
+                # Check if a configuration target is defined.
+                if currentTestsSet['Configuration Target'] :
+                    if currentTestsSet['Configuration Target'] != "" :
+                        continue
+                else :
+                    continue
+
+                # Check if a configuration target is defined.
+                if currentTestsSet['Tests Set'] :
+                    if currentTestsSet['Tests Set'] != "" :
+                        continue
+                else :
+                    continue
+
+
                 # Run the Test and get the results.
-                currentTestResult = rTS.runTestsSet(currentTestsSet)
+                currentTestResult = rTS.runTestsSet(currentTestsSet['Solution Target'], )
                 
                 # Add the Test Result to the Test Results.
                 testResults.append(currentTestResult)
+
+
 
         return 0
 
