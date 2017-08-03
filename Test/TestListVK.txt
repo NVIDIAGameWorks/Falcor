@@ -23,8 +23,7 @@ FeatureDemo {
 	-test -loadscene living_room\living_room.fscene -sstimes 10 20 30 -shutdowntime 35,
 	-test -loadscene UE4\SunTemple\SunTemple.fscene -sstimes 10 27 50 -shutdowntime 55,
 	-test -loadscene Bistro\Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 35, 
-	-test -loadscene Bistro\Bistro_Exterior.fscene -sstimes 103 128 136 165 -shutdowntime 180, 
-	-test -loadscene EmeraldSquare\EmeraldSquare.fscene -sstimes 7 22 35 43 47 -shutdowntime 60}
+	-test -loadscene Bistro\Bistro_Exterior.fscene -sstimes 103 128 136 165 -shutdowntime 180}
 	{releasevk}
 Shadows {
 -test -incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300,
