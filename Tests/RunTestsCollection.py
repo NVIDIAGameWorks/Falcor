@@ -13,14 +13,13 @@ import CloneRepo as cloneRepo
 
 
 # Default Clone Repositories.
-gDefaultCloneRepository = 'https://github.com/NVIDIAGameworks/Falcor.git';
-gDefaultCloneBranch = 'master';
-gDefaultCloneDestination = 'C:\\Falcor/'
+gDefaultCloneRepository = 'https://github.com/NVIDIAGameworks/Falcor.git'
+gDefaultCloneBranch = 'master'
+gDefaultCloneDestination = 'C:\\Falcor\\'
 
 
 # Parse the Test Collection.
-def runTestCollection(json_filename="TestsCollectionsAndSets/TestsCollection.json"):
-    
+def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.json"):
     try:
         # Try and open the json file.
         with open(json_filename) as json_file:
@@ -32,7 +31,7 @@ def runTestCollection(json_filename="TestsCollectionsAndSets/TestsCollection.jso
             # Exception Handling.
             except ValueError:
                 print "Error parsing Tests Set file : " + json_filename
-                return -1;
+                return -1
 
             # pp = pprint.PrettyPrinter(indent=4)
             # pp.pprint(json_data)
@@ -53,66 +52,85 @@ def runTestCollection(json_filename="TestsCollectionsAndSets/TestsCollection.jso
 
             # Check if the Repository Target is defined.
             if json_data['Repository Target']:
-                if json_data['Repository Target'] != "" : 
+                if json_data['Repository Target'] != "": 
                     repositoryTarget = json_data['Repository Target']
 
             # Check if the Branch Target is defined.
             if json_data['Branch Target']:
-                if json_data['Branch Target'] != "" :
+                if json_data['Branch Target'] != "":
                     branchTarget = json_data['Branch Target']
 
             # Check if the Destination Target is defined.
             if json_data['Destination Target']:
-                if json_data['Destination Target'] != "" :
+                if json_data['Destination Target'] != "":
                     destinationTarget = json_data['Destination Target']
 
 
-            #   Check if we can clone a repository.
-            if cloneRepo.clone(repositoryTarget, branchTarget, destinationTarget) != 0:
+            # Check if we can clone a repository.
+            try:
+                if cloneRepo.clone(repositoryTarget, branchTarget, destinationTarget) != 0:
+                    return -1
+                
+            # Exception Handling.
+            except (cloneRepo.CloneRepoCleanOrMakeError, cloneRepo.CloneRepoCloneError) as e:
+                print e.args
                 return -1
 
             # Initialize the Test Results.
             testResults = []
 
-            # Run the Test Set.
-            for currentTestsSet in (json_data["Tests"]):
+            # Run all the Test Set.
+            for currentTestsSet in json_data["Tests"]:
 
                 # Check if a solution target is defined.
-                if currentTestsSet['Solution Target'] :
-                    if currentTestsSet['Solution Target'] != "" :
+                if currentTestsSet['Solution Target']:
+                    if currentTestsSet['Solution Target'] == "":
                         continue
-                else :
+                else:
                     continue
 
                 # Check if a configuration target is defined.
-                if currentTestsSet['Configuration Target'] :
-                    if currentTestsSet['Configuration Target'] != "" :
+                if currentTestsSet['Configuration Target']:
+                    if currentTestsSet['Configuration Target'] == "":
                         continue
-                else :
+                else:
                     continue
 
                 # Check if a configuration target is defined.
-                if currentTestsSet['Tests Set'] :
-                    if currentTestsSet['Tests Set'] != "" :
+                if currentTestsSet['Tests Set']:
+                    if currentTestsSet['Tests Set'] == "":
                         continue
-                else :
+                else:
                     continue
 
 
-                # Run the Test and get the results.
-                currentTestResult = rTS.runTestsSet(currentTestsSet['Solution Target'], )
-                
-                # Add the Test Result to the Test Results.
-                testResults.append(currentTestResult)
+                try:
 
+
+                    destinationBranchTarget = destinationTarget + branchTarget + '\\'                      
+                    solutionTarget = currentTestsSet['Solution Target']
+                    configurationTarget = currentTestsSet['Configuration Target']
+                    testsSet = currentTestsSet['Tests Set']
+
+                    # Run the Test and get the results.
+                    currentTestResult = rTS.runTestsSet(destinationBranchTarget, solutionTarget, configurationTarget, testsSet)
+    
+                    # Add the Test Result to the Test Results.
+                    testResults.append(currentTestResult)
+
+                    print testResults
+
+                except (rTS.TestsSetOpenError, rTS.TestsSetParseError) as runTestsSetError:
+                    print runTestsSetError.args
+                    continue
 
 
         return 0
 
     # Exception Handling.
-    except OSError, info:
-        print 'Error opening Tests Collection json file : ' + json_file
-        return -1;
+    except (IOError, OSError) as jsonopenerror:
+        print 'Error opening Tests Collection json file : ' + json_filename
+        return -1
 
 
 
@@ -122,7 +140,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Add the Argument for which Test Collection to use.
-    parser.add_argument('-testsCollection', nargs='?', action='store', help='Specify the Test Collection', default='TestsCollectionsAndSets/TestsCollection.json')
+    parser.add_argument('-testsCollection', nargs='?', action='store', help='Specify the Test Collection', default='TestsCollectionsAndSets\\TestsCollection.json')
 
     # Add the Arguments for do not build and for show summary.
     parser.add_argument("-nb", action='store_true', help='Whether or not to build the solutions again.')

@@ -10,27 +10,27 @@
         {
             "Solution Target" : "Falcor.sln",
             "Configuration Target" : "ReleaseD3D12",
-            "Tests Set" : "TestsCollectionsAndSets/TestsSetReleaseD3D12.json"
+            "Tests Set" : "TestsCollectionsAndSets\\TestsSetD3D12.json"
         },
         
         {
             "Solution Target" : "Falcor.sln",
             "Configuration Target" : "DebugD3D12",
-            "Tests Set" : "TestsCollectionsAndSets/TestsSetDebugD3D12.json"
+            "Tests Set" : "TestsCollectionsAndSets\\TestsSetD3D12.json"
         },
 
         {
 
             "Solution Target" : "Falcor.sln",
-            "Configuration Target" : "ReleaseVulkan",
-            "Tests Set" : "TestsCollectionsAndSets/TestsSetReleaseVulkan.json"
+            "Configuration Target" : "ReleaseVK",
+            "Tests Set" : "TestsCollectionsAndSets\\TestsSetVulkan.json"
         },
 
         {
 
             "Solution Target" : "Falcor.sln",
-            "Configuration Target" : "DebugVulkan",
-            "Tests Set" : "TestsCollectionsAndSets/TestsSetDebugVulkan.json"
+            "Configuration Target" : "DebugVK",
+            "Tests Set" : "TestsCollectionsAndSets\\TestsSetVulkan.json"
         }
     ]
 

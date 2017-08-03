@@ -13,9 +13,9 @@ def directoryCleanOrMake(destination) :
             os.makedirs(destination)
             return 0
 
-        except OSError, info:
+        except OSError:
             print "Error trying to Create Directory : " + destination
-            return -1
+            return None
 
     else:
         try:
@@ -38,6 +38,9 @@ def directoryCleanOrMake(destination) :
             print "Error trying to clean Directory : " + destination
 
             # Return failure.
-            return - 1
+            return None
 
 
+
+
+    
