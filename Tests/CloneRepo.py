@@ -9,13 +9,11 @@ import sys
 # Helpers.
 import Helpers as helpers
 
-
 # Default Clone Repositories.
 gDefaultCloneRepository = 'https://github.com/NVIDIAGameworks/Falcor.git';
 gDefaultCloneBranch = 'master';
 
-
-
+# Clone the Repository with the specified Arguments.
 def clone(repository=gDefaultCloneRepository, branch=gDefaultCloneBranch, destination=os.getcwd()):
 
    # Create the Destination Directory.
@@ -37,7 +35,7 @@ def clone(repository=gDefaultCloneRepository, branch=gDefaultCloneBranch, destin
 
 
 
-# Clone a GitHub Repository to the specified directory.
+# Clone a GitHub Repository.
 def main():
 
     # Argument Parser.

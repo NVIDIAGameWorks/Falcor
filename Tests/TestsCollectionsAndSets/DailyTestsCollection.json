@@ -1,0 +1,17 @@
+{
+    "Tests Name" : "Tests",
+
+    "Repository Target" : "",
+    "Branch Target " : "",
+    "Destination Target" : "",
+    "Solution Target" : "",
+
+    "Tests" : 
+    [
+        "TestsCollectionsAndSets/TestsSetReleaseD3D12.json",
+        "TestsCollectionsAndSets/TestsSetDebugD3D12.json",
+        "TestsCollectionsAndSets/TestsSetReleaseVulkan.json",
+        "TestsCollectionsAndSets/TestsSetDebugVulkan.json"
+    ]
+
+}
