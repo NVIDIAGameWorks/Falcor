@@ -95,10 +95,8 @@ protected:
 private:
     class ResultSummary
     {
-
     public:
         ResultSummary() : total(0u), pass(0u), fail(0u), crash(0u) {}
-
         void addTestToSummary(TestData d)
         {
             ++total;
@@ -111,7 +109,6 @@ private:
         uint32_t pass;
         uint32_t fail;
         uint32_t crash;
-    
     } mResultSummary;
 
     class DummyWindowCallbacks : public Window::ICallbacks
@@ -124,9 +121,7 @@ private:
 
     std::vector<TestData> runTests();
     void GenerateXML(const std::vector<std::string>& xmlStrings);
-    
     std::string XMLFromTestResult(const TestData& r);
-    
-    //  
+
     Window::SharedPtr mpWindow; //used for dummy device creation
 };

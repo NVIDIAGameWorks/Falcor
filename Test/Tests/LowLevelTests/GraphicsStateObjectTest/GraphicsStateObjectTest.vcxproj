@@ -14,7 +14,6 @@
     <ProjectGuid>{7955E73E-974C-41F3-B002-96D4B04AD572}</ProjectGuid>
     <RootNamespace>GraphicsStateObjectTest</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
-    <ProjectName>GraphicsStateObjectTest</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">

@@ -3,92 +3,9 @@
   <ItemGroup>
     <ClCompile Include="Source\TestBase.cpp" />
     <ClCompile Include="Source\TestHelper.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\CommonShaderDescs.cpp">
-      <Filter>ShaderCodeWriter</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\ShaderProgramMaker.cpp">
-      <Filter>ShaderCodeWriter</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\ShaderStage.cpp">
-      <Filter>ShaderCodeWriter</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLProgramMaker.cpp">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLDescs.cpp">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLShaderData.cpp">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLCodeWriter.cpp">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker\GLSLCodeWriter</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLDescs.cpp">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLShaderData.cpp">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLProgramMaker.cpp">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLCodeWriter.cpp">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker\HLSLCodeWriter</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\TestBase.h" />
     <ClInclude Include="Source\TestHelper.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\CommonShaderDescs.h">
-      <Filter>ShaderCodeWriter</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\ShaderProgramMaker.h">
-      <Filter>ShaderCodeWriter</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\ShaderStage.h">
-      <Filter>ShaderCodeWriter</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLProgramMaker.h">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLDescs.h">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLShaderData.h">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLCodeWriter.h">
-      <Filter>ShaderCodeWriter\GLSLProgramMaker\GLSLCodeWriter</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLShaderData.h">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLProgramMaker.h">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLDescs.h">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLCodeWriter.h">
-      <Filter>ShaderCodeWriter\HLSLProgramMaker\HLSLCodeWriter</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="ShaderCodeWriter">
-      <UniqueIdentifier>{291fe383-454e-4390-8936-a0a98653e9f3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ShaderCodeWriter\GLSLProgramMaker">
-      <UniqueIdentifier>{1c322b6a-2475-4d54-b391-850520f9e49d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ShaderCodeWriter\GLSLProgramMaker\GLSLCodeWriter">
-      <UniqueIdentifier>{3a3f5c98-bb36-40b6-a93d-dbd4d1439c8c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ShaderCodeWriter\HLSLProgramMaker">
-      <UniqueIdentifier>{b850da94-16b1-4213-a327-4b361f402877}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ShaderCodeWriter\HLSLProgramMaker\HLSLCodeWriter">
-      <UniqueIdentifier>{7d66e1e1-0a6e-4599-885f-b9d146a01878}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
 </Project>

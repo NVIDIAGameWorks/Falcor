@@ -32,124 +32,15 @@ namespace Falcor
 {
     namespace TestHelper
     {
-
-#ifdef FALCOR_VK
-#define ADJUST_Y(a) (-(a))
-#else
-#define ADJUST_Y(a) a
-#endif
-
-        //  Return a horizontal line of 4 points along the middle.
-        Vao::SharedPtr getBasicPointsVao()
-        {
-
-            static const vec2 kVertices[] =
-            {
-                glm::vec2(0.0, ADJUST_Y(0.0)),
-            };
-
-            const uint32_t vbSize = (uint32_t)(sizeof(glm::vec2)*arraysize(kVertices));
-            Buffer::SharedPtr pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pLayout->addBufferLayout(0, pBufLayout);
-
-            Vao::BufferVec buffers{ pVB };
-            return Vao::create(Vao::Topology::PointList, pLayout, buffers, nullptr, ResourceFormat::Unknown);
-        }
-
-
-        //  Two horizontal lines.
-        Vao::SharedPtr getBasicLinesListVao()
-        {
-
-            static const vec2 kVertices[] =
-            {
-                glm::vec2(-1.0, ADJUST_Y(-0.5)),
-                glm::vec2(1.0, ADJUST_Y(-0.5)),
-                glm::vec2(-1.0, ADJUST_Y(0.5)),
-                glm::vec2(1.0, ADJUST_Y(0.5))
-            };
-
-            const uint32_t vbSize = (uint32_t)(sizeof(glm::vec2)*arraysize(kVertices));
-            Buffer::SharedPtr pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pLayout->addBufferLayout(0, pBufLayout);
-
-            Vao::BufferVec buffers{ pVB };
-            return Vao::create(Vao::Topology::LineList, pLayout, buffers, nullptr, ResourceFormat::Unknown);
-
-        }
-
-        //  Return a horizontal line along the middle.
-        Vao::SharedPtr getBasicLineStripVAO()
-        {
-
-            static const vec2 kVertices[] =
-            {
-                glm::vec2(-1.0, ADJUST_Y(0.0)),
-                glm::vec2(0.0, ADJUST_Y(0.0)),
-                glm::vec2(1.0, ADJUST_Y(0.0))
-            };
-
-            const uint32_t vbSize = (uint32_t)(sizeof(glm::vec2)*arraysize(kVertices));
-            Buffer::SharedPtr pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pLayout->addBufferLayout(0, pBufLayout);
-
-            Vao::BufferVec buffers{ pVB };
-            return Vao::create(Vao::Topology::LineStrip, pLayout, buffers, nullptr, ResourceFormat::Unknown);
-
-        }
-
-        //  
-        Vao::SharedPtr getBasicTriangleListVao()
-        {
-            static const vec2 kVertices[] =
-            {
-                glm::vec2(1.0, ADJUST_Y(-0.8)),
-                glm::vec2(0.0, ADJUST_Y(0.8)),
-                glm::vec2(-1.0, ADJUST_Y(-0.8))
-            };
-
-            const uint32_t vbSize = (uint32_t)(sizeof(glm::vec2)*arraysize(kVertices));
-            Buffer::SharedPtr pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pLayout->addBufferLayout(0, pBufLayout);
-
-            uint32_t indexBufferArray[] = { 0, 1, 2 };
-            const uint32_t ibSize = (uint32_t)(sizeof(uint32_t) * arraysize(indexBufferArray));
-            Buffer::SharedPtr pIB = Buffer::create(ibSize, Buffer::BindFlags::Index, Buffer::CpuAccess::Write, (void*)indexBufferArray);
-
-            Vao::BufferVec buffers{ pVB };
-            return Vao::create(Vao::Topology::TriangleList, pLayout, buffers, pIB, ResourceFormat::Unknown);
-        }
-
-
-
-        //  Return the Fullscreen Quad Vao.
         Vao::SharedPtr getFullscreenQuadVao()
         {
-
-            static const vec2 kVertices[] =
+            static const glm::vec2 kVertices[] =
             {
-                glm::vec2(-1, ADJUST_Y(1)),
-                glm::vec2(-1, ADJUST_Y(-1)),
-                glm::vec2(1, ADJUST_Y(1)),
-                glm::vec2(1, ADJUST_Y(-1)) 
+                glm::vec2(-1,  1),
+                glm::vec2(-1, -1),
+                glm::vec2(1,  1),
+                glm::vec2(1, -1),
             };
-
 
             const uint32_t vbSize = (uint32_t)(sizeof(glm::vec2)*arraysize(kVertices));
             Buffer::SharedPtr pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
@@ -160,38 +51,8 @@ namespace Falcor
             pLayout->addBufferLayout(0, pBufLayout);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers, nullptr, ResourceFormat::Unknown);
+            return Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
         }
-
-
-        //  Return the Reversed Fullscreend Quad Vao.
-        Vao::SharedPtr getReversedFullscreenQuadVao()
-        {
-
-            static const vec2 kVertices[] =
-            {
-                glm::vec2(-1, ADJUST_Y(1)),
-                glm::vec2(1, ADJUST_Y(1)),
-                glm::vec2(-1, ADJUST_Y(-1)),
-                glm::vec2(1, ADJUST_Y(-1))
-            };
-
-
-            const uint32_t vbSize = (uint32_t)(sizeof(glm::vec2)*arraysize(kVertices));
-            Buffer::SharedPtr pVB = Buffer::create(vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
-
-            VertexLayout::SharedPtr pLayout = VertexLayout::create();
-            VertexBufferLayout::SharedPtr pBufLayout = VertexBufferLayout::create();
-            pBufLayout->addElement("POSITION", 0, ResourceFormat::RG32Float, 1, 0);
-            pLayout->addBufferLayout(0, pBufLayout);
-
-            Vao::BufferVec buffers{ pVB };
-            return Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers, nullptr, ResourceFormat::Unknown);
-        }
-
-
-
-
 
         GraphicsState::SharedPtr getOnePixelState(RenderContext* pCtx)
         {
@@ -206,14 +67,6 @@ namespace Falcor
             pState->setVao(vao);
             pState->setFbo(testFbo);
             return pState;
-        }
-
-
-        //  Create a Texture.
-        Texture::SharedPtr createRGBA32FRWTexture(uint32_t newWidth, uint32_t newHeight)
-        {
-            //  Return the Texture 2D.
-            return Texture::create2D(newWidth, newHeight, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         }
 
         float randFloatZeroToOne()
@@ -237,7 +90,4 @@ namespace Falcor
             return nearCompare(lhs.x, rhs.x) && nearCompare(lhs.y, rhs.y) && nearCompare(lhs.z, rhs.z) && nearCompare(lhs.w, rhs.w);
         }
     }
-
-#undef  ADJUST_Y
-
 }

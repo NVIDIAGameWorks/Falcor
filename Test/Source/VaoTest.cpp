@@ -55,8 +55,7 @@ testing_func(VaoTest, TestSimpleCreate)
 
     //Craete and check vao
     Vao::Topology topology = Vao::Topology::LineStrip;
-    Vao::SharedPtr pVao = Vao::create(topology, pLayout, bufferVec, nullptr, ResourceFormat::R32Uint);
-
+    Vao::SharedPtr pVao = Vao::create(topology, pLayout, bufferVec);
     //Some of this should be helper function-ized as other tests need it
     if ((pVao->getVertexBuffer(0u)->getBindFlags() & Resource::BindFlags::Vertex) == Resource::BindFlags::None ||
         pVao->getVertexBuffersCount() != 1 ||
@@ -100,7 +99,6 @@ testing_func(VaoTest, TestIndexedCreate)
     //Create and test vao
     Vao::Topology topology = Vao::Topology::TriangleStrip;
     Vao::SharedPtr pVao = Vao::create(topology, pLayout, bufferVec, pIndexBuffer, ResourceFormat::R32Uint);
-
     if ((pVao->getVertexBuffer(0u)->getBindFlags() & Resource::BindFlags::Vertex) == Resource::BindFlags::None ||
         pVao->getVertexBuffersCount() != 1 ||
         pVao->getIndexBuffer()->getSize() != indexBufferSize ||
@@ -145,8 +143,7 @@ testing_func(VaoTest, TestMultiBufferCreate)
 
     //Create VAO and check properties
     Vao::Topology topology = Vao::Topology::LineList;
-    Vao::SharedPtr pVao = Vao::create(topology, pLayout, bufferVec, nullptr, ResourceFormat::R32Uint);
-
+    Vao::SharedPtr pVao = Vao::create(topology, pLayout, bufferVec);
     //check 'global' properties
     if (pVao->getVertexBuffersCount() != numBuffers || pVao->getIndexBuffer() != nullptr || 
         pVao->getVertexLayout()->getBufferCount() != numBuffers || pVao->getPrimitiveTopology() != topology)
@@ -196,8 +193,7 @@ testing_func(VaoTest, TestLayout)
 
     //Create VAO and check properties
     Vao::Topology topology = Vao::Topology::TriangleList;
-    Vao::SharedPtr pVao = Vao::create(topology, pLayout, bufferVec, nullptr, ResourceFormat::R32Uint);
-
+    Vao::SharedPtr pVao = Vao::create(topology, pLayout, bufferVec);
     //check 'global' properties
     if (pVao->getVertexBuffersCount() != 1 || pVao->getIndexBuffer() != nullptr || pVao->getVertexLayout()->getBufferCount() != 1 || 
         (pVao->getVertexBuffer(0u)->getBindFlags() & Resource::BindFlags::Vertex) == Resource::BindFlags::None || 

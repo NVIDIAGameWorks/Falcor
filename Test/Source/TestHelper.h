@@ -32,21 +32,11 @@ namespace Falcor
 {
     namespace TestHelper
     {
-        Vao::SharedPtr getBasicPointsVao();
-        Vao::SharedPtr getBasicLinesListVao();
-        Vao::SharedPtr getBasicLineStripVAO();
-
-        Vao::SharedPtr getBasicTriangleListVao();
-
         Vao::SharedPtr getFullscreenQuadVao();
-        Vao::SharedPtr getReversedFullscreenQuadVao();
-
         GraphicsState::SharedPtr getOnePixelState(RenderContext* pCtx);
         float randFloatZeroToOne();
         vec4 randVec4ZeroToOne();
         bool nearCompare(const float lhs, const float rhs);
         bool nearVec4(const vec4& lhs, const vec4& rhs);
-        Texture::SharedPtr createRGBA32FRWTexture(uint32_t newWidth, uint32_t newHeight);
-
     }
 }

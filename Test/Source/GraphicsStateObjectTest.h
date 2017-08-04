@@ -31,13 +31,7 @@
 class GraphicsStateObjectTest : public TestBase
 {
 private:
-    
-    //  Add the Tests.
     void addTests() override;
-    
-    //  
     void onInit() override {};
-    
-    //
     register_testing_func(TestCreate)
 };

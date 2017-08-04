@@ -83,32 +83,10 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\ShaderCodeWriter\CommonShaderDescs.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLCodeWriter.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLDescs.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLProgramMaker.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\GLSLShaderData.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLCodeWriter.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLDescs.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLProgramMaker.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\HLSLShaderData.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\ShaderProgramMaker.cpp" />
-    <ClCompile Include="Source\ShaderCodeWriter\ShaderStage.cpp" />
     <ClCompile Include="Source\TestBase.cpp" />
     <ClCompile Include="Source\TestHelper.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\ShaderCodeWriter\CommonShaderDescs.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLCodeWriter.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLDescs.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLProgramMaker.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\GLSLShaderData.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLCodeWriter.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLDescs.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLProgramMaker.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\HLSLShaderData.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\ShaderProgramMaker.h" />
-    <ClInclude Include="Source\ShaderCodeWriter\ShaderStage.h" />
     <ClInclude Include="Source\TestBase.h" />
     <ClInclude Include="Source\TestHelper.h" />
   </ItemGroup>
