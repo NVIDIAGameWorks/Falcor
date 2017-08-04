@@ -50,10 +50,6 @@ def runTestsSet(directory, solutionfile, configuration, jsonfilename):
                 if buildSolution(directory + solutionfile, configuration) != 0:
                     raise TestsSetBuildSolutionError("Error buidling solution : " + directory + solutionfile + " with configuration : " + configuration)
 
-
-                
-
-
                 # Return success.
                 return 0
 

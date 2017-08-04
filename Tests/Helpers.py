@@ -5,8 +5,8 @@ import stat
 
 
 # CLean the directory if it exists, or make it if it does not.
-def directoryCleanOrMake(destination) :
-    
+def directoryCleanOrMake(destination):
+
     # Check if the Directory exists, and make it if it does not.
     if not os.path.isdir(destination):
         try:
@@ -34,13 +34,8 @@ def directoryCleanOrMake(destination) :
 
         # Exception Handling.
         except subprocess.CalledProcessError:
-            
             print "Error trying to clean Directory : " + destination
 
             # Return failure.
             return None
-
-
-
-
     

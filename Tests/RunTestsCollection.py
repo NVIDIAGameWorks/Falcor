@@ -31,7 +31,7 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
             # Exception Handling.
             except ValueError:
                 print "Error parsing Tests Set file : " + json_filename
-                return -1
+                return None
 
             # pp = pprint.PrettyPrinter(indent=4)
             # pp.pprint(json_data)
@@ -39,12 +39,12 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
             # Check if the Tests Name is defined.
             if not json_data['Tests Name']:
                 print 'Error "Tests Name" not defined in json file : ' + json_filename
-                return -1
+                return None
 
             # Check if the Tests Array is defined.
             if not json_data['Tests Name']:
                 print 'Error "Tests" not defined in json file : ' + json_filename
-                return -1 
+                return None
 
             repositoryTarget = gDefaultCloneRepository
             branchTarget = gDefaultCloneBranch
@@ -65,16 +65,6 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
                 if json_data['Destination Target'] != "":
                     destinationTarget = json_data['Destination Target']
 
-
-            # Check if we can clone a repository.
-            try:
-                if cloneRepo.clone(repositoryTarget, branchTarget, destinationTarget) != 0:
-                    return -1
-                
-            # Exception Handling.
-            except (cloneRepo.CloneRepoCleanOrMakeError, cloneRepo.CloneRepoCloneError) as e:
-                print e.args
-                return -1
 
             # Initialize the Test Results.
             testResults = []
@@ -106,14 +96,25 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
 
                 try:
 
-
-                    destinationBranchTarget = destinationTarget + branchTarget + '\\'                      
                     solutionTarget = currentTestsSet['Solution Target']
                     configurationTarget = currentTestsSet['Configuration Target']
                     testsSet = currentTestsSet['Tests Set']
+                    destinationBranchConfigurationTarget = destinationTarget + branchTarget + '\\' + configurationTarget + '\\'                      
+
+
+                    # Check if we can clone a repository.
+                    try:
+                        if cloneRepo.clone(repositoryTarget, branchTarget, destinationBranchConfigurationTarget) != 0:
+                            return None
+                
+                    # Exception Handling.
+                    except (cloneRepo.CloneRepoCleanOrMakeError, cloneRepo.CloneRepoCloneError) as cloneRepoError:
+                        print cloneRepoError.args
+                        return None
+
 
                     # Run the Test and get the results.
-                    currentTestResult = rTS.runTestsSet(destinationBranchTarget, solutionTarget, configurationTarget, testsSet)
+                    currentTestResult = rTS.runTestsSet(destinationBranchConfigurationTarget, solutionTarget, configurationTarget, testsSet)
     
                     # Add the Test Result to the Test Results.
                     testResults.append(currentTestResult)
@@ -130,7 +131,7 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
     # Exception Handling.
     except (IOError, OSError) as jsonopenerror:
         print 'Error opening Tests Collection json file : ' + json_filename
-        return -1
+        return None
 
 
 

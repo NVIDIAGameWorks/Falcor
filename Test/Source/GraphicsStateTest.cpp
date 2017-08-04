@@ -32,10 +32,10 @@
 void GraphicsStateTest::addTests()
 {
     //  Test Blend Changes.
-    //addTestToList<TestBlendStateSimple>();
-    //addTestToList<TestBlendStateNullptr>();
-    //addTestToList<TestBlendStateChanges>();
-    //addTestToList<TestBlendStateMultipleRTChanges>();
+    addTestToList<TestBlendStateSimple>();
+    addTestToList<TestBlendStateNullptr>();
+    addTestToList<TestBlendStateChanges>();
+    addTestToList<TestBlendStateMultipleRTChanges>();
 
     //  Test the Depth Stencil Changes.
     addTestToList<TestDepthSimple>();
