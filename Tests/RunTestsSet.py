@@ -3,6 +3,7 @@ import subprocess
 import argparse
 import os
 from datetime import date
+import time
 import shutil
 import stat
 import sys
@@ -93,14 +94,31 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
                 # 
                 for currentTest in jsondata['Tests']:
                     
+                    if(currentTest["Enabled"] != "True"):
+                        continue
+
                     # 
                     for currentArg in currentTest["Project Tests Args"]:
 
-                            print absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg
-                            process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg, shell=True)
+                        print absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg
+                        process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg)
+                        startTime = time.time()
 
-                            while process.returncode == None:
-                                process.poll()
+                        while process.returncode == None:
+                            process.poll()
+                            currentTime = time.time()
+                                
+                            differenceTime = currentTime - startTime
+                            print differenceTime
+                            if differenceTime > configs.gDefaultKillTime:
+                                print "Kill Process"
+                                process.kill()
+                                return 0
+
+                        break
+
+                    break
+            
 
 
             # Exception Handling.

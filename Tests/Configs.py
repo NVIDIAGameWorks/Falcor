@@ -1,2 +1,2 @@
 gBuildSolutionScript = "BuildSolution.bat"
-gDefaultKillTime = 60 * 5.0
+gDefaultKillTime = 30.0

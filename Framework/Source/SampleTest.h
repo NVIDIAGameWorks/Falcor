@@ -180,5 +180,11 @@ namespace Falcor
         */
         void captureMemory(uint64_t frameCount, float currentTime, bool frameTest = true, bool endRange = false);
 
+
+        struct BasicTest
+        {   
+            TriggerType mTriggerType;
+        };
+
     };
 }
