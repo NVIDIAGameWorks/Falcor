@@ -25,18 +25,24 @@ class TestsSetBuildSolutionError(Exception):
 # Try and Build the Specified Solution with the specified configuration/
 def buildSolution(solutionfile, configuration):
 
-    # Build the Batch Args.
-    batchArgs = [gBuildSolutionScript, "rebuild", solutionfile, configuration.lower()]
+    try:
+        # Build the Batch Args.
+        batchArgs = [gBuildSolutionScript, "rebuild", solutionfile, configuration.lower()]
 
-    # Build Solution.
-    if subprocess.call(batchArgs) == 0:
-        return 0
-    else:
+        # Build Solution.
+        if subprocess.call(batchArgs) == 0:
+            return 0
+        else:
+            return None
+
+    except subprocess.CalledProcessError as subprocessError:
+        raise TestsSetBuildSolutionError("Error buidling solution : " + directory + solutionfile + " with configuration : " + configuration)
         return None
 
 
-# Parse the Specified Tests Set
-def runTestsSet(directory, solutionfile, configuration, jsonfilename):
+
+# Prep for running the Tests Set by building the solution.
+def prepTestsSet(directory, solutionfile, configuration, jsonfilename):
 
     try:
         # Try and open the json file.
@@ -47,15 +53,13 @@ def runTestsSet(directory, solutionfile, configuration, jsonfilename):
                 jsondata = json.load(jsonfile)
 
                 # Try and Build the Solution.
-                if buildSolution(directory + solutionfile, configuration) != 0:
-                    raise TestsSetBuildSolutionError("Error buidling solution : " + directory + solutionfile + " with configuration : " + configuration)
-
-                # Return success.
-                return 0
+                if buildSolution(directory + solutionfile, configuration) == 0:
+                    # Return success.
+                    return 0        
 
             # Exception Handling.
             except ValueError:
-                TestsSetParseError("Error parsing Tests Set file : " + jsonfilename)
+                raise TestsSetParseError("Error parsing Tests Set file : " + jsonfilename)
                 return None
 
     # Exception Handling.
@@ -66,11 +70,20 @@ def runTestsSet(directory, solutionfile, configuration, jsonfilename):
 
 
 
+# Parse the Specified Tests Set
+def runTestsSet(directory, solutionfile, configuration, jsonfilename):
+
+    # Prep the Tests Set.
+    if prepTestsSet(directory, solutionfile, configuration, jsonfilename) == 0:
+        return 0
+    else:
+        return None
+
+
 def main():
 
     # Argument Parser.
     parser = argparse.ArgumentParser()
-
 
     # Add the Argument for which directory.
     parser.add_argument('-d', '--directory', action='store', help='Specify the directory the solution file is in.')
@@ -86,7 +99,6 @@ def main():
 
     # Add the Argument for which Tests Set to run.
     parser.add_argument('-ts', '--testsSet', action='store', help='Specify the Tests Set filepath.')
-
 
     # Parse the Arguments.
     args = parser.parse_args()

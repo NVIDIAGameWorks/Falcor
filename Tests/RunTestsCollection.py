@@ -112,15 +112,13 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
                         print cloneRepoError.args
                         return None
 
-
                     # Run the Test and get the results.
                     currentTestResult = rTS.runTestsSet(destinationBranchConfigurationTarget, solutionTarget, configurationTarget, testsSet)
     
                     # Add the Test Result to the Test Results.
                     testResults.append(currentTestResult)
 
-                    print testResults
-
+                # Exception Handling.
                 except (rTS.TestsSetOpenError, rTS.TestsSetParseError) as runTestsSetError:
                     print runTestsSetError.args
                     continue
