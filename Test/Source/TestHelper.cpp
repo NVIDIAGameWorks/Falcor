@@ -57,8 +57,7 @@ namespace Falcor
             pLayout->addBufferLayout(0, pBufLayout);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(buffers, pLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::PointList);
-
+            return Vao::create(Vao::Topology::PointList, pLayout, buffers, nullptr, ResourceFormat::Unknown);
         }
 
 
@@ -83,7 +82,7 @@ namespace Falcor
             pLayout->addBufferLayout(0, pBufLayout);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(buffers, pLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::LineList);
+            return Vao::create(Vao::Topology::LineList, pLayout, buffers, nullptr, ResourceFormat::Unknown);
 
         }
 
@@ -107,7 +106,7 @@ namespace Falcor
             pLayout->addBufferLayout(0, pBufLayout);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(buffers, pLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::LineStrip);
+            return Vao::create(Vao::Topology::LineStrip, pLayout, buffers, nullptr, ResourceFormat::Unknown);
 
         }
 
@@ -134,8 +133,7 @@ namespace Falcor
             Buffer::SharedPtr pIB = Buffer::create(ibSize, Buffer::BindFlags::Index, Buffer::CpuAccess::Write, (void*)indexBufferArray);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(buffers, pLayout, pIB, ResourceFormat::R32Uint, Vao::Topology::TriangleList);
-
+            return Vao::create(Vao::Topology::TriangleList, pLayout, buffers, pIB, ResourceFormat::Unknown);
         }
 
 
@@ -162,7 +160,7 @@ namespace Falcor
             pLayout->addBufferLayout(0, pBufLayout);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(buffers, pLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::TriangleStrip);
+            return Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers, nullptr, ResourceFormat::Unknown);
         }
 
 
@@ -188,7 +186,7 @@ namespace Falcor
             pLayout->addBufferLayout(0, pBufLayout);
 
             Vao::BufferVec buffers{ pVB };
-            return Vao::create(buffers, pLayout, nullptr, ResourceFormat::Unknown, Vao::Topology::TriangleStrip);
+            return Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers, nullptr, ResourceFormat::Unknown);
         }
 
 
