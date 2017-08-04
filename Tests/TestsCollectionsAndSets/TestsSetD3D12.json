@@ -1,21 +1,14 @@
 {
-
-    "Repository Target" : "",
-    "Branch Target " : "",
-    "Destination Target" : "",
-    "Solution Target" : "",
-    "Configuration Target" : "",
-
     "Tests" : 
     [
         {
             "Project Name" : "ComputeShader",
             "Project Tests Args" :
             [
-                "-test -ssframes 50 -shutdown 100 -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
-                "-test -ssframes 50 -shutdown 100 -pixelate -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
-                "-test -ssframes 50 -shutdown 100 -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
-                "-test -ssframes 50 -shutdown 100 -pixelate -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png"
+                "-test -ssframes 50 -shutdown 100 -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -pixelate -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
+                "-test -ssframes 50 -shutdown 100 -pixelate -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png"
             ]  
         },
 
@@ -23,12 +16,12 @@
             "Project Name" : "MultiPassPostProcess",
             "Project Tests Args" :
             [
-                "-test -ssframes 50 -shutdown 100 -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
-                "-test -ssframes 50 -shutdown 100 -gaussianblur -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
-                "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
-                "-test -ssframes 50 -shutdown 100 -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
-                "-test -ssframes 50 -shutdown 100 -gaussianblur -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
-                "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage \\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png"
+                "-test -ssframes 50 -shutdown 100 -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png"
             ]  
         },
 

@@ -9,8 +9,7 @@ import sys
 import json
 import pprint
 
-
-gBuildSolutionScript = "BuildSolution.bat"
+import Configs as configs
 
 class TestsSetOpenError(Exception):
     pass
@@ -21,63 +20,99 @@ class TestsSetParseError(Exception):
 class TestsSetBuildSolutionError(Exception):
     pass
 
+class TestsSetRunTestsError(Exception):
+    pass
 
 # Try and Build the Specified Solution with the specified configuration/
-def buildSolution(solutionfile, configuration):
+def buildSolution(solutionfilepath, configuration):
 
     try:
+
         # Build the Batch Args.
-        batchArgs = [gBuildSolutionScript, "rebuild", solutionfile, configuration.lower()]
+        batchArgs = [configs.gBuildSolutionScript, "rebuild", solutionfilepath, configuration.lower()]
 
         # Build Solution.
         if subprocess.call(batchArgs) == 0:
             return 0
         else:
+            raise TestsSetBuildSolutionError("Error buidling solution : " + solutionfilepath + " with configuration : " + configuration.lower())
             return None
 
     except subprocess.CalledProcessError as subprocessError:
-        raise TestsSetBuildSolutionError("Error buidling solution : " + directory + solutionfile + " with configuration : " + configuration)
+        raise TestsSetBuildSolutionError("Error buidling solution : " + solutionfilepath + " with configuration : " + configuration.lower())
         return None
 
 
 
 # Prep for running the Tests Set by building the solution.
-def prepTestsSet(directory, solutionfile, configuration, jsonfilename):
+def prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
 
     try:
-        # Try and open the json file.
-        with open(jsonfilename) as jsonfile:
+        # Get the absolute path.
+        absolutepath = os.path.abspath(directorypath + solutionfilename)
+    
+        # Try and Build the Solution.
+        if buildSolution(absolutepath, configuration) == 0:
+            # Return success.
+            return 0
+        else:
+            return None
 
-            # Try and parse the data from the json file.
-            try:
-                jsondata = json.load(jsonfile)
-
-                # Try and Build the Solution.
-                if buildSolution(directory + solutionfile, configuration) == 0:
-                    # Return success.
-                    return 0        
-
-            # Exception Handling.
-            except ValueError:
-                raise TestsSetParseError("Error parsing Tests Set file : " + jsonfilename)
-                return None
-
-    # Exception Handling.
-    except (IOError, OSError) as e:
-        raise TestsSetOpenError("Error opening Tests Set file : " + jsonfilename)
-        return None
+        # Exception Handling.
+    except (TestsSetBuildSolutionError) as buildError:
+            print buildError.args
+            return None
 
 
 
 
 # Parse the Specified Tests Set
-def runTestsSet(directory, solutionfile, configuration, jsonfilename):
+def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
 
-    # Prep the Tests Set.
-    if prepTestsSet(directory, solutionfile, configuration, jsonfilename) == 0:
-        return 0
-    else:
+    # Prep the Tests Set - Build the Solution.
+    # if prepTestsSet(directory, solutionfile, configuration, jsonfilepath) == 0:
+    #    return 0
+    #else:
+    #    return None
+
+
+    try:
+        # Try and open the json file.
+        with open(jsonfilepath) as jsonfile:
+
+            # Try and parse the data from the json file.
+            try:
+                jsondata = json.load(jsonfile)
+
+                pp = pprint.PrettyPrinter(indent=4)
+                pp.pprint(jsondata)
+
+                # Get the absolute path.
+                absolutepath = os.path.abspath(directorypath + 'Bin\\x64\\Release\\')
+
+                # 
+                for currentTest in jsondata['Tests']:
+                    
+                    # 
+                    for currentArg in currentTest["Project Tests Args"]:
+
+                            print absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg
+                            process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg, shell=True)
+
+                            while process.returncode == None:
+                                process.poll()
+
+
+            # Exception Handling.
+            except ValueError:
+                raise TestsSetParseError("Error parsing Tests Set file : " + jsonfilepath)
+                return None
+
+    # Exception Handling.
+    except (IOError, OSError) as e:
+        raise TestsSetOpenError("Error opening Tests Set file : " + jsonfilepath)
         return None
+
 
 
 def main():
