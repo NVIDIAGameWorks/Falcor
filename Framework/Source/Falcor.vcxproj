@@ -1131,8 +1131,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\CopyData.bat" />
-    <None Include="..\CopyLibs.bat" />
     <None Include="..\Externals\dear_imgui\LICENSE" />
     <None Include="..\Externals\dear_imgui\README.md" />
     <None Include="..\Externals\GLM\glm\detail\func_common.inl" />
@@ -1403,12 +1401,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1477,12 +1475,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1521,12 +1519,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1559,13 +1557,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      $(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release
-      call $(SolutionDir)Tools\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1603,12 +1600,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>

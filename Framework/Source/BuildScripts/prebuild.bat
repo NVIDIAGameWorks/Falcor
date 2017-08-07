@@ -7,20 +7,20 @@ rem %4 -> Platform Short Name.
 rem %5 -> Configuration.
 
 rem Echo Directory Paths and Backend for Falcor.
-echo "Solution Directory Path:"
-echo %1
+rem echo "Solution Directory Path:"
+rem echo %1
 
-echo "Project Directory Path:"
-echo %2
+rem echo "Project Directory Path:"
+rem echo %2
 
-echo "Platform Name:"
-echo %3
+rem echo "Platform Name:"
+rem echo %3
 
-echo "Platform Short Name:"
-echo %4
+rem echo "Platform Short Name:"
+rem echo %4
 
-echo "Configuration:"
-echo %5
+rem echo "Configuration:"
+rem echo %5
 
 rem Call Update Dependencies - Runs packman.
 call %1\update_dependencies.bat 
@@ -35,12 +35,9 @@ if /I "%5"=="ReleaseD3D12" set falcor_backend=FALCOR_D3D12
 if /I "%5"=="DebugVK" set falcor_backend=FALCOR_VK
 if /I "%5"=="ReleaseVK" set falcor_backend=FALCOR_VK
 
-echo %2
-echo %1\.\framework\source\\..\
-
 rem Change the Props File to Align with the Backend.
 rem This also changes the FALCOR_PROJECT_DIR
-start /wait /b %1\Tools\PatchFalcorProps\PatchFalcorPropertySheet.exe %1\Falcor.sln %2\Falcor.props %falcor_backend%
+start /wait /b %2BuildScripts\PatchFalcorProps\PatchFalcorPropertySheet.exe %1\Falcor.sln %2\Falcor.props %falcor_backend%
 
 
 rem Commented out.

@@ -1814,8 +1814,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\CopyLibs.bat" />
-    <None Include="..\CopyData.bat" />
     <None Include="..\Externals\dear_imgui\LICENSE">
       <Filter>Externals\dear_imgui</Filter>
     </None>

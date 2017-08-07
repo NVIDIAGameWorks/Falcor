@@ -24,5 +24,5 @@ if /I "%5"=="ReleaseD3D12" set outdirtype=Release
 if /I "%5"=="ReleaseVK" set outdirtype=Release
 
 
-call MoveData.bat %1 %2 %3 %4 %5
+call %2\BuildScripts\movedata.bat %1 %2 %3 %4 %5
 
