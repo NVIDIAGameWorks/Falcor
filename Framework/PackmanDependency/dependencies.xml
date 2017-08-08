@@ -1,0 +1,14 @@
+<project toolsVersion="4.0" packageSource="s3">
+    <platform name="win">
+        <dependency name="openvr" version="1.0.8" linkPath="../Externals/OpenVR"/>
+        <dependency name="assimp" version="3.3.0" linkPath="../Externals/ASSIMP"/>
+        <dependency name="dear_imgui" version="1.50.wip" linkPath="../Externals/dear_imgui"/>
+        <dependency name="glm" version="0.9.8.4" linkPath="../Externals/GLM"/>
+        <dependency name="ffmpeg" version="3.1.4" linkPath="../Externals/FFMPEG"/>
+        <dependency name="freeimage" version="3.17.0" linkPath="../Externals/FreeImage"/>
+        <dependency name="vulkansdk" version="1.0.51.0" linkPath="../Externals/VulkanSDK"/>
+        <dependency name="rapidjson" version="0.1" linkPath="../Externals/RapidJson"/>
+        <dependency name="slang" version="0.7.8" linkPath="../Externals/Slang"/>
+        <dependency name="falcor_media" version="1.0" linkPath="../../Media"/>
+    </platform>
+</project>

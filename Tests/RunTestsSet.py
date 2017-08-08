@@ -71,10 +71,8 @@ def prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
 def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
 
     # Prep the Tests Set - Build the Solution.
-    # if prepTestsSet(directory, solutionfile, configuration, jsonfilepath) == 0:
-    #    return 0
-    #else:
-    #    return None
+    # if prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath) != 0:
+        # return None
 
 
     try:
@@ -85,15 +83,16 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
             try:
                 jsondata = json.load(jsonfile)
 
-                pp = pprint.PrettyPrinter(indent=4)
-                pp.pprint(jsondata)
+                # pp = pprint.PrettyPrinter(indent=4)
+                # pp.pprint(jsondata)
 
                 # Get the absolute path.
                 absolutepath = os.path.abspath(directorypath + 'Bin\\x64\\Release\\')
-
-                # 
+                
+                # Iterate over the Tests.
                 for currentTest in jsondata['Tests']:
                     
+                    # Check if the test is enabled.
                     if(currentTest["Enabled"] != "True"):
                         continue
 

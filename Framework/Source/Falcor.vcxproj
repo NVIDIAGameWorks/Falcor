@@ -1401,12 +1401,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1436,12 +1436,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(SolutionDir)Tools\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1475,12 +1475,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1519,12 +1519,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1557,12 +1557,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>
@@ -1600,12 +1600,12 @@
     </Link>
     <PostBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\postbuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PostBuildEvent>
     <PreBuildEvent>
       <Command>
-      call $(ProjectDir)\BuildScripts\prebuild.bat $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration)
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
       </Command>
     </PreBuildEvent>
     <CustomBuildStep>

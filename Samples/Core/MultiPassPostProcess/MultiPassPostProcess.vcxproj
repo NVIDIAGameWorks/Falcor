@@ -95,7 +95,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>"$(OutDir)\MoveProjectData.bat" "$(ProjectDir)" "$(OutDir)"</Command>
+      <Command>"$(OutDir)\moveprojectdata.bat" "$(ProjectDir)" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

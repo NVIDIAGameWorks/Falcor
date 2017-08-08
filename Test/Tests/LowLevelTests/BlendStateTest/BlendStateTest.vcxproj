@@ -82,7 +82,7 @@
       <SDLCheck>true</SDLCheck>
     </ClCompile>
     <PostBuildEvent>
-      <Command>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\CopyData.bat $(ProjectDir) $(OutDir)</Command>
+      <Command>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\moveprojectdata.bat $(ProjectDir) $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -98,7 +98,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\CopyData.bat $(ProjectDir) $(OutDir)</Command>
+      <Command>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\moveprojectdata.bat $(ProjectDir) $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
