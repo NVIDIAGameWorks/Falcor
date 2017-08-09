@@ -125,6 +125,44 @@ namespace Falcor
         std::vector<TimedTask> mTimedTestTasks;
         std::vector<TimedTask>::iterator mCurrentTimeTest;
 
+
+
+        //  A TestTask
+        struct TestTask 
+        {
+            //  Construct a new Task, with the appropriate Task Type and Trigger Type.
+            TestTask(TaskType newTaskType) : mTaskType(newTaskType) {};
+
+            //  
+            virtual void executeTask() = 0;
+
+            //  The Task Type.
+            TaskType mTaskType;
+        };
+
+        //  Frame-Based Task.
+        struct FrameTask : public TestTask
+        {
+            FrameTask(TaskType newTaskType) : TestTask(newTaskType) {};
+
+            virtual void executeTask() = 0;
+
+            TriggerType mTriggerType = TriggerType::Frame;
+
+        };
+
+        //  Time-Based Task.
+        struct TimeTask : public TestTask
+        {
+            TimeTask(TaskType newTaskType) : TestTask(newTaskType) {};
+
+            virtual void executeTask() = 0;
+
+            TriggerType mTriggerType = TriggerType::Time;
+        };
+
+
+
         /** Outputs xml test results file
         */
         void outputXML();

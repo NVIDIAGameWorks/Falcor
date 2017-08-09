@@ -13,13 +13,16 @@ import Helpers as helpers
 
 # Default Clone Repositories.
 gDefaultCloneRepository = 'https://github.com/NVIDIAGameworks/Falcor.git';
+
+# Default Clone Branch,
 gDefaultCloneBranch = 'master';
 
 
-# Error if we failed to clean or make the correct repository.
+# Error if we failed to clean or make the correct directory.
 class CloneRepoCleanOrMakeError(Exception):
     pass
 
+# Error if we failed to clone the repository.
 class CloneRepoCloneError(Exception):
     pass
 

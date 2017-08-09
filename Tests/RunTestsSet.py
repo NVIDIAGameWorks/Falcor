@@ -68,12 +68,12 @@ def prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
 
 
 # Parse the Specified Tests Set
-def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
+def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, nobuild):
 
     # Prep the Tests Set - Build the Solution.
-    # if prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath) != 0:
-        # return None
-
+    if not nobuild:
+        if prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath) != 0:
+            return None
 
     try:
         # Try and open the json file.
@@ -156,7 +156,7 @@ def main():
     args = parser.parse_args()
 
     # Parse the Test Collection.
-    return runTestsSet(args.directory, args.solution, args.configuration, args.testsSet)
+    return runTestsSet(args.directory, args.solution, args.configuration, args.testsSet, args.nobuild)
 
 
 if __name__ == '__main__':
