@@ -127,49 +127,181 @@ namespace Falcor
 
 
 
+
+        //
+        enum class TaskRunPoint
+        {
+            FrameBegin,
+            FrameEnd
+        };
+
+
         //  A TestTask
         struct TestTask 
         {
             //  Construct a new Task, with the appropriate Task Type and Trigger Type.
             TestTask(TaskType newTaskType) : mTaskType(newTaskType) {};
 
-            //  
-            virtual void executeTask() = 0;
+            //  Execute the Task.
+            virtual void executeTask(SampleTest * currentSampleTest) = 0;
 
             //  The Task Type.
             TaskType mTaskType;
         };
 
         //  Frame-Based Task.
-        struct FrameTask : public TestTask
+        struct FrameTask
         {
-            FrameTask(TaskType newTaskType) : TestTask(newTaskType) {};
+                //  Construct the Frame Task, with the appropriate Task Type and the Frame Trigger.
+            FrameTask(uint32_t onFrameTrigger, TaskRunPoint newTaskRunPoint, std::shared_ptr<TestTask> newTestTask) : mOnFrameTrigger(onFrameTrigger), mTaskRunPoint(newTaskRunPoint), mTestTask(newTestTask) {};
 
-            virtual void executeTask() = 0;
+            //  Execute the Task.
+            virtual void executeTask(SampleTest * sampleTest)
+            {
+                //  
+                if (sampleTest->getFrameID() == mOnFrameTrigger)
+                {
+                    if (mTestTask != nullptr)
+                    {
+                        mTestTask->executeTask(sampleTest);
+                    }
+                }
+            }
 
+            //  Default Frame Trigger Type.
             TriggerType mTriggerType = TriggerType::Frame;
 
+            //   On Frame Trigger.
+            uint32_t mOnFrameTrigger;
+
+            //  The Task Run Point
+            TaskRunPoint mTaskRunPoint;
+
+            //  Test Task to Execute.
+            std::shared_ptr<TestTask> mTestTask = nullptr;
         };
 
         //  Time-Based Task.
-        struct TimeTask : public TestTask
+        struct TimeTask
         {
-            TimeTask(TaskType newTaskType) : TestTask(newTaskType) {};
+            //  Construct the Frame Task, with the appropriate Task Type and the Time Trigger.
+            TimeTask(float newTimeTrigger, TaskRunPoint newTaskRunPoint, std::shared_ptr<TestTask> newTestTask) : mTimeTrigger(newTimeTrigger), mTaskRunPoint(newTaskRunPoint), mTestTask(newTestTask) {};
 
-            virtual void executeTask() = 0;
+            //  Execute the Task.
+            virtual void executeTask(SampleTest * sampleTest)
+            {
+                //  
+                if (sampleTest->mCurrentTime >= mTimeTrigger)
+                {
+                    if (mTestTask != nullptr)
+                    {
+                        mTestTask->executeTask(sampleTest);
+                    }
+                }
+            }
 
+            //  Default Time Trigger Type.
             TriggerType mTriggerType = TriggerType::Time;
+
+            //   On Time Trigger.
+            float mTimeTrigger;
+
+            //  The Task Run Point
+            TaskRunPoint mTaskRunPoint;
+
+            //  Test Task to Execute.
+            std::shared_ptr<TestTask> mTestTask = nullptr;
+
         };
 
+
+        //  Frame Ranged Tasks.
+        struct FrameRangesTask
+        {
+            std::vector<std::shared_ptr<FrameTask>> mFrameTasks;
+        };
+
+
+        //  Time Ranged Tasks.
+        struct TimeRangesTask
+        {
+            std::vector<std::shared_ptr<TimeTask>> mTimeTasks;
+        };
+        
+
+        //  Memory Check Task.
+        struct MemoryCheckTask : public TestTask
+        {
+            //  
+            MemoryCheckTask() : TestTask(TaskType::MemoryCheck) {};
+            
+            //  
+            virtual void executeTask(SampleTest * currentSampleTest) {};
+        };
+
+        //  Performance Check Task.
+        struct PerformanceCheckTask : public TestTask
+        {
+            //  
+            PerformanceCheckTask() : TestTask(TaskType::MeasureFps) {};
+
+            //  
+            virtual void executeTask(SampleTest * currentSampleTest) {};
+        };
+
+        struct ScreenCaptureTask : public TestTask
+        {
+            //  
+            ScreenCaptureTask() : TestTask(TaskType::ScreenCapture) {};
+
+            //  
+            virtual void executeTask(SampleTest * currentSampleTest) {};
+        };
+    
+
+        //  Load Time Task.
+        struct LoadTimeTask : public TestTask
+        {
+            //
+            LoadTimeTask() : TestTask(TaskType::LoadTime) {};
+
+            //  
+            virtual void executeTask(SampleTest * currentSampleTest) {};
+
+        };
+
+        //  Shutdown Task.
+        struct ShutdownTask : public TestTask
+        {
+            //  
+            ShutdownTask() : TestTask(TaskType::Shutdown) {};
+
+            //
+            virtual void executeTask(SampleTest * currentSampleTest) {};
+        };
+
+
+
+        //  The Time Tasks.
+        std::vector<std::shared_ptr<TimeTask>> mTimeTasks;
+        
+        //  The Frame Tasks.
+        std::vector<std::shared_ptr<FrameTask>> mFrameTasks;
 
 
         /** Outputs xml test results file
         */
         void outputXML();
 
+        //  Initialize the Tests.
+        void initializeTests();
+        void initializeFrameTests();
+        void initializeTimeTests();
+
         /** Initializes tests that start based on frame number
         */
         void initFrameTests();
+
 
         /** Initializes tests that start based on time
         */
@@ -217,6 +349,7 @@ namespace Falcor
         /** Capture the Memory Snapshot.
         */
         void captureMemory(uint64_t frameCount, float currentTime, bool frameTest = true, bool endRange = false);
+
 
     };
 }

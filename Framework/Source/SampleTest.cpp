@@ -39,6 +39,7 @@ namespace Falcor
     {
         if (mArgList.argExists("test"))
         {
+            initializeTests();
             initFrameTests();
             initTimeTests();
             onInitializeTesting();
@@ -47,6 +48,24 @@ namespace Falcor
 
     void SampleTest::beginTestFrame()
     {   
+
+        //  Check for a Frame Trigger.
+        uint32_t currentFrameCount = frameRate().getFrameCount();
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            mFrameTasks[i]->executeTask(this);
+        }
+
+        //  Check for a Time Trigger.
+        for (uint32_t i = 0; i < mTimeTasks.size(); i++)
+        {
+            mTimeTasks[i]->executeTask(this);
+        }
+
+
+
+
+
         if (!hasTests()) return;
 
         uint32_t frameId = frameRate().getFrameCount();
@@ -195,6 +214,134 @@ namespace Falcor
             of.close();
         }
     }
+
+
+    //  Initialize the Tests.
+    void SampleTest::initializeTests()
+    {
+        initializeFrameTests();
+        initializeTimeTests();
+    }
+
+    //  Initialize Frame Tests.
+    void SampleTest::initializeFrameTests()
+    {
+
+        //  
+        //  Check for a Load Time.
+        if (mArgList.argExists("loadtime"))
+        {
+            std::shared_ptr<LoadTimeTask> loadTimeTask = std::make_shared<LoadTimeTask>();
+            std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(2, TaskRunPoint::FrameBegin, loadTimeTask);
+            mFrameTasks.push_back(frameTask);
+        }
+        
+
+        //
+        //  Check for a Shutdown Frame.
+        if (mArgList.argExists("shutdown"))
+        {
+            std::vector<ArgList::Arg> shutdownFrame = mArgList.getValues("shutdown");
+            if (!shutdownFrame.empty())
+            {
+                uint32_t frameTrigger = shutdownFrame[0].asUint();
+                std::shared_ptr<ShutdownTask> shutdownTask = std::make_shared<ShutdownTask>();
+                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(frameTrigger, TaskRunPoint::FrameEnd, shutdownTask);
+                mFrameTasks.push_back(frameTask);
+            }
+        }
+        
+
+        //  
+        //  Check for a Screenshot Frame.
+        if (mArgList.argExists("ssframes"))
+        {
+            //  Screenshot Frames
+            std::vector<ArgList::Arg> ssFrames = mArgList.getValues("ssframes");
+            for (uint32_t i = 0; i < ssFrames.size(); ++i)
+            {
+                uint32_t frameTrigger = ssFrames[i].asUint();
+                std::shared_ptr<ScreenCaptureTask> screenCaptureTask = std::make_shared<ScreenCaptureTask>();
+                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(frameTrigger, TaskRunPoint::FrameEnd, screenCaptureTask);
+
+            }
+        }
+
+
+        //  
+        //  Check for Performance Frame Ranges. 
+        if (mArgList.argExists("perfframes"))
+        {
+            //  Performance Check Frames.
+            std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perfframes");
+
+        }
+        
+        //  
+        //  Check for Memory Frame Ranges.
+        if (mArgList.argExists("memframes"))
+        {
+            //  Memory Check Frames.
+            std::vector<ArgList::Arg> memframeRanges = mArgList.getValues("memframes");
+
+        }
+
+    }
+
+    //  Initialize Time Tests.
+    void SampleTest::initializeTimeTests()
+    {
+        //
+        //  Check for a Shutdown Time.
+        if (mArgList.argExists("shutdowntime"))
+        {
+            std::vector<ArgList::Arg> shutdowntime = mArgList.getValues("shutdowntime");
+            if (!shutdowntime.empty())
+            {
+                uint32_t timeTrigger = shutdowntime[0].asFloat();
+                std::shared_ptr<ShutdownTask> shutdownTask = std::make_shared<ShutdownTask>();
+                std::shared_ptr<TimeTask> timeTask = std::make_shared<TimeTask>(timeTrigger, TaskRunPoint::FrameEnd, shutdownTask);
+                mTimeTasks.push_back(timeTask);
+            }
+        }
+
+
+        //  
+        //  Check for a Screenshot Frame.
+        if (mArgList.argExists("sstimes"))
+        {
+            //  Screenshot Frames
+            std::vector<ArgList::Arg> ssFrames = mArgList.getValues("sstimes");
+            for (uint32_t i = 0; i < ssFrames.size(); ++i)
+            {
+                uint32_t timeTrigger = ssFrames[i].asFloat();
+                std::shared_ptr<ScreenCaptureTask> screenCaptureTask = std::make_shared<ScreenCaptureTask>();
+                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(timeTrigger, TaskRunPoint::FrameEnd, screenCaptureTask);
+
+            }
+        }
+
+
+        //  
+        //  Check for Performance Time Ranges. 
+        if (mArgList.argExists("perftimes"))
+        {
+            //  Performance Check Frames.
+            std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perftimes");
+
+        }
+
+        //  
+        //  Check for Memory Time Ranges.
+        if (mArgList.argExists("memtimes"))
+        {
+            //  Memory Check Frames.
+            std::vector<ArgList::Arg> memframeRanges = mArgList.getValues("memtimes");
+
+        }
+    }
+
+
 
     void SampleTest::initFrameTests()
     {
@@ -637,5 +784,4 @@ namespace Falcor
             mMemoryTimeCheckRange.active = false;
         }
     }
-
 }
