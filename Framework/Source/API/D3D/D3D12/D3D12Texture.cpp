@@ -106,7 +106,18 @@ namespace Falcor
         desc.Width = align_to(getFormatWidthCompressionRatio(mFormat), mWidth);
         desc.Height = align_to(getFormatHeightCompressionRatio(mFormat), mHeight);
         desc.Flags = getD3D12ResourceFlags(mBindFlags);
-        desc.DepthOrArraySize = (mType == Texture::Type::TextureCube) ? mArraySize * 6 : mArraySize;
+        if (mType == Texture::Type::TextureCube)
+        {
+            desc.DepthOrArraySize = mArraySize * 6;
+        }
+        else if (mType == Texture::Type::Texture3D)
+        {
+            desc.DepthOrArraySize = mDepth;
+        }
+        else
+        {
+            desc.DepthOrArraySize = mArraySize;
+        }
         desc.SampleDesc.Count = mSampleCount;
         desc.SampleDesc.Quality = 0;
         desc.Dimension = getResourceDimension(mType);
