@@ -26,6 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "Externals/RapidJson/include/rapidjson/document.h"
+#include "Externals/RapidJson/include/rapidjson/stringbuffer.h"
+#include "Externals/RapidJson/include/rapidjson/prettywriter.h"
 #include "Falcor.h"
 
 namespace Falcor
@@ -126,16 +129,6 @@ namespace Falcor
         std::vector<TimedTask>::iterator mCurrentTimeTest;
 
 
-
-
-        //
-        enum class TaskRunPoint
-        {
-            FrameBegin,
-            FrameEnd
-        };
-
-
         //  A TestTask
         struct TestTask 
         {
@@ -143,7 +136,8 @@ namespace Falcor
             TestTask(TaskType newTaskType) : mTaskType(newTaskType) {};
 
             //  Execute the Task.
-            virtual void executeTask(SampleTest * currentSampleTest) = 0;
+            virtual void onFrameBegin(SampleTest * currentSampleTest) = 0;
+            virtual void onFrameEnd(SampleTest * currentSampleTest) = 0;
 
             //  The Task Type.
             TaskType mTaskType;
@@ -153,17 +147,31 @@ namespace Falcor
         struct FrameTask
         {
                 //  Construct the Frame Task, with the appropriate Task Type and the Frame Trigger.
-            FrameTask(uint32_t onFrameTrigger, TaskRunPoint newTaskRunPoint, std::shared_ptr<TestTask> newTestTask) : mOnFrameTrigger(onFrameTrigger), mTaskRunPoint(newTaskRunPoint), mTestTask(newTestTask) {};
+            FrameTask(uint32_t onFrameTrigger, std::shared_ptr<TestTask> newTestTask) 
+                : mOnFrameTrigger(onFrameTrigger), mTestTask(newTestTask) {};
 
-            //  Execute the Task.
-            virtual void executeTask(SampleTest * sampleTest)
+            //  Execute the Task at Frame Begin.
+            virtual void onFrameBegin(SampleTest * sampleTest)
             {
                 //  
                 if (sampleTest->getFrameID() == mOnFrameTrigger)
                 {
                     if (mTestTask != nullptr)
                     {
-                        mTestTask->executeTask(sampleTest);
+                        mTestTask->onFrameBegin(sampleTest);
+                    }
+                }
+            }
+
+            //  Execute the Task at Frame End.
+            virtual void onFrameEnd(SampleTest * sampleTest)
+            {
+                //  
+                if (sampleTest->getFrameID() == mOnFrameTrigger)
+                {
+                    if (mTestTask != nullptr)
+                    {
+                        mTestTask->onFrameEnd(sampleTest);
                     }
                 }
             }
@@ -174,9 +182,6 @@ namespace Falcor
             //   On Frame Trigger.
             uint32_t mOnFrameTrigger;
 
-            //  The Task Run Point
-            TaskRunPoint mTaskRunPoint;
-
             //  Test Task to Execute.
             std::shared_ptr<TestTask> mTestTask = nullptr;
         };
@@ -185,17 +190,31 @@ namespace Falcor
         struct TimeTask
         {
             //  Construct the Frame Task, with the appropriate Task Type and the Time Trigger.
-            TimeTask(float newTimeTrigger, TaskRunPoint newTaskRunPoint, std::shared_ptr<TestTask> newTestTask) : mTimeTrigger(newTimeTrigger), mTaskRunPoint(newTaskRunPoint), mTestTask(newTestTask) {};
+            TimeTask(float newTimeTrigger, std::shared_ptr<TestTask> newTestTask) 
+                : mTimeTrigger(newTimeTrigger), mTestTask(newTestTask) {};
 
-            //  Execute the Task.
-            virtual void executeTask(SampleTest * sampleTest)
+            //  Execute the Task at Frame Begin.
+            virtual void onFrameBegin(SampleTest * sampleTest)
             {
                 //  
                 if (sampleTest->mCurrentTime >= mTimeTrigger)
                 {
                     if (mTestTask != nullptr)
                     {
-                        mTestTask->executeTask(sampleTest);
+                        mTestTask->onFrameBegin(sampleTest);
+                    }
+                }
+            }
+
+            //  Execute the Task at Frame End.
+            virtual void onFrameEnd(SampleTest * sampleTest)
+            {
+                //  
+                if (sampleTest->mCurrentTime >= mTimeTrigger)
+                {
+                    if (mTestTask != nullptr)
+                    {
+                        mTestTask->onFrameEnd(sampleTest);
                     }
                 }
             }
@@ -206,78 +225,303 @@ namespace Falcor
             //   On Time Trigger.
             float mTimeTrigger;
 
-            //  The Task Run Point
-            TaskRunPoint mTaskRunPoint;
-
             //  Test Task to Execute.
             std::shared_ptr<TestTask> mTestTask = nullptr;
 
         };
 
 
-        //  Frame Ranged Tasks.
-        struct FrameRangesTask
+        //
+        //  Frame Range Task.
+        struct FrameRangeTask
         {
-            std::vector<std::shared_ptr<FrameTask>> mFrameTasks;
+            FrameRangeTask(uint32_t newFrameBeginTrigger, uint32_t newFrameEndTrigger, std::shared_ptr<TestTask> newBeginTask, std::shared_ptr<TestTask> newEndTask) 
+                : mFrameBeginTrigger(newFrameBeginTrigger), mFrameEndTrigger(newFrameEndTrigger), mBeginTask(newBeginTask), mEndTask(newEndTask){};
+
+            //  Execute the Task at Frame Begin.
+            virtual void onFrameBegin(SampleTest * sampleTest)
+            {
+                if (!isRangeComplete && !isRangeActive && sampleTest->mCurrentTime >= mFrameBeginTrigger)
+                {
+                    isRangeActive = true;
+                    mBeginTask->onFrameBegin(sampleTest);
+                }
+
+                if (!isRangeComplete && sampleTest->mCurrentTime <= mFrameEndTrigger)
+                {
+                    mEndTask->onFrameBegin(sampleTest);
+                }
+            }
+
+            //  Execute the Task at Frame Begin.
+            virtual void onFrameEnd(SampleTest * sampleTest)
+            {
+                if (!isRangeComplete && isRangeActive && sampleTest->mCurrentTime >= mFrameBeginTrigger)
+                {
+                    mBeginTask->onFrameEnd(sampleTest);
+                }
+
+                if (!isRangeComplete && isRangeActive && sampleTest->mCurrentTime <= mFrameEndTrigger)
+                {
+                    isRangeActive = false;
+                    isRangeComplete = true;
+                    mEndTask->onFrameEnd(sampleTest);
+                }
+            }
+
+
+            //  Begin and End Trigger Frames.
+            uint32_t mFrameBeginTrigger = 0;
+            uint32_t mFrameEndTrigger = 0;
+
+            //  Begin and End Tasks.
+            std::shared_ptr<TestTask> mBeginTask;
+            std::shared_ptr<TestTask> mEndTask;
+
+            //  Range Delimiters.
+            bool isRangeActive = false;
+            bool isRangeComplete = false;
         };
 
 
-        //  Time Ranged Tasks.
-        struct TimeRangesTask
+        //
+        //  Time Range Task.
+        struct TimeRangeTask
         {
-            std::vector<std::shared_ptr<TimeTask>> mTimeTasks;
+            TimeRangeTask(float newTimeBeginTrigger, float newTimeEndTrigger, std::shared_ptr<TestTask> newBeginTask, std::shared_ptr<TestTask> newEndTask)
+                : mTimeBeginTrigger(newTimeBeginTrigger), mTimeEndTrigger(newTimeEndTrigger), mBeginTask(newBeginTask), mEndTask(newEndTask) {};
+
+
+            //  Execute the Task at Frame Begin.
+            virtual void onFrameBegin(SampleTest * sampleTest)
+            {
+                if (!isRangeComplete && !isRangeActive && sampleTest->mCurrentTime >= mTimeBeginTrigger)
+                {
+                    isRangeActive = true;
+                    mBeginTask->onFrameBegin(sampleTest);
+                }
+
+                if (!isRangeComplete && sampleTest->mCurrentTime <= mTimeEndTrigger)
+                {
+                    mEndTask->onFrameBegin(sampleTest);
+                }
+            }
+
+            //  Execute the Task at Frame Begin.
+            virtual void onFrameEnd(SampleTest * sampleTest)
+            {
+                if (!isRangeComplete && isRangeActive && sampleTest->mCurrentTime >= mTimeBeginTrigger)
+                {
+                    mBeginTask->onFrameEnd(sampleTest);
+                }
+
+                if (!isRangeComplete && isRangeActive && sampleTest->mCurrentTime <= mTimeEndTrigger)
+                {
+                    isRangeActive = false;
+                    isRangeComplete = true;
+                    mEndTask->onFrameEnd(sampleTest);
+                }
+            }
+            
+            //  Begin and End Trigger Times.
+            float mTimeBeginTrigger = 0;
+            float mTimeEndTrigger = 0;
+
+            //  Begin and End Tasks.
+            std::shared_ptr<TestTask> mBeginTask;
+            std::shared_ptr<TestTask> mEndTask;
+
+            //  Range Delimiters.
+            bool isRangeActive = false;
+            bool isRangeComplete = false;
         };
-        
+
+        //  
+        struct RecurrentFrameRangeTask
+        {
+            RecurrentFrameRangeTask(uint32_t newFrameBeginTrigger, uint32_t newFrameEndTrigger, std::shared_ptr<TestTask> newRecurrentTask) 
+                : mFrameBeginTrigger(newFrameBeginTrigger), mFrameEndTrigger(newFrameEndTrigger), mRecurrentTask(newRecurrentTask) {};
+
+            //  
+            virtual void onFrameBegin(SampleTest * sampleTest)
+            {
+                if (sampleTest->getFrameID() >= mFrameBeginTrigger && sampleTest->getFrameID() <= mFrameEndTrigger)
+                {
+                    mRecurrentTask->onFrameBegin(sampleTest);
+                }
+            }
+
+            //  
+            virtual void onFrameEnd(SampleTest * sampleTest)
+            {
+                if (sampleTest->getFrameID() >= mFrameBeginTrigger && sampleTest->getFrameID() <= mFrameEndTrigger)
+                {
+                    mRecurrentTask->onFrameEnd(sampleTest);
+                }
+            }
+
+            uint32_t mFrameBeginTrigger = 0;
+
+            uint32_t mFrameEndTrigger = 0;
+
+            std::shared_ptr<TestTask> mRecurrentTask;
+        };
+
+        //
+        struct RecurrentTimeRangeTask
+        {
+            RecurrentTimeRangeTask(float newTimeBeginTrigger, float newTimeEndTrigger, std::shared_ptr<TestTask> newRecurrentTask)
+                : mTimeBeginTrigger(newTimeBeginTrigger), mTimeEndTrigger(newTimeEndTrigger), mRecurrentTask(newRecurrentTask) {};
+
+            //  
+            virtual void onFrameBegin(SampleTest * sampleTest)
+            {
+                if (sampleTest->mCurrentTime >= mTimeBeginTrigger && sampleTest->mCurrentTime <= mTimeEndTrigger)
+                {
+                    mRecurrentTask->onFrameBegin(sampleTest);
+                }
+            }
+            
+            //  
+            virtual void onFrameEnd(SampleTest * sampleTest)
+            {
+                if (sampleTest->mCurrentTime >= mTimeBeginTrigger && sampleTest->mCurrentTime <= mTimeEndTrigger)
+                {
+                    mRecurrentTask->onFrameEnd(sampleTest);
+                }
+            }
+              
+            float mTimeBeginTrigger = 0;
+
+            float mTimeEndTrigger = 0;
+
+            std::shared_ptr<TestTask> mRecurrentTask;
+        };
 
         //  Memory Check Task.
         struct MemoryCheckTask : public TestTask
         {
             //  
-            MemoryCheckTask() : TestTask(TaskType::MemoryCheck) {};
+            MemoryCheckTask() 
+                : TestTask(TaskType::MemoryCheck) {};
             
             //  
-            virtual void executeTask(SampleTest * currentSampleTest) {};
+            virtual void onFrameBegin(SampleTest * currentSampleTest)
+            {
+
+            };
+
+            //  
+            virtual void onFrameEnd(SampleTest * currentSampleTest)
+            {
+                //  Get the Total Virtual Memory.
+                uint64_t mTotalVirtualMemory = getTotalVirtualMemory();
+
+                //  Get the Total Used Virtual Memory.
+                uint64_t mTotalUsedVirtualMemory = getUsedVirtualMemory();
+
+                //  Get the Currently Used Virtual Memory.
+                uint64_t mCurrentlyUsedVirtualMemory = getProcessUsedVirtualMemory();
+            };
+            
+            //  Total Virtual Memory.            
+            uint64_t mTotalVirtualMemory;
+
+            //  Total Used Virtual Memory.
+            uint64_t mTotalUsedVirtualMemory;
+            
+            //  Currently Used Virtual Memory.
+            uint64_t mCurrentlyUsedVirtualMemory;
         };
+        
+
 
         //  Performance Check Task.
         struct PerformanceCheckTask : public TestTask
         {
             //  
-            PerformanceCheckTask() : TestTask(TaskType::MeasureFps) {};
+            PerformanceCheckTask() 
+                : TestTask(TaskType::MeasureFps) {};
 
             //  
-            virtual void executeTask(SampleTest * currentSampleTest) {};
+            virtual void onFrameBegin(SampleTest * currentSampleTest)
+            {
+
+            };
+
+            //  
+            virtual void onFrameEnd(SampleTest * currentSampleTest)
+            {
+
+            };
         };
+            
+
 
         struct ScreenCaptureTask : public TestTask
         {
             //  
-            ScreenCaptureTask() : TestTask(TaskType::ScreenCapture) {};
+            ScreenCaptureTask(std::string newScreenCaptureFile) 
+                : TestTask(TaskType::ScreenCapture), mScreenCaptureFile(newScreenCaptureFile) {};
 
             //  
-            virtual void executeTask(SampleTest * currentSampleTest) {};
+            virtual void onFrameBegin(SampleTest * currentSampleTest)
+            {
+                currentSampleTest->toggleText(false);
+            };
+
+            //  
+            virtual void onFrameEnd(SampleTest * currentSampleTest)
+            {
+                currentSampleTest->captureScreen(mScreenCaptureFile);
+                currentSampleTest->toggleText(true);
+            };
+
+            std::string mScreenCaptureFile = "";
         };
     
 
         //  Load Time Task.
-        struct LoadTimeTask : public TestTask
+        struct LoadTimeCheckTask : public TestTask
         {
             //
-            LoadTimeTask() : TestTask(TaskType::LoadTime) {};
+            LoadTimeCheckTask() 
+                : TestTask(TaskType::LoadTime) {};
 
             //  
-            virtual void executeTask(SampleTest * currentSampleTest) {};
+            virtual void onFrameBegin(SampleTest * currentSampleTest)
+            {
+                mLoadTimeResult = currentSampleTest->frameRate().getLastFrameTime();
+            };
 
+            //  
+            virtual void onFrameEnd(SampleTest * currentSampleTest)
+            {
+            };
+
+            float mLoadTimeResult = 0.0;
         };
 
         //  Shutdown Task.
         struct ShutdownTask : public TestTask
         {
             //  
-            ShutdownTask() : TestTask(TaskType::Shutdown) {};
+            ShutdownTask() 
+                : TestTask(TaskType::Shutdown) {};
 
-            //
-            virtual void executeTask(SampleTest * currentSampleTest) {};
+            //  
+            virtual void onFrameBegin(SampleTest * currentSampleTest)
+            {
+
+            };
+
+            //  
+            virtual void onFrameEnd(SampleTest * currentSampleTest)
+            {
+                currentSampleTest->shutdownApp();
+                currentSampleTest->onTestShutdown();
+                currentSampleTest->writeJsonTestResults();
+            };
         };
 
 
@@ -288,10 +532,54 @@ namespace Falcor
         //  The Frame Tasks.
         std::vector<std::shared_ptr<FrameTask>> mFrameTasks;
 
+        //  The Frame Range Tasks.
+        std::vector<std::shared_ptr<FrameRangeTask>> mFrameRangeTasks;
+
+        //  The Time Range Tasks.
+        std::vector<std::shared_ptr<TimeRangeTask>> mTimeRangeTasks;
+
+        //  The Recurrent Range Tasks.
+        std::vector<std::shared_ptr<RecurrentFrameRangeTask>> mRecurrentFrameRangeTasks;
+
+        //  The Recurrent Time Tasks.
+        std::vector<std::shared_ptr<RecurrentFrameRangeTask>> mRecurrentTimeRangeTasks;
+
 
         /** Outputs xml test results file
         */
         void outputXML();
+
+        /*  Write JSON Literal.
+        */
+        template<typename T>
+        void writeJsonLiteral(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value);
+
+        /* Write JSON Array.
+        */
+        template<typename T>
+        void writeJsonArray(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value);
+
+        /* Write JSON Value.
+        */
+        void writeJsonValue(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, rapidjson::Value& value);
+
+        /* Write JSON String.
+        */
+        void writeJsonString(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const std::string& value);
+
+        /* Write JSON Bool.
+        */
+        void writeJsonBool(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, bool isValue);
+
+        /** Output Test Results.
+        */
+        void writeJsonTestResults();
+        void writeJsonTestResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+
+        void writeLoadTime(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writeMemoryRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writePerformanceRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writeScreenCaptureResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator); 
 
         //  Initialize the Tests.
         void initializeTests();
@@ -352,4 +640,6 @@ namespace Falcor
 
 
     };
+
+
 }

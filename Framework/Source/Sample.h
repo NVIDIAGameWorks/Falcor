@@ -177,6 +177,7 @@ namespace Falcor
         void initVideoCapture();
 
         void captureScreen();
+        void captureScreen(std::string captureScreenFile);
         void toggleText(bool enabled);
         uint32_t getFrameID() const { return mFrameRate.getFrameCount(); }
 

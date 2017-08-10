@@ -53,16 +53,14 @@ namespace Falcor
         uint32_t currentFrameCount = frameRate().getFrameCount();
         for (uint32_t i = 0; i < mFrameTasks.size(); i++)
         {
-            mFrameTasks[i]->executeTask(this);
+            mFrameTasks[i]->onFrameBegin(this);
         }
 
         //  Check for a Time Trigger.
         for (uint32_t i = 0; i < mTimeTasks.size(); i++)
         {
-            mTimeTasks[i]->executeTask(this);
+            mTimeTasks[i]->onFrameBegin(this);
         }
-
-
 
 
 
@@ -115,6 +113,21 @@ namespace Falcor
 
     void SampleTest::endTestFrame()
     {
+
+        //  Check for a Frame Trigger.
+        uint32_t currentFrameCount = frameRate().getFrameCount();
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            mFrameTasks[i]->onFrameEnd(this);
+        }
+
+        //  Check for a Time Trigger.
+        for (uint32_t i = 0; i < mTimeTasks.size(); i++)
+        {
+            mTimeTasks[i]->onFrameEnd(this);
+        }
+
+
         if (!hasTests()) return;
 
         //Begin frame checks against the test tasks and returns a trigger type based
@@ -133,6 +146,7 @@ namespace Falcor
 
     void SampleTest::outputXML()
     {
+
         //only output a file if there was actually testing
         if (hasTests())
         {
@@ -216,10 +230,194 @@ namespace Falcor
     }
 
 
+
+    //  Write the JSON Literal.
+    template<typename T>
+    void SampleTest::writeJsonLiteral(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value)
+    {
+        rapidjson::Value jkey;
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+        jval.AddMember(jkey, value, jallocator);
+    }
+
+    //  Write the JSON Array.
+    template<typename T>
+    void SampleTest::writeJsonArray(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value)
+    {
+        rapidjson::Value jkey;
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+        rapidjson::Value jvec(rapidjson::kArrayType);
+        for (int32_t i = 0; i < value.length(); i++)
+        {
+            jvec.PushBack(value[i], jallocator);
+        }
+
+        jval.AddMember(jkey, jvec, jallocator);
+    }
+
+
+    //  Write the JSON Value.
+    void SampleTest::writeJsonValue(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, rapidjson::Value& value)
+    {
+        rapidjson::Value jkey;
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+        jval.AddMember(jkey, value, jallocator);
+
+    }
+
+    //  Write the JSON String.
+    void SampleTest::writeJsonString(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const std::string& value)
+    {
+        rapidjson::Value jstring, jkey;
+        jstring.SetString(value.c_str(), (uint32_t)value.size(), jallocator);
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+
+        jval.AddMember(jkey, jstring, jallocator);
+
+    }
+
+    //  Write the JSON Bool.
+    void SampleTest::writeJsonBool(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, bool isValue)
+    {
+        rapidjson::Value jbool, jkey;
+        jbool.SetBool(isValue);
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+
+        jval.AddMember(jkey, jbool, jallocator);
+
+    }
+
+    //  Write the Test Results.
+    void SampleTest::writeJsonTestResults()
+    {
+        //  Create the Test Results.
+        rapidjson::Document jsonTestResults;
+        jsonTestResults.SetObject();
+
+        //  Get the json Value and the Allocator.
+        rapidjson::Value & jsonVal = jsonTestResults;
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
+
+        writeJsonLiteral(jsonVal, jsonAllocator, "Total Frame Tasks", mFrameTasks.size());
+        writeJsonLiteral(jsonVal, jsonAllocator, "Total Time Tasks", mTimeTasks.size());
+
+        //  Write the Json Test Results.
+        writeJsonTestResults(jsonVal, jsonAllocator);
+        
+        //  Get String Buffer for the json.
+        rapidjson::StringBuffer jsonStringBuffer;
+        
+        //  Get the PrettyWriter for the json.
+        rapidjson::PrettyWriter<rapidjson::StringBuffer> jsonWriter(jsonStringBuffer);
+        
+        //  Set the Indent.
+        jsonWriter.SetIndent(' ', 4);
+        
+        //  Use the jsonwriter.
+        jsonTestResults.Accept(jsonWriter);
+        
+        //  Construct the json string from the string buffer.
+        std::string jsonString(jsonStringBuffer.GetString(), jsonStringBuffer.GetSize());
+
+        // Write the json file.
+        std::string jsonFilename = "Results.json";
+        
+        //  
+        std::ofstream outputStream(jsonFilename.c_str());
+        if (outputStream.fail())
+        {
+            logError("Cannot write to " + jsonFilename + ".\n");
+        }
+        outputStream << jsonString;
+        outputStream.close();
+
+    }
+
+
+    //  Write the Json Test Results.
+    void SampleTest::writeJsonTestResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    {
+        writeLoadTime(jval, jallocator);
+        writeMemoryRangesResults(jval, jallocator);
+        writePerformanceRangesResults(jval, jallocator);
+        writeScreenCaptureResults(jval, jallocator);
+    }
+    
+    //  Write Load Time.
+    void SampleTest::writeLoadTime(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    {
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            if (mFrameTasks[i]->mTestTask->mTaskType == TaskType::LoadTime)
+            {
+                std::shared_ptr<LoadTimeCheckTask> loadTimeTask = std::dynamic_pointer_cast<LoadTimeCheckTask>(mFrameTasks[i]->mTestTask);
+                writeJsonLiteral(jval, jallocator, "Load Time", loadTimeTask->mLoadTimeResult);
+            }
+        }
+    }
+
+    //  Write the Memory Ranges Results.
+    void SampleTest::writeMemoryRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    {
+        //  
+        uint32_t currentcount = 0;
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            if (mFrameTasks[i]->mTestTask->mTaskType == TaskType::MemoryCheck)
+            {
+                currentcount++;
+            }
+        }
+        
+        writeJsonLiteral(jval, jallocator, "Memory Checks", currentcount);
+    }
+
+    //  Write the Performance Ranges Results.
+    void SampleTest::writePerformanceRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    {
+        //  
+        uint32_t currentcount = 0;
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            if (mFrameTasks[i]->mTestTask->mTaskType == TaskType::MeasureFps)
+            {
+                currentcount++;
+            }
+        }
+
+        writeJsonLiteral(jval, jallocator, "Performance Checks", currentcount);
+    }
+
+    //  Write the Screen Capture Results.
+    void SampleTest::writeScreenCaptureResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    {
+        //  
+        uint32_t currentcount = 0;
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            if (mFrameTasks[i]->mTestTask->mTaskType == TaskType::ScreenCapture)
+            {
+                currentcount++;
+            }
+        }
+
+        writeJsonLiteral(jval, jallocator, "Screen Capture", currentcount);
+    }
+
+
     //  Initialize the Tests.
     void SampleTest::initializeTests()
     {
+        //  Check for a directory to write to.
+        if (mArgList.argExists("workingdirectory"))
+        {
+            
+        }
+
+        //  Ready the Frame Based Tests.
         initializeFrameTests();
+
+        //  Ready the Time Based Tests.
         initializeTimeTests();
     }
 
@@ -231,8 +429,8 @@ namespace Falcor
         //  Check for a Load Time.
         if (mArgList.argExists("loadtime"))
         {
-            std::shared_ptr<LoadTimeTask> loadTimeTask = std::make_shared<LoadTimeTask>();
-            std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(2, TaskRunPoint::FrameBegin, loadTimeTask);
+            std::shared_ptr<LoadTimeCheckTask> loadTimeTask = std::make_shared<LoadTimeCheckTask>();
+            std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(2, loadTimeTask);
             mFrameTasks.push_back(frameTask);
         }
         
@@ -246,7 +444,7 @@ namespace Falcor
             {
                 uint32_t frameTrigger = shutdownFrame[0].asUint();
                 std::shared_ptr<ShutdownTask> shutdownTask = std::make_shared<ShutdownTask>();
-                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(frameTrigger, TaskRunPoint::FrameEnd, shutdownTask);
+                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(frameTrigger, shutdownTask);
                 mFrameTasks.push_back(frameTask);
             }
         }
@@ -261,9 +459,14 @@ namespace Falcor
             for (uint32_t i = 0; i < ssFrames.size(); ++i)
             {
                 uint32_t frameTrigger = ssFrames[i].asUint();
-                std::shared_ptr<ScreenCaptureTask> screenCaptureTask = std::make_shared<ScreenCaptureTask>();
-                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(frameTrigger, TaskRunPoint::FrameEnd, screenCaptureTask);
 
+                std::string exeName = getExecutableName();
+                std::string name = exeName.substr(0, exeName.size() - 4);
+
+                std::string ssname = name + "_" + "ssframes_" + std::to_string(i) + ".png";
+                std::shared_ptr<ScreenCaptureTask> screenCaptureTask = std::make_shared<ScreenCaptureTask>(ssname);
+                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(frameTrigger, screenCaptureTask);
+                mFrameTasks.push_back(frameTask);
             }
         }
 
@@ -274,7 +477,7 @@ namespace Falcor
         {
             //  Performance Check Frames.
             std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perfframes");
-
+            
         }
         
         //  
@@ -300,7 +503,7 @@ namespace Falcor
             {
                 uint32_t timeTrigger = shutdowntime[0].asFloat();
                 std::shared_ptr<ShutdownTask> shutdownTask = std::make_shared<ShutdownTask>();
-                std::shared_ptr<TimeTask> timeTask = std::make_shared<TimeTask>(timeTrigger, TaskRunPoint::FrameEnd, shutdownTask);
+                std::shared_ptr<TimeTask> timeTask = std::make_shared<TimeTask>(timeTrigger, shutdownTask);
                 mTimeTasks.push_back(timeTask);
             }
         }
@@ -314,10 +517,15 @@ namespace Falcor
             std::vector<ArgList::Arg> ssFrames = mArgList.getValues("sstimes");
             for (uint32_t i = 0; i < ssFrames.size(); ++i)
             {
-                uint32_t timeTrigger = ssFrames[i].asFloat();
-                std::shared_ptr<ScreenCaptureTask> screenCaptureTask = std::make_shared<ScreenCaptureTask>();
-                std::shared_ptr<FrameTask> frameTask = std::make_shared<FrameTask>(timeTrigger, TaskRunPoint::FrameEnd, screenCaptureTask);
+                float timeTrigger = ssFrames[i].asFloat();
 
+                std::string exeName = getExecutableName();
+                std::string name = exeName.substr(0, exeName.size() - 4);
+
+                std::string ssname = name + "_" + "sstimes_" + std::to_string(i) + ".png";
+                std::shared_ptr<ScreenCaptureTask> screenCaptureTask = std::make_shared<ScreenCaptureTask>(ssname);
+                std::shared_ptr<TimeTask> frameTask = std::make_shared<TimeTask>(timeTrigger, screenCaptureTask);
+                mTimeTasks.push_back(frameTask);
             }
         }
 
@@ -358,7 +566,7 @@ namespace Falcor
         {
             uint32_t startFame = shutdownFrame[0].asUint();
             Task newTask(startFame, startFame + 1, TaskType::Shutdown);
-            mTestTasks.push_back(newTask);
+            //  mTestTasks.push_back(newTask);
         }
 
         //  Memory Check Frames.
@@ -386,7 +594,7 @@ namespace Falcor
         {
             uint32_t startFrame = ssFrames[i].asUint();
             Task newTask(startFrame, startFrame + 1, TaskType::ScreenCapture);
-            mTestTasks.push_back(newTask);
+            //  mTestTasks.push_back(newTask);
         }
 
         //  fps capture frames
@@ -510,7 +718,7 @@ namespace Falcor
         {
             float shutdownTime = shutdownTimeArg[0].asFloat();
             TimedTask newTask(shutdownTime, shutdownTime + 1, TaskType::Shutdown);
-            mTimedTestTasks.push_back(newTask);
+            //  mTimedTestTasks.push_back(newTask);
         }
 
         //Sort and make sure no times overlap

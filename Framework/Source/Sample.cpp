@@ -348,6 +348,7 @@ namespace Falcor
         }
     }
 
+    //  
     void Sample::captureScreen()
     {
         std::string filename = getExecutableName();
@@ -366,6 +367,14 @@ namespace Falcor
             logError("Could not find available filename when capturing screen");
         }
         mCaptureScreen = false;
+    }
+
+    //  
+    void Sample::captureScreen(std::string captureScreenFile)
+    {
+            Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
+            pTexture->captureToFile(0, 0, captureScreenFile);
+            mCaptureScreen = false;
     }
 
     void Sample::initUI()
