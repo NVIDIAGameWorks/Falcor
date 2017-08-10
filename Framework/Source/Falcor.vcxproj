@@ -300,6 +300,7 @@
     <ClCompile Include="API\Resource.cpp" />
     <ClCompile Include="API\ResourceViews.cpp" />
     <ClCompile Include="API\Sampler.cpp" />
+    <ClCompile Include="API\Shader.cpp" />
     <ClCompile Include="API\StructuredBuffer.cpp" />
     <ClCompile Include="API\Texture.cpp" />
     <ClCompile Include="API\ConstantBuffer.cpp" />

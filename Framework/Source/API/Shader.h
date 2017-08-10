@@ -26,6 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+
+#include <future>
 #include <string>
 #include <unordered_set>
 
@@ -67,17 +69,13 @@ namespace Falcor
             \param[out] log This string will contain the error log message in case shader compilation failed
             \return If success, a new shader object, otherwise nullptr
         */
-        static SharedPtr create(const Blob& shaderBlob, ShaderType type, std::string const&  entryPointName, std::string& log)
-        {
-            SharedPtr pShader = SharedPtr(new Shader(type));
-            return pShader->init(shaderBlob, entryPointName, log) ? pShader : nullptr;
-        }
+        static SharedPtr create(const Blob& shaderBlob, ShaderType type, std::string const&  entryPointName, std::string& log);
 
         virtual ~Shader();
 
         /** Get the API handle.
         */
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        ApiHandle getApiHandle() const { waitForLoad(); return mApiHandle; }
 
         /** Get the shader Type
         */
@@ -97,6 +95,10 @@ namespace Falcor
         ShaderType mType;
         ApiHandle mApiHandle;
         void* mpPrivateData = nullptr;
+
+        // Future to represent compilation status in background/worker thread
+        std::future<void>   mLoadingFuture;
+        void waitForLoad() const;
     };
 
 }

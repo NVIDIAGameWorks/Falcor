@@ -531,6 +531,9 @@
     <ClCompile Include="Effects\TAA\TAA.cpp">
       <Filter>Effects\TAA</Filter>
     </ClCompile>
+    <ClCompile Include="API\Shader.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
