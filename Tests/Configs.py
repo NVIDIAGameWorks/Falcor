@@ -4,4 +4,4 @@ gBuildSolutionScript = "BuildSolution.bat"
 
 
 # Default Kill Test Time.
-gDefaultKillTime = 200.0
+gDefaultKillTime = 500.0

@@ -96,6 +96,7 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
 
                 try:
 
+                    
                     solutionTarget = currentTestsSet['Solution Target']
                     configurationTarget = currentTestsSet['Configuration Target']
                     testsSet = currentTestsSet['Tests Set']
@@ -116,7 +117,7 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
                     # Run the Tests Set and get the results.
                     currentTestResult = rTS.runTestsSet(destinationBranchConfigurationTarget, solutionTarget, configurationTarget, testsSet)
 
-                    
+                    # 
                     if currentTestResult == None
                         continue
 
@@ -146,7 +147,7 @@ def main():
     # Add the Argument for which Test Collection to use.
     parser.add_argument('-testsCollection', nargs='?', action='store', help='Specify the Test Collection', default='TestsCollectionsAndSets\\TestsCollection.json')
 
-    # Add the Arguments for do not build and for show summary.
+    # Add the Arguments for do not build and for show summary, and whether to run it locally.
     parser.add_argument("-nb", action='store_true', help='Whether or not to build the solutions again.')
     parser.add_argument("-ss", "--showsummary", action='store_true', help='Whether or not to display the summary at the end.')
     parser.add_argument("-lc", "--local", action='store_true', help='Whether or not to run the tests locally.')

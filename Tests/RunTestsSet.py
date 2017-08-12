@@ -11,6 +11,8 @@ import json
 import pprint
 
 import Configs as configs
+import Helpers as helpers
+
 
 class TestsSetOpenError(Exception):
     pass
@@ -96,11 +98,21 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
                     if(currentTest["Enabled"] != "True"):
                         continue
 
-                    # 
-                    for currentArg in currentTest["Project Tests Args"]:
+                    # Output Directory.
+                    outputdirectory = 'Results\\' + currentTest['Project Name'] + '\\'
 
-                        print absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg
-                        process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentArg)
+                    # Create the output directory.
+                    helpers.directoryCleanOrMake(outputdirectory)
+
+                    # Iterate over the runs.
+                    for index, currentRunArgs in enumerate(currentTest["Project Tests Args"]):
+                        
+                        # Result Filename.
+                        resultFilename = currentTest['Project Name'] + str(index)
+                        
+
+                        # Process.
+                        process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentRunArgs + ' -resultsfilename ' + resultFilename + ' -outputdirectory ' + outputdirectory)
                         startTime = time.time()
 
                         while process.returncode == None:
@@ -108,15 +120,14 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
                             currentTime = time.time()
                                 
                             differenceTime = currentTime - startTime
-                            print differenceTime
                             if differenceTime > configs.gDefaultKillTime:
                                 print "Kill Process"
                                 process.kill()
                                 return 0
 
-                        break
+                        
 
-                    break
+                    
             
 
 
@@ -127,6 +138,7 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
 
     # Exception Handling.
     except (IOError, OSError) as e:
+        print e
         raise TestsSetOpenError("Error opening Tests Set file : " + jsonfilepath)
         return None
 

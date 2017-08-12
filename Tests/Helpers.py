@@ -29,6 +29,8 @@ def directoryCleanOrMake(destination):
             if removeDirectoryReturnCode != 0:
                 print "Error trying to clean Directory : " + destination
 
+            os.makedirs(destination)
+
             # Return the return code.
             return removeDirectoryReturnCode
 

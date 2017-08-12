@@ -427,10 +427,12 @@ void FeatureDemo::ambientOcclusion()
 
 void FeatureDemo::onBeginTestFrame()
 {
-    if (mCurrentTrigger == SampleTest::TriggerType::None)
+    //  Already exisitng. Is this a problem?
+    if (mCurrentTriggerType == SampleTest::TriggerType::None)
     {
-        auto task = (mCurrentTrigger == SampleTest::TriggerType::Frame) ? mCurrentFrameTest->mTask : mCurrentTimeTest->mTask;
-        mShadowPass.pCsm->setSdsmReadbackLatency(task == SampleTest::TaskType::ScreenCapture ? 0 : 1);
+//        SampleTest::TaskType taskType = (mCurrentTriggerType == SampleTest::TriggerType::Frame) ? mFrameTasks[mCurrentFrameTaskIndex]->mTaskType : mTimeTasks[mCurrentTimeTaskIndex]->mTaskType;
+
+//        mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
     }
 }
 
