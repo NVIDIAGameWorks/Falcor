@@ -62,11 +62,17 @@ def prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
             return None
 
         # Exception Handling.
-    except (TestsSetBuildSolutionError) as buildError:
-            print buildError.args
+    except (TestsSetBuildSolutionError) as e:
+            print e.args
             return None
 
 
+
+
+def validateTestsSet():
+
+
+    return 0
 
 
 # Parse the Specified Tests Set
@@ -91,6 +97,9 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
                 # Get the absolute path.
                 absolutepath = os.path.abspath(directorypath + 'Bin\\x64\\Release\\')
                 
+                # 
+                testsRuns = {}                
+
                 # Iterate over the Tests.
                 for currentTest in jsondata['Tests']:
                     
@@ -99,37 +108,48 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
                         continue
 
                     # Output Directory.
-                    outputdirectory = 'Results\\' + currentTest['Project Name'] + '\\'
+                    outputdirectory = 'Results\\' + configuration + '\\' + currentTest['Project Name'] + '\\'
 
                     # Create the output directory.
                     helpers.directoryCleanOrMake(outputdirectory)
+
+                    testsRuns[currentTest['Project Name']] = []
 
                     # Iterate over the runs.
                     for index, currentRunArgs in enumerate(currentTest["Project Tests Args"]):
                         
                         # Result Filename.
-                        resultFilename = currentTest['Project Name'] + str(index)
-                        
+                        outputfileprefix = currentTest['Project Name'] + '_' + str(index)                        
 
-                        # Process.
-                        process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentRunArgs + ' -resultsfilename ' + resultFilename + ' -outputdirectory ' + outputdirectory)
+                        # Start the process and record the time.
+                        process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentRunArgs + ' -outputfileprefix ' + outputfileprefix + ' -outputdirectory ' + outputdirectory)
                         startTime = time.time()
 
+                        testStatus = {}
+                        ranSuccessfully = True
+                        # Wait for the process to finish.
                         while process.returncode == None:
                             process.poll()
                             currentTime = time.time()
-                                
+
                             differenceTime = currentTime - startTime
+
+                            # If the process has taken too long, kill it.
                             if differenceTime > configs.gDefaultKillTime:
                                 print "Kill Process"
                                 process.kill()
-                                return 0
+                              
+                                ranSuccessfully = False
 
-                        
+                                # Break.
+                                break 
+                        # 
+                        testStatus["Completed"] = ranSuccessfully
+                        testStatus["Args"] = currentRunArgs
 
-                    
-            
-
+                        testsRuns[currentTest['Project Name']].append(testStatus)
+                
+                return testsRuns
 
             # Exception Handling.
             except ValueError:
@@ -138,7 +158,6 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
 
     # Exception Handling.
     except (IOError, OSError) as e:
-        print e
         raise TestsSetOpenError("Error opening Tests Set file : " + jsonfilepath)
         return None
 
@@ -162,14 +181,13 @@ def main():
     parser.add_argument('-nb', '--nobuild', action='store_true', help='Specify whether or not to build the solution.')
 
     # Add the Argument for which Tests Set to run.
-    parser.add_argument('-ts', '--testsSet', action='store', help='Specify the Tests Set filepath.')
+    parser.add_argument('-ts', '--testsSet', action='store', help='Specify the Tests Set file.')
 
     # Parse the Arguments.
     args = parser.parse_args()
 
     # Parse the Test Collection.
     return runTestsSet(args.directory, args.solution, args.configuration, args.testsSet, args.nobuild)
-
 
 if __name__ == '__main__':
     main()

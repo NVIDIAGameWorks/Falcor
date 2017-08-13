@@ -14,7 +14,7 @@
         },
 
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "MultiPassPostProcess",
             "Project Tests Args" :
             [
@@ -28,7 +28,7 @@
         },
 
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "FeatureDemo",
             "Project Tests Args" :
             [

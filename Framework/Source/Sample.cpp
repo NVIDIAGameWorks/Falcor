@@ -369,11 +369,32 @@ namespace Falcor
         mCaptureScreen = false;
     }
 
+
     //  
-    void Sample::captureScreen(std::string captureScreenFile)
+    void Sample::captureScreen(std::string imagePrefix)
     {
+        captureScreen(getExecutableDirectory(), imagePrefix);
+    }
+
+    //  
+    void Sample::captureScreen(std::string outputdirectory, std::string imagePrefix)
+    {
+            std::string prefix = std::string(imagePrefix);
+
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
-            pTexture->captureToFile(0, 0, captureScreenFile);
+
+            std::string pngFile;
+            if (findAvailableFilename(prefix, outputdirectory, "png", pngFile))
+            {
+                Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
+
+                pTexture->captureToFile(0, 0, pngFile);
+            }
+            else
+            {
+                logError("Could not find available filename when capturing screen");
+            }
+
             mCaptureScreen = false;
     }
 

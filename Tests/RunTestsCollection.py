@@ -10,12 +10,7 @@ import pprint
 
 import RunTestsSet as rTS
 import CloneRepo as cloneRepo
-
-
-# Default Clone Repositories.
-gDefaultCloneRepository = 'https://github.com/NVIDIAGameworks/Falcor.git'
-gDefaultCloneBranch = 'master'
-gDefaultCloneDestination = 'C:\\Falcor\\'
+import Configs as configs
 
 
 # Parse the Test Collection.
@@ -46,9 +41,9 @@ def runTestCollection(json_filename="TestsCollectionsAndSets\\TestsCollection.js
                 print 'Error "Tests" not defined in json file : ' + json_filename
                 return None
 
-            repositoryTarget = gDefaultCloneRepository
-            branchTarget = gDefaultCloneBranch
-            destinationTarget = gDefaultCloneDestination 
+            repositoryTarget = configs.gDefaultCloneRepository
+            branchTarget = configs.gDefaultCloneBranch
+            destinationTarget = configs.gDefaultCloneDestination 
 
             # Check if the Repository Target is defined.
             if json_data['Repository Target']:

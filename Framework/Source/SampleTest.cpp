@@ -36,7 +36,7 @@ namespace Falcor
         if (mArgList.argExists("test"))
         {
             //  Initialize the Tests.
-            //  initializeTests();
+            initializeTests();
 
             //  Initialize Testing Callback.
             onInitializeTesting();
@@ -215,7 +215,7 @@ namespace Falcor
 
         if (mHasSetFilename)
         {
-            jsonFilename = mTestOutputFilename + ".json";
+            jsonFilename = mTestOutputFilePrefix + ".json";
         }
         else
         {
@@ -312,13 +312,13 @@ namespace Falcor
         }
 
         //  Check for a Results File.
-        if (mArgList.argExists("resultsfilename"))
+        if (mArgList.argExists("outputfileprefix"))
         {
-            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("resultsfilename");
+            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("outputfileprefix");
             if (!orfArgs.empty())
             {
                 mHasSetFilename = true;
-                mTestOutputFilename = orfArgs[0].asString();
+                mTestOutputFilePrefix = orfArgs[0].asString();
             }
         }
 

@@ -2,7 +2,7 @@ import subprocess
 import os
 import shutil
 import stat
-
+from distutils.dir_util import copy_tree
 
 # CLean the directory if it exists, or make it if it does not.
 def directoryCleanOrMake(destination):
@@ -40,4 +40,7 @@ def directoryCleanOrMake(destination):
 
             # Return failure.
             return None
+
+def directoryCopy(fromDirectory, toDirectory):
     
+    copy_tree(fromDirectory, toDirectory)

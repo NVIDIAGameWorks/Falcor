@@ -255,8 +255,17 @@ namespace Falcor
             //  On Frame End.
             virtual void onFrameEnd(SampleTest * sampleTest)
             {
-                //  Capture the Screen.
-                sampleTest->captureScreen();
+
+                if (sampleTest->mHasSetDirectory)
+                {
+                    //  Capture the Screen.
+                    sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                }
+                else
+                {
+                    //  Capture the Screen.
+                    sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                }
                 
                 //  Toggle the Text Back.
                 sampleTest->toggleText(true);
@@ -431,8 +440,18 @@ namespace Falcor
             {
                 if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
                 {
-                    //  Capture the Screen.
-                    sampleTest->captureScreen();
+                    
+                    if (sampleTest->mHasSetDirectory)
+                    {
+                        //  Capture the Screen.
+                        sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                    }
+                    else
+                    {
+                        //  Capture the Screen.
+                        sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                    }
+
 
                     //  Toggle the Text Back.
                     sampleTest->toggleText(true);
@@ -444,6 +463,7 @@ namespace Falcor
 
             //  Capture Time.
             float mCaptureTime = 0;
+
         };
 
 
@@ -546,7 +566,7 @@ namespace Falcor
         std::string mTestOutputDirectory = "";
 
         bool mHasSetFilename = false;
-        std::string mTestOutputFilename = "";
+        std::string mTestOutputFilePrefix = "";
 
 
 

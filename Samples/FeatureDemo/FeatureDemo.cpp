@@ -430,9 +430,9 @@ void FeatureDemo::onBeginTestFrame()
     //  Already exisitng. Is this a problem?
     if (mCurrentTriggerType == SampleTest::TriggerType::None)
     {
-//        SampleTest::TaskType taskType = (mCurrentTriggerType == SampleTest::TriggerType::Frame) ? mFrameTasks[mCurrentFrameTaskIndex]->mTaskType : mTimeTasks[mCurrentTimeTaskIndex]->mTaskType;
+       SampleTest::TaskType taskType = (mCurrentTriggerType == SampleTest::TriggerType::Frame) ? mFrameTasks[mCurrentFrameTaskIndex]->mTaskType : mTimeTasks[mCurrentTimeTaskIndex]->mTaskType;
 
-//        mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
+        mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
     }
 }
 

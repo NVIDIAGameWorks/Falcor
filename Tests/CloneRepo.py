@@ -8,14 +8,7 @@ import sys
 
 # Helpers.
 import Helpers as helpers
-
-
-
-# Default Clone Repositories.
-gDefaultCloneRepository = 'https://github.com/NVIDIAGameworks/Falcor.git';
-
-# Default Clone Branch,
-gDefaultCloneBranch = 'master';
+import Configs as configs
 
 
 # Error if we failed to clean or make the correct directory.
@@ -28,7 +21,7 @@ class CloneRepoCloneError(Exception):
 
 
 # Clone the Repository with the specified Arguments.
-def clone(repository=gDefaultCloneRepository, branch=gDefaultCloneBranch, destination=os.getcwd()):
+def clone(repository=configs.gDefaultCloneRepository, branch=configs.gDefaultCloneBranch, destination=os.getcwd()):
 
    # Create the Destination Directory.
     if helpers.directoryCleanOrMake(destination) != 0 :
@@ -61,13 +54,13 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Add the Arguments for the Repository.
-    parser.add_argument('-repository', nargs='?', action='store', help='Specify the Repository', default = gDefaultCloneRepository)
+    parser.add_argument('-repository', nargs='?', action='store', help='Specify the Repository', default=configs.gDefaultCloneRepository)
 
     # Add the Arguments for the Branch.
-    parser.add_argument('-branch', nargs='?', action='store', help='Specify the Branch', default = gDefaultCloneBranch)
+    parser.add_argument('-branch', nargs='?', action='store', help='Specify the Branch', default=configs.gDefaultCloneBranch)
 
     # Add the Arguments for the directory.
-    parser.add_argument('-destination', nargs='?', action='store', help='Specify the Destination', default = os.getcwd())
+    parser.add_argument('-destination', nargs='?', action='store', help='Specify the Destination', default=os.getcwd())
 
     # Parse the Arguments.
     args = parser.parse_args()
