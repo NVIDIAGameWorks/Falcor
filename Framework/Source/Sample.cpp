@@ -162,6 +162,7 @@ namespace Falcor
     void Sample::run(const SampleConfig& config)
     {
         mTimeScale = config.timeScale;
+        mFixedTimeDelta = config.fixedTimeDelta;
         mFreezeTime = config.freezeTimeOnStartup;
 
         // Start the logger
@@ -231,10 +232,9 @@ namespace Falcor
 
     void Sample::calculateTime()
     {
-        if (mVideoCapture.pVideoCapture)
+        if (mFixedTimeDelta > 0.0f)
         {
-            // We are capturing video at a constant FPS
-            mCurrentTime += mVideoCapture.timeDelta * mTimeScale;
+            mCurrentTime += mFixedTimeDelta * mTimeScale;
         }
         else if (mFreezeTime == false)
         {
@@ -270,6 +270,11 @@ namespace Falcor
         {
             mpGui->addFloatVar("Time", mCurrentTime, 0, FLT_MAX);
             mpGui->addFloatVar("Time Scale", mTimeScale, 0, FLT_MAX);
+
+            if (mVideoCapture.pVideoCapture == nullptr)
+            {
+                mpGui->addFloatVar("Fixed Time Delta", mFixedTimeDelta, 0, FLT_MAX);
+            }
 
             if (mpGui->addButton("Reset"))
             {
@@ -463,13 +468,14 @@ namespace Falcor
         assert(mVideoCapture.pVideoCapture);
         mVideoCapture.pFrame = new uint8_t[desc.width*desc.height * 4];
 
-        mVideoCapture.timeDelta = 1 / (float)desc.fps;
+        mVideoCapture.sampleTimeDelta = mFixedTimeDelta;
+        mFixedTimeDelta = 1.0f / (float)desc.fps;
 
         if (mVideoCapture.pUI->useTimeRange())
         {
             if (mVideoCapture.pUI->getStartTime() > mVideoCapture.pUI->getEndTime())
             {
-                mVideoCapture.timeDelta = -mVideoCapture.timeDelta;
+                mFixedTimeDelta = -mFixedTimeDelta;
             }
             mCurrentTime = mVideoCapture.pUI->getStartTime();
             if (!mVideoCapture.pUI->captureUI())
@@ -489,6 +495,7 @@ namespace Falcor
         mVideoCapture.pUI = nullptr;
         mVideoCapture.pVideoCapture = nullptr;
         safe_delete_array(mVideoCapture.pFrame);
+        mFixedTimeDelta = mVideoCapture.sampleTimeDelta;
     }
 
     void Sample::captureVideoFrame()
@@ -499,7 +506,7 @@ namespace Falcor
 
             if (mVideoCapture.pUI->useTimeRange())
             {
-                if (mVideoCapture.timeDelta >= 0)
+                if (mFixedTimeDelta >= 0)
                 {
                     if (mCurrentTime >= mVideoCapture.pUI->getEndTime())
                     {
