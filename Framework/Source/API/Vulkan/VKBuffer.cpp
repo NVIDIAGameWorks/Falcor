@@ -115,7 +115,7 @@ namespace Falcor
             }
             else
             {
-                mApiHandle = createBuffer(mSize, mBindFlags, Device::MemoryType::Upload);
+                mApiHandle = createBuffer(mSize, mBindFlags, Device::MemoryType::Default);
             }
         }
         return true;
