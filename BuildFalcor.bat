@@ -1,4 +1,4 @@
-@echo on
+@echo off
 if "%1"=="release" goto findVS
 if "%1"=="debug" goto findVS
 echo Usage: buildFalcor.bat ^<release^|debug^>
