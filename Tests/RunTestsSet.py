@@ -87,7 +87,7 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
 
 
 # Run the tests locally.
-def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath, results_directory):
+def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath, results_directory, reference_directory):
 
 
     tests_set_result = {}    
@@ -286,10 +286,11 @@ def main():
     # Parse the Arguments.
     args = parser.parse_args()
 
-    main_results_directory = "Results\\" + args.configuration + '\\'
+    main_results_directory = "local-results-directory\\" + args.configuration + '\\'
+    main_reference_directory = machine_configs.machine_default_checkin_reference_directory
 
     #
-    tests_set_results = run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset, main_results_directory)
+    tests_set_results = run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset, main_results_directory, main_reference_directory)
 
     if tests_set_results['Tests Set Error Status'] is True:
 

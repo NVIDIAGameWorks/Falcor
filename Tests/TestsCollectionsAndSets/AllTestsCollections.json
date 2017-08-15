@@ -6,7 +6,7 @@
         "GitHub_Correctness_Tests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Branch Target" : "master",
+            "Branch Target" : "new-testing-system",
             "Repository Folder" : "Falcor",
             "Destination Target" : "C:\\Falcor\\GitHub\\",
             "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
@@ -48,13 +48,13 @@
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Repository Folder" : "Falcor",
-            "Branch Target" : "master",
+            "Branch Target" : "new-testing-system",
             "Destination Target" : "C:\\Falcor\\GitLab\\",
             "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\References\\",
             "Generate Reference Target :" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\References\\",
             "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\TestCollectionsAndSets\\",
             
-            
+
             "Tests":
             [
                 {

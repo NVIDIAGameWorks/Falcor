@@ -5,3 +5,5 @@ machine_name = machine_name.lower()
 
 machine_build_script = "BuildSolution.bat"
 machine_process_default_kill_time = 500.0
+
+machine_default_checkin_reference_directory = "C:\\Falcor\\GitHub\\master\\"

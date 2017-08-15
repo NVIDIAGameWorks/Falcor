@@ -6,7 +6,7 @@
     "Frame Screen Captures": [
         {
             "Filename": "ComputeShaderTest0.0.png",
-            "Filepath": "Results\\ReleaseD3D12\\\\ComputeShaderTest"
+            "Filepath": "local-results-directory\\ReleaseD3D12\\\\ComputeShaderTest"
         }
     ],
     "Time Screen Captures": []

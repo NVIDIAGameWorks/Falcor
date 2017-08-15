@@ -16,7 +16,6 @@ import RunTestsSet as rTS
 
 
 
-
 def main():
 
     # Argument Parser.
@@ -38,8 +37,12 @@ def main():
 
         return None
 
+    #
+    tests_collections_results = rTC.run_tests_collections(json_data)
 
-    rTC.run_tests_collections(json_data)
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(tests_collections_results)
+
 
 
 if __name__ == '__main__':
