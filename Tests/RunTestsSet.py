@@ -68,7 +68,7 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
             difference_time = current_time - start_time
 
             # If the process has taken too long, kill it.
-            if difference_time > configs.gDefaultKillTime:
+            if difference_time > machine_configs.machine_process_default_kill_time:
 
                 print "Kill Process"
 
@@ -82,6 +82,7 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
         return run_results
     
     except (NameError, IOError, OSError) as e:
+        print e.args
         raise TestsSetError('Error when trying to run ' + executable_filepath + ' ' + current_arguments + ' ' + 'with outputfileprefix ' + outputfileprefx + ' and outputdirectory ' + output_directory)
 
 
@@ -129,7 +130,6 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                 #   
                 for current_test_name in json_data['Tests']:
 
-                    print 'AAAAAAA'
 
                     test_runs_results[current_test_name] = {}
                     
@@ -149,6 +149,7 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                     #   Check if the test is enabled.
                     if test_runs_results[current_test_name]['Test']['Enabled'] == "True":
 
+     
                         # Initialize all the results.
                         test_runs_results[current_test_name]['Results']["Run Results"] = {}                    
                         test_runs_results[current_test_name]['Results']['Results Directory'] = current_results_directory
@@ -157,7 +158,8 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
 
                         # Run each test.
                         for index, current_test_args in enumerate(test_runs_results[current_test_name]['Test']['Project Tests Args']) :
-                            
+
+                       
                             # Initialize the error status.
                             test_runs_results[current_test_name]['Results']['Results Error Status'][index] = False  
                             test_runs_results[current_test_name]['Results']['Results Error Message'][index] = False  
@@ -166,11 +168,13 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                             # Try running the test.
                             try:
 
+                                
                                 current_test_run_result = run_test_run(executable_directory + test_runs_results[current_test_name]['Test']['Project Name'] + '.exe', current_test_args, current_test_name + str(index), current_results_directory)                                
                                 test_runs_results[current_test_name]['Results']["Run Results"][index] = current_test_run_result 
 
-                            except TestsSetError as tests_set_error:
-
+    
+                            except (TestsSetError, IOError, OSError) as tests_set_error:
+                                print tests_set_error.args
                                 # Check if an error occured.
                                 test_runs_results[current_test_name]['Results']['Results Error Status'][index] = True  
                                 test_runs_results[current_test_name]['Results']['Results Error Message'][index] = tests_set_error.args  

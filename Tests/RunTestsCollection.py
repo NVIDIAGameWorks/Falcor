@@ -143,14 +143,10 @@ def run_tests_collections(json_data):
             clone_directory = clone_directory + '\\' + current_tests_set["Configuration Target"]
 
             # Clear the directory.
-            helpers.directory_clean_or_make(clone_directory)
+            # helpers.directory_clean_or_make(clone_directory)
 
             # Clone the Repositroy to the Clone Directory.
             # cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
-
-            #   
-            # print 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"]
-
 
             # 
             results_directory = "Results\\" + current_tests_collection_name + '\\' + json_data["Tests Collections"][current_tests_collection_name]["Branch Target"]
@@ -161,7 +157,7 @@ def run_tests_collections(json_data):
 
             # 
             pp = pprint.PrettyPrinter(indent=4)
-            # pp.pprint(results)
+            pp.pprint(results)
 
             break
 
