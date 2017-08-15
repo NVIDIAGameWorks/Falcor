@@ -14,21 +14,11 @@ import Configs as configs
 import Helpers as helpers
 
 
-class TestsSetOpenError(Exception):
-    pass
-
-class TestsSetParseError(Exception):
-    pass
-
-class TestsSetBuildSolutionError(Exception):
-    pass
-
-class TestsSetRunTestsError(Exception):
-    pass
-
 
 class TestsSetError(Exception):
     pass
+
+
 
 
 
@@ -131,6 +121,8 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
 
 
 
+
+
 # Build the Solution.
 def build_solution(relative_solution_filepath, configuration):
 
@@ -181,8 +173,15 @@ def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json
                     # Output Directory.
                     output_directory = 'Results\\' + configuration + '\\' + current_test['Test Name'] + '\\'
 
-                    #   
+                    # Directory Clean or Make.
                     helpers.directory_clean_or_make(output_directory);
+                    
+                    #   
+                    test_runs_results[current_test['Test Name']] = []
+
+
+
+
 
 
             # Exception Handling.
@@ -219,7 +218,7 @@ def main():
     args = parser.parse_args()
 
     #
-    run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset, args.ref)
+    run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset, args.referencedirectory)
 
 
 if __name__ == '__main__':
