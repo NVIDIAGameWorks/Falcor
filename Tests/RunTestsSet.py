@@ -91,7 +91,7 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
     tests_set_result = {}    
     tests_set_result['Tests Set Error Status'] = False
     tests_set_result['Tests Set Error Message'] = ""
-
+    tests_set_result["Test Runs Results"] = None
     #   
     if not nobuild:
         try:
@@ -168,7 +168,6 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                                 test_runs_results[current_test_name]['Results']['Results Error Message'][index] = tests_set_error.args  
 
 
-
                 tests_set_result["Test Runs Results"] = test_runs_results
                 return tests_set_result
 
@@ -189,8 +188,10 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
 
 def check_tests_set_results_expected_output(test_runs_results):
 
+    has_expected_output = True
+
     for current_test_name in test_runs_results:
-        
+
         if test_runs_results[current_test_name]['Test']['Enabled'] != "True":
             continue
 
@@ -205,22 +206,30 @@ def check_tests_set_results_expected_output(test_runs_results):
                 test_runs_results[current_test_name]['Results']['Results Error Status'][index] = True  
                 test_runs_results[current_test_name]['Results']['Results Error Message'][index] = 'Could not find the expected json output file : ' + expected_output_file + ' . Please verify that the program ran correctly.'
 
+                expected_output = False
+
                 continue
+    
+    return has_expected_output 
 
 
 #   Check the Tests Set Results, and create the output.
-def check_tests_set_results(test_runs_results):
+def check_tests_set_results(test_set_results):
+
 
     # Check which ones managed to generate an output.    
-    check_tests_set_results_expected_output(test_runs_results)
+    has_expected_output = check_tests_set_results_expected_output(test_set_results['Test Runs Results'])
+    
+    test_runs_results = test_set_results['Test Runs Results']
 
     # Check the json results for each one.
     for current_test_name in test_runs_results:
         
-
+        #   
         if test_runs_results[current_test_name]['Test']['Enabled'] != "True":
             continue
 
+        # Check that there was not no other error, and open the file if there wasn't.
         for index, current_project_run in enumerate(test_runs_results[current_test_name]['Test']['Project Tests Args']):
 
             expected_output_file = test_runs_results[current_test_name]['Results Directory'] + current_test_name + str(index) + '.json'
@@ -233,6 +242,9 @@ def check_tests_set_results(test_runs_results):
 
 #   Check the json results.
 def check_json_results(current_test_name, current_test_result, test_output_file):
+
+    
+
 
 
     return    
@@ -270,7 +282,7 @@ def main():
         print tests_set_results['Tests Set Error Message']
     
     else:
-        check_tests_set_results(tests_set_results['Test Runs Results'])
+        check_tests_set_results(tests_set_results)
 
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint(tests_set_results['Test Runs Results'])
