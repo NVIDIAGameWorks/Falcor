@@ -9,6 +9,7 @@
             "Branch Target" : "master",
             "Repository Folder" : "Falcor",
             "Destination Target" : "C:\\Falcor\\GitHub\\",
+            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\References\\GitHub\\",
             
             "Tests":
             [
@@ -47,6 +48,7 @@
             "Repository Folder" : "Falcor",
             "Branch Target" : "master",
             "Destination Target" : "C:\\Falcor\\GitLab\\",
+            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\References\\GitLab\\",
             
             "Tests":
             [

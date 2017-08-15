@@ -11,6 +11,7 @@ import pprint
 import RunTestsSet as rTS
 import CloneRepo as cloneRepo
 import Configs as configs
+import Helpers as helpers
 
 
 # Check whether the json object has the specified attribute.
@@ -93,6 +94,11 @@ def verify_tests_collection(tests_name, tests_data):
         print ('Error - "Destination Target" is not defined in ' + tests_name)
         return None
 
+    # Check for a Repository Target.
+    if not json_object_has_attribute(tests_data, "Reference Target"):
+        print ('Error - "Reference Target" is not defined in ' + tests_name)
+        return None
+
     # Check for a Tests Array.
     if not json_object_has_attribute(tests_data, "Tests"):
         print ('Error - "Tests" is not defined in ' + tests_name)
@@ -122,10 +128,24 @@ def verify_tests_collection(tests_name, tests_data):
 
 
 
+# Run a Tests Set.
+def run_tests_set(test_set_specification):
+
+
+
 # Run each Test Collection
-def run_test_collection(test_name, test_data):
-    
-    cloneRepo.clone(test_data["Repository Target"], test_data["Branch Target"], test_data["Destination Target"])
+def run_tests_collection(test_name, test_data):
+
+    # Clean or make the Destination Directory.
+    helpers.directory_clean_or_make(test_data["Destination Target"] + test_data["Repository Folder"])
+
+    # Create the working directory.    
+    repository_main_directory = test_data["Destination Target"] + test_data["Repository Folder"] 
+
+
+    for current_test_set_specification in test_data["Tests"]:
+
+        run_tests_set(current_test_set_specification)
 
     return None
 
@@ -145,7 +165,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Add the Argument for which Test Collection to use.
-    parser.add_argument('-tc', '--testsCollection', nargs='?', action='store', help='Specify the Test Collection')
+    parser.add_argument('-tc', '--testsCollection', action='store', help='Specify the Test Collection.')
 
     # Parse the Arguments.
     args = parser.parse_args()

@@ -29,13 +29,13 @@ def clone(repository, branch, destination):
 
     # Clone the Specified Repository and Branch.
     try: 
-        cloneReturnCode = subprocess.call(['git', 'clone', repository, destination, '-b', branch])
+        clone_return_code = subprocess.call(['git', 'clone', repository, destination, '-b', branch])
         
         # Raise an exception if the subprocess did not run correctly.
-        if cloneReturnCode != 0 :
+        if clone_return_code != 0 :
             raise CloneRepoCloneError('Error Cloning Repository : ' + repository + ' Branch : ' + branch + ' Destination : ' + destination + ' ')
 
-        return cloneReturnCode 
+        return clone_return_code 
             
     # Exception Handling.
     except subprocess.CalledProcessError:
@@ -43,7 +43,6 @@ def clone(repository, branch, destination):
         # Raise an exception if the subprocess crashed.
         raise CloneRepoCloneError('Error Cloning Repository : ' + repository + ' Branch : ' + branch + ' Destination : '  + destination + ' ')
         
-        return None
 
 
 
