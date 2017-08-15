@@ -18,108 +18,16 @@ import Helpers as helpers
 class TestsSetError(Exception):
     pass
 
-
-
-
-
-def getExecutableDirectoryForConfiguration(configuration):
+# Get the Executable Directory.
+def get_executable_directory(configuration):
     if configuration.lower() == 'released3d12' or configuration.lower() == 'releasevk' :
         return "Bin\\x64\\Release\\" 
     else:
         return "Bin\\x64\\Debug\\"
 
-
-
-
-
-
-# Parse the Specified Tests Set
-def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, nobuild):
-
-    # Prep the Tests Set - Build the Solution.
-    if not nobuild:
-        if prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath) != 0:
-            return None
-
-    try:
-        # Try and open the json file.
-        with open(jsonfilepath) as jsonfile:
-
-            # Try and parse the data from the json file.
-            try:
-                jsondata = json.load(jsonfile)
-
-                # pp = pprint.PrettyPrinter(indent=4)
-                # pp.pprint(jsondata)
-
-                # Get the absolute path.
-                absolutepath = os.path.abspath(directorypath + 'Bin\\x64\\Release\\')
-                
-                # 
-                testsRuns = {}                
-
-                # Iterate over the Tests.
-                for currentTest in jsondata['Tests']:
-                    
-                    # Check if the test is enabled.
-                    if(currentTest["Enabled"] != "True"):
-                        continue
-
-                    # Output Directory.
-                    outputdirectory = 'Results\\' + configuration + '\\' + currentTest['Project Name'] + '\\'
-
-                    # Create the output directory.
-                    helpers.directory_clean_or_make(outputdirectory)
-
-                    testsRuns[currentTest['Project Name']] = []
-
-                    # Iterate over the runs.
-                    for index, currentRunArgs in enumerate(currentTest["Project Tests Args"]):
-                        
-                        # Result Filename.
-                        outputfileprefix = currentTest['Project Name'] + '_' + str(index)                        
-
-                        # Start the process and record the time.
-                        process = subprocess.Popen(absolutepath + '\\' + currentTest['Project Name'] + ".exe" + ' ' + currentRunArgs + ' -outputfileprefix ' + outputfileprefix + ' -outputdirectory ' + outputdirectory)
-                        startTime = time.time()
-
-                        testStatus = {}
-                        ranSuccessfully = True
-                        # Wait for the process to finish.
-                        while process.returncode == None:
-                            process.poll()
-                            currentTime = time.time()
-
-                            differenceTime = currentTime - startTime
-
-                            # If the process has taken too long, kill it.
-                            if differenceTime > configs.gDefaultKillTime:
-                                print "Kill Process"
-                                process.kill()
-                              
-                                ranSuccessfully = False
-
-                                # Break.
-                                break 
-                        # 
-                        testStatus["Completed"] = ranSuccessfully
-                        testStatus["Args"] = currentRunArgs
-
-                        testsRuns[currentTest['Project Name']].append(testStatus)
-                
-                return testsRuns
-
-            # Exception Handling.
-            except ValueError:
-                raise TestsSetParseError("Error parsing Tests Set file : " + jsonfilepath)
-                return None
-
-    # Exception Handling.
-    except (IOError, OSError) as e:
-        raise TestsSetOpenError("Error opening Tests Set file : " + jsonfilepath)
-        return None
-
-
+# Get the Results Directory.
+def get_results_directory(configuration, test_name):
+    return 'Results\\' + configuration + '\\' + test_name + '\\'
 
 
 
@@ -149,7 +57,7 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
     process = subprocess.Popen(executable_filepath  + ' ' + current_arguments + ' -outputfileprefix ' + outputfileprefx + ' -outputdirectory ' + output_directory)
     start_time = time.time()
 
-    ran_successfully = True
+    run_results = [True, ""]
 
     # Wait for the process to finish.
     while process.returncode is None:
@@ -165,22 +73,22 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
 
             process.kill()
                               
-            ran_successfully = False
+            run_results = [False, "Process ran for too long, had to kill i. Please verify that the program finishes within its hang time, and that it does not crash"]
 
             # Break.
-            break 
+            break
 
-    return ran_successfully
+    return run_results
     
 
 # Run the tests locally.
-def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json_filepath, reference_target):
+def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath):
     
     #   
     if not nobuild:
-        build_solution(relative_solution_filepath, configuration)
+        build_solution(solution_filepath, configuration)
 
-
+    #
     json_data = None
     
     try:
@@ -194,28 +102,39 @@ def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json
                 # Test Runs Results.    
                 test_runs_results = {}
 
-                # Iterate over the Tests in the Test Set.
-                for current_test in json_data['Tests']:
+                # Absolute path.
+                absolutepath = os.path.abspath(os.path.dirname(solution_filepath))
+                print json_data
+                #   
+                for current_test_name in json_data['Tests']:
+                    print current_test_name
+                    test_runs_results[current_test_name] = {}
+                    test_runs_results[current_test_name]['Test'] = json_data['Tests'][current_test_name]
+
+                    # Get the executable directory.
+                    executable_directory = absolutepath + '\\' + get_executable_directory(configuration)
                     
-                    # Check if the test is enabled.
-                    if(current_test["Enabled"] != "True"):
+                    # Get the results directory.
+                    results_directory = get_results_directory(configuration, current_test_name) 
+                    test_runs_results[current_test_name]['Results Directory'] = results_directory
 
-                        #   
-                        test_runs_results[current_test['Test Name']] = []
+                    # Create the directory, or clean it.
+                    helpers.directory_clean_or_make(results_directory)
 
-                        continue
-
-                    # Output Directory.
-                    output_directory = 'Results\\' + configuration + '\\' + current_test['Test Name'] + '\\'
-
-                    # Directory Clean or Make.
-                    helpers.directory_clean_or_make(output_directory);
-                    
-                    
+                    test_runs_results[current_test_name]["Run Results"] = []                    
+                    for current_test_args in json_data['Tests'][current_test_name]['Project Tests Args'] :
+                        current_test_run_result = run_test_run(executable_directory + json_data['Tests'][current_test_name]['Project Name'].exe, current_test_args, current_test_name, results_directory)
+                        test_runs_results[current_test_name]["Run Results"].append(current_test_run_result)                    
 
 
 
+                    #   
+                    test_runs_results[current_test_name]['Results Directory'] = results_directory
+                    test_runs_results[current_test_name]['Results Error Status'] = {}
+                    test_runs_results[current_test_name]['Results Error Message'] = {}  
 
+
+                return test_runs_results
 
             # Exception Handling.
             except ValueError:
@@ -224,6 +143,57 @@ def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json
     # Exception Handling.
     except (IOError, OSError) as e:
         raise TestsSetError("Error opening Tests Set file : " + json_filepath)
+
+
+
+def check_tests_set_results_expected_output(test_runs_results):
+
+    for current_test_name in test_runs_results:
+        
+        # For each of the runs, check the errors.
+        for index, current_project_run in enumerate(test_runs_results[current_test_name]['Test']['Project Tests Args']):
+            
+            test_runs_results[current_test_name]['Results Error Status'][index] = False  
+            test_runs_results[current_test_name]['Results Error Message'][index] = False  
+
+            expected_output_file = test_runs_results[current_test_name]['Results Directory'] + current_test_name + str(index) + '.json'
+
+            #   Check if the expected file was created.
+            if not os.path.isfile(expected_output_file) :
+
+                test_runs_results[current_test_name]['Results Error Status'][index] = True  
+                test_runs_results[current_test_name]['Results Error Message'][index] = 'Could not find the expected json output file : ' + expected_output_file + ' . Please verify that the program ran correctly.'
+
+                continue
+
+
+#   Check the Tests Set Results, and create the output.
+def check_tests_set_results(test_runs_results):
+
+    # Check which ones managed to generate an output.    
+    check_tests_set_results_expected_output(test_runs_results)
+
+    # Check the json results for each one.
+    for current_test_name in test_runs_results:
+        
+        for index, current_project_run in enumerate(test_runs_results[current_test_name]['Test']['Project Tests Args']):
+
+            expected_output_file = test_runs_results[current_test_name]['Results Directory'] + current_test_name + str(index) + '.json'
+
+            if test_runs_results[current_test_name]['Results Error Status'][index] != True:
+
+                check_json_results(current_test_name, test_runs_results[current_test_name], expected_output_file)
+
+
+
+#   Check the json results.
+def check_json_results(current_test_name, current_test_result, test_output_file):
+
+    print current_test_name
+    print current_test_result
+    print test_output_file
+
+    return    
 
 
 
@@ -251,7 +221,12 @@ def main():
     args = parser.parse_args()
 
     #
-    run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset, args.referencedirectory)
+    test_runs_results = run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset)
+
+    check_tests_set_results(test_runs_results)
+
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(test_runs_results)
 
 
 if __name__ == '__main__':

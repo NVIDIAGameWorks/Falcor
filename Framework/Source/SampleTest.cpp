@@ -190,7 +190,7 @@ namespace Falcor
         writeJsonLiteral(jsonVal, jsonAllocator, "Time Tasks", mTimeTasks.size());
 
         //  Write the Json Test Results.
-        writeJsonTestResults(jsonVal, jsonAllocator);
+        writeJsonTestResults(jsonTestResults);
         
         //  Get String Buffer for the json.
         rapidjson::StringBuffer jsonStringBuffer;
@@ -242,46 +242,56 @@ namespace Falcor
 
 
     //  Write the Json Test Results.
-    void SampleTest::writeJsonTestResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    void SampleTest::writeJsonTestResults(rapidjson::Document & jsonTestResults)
     {
         //  Write the Load Time Check Results.
-        writeLoadTimeCheckResults(jval, jallocator);
+        writeLoadTimeCheckResults(jsonTestResults);
 
         //  Write the Memory Range Results.
-        writeMemoryRangesResults(jval, jallocator);
+        writeMemoryRangesResults(jsonTestResults);
     
         //  Write the Performance Range Results.
-        writePerformanceRangesResults(jval, jallocator);
+        writePerformanceRangesResults(jsonTestResults);
         
         //  Write the Screen Capture Results.
-        writeScreenCaptureResults(jval, jallocator);
+        writeScreenCaptureResults(jsonTestResults);
     }
     
     //  Write Load Time.
-    void SampleTest::writeLoadTimeCheckResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    void SampleTest::writeLoadTimeCheckResults(rapidjson::Document & jsonTestResults)
     {
+        //  Get the json Value and the Allocator.
+        rapidjson::Value & jsonVal = jsonTestResults;
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
+
         //  
         if (mLoadTimeCheckTask != nullptr)
         {
-            writeJsonLiteral(jval, jallocator, "Load Time Check", mLoadTimeCheckTask->mLoadTimeCheckResult);
+            writeJsonLiteral(jsonVal, jsonAllocator, "Load Time Check", mLoadTimeCheckTask->mLoadTimeCheckResult);
         }
     }
 
     //  Write the Memory Ranges Results.
-    void SampleTest::writeMemoryRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    void SampleTest::writeMemoryRangesResults(rapidjson::Document & jsonTestResults)
     {
 
     }
 
     //  Write the Performance Ranges Results.
-    void SampleTest::writePerformanceRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    void SampleTest::writePerformanceRangesResults(rapidjson::Document & jsonTestResults)
     {
 
     }
 
     //  Write the Screen Capture Results.
-    void SampleTest::writeScreenCaptureResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator)
+    void SampleTest::writeScreenCaptureResults(rapidjson::Document & jsonTestResults)
     {
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
+        jsonTestResults.SetObject();
+
+        //  Write the screen captured image files to the output file.
+        rapidjson::Value scfArray(rapidjson::kArrayType);
+
         for (uint32_t i = 0; i < mFrameTasks.size(); i++)
         {
             if (mFrameTasks[i]->mTaskType == TaskType::ScreenCaptureTask)
@@ -290,10 +300,40 @@ namespace Falcor
 
                 if (scfTask != nullptr)
                 {
-                    writeJsonLiteral(jval, jallocator, "Screen Capture", scfTask->mCaptureFrame);
+                    rapidjson::Value scfFilename(rapidjson::kStringType);
+                    scfFilename.SetString(scfTask->mCaptureFile.c_str(), jsonAllocator);
+                    scfArray.PushBack(scfFilename, jsonAllocator);
                 }
             }
         }
+
+        //  
+        jsonTestResults.AddMember("Frame Screen Captures", scfArray, jsonAllocator);
+
+
+        jsonTestResults.SetObject();
+
+        //  Write the screen captured image files to the output file.
+        rapidjson::Value scTArray(rapidjson::kArrayType);
+
+        for (uint32_t i = 0; i < mTimeTasks.size(); i++)
+        {
+            if (mTimeTasks[i]->mTaskType == TaskType::ScreenCaptureTask)
+            {
+                std::shared_ptr<ScreenCaptureTimeTask> sctTask = std::dynamic_pointer_cast<ScreenCaptureTimeTask>(mTimeTasks[i]);
+
+                if (sctTask != nullptr)
+                {
+                    rapidjson::Value sctFilename(rapidjson::kStringType);
+                    sctFilename.SetString(sctTask->mCaptureFile.c_str(), jsonAllocator);
+                    scTArray.PushBack(sctFilename, jsonAllocator);
+                }
+            }
+        }
+
+        //  
+        jsonTestResults.AddMember("Time Screen Captures", scTArray, jsonAllocator);
+
     }
 
 

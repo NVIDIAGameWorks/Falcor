@@ -176,9 +176,9 @@ namespace Falcor
         virtual float getTimeScale() final { return mTimeScale; }
         void initVideoCapture();
 
-        void captureScreen();
-        void captureScreen(std::string imagePrefix);
-        void captureScreen(std::string outputdirectory, std::string imagePrefix);
+        std::string captureScreen();
+        std::string captureScreen(std::string imagePrefix);
+        std::string captureScreen(std::string outputdirectory, std::string imagePrefix);
 
         void toggleText(bool enabled);
         uint32_t getFrameID() const { return mFrameRate.getFrameCount(); }

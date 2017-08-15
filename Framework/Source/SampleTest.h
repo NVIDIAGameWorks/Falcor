@@ -259,12 +259,12 @@ namespace Falcor
                 if (sampleTest->mHasSetDirectory)
                 {
                     //  Capture the Screen.
-                    sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                    mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
                 }
                 else
                 {
                     //  Capture the Screen.
-                    sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                    mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
                 }
                 
                 //  Toggle the Text Back.
@@ -276,6 +276,7 @@ namespace Falcor
 
             //
             uint32_t mCaptureFrame = 0;
+            std::string mCaptureFile = "";
         };
 
 
@@ -444,12 +445,12 @@ namespace Falcor
                     if (sampleTest->mHasSetDirectory)
                     {
                         //  Capture the Screen.
-                        sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                        mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
                     }
                     else
                     {
                         //  Capture the Screen.
-                        sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                        mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
                     }
 
 
@@ -463,6 +464,10 @@ namespace Falcor
 
             //  Capture Time.
             float mCaptureTime = 0;
+
+            //  
+            std::string mCaptureFile = "";
+
 
         };
 
@@ -532,23 +537,23 @@ namespace Falcor
         /** Output Test Results.
         */
         void writeJsonTestResults();
-        void writeJsonTestResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writeJsonTestResults(rapidjson::Document & jsonTestResults);
 
         /** Write the Load Time Check Results.
         */
-        void writeLoadTimeCheckResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writeLoadTimeCheckResults(rapidjson::Document & jsonTestResults);
 
         /** Write the Memory Ranges Results.
         */
-        void writeMemoryRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writeMemoryRangesResults(rapidjson::Document & jsonTestResults);
 
         /** Write the Performance Ranges Results.
         */
-        void writePerformanceRangesResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writePerformanceRangesResults(rapidjson::Document & jsonTestResults);
 
         /** Write the Screen Capture.
         */
-        void writeScreenCaptureResults(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator);
+        void writeScreenCaptureResults(rapidjson::Document & jsonTestResults);
 
         /** Initialize the Tests.
         */

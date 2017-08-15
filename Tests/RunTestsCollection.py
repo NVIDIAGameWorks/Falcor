@@ -130,29 +130,35 @@ def verify_tests_collection(tests_name, tests_data):
 # Run all of the Tests Collections.
 def run_tests_collections(json_data):
 
-    for key in json_data["Tests Collections"]:
 
-        run_tests_collection(key, json_data["Tests Collections"][key])
+    for current_tests_collection_name in json_data["Tests Collections"]:
 
-# Run each Test Collection.
-def run_tests_collection(test_name, test_data):
+        for current_tests_set in json_data["Tests Collections"][current_tests_collection_name]['Tests']:
 
-    tests_set_results = []
+            # The Clone Directory is the Destination Target + The Branch Target + the Test Collection Name + the Build Configuration Name.
+            # For the momemnt, do not add multiple solutions to the same Test Collection, because that will create overlapping clone targets.
+            clone_directory = json_data["Tests Collections"][current_tests_collection_name]["Destination Target"] 
+            clone_directory = clone_directory +  json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] 
+            clone_directory = clone_directory + '\\' +  current_tests_collection_name + '\\'
+            clone_directory = clone_directory + '\\' + current_tests_set["Configuration Target"]
 
-    #   
-    for current_tests_set_specification in test_data["Tests"]:
+            # Clear the directory.
+            helpers.directory_clean_or_make(clone_directory)
 
-        tests_set_results.append(run_tests_set(current_tests_set_specification))
+            # Clone the Repositroy to the Clone Directory.
+            # cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
 
+            print 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"]
+            results = rTS.run_tests_set_local(clone_directory + '\\' + current_tests_set['Solution Target'], current_tests_set["Configuration Target"], True, 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"])
+            rTS.check_tests_set_results_expected_output(results)
 
-def run_tests_set(current_test_set_specification):
-    
-    # Clean or make the Destination Directory.
-    # helpers.directory_clean_or_make(test_data["Destination Target"] + test_data["Repository Folder"])
+            pp = pprint.PrettyPrinter(indent=4)
+            pp.pprint(results)
 
-    # Create the working directory.    
-    # repository_main_directory = test_data["Destination Target"] + test_data["Repository Folder"] 
-    return 0
+            break
+
+        break
+
 
 
 def main():
@@ -167,7 +173,7 @@ def main():
     args = parser.parse_args()
 
     #   
-    json_data = read_and_verify_tests_collections_source(args.testsCollection)
+    json_data = read_and_verify_tests_collections_source(args.tests_collection)
 
     #   
     if json_data is None:
@@ -178,7 +184,6 @@ def main():
 
 
     run_tests_collections(json_data)
-    
 
 
 

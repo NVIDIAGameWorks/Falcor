@@ -3,7 +3,7 @@
 
     "Tests Collections" : 
     {
-        "All_GitHub_Tests" :
+        "GitHub_Correctness_Tests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Branch Target" : "master",
@@ -43,7 +43,7 @@
         },
 
 
-        "All_GitLab_Tests" :
+        "GitLab_Correctness_Tests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Repository Folder" : "Falcor",
@@ -57,27 +57,27 @@
                 {
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "ReleaseD3D12",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseD3D12.json"
+                    "Tests Set" : "TSReleaseD3D12.json"
                 },
         
                 {
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "DebugD3D12",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugD3D12.json"
+                    "Tests Set" : "TSDebugD3D12.json"
                 },
 
                 {
 
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "ReleaseVK",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseVK.json"
+                    "Tests Set" : "TSReleaseVK.json"
                 },
 
                 {
 
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "DebugVK",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugVK.json"
+                    "Tests Set" : "TSDebugVK.json"
                 }
             ]
         }
