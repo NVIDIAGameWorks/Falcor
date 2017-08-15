@@ -121,17 +121,16 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                     # Create the directory, or clean it.
                     helpers.directory_clean_or_make(results_directory)
 
-                    test_runs_results[current_test_name]["Run Results"] = []                    
-                    for current_test_args in json_data['Tests'][current_test_name]['Project Tests Args'] :
-                        current_test_run_result = run_test_run(executable_directory + json_data['Tests'][current_test_name]['Project Name'].exe, current_test_args, current_test_name, results_directory)
-                        test_runs_results[current_test_name]["Run Results"].append(current_test_run_result)                    
+                    if json_data['Tests'][current_test_name]['Enabled'] == "True":
 
+                        test_runs_results[current_test_name]["Run Results"] = []                    
+                        test_runs_results[current_test_name]['Results Directory'] = results_directory
+                        test_runs_results[current_test_name]['Results Error Status'] = {}
+                        test_runs_results[current_test_name]['Results Error Message'] = {}  
 
-
-                    #   
-                    test_runs_results[current_test_name]['Results Directory'] = results_directory
-                    test_runs_results[current_test_name]['Results Error Status'] = {}
-                    test_runs_results[current_test_name]['Results Error Message'] = {}  
+                        for index, current_test_args in enumerate(json_data['Tests'][current_test_name]['Project Tests Args']) :
+                            current_test_run_result = run_test_run(executable_directory + json_data['Tests'][current_test_name]['Project Name'] + '.exe', current_test_args, current_test_name + str(index), results_directory)
+                            test_runs_results[current_test_name]["Run Results"].append(current_test_run_result)                    
 
 
                 return test_runs_results
@@ -150,6 +149,9 @@ def check_tests_set_results_expected_output(test_runs_results):
 
     for current_test_name in test_runs_results:
         
+        if test_runs_results[current_test_name]['Test']['Enabled'] != "True":
+            continue
+
         # For each of the runs, check the errors.
         for index, current_project_run in enumerate(test_runs_results[current_test_name]['Test']['Project Tests Args']):
             
@@ -176,6 +178,10 @@ def check_tests_set_results(test_runs_results):
     # Check the json results for each one.
     for current_test_name in test_runs_results:
         
+
+        if test_runs_results[current_test_name]['Test']['Enabled'] != "True":
+            continue
+
         for index, current_project_run in enumerate(test_runs_results[current_test_name]['Test']['Project Tests Args']):
 
             expected_output_file = test_runs_results[current_test_name]['Results Directory'] + current_test_name + str(index) + '.json'
@@ -189,9 +195,6 @@ def check_tests_set_results(test_runs_results):
 #   Check the json results.
 def check_json_results(current_test_name, current_test_result, test_output_file):
 
-    print current_test_name
-    print current_test_result
-    print test_output_file
 
     return    
 

@@ -349,7 +349,7 @@ namespace Falcor
     }
 
     //  
-    void Sample::captureScreen()
+    std::string Sample::captureScreen()
     {
         std::string filename = getExecutableName();
 
@@ -361,23 +361,26 @@ namespace Falcor
         {
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
+            return pngFile;
         }
         else
         {
             logError("Could not find available filename when capturing screen");
+            return "";
         }
+        
         mCaptureScreen = false;
     }
 
 
     //  
-    void Sample::captureScreen(std::string imagePrefix)
+    std::string Sample::captureScreen(std::string imagePrefix)
     {
-        captureScreen(getExecutableDirectory(), imagePrefix);
+        return captureScreen(getExecutableDirectory(), imagePrefix);
     }
 
     //  
-    void Sample::captureScreen(std::string outputdirectory, std::string imagePrefix)
+    std::string Sample::captureScreen(std::string outputdirectory, std::string imagePrefix)
     {
             std::string prefix = std::string(imagePrefix);
 
@@ -389,10 +392,12 @@ namespace Falcor
                 Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
 
                 pTexture->captureToFile(0, 0, pngFile);
+                return pngFile;
             }
             else
             {
                 logError("Could not find available filename when capturing screen");
+                return "";
             }
 
             mCaptureScreen = false;

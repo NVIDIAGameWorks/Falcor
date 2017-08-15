@@ -274,20 +274,48 @@ namespace Falcor
     //  Write the Memory Ranges Results.
     void SampleTest::writeMemoryRangesResults(rapidjson::Document & jsonTestResults)
     {
-
+        
     }
 
     //  Write the Performance Ranges Results.
     void SampleTest::writePerformanceRangesResults(rapidjson::Document & jsonTestResults)
     {
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
 
+        //  Write the screen captured image files to the output file.
+        rapidjson::Value pcfArray(rapidjson::kArrayType);
+
+        //  
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            if (mFrameTasks[i]->mTaskType == TaskType::PerformanceCheckTask)
+            {
+
+            }
+        }
+
+        jsonTestResults.AddMember("Performance Time Checks", pcfArray, jsonAllocator);
+
+
+        //  Write the time based performance checks.
+        rapidjson::Value pctArray(rapidjson::kArrayType);
+
+        //  
+        for (uint32_t i = 0; i < mTimeTasks.size(); i++)
+        {
+            if (mTimeTasks[i]->mTaskType == TaskType::PerformanceCheckTask)
+            {
+
+            }
+        }
+
+        jsonTestResults.AddMember("Performance Time Checks", pctArray, jsonAllocator);
     }
 
     //  Write the Screen Capture Results.
     void SampleTest::writeScreenCaptureResults(rapidjson::Document & jsonTestResults)
     {
         auto & jsonAllocator = jsonTestResults.GetAllocator();
-        jsonTestResults.SetObject();
 
         //  Write the screen captured image files to the output file.
         rapidjson::Value scfArray(rapidjson::kArrayType);
@@ -300,9 +328,20 @@ namespace Falcor
 
                 if (scfTask != nullptr)
                 {
-                    rapidjson::Value scfFilename(rapidjson::kStringType);
-                    scfFilename.SetString(scfTask->mCaptureFile.c_str(), jsonAllocator);
-                    scfArray.PushBack(scfFilename, jsonAllocator);
+ 
+                    rapidjson::Value scffilename;
+                    scffilename.SetString(scfTask->mCaptureFilename.c_str(), jsonAllocator);
+
+                    rapidjson::Value scffilepath;
+                    scffilepath.SetString(scfTask->mCaptureFilepath.c_str(), jsonAllocator);
+
+                    rapidjson::Value scfFile;
+                    scfFile.SetObject();
+                    scfFile.AddMember("Filename", scffilename, jsonAllocator);
+                    scfFile.AddMember("Filepath", scffilepath, jsonAllocator);
+
+                    scfArray.PushBack(scfFile, jsonAllocator);
+
                 }
             }
         }
@@ -311,10 +350,8 @@ namespace Falcor
         jsonTestResults.AddMember("Frame Screen Captures", scfArray, jsonAllocator);
 
 
-        jsonTestResults.SetObject();
-
         //  Write the screen captured image files to the output file.
-        rapidjson::Value scTArray(rapidjson::kArrayType);
+        rapidjson::Value sctArray(rapidjson::kArrayType);
 
         for (uint32_t i = 0; i < mTimeTasks.size(); i++)
         {
@@ -324,15 +361,26 @@ namespace Falcor
 
                 if (sctTask != nullptr)
                 {
-                    rapidjson::Value sctFilename(rapidjson::kStringType);
-                    sctFilename.SetString(sctTask->mCaptureFile.c_str(), jsonAllocator);
-                    scTArray.PushBack(sctFilename, jsonAllocator);
+
+                    rapidjson::Value sctfilename;
+                    sctfilename.SetString(sctTask->mCaptureFilename.c_str(), jsonAllocator);
+
+                    rapidjson::Value sctfilepath;
+                    sctfilepath.SetString(sctTask->mCaptureFilepath.c_str(), jsonAllocator);
+
+                    rapidjson::Value sctFile;
+                    sctFile.SetObject();
+                    sctFile.AddMember("Filename", sctfilename, jsonAllocator);
+                    sctFile.AddMember("Filepath", sctfilepath, jsonAllocator);
+
+                    sctArray.PushBack(sctFile, jsonAllocator);
+
                 }
             }
         }
 
         //  
-        jsonTestResults.AddMember("Time Screen Captures", scTArray, jsonAllocator);
+        jsonTestResults.AddMember("Time Screen Captures", sctArray, jsonAllocator);
 
     }
 
@@ -417,7 +465,19 @@ namespace Falcor
         {
             //  Performance Check Frames.
             std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perfframes");
-            
+
+            if (perfframeRanges.size() % 2 != 0)
+            {
+                logError("Please provide a start and end frame for each Performance Frame Range. The extra one will be discarded.");
+                perfframeRanges.pop_back();
+            }
+
+            //                        
+            for (uint32_t i = 0; i < perfframeRanges.size() / 2; i++)
+            {
+                std::shared_ptr<PerformanceCheckFrameTask> preformanceCheckFrameTask = std::make_shared<PerformanceCheckFrameTask>(perfframeRanges[i].asUint(), perfframeRanges[i + 1].asUint());
+            }
+                         
         }
         
         //  
@@ -474,6 +534,18 @@ namespace Falcor
             //  Performance Check Frames.
             std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perftimes");
 
+            if (perfframeRanges.size() % 2 != 0)
+            {
+                logError("Please provide a start and end frame for each Performance Frame Range. The extra one will be discarded.");
+                perfframeRanges.pop_back();
+            }
+
+            //                        
+            for (uint32_t i = 0; i < perfframeRanges.size() / 2; i++)
+            {
+                std::shared_ptr<PerformanceCheckTimeTask> performanceCheckTimeTask = std::make_shared<PerformanceCheckTimeTask>(perfframeRanges[i].asFloat(), perfframeRanges[i + 1].asFloat());
+            }
+            
         }
 
         //  
@@ -482,7 +554,6 @@ namespace Falcor
         {
             //  Memory Check Frames.
             std::vector<ArgList::Arg> memframeRanges = mArgList.getValues("memtimes");
-
         }
 
         //  

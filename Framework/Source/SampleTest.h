@@ -217,6 +217,19 @@ namespace Falcor
             //  
             PerformanceCheckFrameTask(uint32_t newStartFrame, uint32_t newEndFrame) : FrameTask(TaskType::PerformanceCheckTask, newStartFrame, newEndFrame) {};
 
+            //  Basic Check.
+            virtual bool isActive(SampleTest * sampleTest)
+            {
+                if (sampleTest->getFrameID() >= mStartFrame && sampleTest->getFrameID() <= mEndFrame)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+
+            }
 
             //  On Frame Begin.
             virtual void onFrameBegin(SampleTest * sampleTest)
@@ -259,12 +272,16 @@ namespace Falcor
                 if (sampleTest->mHasSetDirectory)
                 {
                     //  Capture the Screen.
-                    mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                    mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                    mCaptureFilename = getFilenameFromPath(mCaptureFile);
                 }
                 else
                 {
                     //  Capture the Screen.
-                    mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                    mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                    mCaptureFilename = getFilenameFromPath(mCaptureFile);
                 }
                 
                 //  Toggle the Text Back.
@@ -276,7 +293,8 @@ namespace Falcor
 
             //
             uint32_t mCaptureFrame = 0;
-            std::string mCaptureFile = "";
+            std::string mCaptureFilename = "";
+            std::string mCaptureFilepath = "";
         };
 
 
@@ -395,6 +413,20 @@ namespace Falcor
             //  
             PerformanceCheckTimeTask(float perfomanceCheckRangeBeginTime, float perfomanceCheckRangeBeginEnd) : TimeTask(TaskType::PerformanceCheckTask, perfomanceCheckRangeBeginTime, perfomanceCheckRangeBeginEnd) {};
 
+
+            //  Basic Check.
+            virtual bool isActive(SampleTest * sampleTest)
+            {
+                if (sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
             //  On Frame Begin.
             virtual void onFrameBegin(SampleTest * sampleTest)
             {
@@ -445,12 +477,16 @@ namespace Falcor
                     if (sampleTest->mHasSetDirectory)
                     {
                         //  Capture the Screen.
-                        mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                        mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                        mCaptureFilename = getFilenameFromPath(mCaptureFile);
                     }
                     else
                     {
                         //  Capture the Screen.
-                        mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                        mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                        mCaptureFilename = getFilenameFromPath(mCaptureFile);
                     }
 
 
@@ -467,7 +503,8 @@ namespace Falcor
 
             //  
             std::string mCaptureFile = "";
-
+            std::string mCaptureFilename = "";
+            std::string mCaptureFilepath = "";
 
         };
 
