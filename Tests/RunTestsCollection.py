@@ -161,7 +161,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Add the Argument for which Test Collection to use.
-    parser.add_argument('-tc', '--testsCollection', action='store', help='Specify the Test Collection.')
+    parser.add_argument('-tc', '--tests_collection', action='store', help='Specify the Test Collection.')
 
     # Parse the Arguments.
     args = parser.parse_args()

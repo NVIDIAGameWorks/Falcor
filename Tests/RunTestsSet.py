@@ -26,6 +26,10 @@ class TestsSetBuildSolutionError(Exception):
 class TestsSetRunTestsError(Exception):
     pass
 
+
+class TestsSetError(Exception):
+    pass
+
 # Try and Build the Specified Solution with the specified configuration/
 def buildSolution(solutionfilepath, configuration):
 
@@ -160,8 +164,31 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
 
 
 
-def run_tests_set_local(relative_solution_filepath, configuration, tests_set, nobuild):
-        
+def build_solution(relative_solution_filepath, configuration):
+
+    try:
+        # Build the Batch Args.
+        batch_args = [configs.gBuildSolutionScript, "rebuild", relative_solution_filepath, configuration.lower()]
+
+        # Build Solution.
+        if subprocess.call(batch_args) == 0:
+            return 0
+
+        else:
+            raise TestsSetError("Error buidling solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+
+    except subprocess.CalledProcessError as subprocess_error:
+        raise TestsSetError("Error buidling solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+
+
+
+def run_tests_set_local(relative_solution_filepath, configuration, nobuild, tests_set, reference_target):
+
+    if not nobuild:
+        build_solution(relative_solution_filepath, configuration)
+
+    
+
 
 
 
@@ -170,11 +197,8 @@ def main():
     # Argument Parser.
     parser = argparse.ArgumentParser()
 
-    # Add the Argument for which directory.
-    parser.add_argument('-d', '--directory', action='store', help='Specify the directory the solution file is in.')
-
     # Add the Argument for which solution.
-    parser.add_argument('-sln', '--solution', action='store', help='Specify the solution file.')
+    parser.add_argument('-slnfp', '--solutionfilepath', action='store', help='Specify the solution filepath.')
 
     # Add the Argument for which configuration.
     parser.add_argument('-cfg', '--configuration', action='store', help='Specify the configuration.')
@@ -188,8 +212,9 @@ def main():
     # Parse the Arguments.
     args = parser.parse_args()
 
-    # Parse the Test Collection.
-    return runTestsSet(args.directory, args.solution, args.configuration, args.testsSet, args.nobuild)
+
+    run_tests_set_local(args.solutionfilepath, args.configuration, False, "", "")
+
 
 if __name__ == '__main__':
     main()

@@ -1,34 +1,44 @@
 {
-    "Tests Name" : "Tests",
+    "Tests Collections Name" : "All Tests",
 
-
-    "Tests" : 
-    [
+    "Tests Collections" : 
+    {
+        "All_GitHub_Tests" :
         {
-            "Solution Target" : "Falcor.sln",
-            "Configuration Target" : "ReleaseD3D12",
-            "Tests Set" : "TestsCollectionsAndSets\\TestsSetD3D12.json"
-        },
+            "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
+            "Branch Target" : "master",
+            "Repository Folder" : "Falcor",
+            "Destination Target" : "C:\\Falcor\\GitHub\\",
+            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\References\\GitHub\\",
+            
+            "Tests":
+            [
+                {
+                    "Solution Target" : "Falcor.sln",
+                    "Configuration Target" : "ReleaseD3D12",
+                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseD3D12.json"
+                },
         
-        {
-            "Solution Target" : "Falcor.sln",
-            "Configuration Target" : "DebugD3D12",
-            "Tests Set" : "TestsCollectionsAndSets\\TestsSetD3D12.json"
-        },
+                {
+                    "Solution Target" : "Falcor.sln",
+                    "Configuration Target" : "DebugD3D12",
+                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugD3D12.json"
+                },
 
-        {
+                {
 
-            "Solution Target" : "Falcor.sln",
-            "Configuration Target" : "ReleaseVK",
-            "Tests Set" : "TestsCollectionsAndSets\\TestsSetVulkan.json"
-        },
+                    "Solution Target" : "Falcor.sln",
+                    "Configuration Target" : "ReleaseVK",
+                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseVK.json"
+                },
 
-        {
+                {
 
-            "Solution Target" : "Falcor.sln",
-            "Configuration Target" : "DebugVK",
-            "Tests Set" : "TestsCollectionsAndSets\\TestsSetVulkan.json"
+                    "Solution Target" : "Falcor.sln",
+                    "Configuration Target" : "DebugVK",
+                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugVK.json"
+                }
+            ]
         }
-    ]
-
+    }
 }

@@ -16,18 +16,28 @@ import Helpers as helpers
 
 
 
+
+
 def main():
 
     # Argument Parser.
     parser = argparse.ArgumentParser()
 
     # Add the Argument for which Test Collection to use.
-    parser.add_argument('-testsCollection', nargs='?', action='store', help='Specify the Test Collection', default='TestsCollectionsAndSets\\TestsCollection.json')
+    parser.add_argument('-tc', '--tests_collection', action='store', help='Specify the Test Collection.')
 
-    # Add the Arguments for do not build and for show summary, and whether to run it locally.
-    parser.add_argument("-nb", action='store_true', help='Whether or not to build the solutions again.')
+    #   
+    json_data = rTC.read_and_verify_tests_collections_source(args.testsCollection)
 
+    #   
+    if json_data is None:
 
+        print 'Falied to Verify Tests Collections Source!'
+
+        return None
+
+    
+    rTC.run_tests_collections(json_data)
 
 
 if __name__ == '__main__':
