@@ -187,7 +187,7 @@ def run_tests_set_local(relative_solution_filepath, configuration, nobuild, test
     if not nobuild:
         build_solution(relative_solution_filepath, configuration)
 
-    
+        
 
 
 
@@ -212,7 +212,7 @@ def main():
     # Parse the Arguments.
     args = parser.parse_args()
 
-
+    #
     run_tests_set_local(args.solutionfilepath, args.configuration, False, "", "")
 
 

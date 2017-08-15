@@ -9,34 +9,35 @@
             "Branch Target" : "master",
             "Repository Folder" : "Falcor",
             "Destination Target" : "C:\\Falcor\\GitHub\\",
-            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\References\\GitHub\\",
+            "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\TestCollectionsAndSets\\",
+            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
             
             "Tests":
             [
                 {
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "ReleaseD3D12",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseD3D12.json"
+                    "Tests Set" : "TSReleaseD3D12.json"
                 },
         
                 {
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "DebugD3D12",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugD3D12.json"
+                    "Tests Set" : "TSDebugD3D12.json"
                 },
 
                 {
 
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "ReleaseVK",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseVK.json"
+                    "Tests Set" : "TSReleaseVK.json"
                 },
 
                 {
 
                     "Solution Target" : "Falcor.sln",
                     "Configuration Target" : "DebugVK",
-                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugVK.json"
+                    "Tests Set" : "TSDebugVK.json"
                 }
             ]
         },
@@ -48,7 +49,8 @@
             "Repository Folder" : "Falcor",
             "Branch Target" : "master",
             "Destination Target" : "C:\\Falcor\\GitLab\\",
-            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\References\\GitLab\\",
+            "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\TestCollectionsAndSets\\",
+            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\References\\",
             
             "Tests":
             [
