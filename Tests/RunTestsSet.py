@@ -30,45 +30,13 @@ class TestsSetRunTestsError(Exception):
 class TestsSetError(Exception):
     pass
 
-# Try and Build the Specified Solution with the specified configuration/
-def buildSolution(solutionfilepath, configuration):
-
-    try:
-
-        # Build the Batch Args.
-        batchArgs = [configs.gBuildSolutionScript, "rebuild", solutionfilepath, configuration.lower()]
-
-        # Build Solution.
-        if subprocess.call(batchArgs) == 0:
-            return 0
-        else:
-            raise TestsSetBuildSolutionError("Error buidling solution : " + solutionfilepath + " with configuration : " + configuration.lower())
-            return None
-
-    except subprocess.CalledProcessError as subprocessError:
-        raise TestsSetBuildSolutionError("Error buidling solution : " + solutionfilepath + " with configuration : " + configuration.lower())
-        return None
 
 
-
-# Prep for running the Tests Set by building the solution.
-def prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
-
-    try:
-        # Get the absolute path.
-        absolutepath = os.path.abspath(directorypath + solutionfilename)
-    
-        # Try and Build the Solution.
-        if buildSolution(absolutepath, configuration) == 0:
-            # Return success.
-            return 0
-        else:
-            return None
-
-        # Exception Handling.
-    except (TestsSetBuildSolutionError) as e:
-            print e.args
-            return None
+def getExecutableDirectoryForConfiguration(configuration):
+    if configuration.lower() == 'released3d12' or configuration.lower() == 'releasevk' :
+        return "Bin\\x64\\Release\\" 
+    else:
+        return "Bin\\x64\\Debug\\"
 
 
 
@@ -163,7 +131,7 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
 
 
 
-
+# Build the Solution.
 def build_solution(relative_solution_filepath, configuration):
 
     try:
@@ -182,13 +150,48 @@ def build_solution(relative_solution_filepath, configuration):
 
 
 
-def run_tests_set_local(relative_solution_filepath, configuration, nobuild, tests_set, reference_target):
-
+# Run the tests locally.
+def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json_filepath, reference_target):
+    
+    #   
     if not nobuild:
         build_solution(relative_solution_filepath, configuration)
 
-        
 
+    json_data = None
+    
+    try:
+        # Try and open the json file.
+        with open(json_filepath) as jsonfile:
+
+            # Try and parse the data from the json file.
+            try:
+                json_data = json.load(jsonfile)
+
+                # Test Runs Results.    
+                test_runs_results = {}
+
+                # Iterate over the Tests.
+                for current_test in json_data['Tests']:
+                    
+                    # Check if the test is enabled.
+                    if(current_test["Enabled"] != "True"):
+                        continue
+
+                    # Output Directory.
+                    output_directory = 'Results\\' + configuration + '\\' + current_test['Test Name'] + '\\'
+
+                    #   
+                    helpers.directory_clean_or_make(output_directory);
+
+
+            # Exception Handling.
+            except ValueError:
+                raise TestsSetError("Error parsing Tests Set file : " + json_filepath)
+
+    # Exception Handling.
+    except (IOError, OSError) as e:
+        raise TestsSetError("Error opening Tests Set file : " + json_filepath)
 
 
 
@@ -207,13 +210,16 @@ def main():
     parser.add_argument('-nb', '--nobuild', action='store_true', help='Specify whether or not to build the solution.')
 
     # Add the Argument for which Tests Set to run.
-    parser.add_argument('-ts', '--testsSet', action='store', help='Specify the Tests Set file.')
+    parser.add_argument('-ts', '--testsset', action='store', help='Specify the Tests Set file.')
+
+    # Add the Argument for which reference directory to run against.
+    parser.add_argument('-ref', '--referencedirectory', action='store', help='Specify the Tests Set file.')
 
     # Parse the Arguments.
     args = parser.parse_args()
 
     #
-    run_tests_set_local(args.solutionfilepath, args.configuration, False, "", "")
+    run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset, args.ref)
 
 
 if __name__ == '__main__':

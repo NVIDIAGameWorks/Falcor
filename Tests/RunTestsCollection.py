@@ -148,11 +148,11 @@ def run_tests_collection(test_name, test_data):
 def run_tests_set(current_test_set_specification):
     
     # Clean or make the Destination Directory.
-    helpers.directory_clean_or_make(test_data["Destination Target"] + test_data["Repository Folder"])
+    # helpers.directory_clean_or_make(test_data["Destination Target"] + test_data["Repository Folder"])
 
     # Create the working directory.    
-    repository_main_directory = test_data["Destination Target"] + test_data["Repository Folder"] 
-
+    # repository_main_directory = test_data["Destination Target"] + test_data["Repository Folder"] 
+    return 0
 
 
 def main():
