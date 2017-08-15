@@ -9,8 +9,9 @@
             "Branch Target" : "master",
             "Repository Folder" : "Falcor",
             "Destination Target" : "C:\\Falcor\\GitHub\\",
-            "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\TestCollectionsAndSets\\",
             "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
+            "Generate Reference Target :" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
+            "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\TestCollectionsAndSets\\",
             
             "Tests":
             [
@@ -49,8 +50,10 @@
             "Repository Folder" : "Falcor",
             "Branch Target" : "master",
             "Destination Target" : "C:\\Falcor\\GitLab\\",
-            "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\TestCollectionsAndSets\\",
             "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\References\\",
+            "Generate Reference Target :" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\References\\",
+            "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitLab\\TestCollectionsAndSets\\",
+            
             
             "Tests":
             [

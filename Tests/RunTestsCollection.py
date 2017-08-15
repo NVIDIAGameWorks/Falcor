@@ -10,7 +10,6 @@ import pprint
 
 import RunTestsSet as rTS
 import CloneRepo as cloneRepo
-import Configs as configs
 import Helpers as helpers
 
 
@@ -130,10 +129,12 @@ def verify_tests_collection(tests_name, tests_data):
 # Run all of the Tests Collections.
 def run_tests_collections(json_data):
 
+
     for current_tests_collection_name in json_data["Tests Collections"]:
 
         for current_tests_set in json_data["Tests Collections"][current_tests_collection_name]['Tests']:
-
+            
+    
             # The Clone Directory is the Destination Target + The Branch Target + the Test Collection Name + the Build Configuration Name.
             # For the momemnt, do not add multiple solutions to the same Test Collection, because that will create overlapping clone targets.
             clone_directory = json_data["Tests Collections"][current_tests_collection_name]["Destination Target"] 
@@ -145,20 +146,22 @@ def run_tests_collections(json_data):
             helpers.directory_clean_or_make(clone_directory)
 
             # Clone the Repositroy to the Clone Directory.
-            cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
+            # cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
 
             #   
-            print 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"]
+            # print 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"]
+
 
             # 
-            results = rTS.run_tests_set_local(clone_directory + '\\' + current_tests_set['Solution Target'], current_tests_set["Configuration Target"], True, 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"])
+            results_directory = "Results\\" + current_tests_collection_name + '\\' + json_data["Tests Collections"][current_tests_collection_name]["Branch Target"]
+            results = rTS.run_tests_set_local(clone_directory + '\\' + current_tests_set['Solution Target'], current_tests_set["Configuration Target"], True, 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"], results_directory)
 
             # 
-            bool has_expected_test_set_outputs = rTS.check_tests_set_results_expected_output(results['Test Runs Results'])
+            has_expected_test_set_outputs = rTS.check_tests_set_results_expected_output(results['Test Runs Results'])
 
             # 
             pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(results)
+            # pp.pprint(results)
 
             break
 

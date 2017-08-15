@@ -10,7 +10,7 @@ import sys
 import json
 import pprint
 
-import Configs as configs
+import MachineConfigs as machine_configs
 import Helpers as helpers
 
 
@@ -36,7 +36,7 @@ def build_solution(relative_solution_filepath, configuration):
 
     try:
         # Build the Batch Args.
-        batch_args = [configs.gBuildSolutionScript, "rebuild", relative_solution_filepath, configuration.lower()]
+        batch_args = [machine_configs.machine_build_script, "rebuild", relative_solution_filepath, configuration.lower()]
 
         # Build Solution.
         if subprocess.call(batch_args) == 0:
@@ -86,12 +86,15 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
 
 
 # Run the tests locally.
-def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath):
+def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath, results_directory):
+
 
     tests_set_result = {}    
     tests_set_result['Tests Set Error Status'] = False
     tests_set_result['Tests Set Error Message'] = ""
     tests_set_result["Test Runs Results"] = None
+
+
     #   
     if not nobuild:
         try:
@@ -105,10 +108,13 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
     #
     json_data = None
     
+
+
     try:
         # Try and open the json file.
         with open(json_filepath) as jsonfile:
 
+        
             # Try and parse the data from the json file.
             try:
                 json_data = json.load(jsonfile)
@@ -118,9 +124,12 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
 
                 # Absolute path.
                 absolutepath = os.path.abspath(os.path.dirname(solution_filepath))
-                print json_data
+
+        
                 #   
                 for current_test_name in json_data['Tests']:
+
+                    print 'AAAAAAA'
 
                     test_runs_results[current_test_name] = {}
                     
@@ -132,18 +141,17 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                     executable_directory = absolutepath + '\\' + get_executable_directory(configuration)
                     
                     # Get the results directory.
-                    results_directory = get_results_directory(configuration, current_test_name) 
-                    test_runs_results[current_test_name]['Results Directory'] = results_directory
+                    current_results_directory = results_directory + '\\' + current_test_name + '\\'
 
                     # Create the directory, or clean it.
-                    helpers.directory_clean_or_make(results_directory)
+                    helpers.directory_clean_or_make(current_results_directory)
 
                     #   Check if the test is enabled.
                     if test_runs_results[current_test_name]['Test']['Enabled'] == "True":
 
                         # Initialize all the results.
                         test_runs_results[current_test_name]['Results']["Run Results"] = {}                    
-                        test_runs_results[current_test_name]['Results']['Results Directory'] = results_directory
+                        test_runs_results[current_test_name]['Results']['Results Directory'] = current_results_directory
                         test_runs_results[current_test_name]['Results']['Results Error Status'] = {}
                         test_runs_results[current_test_name]['Results']['Results Error Message'] = {}  
 
@@ -158,7 +166,7 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                             # Try running the test.
                             try:
 
-                                current_test_run_result = run_test_run(executable_directory + test_runs_results[current_test_name]['Test']['Project Name'] + '.exe', current_test_args, current_test_name + str(index), results_directory)                                
+                                current_test_run_result = run_test_run(executable_directory + test_runs_results[current_test_name]['Test']['Project Name'] + '.exe', current_test_args, current_test_name + str(index), current_results_directory)                                
                                 test_runs_results[current_test_name]['Results']["Run Results"][index] = current_test_run_result 
 
                             except TestsSetError as tests_set_error:
@@ -232,7 +240,7 @@ def check_tests_set_results(test_set_results):
         # Check that there was not no other error, and open the file if there wasn't.
         for index, current_project_run in enumerate(test_runs_results[current_test_name]['Test']['Project Tests Args']):
 
-            expected_output_file = test_runs_results[current_test_name]['Results Directory'] + current_test_name + str(index) + '.json'
+            expected_output_file = test_runs_results[current_test_name]['Results']['Results Directory'] + current_test_name + str(index) + '.json'
 
             if test_runs_results[current_test_name]['Results']['Results Error Status'][index] != True:
 
@@ -274,8 +282,10 @@ def main():
     # Parse the Arguments.
     args = parser.parse_args()
 
+    main_results_directory = "Results\\" + args.configuration + '\\'
+
     #
-    tests_set_results = run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset)
+    tests_set_results = run_tests_set_local(args.solutionfilepath, args.configuration, args.nobuild, args.testsset, main_results_directory)
 
     if tests_set_results['Tests Set Error Status'] is True:
 

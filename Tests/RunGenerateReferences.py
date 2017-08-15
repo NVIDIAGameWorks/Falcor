@@ -8,10 +8,9 @@ import sys
 import json
 import pprint
 
-import RunTestsSet as rTS
 import RunTestsCollection as rTC
-import Configs as configs
 import Helpers as helpers
+import RunTestsSet as rTS
 
 
 

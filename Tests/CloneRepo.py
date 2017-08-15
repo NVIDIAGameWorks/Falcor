@@ -8,7 +8,6 @@ import sys
 
 # Helpers.
 import Helpers as helpers
-import Configs as configs
 
 
 # Error if we failed to clean or make the correct directory.
@@ -53,13 +52,13 @@ def main():
     parser = argparse.ArgumentParser()
 
     # Add the Arguments for the Repository.
-    parser.add_argument('-repository', nargs='?', action='store', help='Specify the Repository', default=configs.gDefaultCloneRepository)
+    parser.add_argument('-repository', action='store', help='Specify the Repository')
 
     # Add the Arguments for the Branch.
-    parser.add_argument('-branch', nargs='?', action='store', help='Specify the Branch', default=configs.gDefaultCloneBranch)
+    parser.add_argument('-branch', action='store', help='Specify the Branch')
 
     # Add the Arguments for the directory.
-    parser.add_argument('-destination', nargs='?', action='store', help='Specify the Destination', default=os.getcwd())
+    parser.add_argument('-destination', action='store', help='Specify the Destination')
 
     # Parse the Arguments.
     args = parser.parse_args()
