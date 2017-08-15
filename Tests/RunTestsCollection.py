@@ -14,6 +14,9 @@ import Configs as configs
 import Helpers as helpers
 
 
+class TestsCollectionError(Exception):
+    pass
+
 # Check whether the json object has the specified attribute.
 def json_object_has_attribute(json_data, attribute_name):
     
@@ -38,23 +41,20 @@ def read_and_verify_tests_collections_source(json_filename):
             
                 # Check for a Tests Collection Name.
                 if not json_object_has_attribute(json_data, "Tests Collections Name"):
-                    print ('Error - "Tests Collections Name" is not defined in ' + json_filename)
-                    return None
+                    raise TestsCollectionError('Error - "Tests Collections Name" is not defined in ' + json_filename)
 
                 # Check for a Tests Collection Name.
                 if not json_object_has_attribute(json_data, "Tests Collections"):
-                    print ('Error - "Tests Collections" is not defined in ' + json_filename)
-                    return None
-
+                    raise TestsCollectionError('Error - "Tests Collections" is not defined in ' + json_filename)
+                    
                 # Check for a non-zero Tests Collection dictionary.
                 if len(json_data["Tests Collections"].keys()) == 0:
-                    print ('Error - "Tests Collections" dictionary is not of non-zero size in ' + json_filename)
-                    return None
-
+                    raise TestsCollectionError('Error - "Tests Collections" dictionary is not of non-zero size in ' + json_filename)
+                    
                 # Verify that all of the tests collections are correctly written. 
                 for key in json_data["Tests Collections"]:
-                    if verify_tests_collection(key, json_data["Tests Collections"][key]) == None:
-                        return None
+                    verify_tests_collection(key, json_data["Tests Collections"][key])
+                    
 
                 return json_data
 
@@ -75,79 +75,56 @@ def verify_tests_collection(tests_name, tests_data):
 
     # Check for a Repository Target.
     if not json_object_has_attribute(tests_data, "Repository Target"):
-        print ('Error - "Repository Target" is not defined in ' + tests_name)
-        return None
+        raise TestsCollectionError('Error - "Repository Target" is not defined in ' + tests_name)
+        
 
     # Check for a Repository Folder.
     if not json_object_has_attribute(tests_data, "Repository Folder"):
-        print ('Error - "Repository Folder" is not defined in ' + tests_name)
-        return None
+        raise TestsCollectionError('Error - "Repository Folder" is not defined in ' + tests_name)
+        
 
     # Check for a Branch Target.
     if not json_object_has_attribute(tests_data, "Branch Target"):
-        print ('Error - "Branch Target" is not defined in ' + tests_name)
-        return None
+        raise TestsCollectionError('Error - "Branch Target" is not defined in ' + tests_name)
+        
 
 
     # Check for a Repository Target.
     if not json_object_has_attribute(tests_data, "Destination Target"):
-        print ('Error - "Destination Target" is not defined in ' + tests_name)
-        return None
+        raise TestsCollectionError('Error - "Destination Target" is not defined in ' + tests_name)
+        
 
     # Check for a Repository Target.
     if not json_object_has_attribute(tests_data, "Reference Target"):
-        print ('Error - "Reference Target" is not defined in ' + tests_name)
-        return None
+        raise TestsCollectionError('Error - "Reference Target" is not defined in ' + tests_name)
+        
 
     # Check for a Tests Array.
     if not json_object_has_attribute(tests_data, "Tests"):
-        print ('Error - "Tests" is not defined in ' + tests_name)
-        return None
+        raise TestsCollectionError('Error - "Tests" is not defined in ' + tests_name)
+        
 
     # Check for a non-zero Tests Collection dictionary.
     if len(tests_data["Tests"]) == 0:
-        print ('Error - "Tests" array is not of non-zero length in ' + tests_name)
-        return None
+        raise TestsCollectionError('Error - "Tests" array is not of non-zero length in ' + tests_name)
 
     # Verify each of the tests specification.
-    for index , current_test_specification in enumerate(tests_data["Tests"]):
+    for index, current_test_specification in enumerate(tests_data["Tests"]):
 
         if not json_object_has_attribute(current_test_specification, "Solution Target"):
-            print ('Error - "Solution Target" is not defined in entry ' + str(index) + ' in ' + tests_name)
-            return None
+            raise TestsCollectionError('Error - "Solution Target" is not defined in entry ' + str(index) + ' in ' + tests_name)
 
         if not json_object_has_attribute(current_test_specification, "Configuration Target"):
-            print ('Error - "Configuration Target" is not defined in entry ' + str(index) + ' in ' + tests_name)
-            return None
+            raise TestsCollectionError('Error - "Configuration Target" is not defined in entry ' + str(index) + ' in ' + tests_name)
+            
 
         if not json_object_has_attribute(current_test_specification, "Tests Set"):
-            print ('Error - "Tests Set" is not defined in entry ' + str(index) + ' in ' + tests_name)
-            return None
+            raise TestsCollectionError('Error - "Tests Set" is not defined in entry ' + str(index) + ' in ' + tests_name)
 
     return 0
 
 
 
-# Run a Tests Set.
-def run_tests_set(test_set_specification):
-
-
-
-# Run each Test Collection
-def run_tests_collection(test_name, test_data):
-
-    # Clean or make the Destination Directory.
-    helpers.directory_clean_or_make(test_data["Destination Target"] + test_data["Repository Folder"])
-
-    # Create the working directory.    
-    repository_main_directory = test_data["Destination Target"] + test_data["Repository Folder"] 
-
-
-    for current_test_set_specification in test_data["Tests"]:
-
-        run_tests_set(current_test_set_specification)
-
-    return None
 
 
 # Run all of the Tests Collections.
@@ -155,7 +132,26 @@ def run_tests_collections(json_data):
 
     for key in json_data["Tests Collections"]:
 
-        run_test_collection(key, json_data["Tests Collections"][key])
+        run_tests_collection(key, json_data["Tests Collections"][key])
+
+# Run each Test Collection.
+def run_tests_collection(test_name, test_data):
+
+    tests_set_results = []
+
+    #   
+    for current_tests_set_specification in test_data["Tests"]:
+
+        tests_set_results.append(run_tests_set(current_tests_set_specification))
+
+
+def run_tests_set(current_test_set_specification):
+    
+    # Clean or make the Destination Directory.
+    helpers.directory_clean_or_make(test_data["Destination Target"] + test_data["Repository Folder"])
+
+    # Create the working directory.    
+    repository_main_directory = test_data["Destination Target"] + test_data["Repository Folder"] 
 
 
 
