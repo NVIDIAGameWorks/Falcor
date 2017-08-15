@@ -5,7 +5,7 @@ import stat
 from distutils.dir_util import copy_tree
 
 # CLean the directory if it exists, or make it if it does not.
-def directoryCleanOrMake(destination):
+def directory_clean_or_make(destination):
 
     # Check if the Directory exists, and make it if it does not.
     if not os.path.isdir(destination):
@@ -41,6 +41,6 @@ def directoryCleanOrMake(destination):
             # Return failure.
             return None
 
-def directoryCopy(fromDirectory, toDirectory):
+def directory_copy(fromDirectory, toDirectory):
     
     copy_tree(fromDirectory, toDirectory)

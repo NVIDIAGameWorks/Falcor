@@ -135,7 +135,7 @@ def run_tests_collections(json_data):
 
     for key in json_data["Tests Collections"]:
 
-        current_tests_collection_result = run_test_collection(key, json_data["Tests Collections"][key])
+        run_test_collection(key, json_data["Tests Collections"][key])
 
 
 

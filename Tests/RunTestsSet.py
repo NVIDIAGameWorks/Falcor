@@ -69,10 +69,6 @@ def prepTestsSet(directorypath, solutionfilename, configuration, jsonfilepath):
 
 
 
-def validateTestsSet():
-
-
-    return 0
 
 
 # Parse the Specified Tests Set
@@ -111,7 +107,7 @@ def runTestsSet(directorypath, solutionfilename, configuration, jsonfilepath, no
                     outputdirectory = 'Results\\' + configuration + '\\' + currentTest['Project Name'] + '\\'
 
                     # Create the output directory.
-                    helpers.directoryCleanOrMake(outputdirectory)
+                    helpers.directory_clean_or_make(outputdirectory)
 
                     testsRuns[currentTest['Project Name']] = []
 

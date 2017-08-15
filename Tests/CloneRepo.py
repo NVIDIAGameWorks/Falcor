@@ -21,10 +21,10 @@ class CloneRepoCloneError(Exception):
 
 
 # Clone the Repository with the specified Arguments.
-def clone(repository=configs.gDefaultCloneRepository, branch=configs.gDefaultCloneBranch, destination=os.getcwd()):
+def clone(repository, branch, destination):
 
    # Create the Destination Directory.
-    if helpers.directoryCleanOrMake(destination) != 0 :
+    if helpers.directory_clean_or_make(destination) != 0 :
         raise CloneRepoCleanOrMakeError("Failed To Clean or Make Directory")
 
     # Clone the Specified Repository and Branch.
