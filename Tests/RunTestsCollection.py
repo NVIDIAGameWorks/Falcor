@@ -125,7 +125,6 @@ def verify_tests_collection(tests_name, tests_data):
 
 
 
-
 # Run all of the Tests Collections.
 def run_tests_collections(json_data):
 
@@ -154,11 +153,11 @@ def run_tests_collections(json_data):
             cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
 
             # Get the Results and Reference Directory.
-            results_directory = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\' 
+            results_directory = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\'  + current_tests_set["Configuration Target"] + '\\'
             reference_directory = json_data["Tests Collections"][current_tests_collection_name]['Reference Target']
 
             # Run the Tests Set.
-            results = rTS.run_tests_set_local(clone_directory + '\\' + current_tests_set['Solution Target'], current_tests_set["Configuration Target"], False, 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"], results_directory, reference_directory)
+            results = rTS.run_tests_set_local(clone_directory + '\\' + current_tests_set['Solution Target'], current_tests_set["Configuration Target"], False, 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"], results_directory)
 
             #   
             has_expected_test_set_outputs = rTS.check_tests_set_results_expected_output(results['Test Runs Results'])
@@ -185,19 +184,24 @@ def main():
     # Parse the Arguments.
     args = parser.parse_args()
 
-    #   
-    json_data = read_and_verify_tests_collections_source(args.tests_collection)
+    # 
+    try: 
+        json_data = read_and_verify_tests_collections_source(args.tests_collection)
+    except TestsCollectionError as tests_collection_error:
+        print (tests_collection_error.args)
+
+
 
     #   
     if json_data is None:
-
         print 'Falied to Verify Tests Collections Source!'
-
         return None
 
-
+    # 
     tests_collections_results = run_tests_collections(json_data)
 
+
+    # 
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(tests_collections_results)
 

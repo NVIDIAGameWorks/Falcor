@@ -36,15 +36,29 @@ def main():
 
         return None
 
-    #
-    # tests_collections_results = rTC.run_tests_collections(json_data)
-
-    # verify_all_ran_successfully = rTC.verify_tests_collections_results(json_data)
-
-    helpers.directory_clean_or_make(json_data['Generate Reference Target'] + '\\' + machine_configs.machine_name + '\\')
-
     # 
     pp = pprint.PrettyPrinter(indent=4)
+
+    pp.pprint(json_data)
+
+    #
+    tests_collections_results = rTC.run_tests_collections(json_data)
+
+    verify_all_ran_successfully = True
+
+    #   
+    for current_test_collections in json_data['Tests Collections']:
+        # 
+        destination_reference_directory = json_data['Tests Collections'][current_test_collections]['Generate Reference Target'] + '\\' + machine_configs.machine_name + '\\' +  current_test_collections + '\\'
+
+        helpers.directory_clean_or_make(json_data['Tests Collections'][current_test_collections]['Generate Reference Target'] + '\\' + machine_configs.machine_name + '\\')
+
+        helpers.directory_copy(json_data['Tests Collections'][current_test_collections]['Branch Target'] + '\\' + current_test_collections + '\\', destination_reference_directory)
+
+        
+
+    # 
+    # pp = pprint.PrettyPrinter(indent=4)
 
     # pp.pprint(tests_collections_results)
 
