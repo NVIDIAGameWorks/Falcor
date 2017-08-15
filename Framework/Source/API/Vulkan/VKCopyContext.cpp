@@ -54,7 +54,9 @@ namespace Falcor
         uint32_t perH = getFormatHeightCompressionRatio(format);
         uint32_t bh = align_to(perH, h) / perH;
 
-        uint32_t size = bh * bw * getFormatBytesPerBlock(format);
+        uint32_t d = pTexture->getDepth(mipLevel);
+
+        uint32_t size = bh * bw * d * getFormatBytesPerBlock(format);
         return size;
     }
 
