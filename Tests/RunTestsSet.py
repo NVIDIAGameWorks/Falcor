@@ -142,6 +142,37 @@ def build_solution(relative_solution_filepath, configuration):
 
 
 
+
+def run_test_run(executable_filepath, current_arguments, outputfileprefx, output_directory):
+
+    # Start the process and record the time.
+    process = subprocess.Popen(executable_filepath  + ' ' + current_arguments + ' -outputfileprefix ' + outputfileprefx + ' -outputdirectory ' + output_directory)
+    start_time = time.time()
+
+    ran_successfully = True
+
+    # Wait for the process to finish.
+    while process.returncode is None:
+        process.poll()
+        current_time = time.time()
+
+        difference_time = current_time - start_time
+
+        # If the process has taken too long, kill it.
+        if difference_time > configs.gDefaultKillTime:
+
+            print "Kill Process"
+
+            process.kill()
+                              
+            ran_successfully = False
+
+            # Break.
+            break 
+
+    return ran_successfully
+    
+
 # Run the tests locally.
 def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json_filepath, reference_target):
     
@@ -163,11 +194,15 @@ def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json
                 # Test Runs Results.    
                 test_runs_results = {}
 
-                # Iterate over the Tests.
+                # Iterate over the Tests in the Test Set.
                 for current_test in json_data['Tests']:
                     
                     # Check if the test is enabled.
                     if(current_test["Enabled"] != "True"):
+
+                        #   
+                        test_runs_results[current_test['Test Name']] = []
+
                         continue
 
                     # Output Directory.
@@ -176,9 +211,7 @@ def run_tests_set_local(relative_solution_filepath, configuration, nobuild, json
                     # Directory Clean or Make.
                     helpers.directory_clean_or_make(output_directory);
                     
-                    #   
-                    test_runs_results[current_test['Test Name']] = []
-
+                    
 
 
 

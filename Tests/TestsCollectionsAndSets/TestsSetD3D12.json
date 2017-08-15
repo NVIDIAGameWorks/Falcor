@@ -1,8 +1,7 @@
 {
     "Tests" : 
-    [
-        {
-            "Test Name" : "ComputeShaderTest",
+    {
+        "ComputeShaderTest": {
             "Enabled" : "True",
             "Project Name" : "ComputeShader",
             "Project Tests Args" :
@@ -14,8 +13,7 @@
             ]  
         },
 
-        {
-            "Test Name" : "MultiPassPostProcessTest",
+        "MultiPassPostProcessTest": {
             "Enabled" : "False",
             "Project Name" : "MultiPassPostProcess",
             "Project Tests Args" :
@@ -28,9 +26,9 @@
                 "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png"
             ]  
         },
-
+        
+        "FeatureDemoTest":
         {
-            "Test Name" : "FeatureDemoTest",
             "Enabled" : "False",
             "Project Name" : "FeatureDemo",
             "Project Tests Args" :
@@ -44,10 +42,10 @@
                 "-test -loadscene UE4\\SunTemple\\SunTemple.fscene -sstimes 10 27 50 -shutdowntime 55"
             ]  
         },
-
+        
+        "ShadowsTest":
         {
 
-            "Test Name" : "ShadowsTest",
             "Enabled" : "False",
             "Project Name" : "Shadows",
             "Project Tests Args" :
@@ -56,9 +54,9 @@
                 "-test -loadscene alphatest\\alpha_test.fscene -incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300"
             ]
         },
-
+        
+        "PostProcessTest":
         {
-            "Test Name" : "PostProcessTest",
             "Enabled" : "False",
             "Project Name" : "PostProcess",
             "Project Tests Args" : 
@@ -67,8 +65,8 @@
             ]
         },
 
+        "SimpleDeferredTest":
         {
-            "Test Name" : "SimpleDeferredTest",
             "Enabled" : "False",
             "Project Name" : "SimpleDeferred",
             "Project Tests Args" :
@@ -76,8 +74,9 @@
                 "-test -incrementDebugMode 100 200 300 400 -ssframes 50 150 250 350 450 -shutdown 500"    
             ]
         },
+
+        "EnvMapTest":
         {
-            "Test Name" : "EnvMapTest",
             "Enabled" : "False",
             "Project Name" : "EnvMap",
             "Project Tests Args" :
@@ -86,8 +85,8 @@
             ]
 
         },
+        "NormalMapFilteringTest":
         {
-            "Test Name" : "NormalMapFilteringTest",
             "Enabled" : "False",
             "Project Name" : "NormalMapFiltering",
             "Project Tests Args" :
@@ -95,5 +94,5 @@
                 "-test -changeMode 100 200 300 -ssframes 50 150 250 350 -shutdown 400"    
             ]
         }
-    ]
+    }
 }
