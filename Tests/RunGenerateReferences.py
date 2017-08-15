@@ -9,10 +9,9 @@ import json
 import pprint
 
 import RunTestsCollection as rTC
-import Helpers as helpers
 import RunTestsSet as rTS
-
-
+import MachineConfigs as machine_configs
+import Helpers as helpers
 
 
 
@@ -28,7 +27,7 @@ def main():
     args = parser.parse_args()
 
     #   
-    json_data = rTC.read_and_verify_tests_collections_source(args.testsCollection)
+    json_data = rTC.read_and_verify_tests_collections_source(args.tests_collection)
 
     #   
     if json_data is None:
@@ -38,10 +37,16 @@ def main():
         return None
 
     #
-    tests_collections_results = rTC.run_tests_collections(json_data)
+    # tests_collections_results = rTC.run_tests_collections(json_data)
 
+    # verify_all_ran_successfully = rTC.verify_tests_collections_results(json_data)
+
+    helpers.directory_clean_or_make(json_data['Generate Reference Target'] + '\\' + machine_configs.machine_name + '\\')
+
+    # 
     pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(tests_collections_results)
+
+    # pp.pprint(tests_collections_results)
 
 
 
