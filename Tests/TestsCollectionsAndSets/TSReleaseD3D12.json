@@ -4,7 +4,7 @@
     "Tests Groups" : 
     {
         "ComputeShaderTest": {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "ComputeShader",
             "Project Tests Args" :
             [
@@ -35,20 +35,14 @@
             "Project Name" : "FeatureDemo",
             "Project Tests Args" :
             [
-                "-test -loadscene san-miguel\\SanMiguel.fscene -sstimes 10 20 30 -shutdowntime 35",
-                "-test -loadscene classroom\\Classroom.fscene -sstimes 7 15 -shutdowntime 20",
-                "-test -loadscene pink_room\\pink_room.fscene -sstimes 10 -shutdowntime 15",
-                "-test -loadscene grey_and_white_room\\grey_and_white_room.fscene -sstimes 10 20 32 -shutdowntime 37",
-                "-test -loadscene bathroom2\\bathroom.fscene -sstimes 10 20 30 -shutdowntime 35",
-                "-test -loadscene living_room\\living_room.fscene -sstimes 10 20 30 -shutdowntime 35",
-                "-test -loadscene UE4\\SunTemple\\SunTemple.fscene -sstimes 10 27 50 -shutdowntime 55"
+                "-test -loadscene san-miguel\\SanMiguel.fscene -sstimes 10 20 30 -shutdowntime 35"
             ]  
         },
         
         "ShadowsTest":
         {
 
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "Shadows",
             "Project Tests Args" :
             [
@@ -59,7 +53,7 @@
         
         "PostProcessTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "PostProcess",
             "Project Tests Args" : 
             [
@@ -69,7 +63,7 @@
 
         "SimpleDeferredTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "SimpleDeferred",
             "Project Tests Args" :
             [
@@ -79,7 +73,7 @@
 
         "EnvMapTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "EnvMap",
             "Project Tests Args" :
             [
@@ -89,7 +83,7 @@
         },
         "NormalMapFilteringTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "NormalMapFiltering",
             "Project Tests Args" :
             [
