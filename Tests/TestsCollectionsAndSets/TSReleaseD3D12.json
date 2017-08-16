@@ -59,7 +59,7 @@
         
         "PostProcessTest":
         {
-            "Enabled" : "False",
+            "Enabled" : "True",
             "Project Name" : "PostProcess",
             "Project Tests Args" : 
             [
@@ -69,7 +69,7 @@
 
         "SimpleDeferredTest":
         {
-            "Enabled" : "False",
+            "Enabled" : "True",
             "Project Name" : "SimpleDeferred",
             "Project Tests Args" :
             [
@@ -79,7 +79,7 @@
 
         "EnvMapTest":
         {
-            "Enabled" : "False",
+            "Enabled" : "True",
             "Project Name" : "EnvMap",
             "Project Tests Args" :
             [
@@ -89,7 +89,7 @@
         },
         "NormalMapFilteringTest":
         {
-            "Enabled" : "False",
+            "Enabled" : "True",
             "Project Name" : "NormalMapFiltering",
             "Project Tests Args" :
             [

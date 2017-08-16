@@ -150,10 +150,10 @@ def run_tests_collections(json_data):
             clone_directory = clone_directory + '\\' + os.path.splitext(os.path.basename(current_tests_set["Tests Set"]))[0] + '\\'
 
             # Clear the directory.
-            helpers.directory_clean_or_make(clone_directory)
+            # helpers.directory_clean_or_make(clone_directory)
 
             # Clone the Repositroy to the Clone Directory.
-            cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
+            # cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
 
             # Get the Results and Reference Directory.
             common_directory_path = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\'
@@ -161,7 +161,7 @@ def run_tests_collections(json_data):
             reference_directory = json_data["Tests Collections"][current_tests_collection_name]['Reference Target'] + '\\'  + common_directory_path
 
             # Run the Tests Set.
-            results = rTS.run_tests_set(clone_directory, False, current_tests_set["Tests Set"], results_directory, reference_directory)
+            results = rTS.run_tests_set(clone_directory, True, current_tests_set["Tests Set"], results_directory, reference_directory)
             
 
             #   Get the Tests Groups Results.   
@@ -190,10 +190,12 @@ def check_tests_collections_results(tests_collections_run_results):
 def write_tests_collection_html(tests_collections_run_results):
     for current_test_collection_name in tests_collections_run_results:
             for current_test_set_index in tests_collections_run_results[current_test_collection_name]['Tests Sets Results']:
-                tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(tests_collections_run_results[current_test_collection_name]['Tests Sets Results'][current_test_set_index])
+                current_test_set_result = tests_collections_run_results[current_test_collection_name]['Tests Sets Results'][current_test_set_index]
+                tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(current_test_set_result)
 
                 # Output the file to disk.
-                html_file_output = "TestResults_" + current_test_collection_name  + ".html" 
+                current_test_set_result
+                html_file_output =  current_test_set_result['Tests Set Results Directory'] + '\\' + "TestResults_" + current_test_set_result['Tests Set Filename']  + ".html" 
                 html_file = open(html_file_output, 'w')
                 html_file.write(tests_set_html_result)
                 html_file.close()

@@ -329,6 +329,34 @@ def analyze_screen_captures(result_json_data, current_test_result_directory, cur
             screen_captures_results[index] = [image_compare_return_code, image_compare_result_value]
 
 
+        for index, frame_screen_captures in enumerate(result_json_data['Time Screen Captures']):
+
+            # Get the test result image.
+            test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
+
+            # Get the reference image.
+            test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
+            
+            # Create the test compare imaage.
+            test_comapre_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
+
+            # 
+            image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_comapre_image_filepath]
+            image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            image_compare_result = image_compare_process.communicate()[0]
+            image_compare_return_code = image_compare_process.returncode
+
+
+            if image_compare_return_code == 0:
+                space_index = image_compare_result.find(' ')
+                image_compare_result_value = image_compare_result[:space_index]
+            else:
+                image_compare_result_value = image_compare_result
+
+            # Keep the Return Code and the Result.
+            screen_captures_results[index] = [image_compare_return_code, image_compare_result_value]
+
+
         return screen_captures_results
 
 
