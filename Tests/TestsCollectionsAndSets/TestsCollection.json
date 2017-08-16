@@ -10,7 +10,7 @@
         {
             "Solution Target" : "Falcor.sln",
             "Configuration Target" : "ReleaseD3D12",
-            "Tests Set" : "TestsCollectionsAndSets\\TestsSetD3D12.json"
+            "Tests Set" : "TestsCollectionsAndSets\\TSReleaseD3D12.json"
         }
     ]
 
