@@ -195,6 +195,8 @@ namespace Falcor
         */
         void addVertexAttribDclToProg(Program* pProg) const
         {
+            pProg->removeDefine("HAS_NORMAL");
+            pProg->removeDefine("HAS_BITANGENT");
             pProg->removeDefine("HAS_TEXCRD");
             pProg->removeDefine("HAS_COLORS");
             pProg->removeDefine("HAS_LIGHTMAP_UV");
@@ -205,6 +207,14 @@ namespace Falcor
                 {
                     for (uint32_t i = 0; i < l->getElementCount(); i++)
                     {
+                        if (l->getElementShaderLocation(i) == VERTEX_NORMAL_LOC)
+                        {
+                            pProg->addDefine("HAS_NORMAL");
+                        }
+                        if (l->getElementShaderLocation(i) == VERTEX_BITANGENT_LOC)
+                        {
+                            pProg->addDefine("HAS_BITANGENT");
+                        }
                         if (l->getElementShaderLocation(i) == VERTEX_TEXCOORD_LOC)
                         {
                             pProg->addDefine("HAS_TEXCRD");
