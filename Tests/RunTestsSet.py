@@ -376,8 +376,6 @@ def main():
     # Add the Argument for which Tests Set to run.
     parser.add_argument('-ts', '--tests_set', action='store', help='Specify the Tests Set file.')
 
-    # Add the Argument for which reference directory to run against.
-    parser.add_argument('-ref', '--reference_directory', action='store', help='Specify the Tests Set file.')
 
     # Parse the Arguments.
     args = parser.parse_args()
