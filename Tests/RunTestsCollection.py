@@ -61,13 +61,13 @@ def read_and_verify_tests_collections_source(json_filename):
 
             # Exception Handling.
             except ValueError:
-                print "Error parsing Tests Collection file : " + json_filename
+                raise TestsCollectionError("Error parsing Tests Collection file : " + json_filename)
                 return None
 
     # Exception Handling.
     except (IOError, OSError) as json_open_error:
-        print 'Error opening Tests Collection json file : ' + json_filename
-        return None
+        raise TestsCollectionError('Error opening Tests Collection json file : ' + json_filename)
+        
 
 
 

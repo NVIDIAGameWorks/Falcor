@@ -11,6 +11,20 @@ def get_html_end():
     return "\n </html>"
 
 
+def witeErrorMessageHtml(error_message):
+
+    html_code = ""
+
+    html_code = html_code + get_html_begin()
+
+    html_code = html_code + "<body>"
+    html_code = html_code + error_message
+    html_code = html_code + "</body>"
+
+    html_code = html_code + get_html_end()
+
+    return html_code
+
 
 # Get the image comparison table code.
 def get_image_comparison_table_code(tests_sets_results):
@@ -119,6 +133,4 @@ def write_test_set_results_to_html(tests_set_results):
     html_code = html_code + "</body>"
 
     html_code = html_code + get_html_end()
-
-    print html_code
     return html_code

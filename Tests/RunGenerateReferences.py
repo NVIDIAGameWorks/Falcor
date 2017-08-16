@@ -26,19 +26,24 @@ def main():
     # Parse the Arguments.
     args = parser.parse_args()
 
+    try:
+        #   
+        json_data = rTC.read_and_verify_tests_collections_source(args.tests_collection)
+    except rTC.TestsCollectionError as tests_collection_error: 
+        print tests_collection_error.args
     #   
-    json_data = rTC.read_and_verify_tests_collections_source(args.tests_collection)
-
-    #   
-    if json_data is None:
-
-        print 'Falied to Verify Tests Collections Source!'
-
-        return None
 
     #
-    tests_collections_results = rTC.run_tests_collections(json_data)
+    try:
+        tests_collections_results = rTC.run_tests_collections(json_data)
+    except rTC.TestsCollectionError as tests_collection_error: 
+        print tests_collection_error.args
+
+    verify_result = rTC.verify_all_tests_collection_ran_successfully(tests_collections_results)
+
     
+    
+
     #   
     for current_test_collections in json_data['Tests Collections']:
 
