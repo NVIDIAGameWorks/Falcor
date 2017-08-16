@@ -12,6 +12,7 @@ import RunTestsSet as rTS
 import CloneRepo as cloneRepo
 import Helpers as helpers
 import WriteTestResultsToHTML as write_test_results_to_html
+import MachineConfigs as machine_configs
 
 
 class TestsCollectionError(Exception):
@@ -188,21 +189,44 @@ def check_tests_collections_results(tests_collections_run_results):
 
 
 def write_tests_collection_html(tests_collections_run_results):
+
+    html_outputs = []
     for current_test_collection_name in tests_collections_run_results:
             for current_test_set_index in tests_collections_run_results[current_test_collection_name]['Tests Sets Results']:
                 current_test_set_result = tests_collections_run_results[current_test_collection_name]['Tests Sets Results'][current_test_set_index]
                 tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(current_test_set_result)
 
                 # Output the file to disk.
-                current_test_set_result
-                html_file_output =  current_test_set_result['Tests Set Results Directory'] + '\\' + "TestResults_" + current_test_set_result['Tests Set Filename']  + ".html" 
+                html_file_output = current_test_set_result['Tests Set Results Directory'] + '\\' + "TestResults_" + current_test_set_result['Tests Set Filename']  + ".html" 
                 html_file = open(html_file_output, 'w')
                 html_file.write(tests_set_html_result)
                 html_file.close()
 
-    return ""
+                current_html_output = {}
+                current_html_output['Test Collection Name'] = current_test_collection_name
+                current_html_output['Tests Set Filename'] = current_test_set_result['Tests Set Filename'] 
+                current_html_output['HTML File'] = html_file_output
+                current_html_output['Machine'] = machine_configs.machine_name
+
+                html_outputs.append(current_html_output)
 
 
+
+def dispatch_email(html_outputs):
+    date_and_time = date.today().strftime("%m-%d-%y")
+    subject = ' Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
+    dispatcher = 'NvrGfxTest@nvidia.com'
+    recipients = str(open(machine_configs.email_file, 'r').read());
+    subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
+    command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', body]
+    for html_output in html_outputs:
+        command.append('-attach')
+        command.append(html_output['HTML FIle'])
+    subprocess.call(command)
+
+
+
+    
 def main():
 
     # Argument Parser.
@@ -210,6 +234,9 @@ def main():
 
     # Add the Argument for which Test Collection to use.
     parser.add_argument('-tc', '--tests_collection', action='store', help='Specify the Test Collection.')
+
+    # Add the Argument for which Test Collection to use.
+    parser.add_argument('-ne', '--no_email', action='store_true', help='Whether or not to email.')
 
     # Parse the Arguments.
     args = parser.parse_args()
@@ -228,7 +255,9 @@ def main():
     # 
     tests_collections_run_results = run_tests_collections(json_data)
     check_tests_collections_results(tests_collections_run_results)
-    write_tests_collection_html(tests_collections_run_results)
+    html_outputs = write_tests_collection_html(tests_collections_run_results)
+    dispatch_email(html_outputs)
+
 
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(tests_collections_run_results)
