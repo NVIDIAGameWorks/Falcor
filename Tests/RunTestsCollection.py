@@ -210,19 +210,20 @@ def write_tests_collection_html(tests_collections_run_results):
 
                 html_outputs.append(current_html_output)
 
-
+    return html_outputs
 
 def dispatch_email(html_outputs):
     date_and_time = date.today().strftime("%m-%d-%y")
     subject = ' Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
     dispatcher = 'NvrGfxTest@nvidia.com'
-    recipients = str(open(machine_configs.email_file, 'r').read());
+    recipients = str(open(machine_configs.email_file, 'r').read())
+    print recipients
     subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
-    command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', body]
+    command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
     for html_output in html_outputs:
         command.append('-attach')
-        command.append(html_output['HTML FIle'])
-    subprocess.call(command)
+        command.append(html_output['HTML File'])
+    print subprocess.call(command)
 
 
 
@@ -257,11 +258,6 @@ def main():
     check_tests_collections_results(tests_collections_run_results)
     html_outputs = write_tests_collection_html(tests_collections_run_results)
     dispatch_email(html_outputs)
-
-
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(tests_collections_run_results)
-
     
 
 if __name__ == '__main__':
