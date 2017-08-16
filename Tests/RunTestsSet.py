@@ -317,6 +317,10 @@ def analyze_screen_captures(result_json_data, current_test_result_directory, cur
             image_compare_result = image_compare_process.communicate()[0]
             image_compare_return_code = image_compare_process.returncode
 
+
+            space_index = image_compare_result.find(' ')
+            image_compare_result_str = image_compare_result[:space_index]
+
             screen_captures_results[index] = {}
             # Keep the Return Code and the Result.
             screen_captures_results[index]["Return Code"] = image_compare_process.returncode

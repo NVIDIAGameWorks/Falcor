@@ -151,10 +151,10 @@ def run_tests_collections(json_data):
             clone_directory = clone_directory + '\\' + os.path.splitext(os.path.basename(current_tests_set["Tests Set"]))[0] + '\\'
 
             # Clear the directory.
-            # helpers.directory_clean_or_make(clone_directory)
+            helpers.directory_clean_or_make(clone_directory)
 
             # Clone the Repositroy to the Clone Directory.
-            # cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
+            cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
 
             # Get the Results and Reference Directory.
             common_directory_path = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\'
