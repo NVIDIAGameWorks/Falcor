@@ -162,7 +162,7 @@ def run_tests_collections(json_data):
             reference_directory = json_data["Tests Collections"][current_tests_collection_name]['Reference Target'] + '\\'  + machine_configs.machine_name + '\\' + common_directory_path
 
             # Run the Tests Set.
-            results = rTS.run_tests_set(clone_directory, True, current_tests_set["Tests Set"], results_directory, reference_directory)
+            results = rTS.run_tests_set(clone_directory, False, current_tests_set["Tests Set"], results_directory, reference_directory)
             
 
             #   Get the Tests Groups Results.   

@@ -500,9 +500,6 @@ namespace Falcor
 
             //  Capture Time.
             float mCaptureTime = 0;
-
-            //  
-            std::string mCaptureFile = "";
             std::string mCaptureFilename = "";
             std::string mCaptureFilepath = "";
 
