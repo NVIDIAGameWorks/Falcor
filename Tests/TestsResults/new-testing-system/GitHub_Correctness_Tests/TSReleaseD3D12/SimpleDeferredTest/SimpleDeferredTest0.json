@@ -1,0 +1,29 @@
+{
+    "Frame Tasks": 6,
+    "Time Tasks": 0,
+    "Performance Time Checks": [],
+    "Performance Time Checks": [],
+    "Frame Screen Captures": [
+        {
+            "Filename": "SimpleDeferredTest0.0.png",
+            "Filepath": "TestsResults\\new-testing-system\\GitHub_Correctness_Tests\\\\TSReleaseD3D12\\\\SimpleDeferredTest"
+        },
+        {
+            "Filename": "SimpleDeferredTest0.1.png",
+            "Filepath": "TestsResults\\new-testing-system\\GitHub_Correctness_Tests\\\\TSReleaseD3D12\\\\SimpleDeferredTest"
+        },
+        {
+            "Filename": "SimpleDeferredTest0.2.png",
+            "Filepath": "TestsResults\\new-testing-system\\GitHub_Correctness_Tests\\\\TSReleaseD3D12\\\\SimpleDeferredTest"
+        },
+        {
+            "Filename": "SimpleDeferredTest0.3.png",
+            "Filepath": "TestsResults\\new-testing-system\\GitHub_Correctness_Tests\\\\TSReleaseD3D12\\\\SimpleDeferredTest"
+        },
+        {
+            "Filename": "SimpleDeferredTest0.4.png",
+            "Filepath": "TestsResults\\new-testing-system\\GitHub_Correctness_Tests\\\\TSReleaseD3D12\\\\SimpleDeferredTest"
+        }
+    ],
+    "Time Screen Captures": []
+}
