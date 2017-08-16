@@ -1,6 +1,6 @@
 Test/Bin/*
 Test/TestResults/*
-Tests/TestResults/*
+Tests/TestsResults/*
 Test/.vs/*
 Bin/*
 *.user
