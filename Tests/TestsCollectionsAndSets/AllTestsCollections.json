@@ -16,29 +16,19 @@
             "Tests":
             [
                 {
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "ReleaseD3D12",
-                    "Tests Set" : "TSReleaseD3D12.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseD3D12.json"
                 },
         
                 {
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "DebugD3D12",
-                    "Tests Set" : "TSDebugD3D12.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugD3D12.json"
                 },
 
                 {
-
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "ReleaseVK",
-                    "Tests Set" : "TSReleaseVK.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseVK.json"
                 },
 
                 {
-
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "DebugVK",
-                    "Tests Set" : "TSDebugVK.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugVK.json"
                 }
             ]
         },
@@ -58,29 +48,19 @@
             "Tests":
             [
                 {
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "ReleaseD3D12",
-                    "Tests Set" : "TSReleaseD3D12.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseD3D12.json"
                 },
         
                 {
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "DebugD3D12",
-                    "Tests Set" : "TSDebugD3D12.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugD3D12.json"
                 },
 
                 {
-
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "ReleaseVK",
-                    "Tests Set" : "TSReleaseVK.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSReleaseVK.json"
                 },
 
                 {
-
-                    "Solution Target" : "Falcor.sln",
-                    "Configuration Target" : "DebugVK",
-                    "Tests Set" : "TSDebugVK.json"
+                    "Tests Set" : "TestsCollectionsAndSets\\TSDebugVK.json"
                 }
             ]
         }

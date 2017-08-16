@@ -11,6 +11,7 @@ import pprint
 import RunTestsSet as rTS
 import CloneRepo as cloneRepo
 import Helpers as helpers
+import WriteTestResultsToHTML as write_test_results_to_html
 
 
 class TestsCollectionError(Exception):
@@ -29,7 +30,7 @@ def json_object_has_attribute(json_data, attribute_name):
 def read_and_verify_tests_collections_source(json_filename):
 
     json_data = None
-
+    
     try:
         # Try and open the json file.
         with open(json_filename) as json_file:
@@ -108,14 +109,7 @@ def verify_tests_collection(tests_name, tests_data):
         raise TestsCollectionError('Error - "Tests" array is not of non-zero length in ' + tests_name)
 
     # Verify each of the tests specification.
-    for index, current_test_specification in enumerate(tests_data["Tests Groups"]):
-
-        if not json_object_has_attribute(current_test_specification, "Solution Target"):
-            raise TestsCollectionError('Error - "Solution Target" is not defined in entry ' + str(index) + ' in ' + tests_name)
-
-        if not json_object_has_attribute(current_test_specification, "Configuration Target"):
-            raise TestsCollectionError('Error - "Configuration Target" is not defined in entry ' + str(index) + ' in ' + tests_name)
-            
+    for index, current_test_specification in enumerate(tests_data["Tests"]):
 
         if not json_object_has_attribute(current_test_specification, "Tests Set"):
             raise TestsCollectionError('Error - "Tests Set" is not defined in entry ' + str(index) + ' in ' + tests_name)
@@ -124,16 +118,23 @@ def verify_tests_collection(tests_name, tests_data):
 
 
 
+def verify_all_tests_collection_ran_successfully(tests_collections_results):
+
+
+
+
+    return True
+
 
 # Run all of the Tests Collections.
 def run_tests_collections(json_data):
 
     tests_collections_run_results = {}
-
+    tests_collections_run_results = json_data["Tests Collections"]
+    
     # Run each test collection.
-    for current_tests_collection_name in json_data["Tests Collections"]:
+    for current_tests_collection_name in tests_collections_run_results:
         
-        tests_collections_run_results[current_tests_collection_name] = {} 
         tests_collections_run_results[current_tests_collection_name]['Tests Sets Results'] = {}
 
         current_tests_collection_results = tests_collections_run_results[current_tests_collection_name]['Tests Sets Results']
@@ -146,22 +147,25 @@ def run_tests_collections(json_data):
             clone_directory = json_data["Tests Collections"][current_tests_collection_name]["Destination Target"] 
             clone_directory = clone_directory +  json_data["Tests Collections"][current_tests_collection_name]["Branch Target"]
             clone_directory = clone_directory + '\\' +  current_tests_collection_name + '\\'
-            clone_directory = clone_directory + '\\' + current_tests_set["Configuration Target"]
+            clone_directory = clone_directory + '\\' + os.path.splitext(os.path.basename(current_tests_set["Tests Set"]))[0] + '\\'
 
             # Clear the directory.
-            # helpers.directory_clean_or_make(clone_directory)
+            helpers.directory_clean_or_make(clone_directory)
 
             # Clone the Repositroy to the Clone Directory.
-            # cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
+            cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
 
             # Get the Results and Reference Directory.
-            results_directory = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\'  + current_tests_set["Configuration Target"] + '\\'
+            common_directory_path = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\'
+            results_directory = 'TestsResults' + '\\' + common_directory_path
+            reference_directory = json_data["Tests Collections"][current_tests_collection_name]['Reference Target'] + '\\'  + common_directory_path
 
             # Run the Tests Set.
-            results = rTS.run_tests_set_local(clone_directory + '\\' + current_tests_set['Solution Target'], current_tests_set["Configuration Target"], True, 'TestsCollectionsAndSets\\' + current_tests_set["Tests Set"], results_directory)
+            results = rTS.run_tests_set(clone_directory, False, current_tests_set["Tests Set"], results_directory, reference_directory)
+            
 
             #   Get the Tests Groups Results.   
-            rTS.verify_tests_groups_expected_output(results['Test Groups Results'])
+            rTS.verify_tests_groups_expected_output(results['Tests Groups'])
 
             #   
             current_tests_collection_results[index] = results;
@@ -170,7 +174,7 @@ def run_tests_collections(json_data):
     return tests_collections_run_results
 
 
-def check_tests_collections_results(tests_collections_data, tests_collections_run_results):
+def check_tests_collections_results(tests_collections_run_results):
 
     for current_tests_collection_name in tests_collections_run_results:
 
@@ -178,17 +182,23 @@ def check_tests_collections_results(tests_collections_data, tests_collections_ru
             
             # Get the Tests Set Result.
             current_tests_set_result = tests_collections_run_results[current_tests_collection_name]['Tests Sets Results'][current_tests_set_index]
-            
-            # Get the Results and Reference Directory.            
-            main_results_directory = tests_collections_data[current_tests_collection_name]['Branch Target']
-            main_reference_directory = tests_collections_data[current_tests_collection_name]['Reference Target']
-            
-            print main_results_directory
-            print main_reference_directory
-
-            rTS.get_tests_set_results(current_tests_set_result, main_results_directory, main_reference_directory)
+                        
+            rTS.get_tests_set_results(current_tests_set_result)
 
 
+
+def write_tests_collection_html(tests_collections_run_results):
+    for current_test_collection_name in tests_collections_run_results:
+            for current_test_set_index in tests_collections_run_results[current_test_collection_name]['Tests Sets Results']:
+                tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(tests_collections_run_results[current_test_collection_name]['Tests Sets Results'][current_test_set_index])
+
+                # Output the file to disk.
+                html_file_output = "TestResults_" + current_test_collection_name  + ".html" 
+                html_file = open(html_file_output, 'w')
+                html_file.write(tests_set_html_result)
+                html_file.close()
+
+    return ""
 
 
 def main():
@@ -215,10 +225,11 @@ def main():
 
     # 
     tests_collections_run_results = run_tests_collections(json_data)
-    check_tests_collections_results(json_data["Tests Collections"], tests_collections_run_results)
-    # 
+    check_tests_collections_results(tests_collections_run_results)
+    write_tests_collection_html(tests_collections_run_results)
+
     pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(json_data)
+    pp.pprint(tests_collections_run_results)
 
     
 

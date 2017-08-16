@@ -1,6 +1,6 @@
 {
-    "Target Solution" : "Falcor.sln",
-    "Target Configuration" : "ReleaseVK",
+    "Solution Target" : "Falcor.sln",
+    "Configuration Target" : "ReleaseVK",
     "Tests Groups" : 
     {
         "ComputeShaderTest": {
@@ -16,7 +16,7 @@
         },
 
         "MultiPassPostProcessTest": {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "MultiPassPostProcess",
             "Project Tests Args" :
             [
@@ -69,7 +69,7 @@
 
         "SimpleDeferredTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "SimpleDeferred",
             "Project Tests Args" :
             [
@@ -79,7 +79,7 @@
 
         "EnvMapTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "EnvMap",
             "Project Tests Args" :
             [

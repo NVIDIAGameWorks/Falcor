@@ -82,27 +82,16 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
         raise TestsSetError('Error when trying to run ' + executable_filepath + ' ' + current_arguments + ' ' + 'with outputfileprefix ' + outputfileprefx + ' and outputdirectory ' + output_directory)
 
 
-# Run the tests locally.
-def run_tests_set(solution_filepath, configuration, nobuild, json_filepath, results_directory):
+# Run the tests set..
+def run_tests_set(main_directory, nobuild, json_filepath, results_directory, reference_directory):
 
+    print main_directory
+    print results_directory
+    print reference_directory
 
     tests_set_run_result = {}    
     tests_set_run_result['Tests Set Error Status'] = False
     tests_set_run_result['Tests Set Error Message'] = ""
-    tests_set_run_result["Tests Groups"] = None
-
-
-    #   
-    if not nobuild:
-
-        try:
-            # Try and Build the Solution.
-            build_solution(solution_filepath, configuration)
-        
-        except TestsSetError as tests_set_error:
-            tests_set_run_result['Tests Set Error Status'] = True
-            tests_set_run_result['Tests Set Error Message'] = tests_set_error.args 
-            return tests_set_run_result
     #
     json_data = None
     
@@ -114,23 +103,43 @@ def run_tests_set(solution_filepath, configuration, nobuild, json_filepath, resu
             try:
                 json_data = json.load(jsonfile)
 
+                tests_set_run_result["Tests Groups"] = None
+                tests_set_run_result["Tests Set Filename"] = os.path.splitext(os.path.basename(json_filepath))[0]
+                tests_set_run_result["Tests Set Directory"] = os.path.dirname(json_filepath)
+                tests_set_run_result['Tests Groups'] = json_data['Tests Groups']
+                tests_set_run_result['Solution Target'] = json_data['Solution Target']
+                tests_set_run_result['Configuration Target'] = json_data['Configuration Target']
+                tests_set_run_result["Tests Set Results Directory"] = results_directory + '\\' + tests_set_run_result["Tests Set Filename"] + '\\' 
+                tests_set_run_result["Tests Set Reference Directory"] = reference_directory + '\\' + tests_set_run_result["Tests Set Filename"] + '\\'
+
+                #   
+                if not nobuild:
+
+                    try:
+                        # Try and Build the Solution.
+                        build_solution(main_directory + json_data['Solution Target'], tests_set_run_result['Configuration Target'])
+        
+                    except TestsSetError as tests_set_error:
+                        tests_set_run_result['Tests Set Error Status'] = True
+                        tests_set_run_result['Tests Set Error Message'] = tests_set_error.args 
+                        return tests_set_run_result
+
 
                 # Absolute path.
-                absolutepath = os.path.abspath(os.path.dirname(solution_filepath))
-                
-                tests_set_run_result['Tests Groups'] = json_data['Tests Groups']
+                absolutepath = os.path.abspath(os.path.dirname(main_directory))
 
                 #   
                 for current_tests_group_name in tests_set_run_result['Tests Groups']:
                     current_tests_group = tests_set_run_result['Tests Groups'][current_tests_group_name]
                     current_tests_group['Results'] = {}
-                    
+     
                     # Get the executable directory.
-                    executable_directory = absolutepath + '\\' + get_executable_directory(configuration)
-                    
+                    executable_directory = absolutepath + '\\' + get_executable_directory(tests_set_run_result['Configuration Target'])
                     # Get the results directory.
-                    current_results_directory = results_directory + '\\' + current_tests_group_name + '\\'
+                    current_results_directory = tests_set_run_result["Tests Set Results Directory"] + '\\' + current_tests_group_name + '\\'
 
+
+                    print current_results_directory
                     # Create the directory, or clean it.
                     helpers.directory_clean_or_make(current_results_directory)
 
@@ -157,7 +166,7 @@ def run_tests_set(solution_filepath, configuration, nobuild, json_filepath, resu
                             # Try running the test.
                             try:  
 
-                                executable_file = executable_directory + current_tests_group['Project Name'] + '.exe'                                                                
+                                executable_file = executable_directory + current_tests_group['Project Name'] + '.exe'    
                                 current_test_run_result = run_test_run(executable_file, current_test_args, current_tests_group_name + str(index), current_results_directory)                                
                                 current_tests_group['Results']["Run Results"][index] = current_test_run_result
 
@@ -168,8 +177,8 @@ def run_tests_set(solution_filepath, configuration, nobuild, json_filepath, resu
 
                             # Check if an error occured.
                             except (TestsSetError, IOError, OSError) as tests_set_error:
-                                current_tests_group['Results Error Status'][index] = True  
-                                current_tests_group['Results Error Message'][index] = tests_set_error.args  
+                                current_tests_group['Results'][index] = True  
+                                current_tests_group['Results'][index] = tests_set_error.args  
 
 
                 return tests_set_run_result
@@ -212,30 +221,34 @@ def verify_tests_groups_expected_output(test_groups):
 
 
 #   Check the Tests Set Results, and create the output.
-def get_tests_set_results(tests_set_run_results, main_results_directory, main_reference_directory):
+def get_tests_set_results(tests_set_run_results):
 
+    # 
+    pp = pprint.PrettyPrinter(indent=4)
+
+    pp.pprint(tests_set_run_results)
+
+    
     # Check which ones managed to generate an output.    
     tests_groups = tests_set_run_results['Tests Groups']
     verify_tests_groups_expected_output(tests_groups)
 
     # Check the json results for each one that is enabled.
-    for current_test_name in tests_groups:
-        if tests_groups[current_test_name]['Enabled'] == "True":
-            analyze_tests_group(current_test_name, tests_groups[current_test_name], main_results_directory, main_reference_directory)
+    for current_tests_group_name in tests_groups:
+        if tests_groups[current_tests_group_name]['Enabled'] == "True":
+            analyze_tests_group(tests_set_run_results, current_tests_group_name)
             
 
 #   Check the json results for a single test.
-def analyze_tests_group(current_test_name, current_test_group_result, main_results_directory, main_reference_directory):
+def analyze_tests_group(tests_set_run_results, current_test_group_name):
 
-    #
+    current_test_group_result = tests_set_run_results['Tests Groups'][current_test_group_name] 
     current_test_group_result['Results']['Performance Checks'] = {}
     current_test_group_result['Results']['Memory Checks'] = {}
     current_test_group_result['Results']['Screen Capture Checks'] = {}
 
     for index, current_test_args in enumerate(current_test_group_result['Project Tests Args']):
         
-        current_test_result_directory = main_results_directory + '\\' + current_test_name + '\\'
-        current_test_reference_directory = main_reference_directory + '\\' + current_test_name + '\\'
 
         #
         if current_test_group_result['Results']['Results Error Status'][index] != True:
@@ -243,7 +256,11 @@ def analyze_tests_group(current_test_name, current_test_group_result, main_resul
             # Try and parse the data from the json file.
             try:
 
+                current_test_reference_directory = tests_set_run_results['Tests Set Reference Directory'] + '\\'  + '\\' + current_test_group_name + '\\'
+                current_test_result_directory = current_test_group_result['Results']['Results Directory']
+
                 result_json_filepath = current_test_result_directory + current_test_group_result['Results']['Results Expected Filename'][index]
+
 
                 # Try and open the json file.
                 with open(result_json_filepath) as result_json_file:
@@ -341,20 +358,16 @@ def main():
     main_reference_directory = machine_configs.machine_default_checkin_reference_directory
 
     #   Run the Test Set.
-    tests_set_results = run_tests_set(args.solutionfilepath, args.nobuild, args.tests_set, main_results_directory)
-
-    # 
-    # pp = pprint.PrettyPrinter(indent=4)
-    # pp.pprint(tests_set_results)
+    tests_set_results = run_tests_set(args.main_directory, args.no_build, args.tests_set, main_results_directory, main_reference_directory)
 
     # Build the Tests Results.
-    get_tests_set_results(tests_set_results, main_results_directory, main_reference_directory)
+    get_tests_set_results(tests_set_results)
     
     # Write the Tests Results to HTML.
     tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(tests_set_results)
     
     # Output the file to disk.
-    html_file_output = machine_configs.machine_local_results_directory + args.configuration + '\\' + "TestResult" + args.configuration + ".html" 
+    html_file_output = machine_configs.machine_relative_checkin_local_results_directory + '\\' + "TestResults_" + os.path.splitext(os.path.basename(args.tests_set))[0]  + ".html" 
     html_file = open(html_file_output, 'w')
     html_file.write(tests_set_html_result)
     html_file.close()

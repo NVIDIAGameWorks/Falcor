@@ -1,6 +1,6 @@
 {
-    "Target Solution" : "Falcor.sln",
-    "Target Configuration" : "ReleaseD3D12",
+    "Solution Target" : "Falcor.sln",
+    "Configuration Target" : "ReleaseD3D12",
     "Tests Groups" : 
     {
         "ComputeShaderTest": {
@@ -16,7 +16,7 @@
         },
 
         "MultiPassPostProcessTest": {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "MultiPassPostProcess",
             "Project Tests Args" :
             [
@@ -59,7 +59,7 @@
         
         "PostProcessTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "PostProcess",
             "Project Tests Args" : 
             [
@@ -69,7 +69,7 @@
 
         "SimpleDeferredTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "SimpleDeferred",
             "Project Tests Args" :
             [
@@ -79,7 +79,7 @@
 
         "EnvMapTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "EnvMap",
             "Project Tests Args" :
             [
@@ -89,7 +89,7 @@
         },
         "NormalMapFilteringTest":
         {
-            "Enabled" : "True",
+            "Enabled" : "False",
             "Project Name" : "NormalMapFiltering",
             "Project Tests Args" :
             [

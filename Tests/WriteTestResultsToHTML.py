@@ -35,7 +35,7 @@ def get_image_comparison_table_code(tests_sets_results):
 
 
     if max_image_comparison_counts == 0:
-        return []
+        return ["", ""]
 
     else:
         
