@@ -448,7 +448,7 @@ namespace Falcor
         struct ScreenCaptureTimeTask : public TimeTask
         {
             //  
-            ScreenCaptureTimeTask(float captureTime) : TimeTask(TaskType::PerformanceCheckTask, captureTime, captureTime), mCaptureTime(captureTime) {};
+            ScreenCaptureTimeTask(float captureTime) : TimeTask(TaskType::ScreenCaptureTask, captureTime, captureTime), mCaptureTime(captureTime) {};
 
             //  Basic Check.
             virtual bool isActive(SampleTest * sampleTest)
