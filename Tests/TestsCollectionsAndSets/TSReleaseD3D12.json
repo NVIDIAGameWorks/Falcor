@@ -16,7 +16,7 @@
         },
 
         "MultiPassPostProcessTest": {
-            "Enabled" : "False",
+            "Enabled" : "True",
             "Project Name" : "MultiPassPostProcess",
             "Project Tests Args" :
             [
@@ -31,7 +31,7 @@
         
         "FeatureDemoTest":
         {
-            "Enabled" : "False",
+            "Enabled" : "True",
             "Project Name" : "FeatureDemo",
             "Project Tests Args" :
             [
@@ -48,7 +48,7 @@
         "ShadowsTest":
         {
 
-            "Enabled" : "False",
+            "Enabled" : "True",
             "Project Name" : "Shadows",
             "Project Tests Args" :
             [

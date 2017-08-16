@@ -159,7 +159,7 @@ def run_tests_collections(json_data):
             # Get the Results and Reference Directory.
             common_directory_path = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\'
             results_directory = 'TestsResults' + '\\' + common_directory_path
-            reference_directory = json_data["Tests Collections"][current_tests_collection_name]['Reference Target'] + '\\'  + common_directory_path
+            reference_directory = json_data["Tests Collections"][current_tests_collection_name]['Reference Target'] + '\\'  + machine_configs.machine_name + '\\' + common_directory_path
 
             # Run the Tests Set.
             results = rTS.run_tests_set(clone_directory, True, current_tests_set["Tests Set"], results_directory, reference_directory)
@@ -217,7 +217,6 @@ def dispatch_email(html_outputs):
     subject = ' Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
     dispatcher = 'NvrGfxTest@nvidia.com'
     recipients = str(open(machine_configs.email_file, 'r').read())
-    print recipients
     subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
     command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
     for html_output in html_outputs:

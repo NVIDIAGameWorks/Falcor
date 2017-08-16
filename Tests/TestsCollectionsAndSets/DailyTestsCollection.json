@@ -9,7 +9,7 @@
             "Branch Target" : "new-testing-system",
             "Repository Folder" : "Falcor",
             "Destination Target" : "C:\\Falcor\\GitHub\\",
-            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\ashwinv-dt\\",
+            "Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
             "Generate Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
             "Tests Collections And Sets Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\TestCollectionsAndSets\\",
             
