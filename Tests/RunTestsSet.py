@@ -174,14 +174,13 @@ def run_tests_set_local(solution_filepath, configuration, nobuild, json_filepath
                                 current_test_run_result = run_test_run(executable_directory + test_runs_results[current_test_name]['Test']['Project Name'] + '.exe', current_test_args, current_test_name + str(index), current_results_directory)                                
                                 test_runs_results[current_test_name]['Results']["Run Results"][index] = current_test_run_result
 
-                                if current_test_run_result != False :
+                                if current_test_run_result[0] != True :                                    
                                     test_runs_results[current_test_name]['Results']['Results Error Status'][index] = True  
                                     test_runs_results[current_test_name]['Results']['Results Error Message'][index] = current_test_run_result[1]  
 
     
+                            # Check if an error occured.
                             except (TestsSetError, IOError, OSError) as tests_set_error:
-                                print tests_set_error.args
-                                # Check if an error occured.
                                 test_runs_results[current_test_name]['Results']['Results Error Status'][index] = True  
                                 test_runs_results[current_test_name]['Results']['Results Error Message'][index] = tests_set_error.args  
 
@@ -232,9 +231,9 @@ def check_tests_set_results_expected_output(test_runs_results):
 
 
 #   Check the Tests Set Results, and create the output.
-def check_tests_set_results(test_set_results, main_results_directory, main_reference_directory):
+def check_tests_set_results(tests_set_results, main_results_directory, main_reference_directory):
 
-    test_runs_results = test_set_results['Test Runs Results']
+    test_runs_results = tests_set_results['Test Runs Results']
 
     # Check which ones managed to generate an output.    
     check_tests_set_results_expected_output(test_runs_results)
@@ -252,23 +251,41 @@ def check_tests_set_results(test_set_results, main_results_directory, main_refer
 
 
 
-#   Check the json results.
+#   Check the json results for a single test.
 def check_set_json_results(current_test_name, current_test_result, main_results_directory, main_reference_directory):
 
     #
     for index, current_test_args in enumerate(current_test_result['Test']['Project Tests Args']):
 
-        print main_results_directory + '\\' + current_test_name + '\\' + current_test_result['Results']['Results Expected Filename'][index]
-        print current_test_result['Results']['Results Error Message'][index]
+        current_checks = {}
+        current_test_result_directory = main_results_directory + '\\' + current_test_name + '\\'
+        current_test_reference_directory = main_reference_directory + '\\' + current_test_name + '\\'
+
         #
         if current_test_result['Results']['Results Error Status'][index] != True:
 
             # Try and parse the data from the json file.
             try:
-                json_data = json.load(main_results_directory + '\\' + current_test_name + '\\' + current_test_result['Results']['Results Expected Filename'][index])
-                
-                pp = pprint.PrettyPrinter(indent=4)
-                pp.pprint(json_data)
+
+                result_json_filepath = current_test_result_directory + current_test_result['Results']['Results Expected Filename'][index]
+
+                # Try and open the json file.
+                with open(result_json_filepath) as result_json_file:
+
+                    result_json_data = json.load(result_json_file)
+                                
+                    # Analyze the performance checks.
+                    performance_checks = analyze_performance_checks(result_json_data)
+                    current_checks['Performance Checks'] = performance_checks
+
+                    # Analyze the memory checks.
+                    memory_checks = analyze_memory_checks(result_json_data)
+                    current_checks['Memory Checks'] = memory_checks
+
+                    # Analyze the screen captures.
+                    screen_checks = analyze_screen_captures(result_json_data, current_test_result_directory, current_test_reference_directory)
+                    current_checks['Screen Checks'] = screen_checks
+
 
                 # Exception Handling.
             except (IOError, OSError, ValueError) as e:
@@ -276,7 +293,43 @@ def check_set_json_results(current_test_name, current_test_result, main_results_
                 current_test_result['Results']['Results Error Message'][index] = 'Could not open the expected json output file : ' + expected_output_file + ' . Please verify that the program ran correctly.'
 
 
-    return 0
+        current_checks[index] = current_checks
+
+
+#   Analzye the Performance Checks.
+def analyze_performance_checks(result_json_data):
+        
+        return []
+
+#   Analzye the Memory Checks.
+def analyze_memory_checks(result_json_data):
+        
+        return []
+
+#
+def analyze_screen_captures(result_json_data, current_test_result_directory, current_test_reference_directory):
+        
+        for frame_screen_captures in result_json_data['Frame Screen Captures']:
+            # Get the test result image.
+            test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
+
+            # Get the reference image.
+            test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
+            
+            # Create the test compare imaage.
+            test_comapre_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
+
+            # 
+            image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_comapre_image_filepath]
+            image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            image_compare_result = image_compare_process.communicate()[0]
+
+            print image_compare_result
+
+
+        return []
+
+
 
 
 def main():
