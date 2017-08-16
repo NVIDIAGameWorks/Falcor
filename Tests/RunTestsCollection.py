@@ -120,11 +120,13 @@ def verify_tests_collection(tests_name, tests_data):
 
 
 def verify_all_tests_collection_ran_successfully(tests_collections_results):
+    
+    verify_tests_collections = {}
+    verify_tests_collections['Success'] = False
+    print tests_collections_results
 
 
-
-
-    return True
+    return verify_tests_collections
 
 
 # Run all of the Tests Collections.
@@ -151,10 +153,10 @@ def run_tests_collections(json_data):
             clone_directory = clone_directory + '\\' + os.path.splitext(os.path.basename(current_tests_set["Tests Set"]))[0] + '\\'
 
             # Clear the directory.
-            helpers.directory_clean_or_make(clone_directory)
+            # helpers.directory_clean_or_make(clone_directory)
 
             # Clone the Repositroy to the Clone Directory.
-            cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
+            # cloneRepo.clone(json_data["Tests Collections"][current_tests_collection_name]["Repository Target"], json_data["Tests Collections"][current_tests_collection_name]["Branch Target"], clone_directory)
 
             # Get the Results and Reference Directory.
             common_directory_path = json_data["Tests Collections"][current_tests_collection_name]["Branch Target"] + "\\" + current_tests_collection_name + '\\'
@@ -162,7 +164,7 @@ def run_tests_collections(json_data):
             reference_directory = json_data["Tests Collections"][current_tests_collection_name]['Reference Target'] + '\\'  + machine_configs.machine_name + '\\' + common_directory_path
 
             # Run the Tests Set.
-            results = rTS.run_tests_set(clone_directory, False, current_tests_set["Tests Set"], results_directory, reference_directory)
+            results = rTS.run_tests_set(clone_directory, True, current_tests_set["Tests Set"], results_directory, reference_directory)
             
 
             #   Get the Tests Groups Results.   

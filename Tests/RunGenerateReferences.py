@@ -41,21 +41,22 @@ def main():
 
     verify_result = rTC.verify_all_tests_collection_ran_successfully(tests_collections_results)
 
-    
-    
 
-    #   
-    for current_test_collections in json_data['Tests Collections']:
+    if verify_result['Success'] is True :  
+        #   
+        for current_test_collections in json_data['Tests Collections']:
 
-        # 
-        destination_reference_directory = json_data['Tests Collections'][current_test_collections]['Generate Reference Target'] + '\\' + machine_configs.machine_name + '\\' + json_data['Tests Collections'][current_test_collections]['Branch Target'] + '\\' + current_test_collections + '\\'
-        
-        #
-        helpers.directory_clean_or_make(destination_reference_directory)
+            # 
+            destination_reference_directory = json_data['Tests Collections'][current_test_collections]['Generate Reference Target'] + '\\' + machine_configs.machine_name + '\\' + json_data['Tests Collections'][current_test_collections]['Branch Target'] + '\\' + current_test_collections + '\\'
 
-        #
-        helpers.directory_copy('TestsResults\\' + json_data['Tests Collections'][current_test_collections]['Branch Target'] + '\\' + current_test_collections + '\\', destination_reference_directory)
+            #
+            helpers.directory_clean_or_make(destination_reference_directory)
 
+            #
+            helpers.directory_copy('TestsResults\\' + json_data['Tests Collections'][current_test_collections]['Branch Target'] + '\\' + current_test_collections + '\\', destination_reference_directory)
+
+    else:
+        print "All tests did not run successfully. No references were generated."
 
 #
 if __name__ == '__main__':
