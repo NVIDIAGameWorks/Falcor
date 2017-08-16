@@ -222,7 +222,7 @@ def dispatch_email(html_outputs):
     for html_output in html_outputs:
         command.append('-attach')
         command.append(html_output['HTML File'])
-    print subprocess.call(command)
+    subprocess.call(command)
 
 
 

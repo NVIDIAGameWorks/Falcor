@@ -207,7 +207,6 @@ def verify_tests_groups_expected_output(test_groups):
 
         # For each of the runs, check the errors.
         for index, current_project_run in enumerate(test_groups[current_tests_group_name]['Project Tests Args']):
-            
             expected_output_file = test_groups[current_tests_group_name]['Results']['Results Directory'] + current_tests_group_name + str(index) + '.json'
 
             #   Check if the expected file was created.
@@ -318,15 +317,12 @@ def analyze_screen_captures(result_json_data, current_test_result_directory, cur
             image_compare_result = image_compare_process.communicate()[0]
             image_compare_return_code = image_compare_process.returncode
 
-
-            if image_compare_return_code == 0:
-                space_index = image_compare_result.find(' ')
-                image_compare_result_value = image_compare_result[:space_index]
-            else:
-                image_compare_result_value = image_compare_result
-
+            screen_captures_results[index] = {}
             # Keep the Return Code and the Result.
-            screen_captures_results[index] = [image_compare_return_code, image_compare_result_value]
+            screen_captures_results[index]["Return Code"] = image_compare_process.returncode
+            screen_captures_results[index]["Compare Result"] = image_compare_result_str
+            screen_captures_results[index]["Source Filename"] = test_result_image_filename
+            screen_captures_results[index]["Reference Filename"] = test_reference_image_filename
 
 
         for index, frame_screen_captures in enumerate(result_json_data['Time Screen Captures']):
@@ -346,16 +342,16 @@ def analyze_screen_captures(result_json_data, current_test_result_directory, cur
             image_compare_result = image_compare_process.communicate()[0]
             image_compare_return_code = image_compare_process.returncode
 
+            space_index = image_compare_result.find(' ')
+            image_compare_result_str = image_compare_result[:space_index]
 
-            if image_compare_return_code == 0:
-                space_index = image_compare_result.find(' ')
-                image_compare_result_value = image_compare_result[:space_index]
-            else:
-                image_compare_result_value = image_compare_result
 
+            screen_captures_results[index] = {}
             # Keep the Return Code and the Result.
-            screen_captures_results[index] = [image_compare_return_code, image_compare_result_value]
-
+            screen_captures_results[index]["Return Code"] = image_compare_process.returncode
+            screen_captures_results[index]["Compare Result"] = image_compare_result_str
+            screen_captures_results[index]["Source Filename"] = test_result_image_filename
+            screen_captures_results[index]["Reference Filename"] = test_reference_image_filename
 
         return screen_captures_results
 

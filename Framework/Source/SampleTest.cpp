@@ -459,35 +459,6 @@ namespace Falcor
         }
 
 
-        //  
-        //  Check for Performance Frame Ranges. 
-        if (mArgList.argExists("perfframes"))
-        {
-            //  Performance Check Frames.
-            std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perfframes");
-
-            if (perfframeRanges.size() % 2 != 0)
-            {
-                logError("Please provide a start and end frame for each Performance Frame Range. The extra one will be discarded.");
-                perfframeRanges.pop_back();
-            }
-
-            //                        
-            for (uint32_t i = 0; i < perfframeRanges.size() / 2; i++)
-            {
-                std::shared_ptr<PerformanceCheckFrameTask> preformanceCheckFrameTask = std::make_shared<PerformanceCheckFrameTask>(perfframeRanges[i].asUint(), perfframeRanges[i + 1].asUint());
-            }
-                         
-        }
-        
-        //  
-        //  Check for Memory Frame Ranges.
-        if (mArgList.argExists("memframes"))
-        {
-            //  Memory Check Frames.
-            std::vector<ArgList::Arg> memframeRanges = mArgList.getValues("memframes");
-
-        }
 
         //  
         std::sort(mFrameTasks.begin(), mFrameTasks.end(), FrameTaskPtrCompare());

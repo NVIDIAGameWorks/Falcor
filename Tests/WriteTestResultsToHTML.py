@@ -66,20 +66,25 @@ def get_image_comparison_table_code(tests_sets_results):
                                 image_comparison_table_code += '<tr>\n'
                                 image_comparison_table_code += '<td>' + current_test_group_result_name + '_' + str(screen_captures_list_index) + '</td>\n'
                         
-                                for current_screen_capture_checks_index in screen_captures_list[screen_captures_list_index]:
+                                for screen_capture_checks_index in screen_captures_list[screen_captures_list_index]:
+                                    screen_capture_compare_result = screen_captures_list[screen_captures_list_index][screen_capture_checks_index] 
+                                    print screen_capture_compare_result
+                                    result_value_str = screen_capture_compare_result["Compare Result"]
 
-                                    if screen_captures_list[screen_captures_list_index][current_screen_capture_checks_index][0] != 0:
+                                    try:
+                                        result_value = float(result_value_str)
+
+                                        if float(result_value) > 0.0:
+                                            image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(result_value) + '</font></td>\n'
+                                        else:
+                                            image_comparison_table_code += '<td>' + str(result_value) + '</td>\n'
+                                        
+                                    except:
+                                        image_comparison_errors_code = image_comparison_errors_code + "For " + current_test_group_result_name + " failed to compare screen capture " + str(screen_capture_checks_index) + " \n"
+                                        image_comparison_errors_code = image_comparison_errors_code + "Source " + screen_capture_compare_result["Source Filename"] + "  Reference " + screen_capture_compare_result["Reference Filename"] + " \n"
                                         image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(-1) + '</font></td>\n'
-                                        image_comparison_errors_code += '<p>' + screen_captures_list[screen_captures_list_index][current_screen_capture_checks_index][1] + '</p>' 
                                         continue
                             
-                                    compare_value = screen_captures_list[screen_captures_list_index][current_screen_capture_checks_index][1]
-
-                                    if float(compare_value) > 0.0:
-                                        image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(compare_value) + '</font></td>\n'
-
-                                    else:
-                                        image_comparison_table_code += '<td>' + str(compare_value) + '</td>\n'
 
                                 image_comparison_table_code += '</tr>\n'
 

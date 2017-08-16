@@ -104,6 +104,13 @@ namespace Falcor
             uint64_t currentlyUsedVirtualMemory = 0;
         };
 
+        struct PerfCheck
+        {   
+            float time = 0.0;
+            uint64_t frameID = 0;
+            
+        };
+
 
 
         //  
@@ -183,68 +190,6 @@ namespace Falcor
 
             //  
             float mLoadTimeCheckResult = 0;
-        };
-
-
-        struct MemoryCheckFrameTask: public FrameTask
-        {
-            //  
-            MemoryCheckFrameTask(uint32_t newStartFrame, uint32_t newEndFrame) : FrameTask(TaskType::MemoryCheckTask, newStartFrame, newEndFrame) {};
-
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
-            }
-
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest)
-            {
-
-            }
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-                //  Task is Complete!
-                mIsTaskComplete = true;
-            }
-            
-        };
-
-        struct PerformanceCheckFrameTask : public FrameTask
-        {
-            //  
-            PerformanceCheckFrameTask(uint32_t newStartFrame, uint32_t newEndFrame) : FrameTask(TaskType::PerformanceCheckTask, newStartFrame, newEndFrame) {};
-
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                if (sampleTest->getFrameID() >= mStartFrame && sampleTest->getFrameID() <= mEndFrame)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-
-            }
-
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest)
-            {
-
-            }
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-                //  Task is Complete!
-                mIsTaskComplete = true;
-            }
-
-            float mPerformanceCheckResults = 0;
         };
 
 
@@ -394,17 +339,31 @@ namespace Falcor
             //  On Frame Begin.
             virtual void onFrameBegin(SampleTest * sampleTest)
             {
-
-
             }
 
             //  On Frame End.
             virtual void onFrameEnd(SampleTest * sampleTest)
             {
-                //  Task is Complete!
-                mIsTaskComplete = true;
-            }
+                if (sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime && !mIsActive)
+                {
+                    mIsActive = true;
+                    sampleTest->getMemoryStatistics(mStartCheck);
+                }
 
+                if (sampleTest->mCurrentTime >= mEndTime && mIsActive)
+                {
+                    sampleTest->getMemoryStatistics(mEndCheck);
+                    mIsActive = false;
+                    //  Task is Complete!
+                    mIsTaskComplete = true;
+
+                }
+            }
+            
+
+            MemoryCheck mStartCheck;
+            MemoryCheck mEndCheck;
+            bool mIsActive = false;
         };
 
         //

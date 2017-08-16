@@ -36,15 +36,9 @@ def main():
 
         return None
 
-    # 
-    pp = pprint.PrettyPrinter(indent=4)
-
-    pp.pprint(json_data)
-
     #
     tests_collections_results = rTC.run_tests_collections(json_data)
     
-
     #   
     for current_test_collections in json_data['Tests Collections']:
 
