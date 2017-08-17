@@ -11,7 +11,7 @@
             "Compare Branch Target" : "master",
             "Compare Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
             "Generate Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
-            "Tests Configs Target" : "TestConfigs\\",
+            "Tests Configs Target" : "TestConfigsDev\\",
             
             "Tests":
             [
