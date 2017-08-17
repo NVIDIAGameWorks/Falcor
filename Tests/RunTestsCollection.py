@@ -119,7 +119,7 @@ def verify_tests_collection(tests_name, tests_data):
 def verify_all_tests_collection_ran_successfully(tests_collections_results):
     
     verify_tests_collections = {}
-    verify_tests_collections['Success'] = False
+    verify_tests_collections['Success'] = True
     verify_tests_collections['Error Messages'] = {}
 
     for tests_collection_name in tests_collections_results:
