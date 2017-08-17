@@ -2,6 +2,7 @@ import subprocess
 import os
 import shutil
 import stat
+import pprint
 from distutils.dir_util import copy_tree
 
 # CLean the directory if it exists, or make it if it does not.
@@ -20,19 +21,19 @@ def directory_clean_or_make(destination):
     else:
         try:
             # Create the arguments.
-            batchArgs = ["RemoveDirectoryTree.bat ", destination]
+            batch_args = ["RemoveDirectoryTree.bat ", destination]
 
             # Clean the Directory.
-            removeDirectoryReturnCode = subprocess.call(batchArgs)
+            remove_directory_return_code = subprocess.call(batch_args)
 
             # Check if it was success.            
-            if removeDirectoryReturnCode != 0:
+            if remove_directory_return_code != 0:
                 print "Error trying to clean Directory : " + destination
 
             os.makedirs(destination)
 
             # Return the return code.
-            return removeDirectoryReturnCode
+            return remove_directory_return_code
 
         # Exception Handling.
         except subprocess.CalledProcessError:
@@ -42,5 +43,5 @@ def directory_clean_or_make(destination):
             return None
 
 def directory_copy(fromDirectory, toDirectory):
-    
     copy_tree(fromDirectory, toDirectory)
+

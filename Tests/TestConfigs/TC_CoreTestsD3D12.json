@@ -1,0 +1,28 @@
+{
+    "Tests Collections Name" : "CoreTestsD3D12",
+
+    "Tests Collections" : 
+    {
+        "CoreTestsD3D12" :
+        {
+            "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
+            "Destination Target" : "C:\\Falcor\\GitHub\\",
+            "Source Branch Target" : "new-testing-system",
+            "Compare Branch Target" : "new-testing-system",
+            "Compare References Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
+            "Generate Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
+            "Tests Configs Target" : "TestConfigs\\",
+            
+            "Tests":
+            [
+                {
+                    "Tests Set" : "TS_ReleaseD3D12.json"
+                },
+        
+                {
+                    "Tests Set" : "TS_DebugD3D12.json"
+                }
+            ]
+        }
+    }
+}
