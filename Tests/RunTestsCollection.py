@@ -230,7 +230,7 @@ def dispatch_email(html_outputs):
     date_and_time = date.today().strftime("%m-%d-%y")
     subject = ' Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
     dispatcher = 'NvrGfxTest@nvidia.com'
-    recipients = str(open(machine_configs.email_file, 'r').read())
+    recipients = str(open(machine_configs.machine_email_recipients, 'r').read())
     subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
     command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
     for html_output in html_outputs:
