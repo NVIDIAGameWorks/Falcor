@@ -414,10 +414,10 @@ namespace Falcor
 
         if (mArgList.argExists("fixedtimedelta"))
         {
-            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("fixedTimeDelta");
-            if (!orfArgs.empty())
+            std::vector<ArgList::Arg> ftdArgs = mArgList.getValues("fixedtimedelta");
+            if (!ftdArgs.empty())
             {
-                setFixedTimeDelta(orfArgs[0].asFloat());
+                setFixedTimeDelta(ftdArgs[0].asFloat());
             }
         }
 
