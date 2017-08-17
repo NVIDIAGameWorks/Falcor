@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <FALCOR_CORE_DIRECTORY>$(SolutionDir)\..\framework\source\\..\</FALCOR_CORE_DIRECTORY>
+    <FALCOR_BACKEND>FALCOR_D3D12</FALCOR_BACKEND>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)..\Bin\$(PlatformShortName)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)..\Bin\Int\$(PlatformShortName)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\glew\include;$(FALCOR_CORE_DIRECTORY)\Externals\GLFW\include;$(FALCOR_CORE_DIRECTORY)\Externals\OptiX\include;$(CUDA_PATH_V7_5)\include;$(FALCOR_CORE_DIRECTORY)\Externals\Cuda\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\GLFW\lib\$(PlatformName)\$(Configuration);$(FALCOR_CORE_DIRECTORY)\Externals\AntTweakBar\lib;$(FALCOR_CORE_DIRECTORY)\Externals\glew\lib\Release\$(PlatformName)\;$(FALCOR_CORE_DIRECTORY)\Externals\FreeImage;$(FALCOR_CORE_DIRECTORY)\Externals\Assimp\lib\$(PlatformName)\;$(FALCOR_CORE_DIRECTORY)\Externals\FFMpeg\lib\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\iViewNG-HMD-API\libs\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\openvr\lib\win64;$(FALCOR_CORE_DIRECTORY)\..\Internals\OptiX\lib64;$(FALCOR_CORE_DIRECTORY)\Externals\OptiX\lib64;$(CUDA_PATH_V7_5)\lib\x64\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Shlwapi.lib;assimp.lib;freeimage.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\moveprojectdata.bat $(ProjectDir) $(OutDir)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="FALCOR_CORE_DIRECTORY">
+      <Value>$(FALCOR_CORE_DIRECTORY)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+</Project>
