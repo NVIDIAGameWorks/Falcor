@@ -30,9 +30,6 @@ robocopy %ExternalsSourceDirectory%\openvr\bin\win64 %DestinationDirectory%  ope
 robocopy %ExternalsSourceDirectory%\Slang\bin\windows-x64\release %DestinationDirectory%  *.dll /r:0 >nul
 
 
-rem Copy and overwrite internal files - no longer used?
-rem for /r "%FALCOR_PROJECT_DIR%\..\..\Internals\" %%f in (*.dll) do @robocopy "%%~df%%"~pf %3 %%~nf%%~xf /r:0 >nul
-
 echo %1
 robocopy %1\BuildScripts\ %DestinationDirectory% moveprojectdata.bat /r:0 >nul
 call %DestinationDirectory%\moveprojectdata.bat %1\Source\ %DestinationDirectory%

@@ -46,12 +46,6 @@ rem This also changes the FALCOR_CORE_DIRECTORY
 start /wait /b %1BuildScripts\PatchFalcorProps\PatchFalcorPropertySheet.exe %1 %2 %falcor_backend%
 
 rem Call Update Dependencies - Runs packman.
-call %1\PackmanDependency\update_dependencies.bat 
-
-
-rem Commented out.
-rem Use Python - Adds dependency.
-rem Change the Props file to Align with the Backend.
-rem start /wait /b python.exe %1/Tools/PatchFalcorProps.py %1 %2 %3 %4 %5 %6 %7
+call %1\..\PackmanDependency\update_dependencies.bat 
 
 
