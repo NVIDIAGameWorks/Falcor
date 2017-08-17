@@ -1,7 +1,7 @@
 Test/Bin/*
 Test/TestResults/*
 Tests/TestsResults/*
-Tests/LocalTestsCollectionsAndSets/*
+Tests/TestConfigsDev/*
 Test/.vs/*
 Bin/*
 *.user
