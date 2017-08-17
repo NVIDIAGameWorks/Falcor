@@ -176,7 +176,7 @@ namespace Falcor
         void handleMouseEvent(const MouseEvent& mouseEvent) override;
         virtual float getTimeScale() final { return mTimeScale; };
         float getFixedTimeDelta() { return mFixedTimeDelta; };
-        float setFixedTimeDelta(float newFixedTimeDelta) { return newFixedTimeDelta;};
+        void setFixedTimeDelta(float newFixedTimeDelta) { mFixedTimeDelta = newFixedTimeDelta;};
         void initVideoCapture();
 
         std::string captureScreen();
