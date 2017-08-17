@@ -9,8 +9,8 @@
             "Destination Target" : "C:\\Falcor\\GitHub\\",
             "Source Branch Target" : "new-testing-system",
             "Compare Branch Target" : "new-testing-system",
-            "Compare References Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
-            "Generate Reference Target" : "\\\\netapp-wa02\\public\\ashwinv\\GitHub\\References\\",
+            "Compare References Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
+            "Generate Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
             "Tests Configs Target" : "TestConfigs\\",
             
             "Tests":
