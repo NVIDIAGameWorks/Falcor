@@ -286,8 +286,6 @@ float4 _fn evalSpecularLayer(MaterialLayerDesc desc, MaterialLayerValues data, S
         roughness = data.roughness.rg;
     }
 
-    roughness *= roughness;
-
 #ifndef _MS_DISABLE_ROUGHNESS_FILTERING
     roughness = filterRoughness(shAttr, lAttr, roughness);
 #endif

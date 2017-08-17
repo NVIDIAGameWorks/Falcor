@@ -44,6 +44,7 @@
 #include "API/VertexLayout.h"
 #include "Data/VertexAttrib.h"
 #include "Utils/StringUtils.h"
+#include "API/Device.h"
 
 namespace Falcor
 {
@@ -315,6 +316,9 @@ namespace Falcor
                 }
             }
         }
+
+        // Flush upload heap after every material so we don't accumulate a ton of memory usage when loading a model with a lot of textures
+        gpDevice->flushAndSync();
     }
 
     Material::SharedPtr AssimpModelImporter::createMaterial(const aiMaterial* pAiMaterial, const std::string& folder, bool isObjFile, bool useSrgb)

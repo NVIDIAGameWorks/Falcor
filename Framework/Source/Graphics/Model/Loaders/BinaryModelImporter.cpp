@@ -40,6 +40,7 @@
 #include "API/Texture.h"
 #include "Graphics/Material/Material.h"
 #include "glm/geometric.hpp"
+#include "API/Device.h"
 
 namespace Falcor
 {
@@ -470,16 +471,20 @@ namespace Falcor
     {
         textures.assign(textureCount, TextureData());
 
+        bool success = true;
         for(uint32_t i = 0; i < textureCount; i++)
         {
             textures[i].name = readString(stream);
             if(loadBinaryTextureData(stream, modelName, textures[i]) == false)
             {
-                return false;
+                success = false;
+                break;
             }
         }
 
-        return true;
+        // Flush upload heap after every material so we don't accumulate a ton of memory usage when loading a model with a lot of textures
+        gpDevice->flushAndSync();
+        return success;
     }
 
     BinaryModelImporter::BinaryModelImporter(const std::string& fullpath) : mModelName(fullpath), mStream(fullpath.c_str(), BinaryFileStream::Mode::Read)

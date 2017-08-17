@@ -203,6 +203,12 @@ namespace Falcor
         mFrameID++;
     }
 
+    void Device::flushAndSync()
+    {
+        mpRenderContext->flush(true);
+        executeDeferredReleases();
+    }
+
     Fbo::SharedPtr Device::resizeSwapChain(uint32_t width, uint32_t height)
     {
         mpRenderContext->flush(true);

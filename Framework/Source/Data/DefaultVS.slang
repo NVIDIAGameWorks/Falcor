@@ -32,8 +32,12 @@ __import ShaderCommon;
 struct VS_IN
 {
     float4 pos         : POSITION;
+#ifdef HAS_NORMAL
     float3 normal      : NORMAL;
+#endif
+#ifdef HAS_BITANGENT
     float3 bitangent   : BITANGENT;
+#endif
 #ifdef HAS_TEXCRD
     float2 texC        : TEXCOORD;
 #endif
@@ -110,8 +114,18 @@ VS_OUT defaultVS(VS_IN vIn)
     vOut.colorV = 0;
 #endif
 
+#ifdef HAS_NORMAL
     vOut.normalW = mul(vIn.normal, getWorldInvTransposeMat(vIn)).xyz;
+#else
+    vOut.normalW = 0;
+#endif
+
+#ifdef HAS_BITANGENT
     vOut.bitangentW = mul(vIn.bitangent, (float3x3)worldMat).xyz;
+#else
+    vOut.bitangentW = 0;
+#endif
+
     vOut.prevPosH = mul(posW, gCam.prevViewProjMat);
 
 #ifdef _SINGLE_PASS_STEREO
@@ -119,5 +133,6 @@ VS_OUT defaultVS(VS_IN vIn)
     vOut.viewportMask = 0x00000001;
     vOut.renderTargetIndex = 0;
 #endif
+
   return vOut;
 }

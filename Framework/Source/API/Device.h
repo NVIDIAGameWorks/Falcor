@@ -127,6 +127,10 @@ namespace Falcor
         */
         void present();
 
+        /** Flushes pipeline, releases resources, and blocks until completion
+        */
+        void flushAndSync();
+
         /** Check if vertical sync is enabled
         */
         bool isVsyncEnabled() const { return mVsyncOn; }
