@@ -1,9 +1,9 @@
 {
-    "Tests Collections Name" : "TC_EverydayTests",
+    "Tests Collections Name" : "TC_DailyTests",
 
     "Tests Collections" : 
     {
-        "EverydayTests" :
+        "GitHub_DailyTests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Destination Target" : "C:\\Falcor\\GitHub\\",
