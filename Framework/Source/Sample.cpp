@@ -366,15 +366,15 @@ namespace Falcor
         {
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
+            mCaptureScreen = false;
             return pngFile;
         }
         else
         {
             logError("Could not find available filename when capturing screen");
+            mCaptureScreen = false;
             return "";
         }
-        
-        mCaptureScreen = false;
     }
 
 
@@ -397,15 +397,15 @@ namespace Falcor
                 Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
 
                 pTexture->captureToFile(0, 0, pngFile);
+                mCaptureScreen = false;
                 return pngFile;
             }
             else
             {
                 logError("Could not find available filename when capturing screen");
+                mCaptureScreen = false;
                 return "";
             }
-
-            mCaptureScreen = false;
     }
 
     void Sample::initUI()
