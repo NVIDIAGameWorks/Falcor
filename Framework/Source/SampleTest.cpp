@@ -40,6 +40,8 @@ namespace Falcor
 
             //  Initialize Testing Callback.
             onInitializeTesting();
+
+            
         }
     }
 
@@ -407,6 +409,15 @@ namespace Falcor
             {
                 mHasSetFilename = true;
                 mTestOutputFilePrefix = orfArgs[0].asString();
+            }
+        }
+
+        if (mArgList.argExists("fixedtimedelta"))
+        {
+            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("fixedTimeDelta");
+            if (!orfArgs.empty())
+            {
+                setFixedTimeDelta(orfArgs[0].asFloat());
             }
         }
 
