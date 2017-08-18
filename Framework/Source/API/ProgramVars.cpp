@@ -202,14 +202,13 @@ namespace Falcor
                 logWarning("Constant buffer \"" + name + "\" was not found. Ignoring getConstantBuffer() call.");
             }
         }
-#if _LOG_ENABLED
+
         auto& pDesc = pReflector->getBufferDesc(name, bufferType);
         if (pDesc->getType() != bufferType)
         {
             logWarning("Buffer \"" + name + "\" is not a " + to_string(bufferType) + ". Type = " + to_string(pDesc->getType()));
             return ProgramReflection::BindLocation();
         }
-#endif
         return binding;
     }
 
@@ -217,34 +216,29 @@ namespace Falcor
     {
         uint32_t arrayIndex;
         const auto& binding = getBufferBindLocation(mpReflector.get(), name, arrayIndex, ProgramReflection::BufferReflection::Type::Constant);
-#if _LOG_ENABLED
         if (binding.regSpace == ProgramReflection::kInvalidLocation)
         {
             logWarning("Constant buffer \"" + name + "\" was not found. Ignoring getConstantBuffer() call.");
             return nullptr;
         }
-#endif
-
         return getConstantBuffer(binding.regSpace, binding.baseRegIndex, arrayIndex);
     }
 
     ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
     {
         auto& it = mAssignedCbs.find({ regSpace, baseRegIndex });
-#if _LOG_ENABLED
         if (it == mAssignedCbs.end())
         {
             logWarning("Can't find constant buffer at index " + std::to_string(baseRegIndex) + ", space " + std::to_string(regSpace) + ". Ignoring getConstantBuffer() call.");
             return nullptr;
         }
-#endif
         return std::static_pointer_cast<ConstantBuffer>(it->second[arrayIndex].pResource);
     }
 
     bool ProgramVars::setConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB)
     {
         BindLocation loc(regSpace, baseRegIndex);
-#if _LOG_ENABLED
+
         // Check that the index is valid
         if (mAssignedCbs.find(loc) == mAssignedCbs.end())
         {
@@ -259,8 +253,7 @@ namespace Falcor
             logError("Can't attach the constant buffer. Size mismatch.");
             return false;
         }
-#endif
-        mAssignedCbs[loc][arrayIndex].pResource = pCB;
+       mAssignedCbs[loc][arrayIndex].pResource = pCB;
         return true;
     }
 
@@ -269,13 +262,12 @@ namespace Falcor
         // Find the buffer
         uint32_t arrayIndex;
         const auto loc = getBufferBindLocation(mpReflector.get(), name, arrayIndex, ProgramReflection::BufferReflection::Type::Constant);
-#if _LOG_ENABLED
+
         if (loc.regSpace == ProgramReflection::kInvalidLocation)
         {
             logWarning("Constant buffer \"" + name + "\" was not found. Ignoring setConstantBuffer() call.");
             return false;
         }
-#endif
         return setConstantBuffer(loc.regSpace, loc.baseRegIndex, arrayIndex, pCB);
     }
 
@@ -340,7 +332,6 @@ namespace Falcor
             return false;
         }
 
-#if _LOG_ENABLED
         if (pDesc->type != expectedType || pDesc->dims != expectedDims)
         {
             logWarning("ProgramVars::" + funcName + " - variable '" + name + "' is the incorrect type. VarType = " + to_string(pDesc->type) + ", VarDims = " + to_string(pDesc->dims) + ". Ignoring call");
@@ -352,7 +343,6 @@ namespace Falcor
             logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
             return false;
         }
-#endif
         return true;
     }
 
@@ -414,13 +404,12 @@ namespace Falcor
                 pBufDesc = pReflector->getBufferDesc(noArray, ProgramReflection::BufferReflection::Type::Structured).get();
             }
         }
-#if _LOG_ENABLED
+
         if (pBufDesc == nullptr)
         {
             logWarning("Structured buffer \"" + name + "\" was not found. Ignoring " + callStr + "StructuredBuffer() call.");
             return false;
         }
-#endif
         return pBufDesc;
     }
 

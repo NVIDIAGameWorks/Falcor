@@ -245,6 +245,8 @@ namespace Falcor
 
     void Sample::renderGUI()
     {
+        mpGui->beginFrame();
+
         constexpr char help[] =
             "  'F1'      - Show\\Hide text\n"
             "  'F2'      - Show\\Hide GUI\n"

@@ -25,6 +25,10 @@ If you want to use it:
 - Unzip the content of the package to Framework\Externals
 - Rename the folder to 'NVAPI'
 
+TensorFlow Support
+--------------
+Refer to the README located in the `Samples\Core\LearningWithEmbeddedPython` for instructions on how to set up your environment to use TensorFlow and Python with Falcor.
+
 Building Falcor
 ---------------
 Open `Falcor.sln` and it should build successfully in Visual Studio out of the box. If you wish to skip this step and add Falcor to your own Visual Studio solution directly,
@@ -92,11 +96,11 @@ Citation
 If you use Falcor in a research project leading to a publication, please cite the project.
 The BibTex entry is
 
-@Misc{Benty17,  
-   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Anton S. Kaplanyan and Conor Lavelle and Chris Wyman and Ashwin Vijay},  
-   title =       {The {Falcor} Rendering Framework},  
-   year =        {2017},  
-   month =       {07},  
-   url =         {https://github.com/NVIDIAGameWorks/Falcor},  
-   note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}  
+@Misc{Benty17,
+   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Anton S. Kaplanyan and Conor Lavelle and Chris Wyman and Ashwin Vijay},
+   title =       {The {Falcor} Rendering Framework},
+   year =        {2017},
+   month =       {07},
+   url =         {https://github.com/NVIDIAGameWorks/Falcor},
+   note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}
 }

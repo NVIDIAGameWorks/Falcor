@@ -118,7 +118,6 @@ namespace Falcor
         UniquePtr pGui = UniquePtr(new Gui);
         pGui->init();
         pGui->onWindowResize(width, height);
-        ImGui::NewFrame();
         return pGui;
     }
 
@@ -177,6 +176,11 @@ namespace Falcor
                 mMouseEvents.buttonPressed[i] = mMouseEvents.buttonReleased[i] = false;
             }
         }
+    }
+
+    void Gui::beginFrame()
+    {
+        ImGui::NewFrame();
     }
 
     void Gui::render(RenderContext* pContext, float elapsedTime)
@@ -247,7 +251,6 @@ namespace Falcor
         // Prepare for the next frame
         ImGuiIO& io = ImGui::GetIO();
         io.DeltaTime = elapsedTime;
-        ImGui::NewFrame();
         mGroupStackSize = 0;
         pContext->popGraphicsState();
     }

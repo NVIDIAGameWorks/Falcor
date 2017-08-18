@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,48 +25,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "API/LowLevel/FencedPool.h"
+#include "RenderForLearningCommon.hlsli"
 
-namespace Falcor
+MainVsOut main(VS_IN vIn)
 {
-    struct LowLevelContextApiData;
+    MainVsOut vsOut;
+    vsOut.vsData = defaultVS(vIn);
 
-    class LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<LowLevelContextData>;
-        using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
+#ifdef _OUTPUT_MOTION_VECTORS
+    vsOut.vsData.prevPosH.xy += vsOut.vsData.prevPosH.w * 2 * float2(gCam.jitterX, gCam.jitterY);
+#endif
 
-        enum class CommandQueueType
-        {
-            Copy,
-            Compute,
-            Direct,
-            Count
-        };
-        ~LowLevelContextData();
-
-        static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
-        void reset();
-        virtual void flush();
-
-        CommandListHandle getCommandList() const { return mpList; }
-        CommandQueueHandle getCommandQueue() const { return mpQueue; }
-        CommandAllocatorHandle getCommandAllocator() const { return mpAllocator; }
-        GpuFence::SharedPtr getFence() const { return mpFence; }
-        LowLevelContextApiData* getApiData() const { return mpApiData; }
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
-
-    protected:
-
-        LowLevelContextData() = default;
-        LowLevelContextApiData* mpApiData = nullptr;
-
-        CommandQueueType mType;
-        CommandListHandle mpList;
-        CommandQueueHandle mpQueue;
-        CommandAllocatorHandle mpAllocator;
-        GpuFence::SharedPtr mpFence;
-    };
+    vsOut.shadowsDepthC = mul(float4(vsOut.vsData.posW, 1), camVpAtLastCsmUpdate).z;
+    return vsOut;
 }

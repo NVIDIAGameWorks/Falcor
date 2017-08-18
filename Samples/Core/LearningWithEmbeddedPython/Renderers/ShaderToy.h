@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,48 +25,42 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
 #pragma once
-#include "API/LowLevel/FencedPool.h"
+#include "Falcor.h"
+#include "Utils/Renderer/Renderer.h"
 
-namespace Falcor
+using namespace Falcor;
+
+/** This is an encapsulation of the ShaderToy sample into a Renderer-derived class.  Adds some extra error messages for
+    if Falcor isn't currently compiled with Python support...
+*/
+class ShaderToyRenderer : public Renderer, std::enable_shared_from_this<ShaderToyRenderer>
 {
-    struct LowLevelContextApiData;
+public:
+    using SharedPtr = std::shared_ptr<ShaderToyRenderer>;
+    using SharedConstPtr = std::shared_ptr<const ShaderToyRenderer>;
 
-    class LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<LowLevelContextData>;
-        using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
+    /** Constructors and destructors
+    */
+    ShaderToyRenderer(const std::string rendererName = "Shader Toy",
+                      const std::string guiName = "Options: Shader Toy") : Renderer(rendererName, guiName) { }
+    virtual ~ShaderToyRenderer() = default;
+    static SharedPtr create() { return std::make_shared<ShaderToyRenderer>(); }
 
-        enum class CommandQueueType
-        {
-            Copy,
-            Compute,
-            Direct,
-            Count
-        };
-        ~LowLevelContextData();
+    /** Callbacks overridden from Renderer base class
+    */
+    virtual void onInitialize(RenderContext::SharedPtr context) override;
+    virtual void onDisplay(RenderContext::SharedPtr context, Fbo::SharedPtr targetFbo) override;
 
-        static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
-        void reset();
-        virtual void flush();
-
-        CommandListHandle getCommandList() const { return mpList; }
-        CommandQueueHandle getCommandQueue() const { return mpQueue; }
-        CommandAllocatorHandle getCommandAllocator() const { return mpAllocator; }
-        GpuFence::SharedPtr getFence() const { return mpFence; }
-        LowLevelContextApiData* getApiData() const { return mpApiData; }
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
-
-    protected:
-
-        LowLevelContextData() = default;
-        LowLevelContextApiData* mpApiData = nullptr;
-
-        CommandQueueType mType;
-        CommandListHandle mpList;
-        CommandQueueHandle mpQueue;
-        CommandAllocatorHandle mpAllocator;
-        GpuFence::SharedPtr mpFence;
-    };
-}
+private:
+    Sampler::SharedPtr              mpLinearSampler;
+    float                           mAspectRatio = 0;
+    RasterizerState::SharedPtr      mpNoCullRastState;
+    DepthStencilState::SharedPtr    mpNoDepthDS;
+    BlendState::SharedPtr           mpOpaqueBS;
+    FullScreenPass::UniquePtr       mpMainPass;
+    GraphicsVars::SharedPtr         mpToyVars;
+    uint32_t                        mToyCBBinding;
+    TextRenderer::UniquePtr         mTextRender;
+};

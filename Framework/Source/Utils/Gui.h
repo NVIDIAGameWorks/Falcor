@@ -266,6 +266,10 @@ namespace Falcor
         */
         void popWindow();
 
+        /** Start a new frame. Must be called at the start of each frame
+        */
+        void beginFrame();
+
     protected:
         bool keyboardCallback(const KeyboardEvent& keyEvent);
         bool mouseCallback(const MouseEvent& mouseEvent);

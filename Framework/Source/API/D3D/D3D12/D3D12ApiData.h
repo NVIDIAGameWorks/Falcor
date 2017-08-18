@@ -26,47 +26,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "API/LowLevel/FencedPool.h"
 
 namespace Falcor
 {
-    struct LowLevelContextApiData;
-
-    class LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData>
+    struct LowLevelContextApiData
     {
-    public:
-        using SharedPtr = std::shared_ptr<LowLevelContextData>;
-        using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
-
-        enum class CommandQueueType
-        {
-            Copy,
-            Compute,
-            Direct,
-            Count
-        };
-        ~LowLevelContextData();
-
-        static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
-        void reset();
-        virtual void flush();
-
-        CommandListHandle getCommandList() const { return mpList; }
-        CommandQueueHandle getCommandQueue() const { return mpQueue; }
-        CommandAllocatorHandle getCommandAllocator() const { return mpAllocator; }
-        GpuFence::SharedPtr getFence() const { return mpFence; }
-        LowLevelContextApiData* getApiData() const { return mpApiData; }
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
-
-    protected:
-
-        LowLevelContextData() = default;
-        LowLevelContextApiData* mpApiData = nullptr;
-
-        CommandQueueType mType;
-        CommandListHandle mpList;
-        CommandQueueHandle mpQueue;
-        CommandAllocatorHandle mpAllocator;
-        GpuFence::SharedPtr mpFence;
+        FencedPool<CommandAllocatorHandle>::SharedPtr pAllocatorPool;
     };
 }

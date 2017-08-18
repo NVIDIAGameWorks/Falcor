@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,48 +25,35 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "API/LowLevel/FencedPool.h"
 
-namespace Falcor
+// Quicky-and-dirty definitions to support *some* GLSL
+// types in HLSL. This is by no means a complete solution.
+typedef float2 vec2;
+typedef float3 vec3;
+typedef float4 vec4;
+typedef float2x2 mat2;
+typedef float3x3 mat3;
+typedef float4x4 mat4;
+
+#define mix lerp
+#define fract frac
+
+cbuffer ToyCB : register(b0)
 {
-    struct LowLevelContextApiData;
+    float2 iResolution;
+    float iGlobalTime;
+};
 
-    class LowLevelContextData : public std::enable_shared_from_this<LowLevelContextData>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<LowLevelContextData>;
-        using SharedConstPtr = std::shared_ptr<const LowLevelContextData>;
+static vec3 iMouse = vec3(0, 0, 0);
 
-        enum class CommandQueueType
-        {
-            Copy,
-            Compute,
-            Direct,
-            Count
-        };
-        ~LowLevelContextData();
+// ------------------------------------
+// Shader toy code goes inside toy.fs
+// ------------------------------------
+#include "liveTrainingToy.fs"
 
-        static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
-        void reset();
-        virtual void flush();
-
-        CommandListHandle getCommandList() const { return mpList; }
-        CommandQueueHandle getCommandQueue() const { return mpQueue; }
-        CommandAllocatorHandle getCommandAllocator() const { return mpAllocator; }
-        GpuFence::SharedPtr getFence() const { return mpFence; }
-        LowLevelContextApiData* getApiData() const { return mpApiData; }
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
-
-    protected:
-
-        LowLevelContextData() = default;
-        LowLevelContextApiData* mpApiData = nullptr;
-
-        CommandQueueType mType;
-        CommandListHandle mpList;
-        CommandQueueHandle mpQueue;
-        CommandAllocatorHandle mpAllocator;
-        GpuFence::SharedPtr mpFence;
-    };
+void main(
+	in float2 texC : TEXCOORD,
+	out float4 fragColor : SV_TARGET)
+{
+    fragColor = mainImage(texC * iResolution);
 }
