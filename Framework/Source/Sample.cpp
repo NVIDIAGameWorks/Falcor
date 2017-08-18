@@ -360,13 +360,13 @@ namespace Falcor
            
         std::string filename = getExecutableName();
 
-        if (explicitFilename != "") {
+        if (explicitFilename != "")
             filename = explicitFilename;
-        }
 
         std::string outputDirectory = getExecutableDirectory();
 
-        if (explicitOutputDirectory != "") { outputDirectory = explicitOutputDirectory;}
+        if (explicitOutputDirectory != "") 
+            outputDirectory = explicitOutputDirectory;
  
 
         std::string pngFile;
