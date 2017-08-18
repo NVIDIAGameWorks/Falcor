@@ -174,7 +174,7 @@ namespace Falcor
         void handleWindowSizeChange() override;
         void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
         void handleMouseEvent(const MouseEvent& mouseEvent) override;
-        virtual float getTimeScale() final { return mTimeScale; };
+        virtual float getTimeScale() final { return mTimeScale; }
         float getFixedTimeDelta() { return mFixedTimeDelta; }
         void setFixedTimeDelta(float newFixedTimeDelta) { mFixedTimeDelta = newFixedTimeDelta;}
         void initVideoCapture();
