@@ -296,7 +296,7 @@ namespace Falcor
             }
         }
 
-        jsonTestResults.AddMember("Performance Time Checks", pcfArray, jsonAllocator);
+        jsonTestResults.AddMember("Performance Frame Checks", pcfArray, jsonAllocator);
 
 
         //  Write the time based performance checks.

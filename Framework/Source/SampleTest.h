@@ -354,9 +354,7 @@ namespace Falcor
                 {
                     sampleTest->getMemoryStatistics(mEndCheck);
                     mIsActive = false;
-                    //  Task is Complete!
                     mIsTaskComplete = true;
-
                 }
             }
             
@@ -389,7 +387,6 @@ namespace Falcor
             //  On Frame Begin.
             virtual void onFrameBegin(SampleTest * sampleTest)
             {
-
 
             }
 

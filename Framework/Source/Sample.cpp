@@ -355,28 +355,22 @@ namespace Falcor
 
 
     //  
-    std::string Sample::captureScreen(bool isReturnWithAbsolutePath /*=**/, const std::string explicitImagePrefix /*= ""*/, const std::string explicitOutputDirectory /*= ""*/)
+    std::string Sample::captureScreen(bool isReturnWithPath /*=**/, const std::string explicitFilename /*= ""*/, const std::string explicitOutputDirectory /*= ""*/)
     {
-        std::string filename = "";
-
            
-        std::string imagePrefix = getExecutableName();
+        std::string filename = getExecutableName();
 
-        if (explicitImagePrefix != "")
-        {
-            imagePrefix = explicitImagePrefix;
+        if (explicitFilename != "") {
+            filename = explicitFilename;
         }
 
         std::string outputDirectory = getExecutableDirectory();
 
-        if (outputDirectory != "")
-        {
-            outputDirectory = explicitOutputDirectory;
-        }
+        if (explicitOutputDirectory != "") { outputDirectory = explicitOutputDirectory;}
  
 
         std::string pngFile;
-        if (findAvailableFilename(imagePrefix, outputDirectory, "png", pngFile))
+        if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
         {
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
@@ -390,7 +384,7 @@ namespace Falcor
         }
 
         //
-        if (isReturnWithAbsolutePath) 
+        if (isReturnWithPath) 
         {
             return pngFile;
         }
