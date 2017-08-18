@@ -355,7 +355,7 @@ namespace Falcor
 
 
     //  
-    std::string Sample::captureScreen(bool isReturnWithPath /*=**/, const std::string explicitFilename /*= ""*/, const std::string explicitOutputDirectory /*= ""*/)
+    std::string Sample::captureScreen(const std::string explicitFilename /*= ""*/, const std::string explicitOutputDirectory /*= ""*/)
     {
            
         std::string filename = getExecutableName();
@@ -383,15 +383,7 @@ namespace Falcor
             return "";
         }
 
-        //
-        if (isReturnWithPath) 
-        {
-            return pngFile;
-        }
-        else
-        {
-            return getFilenameFromPath(pngFile);
-        }
+         return pngFile;
     }
 
     void Sample::initUI()

@@ -179,7 +179,7 @@ namespace Falcor
         void setFixedTimeDelta(float newFixedTimeDelta) { mFixedTimeDelta = newFixedTimeDelta;}
         void initVideoCapture();
 
-        std::string captureScreen(bool isReturnWithAbsolutePath = false, const std::string explicitImagePrefix = "", const std::string explicitOutputDirectory = "");
+        std::string captureScreen(const std::string explicitImagePrefix = "", const std::string explicitOutputDirectory = "");
 
         void toggleText(bool enabled);
         uint32_t getFrameID() const { return mFrameRate.getFrameCount(); }

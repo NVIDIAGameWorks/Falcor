@@ -217,14 +217,14 @@ namespace Falcor
                 if (sampleTest->mHasSetDirectory)
                 {
                     //  Capture the Screen.
-                    std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputFilePrefix, sampleTest->mTestOutputDirectory);
+                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix, sampleTest->mTestOutputDirectory);
                     mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                     mCaptureFilename = getFilenameFromPath(mCaptureFile);
                 }
                 else
                 {
                     //  Capture the Screen.
-                    std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputFilePrefix);
+                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
                     mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                     mCaptureFilename = getFilenameFromPath(mCaptureFile);
                 }
@@ -387,7 +387,7 @@ namespace Falcor
             //  On Frame Begin.
             virtual void onFrameBegin(SampleTest * sampleTest)
             {
-
+                
             }
 
             //  On Frame End.
@@ -433,14 +433,14 @@ namespace Falcor
                     if (sampleTest->mHasSetDirectory)
                     {
                         //  Capture the Screen.
-                        std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
                         mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                         mCaptureFilename = getFilenameFromPath(mCaptureFile);
                     }
                     else
                     {
                         //  Capture the Screen.
-                        std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputFilePrefix);
+                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
                         mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                         mCaptureFilename = getFilenameFromPath(mCaptureFile);
                     }
