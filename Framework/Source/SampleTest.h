@@ -217,14 +217,14 @@ namespace Falcor
                 if (sampleTest->mHasSetDirectory)
                 {
                     //  Capture the Screen.
-                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                    std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputFilePrefix, sampleTest->mTestOutputDirectory);
                     mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                     mCaptureFilename = getFilenameFromPath(mCaptureFile);
                 }
                 else
                 {
                     //  Capture the Screen.
-                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                    std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputFilePrefix);
                     mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                     mCaptureFilename = getFilenameFromPath(mCaptureFile);
                 }
@@ -436,14 +436,14 @@ namespace Falcor
                     if (sampleTest->mHasSetDirectory)
                     {
                         //  Capture the Screen.
-                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
+                        std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputDirectory, sampleTest->mTestOutputFilePrefix);
                         mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                         mCaptureFilename = getFilenameFromPath(mCaptureFile);
                     }
                     else
                     {
                         //  Capture the Screen.
-                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
+                        std::string mCaptureFile = sampleTest->captureScreen(true, sampleTest->mTestOutputFilePrefix);
                         mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                         mCaptureFilename = getFilenameFromPath(mCaptureFile);
                     }

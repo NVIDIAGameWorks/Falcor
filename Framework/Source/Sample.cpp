@@ -353,21 +353,34 @@ namespace Falcor
         }
     }
 
-    //  
-    std::string Sample::captureScreen()
-    {
-        std::string filename = getExecutableName();
 
-        // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
-        std::string prefix = std::string(filename);
-        std::string executableDir = getExecutableDirectory();
+    //  
+    std::string Sample::captureScreen(bool isReturnWithAbsolutePath /*=**/, const std::string explicitImagePrefix /*= ""*/, const std::string explicitOutputDirectory /*= ""*/)
+    {
+        std::string filename = "";
+
+           
+        std::string imagePrefix = getExecutableName();
+
+        if (explicitImagePrefix != "")
+        {
+            imagePrefix = explicitImagePrefix;
+        }
+
+        std::string outputDirectory = getExecutableDirectory();
+
+        if (outputDirectory != "")
+        {
+            outputDirectory = explicitOutputDirectory;
+        }
+ 
+
         std::string pngFile;
-        if (findAvailableFilename(prefix, executableDir, "png", pngFile))
+        if (findAvailableFilename(imagePrefix, outputDirectory, "png", pngFile))
         {
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
             mCaptureScreen = false;
-            return pngFile;
         }
         else
         {
@@ -375,37 +388,16 @@ namespace Falcor
             mCaptureScreen = false;
             return "";
         }
-    }
 
-
-    //  
-    std::string Sample::captureScreen(std::string imagePrefix)
-    {
-        return captureScreen(getExecutableDirectory(), imagePrefix);
-    }
-
-    //  
-    std::string Sample::captureScreen(std::string outputdirectory, std::string imagePrefix)
-    {
-            std::string prefix = std::string(imagePrefix);
-
-            Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
-
-            std::string pngFile;
-            if (findAvailableFilename(prefix, outputdirectory, "png", pngFile))
-            {
-                Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
-
-                pTexture->captureToFile(0, 0, pngFile);
-                mCaptureScreen = false;
-                return pngFile;
-            }
-            else
-            {
-                logError("Could not find available filename when capturing screen");
-                mCaptureScreen = false;
-                return "";
-            }
+        //
+        if (isReturnWithAbsolutePath) 
+        {
+            return pngFile;
+        }
+        else
+        {
+            return getFilenameFromPath(pngFile);
+        }
     }
 
     void Sample::initUI()
