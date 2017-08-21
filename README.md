@@ -32,7 +32,7 @@ Refer to the README located in the `Samples\Core\LearningWithEmbeddedPython` for
 Building Falcor
 ---------------
 Open `Falcor.sln` and it should build successfully in Visual Studio out of the box. If you wish to skip this step and add Falcor to your own Visual Studio solution directly,
-run `update_dependencies.bat` to download the required dependencies then follow the instructions below. Otherwise, this will happen automatically when building the Falcor solution.
+follow the instructions below.
 
 Creating a New Project
 ------------------------
