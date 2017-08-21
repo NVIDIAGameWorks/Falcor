@@ -1646,13 +1646,15 @@
     <ClInclude Include="Utils\ThreadPool.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="API\D3D\D3D12\D3D12ApiData.h" />
     <ClInclude Include="Utils\Renderer\Renderer.h">
       <Filter>Utils\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="MultiRendererSample.h" />
     <ClInclude Include="Utils\PythonEmbedding.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D\D3D12\D3D12ApiData.h">
+      <Filter>API\D3D\D3D12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1829,8 +1831,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\CopyLibs.bat" />
-    <None Include="..\CopyData.bat" />
     <None Include="..\Externals\dear_imgui\LICENSE">
       <Filter>Externals\dear_imgui</Filter>
     </None>

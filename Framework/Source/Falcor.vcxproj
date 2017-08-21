@@ -1137,8 +1137,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\CopyData.bat" />
-    <None Include="..\CopyLibs.bat" />
     <None Include="..\Externals\dear_imgui\LICENSE" />
     <None Include="..\Externals\dear_imgui\README.md" />
     <None Include="..\Externals\GLM\glm\detail\func_common.inl" />
@@ -1408,11 +1406,14 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Debug $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Debug</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D11</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1440,11 +1441,14 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Debug $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Debug</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D12</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1476,11 +1480,14 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Debug $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Debug</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_VK</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1517,10 +1524,14 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D11</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1551,11 +1562,14 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D12</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1591,11 +1605,14 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\postbuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_VK</Command>
+      <Command>
+      call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>

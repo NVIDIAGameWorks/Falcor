@@ -175,9 +175,12 @@ namespace Falcor
         void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
         void handleMouseEvent(const MouseEvent& mouseEvent) override;
         virtual float getTimeScale() final { return mTimeScale; }
+        float getFixedTimeDelta() { return mFixedTimeDelta; }
+        void setFixedTimeDelta(float newFixedTimeDelta) { mFixedTimeDelta = newFixedTimeDelta; }
         void initVideoCapture();
 
-        void captureScreen();
+        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "");
+
         void toggleText(bool enabled);
         uint32_t getFrameID() const { return mFrameRate.getFrameCount(); }
 

@@ -1,6 +1,10 @@
 Test/Bin/*
+Tests/Bin/*
 Test/TestResults/*
+Tests/TestsResults/*
+Tests/TestConfigsDev/*
 Test/.vs/*
+Tests/.vs/*
 Bin/*
 *.user
 *.sdf

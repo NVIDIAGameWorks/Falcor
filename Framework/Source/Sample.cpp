@@ -355,24 +355,35 @@ namespace Falcor
         }
     }
 
-    void Sample::captureScreen()
+    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory)
     {
+           
         std::string filename = getExecutableName();
 
-        // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
-        std::string prefix = std::string(filename);
-        std::string executableDir = getExecutableDirectory();
+        if (explicitFilename != "")
+            filename = explicitFilename;
+
+        std::string outputDirectory = getExecutableDirectory();
+
+        if (explicitOutputDirectory != "") 
+            outputDirectory = explicitOutputDirectory;
+ 
+
         std::string pngFile;
-        if (findAvailableFilename(prefix, executableDir, "png", pngFile))
+        if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
         {
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
+            mCaptureScreen = false;
         }
         else
         {
             logError("Could not find available filename when capturing screen");
+            mCaptureScreen = false;
+            return "";
         }
-        mCaptureScreen = false;
+
+         return pngFile;
     }
 
     void Sample::initUI()
