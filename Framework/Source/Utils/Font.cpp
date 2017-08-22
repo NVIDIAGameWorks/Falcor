@@ -131,7 +131,7 @@ namespace Falcor
         }
 
         // Load the texture
-        mpTexture = createTextureFromFile(TextureFilename, false, true);
+        mpTexture = createTextureFromFile(TextureFilename, false, false);
         return true;
     }
 }

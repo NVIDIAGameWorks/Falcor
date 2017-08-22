@@ -586,7 +586,7 @@ namespace Falcor
         case ResourceFormat::BGRX8Unorm:
             format = ResourceFormat::BGRA8Unorm;
             break;
-        case ResourceFormat::BGRA8UnormSrgb:
+        case ResourceFormat::BGRX8UnormSrgb:
             format = ResourceFormat::BGRA8UnormSrgb;
             break;
         default:
