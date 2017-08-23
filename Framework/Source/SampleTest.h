@@ -46,7 +46,7 @@ namespace Falcor
 
         /** Callback for anything the testing sample wants to initialize
         */
-        virtual void onInitializeTesting() {};
+        virtual void onInitializeTesting() {}
 
         /** Testing actions that need to happen before the frame renders
         */
@@ -54,7 +54,7 @@ namespace Falcor
 
         /** Callback for anything the testing sample wants to do before the frame renders
         */
-        virtual void onBeginTestFrame() {};
+        virtual void onBeginTestFrame() {}
 
         /** Testing actions that need to happen after the frame renders
         */
@@ -62,11 +62,11 @@ namespace Falcor
 
         /** Callback for anything the testing sample wants to do after the frame renders
         */
-        virtual void onEndTestFrame() {};
+        virtual void onEndTestFrame() {}
 
         /** Callback for anything the testing sample wants to do right before shutdown
         */
-        virtual void onTestShutdown() {};
+        virtual void onTestShutdown() {}
 
     protected:
 
@@ -105,49 +105,39 @@ namespace Falcor
         };
 
         struct PerfCheck
-        {   
+        {
             float time = 0.0;
             uint64_t frameID = 0;
-            
         };
 
-
-
-        //  
-        struct FrameTask
+        class FrameTask
         {
-            //  Construct a new Task, with the appropriate Task Type and Trigger Type.
+        public:
+            // Construct a new Task, with the appropriate Task Type and Trigger Type.
             FrameTask(TaskType newTaskType, uint32_t newStartFrame, uint32_t newEndFrame) : mTaskType(newTaskType), mStartFrame(newStartFrame), mEndFrame(mEndFrame) {};
 
-            //  
             bool operator<(const FrameTask & rhs) const
             {
                 return mStartFrame < rhs.mStartFrame;
             }
 
-            //  
-            virtual bool isActive(SampleTest * sampleTest) = 0;
+            virtual bool isActive(SampleTest* sampleTest) = 0;
+            virtual void onFrameBegin(SampleTest* sampleTest) = 0;
+            virtual void onFrameEnd(SampleTest* sampleTest)  = 0;
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest) = 0;
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)  = 0;
-
-            //  Task Type.
+            // Task Type.
             TaskType mTaskType;
 
-            //  Start Frame.
+            // Start Frame.
             uint32_t mStartFrame = 0;
             
-            //  End Frame.
+            // End Frame.
             uint32_t mEndFrame = 0;
 
-            //  Task Complete.
+            // Task Complete.
             bool mIsTaskComplete = false;
         };
 
-        //  
         struct FrameTaskPtrCompare
         {
             bool operator()(const std::shared_ptr<FrameTask> & lhsTask, const std::shared_ptr<FrameTask> & rhsTask) 
@@ -156,164 +146,78 @@ namespace Falcor
             }
         };
 
-        //  The Frame Tasks.
+        // The Frame Tasks.
         std::vector<std::shared_ptr<FrameTask>> mFrameTasks;
         
-        //  The Current Frame Task Index.
+        // The Current Frame Task Index.
         uint32_t mCurrentFrameTaskIndex = 0;
 
-
-
-        struct LoadTimeCheckTask : public FrameTask
+        class LoadTimeCheckTask : public FrameTask
         {
-            //  
+        public:
             LoadTimeCheckTask() : FrameTask(TaskType::LoadTimeCheckTask, 2, 2) {};
 
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
-            }
+            virtual bool isActive(SampleTest* sampleTest);
+            virtual void onFrameBegin(SampleTest* sampleTest);
+            virtual void onFrameEnd(SampleTest* sampleTest);
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest) 
-            {
-                mLoadTimeCheckResult = sampleTest->frameRate().getLastFrameTime();
-            }
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest) 
-            {
-                //  Task is Complete!
-                mIsTaskComplete = true;
-            }
-
-            //  
             float mLoadTimeCheckResult = 0;
         };
 
-
-        struct ScreenCaptureFrameTask : public FrameTask
+        class ScreenCaptureFrameTask : public FrameTask
         {
-            //  
+        public:
             ScreenCaptureFrameTask(uint32_t captureFrame) : FrameTask(TaskType::ScreenCaptureTask, captureFrame, captureFrame), mCaptureFrame(captureFrame) {};
 
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                return sampleTest->getFrameID() == mCaptureFrame && !mIsTaskComplete;
-            }
+            virtual bool isActive(SampleTest* sampleTest);
+            virtual void onFrameBegin(SampleTest* sampleTest);
+            virtual void onFrameEnd(SampleTest* sampleTest);
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest)
-            {
-                sampleTest->toggleText(false);
-            }
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-
-                if (sampleTest->mHasSetDirectory)
-                {
-                    //  Capture the Screen.
-                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix, sampleTest->mTestOutputDirectory);
-                    mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
-                    mCaptureFilename = getFilenameFromPath(mCaptureFile);
-                }
-                else
-                {
-                    //  Capture the Screen.
-                    std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
-                    mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
-                    mCaptureFilename = getFilenameFromPath(mCaptureFile);
-                }
-                
-                //  Toggle the Text Back.
-                sampleTest->toggleText(true);
-
-                //  Task is Complete!
-                mIsTaskComplete = true;
-            }
-
-            //
             uint32_t mCaptureFrame = 0;
             std::string mCaptureFilename = "";
             std::string mCaptureFilepath = "";
         };
 
-
-        struct ShutdownFrameTask : public FrameTask
+        class ShutdownFrameTask : public FrameTask
         {
+        public:
             ShutdownFrameTask(uint32_t shutdownFrame) : FrameTask(TaskType::ShutdownTask, shutdownFrame, shutdownFrame), mShutdownFrame(shutdownFrame) {};
 
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
-            }
+            virtual bool isActive(SampleTest* sampleTest);
+            virtual void onFrameBegin(SampleTest* sampleTest) {}
+            virtual void onFrameEnd(SampleTest* sampleTest);
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest){};
-            
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-                //  Write the json Test Results.
-                sampleTest->writeJsonTestResults();
-                
-                //  Shutdown the App.
-                sampleTest->shutdownApp();
-                
-                //  On Test Shutdown.
-                sampleTest->onTestShutdown();
- 
-                //  Task is Complete!
-                mIsTaskComplete = true;
-            }
-
-            //
             uint32_t mShutdownFrame = 0;
-
         };
 
-
-
-        //
-        struct TimeTask
+        class TimeTask
         {
-            //  Construct a new Task, with the appropriate Task Type and Trigger Type.
+        public:
+            // Construct a new Task, with the appropriate Task Type and Trigger Type.
             TimeTask(TaskType newTaskType, float newStartTime, float newEndTime) : mTaskType(newTaskType), mStartTime(newStartTime), mEndTime(newEndTime) {};
 
-            //  
             bool operator<(const TimeTask & rhs) const
             {
                 return mStartTime < rhs.mStartTime;
             }
 
-            //  
-            virtual bool isActive(SampleTest * sampleTest) = 0;
+            virtual bool isActive(SampleTest* sampleTest) = 0;
+            virtual void onFrameBegin(SampleTest* sampleTest) = 0;
+            virtual void onFrameEnd(SampleTest* sampleTest) = 0;
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest) = 0;
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest) = 0;
-
-            //  Task Type.
+            // Task Type.
             TaskType mTaskType;
 
-            //  Start Time.
+            // Start Time.
             float mStartTime = 0;
 
-            //  End Time.
+            // End Time.
             float  mEndTime = 0;
 
-            //  Task Complete.
+            // Task Complete.
             bool mIsTaskComplete = false;
         };
-
-        //  
+        
         struct TimeTaskPtrCompare
         {
             bool operator()(const std::shared_ptr<TimeTask> & lhsTask, const std::shared_ptr<TimeTask> & rhsTask)
@@ -322,185 +226,67 @@ namespace Falcor
             }
         };
 
-        //  The Time Tasks.
+        // The Time Tasks.
         std::vector<std::shared_ptr<TimeTask>> mTimeTasks;
 
-        //  The Current Time Task Index,
+        // The Current Time Task Index,
         uint32_t mCurrentTimeTaskIndex = 0;
 
 
-
-        //  
-        struct MemoryCheckTimeTask : public TimeTask
+        class MemoryCheckTimeTask : public TimeTask
         {
-            //  
+        public:
             MemoryCheckTimeTask(float memoryCheckRangeBeginTime, float memoryCheckRangeBeginEnd) : TimeTask(TaskType::MemoryCheckTask, memoryCheckRangeBeginTime, memoryCheckRangeBeginEnd) {};
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest)
-            {
-            }
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-                if (sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime && !mIsActive)
-                {
-                    mIsActive = true;
-                    sampleTest->getMemoryStatistics(mStartCheck);
-                }
-
-                if (sampleTest->mCurrentTime >= mEndTime && mIsActive)
-                {
-                    sampleTest->getMemoryStatistics(mEndCheck);
-                    mIsActive = false;
-                    mIsTaskComplete = true;
-                }
-            }
-            
+            virtual void onFrameBegin(SampleTest* sampleTest) {}
+            virtual void onFrameEnd(SampleTest* sampleTest);
 
             MemoryCheck mStartCheck;
             MemoryCheck mEndCheck;
             bool mIsActive = false;
         };
 
-        //
-        struct PerformanceCheckTimeTask : public TimeTask
+        class PerformanceCheckTimeTask : public TimeTask
         {
-            //  
+        public:
             PerformanceCheckTimeTask(float perfomanceCheckRangeBeginTime, float perfomanceCheckRangeBeginEnd) : TimeTask(TaskType::PerformanceCheckTask, perfomanceCheckRangeBeginTime, perfomanceCheckRangeBeginEnd) {};
 
-
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                if (sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest)
-            {
-                
-            }
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-                //  Task is Complete!
-                mIsTaskComplete = true;
-            }
+            virtual bool isActive(SampleTest* sampleTest);
+            virtual void onFrameBegin(SampleTest* sampleTest) {}
+            virtual void onFrameEnd(SampleTest* sampleTest);
 
             float mPerformanceCheckResults = 0;
         };
 
-
-        struct ScreenCaptureTimeTask : public TimeTask
+        class ScreenCaptureTimeTask : public TimeTask
         {
-            //  
-            ScreenCaptureTimeTask(float captureTime) : TimeTask(TaskType::ScreenCaptureTask, captureTime, captureTime), mCaptureTime(captureTime) {};
+        public:
+            ScreenCaptureTimeTask(float captureTime) : TimeTask(TaskType::ScreenCaptureTask, captureTime, captureTime), mCaptureTime(captureTime) {}
 
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                return mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
-            }
+            virtual bool isActive(SampleTest* sampleTest);
+            virtual void onFrameBegin(SampleTest* sampleTest);
+            virtual void onFrameEnd(SampleTest* sampleTest);
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest)
-            {
-                if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
-                {
-                    //  Sneakily set the time of the program! For perfect pictures.
-                    sampleTest->mCurrentTime = mCaptureTime;
-
-                    sampleTest->toggleText(false);
-                }
-            }
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-                if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
-                {
-                    
-                    if (sampleTest->mHasSetDirectory)
-                    {
-                        //  Capture the Screen.
-                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix, sampleTest->mTestOutputDirectory);
-                        mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
-                        mCaptureFilename = getFilenameFromPath(mCaptureFile);
-                    }
-                    else
-                    {
-                        //  Capture the Screen.
-                        std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilePrefix);
-                        mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
-                        mCaptureFilename = getFilenameFromPath(mCaptureFile);
-                    }
-
-
-                    //  Toggle the Text Back.
-                    sampleTest->toggleText(true);
-
-                    //  Task is Complete!
-                    mIsTaskComplete = true;
-                }
-            }
-
-            //  Capture Time.
+            // Capture Time.
             float mCaptureTime = 0;
             std::string mCaptureFilename = "";
             std::string mCaptureFilepath = "";
-
         };
 
-
-        //  
-        struct ShutdownTimeTask : public TimeTask
+        class ShutdownTimeTask : public TimeTask
         {
+        public:
             ShutdownTimeTask(float shutdownTime) : TimeTask(TaskType::ShutdownTask, shutdownTime, shutdownTime), mShutdownTime(shutdownTime) {};
 
-            //  Basic Check.
-            virtual bool isActive(SampleTest * sampleTest)
-            {
-                return mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
-            }
+            virtual bool isActive(SampleTest* sampleTest);
+            virtual void onFrameBegin(SampleTest* sampleTest) {}
+            virtual void onFrameEnd(SampleTest* sampleTest);
 
-            //  On Frame Begin.
-            virtual void onFrameBegin(SampleTest * sampleTest) {};
-
-            //  On Frame End.
-            virtual void onFrameEnd(SampleTest * sampleTest)
-            {
-                if (mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
-                {
-                    //  Write the json Test Results.
-                    sampleTest->writeJsonTestResults();
-
-                    //  Shutdown the App.
-                    sampleTest->shutdownApp();
-
-                    //  On Test Shutdown.
-                    sampleTest->onTestShutdown();
-
-                    //  Task is Complete!
-                    mIsTaskComplete = true;
-                }
-            }
-
-            //  Shutdown Time.
+            // Shutdown Time.
             float mShutdownTime = 0;
         };
 
         std::shared_ptr<LoadTimeCheckTask> mLoadTimeCheckTask;
-
 
         /*  Write JSON Literal.
         */
@@ -561,9 +347,7 @@ namespace Falcor
         std::string mTestOutputDirectory = "";
 
         bool mHasSetFilename = false;
-        std::string mTestOutputFilePrefix = "";
-
-
+        std::string mTestOutputFilename = "";
 
         // The Memory Check Between Frames.
         struct MemoryCheckRange
