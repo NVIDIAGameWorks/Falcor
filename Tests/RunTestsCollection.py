@@ -53,7 +53,6 @@ def read_and_verify_tests_collections_source(json_filename):
                 for key in json_data["Tests Collections"]:
                     verify_tests_collection(key, json_data["Tests Collections"][key])
 
-
                 return json_data
 
             # Exception Handling.
@@ -63,8 +62,6 @@ def read_and_verify_tests_collections_source(json_filename):
     # Exception Handling.
     except (IOError, OSError) as json_open_error:
         raise TestsCollectionError('Error opening Tests Collection json file : ' + json_filename)
-
-
 
 
 # Verify each tests collection.
@@ -104,7 +101,6 @@ def verify_tests_collection(tests_name, tests_data):
 
     # Verify each of the tests specification.
     for index, current_test_specification in enumerate(tests_data["Tests"]):
-
         if not json_object_has_attribute(current_test_specification, "Tests Set"):
             raise TestsCollectionError('Error - "Tests Set" is not defined in entry ' + str(index) + ' in ' + tests_name)
 
@@ -118,10 +114,8 @@ def verify_all_tests_collection_ran_successfully(tests_collections_results):
     verify_tests_collections['Error Messages'] = {}
 
     for tests_collection_name in tests_collections_results:
-
         if tests_collections_results[tests_collection_name]['Tests Collection Error Status'] == True:
             verify_tests_collections['Success'] = False
-
 
     return verify_tests_collections
 
@@ -133,6 +127,7 @@ def run_tests_collections(json_data):
     tests_collections_run_results = json_data["Tests Collections"]
 
     print tests_collections_run_results
+
     # Run each test collection.
     for current_tests_collection_name in tests_collections_run_results:
 
@@ -159,7 +154,7 @@ def run_tests_collections(json_data):
 
             # Try to clone the repository
             try:
-                # Clone the Repositroy to the Clone Directory.
+                # Clone the repository to the Clone Directory.
                 cloneRepo.clone(tests_collections_run_results[current_tests_collection_name]["Repository Target"], tests_collections_run_results[current_tests_collection_name]["Source Branch Target"], clone_directory)
             except (cloneRepo.CloneRepoCloneError, cloneRepo.CloneRepoCleanOrMakeError) as clone_repo_error:
                 tests_collections_run_results[current_tests_collection_name]['Tests Collection Error Status'] = True
@@ -173,24 +168,20 @@ def run_tests_collections(json_data):
             # Run the Tests Set.
             test_results = rTS.run_tests_set(clone_directory, False, tests_collections_run_results[current_tests_collection_name]['Tests Configs Target'] + current_tests_set["Tests Set"], results_directory, reference_directory)
 
-            #   Get the Tests Groups Results.
+            # Get the Tests Groups Results.
             rTS.verify_tests_groups_expected_output(test_results['Tests Groups'])
 
-            #
             current_tests_collection_results.append(test_results);
 
-    #
     return tests_collections_run_results
 
 
 def check_tests_collections_results(tests_collections_run_results):
 
     for current_tests_collection_name in tests_collections_run_results:
-
         for result in tests_collections_run_results[current_tests_collection_name]['Tests Sets Results']:
             # Get the Tests Set Result.
             rTS.get_tests_set_results(result)
-
 
 
 def write_tests_collection_html(tests_collections_run_results):
@@ -258,18 +249,15 @@ def main():
     # Parse the Arguments.
     args = parser.parse_args()
 
-    #
     try:
         json_data = read_and_verify_tests_collections_source(args.tests_collection)
     except TestsCollectionError as tests_collection_error:
         print (tests_collection_error.args)
 
-    #
     if json_data is None:
         print 'Failed to verify Tests Collections source!'
         return None
 
-    #
     tests_collections_run_results = run_tests_collections(json_data)
     check_tests_collections_results(tests_collections_run_results)
     html_outputs = write_tests_collection_html(tests_collections_run_results)

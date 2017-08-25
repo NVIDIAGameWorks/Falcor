@@ -55,7 +55,6 @@ def get_image_comparison_table_code(tests_sets_results):
         return ["", ""]
 
     else:
-
         image_comparison_table_code = '<table style="width:100%" border="1">\n'
         image_comparison_table_code += '<tr>\n'
         image_comparison_table_code += '<th colspan=\'' + str(max_image_comparison_counts + 1) + '\'>Image Compare Tests</th>\n'
@@ -80,7 +79,6 @@ def get_image_comparison_table_code(tests_sets_results):
 
                         # For every test run (every time executable is ran with arguments)
                         for test_index, test_captures in enumerate(screen_captures_list):
-
                             if(test_captures['Capture Count'] > 0):
                                 image_comparison_table_code += '<tr>\n'
                                 image_comparison_table_code += '<td>' + current_test_group_result_name + '_' + str(test_index) + '</td>\n'
@@ -109,7 +107,6 @@ def get_image_comparison_table_code(tests_sets_results):
                                             continue
 
                             image_comparison_table_code += '</tr>\n'
-
 
         image_comparison_table_code += '</table>\n'
         return [image_comparison_table_code, image_comparison_errors_code]

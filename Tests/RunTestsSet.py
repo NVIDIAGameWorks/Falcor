@@ -197,7 +197,6 @@ def run_tests_set(main_directory, nobuild, json_filepath, results_directory, ref
 def verify_tests_groups_expected_output(test_groups):
 
     for current_tests_group_name in test_groups:
-
         if test_groups[current_tests_group_name]['Enabled'] == False:
             continue
 
@@ -207,10 +206,8 @@ def verify_tests_groups_expected_output(test_groups):
 
             #   Check if the expected file was created.
             if not os.path.isfile(expected_output_file) :
-
                 test_groups[current_tests_group_name]['Results']['Results Error Status'][index] = True
                 test_groups[current_tests_group_name]['Results']['Results Error Message'][index] = 'Could not find the expected json output file : ' + expected_output_file + ' . Please verify that the program ran correctly.'
-
                 continue
 
 
@@ -236,8 +233,6 @@ def analyze_tests_group(tests_set_run_results, current_test_group_name):
     current_test_group['Results']['Screen Capture Checks'] = []
 
     for index, current_test_args in enumerate(current_test_group['Project Tests Args']):
-
-        #
         if current_test_group['Results']['Results Error Status'][index] != True:
 
             # Try and parse the data from the json file.
@@ -282,59 +277,58 @@ def analyze_tests_group(tests_set_run_results, current_test_group_name):
 
 #   Analyze the Performance Checks.
 def analyze_performance_checks(result_json_data):
-        return []
+    return []
 
 #   Analyze the Memory Checks.
 def analyze_memory_checks(result_json_data):
-        return []
+    return []
 
-#
 def analyze_screen_captures(tolerance, result_json_data, current_test_result_directory, current_test_reference_directory):
 
-        screen_captures_results = {}
-        screen_captures_results['Success'] = True
-        capture_data_keys = ['Frame Screen Captures', 'Time Screen Captures']
+    screen_captures_results = {}
+    screen_captures_results['Success'] = True
+    capture_data_keys = ['Frame Screen Captures', 'Time Screen Captures']
 
-        for key in capture_data_keys:
-            screen_captures_results[key] = []
-            
-            for index, frame_screen_captures in enumerate(result_json_data[key]):
+    for key in capture_data_keys:
+        screen_captures_results[key] = []
+        
+        for index, frame_screen_captures in enumerate(result_json_data[key]):
 
-                # Get the test result image.
-                test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
+            # Get the test result image.
+            test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
 
-                # Get the reference image.
-                test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
+            # Get the reference image.
+            test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
 
-                # Create the test compare image.
-                test_compare_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
+            # Create the test compare image.
+            test_compare_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
 
-                # Run ImageMagick
-                image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_compare_image_filepath]
-                image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-                image_compare_result = image_compare_process.communicate()[0]
+            # Run ImageMagick
+            image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_compare_image_filepath]
+            image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            image_compare_result = image_compare_process.communicate()[0]
 
-                # Keep the Return Code and the Result.
-                result = {}
+            # Keep the Return Code and the Result.
+            result = {}
 
-                # Image compare succeeded
-                if image_compare_process.returncode <= 1: # 0: Success, 1: Does not match, 2: File not found, or other error?
-                    result_str = image_compare_result[:image_compare_result.find(' ')]
-                    result["Compare Result"] = result_str
-                    result["Test Passed"] = float(result_str) <= tolerance
-                # Error
-                else:
-                    result["Compare Result"] = "Error"
-                    result["Test Passed"] = False
+            # Image compare succeeded
+            if image_compare_process.returncode <= 1: # 0: Success, 1: Does not match, 2: File not found, or other error?
+                result_str = image_compare_result[:image_compare_result.find(' ')]
+                result["Compare Result"] = result_str
+                result["Test Passed"] = float(result_str) <= tolerance
+            # Error
+            else:
+                result["Compare Result"] = "Error"
+                result["Test Passed"] = False
 
-                result["Return Code"] = image_compare_process.returncode
-                result["Source Filename"] = test_result_image_filename
-                result["Reference Filename"] = test_reference_image_filename
+            result["Return Code"] = image_compare_process.returncode
+            result["Source Filename"] = test_result_image_filename
+            result["Reference Filename"] = test_reference_image_filename
 
-                screen_captures_results['Success'] &= result["Test Passed"]
-                screen_captures_results[key].append(result)
+            screen_captures_results['Success'] &= result["Test Passed"]
+            screen_captures_results[key].append(result)
 
-        return screen_captures_results
+    return screen_captures_results
 
 
 def main():
