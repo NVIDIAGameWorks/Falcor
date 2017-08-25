@@ -1,7 +1,6 @@
 import pprint
 
 
-
 # Get the html end.
 def get_html_begin():
     return "<!DOCTYPE html> \n" +  " <html> \n"
@@ -44,17 +43,13 @@ def get_image_comparison_table_code(tests_sets_results):
         current_test_group = tests_sets_results['Tests Groups'][current_test_group_result_name]
 
         if current_test_group['Enabled'] == True:
-
             if 'Results' in current_test_group:
-
                 if 'Screen Capture Checks' in current_test_group['Results']:
-                    screen_captures_list = current_test_group['Results']['Screen Capture Checks']
-
-                    for screen_captures_list_index in screen_captures_list:
-
-                        if max_image_comparison_counts < len(screen_captures_list[screen_captures_list_index].keys()):
-                            max_image_comparison_counts = len(screen_captures_list[screen_captures_list_index].keys())
-
+                    screen_captures_list_all = current_test_group['Results']['Screen Capture Checks']
+                    for screen_captures_list in screen_captures_list_all:
+                        count = max(len(screen_captures_list['Frame Screen Captures']), len(screen_captures_list['Time Screen Captures']))
+                        screen_captures_list['Capture Count'] = count
+                        max_image_comparison_counts = max(max_image_comparison_counts, count)
 
     if max_image_comparison_counts == 0:
         return ["", ""]
@@ -77,53 +72,47 @@ def get_image_comparison_table_code(tests_sets_results):
 
             # Check if the current test group is enabled.
             if current_test_group['Enabled'] == True:
-
                 if 'Results' in current_test_group:
-
-                    #
                     if 'Screen Capture Checks' in current_test_group['Results']:
                         screen_captures_list = current_test_group['Results']['Screen Capture Checks']
 
-                        for screen_captures_list_index in screen_captures_list:
+                        # Construct the list of captures.
 
-                            # Construct the list of captures.
-                            if(len(screen_captures_list[screen_captures_list_index].keys()) > 0):
+                        # For every test run (every time executable is ran with arguments)
+                        for test_index, test_captures in enumerate(screen_captures_list):
+
+                            if(test_captures['Capture Count'] > 0):
                                 image_comparison_table_code += '<tr>\n'
-                                image_comparison_table_code += '<td>' + current_test_group_result_name + '_' + str(screen_captures_list_index) + '</td>\n'
+                                image_comparison_table_code += '<td>' + current_test_group_result_name + '_' + str(test_index) + '</td>\n'
 
-                                #
-                                for screen_capture_checks_index in screen_captures_list[screen_captures_list_index]:
-                                    screen_capture_compare_result = screen_captures_list[screen_captures_list_index][screen_capture_checks_index]
-                                    print screen_capture_compare_result
-                                    result_value_str = screen_capture_compare_result["Compare Result"]
+                                # Get the frame or time capture list, whichever one has contents
+                                screen_capture_types = ['Frame Screen Captures', 'Time Screen Captures']
+                                for capture_type in screen_capture_types:
 
-                                    # Check if this was a comparison.
-                                    try:
-                                        result_value = float(result_value_str)
+                                    # For each single capture comparison result
+                                    for capture_index, capture_result in enumerate(test_captures[capture_type]):
 
-                                        if not screen_capture_compare_result['Test Passed']:
-                                            image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(result_value) + '</font></td>\n'
-                                        else:
-                                            image_comparison_table_code += '<td>' + str(result_value) + '</td>\n'
+                                        # Check if this was a comparison.
+                                        try:
+                                            result_value = float(capture_result['Compare Result'])
 
-                                    except:
-                                        image_comparison_errors_code = "<p> " + image_comparison_errors_code + "" + current_test_group_result_name + '_' + str(screen_captures_list_index) + " failed to compare screen capture " + str(screen_capture_checks_index) + " <br> \n"
-                                        image_comparison_errors_code = image_comparison_errors_code + "Source : " + screen_capture_compare_result["Source Filename"] + " <br>  Reference : " + screen_capture_compare_result["Reference Filename"] + " <br> \n"
-                                        image_comparison_errors_code = image_comparison_errors_code + "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br> "
-                                        image_comparison_errors_code = image_comparison_errors_code + "Actually, just do the references manually. <br> </p>"
-                                        image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(-1) + '</font></td>\n'
-                                        continue
+                                            if not capture_result['Test Passed']:
+                                                image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(result_value) + '</font></td>\n'
+                                            else:
+                                                image_comparison_table_code += '<td>' + str(result_value) + '</td>\n'
 
+                                        except ValueError:
+                                            image_comparison_errors_code = "<p> " + image_comparison_errors_code + "" + current_test_group_result_name + '_' + str(test_index) + " failed to compare screen capture " + str(capture_index) + " <br> \n"
+                                            image_comparison_errors_code = image_comparison_errors_code + "Source : " + capture_result["Source Filename"] + " <br>  Reference : " + capture_result["Reference Filename"] + " <br> \n"
+                                            image_comparison_errors_code = image_comparison_errors_code + "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br></p>"
+                                            image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(-1) + '</font></td>\n'
+                                            continue
 
-                                image_comparison_table_code += '</tr>\n'
+                            image_comparison_table_code += '</tr>\n'
 
 
         image_comparison_table_code += '</table>\n'
         return [image_comparison_table_code, image_comparison_errors_code]
-
-
-
-
 
 
 # Write the provided Tests Set Results to HTML and Return them.

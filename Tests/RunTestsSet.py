@@ -38,17 +38,17 @@ def build_solution(relative_solution_filepath, configuration):
             return 0
 
         else:
-            raise TestsSetError("Error buidling solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+            raise TestsSetError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
 
     except subprocess.CalledProcessError as subprocess_error:
-        raise TestsSetError("Error buidling solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+        raise TestsSetError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
 
 
-def run_test_run(executable_filepath, current_arguments, outputfileprefx, output_directory):
+def run_test_run(executable_filepath, current_arguments, output_file_base_name, output_directory):
 
     try:
         # Start the process and record the time.
-        process = subprocess.Popen(executable_filepath  + ' ' + current_arguments + ' -outputfileprefix ' + outputfileprefx + ' -outputdirectory ' + output_directory)
+        process = subprocess.Popen(executable_filepath  + ' ' + current_arguments + ' -outputfilename ' + output_file_base_name + ' -outputdir ' + output_directory)
         start_time = time.time()
 
         run_results = [True, ""]
@@ -71,7 +71,7 @@ def run_test_run(executable_filepath, current_arguments, outputfileprefx, output
 
     except (NameError, IOError, OSError) as e:
         print e.args
-        raise TestsSetError('Error when trying to run ' + executable_filepath + ' ' + current_arguments + ' ' + 'with outputfileprefix ' + outputfileprefx + ' and outputdirectory ' + output_directory)
+        raise TestsSetError('Error when trying to run ' + executable_filepath + ' ' + current_arguments + ' ' + 'with outputfilename ' + output_file_base_name + ' and outputdir ' + output_directory)
 
 
 # Run the tests set..
@@ -80,7 +80,10 @@ def run_tests_set(main_directory, nobuild, json_filepath, results_directory, ref
     tests_set_run_result = {}
     tests_set_run_result['Tests Set Error Status'] = False
     tests_set_run_result['Tests Set Error Message'] = ""
-    #
+
+    # Whether all tests in this set have passed
+    tests_set_run_result['Success'] = True
+
     json_data = None
     print json_filepath
 
@@ -108,8 +111,8 @@ def run_tests_set(main_directory, nobuild, json_filepath, results_directory, ref
                     except TestsSetError as tests_set_error:
                         tests_set_run_result['Tests Set Error Status'] = True
                         tests_set_run_result['Tests Set Error Message'] = tests_set_error.args
+                        tests_set_run_result['Success'] = False
                         return tests_set_run_result
-
 
                 # Absolute path.
                 absolutepath = os.path.abspath(os.path.dirname(main_directory))
@@ -159,14 +162,19 @@ def run_tests_set(main_directory, nobuild, json_filepath, results_directory, ref
                                 current_test_run_result = run_test_run(executable_file, current_test_args, current_tests_group_name + str(index), current_results_directory)
                                 current_tests_group['Results']["Run Results"][index] = current_test_run_result
 
+                                # Update overall test set success based on whether there was an error running it.
+                                # Updating based on pass/fail checks happen later in analyze_tests_group()
+                                tests_set_run_result['Success'] &= current_test_run_result[0]
+
                                 if current_test_run_result[0] != True :
                                     current_tests_group['Results']['Results Error Status'][index] = True
                                     current_tests_group['Results']['Results Error Message'][index] = current_test_run_result[1]
 
-                            # Check if an error occured.
+                            # Check if an error occurred.
                             except (TestsSetError, IOError, OSError) as tests_set_error:
                                 current_tests_group['Results']['Results Error Status'][index] = True
                                 current_tests_group['Results']['Results Error Status'][index] = tests_set_error.args
+                                tests_set_run_result['Success'] = False
 
 
                 return tests_set_run_result
@@ -175,6 +183,7 @@ def run_tests_set(main_directory, nobuild, json_filepath, results_directory, ref
             except ValueError as e:
                 tests_set_run_result['Tests Set Error Status'] = True
                 tests_set_run_result['Tests Set Error Message'] = e.args
+                tests_set_run_result['Success'] = False
                 return tests_set_run_result
 
 
@@ -222,9 +231,9 @@ def get_tests_set_results(tests_set_run_results):
 def analyze_tests_group(tests_set_run_results, current_test_group_name):
 
     current_test_group = tests_set_run_results['Tests Groups'][current_test_group_name]
-    current_test_group['Results']['Performance Checks'] = {}
-    current_test_group['Results']['Memory Checks'] = {}
-    current_test_group['Results']['Screen Capture Checks'] = {}
+    current_test_group['Results']['Performance Checks'] = []
+    current_test_group['Results']['Memory Checks'] = []
+    current_test_group['Results']['Screen Capture Checks'] = []
 
     for index, current_test_args in enumerate(current_test_group['Project Tests Args']):
 
@@ -250,17 +259,20 @@ def analyze_tests_group(tests_set_run_results, current_test_group_name):
                             tolerance = current_test_group['Test Config']['Tolerance']
 
                         screen_capture_checks = analyze_screen_captures(tolerance, result_json_data, current_test_result_directory, current_test_reference_directory)
-                        current_test_group['Results']['Screen Capture Checks'][index] = screen_capture_checks
+                        current_test_group['Results']['Screen Capture Checks'].append(screen_capture_checks)
+                        tests_set_run_results['Success'] &= screen_capture_checks['Success']
 
-                    # Analyze the performance checks.
-                    if current_test_group['Test Config']['Type'] == "Performance Test":
-                        performance_checks = analyze_performance_checks(result_json_data)
-                        current_test_group['Results']['Performance Checks'][index] = performance_checks
+                    # # Analyze the performance checks.
+                    # if current_test_group['Test Config']['Type'] == "Performance Test":
+                    #     performance_checks = analyze_performance_checks(result_json_data)
+                    #     current_test_group['Results']['Performance Checks'][index] = performance_checks
+                    #     # When check implemented, update success
 
-                    # Analyze the memory checks.
-                    if current_test_group['Test Config']['Type'] == "Memory Test":
-                        memory_checks = analyze_memory_checks(result_json_data)
-                        current_test_group['Results']['Memory Checks'][index] = memory_checks
+                    # # Analyze the memory checks.
+                    # if current_test_group['Test Config']['Type'] == "Memory Test":
+                    #     memory_checks = analyze_memory_checks(result_json_data)
+                    #     current_test_group['Results']['Memory Checks'][index] = memory_checks
+                    #     # When check implemented, update success
 
             # Exception Handling.
             except (IOError, OSError, ValueError) as e:
@@ -268,11 +280,11 @@ def analyze_tests_group(tests_set_run_results, current_test_group_name):
                 current_test_group['Results']['Results Error Message'][index] = 'Could not open the expected json output file : ' + result_json_filepath + ' . Please verify that the program ran correctly.'
 
 
-#   Analzye the Performance Checks.
+#   Analyze the Performance Checks.
 def analyze_performance_checks(result_json_data):
         return []
 
-#   Analzye the Memory Checks.
+#   Analyze the Memory Checks.
 def analyze_memory_checks(result_json_data):
         return []
 
@@ -280,64 +292,47 @@ def analyze_memory_checks(result_json_data):
 def analyze_screen_captures(tolerance, result_json_data, current_test_result_directory, current_test_reference_directory):
 
         screen_captures_results = {}
+        screen_captures_results['Success'] = True
+        capture_data_keys = ['Frame Screen Captures', 'Time Screen Captures']
 
-        for index, frame_screen_captures in enumerate(result_json_data['Frame Screen Captures']):
+        for key in capture_data_keys:
+            screen_captures_results[key] = []
+            
+            for index, frame_screen_captures in enumerate(result_json_data[key]):
 
-            # Get the test result image.
-            test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
+                # Get the test result image.
+                test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
 
-            # Get the reference image.
-            test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
+                # Get the reference image.
+                test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
 
-            # Create the test compare imaage.
-            test_comapre_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
+                # Create the test compare image.
+                test_compare_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
 
-            # Run ImageMagick
-            image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_comapre_image_filepath]
-            image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-            image_compare_result = image_compare_process.communicate()[0]
-            image_compare_return_code = image_compare_process.returncode
+                # Run ImageMagick
+                image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_compare_image_filepath]
+                image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                image_compare_result = image_compare_process.communicate()[0]
 
-            space_index = image_compare_result.find(' ')
-            image_compare_result_str = image_compare_result[:space_index]
+                # Keep the Return Code and the Result.
+                result = {}
 
-            screen_captures_results[index] = {}
+                # Image compare succeeded
+                if image_compare_process.returncode <= 1: # 0: Success, 1: Does not match, 2: File not found, or other error?
+                    result_str = image_compare_result[:image_compare_result.find(' ')]
+                    result["Compare Result"] = result_str
+                    result["Test Passed"] = float(result_str) <= tolerance
+                # Error
+                else:
+                    result["Compare Result"] = "Error"
+                    result["Test Passed"] = False
 
-            # Keep the Return Code and the Result.
-            screen_captures_results[index]["Return Code"] = image_compare_process.returncode
-            screen_captures_results[index]["Compare Result"] = image_compare_result_str
-            screen_captures_results[index]["Test Passed"] = float(image_compare_result_str) <= tolerance
-            screen_captures_results[index]["Source Filename"] = test_result_image_filename
-            screen_captures_results[index]["Reference Filename"] = test_reference_image_filename
+                result["Return Code"] = image_compare_process.returncode
+                result["Source Filename"] = test_result_image_filename
+                result["Reference Filename"] = test_reference_image_filename
 
-
-        for index, frame_screen_captures in enumerate(result_json_data['Time Screen Captures']):
-
-            # Get the test result image.
-            test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
-
-            # Get the reference image.
-            test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
-
-            # Create the test compare imaage.
-            test_comapre_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
-
-            #
-            image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_comapre_image_filepath]
-            image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-            image_compare_result = image_compare_process.communicate()[0]
-            image_compare_return_code = image_compare_process.returncode
-
-            space_index = image_compare_result.find(' ')
-            image_compare_result_str = image_compare_result[:space_index]
-
-
-            screen_captures_results[index] = {}
-            # Keep the Return Code and the Result.
-            screen_captures_results[index]["Return Code"] = image_compare_process.returncode
-            screen_captures_results[index]["Compare Result"] = image_compare_result_str
-            screen_captures_results[index]["Source Filename"] = test_result_image_filename
-            screen_captures_results[index]["Reference Filename"] = test_reference_image_filename
+                screen_captures_results['Success'] &= result["Test Passed"]
+                screen_captures_results[key].append(result)
 
         return screen_captures_results
 
@@ -377,13 +372,15 @@ def main():
         html_file_content = write_test_results_to_html.write_test_set_results_to_html(tests_set_results)
 
     # Output the file to disk.
-    html_file_output = machine_configs.machine_relative_checkin_local_results_directory + '\\' + "TestResults_" + os.path.splitext(os.path.basename(args.tests_set))[0]  + ".html"
-    html_file = open(html_file_output, 'w')
+
+    # Build path and filename
+    html_file_path = machine_configs.machine_relative_checkin_local_results_directory + '\\' + helpers.build_html_filename(tests_set_results)
+    html_file = open(html_file_path, 'w')
     html_file.write(html_file_content)
     html_file.close()
 
     # Open it up.
-    os.system("start " + html_file_output)
+    os.system("start " + html_file_path)
 
 
 if __name__ == '__main__':

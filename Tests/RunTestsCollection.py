@@ -136,7 +136,7 @@ def run_tests_collections(json_data):
     # Run each test collection.
     for current_tests_collection_name in tests_collections_run_results:
 
-        tests_collections_run_results[current_tests_collection_name]['Tests Sets Results'] = {}
+        tests_collections_run_results[current_tests_collection_name]['Tests Sets Results'] = []
         tests_collections_run_results[current_tests_collection_name]['Tests Collection Error Status'] = False
         tests_collections_run_results[current_tests_collection_name]['Tests Collection Error Message'] = ""
 
@@ -177,7 +177,7 @@ def run_tests_collections(json_data):
             rTS.verify_tests_groups_expected_output(test_results['Tests Groups'])
 
             #
-            current_tests_collection_results[index] = test_results;
+            current_tests_collection_results.append(test_results);
 
     #
     return tests_collections_run_results
@@ -187,12 +187,9 @@ def check_tests_collections_results(tests_collections_run_results):
 
     for current_tests_collection_name in tests_collections_run_results:
 
-        for current_tests_set_index in tests_collections_run_results[current_tests_collection_name]['Tests Sets Results']:
-
+        for result in tests_collections_run_results[current_tests_collection_name]['Tests Sets Results']:
             # Get the Tests Set Result.
-            current_tests_set_result = tests_collections_run_results[current_tests_collection_name]['Tests Sets Results'][current_tests_set_index]
-
-            rTS.get_tests_set_results(current_tests_set_result)
+            rTS.get_tests_set_results(result)
 
 
 
@@ -200,30 +197,35 @@ def write_tests_collection_html(tests_collections_run_results):
 
     html_outputs = []
     for current_test_collection_name in tests_collections_run_results:
-            for current_test_set_index in tests_collections_run_results[current_test_collection_name]['Tests Sets Results']:
-                current_test_set_result = tests_collections_run_results[current_test_collection_name]['Tests Sets Results'][current_test_set_index]
-                tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(current_test_set_result)
+        for current_test_set_result in tests_collections_run_results[current_test_collection_name]['Tests Sets Results']:
+            tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(current_test_set_result)
 
-                # Output the file to disk.
-                html_file_output = current_test_set_result['Tests Set Results Directory'] + '\\' + "TestResults_" + current_test_set_result['Tests Set Filename']  + ".html"
-                html_file = open(html_file_output, 'w')
-                html_file.write(tests_set_html_result)
-                html_file.close()
+            # Output the file to disk.
+            html_output_file_path = current_test_set_result['Tests Set Results Directory'] + '\\' + helpers.build_html_filename(current_test_set_result)
+            html_file = open(html_output_file_path, 'w')
+            html_file.write(tests_set_html_result)
+            html_file.close()
 
-                current_html_output = {}
-                current_html_output['Test Collection Name'] = current_test_collection_name
-                current_html_output['Tests Set Filename'] = current_test_set_result['Tests Set Filename']
-                current_html_output['HTML File'] = html_file_output
-                current_html_output['Machine'] = machine_configs.machine_name
+            current_html_output = {}
+            current_html_output['Test Collection Name'] = current_test_collection_name
+            current_html_output['Tests Set Filename'] = current_test_set_result['Tests Set Filename']
+            current_html_output['HTML File'] = html_output_file_path
+            current_html_output['Machine'] = machine_configs.machine_name
 
-                html_outputs.append(current_html_output)
+            html_outputs.append(current_html_output)
 
     return html_outputs
 
 
-def dispatch_email(html_outputs):
+def dispatch_email(success, html_outputs):
     date_and_time = date.today().strftime("%m-%d-%y")
-    subject = ' Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
+
+    if success:
+        subject = "[SUCCESS] "
+    else:
+        subject = "[FAILED] "
+
+    subject += 'Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
     dispatcher = 'NvrGfxTest@nvidia.com'
     recipients = str(open(machine_configs.machine_email_recipients, 'r').read())
     subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
@@ -233,6 +235,13 @@ def dispatch_email(html_outputs):
         command.append(html_output['HTML File'])
     subprocess.call(command)
 
+def all_tests_succeeded(tests_collections_run_results):
+    success = True
+    for collection_name in tests_collections_run_results:
+        for result in tests_collections_run_results[collection_name]['Tests Sets Results']:
+            success &= result['Success']
+
+    return success
 
 
 def main():
@@ -257,14 +266,16 @@ def main():
 
     #
     if json_data is None:
-        print 'Falied to Verify Tests Collections Source!'
+        print 'Failed to verify Tests Collections source!'
         return None
 
     #
     tests_collections_run_results = run_tests_collections(json_data)
     check_tests_collections_results(tests_collections_run_results)
     html_outputs = write_tests_collection_html(tests_collections_run_results)
-    dispatch_email(html_outputs)
+
+    if not args.no_email:
+        dispatch_email(all_tests_succeeded(tests_collections_run_results), html_outputs)
 
 
 if __name__ == '__main__':
