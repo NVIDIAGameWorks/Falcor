@@ -25,12 +25,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "Framework.h"
 #include "MonitorInfo.h"
 
 #include <cstdio>
 #include <SetupApi.h>
 #include <cfgmgr32.h>
 #include <cmath>
+#include "StringUtils.h"
 
 #pragma comment(lib, "setupapi.lib")
  
@@ -44,7 +46,7 @@ namespace Falcor
 {
     // Assumes hDevRegKey is valid
     bool GetMonitorSizeFromEDID(const HKEY hDevRegKey, short& WidthMm, short& HeightMm);
-    bool GetSizeForDevID(const CString& TargetDevID, short& WidthMm, short& HeightMm);
+    bool GetSizeForDevID(const std::wstring& TargetDevID, short& WidthMm, short& HeightMm);
 
     const GUID GUID_CLASS_MONITOR = { 0x4d36e96e, 0xe325, 0x11ce, 0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18 };
 
@@ -64,7 +66,7 @@ namespace Falcor
                 EDIDdata, // buffer
                 &edidsize); // buffer size
 
-            if (retValue != ERROR_SUCCESS || 0 != _tcscmp(valueName, _T("EDID")))
+            if (retValue != ERROR_SUCCESS || 0 != wcscmp(valueName, L"EDID"))
                 continue;
 
             WidthMm = ((EDIDdata[68] & 0xF0) << 4) + EDIDdata[66];
@@ -76,7 +78,7 @@ namespace Falcor
         return false; // EDID not found
     }
 
-    bool GetSizeForDevID(const CString& TargetDevID, short& WidthMm, short& HeightMm)
+    bool GetSizeForDevID(const std::wstring& TargetDevID, short& WidthMm, short& HeightMm)
     {
         HDEVINFO devInfo = SetupDiGetClassDevsEx(
             &GUID_CLASS_MONITOR, //class GUID
@@ -103,9 +105,9 @@ namespace Falcor
                 TCHAR Instance[MAX_DEVICE_ID_LEN];
                 SetupDiGetDeviceInstanceId(devInfo, &devInfoData, Instance, MAX_DEVICE_ID_LEN, NULL);
 
-                CString sInstance(Instance);
+                std::wstring sInstance(Instance);
 
-                if (-1 == sInstance.Find(TargetDevID)) {
+                if (sInstance.find(TargetDevID) == std::wstring::npos) {
                     continue;
                 }
 
@@ -134,12 +136,12 @@ namespace Falcor
         dd.cb = sizeof(dd);
         DWORD devIdx = 0; // device index
      
-        CString DeviceID;
+        std::wstring DeviceID;
         bool bFoundDevice = false;
         while (EnumDisplayDevices(0, devIdx, &dd, 0))
         {
             devIdx++;
-            if (0 != _tcscmp(dd.DeviceName, mi.szDevice))
+            if (0 != wcscmp(dd.DeviceName, mi.szDevice))
                 continue;
      
             DISPLAY_DEVICE ddMon;
@@ -165,21 +167,6 @@ namespace Falcor
         return FALSE;
     }
 
-    std::string atlCStringToStdString(const CString& cString) 
-    {
-        std::string strStd;
-
-        for (int i = 0;  i < cString.GetLength();  ++i)
-        {
-            if (cString[i] <= 0x7f)
-                strStd.append(1, static_cast<char>(cString[i]));
-            else
-                strStd.append(1, '?');
-        }
-
-        return strStd;
-    }
-
     std::vector<MonitorInfo::MonitorDesc> internalDescs;
 
     BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor,
@@ -194,9 +181,8 @@ namespace Falcor
             DISPLAY_DEVICE dev;
             DisplayDeviceFromHMonitor(hMonitor, dev);
 
-            CString DeviceID;
-            DeviceID.Format(L"%s", dev.DeviceID);
-            DeviceID = DeviceID.Mid(8, DeviceID.Find(L"\\", 9) - 8);
+            std::wstring DeviceID(dev.DeviceID);
+            DeviceID = DeviceID.substr(8, DeviceID.find(L"\\", 9) - 8);
 
             short WidthMm, HeightMm;
 
@@ -207,7 +193,7 @@ namespace Falcor
             float diag = sqrt(wInch * wInch + hInch * hInch);
 
             MonitorInfo::MonitorDesc desc;
-            desc.mIdentifier = atlCStringToStdString(DeviceID);
+            desc.mIdentifier = wstring_2_string(DeviceID);
             desc.mResolution = glm::vec2(
                 abs(info.rcMonitor.left - info.rcMonitor.right), 
                 abs(info.rcMonitor.top  - info.rcMonitor.bottom));
