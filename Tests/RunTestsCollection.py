@@ -163,7 +163,7 @@ def run_tests_collections(json_data):
             # Get the Results and Reference Directory.
             common_directory_path = tests_collections_run_results[current_tests_collection_name]["Source Branch Target"] + "\\" + current_tests_collection_name + '\\'
             results_directory = 'TestsResults' + '\\' + common_directory_path
-            reference_directory = tests_collections_run_results[current_tests_collection_name]['Compare Reference Target'] + '\\'  + machine_configs.machine_name + '\\' + common_directory_path
+            reference_directory = tests_collections_run_results[current_tests_collection_name]['Compare Reference Target'] + '\\'  + machine_configs.machine_name + '\\' + tests_collections_run_results[current_tests_collection_name]["Compare Branch Target"] + '\\' + current_tests_collection_name
 
             # Run the Tests Set.
             test_results = rTS.run_tests_set(clone_directory, False, tests_collections_run_results[current_tests_collection_name]['Tests Configs Target'] + current_tests_set["Tests Set"], results_directory, reference_directory)

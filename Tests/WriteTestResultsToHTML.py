@@ -103,7 +103,7 @@ def get_image_comparison_table_code(tests_sets_results):
                                             image_comparison_errors_code = "<p> " + image_comparison_errors_code + "" + current_test_group_result_name + '_' + str(test_index) + " failed to compare screen capture " + str(capture_index) + " <br> \n"
                                             image_comparison_errors_code = image_comparison_errors_code + "Source : " + capture_result["Source Filename"] + " <br>  Reference : " + capture_result["Reference Filename"] + " <br> \n"
                                             image_comparison_errors_code = image_comparison_errors_code + "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br></p>"
-                                            image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(-1) + '</font></td>\n'
+                                            image_comparison_table_code += '<td bgcolor="red"><font color="white">Error</font></td>\n'
                                             continue
 
                             image_comparison_table_code += '</tr>\n'
