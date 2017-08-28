@@ -29,35 +29,30 @@
 
 namespace Falcor
 {
-
-    //  Initialize the Testing.
+    // Initialize the Testing.
     void SampleTest::initializeTesting()
     {
         if (mArgList.argExists("test"))
         {
-            //  Initialize the Tests.
+            // Initialize the Tests.
             initializeTests();
 
-            //  Initialize Testing Callback.
+            // Initialize Testing Callback.
             onInitializeTesting();
-
-            
         }
     }
 
-    //  Begin Test Frame.
+    // Begin Test Frame.
     void SampleTest::beginTestFrame()
-    {   
-        //  Check if we have any tests.
+    {
+        // Check if we have any tests.
         if (!(mCurrentTimeTaskIndex < mTimeTasks.size() || mCurrentFrameTaskIndex < mFrameTasks.size()))
         {
             return;
         }
 
-        //  
         mCurrentTriggerType = TriggerType::None;
- 
-        //  
+
         if (mCurrentTimeTaskIndex < mTimeTasks.size() && mCurrentTriggerType == TriggerType::None)
         {
             if (mTimeTasks[mCurrentTimeTaskIndex]->isActive(this))
@@ -68,7 +63,6 @@ namespace Falcor
             }
         }
 
-        //  
         if (mCurrentFrameTaskIndex < mFrameTasks.size() && mCurrentTriggerType == TriggerType::None)
         {
             if (mFrameTasks[mCurrentFrameTaskIndex]->isActive(this))
@@ -79,12 +73,10 @@ namespace Falcor
             }
         }
 
-
-        //
         onBeginTestFrame();
     }
 
-    //  End Test Frame.
+    // End Test Frame.
     void SampleTest::endTestFrame()
     {
         if (!(mCurrentTimeTaskIndex < mTimeTasks.size() || mCurrentFrameTaskIndex < mFrameTasks.size()))
@@ -92,8 +84,6 @@ namespace Falcor
             return;
         }
 
-
-        //  
         if (mCurrentTriggerType == TriggerType::Time)
         {
             mTimeTasks[mCurrentTimeTaskIndex]->onFrameEnd(this);
@@ -104,7 +94,6 @@ namespace Falcor
             }
         }
 
-        //  
         if (mCurrentTriggerType == TriggerType::Frame)
         {
             mFrameTasks[mCurrentFrameTaskIndex]->onFrameEnd(this);
@@ -115,13 +104,10 @@ namespace Falcor
             }
         }
 
-
         onEndTestFrame();
-
     }
 
-
-    //  Write the JSON Literal.
+    // Write the JSON Literal.
     template<typename T>
     void SampleTest::writeJsonLiteral(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value)
     {
@@ -130,7 +116,7 @@ namespace Falcor
         jval.AddMember(jkey, value, jallocator);
     }
 
-    //  Write the JSON Array.
+    // Write the JSON Array.
     template<typename T>
     void SampleTest::writeJsonArray(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value)
     {
@@ -145,17 +131,15 @@ namespace Falcor
         jval.AddMember(jkey, jvec, jallocator);
     }
 
-
-    //  Write the JSON Value.
+    // Write the JSON Value.
     void SampleTest::writeJsonValue(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, rapidjson::Value& value)
     {
         rapidjson::Value jkey;
         jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
         jval.AddMember(jkey, value, jallocator);
-
     }
 
-    //  Write the JSON String.
+    // Write the JSON String.
     void SampleTest::writeJsonString(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const std::string& value)
     {
         rapidjson::Value jstring, jkey;
@@ -163,10 +147,9 @@ namespace Falcor
         jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
 
         jval.AddMember(jkey, jstring, jallocator);
-
     }
 
-    //  Write the JSON Bool.
+    // Write the JSON Bool.
     void SampleTest::writeJsonBool(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, bool isValue)
     {
         rapidjson::Value jbool, jkey;
@@ -174,42 +157,40 @@ namespace Falcor
         jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
 
         jval.AddMember(jkey, jbool, jallocator);
-
     }
 
-    //  Write the Test Results.
+    // Write the Test Results.
     void SampleTest::writeJsonTestResults()
     {
-        //  Create the Test Results.
+        // Create the Test Results.
         rapidjson::Document jsonTestResults;
         jsonTestResults.SetObject();
 
-        //  Get the json Value and the Allocator.
+        // Get the json Value and the Allocator.
         rapidjson::Value & jsonVal = jsonTestResults;
         auto & jsonAllocator = jsonTestResults.GetAllocator();
 
         writeJsonLiteral(jsonVal, jsonAllocator, "Frame Tasks", mFrameTasks.size());
         writeJsonLiteral(jsonVal, jsonAllocator, "Time Tasks", mTimeTasks.size());
 
-        //  Write the Json Test Results.
+        // Write the Json Test Results.
         writeJsonTestResults(jsonTestResults);
-        
-        //  Get String Buffer for the json.
+
+        // Get String Buffer for the json.
         rapidjson::StringBuffer jsonStringBuffer;
-        
-        //  Get the PrettyWriter for the json.
+
+        // Get the PrettyWriter for the json.
         rapidjson::PrettyWriter<rapidjson::StringBuffer> jsonWriter(jsonStringBuffer);
-        
-        //  Set the Indent.
+
+        // Set the Indent.
         jsonWriter.SetIndent(' ', 4);
-        
-        //  Use the jsonwriter.
+
+        // Use the jsonwriter.
         jsonTestResults.Accept(jsonWriter);
-        
-        //  Construct the json string from the string buffer.
+
+        // Construct the json string from the string buffer.
         std::string jsonString(jsonStringBuffer.GetString(), jsonStringBuffer.GetSize());
 
-        //  
         std::string exeName = getExecutableName();
         std::string shortName = exeName.substr(0, exeName.size() - 4);
 
@@ -217,7 +198,7 @@ namespace Falcor
 
         if (mHasSetFilename)
         {
-            jsonFilename = mTestOutputFilePrefix + ".json";
+            jsonFilename = mTestOutputFilename + ".json";
         }
         else
         {
@@ -230,8 +211,6 @@ namespace Falcor
             jsonFilename = mTestOutputDirectory + jsonFilename;
         }
 
-        
-        //  
         std::ofstream outputStream(jsonFilename.c_str());
         if (outputStream.fail())
         {
@@ -239,87 +218,78 @@ namespace Falcor
         }
         outputStream << jsonString;
         outputStream.close();
-
     }
 
-
-    //  Write the Json Test Results.
+    // Write the Json Test Results.
     void SampleTest::writeJsonTestResults(rapidjson::Document & jsonTestResults)
     {
-        //  Write the Load Time Check Results.
+        // Write the Load Time Check Results.
         writeLoadTimeCheckResults(jsonTestResults);
 
-        //  Write the Memory Range Results.
+        // Write the Memory Range Results.
         writeMemoryRangesResults(jsonTestResults);
-    
-        //  Write the Performance Range Results.
+
+        // Write the Performance Range Results.
         writePerformanceRangesResults(jsonTestResults);
-        
-        //  Write the Screen Capture Results.
+
+        // Write the Screen Capture Results.
         writeScreenCaptureResults(jsonTestResults);
     }
-    
-    //  Write Load Time.
+
+    // Write Load Time.
     void SampleTest::writeLoadTimeCheckResults(rapidjson::Document & jsonTestResults)
     {
-        //  Get the json Value and the Allocator.
+        // Get the json Value and the Allocator.
         rapidjson::Value & jsonVal = jsonTestResults;
         auto & jsonAllocator = jsonTestResults.GetAllocator();
 
-        //  
         if (mLoadTimeCheckTask != nullptr)
         {
             writeJsonLiteral(jsonVal, jsonAllocator, "Load Time Check", mLoadTimeCheckTask->mLoadTimeCheckResult);
         }
     }
 
-    //  Write the Memory Ranges Results.
+    // Write the Memory Ranges Results.
     void SampleTest::writeMemoryRangesResults(rapidjson::Document & jsonTestResults)
     {
-        
     }
 
-    //  Write the Performance Ranges Results.
+    // Write the Performance Ranges Results.
     void SampleTest::writePerformanceRangesResults(rapidjson::Document & jsonTestResults)
     {
         auto & jsonAllocator = jsonTestResults.GetAllocator();
 
-        //  Write the screen captured image files to the output file.
+        // Write the screen captured image files to the output file.
         rapidjson::Value pcfArray(rapidjson::kArrayType);
 
-        //  
         for (uint32_t i = 0; i < mFrameTasks.size(); i++)
         {
             if (mFrameTasks[i]->mTaskType == TaskType::PerformanceCheckTask)
             {
-
             }
         }
 
         jsonTestResults.AddMember("Performance Frame Checks", pcfArray, jsonAllocator);
 
-
-        //  Write the time based performance checks.
+        // Write the time based performance checks.
         rapidjson::Value pctArray(rapidjson::kArrayType);
 
-        //  
         for (uint32_t i = 0; i < mTimeTasks.size(); i++)
         {
             if (mTimeTasks[i]->mTaskType == TaskType::PerformanceCheckTask)
             {
-
             }
         }
 
         jsonTestResults.AddMember("Performance Time Checks", pctArray, jsonAllocator);
     }
 
-    //  Write the Screen Capture Results.
+    // Write the Screen Capture Results.
     void SampleTest::writeScreenCaptureResults(rapidjson::Document & jsonTestResults)
     {
         auto & jsonAllocator = jsonTestResults.GetAllocator();
 
-        //  Write the screen captured image files to the output file.
+        // Write the screen captured image files to the output file.
         rapidjson::Value scfArray(rapidjson::kArrayType);
 
         for (uint32_t i = 0; i < mFrameTasks.size(); i++)
@@ -330,7 +300,6 @@ namespace Falcor
 
                 if (scfTask != nullptr)
                 {
- 
                     rapidjson::Value scffilename;
                     scffilename.SetString(scfTask->mCaptureFilename.c_str(), jsonAllocator);
 
@@ -343,16 +312,13 @@ namespace Falcor
                     scfFile.AddMember("Filepath", scffilepath, jsonAllocator);
 
                     scfArray.PushBack(scfFile, jsonAllocator);
-
                 }
             }
         }
 
-        //  
         jsonTestResults.AddMember("Frame Screen Captures", scfArray, jsonAllocator);
 
-
-        //  Write the screen captured image files to the output file.
+        // Write the screen captured image files to the output file.
         rapidjson::Value sctArray(rapidjson::kArrayType);
 
         for (uint32_t i = 0; i < mTimeTasks.size(); i++)
@@ -363,7 +329,6 @@ namespace Falcor
 
                 if (sctTask != nullptr)
                 {
-
                     rapidjson::Value sctfilename;
                     sctfilename.SetString(sctTask->mCaptureFilename.c_str(), jsonAllocator);
 
@@ -376,24 +341,20 @@ namespace Falcor
                     sctFile.AddMember("Filepath", sctfilepath, jsonAllocator);
 
                     sctArray.PushBack(sctFile, jsonAllocator);
-
                 }
             }
         }
 
-        //  
         jsonTestResults.AddMember("Time Screen Captures", sctArray, jsonAllocator);
-
     }
 
-
-    //  Initialize the Tests.
+    // Initialize the Tests.
     void SampleTest::initializeTests()
     {
-        //  Check for an Output Directory.
-        if (mArgList.argExists("outputdirectory"))
+        // Check for an Output Directory.
+        if (mArgList.argExists("outputdir"))
         {
-            std::vector<ArgList::Arg> odArgs =  mArgList.getValues("outputdirectory");
+            std::vector<ArgList::Arg> odArgs = mArgList.getValues("outputdir");
             if (!odArgs.empty())
             {
                 mHasSetDirectory = true;
@@ -401,14 +362,14 @@ namespace Falcor
             }
         }
 
-        //  Check for a Results File.
-        if (mArgList.argExists("outputfileprefix"))
+        // Check for a Results File.
+        if (mArgList.argExists("outputfilename"))
         {
-            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("outputfileprefix");
+            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("outputfilename");
             if (!orfArgs.empty())
             {
                 mHasSetFilename = true;
-                mTestOutputFilePrefix = orfArgs[0].asString();
+                mTestOutputFilename = orfArgs[0].asString();
             }
         }
 
@@ -421,29 +382,25 @@ namespace Falcor
             }
         }
 
-
-        //  Ready the Frame Based Tests.
+        // Ready the Frame Based Tests.
         initializeFrameTests();
 
-        //  Ready the Time Based Tests.
+        // Ready the Time Based Tests.
         initializeTimeTests();
     }
 
-    //  Initialize Frame Tests.
+    // Initialize Frame Tests.
     void SampleTest::initializeFrameTests()
     {
-
-        //  
-        //  Check for a Load Time.
+        // Check for a Load Time.
         if (mArgList.argExists("loadtime"))
         {
             mLoadTimeCheckTask = std::make_shared<LoadTimeCheckTask>();
             mFrameTasks.push_back(mLoadTimeCheckTask);
         }
-        
 
         //
-        //  Check for a Shutdown Frame.
+        // Check for a Shutdown Frame.
         if (mArgList.argExists("shutdown"))
         {
             std::vector<ArgList::Arg> shutdownFrame = mArgList.getValues("shutdown");
@@ -454,10 +411,8 @@ namespace Falcor
                 mFrameTasks.push_back(shutdownframeTask);
             }
         }
-        
 
-        //  
-        //  Check for a Screenshot Frame.
+        // Check for a Screenshot Frame.
         if (mArgList.argExists("ssframes"))
         {
             std::vector<ArgList::Arg> ssFrames = mArgList.getValues("ssframes");
@@ -469,17 +424,14 @@ namespace Falcor
             }
         }
 
-
-
-        //  
         std::sort(mFrameTasks.begin(), mFrameTasks.end(), FrameTaskPtrCompare());
     }
 
-    //  Initialize Time Tests.
+    // Initialize Time Tests.
     void SampleTest::initializeTimeTests()
     {
         //
-        //  Check for a Shutdown Time.
+        // Check for a Shutdown Time.
         if (mArgList.argExists("shutdowntime"))
         {
             //Shutdown
@@ -490,12 +442,9 @@ namespace Falcor
                 std::shared_ptr<ShutdownTimeTask> shutdowntimeTask = std::make_shared<ShutdownTimeTask>(shutdownTime);
                 mTimeTasks.push_back(shutdowntimeTask);
             }
-
         }
 
-
-        //  
-        //  Check for a Screenshot Frame.
+        // Check for a Screenshot Frame.
         if (mArgList.argExists("sstimes"))
         {
             std::vector<ArgList::Arg> ssTimes = mArgList.getValues("sstimes");
@@ -505,15 +454,12 @@ namespace Falcor
                 std::shared_ptr<ScreenCaptureTimeTask> screenCaptureTimeTask = std::make_shared<ScreenCaptureTimeTask>(captureTime);
                 mTimeTasks.push_back(screenCaptureTimeTask);
             }
-
         }
 
-
-        //  
-        //  Check for Performance Time Ranges. 
+        // Check for Performance Time Ranges.
         if (mArgList.argExists("perftimes"))
         {
-            //  Performance Check Frames.
+            // Performance Check Frames.
             std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perftimes");
 
             if (perfframeRanges.size() % 2 != 0)
@@ -522,31 +468,23 @@ namespace Falcor
                 perfframeRanges.pop_back();
             }
 
-            //                        
             for (uint32_t i = 0; i < perfframeRanges.size() / 2; i++)
             {
                 std::shared_ptr<PerformanceCheckTimeTask> performanceCheckTimeTask = std::make_shared<PerformanceCheckTimeTask>(perfframeRanges[i].asFloat(), perfframeRanges[i + 1].asFloat());
             }
-            
         }
 
-        //  
-        //  Check for Memory Time Ranges.
+        // Check for Memory Time Ranges.
         if (mArgList.argExists("memtimes"))
         {
-            //  Memory Check Frames.
+            // Memory Check Frames.
             std::vector<ArgList::Arg> memframeRanges = mArgList.getValues("memtimes");
         }
 
-        //  
         std::sort(mTimeTasks.begin(), mTimeTasks.end(), TimeTaskPtrCompare());
-
     }
 
-    
-
-
-    //  Capture the Current Memory and write it to the provided memory check.
+    // Capture the Current Memory and write it to the provided memory check.
     void SampleTest::getMemoryStatistics(MemoryCheck & memoryCheck)
     {
         memoryCheck.totalVirtualMemory = getTotalVirtualMemory();
@@ -554,11 +492,10 @@ namespace Falcor
         memoryCheck.currentlyUsedVirtualMemory = getProcessUsedVirtualMemory();
     }
 
-
-    //  Write the Memory Check Range, either in terms of Time or Frames to a file. Outputs Difference, Start and End Times and Memories.
+    // Write the Memory Check Range, either in terms of Time or Frames to a file. Outputs Difference, Start and End Times and Memories.
     void SampleTest::writeMemoryRange(const MemoryCheckRange & memoryCheckRange, bool frameTest /*= true*/)
     {
-        //  Get the Strings for the Memory in Bytes - Start Frame
+        // Get the Strings for the Memory in Bytes - Start Frame
         std::string startTVM_B = std::to_string(memoryCheckRange.startCheck.totalVirtualMemory);
         std::string startTUVM_B = std::to_string(memoryCheckRange.startCheck.totalUsedVirtualMemory);
         std::string startCUVM_B = std::to_string(memoryCheckRange.startCheck.currentlyUsedVirtualMemory);
@@ -567,7 +504,7 @@ namespace Falcor
         std::string startTUVM_MB = std::to_string(memoryCheckRange.startCheck.totalUsedVirtualMemory / (1024 * 1024));
         std::string startCUVM_MB = std::to_string(memoryCheckRange.startCheck.currentlyUsedVirtualMemory / (1024 * 1024));
 
-        //  Check what the file description should say.
+        // Check what the file description should say.
         std::string startCheck = "";
         if (frameTest)
         {
@@ -581,7 +518,7 @@ namespace Falcor
         startCheck = startCheck + ("Total Used Virtual Memory By All Processes : " + startTUVM_B + " bytes, " + startTUVM_MB + " MB. \n");
         startCheck = startCheck + ("Virtual Memory used by this Process : " + startCUVM_B + " bytes, " + startCUVM_MB + " MB. \n \n");
 
-        //  Get the Strings for the Memory in Bytes - End Frame
+        // Get the Strings for the Memory in Bytes - End Frame
         std::string endTVM_B = std::to_string(memoryCheckRange.endCheck.totalVirtualMemory);
         std::string endTUVM_B = std::to_string(memoryCheckRange.endCheck.totalUsedVirtualMemory);
         std::string endCUVM_B = std::to_string(memoryCheckRange.endCheck.currentlyUsedVirtualMemory);
@@ -590,7 +527,7 @@ namespace Falcor
         std::string endTUVM_MB = std::to_string(memoryCheckRange.endCheck.totalUsedVirtualMemory / (1024 * 1024));
         std::string endCUVM_MB = std::to_string(memoryCheckRange.endCheck.currentlyUsedVirtualMemory / (1024 * 1024));
 
-        //  Check what the file description should say.
+        // Check what the file description should say.
         std::string endCheck = "";
         if (frameTest)
         {
@@ -605,7 +542,7 @@ namespace Falcor
         endCheck = endCheck + ("Total Used Virtual Memory By All Processes : " + endTUVM_B + " bytes, " + endTUVM_MB + " MB. \n");
         endCheck = endCheck + ("Virtual Memory used by this Process : " + endCUVM_B + " bytes, " + endCUVM_MB + " MB. \n \n");
 
-        //  Compute the Difference Between the Two.
+        // Compute the Difference Between the Two.
         std::string differenceCheck = "Difference : \n";
         int64_t difference = 0;
         {
@@ -613,8 +550,7 @@ namespace Falcor
             differenceCheck = differenceCheck + std::to_string(difference) + "\n \n";
         }
 
-
-        //  Key string for difference.
+        // Key string for difference.
         std::string keystring = "";
         if (frameTest)
         {
@@ -625,12 +561,12 @@ namespace Falcor
             keystring = std::to_string(memoryCheckRange.startCheck.effectiveTime) + " " + std::to_string(memoryCheckRange.endCheck.effectiveTime) + " " + (startCUVM_B)+" " + (endCUVM_B)+" " + std::to_string(difference) + " \n";
         }
 
-        //  Get the name of the current program.
+        // Get the name of the current program.
         std::string filename = getExecutableName();
 
-        //  Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
+        // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
         std::string prefix = std::string(filename);
-        //  Frame Test.
+        // Frame Test.
         if (frameTest)
         {
             prefix = prefix + ".MemoryFrameCheck";
@@ -641,10 +577,10 @@ namespace Falcor
         }
         std::string executableDir = getExecutableDirectory();
         std::string txtFile;
-        //  Get an available filename.
+        // Get an available filename.
         if (findAvailableFilename(prefix, executableDir, "txt", txtFile))
         {
-            //  Output the memory check.
+            // Output the memory check.
             std::ofstream of;
             of.open(txtFile);
             of << keystring;
@@ -655,14 +591,12 @@ namespace Falcor
         }
         else
         {
-            //  Log Error.
+            // Log Error.
             logError("Could not find available filename when checking memory.");
         }
     }
 
-
-
-    //  Capture the Memory and return a representative string.
+    // Capture the Memory and return a representative string.
     void SampleTest::captureMemory(uint64_t frameCount, float currentTime, bool frameTest /*= true*/, bool endRange /*= false*/)
     {
         if (frameTest && !endRange && !mMemoryFrameCheckRange.active)
@@ -694,6 +628,177 @@ namespace Falcor
             mMemoryTimeCheckRange.endCheck.effectiveTime = currentTime;
             writeMemoryRange(mMemoryTimeCheckRange, false);
             mMemoryTimeCheckRange.active = false;
+        }
+    }
+
+    // LoadTimeCheckTask
+
+    bool SampleTest::LoadTimeCheckTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
+    }
+
+    void SampleTest::LoadTimeCheckTask::onFrameBegin(SampleTest* sampleTest)
+    {
+        mLoadTimeCheckResult = sampleTest->frameRate().getLastFrameTime();
+    }
+
+    void SampleTest::LoadTimeCheckTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    // ScreenCaptureFrameTask
+
+    bool SampleTest::ScreenCaptureFrameTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->getFrameID() == mCaptureFrame && !mIsTaskComplete;
+    }
+
+    void SampleTest::ScreenCaptureFrameTask::onFrameBegin(SampleTest* sampleTest)
+    {
+        sampleTest->toggleText(false);
+    }
+
+    void SampleTest::ScreenCaptureFrameTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (sampleTest->mHasSetDirectory)
+        {
+            // Capture the Screen.
+            std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename, sampleTest->mTestOutputDirectory);
+            mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+            mCaptureFilename = getFilenameFromPath(mCaptureFile);
+        }
+        else
+        {
+            // Capture the Screen.
+            std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename);
+            mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+            mCaptureFilename = getFilenameFromPath(mCaptureFile);
+        }
+
+        // Toggle the Text Back.
+        sampleTest->toggleText(true);
+
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    // ShutdownFrameTask
+
+    bool SampleTest::ShutdownFrameTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
+    }
+
+    void SampleTest::ShutdownFrameTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        // Write the json Test Results.
+        sampleTest->writeJsonTestResults();
+
+        // Shutdown the App.
+        sampleTest->shutdownApp();
+
+        // On Test Shutdown.
+        sampleTest->onTestShutdown();
+
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    // MemoryCheckTimeTask
+
+    void SampleTest::MemoryCheckTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime && !mIsActive)
+        {
+            mIsActive = true;
+            sampleTest->getMemoryStatistics(mStartCheck);
+        }
+
+        if (sampleTest->mCurrentTime >= mEndTime && mIsActive)
+        {
+            sampleTest->getMemoryStatistics(mEndCheck);
+            mIsActive = false;
+            mIsTaskComplete = true;
+        }
+    }
+
+    bool SampleTest::PerformanceCheckTimeTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime;
+    }
+
+    void SampleTest::PerformanceCheckTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    bool SampleTest::ScreenCaptureTimeTask::isActive(SampleTest* sampleTest)
+    {
+        return mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
+    }
+
+    void SampleTest::ScreenCaptureTimeTask::onFrameBegin(SampleTest* sampleTest)
+    {
+        if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        {
+            // Sneakily set the time of the program! For perfect pictures.
+            sampleTest->mCurrentTime = mCaptureTime;
+
+            sampleTest->toggleText(false);
+        }
+    }
+
+    void SampleTest::ScreenCaptureTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        {
+            if (sampleTest->mHasSetDirectory)
+            {
+                // Capture the Screen.
+                std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename, sampleTest->mTestOutputDirectory);
+                mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                mCaptureFilename = getFilenameFromPath(mCaptureFile);
+            }
+            else
+            {
+                // Capture the Screen.
+                std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename);
+                mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                mCaptureFilename = getFilenameFromPath(mCaptureFile);
+            }
+
+            // Toggle the Text Back.
+            sampleTest->toggleText(true);
+
+            // Task is Complete!
+            mIsTaskComplete = true;
+        }
+    }
+
+    bool SampleTest::ShutdownTimeTask::isActive(SampleTest* sampleTest)
+    {
+        return mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
+    }
+
+    void SampleTest::ShutdownTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        {
+            // Write the json Test Results.
+            sampleTest->writeJsonTestResults();
+
+            // Shutdown the App.
+            sampleTest->shutdownApp();
+
+            // On Test Shutdown.
+            sampleTest->onTestShutdown();
+
+            // Task is Complete!
+            mIsTaskComplete = true;
         }
     }
 }

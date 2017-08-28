@@ -45,3 +45,11 @@ def directory_clean_or_make(destination):
 def directory_copy(fromDirectory, toDirectory):
     copy_tree(fromDirectory, toDirectory)
 
+def build_html_filename(tests_set_results):
+    if tests_set_results['Success'] is True:
+        header = "[SUCCESS]"
+    else:
+        header = "[FAILED]"
+
+    return header + tests_set_results['Tests Set Filename'] + "_Results.html"
+

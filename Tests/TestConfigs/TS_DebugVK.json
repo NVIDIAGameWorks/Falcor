@@ -1,10 +1,10 @@
 {
     "Solution Target" : "Falcor.sln",
     "Configuration Target" : "DebugVK",
-    "Tests Groups" : 
+    "Tests Groups" :
     {
         "ComputeShaderTest": {
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "ComputeShader",
             "Project Tests Args" :
             [
@@ -12,11 +12,11 @@
                 "-test -ssframes 50 -shutdown 300 -pixelate -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\StockImage.jpg",
                 "-test -ssframes 50 -shutdown 300 -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
                 "-test -ssframes 50 -shutdown 300 -pixelate -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png"
-            ]  
+            ]
         },
 
         "MultiPassPostProcessTest": {
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "MultiPassPostProcess",
             "Project Tests Args" :
             [
@@ -26,12 +26,12 @@
                 "-test -ssframes 50 -shutdown 100 -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
                 "-test -ssframes 50 -shutdown 100 -gaussianblur -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png",
                 "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage \\\\netapp-wa02\\public\\Falcor\\TestMedia\\TestTex2.png"
-            ]  
+            ]
         },
-        
+
         "FeatureDemoTest":
         {
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "FeatureDemo",
             "Project Tests Args" :
             [
@@ -42,13 +42,13 @@
                 "-test -loadscene bathroom2\\bathroom.fscene -sstimes 10 20 30 -shutdowntime 35",
                 "-test -loadscene living_room\\living_room.fscene -sstimes 10 20 30 -shutdowntime 35",
                 "-test -loadscene UE4\\SunTemple\\SunTemple.fscene -sstimes 10 27 50 -shutdowntime 55"
-            ]  
+            ]
         },
-        
+
         "ShadowsTest":
         {
 
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "Shadows",
             "Project Tests Args" :
             [
@@ -56,12 +56,12 @@
                 "-test -loadscene alphatest\\alpha_test.fscene -incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300"
             ]
         },
-        
+
         "PostProcessTest":
         {
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "PostProcess",
-            "Project Tests Args" : 
+            "Project Tests Args" :
             [
                 "-test -changeMode 150 300 450 600 750 900 1050 1200 1350 1500 1650 1800 1950 2100 2250 2400 2550 -ssframes 50 200 350 500 650 800 950 1100 1250 1400 1550 1700 1850 2000 2150 2300 2450 2600 -shutdown 2700"
             ]
@@ -69,17 +69,17 @@
 
         "SimpleDeferredTest":
         {
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "SimpleDeferred",
             "Project Tests Args" :
             [
-                "-test -incrementDebugMode 100 200 300 400 -ssframes 50 150 250 350 450 -shutdown 500"    
+                "-test -incrementDebugMode 100 200 300 400 -ssframes 50 150 250 350 450 -shutdown 500"
             ]
         },
 
         "EnvMapTest":
         {
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "EnvMap",
             "Project Tests Args" :
             [
@@ -89,11 +89,11 @@
         },
         "NormalMapFilteringTest":
         {
-            "Enabled" : "True",
+            "Enabled" : true,
             "Project Name" : "NormalMapFiltering",
             "Project Tests Args" :
             [
-                "-test -changeMode 100 200 300 -ssframes 50 150 250 350 -shutdown 400"    
+                "-test -changeMode 100 200 300 -ssframes 50 150 250 350 -shutdown 400"
             ]
         }
     }

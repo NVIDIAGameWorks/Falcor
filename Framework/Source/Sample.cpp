@@ -357,17 +357,8 @@ namespace Falcor
 
     std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory)
     {
-           
-        std::string filename = getExecutableName();
-
-        if (explicitFilename != "")
-            filename = explicitFilename;
-
-        std::string outputDirectory = getExecutableDirectory();
-
-        if (explicitOutputDirectory != "") 
-            outputDirectory = explicitOutputDirectory;
- 
+        std::string filename = explicitFilename != "" ? explicitFilename : getExecutableName();
+        std::string outputDirectory = explicitOutputDirectory != "" ? explicitOutputDirectory : getExecutableDirectory();
 
         std::string pngFile;
         if (findAvailableFilename(filename, outputDirectory, "png", pngFile))

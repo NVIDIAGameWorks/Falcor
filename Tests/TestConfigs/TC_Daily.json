@@ -1,7 +1,7 @@
 {
     "Tests Collections Name" : "TC_DailyTests",
 
-    "Tests Collections" : 
+    "Tests Collections" :
     {
         "GitHub_DailyTests" :
         {
@@ -11,8 +11,8 @@
             "Compare Branch Target" : "master",
             "Compare Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
             "Generate Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
-            "Tests Configs Target" : "TestConfigsDev\\",
-            
+            "Tests Configs Target" : "TestConfigs\\",
+
             "Tests":
             [
                 {
