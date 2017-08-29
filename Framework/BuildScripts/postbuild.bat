@@ -45,5 +45,5 @@ if /I "%6"=="ReleaseVK" set outdirtype=Release
 
 
 rem Call the Build Scripts to move the data.
-call %1BuildScripts\movedata.bat %1 %2 %3 %4 %5 %6 %7 %outdirtype%
+call %1BuildScripts\movedata.bat %1 %2 %3 %4 %5 %6 %7 %6
 

@@ -21,7 +21,8 @@
       <AdditionalDependencies>slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>"$(OutDir)\moveprojectdata.bat" "$(ProjectDir)" "$(OutDir)"</Command>
+      <Command>call $(FALCOR_CORE_DIRECTORY)\BuildScripts\postbuild.bat $(FALCOR_CORE_DIRECTORY)\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+call $(OutDir)\moveprojectdata.bat $(ProjectDir) $(OutDir)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
