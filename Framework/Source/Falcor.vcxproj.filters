@@ -208,9 +208,6 @@
     <ClCompile Include="API\D3D\D3DState.cpp">
       <Filter>API\D3D</Filter>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3DWindow.cpp">
-      <Filter>API\D3D</Filter>
-    </ClCompile>
     <ClCompile Include="API\D3D\D3D11\D3D11BlendState.cpp">
       <Filter>API\D3D\D3D11</Filter>
     </ClCompile>
@@ -534,6 +531,9 @@
     <ClCompile Include="MultiRendererSample.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp">
       <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="API\Win32Window.cpp">
+      <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

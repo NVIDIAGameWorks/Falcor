@@ -36,11 +36,14 @@
 #include <Windowsx.h>
 #include "Utils/StringUtils.h"
 
-// #VKTODO This probably makes more sense as "WindowsWindow" rather than specifically D3D
+#define GLFW_DLL
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include "glfw3.h"
+#include "glfw3native.h"
 
 namespace Falcor
 {
-	class ApiCallbacks
+    class ApiCallbacks
     {
     public:
         static LRESULT CALLBACK msgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -55,7 +58,7 @@ namespace Falcor
             }
             else
             {
-				pWindow = (Window*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+                pWindow = (Window*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
                 switch(msg)
                 {
                 case WM_CLOSE:
@@ -96,8 +99,8 @@ namespace Falcor
             GetClientRect(pWindow->getApiHandle(), &r);
             uint32_t width = r.right - r.left;
             uint32_t height = r.bottom - r.top;
-			pWindow->resize(width, height);
-		}
+            pWindow->resize(width, height);
+        }
 
         static KeyboardEvent::Key translateKeyCode(WPARAM keyCode)
         {
@@ -303,48 +306,24 @@ namespace Falcor
         }
     };
 
-	static HWND createWindow(const Window::Desc& desc, void* pUserData)
+    static GLFWwindow* createWindow(const Window::Desc& desc, void* pUserData)
     {
-        const WCHAR* className = L"FalcorWindowClass";
-        DWORD winStyle = WS_OVERLAPPED | WS_CAPTION |  WS_SYSMENU;
-        if(desc.resizableWindow == true)
-        {
-            winStyle = winStyle | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-        }
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        GLFWwindow* pWindow = glfwCreateWindow(desc.width, desc.height, desc.title.c_str(), nullptr, nullptr);
 
-        // Register the window class
-        WNDCLASS wc = {};
-        wc.lpfnWndProc = &ApiCallbacks::msgProc;
-        wc.hInstance = GetModuleHandle(nullptr);
-        wc.lpszClassName = className;
-        wc.hIcon = nullptr;
-        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-
-        if(RegisterClass(&wc) == 0)
+        if(pWindow == nullptr)
         {
-            logErrorAndExit("RegisterClass() failed");
+            logErrorAndExit("glfwCreateWindow() failed");
             return nullptr;
         }
 
-        // Window size we have is for client area, calculate actual window size
-        RECT r{0, 0, (LONG)desc.width, (LONG)desc.height};
-        AdjustWindowRect(&r, winStyle, false);
+        return pWindow;
+    }
 
-        int windowWidth = r.right - r.left;
-        int windowHeight = r.bottom - r.top;
-
-        // create the window
-        std::wstring wTitle = string_2_wstring(desc.title);
-        HWND hWnd = CreateWindowEx(0, className, wTitle.c_str(), winStyle, CW_USEDEFAULT, CW_USEDEFAULT, windowWidth, windowHeight, nullptr, nullptr, wc.hInstance, pUserData);
-        if(hWnd == nullptr)
-        {
-            logErrorAndExit("CreateWindowEx() failed");
-            return nullptr;
-        }
-
-        // It might be tempting to call ShowWindow() here, but this fires a WM_SIZE message, which if you look at our MsgProc()
-        // calls some device functions. That's a race condition, since the device wasn't initialized yet 
-        return hWnd;
+    void errorCallback(int errorCode, const char* pDescription)
+    {
+        std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription);
+        logError(errorMsg.c_str());
     }
 
     Window::Window(ICallbacks* pCallbacks, uint32_t width, uint32_t height) : mpCallbacks(pCallbacks), mWidth(width), mHeight(height)
@@ -354,10 +333,8 @@ namespace Falcor
 
     Window::~Window()
     {
-        if(mApiHandle)
-        {
-			DestroyWindow(mApiHandle);
-		}
+        glfwDestroyWindow(mpGLFWWindow);
+        glfwTerminate();
     }
 
     void Window::shutdown()
@@ -367,16 +344,35 @@ namespace Falcor
 
     Window::SharedPtr Window::create(const Desc& desc, ICallbacks* pCallbacks)
     {
-		SharedPtr pWindow = SharedPtr(new Window(pCallbacks, desc.width, desc.height));
-        
-        // create the window
-		pWindow->mApiHandle = createWindow(desc, pWindow.get());
-        if(pWindow->mApiHandle == nullptr)
+        // Set error callback
+        glfwSetErrorCallback(errorCallback);
+
+        // Init GLFW
+        if (glfwInit() == GLFW_FALSE)
         {
-            return false;
+            logError("GLFW initialization failed");
+            return nullptr;
         }
 
-		return pWindow;
+        SharedPtr pWindow = SharedPtr(new Window(pCallbacks, desc.width, desc.height));
+        
+        // create the window
+        GLFWwindow* pGLFWWindow = createWindow(desc, pWindow.get());
+
+        if (pGLFWWindow == nullptr)
+        {
+            return nullptr;
+        }
+
+        pWindow->mpGLFWWindow = pGLFWWindow;
+        pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
+
+        if(pWindow->mApiHandle == nullptr)
+        {
+            return nullptr;
+        }
+
+        return pWindow;
     }
 
     void Window::resize(uint32_t width, uint32_t height)
@@ -401,7 +397,7 @@ namespace Falcor
         mpCallbacks->handleWindowSizeChange();
     }
 
-	void Window::msgLoop()
+    void Window::msgLoop()
     {
         // Show the window
         ShowWindow(mApiHandle, SW_SHOWNORMAL);
@@ -421,14 +417,14 @@ namespace Falcor
             }
             else
             {
-				mpCallbacks->renderFrame();
+                mpCallbacks->renderFrame();
             }
         }
     }
 
     void Window::setWindowTitle(std::string title)
     {
-		    }
+            }
 
     void Window::pollForEvents()
     {

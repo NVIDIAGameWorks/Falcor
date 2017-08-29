@@ -279,10 +279,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3DWindow.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="API\DepthStencilState.cpp" />
     <ClCompile Include="API\DescriptorSet.cpp" />
     <ClCompile Include="API\Device.cpp" />
@@ -524,6 +520,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D11|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="API\Win32Window.cpp" />
     <ClCompile Include="ArgList.cpp" />
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp" />
     <ClCompile Include="Effects\NormalMap\LeanMap.cpp" />
@@ -1431,7 +1428,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1470,7 +1467,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1551,7 +1548,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -1594,7 +1591,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
