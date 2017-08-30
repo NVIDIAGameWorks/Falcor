@@ -94,7 +94,7 @@ namespace Falcor
 
         /** Change the window's title
         */
-        void setWindowTitle(std::string title);
+        void setWindowTitle(const std::string& title);
 
         /** Get the native window handle
         */
