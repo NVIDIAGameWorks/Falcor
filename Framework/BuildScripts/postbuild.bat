@@ -30,20 +30,5 @@ rem echo %6
 rem echo "Output Directory:"
 rem echo %7
 
-rem Default to Debug.
-set outdirtype=Debug
-
-rem Set the Output Directory Type to Debug
-if /I "%6"=="Debug" set outdirtype=Debug
-if /I "%6"=="DebugD3D12" set outdirtype=Debug
-if /I "%6"=="DebugVK" set outdirtype=Debug
-
-rem Set the Output Directory Type to Release
-if /I "%6"=="Release" set outdirtype=Release
-if /I "%6"=="ReleaseD3D12" set outdirtype=Release
-if /I "%6"=="ReleaseVK" set outdirtype=Release
-
-
 rem Call the Build Scripts to move the data.
-call %1BuildScripts\movedata.bat %1 %2 %3 %4 %5 %6 %7 %outdirtype%
-
+call %1BuildScripts\movedata.bat %1 %2 %3 %4 %5 %6 %7
