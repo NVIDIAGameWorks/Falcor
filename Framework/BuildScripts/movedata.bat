@@ -18,8 +18,7 @@ echo "%DestinationDirectory%"
 
 if not exist "%DestinationDirectory%" mkdir "%DestinationDirectory%"
 
-
-robocopy %ExternalsSourceDirectory%\AntTweakBar\lib %DestinationDirectory% "AntTweakBar64.dll" /r:0 >nul
+robocopy %ExternalsSourceDirectory%\AntTweakBar\lib %DestinationDirectory% AntTweakBar64.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\FreeImage %DestinationDirectory%  freeimage.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\assimp\bin\%5 %DestinationDirectory%  *.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\FFMpeg\bin\%5 %DestinationDirectory%  *.dll /r:0 >nul
@@ -28,7 +27,6 @@ robocopy %ExternalsSourceDirectory%\OptiX\bin64 %DestinationDirectory%  *.dll /r
 robocopy %ExternalsSourceDirectory%\openvr\bin\win64 %DestinationDirectory%  openvr_api.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\Slang\bin\windows-x64\release %DestinationDirectory%  *.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\GLFW\lib %DestinationDirectory%  *.dll /r:0 >nul
-
 echo %1
-robocopy %1\BuildScripts\ %DestinationDirectory% moveprojectdata.bat /r:0 >nul
-call %DestinationDirectory%\moveprojectdata.bat %1\Source\ %DestinationDirectory%
+call %1\BuildScripts\moveprojectdata.bat %1\Source\ %DestinationDirectory%
+call %1\BuildScripts\moveprojectdata.bat %3 %DestinationDirectory% /r:0 >nul
