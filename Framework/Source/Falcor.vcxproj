@@ -520,7 +520,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D11|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\Win32Window.cpp" />
+    <ClCompile Include="API\Window.cpp" />
     <ClCompile Include="ArgList.cpp" />
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp" />
     <ClCompile Include="Effects\NormalMap\LeanMap.cpp" />

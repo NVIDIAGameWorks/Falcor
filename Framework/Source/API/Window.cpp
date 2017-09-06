@@ -37,7 +37,11 @@
 #include "Utils/StringUtils.h"
 
 #define GLFW_DLL
+
+#ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
+#endif
+
 #include "glfw3.h"
 #include "glfw3native.h"
 
@@ -126,7 +130,6 @@ namespace Falcor
             pWindow->mpCallbacks->handleMouseEvent(event);
         }
 
-
         static void errorCallback(int errorCode, const char* pDescription)
         {
             std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription);
@@ -135,16 +138,16 @@ namespace Falcor
 
     private:
 
-        static inline KeyboardEvent::Key glfwToFalcorKey(int glfw)
+        static inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
         {
             static_assert(GLFW_KEY_ESCAPE == 256, "GLFW_KEY_ESCAPE is expected to be 256");
-            if (glfw < GLFW_KEY_ESCAPE)
+            if (glfwKey < GLFW_KEY_ESCAPE)
             {
                 // Printable keys are expected to have the same value
-                return (KeyboardEvent::Key)glfw;
+                return (KeyboardEvent::Key)glfwKey;
             }
 
-            switch (glfw)
+            switch (glfwKey)
             {
             case GLFW_KEY_ESCAPE:
                 return KeyboardEvent::Key::Escape;
@@ -339,8 +342,13 @@ namespace Falcor
             return nullptr;
         }
 
+        // Init handles
         pWindow->mpGLFWWindow = pGLFWWindow;
+
+#ifdef _WIN32
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
+#endif
+
         assert(pWindow->mApiHandle);
 
         glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());

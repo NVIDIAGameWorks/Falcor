@@ -532,7 +532,7 @@
     <ClCompile Include="Utils\PythonEmbedding.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="API\Win32Window.cpp">
+    <ClCompile Include="API\Window.cpp">
       <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
