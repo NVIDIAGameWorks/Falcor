@@ -357,6 +357,8 @@ namespace Falcor
 
     std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory)
     {
+        mCaptureScreen = false;
+
         std::string filename = explicitFilename != "" ? explicitFilename : getExecutableName();
         std::string outputDirectory = explicitOutputDirectory != "" ? explicitOutputDirectory : getExecutableDirectory();
 
@@ -365,12 +367,10 @@ namespace Falcor
         {
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
-            mCaptureScreen = false;
         }
         else
         {
             logError("Could not find available filename when capturing screen");
-            mCaptureScreen = false;
             return "";
         }
 

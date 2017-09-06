@@ -27,7 +27,7 @@ robocopy %ExternalsSourceDirectory%\D3DCompiler\%5 %DestinationDirectory%  D3Dco
 robocopy %ExternalsSourceDirectory%\OptiX\bin64 %DestinationDirectory%  *.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\openvr\bin\win64 %DestinationDirectory%  openvr_api.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\Slang\bin\windows-x64\release %DestinationDirectory%  *.dll /r:0 >nul
-
+robocopy %ExternalsSourceDirectory%\GLFW\lib %DestinationDirectory%  *.dll /r:0 >nul
 
 echo %1
 robocopy %1\BuildScripts\ %DestinationDirectory% moveprojectdata.bat /r:0 >nul

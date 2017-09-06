@@ -29,6 +29,8 @@
 #include "Utils/UserInput.h"
 #include <glm/vec2.hpp>
 
+struct GLFWwindow;
+
 namespace Falcor
 {
     class Window
@@ -92,7 +94,7 @@ namespace Falcor
 
         /** Change the window's title
         */
-        void setWindowTitle(std::string title);
+        void setWindowTitle(const std::string& title);
 
         /** Get the native window handle
         */
@@ -110,6 +112,7 @@ namespace Falcor
         friend class ApiCallbacks;
         Window(ICallbacks * pCallbacks, uint32_t width, uint32_t height);
 
+        GLFWwindow* mpGLFWWindow;
         ApiHandle mApiHandle;
         uint32_t mWidth;
         uint32_t mHeight;
