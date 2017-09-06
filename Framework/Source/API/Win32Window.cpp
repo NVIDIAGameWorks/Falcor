@@ -359,6 +359,9 @@ namespace Falcor
     {
         glfwSetWindowSize(mpGLFWWindow, width, height);
 
+        mWidth = width;
+        mHeight = height;
+
         mMouseScale.x = 1 / float(width);
         mMouseScale.y = 1 / float(height);
 
@@ -367,9 +370,12 @@ namespace Falcor
 
     void Window::msgLoop()
     {
-        // Samples commonly rely on a size change event to initialize various properties from FBO size, such as camera aspect ratio
-        // This used to happen through a WM_SIZE message on Win32
+        // Samples often rely on a size change event as part of initialization
+        // This would have happened from a WM_SIZE message when calling ShowWindow on Win32
         mpCallbacks->handleWindowSizeChange();
+
+        glfwShowWindow(mpGLFWWindow);
+        glfwFocusWindow(mpGLFWWindow);
 
         while (glfwWindowShouldClose(mpGLFWWindow) == false)
         {
