@@ -34,6 +34,7 @@
 #include "Externals/dear_imgui/imgui.h"
 #include "Utils/Math/FalcorMath.h"
 #include "glm/gtc/type_ptr.hpp"
+#include "Utils/StringUtils.h"
 
 #pragma warning (disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
 namespace Falcor
@@ -365,27 +366,37 @@ namespace Falcor
     bool Gui::onKeyboardEvent(const KeyboardEvent& event)
     {
         ImGuiIO& io = ImGui::GetIO();
-        switch (event.type)
-        {
-        case KeyboardEvent::Type::KeyPressed:
-            io.KeysDown[(uint32_t)event.key] = true;
-            if (event.asciiChar)
-            {
-                io.AddInputCharacter(event.asciiChar);
-            }
-            break;
-        case KeyboardEvent::Type::KeyReleased:
-            io.KeysDown[(uint32_t)event.key] = false;
-            break;
-        default:
-            should_not_get_here();
-        }
 
-        io.KeyCtrl = event.mods.isCtrlDown;
-        io.KeyAlt = event.mods.isAltDown;
-        io.KeyShift = event.mods.isShiftDown;
-        io.KeySuper = false;
-        return io.WantCaptureKeyboard;
+        if (event.type == KeyboardEvent::Type::Input)
+        {
+            std::string u8str = utf32ToUtf8(event.codepoint);
+            io.AddInputCharactersUTF8(u8str.c_str());
+
+            // Gui consumes keyboard input
+            return true;
+        }
+        else
+        {
+            uint32_t key = (uint32_t)(event.key == KeyboardEvent::Key::KeypadEnter ? KeyboardEvent::Key::Enter : event.key);
+
+            switch (event.type)
+            {
+            case KeyboardEvent::Type::KeyPressed:
+                io.KeysDown[key] = true;
+                break;
+            case KeyboardEvent::Type::KeyReleased:
+                io.KeysDown[key] = false;
+                break;
+            default:
+                should_not_get_here();
+            }
+
+            io.KeyCtrl = event.mods.isCtrlDown;
+            io.KeyAlt = event.mods.isAltDown;
+            io.KeyShift = event.mods.isShiftDown;
+            io.KeySuper = false;
+            return io.WantCaptureKeyboard;
+        }
     }
 
     bool Gui::onMouseEvent(const MouseEvent& event)

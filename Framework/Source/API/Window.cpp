@@ -32,8 +32,6 @@
 #include <algorithm>
 #include "API/texture.h"
 #include "API/FBO.h"
-#include <Initguid.h>
-#include <Windowsx.h>
 #include "Utils/StringUtils.h"
 
 #define GLFW_DLL
@@ -59,7 +57,10 @@ namespace Falcor
             }
 
             Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
-            pWindow->resize(width, height); // Window callback is handled in here
+            if (pWindow != nullptr)
+            {
+                pWindow->resize(width, height); // Window callback is handled in here
+            }
         }
 
         static void keyboardCallback(GLFWwindow* pGlfwWindow, int key, int scanCode, int action, int modifiers)
@@ -68,6 +69,22 @@ namespace Falcor
             if (prepareKeyboardEvent(key, action, modifiers, event))
             {
                 Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+                if (pWindow != nullptr)
+                {
+                    pWindow->mpCallbacks->handleKeyboardEvent(event);
+                }
+            }
+        }
+
+        static void charInputCallback(GLFWwindow* pGlfwWindow, uint32_t input)
+        {
+            KeyboardEvent event;
+            event.type = KeyboardEvent::Type::Input;
+            event.codepoint = input;
+
+            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr)
+            {
                 pWindow->mpCallbacks->handleKeyboardEvent(event);
             }
         }
@@ -75,14 +92,16 @@ namespace Falcor
         static void mouseMoveCallback(GLFWwindow* pGlfwWindow, double mouseX, double mouseY)
         {
             Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr)
+            {
+                // Prepare the mouse data
+                MouseEvent event;
+                event.type = MouseEvent::Type::Move;
+                event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
+                event.wheelDelta = glm::vec2(0, 0);
 
-            // Prepare the mouse data
-            MouseEvent event;
-            event.type = MouseEvent::Type::Move;
-            event.pos = calcMousePos(mouseX, mouseY, pWindow->getMouseScale());
-            event.wheelDelta = glm::vec2(0, 0);
-
-            pWindow->mpCallbacks->handleMouseEvent(event);
+                pWindow->mpCallbacks->handleMouseEvent(event);
+            }
         }
 
         static void mouseButtonCallback(GLFWwindow* pGlfwWindow, int button, int action, int modifiers)
@@ -106,28 +125,32 @@ namespace Falcor
             }
 
             Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr)
+            {
+                // Modifiers
+                event.mods = getInputModifiers(modifiers);
+                double x, y;
+                glfwGetCursorPos(pGlfwWindow, &x, &y);
+                event.pos = calcMousePos(x, y, pWindow->getMouseScale());
 
-            // Modifiers
-            event.mods = getInputModifiers(modifiers);
-            double x, y;
-            glfwGetCursorPos(pGlfwWindow, &x, &y);
-            event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-
-            pWindow->mpCallbacks->handleMouseEvent(event);
+                pWindow->mpCallbacks->handleMouseEvent(event);
+            }
         }
 
         static void mouseWheelCallback(GLFWwindow* pGlfwWindow, double scrollX, double scrollY)
         {
             Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow != nullptr)
+            {
+                MouseEvent event;
+                event.type = MouseEvent::Type::Wheel;
+                double x, y;
+                glfwGetCursorPos(pGlfwWindow, &x, &y);
+                event.pos = calcMousePos(x, y, pWindow->getMouseScale());
+                event.wheelDelta = (glm::vec2(float(scrollX), float(scrollY)));
 
-            MouseEvent event;
-            event.type = MouseEvent::Type::Wheel;
-            double x, y;
-            glfwGetCursorPos(pGlfwWindow, &x, &y);
-            event.pos = calcMousePos(x, y, pWindow->getMouseScale());
-            event.wheelDelta = (glm::vec2(float(scrollX), float(scrollY)));
-
-            pWindow->mpCallbacks->handleMouseEvent(event);
+                pWindow->mpCallbacks->handleMouseEvent(event);
+            }
         }
 
         static void errorCallback(int errorCode, const char* pDescription)
@@ -359,6 +382,7 @@ namespace Falcor
         glfwSetMouseButtonCallback(pGLFWWindow, ApiCallbacks::mouseButtonCallback);
         glfwSetCursorPosCallback(pGLFWWindow, ApiCallbacks::mouseMoveCallback);
         glfwSetScrollCallback(pGLFWWindow, ApiCallbacks::mouseWheelCallback);
+        glfwSetCharCallback(pGLFWWindow, ApiCallbacks::charInputCallback);
 
         return pWindow;
     }

@@ -63,7 +63,7 @@ namespace Falcor
         {
             mPressedKeys.insert(keyEvent.key);
         }
-        else
+        else if (keyEvent.type == KeyboardEvent::Type::KeyReleased)
         {
             mPressedKeys.erase(keyEvent.key);
         }
