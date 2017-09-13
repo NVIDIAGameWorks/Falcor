@@ -1,202 +1,156 @@
-import argparse 
+import argparse
 import os
-import sys
+from bisect import bisect_left
 from random import randint
-import ntpath
+from itertools import repeat
+from itertools import accumulate
+from math import sqrt
+import json
 
-def main():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-model', '--modelFile', action='store', help='the name of the model to tile')
-	parser.add_argument('-numX', '--numTilesX', action='store', help='the number of width tiles')
-	parser.add_argument('-numZ', '--numTilesZ', action='store', help='the number of depth tiles')
-	parser.add_argument('-sizeX', '--tileSizeX', action='store', help='the x distance between tiles')
-	parser.add_argument('-sizeZ', '--tileSizeZ', action='store', help='the z distance between tiles')
-	parser.add_argument('-randRotY', '--randRotationY', action='store_true', help='Optional. If set, applies a random 90 degree rot to tiles')
-	parser.add_argument('-rotX', '--rotationX', action='store', help='Optional, applies a given x rotation to tiles.')
-	args = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument('models', nargs='+', action='store', help='A list of model filenames.')
+parser.add_argument('tile_size', action='store', type=float, help='The side length of a tile.')
+parser.add_argument('-e', '--edge_tile', action='store', help='Optional. Model filename of an edge tile that shares an origin with a regular tile, and connects to the -Z edge.')
+parser.add_argument('-c', '--corner_tile', action='store', help='Optional. Model filename of a corner tile that shares an origin with a regular tile, and connects to the (-X, -Z) corner.')
+parser.add_argument('-w', '--weights', nargs='+', action='store', type=float, help='Optional. Weights for each tile for random selection. If specified, number of weights must match number of tiles, otherwise all tiles will be selected with uniform randomness.')
+parser.add_argument('-s', '--scene_size', action='store', nargs=2, type=int, default=[1,1], help='Optional. Size of scene to tile, specified in number of tiles in each dimension \"X Z\". Defaults to 1x1.')
+parser.add_argument('-r', '--rotate', action='store_true', help='Optional. Randomly rotate tiles around the Y axis in 90 degree steps.')
 
-	if not args.modelFile:
-		print 'ERROR: no model file name specified'
-		sys.exit(1)
+args = parser.parse_args()
 
-	if not args.tileSizeX:
-		print 'WARNING: no x tile size given, using 1'
-		xSize = 1
-	else:
-		try:
-			xSize = float(args.tileSizeX)
-		except:
-			print 'ERROR: Unable to convert x size ' + args.tileSizeX + ' to float'
-			sys.exit(1)
+if args.weights is not None and len(args.models) != len(args.weights):
+    print('Error: Number of weights does not match number of models.')
+    quit()
 
-	if not args.tileSizeZ:
-		print 'WARNING: no z size given, using 1'
-		zSize = 1
-	else:
-		try:
-			zSize = float(args.tileSizeZ)
-		except:
-			print 'ERROR: Unable to convert z size ' + args.tileSizeZ + ' to float'
-			sys.exit(1)
+model_count = len(args.models)
+model_names = []
+for model in args.models:
+    model_names.append(os.path.splitext(model)[0])
 
-	if not args.numTilesX:
-		print 'WARNING: x tile count not given, using 1'
-		numX = 1
-	else:
-		try:
-			numX = int(args.numTilesX)
-		except:
-			print 'ERROR: Unable to convert num tiles X ' + args.numTilesX + ' to int'
-			sys.exit(1)
+# Calculate prefix sum of input weights
+if args.weights is not None:
+    summed_weights = list(accumulate(args.weights))
 
-	if not args.numTilesZ:
-		print 'WARNING: z tile count not givem, using 1'
-		numZ = 1
-	else:
-		try:
-			numZ = int(args.numTilesZ)
-		except:
-			print 'ERROR: Unable to convert num tiles Z ' + args.numTilesZ + ' to int'
-			sys.exit(1)
+# Select tiles for each tile in the scene. Store results in buckets by model
+# [x][z] origin top left
+selected_tiles = [[] for i in range(len(args.models))]
+for x in range(args.scene_size[0]):
+    for z in range(args.scene_size[1]):
+        if args.weights is None:
+            model_id = randint(0, model_count - 1)
+        else:
+            # Pick a number inclusive between 1 and the cumulative sum of all the weights
+            # Find where that number lands in the prefix summed array, that index is the selected tile
+            model_id = bisect_left(summed_weights, randint(1, summed_weights[-1]))
 
-	if args.rotationX:
-		try:
-			rotX = float(args.rotationX)
-		except:
-			print 'ERROR: Unabled to convert rotation X ' + args.rotationX + ' to float'
-	else:
-		rotX = 0
+        selected_tiles[model_id].append((x, z))
 
-	name, extension = os.path.splitext(args.modelFile)
-	name = ntpath.basename(name)
-	outfile = open(name + '_tiled.fscene', 'w')
+# Some scene size calculations
+world_scene_dims = [args.scene_size[0] * args.tile_size,
+                    args.scene_size[1] * args.tile_size]
 
-	#global data
-	outfile.write('{\n')
-	outfile.write('\t\"version\": 2,\n')
-	outfile.write('\t\"camera_speed\": 1.0,\n')
-	outfile.write('\t\"lighting_scale\": 1.0,\n')
-	outfile.write('\t\"active_camera\": \"Default\",\n')
-	outfile.write('\t\"ambient_intensity\": [\n')
-	outfile.write('\t\t0.0,\n')
-	outfile.write('\t\t0.0,\n')
-	outfile.write('\t\t0.0\n')
-	outfile.write('\t],\n')
+scene_diag_dist = sqrt(world_scene_dims[0] ** 2 + world_scene_dims[1] ** 2)
 
-	#models
-	outfile.write('\t\"models\": [\n')
-	outfile.write('\t\t{\n')
-	outfile.write('\t\t\t\"file\": \"' + args.modelFile + '\",\n')
-	outfile.write('\t\t\t\"name\": \"' + name + '\",\n')
-	outfile.write('\t\t\t\"instances\": [\n')
+# Start building JSON
+fscene_json = {}
 
-	#instance data
-	xPos = (-0.5 * xSize) * (numX - 1)
-	for i in range(0, numX):
-		zPos = (-0.5 * zSize) * (numZ - 1)
-		for j in range(0, numZ):
-			outfile.write('\t\t\t\t{\n')
-			outfile.write('\t\t\t\t\t\"name\": \"' + name + '_tile_' + str(i) + '_' + str(j) + '\",\n')
-			outfile.write('\t\t\t\t\t\"translation\": [\n')
-			outfile.write('\t\t\t\t\t\t' + str(xPos) + ',\n')
-			outfile.write('\t\t\t\t\t\t0.0,\n')
-			outfile.write('\t\t\t\t\t\t' + str(zPos) + '\n')
-			outfile.write('\t\t\t\t\t],\n')
-			outfile.write('\t\t\t\t\t\"scaling\": [\n')
-			for k in range(0, 2):
-				outfile.write('\t\t\t\t\t\t1.0,\n')
-			outfile.write('\t\t\t\t\t\t1.0\n')
-			outfile.write('\t\t\t\t\t],\n')
-			outfile.write('\t\t\t\t\t\"rotation\": [\n')
-			if args.randRotationY:
-				randRotY = 90 * randint(0, 3)
-			else:
-				randRotY = 0.0
-			#if it is Z up, actually want to rotate Z, not Y. 
-			if args.rotationX:
-				outfile.write('\t\t\t\t\t\t' + str(rotX) + ',\n')
-				outfile.write('\t\t\t\t\t\t0.0,\n')
-				outfile.write('\t\t\t\t\t\t' + str(randRotY) + '\n')
-			else:
-				outfile.write('\t\t\t\t\t\t' + str(randRotY) + ',\n')
-				outfile.write('\t\t\t\t\t\t' + str(rotX) + ',\n')
-				outfile.write('\t\t\t\t\t\t0.0\n')
-			outfile.write('\t\t\t\t\t]\n')
-			if(i == numX - 1 and j == numZ - 1):
-				outfile.write('\t\t\t\t}\n')
-			else:
-				outfile.write('\t\t\t\t},\n')
-			zPos += zSize
-		xPos += xSize
-	
-	outfile.write('\t\t\t]\n')
-	outfile.write('\t\t}\n')
-	outfile.write('\t],\n')
+# Top level data
+fscene_json['version'] = 2
+fscene_json['camera_speed'] = (scene_diag_dist / 2.0) * 0.03 # Calculation taken from FeatureDemo
+fscene_json['lighting_scale'] = 1.0
+fscene_json['active_camera'] = "Default"
+fscene_json['ambient_intensity'] = [0.0, 0.0, 0.0]
 
-	#light data
-	outfile.write('\t\"lights\": [\n')
-	outfile.write('\t\t{\n')
-	outfile.write('\t\t\t\"name\": \"DirLight0\",\n')
-	outfile.write('\t\t\t\"type\": \"dir_light\",\n')
-	outfile.write('\t\t\t\"intensity\": [\n')
-	outfile.write('\t\t\t\t0.388235640525818,\n')
-	outfile.write('\t\t\t\t0.388235640525818,\n')
-	outfile.write('\t\t\t\t0.388235640525818\n')
-	outfile.write('\t\t\t],\n')
-	outfile.write('\t\t\t\"direction\": [\n')
-	outfile.write('\t\t\t\t0.2235,\n')
-	outfile.write('\t\t\t\t-0.894,\n')
-	outfile.write('\t\t\t\t-0.447\n')
-	outfile.write('\t\t\t]\n')
-	outfile.write('\t\t},\n')
-	outfile.write('\t\t{\n')
-	outfile.write('\t\t\t\"name\": \"DirLight1\",\n')
-	outfile.write('\t\t\t\"type\": \"dir_light\",\n')
-	outfile.write('\t\t\t\"intensity\": [\n')
-	outfile.write('\t\t\t\t0.388235640525818,\n')
-	outfile.write('\t\t\t\t0.388235640525818,\n')
-	outfile.write('\t\t\t\t0.388235640525818\n')
-	outfile.write('\t\t\t],\n')
-	outfile.write('\t\t\t\"direction\": [\n')
-	outfile.write('\t\t\t\t-0.2235,\n')
-	outfile.write('\t\t\t\t-0.894,\n')
-	outfile.write('\t\t\t\t0.447\n')
-	outfile.write('\t\t\t]\n')
-	outfile.write('\t\t}\n')
-	outfile.write('\t],\n')
+default_camera = {}
+default_camera['name'] = fscene_json['active_camera']
+default_camera['pos'] = [0.0, args.tile_size * 0.5, 0.0]
+default_camera['target'] = [0.0, default_camera['pos'][1], -0.5]
+default_camera['focal_length'] = 21.0
+default_camera['aspect_ratio'] = 16.0 / 9.0
+z_far = scene_diag_dist * 1.25
+default_camera['depth_range'] = [max(0.0001, z_far / 10000.0), z_far]
+fscene_json['cameras'] = [default_camera]
 
-	#camera data
-	outfile.write('\t\"cameras\": [\n')
-	outfile.write('\t\t{\n')
-	outfile.write('\t\t\t\"name\": \"Default\",\n')
-	outfile.write('\t\t\t\"pos\": [\n')
-	outfile.write('\t\t\t\t0.0,\n')
-	posY = 0.5 * min(xSize, zSize)
-	outfile.write('\t\t\t\t' + str(posY) + ',\n')
-	outfile.write('\t\t\t\t0.0\n')
-	outfile.write('\t\t\t],\n')
-	outfile.write('\t\t\t\"target\": [\n')
-	outfile.write('\t\t\t\t0.0,\n')
-	outfile.write('\t\t\t\t' + str(posY) + ',\n')
-	outfile.write('\t\t\t\t-0.5\n')
-	outfile.write('\t\t\t],\n')
-	outfile.write('\t\t\t\"up\": [\n')
-	outfile.write('\t\t\t\t0.0,\n')
-	outfile.write('\t\t\t\t1.0,\n')
-	outfile.write('\t\t\t\t0.0\n')
-	outfile.write('\t\t\t],\n')
-	outfile.write('\t\t\t\"focal_length\": 21.0,\n')
-	outfile.write('\t\t\t\"depth_range\": [\n')
-	outfile.write('\t\t\t\t1.0,\n')
-	depthMax = max(xSize * numX, zSize * numZ)
-	outfile.write('\t\t\t\t' + str(depthMax) + '\n')
-	outfile.write('\t\t\t],\n')
-	outfile.write('\t\t\t\"aspect_ratio\": 1.777\n')
-	outfile.write('\t\t}\n')
-	outfile.write('\t]\n')
-	outfile.write('}\n')
+fscene_json['models'] = []
 
-	outfile.close()
+# Helper to fill tiles from a series of coordinates
+def fill_tiles(x_coords, z_coords, y_rotations, name, instances):
+    for x, z, y_rot in zip(x_coords, z_coords, y_rotations):
+        x_pos = world_origin_x + args.tile_size * x
+        z_pos = world_origin_z + args.tile_size * z
 
-if __name__ == '__main__':
-    main()
+        edge_instance = {}
+        edge_instance['name'] = name + '_' + str(len(instances)) + '_' + str(x) + '_' + str(z)
+        edge_instance['translation'] = [x_pos, 0.0, z_pos]
+        edge_instance['rotation'] = [y_rot, 0.0, 0.0] # Yaw, Pitch Roll = Y, X, Z
+        edge_instance['scaling'] = [1.0, 1.0, 1.0]
+        instances.append(edge_instance)
+
+def rand_rot_gen():
+    while True:
+        yield 90.0 * float(randint(0, 3))
+
+# Write grid tiles
+world_origin_x = -((float(args.scene_size[0]) / 2) - 0.5) * args.tile_size
+world_origin_z = -((float(args.scene_size[1]) / 2) - 0.5) * args.tile_size
+
+for i, model_name in enumerate(model_names):
+
+    if len(selected_tiles[i]) == 0:
+        continue
+
+    model_json_data = {}
+    model_json_data['file'] = args.models[i]
+    model_json_data['name'] = model_name
+    model_json_data['instances'] = []
+
+    if args.rotate:
+        y_rot_gen = rand_rot_gen()
+    else:
+        y_rot_gen = repeat(0.0)
+
+    # Split list of coordinates into lists of x and z components and generate tiles
+    fill_tiles(*zip(*selected_tiles[i]), y_rot_gen, model_name, model_json_data['instances'])
+    fscene_json['models'].append(model_json_data)
+
+# Write edge and corner pieces if specified in arguments
+
+if args.corner_tile is not None:
+    corner_model_data = {}
+    corner_model_data['file'] = args.corner_tile
+    corner_model_data['name'] = os.path.splitext(args.corner_tile)[0]
+    corner_model_data['instances'] = []
+
+    name = corner_model_data['name']
+    instances = corner_model_data['instances']
+
+    # Create list of corner coordinates
+    # [Top Left, Bottom Left, Bottom Right, Top Right]
+    x_pos = ([0] * 2) + ([args.scene_size[0] - 1] * 2)
+    z_pos = [0] + ([args.scene_size[1] - 1] * 2) + [0]
+    y_rot = [90.0 * i for i in range(0, 4)]
+    fill_tiles(x_pos, z_pos, y_rot, name, instances)
+
+    fscene_json['models'].append(corner_model_data)
+
+if args.edge_tile is not None:
+    edge_model_data = {}
+    edge_model_data['file'] = args.edge_tile
+    edge_model_data['name'] = os.path.splitext(args.edge_tile)[0]
+    edge_model_data['instances'] = []
+
+    name = edge_model_data['name']
+    instances = edge_model_data['instances']
+
+    # Top Edge
+    fill_tiles(range(0, args.scene_size[0]), repeat(0), repeat(0.0), name, instances)
+    # Left Edge
+    fill_tiles(repeat(0), range(0, args.scene_size[1]), repeat(90.0), name, instances)
+    # Bottom Edge
+    fill_tiles(range(0, args.scene_size[0]), repeat(args.scene_size[1] - 1), repeat(180.0), name, instances)
+    # Right Edge
+    fill_tiles(repeat(args.scene_size[0] - 1), range(0, args.scene_size[1]), repeat(270.0), name, instances)
+
+    fscene_json['models'].append(edge_model_data)
+
+print (json.dumps(fscene_json, indent=4))
