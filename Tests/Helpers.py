@@ -15,7 +15,7 @@ def directory_clean_or_make(destination):
             return 0
 
         except OSError:
-            print "Error trying to Create Directory : " + destination
+            print("Error trying to Create Directory : " + destination)
             return None
 
     else:
@@ -26,9 +26,9 @@ def directory_clean_or_make(destination):
             # Clean the Directory.
             remove_directory_return_code = subprocess.call(batch_args)
 
-            # Check if it was success.            
+            # Check if it was success.
             if remove_directory_return_code != 0:
-                print "Error trying to clean Directory : " + destination
+                print("Error trying to clean Directory : " + destination)
 
             os.makedirs(destination)
 
@@ -37,7 +37,7 @@ def directory_clean_or_make(destination):
 
         # Exception Handling.
         except subprocess.CalledProcessError:
-            print "Error trying to clean Directory : " + destination
+            print("Error trying to clean Directory : " + destination)
 
             # Return failure.
             return None
@@ -45,11 +45,11 @@ def directory_clean_or_make(destination):
 def directory_copy(fromDirectory, toDirectory):
     copy_tree(fromDirectory, toDirectory)
 
-def build_html_filename(tests_set_results):
-    if tests_set_results['Success'] is True:
+def build_html_filename(tests_set):
+    if tests_set['Success'] is True:
         header = "[SUCCESS]"
     else:
         header = "[FAILED]"
 
-    return header + tests_set_results['Tests Set Filename'] + "_Results.html"
+    return header + tests_set['Name'] + "_Results.html"
 
