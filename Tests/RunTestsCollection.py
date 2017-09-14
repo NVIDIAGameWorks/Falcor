@@ -145,9 +145,6 @@ def run_tests_collections(json_data):
             # Run the Tests Set.
             test_results = rTS.run_tests_set(clone_directory, False, tests_collection_results[name]['Tests Configs Target'] + current_tests_set['Tests Set'], results_directory, reference_directory)
 
-            # Get the Tests Groups Results.
-            rTS.verify_tests_groups_expected_output(test_results['Tests Groups'])
-
             current_tests_collection_results.append(test_results);
 
     return tests_collection_results

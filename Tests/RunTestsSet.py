@@ -58,7 +58,7 @@ def run_test_run(executable_filepath, current_arguments, output_file_base_name, 
             process.poll()
 
             if process.returncode is not None and process.returncode > 1:
-                run_results = (False, "Process crashed, or encountered an error.")
+                run_results = (False, "Process crashed or encountered an error.")
                 break
 
             current_time = time.time()
@@ -171,22 +171,6 @@ def run_tests_set(main_directory, nobuild, json_filepath, results_directory, ref
                     tests_set_run_data['Success'] = False
 
     return tests_set_run_data
-
-
-def verify_tests_groups_expected_output(test_groups):
-
-    for current_tests_group_name in test_groups:
-        if test_groups[current_tests_group_name]['Enabled'] == False:
-            continue
-
-        # For each of the runs, check the errors.
-        for index, current_project_run in enumerate(test_groups[current_tests_group_name]['Project Tests Args']):
-            expected_output_file = test_groups[current_tests_group_name]['Results']['Directory'] + current_tests_group_name + str(index) + '.json'
-
-            #   Check if the expected file was created.
-            if not os.path.isfile(expected_output_file):
-                test_groups[current_tests_group_name]['Results']['Errors'][index] = 'Could not find the expected json output file : ' + expected_output_file + '. Please verify that the program ran correctly.'
-                continue
 
 
 # Analyze test run output and fill out the dict with results
