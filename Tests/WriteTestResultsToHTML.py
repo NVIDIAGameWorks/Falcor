@@ -86,6 +86,10 @@ def get_image_comparison_table_code(tests_sets_results):
                             if test_captures['Capture Count'] == 0:
                                 image_comparison_table_code += '<td bgcolor="red"><font color="white">' + test_name + '</font></td>\n'
 
+                                # If this failure has an error message, add it to output
+                                if 'Errors' in current_test_group['Results'] and test_index in current_test_group['Results']['Errors']:
+                                    image_comparison_errors_code += "<p><b> Error running test " + test_name + "</b>: " + current_test_group['Results']['Errors'][test_index] + "<br></p>\n"
+
                             if test_captures['Capture Count'] > 0:
                                 image_comparison_table_code += '<td>' + test_name + '</td>\n'
 
@@ -100,9 +104,9 @@ def get_image_comparison_table_code(tests_sets_results):
                                         try:
                                             result_value = float(capture_result['Compare Result'])
                                         except ValueError:
-                                            image_comparison_errors_code = "<p> " + image_comparison_errors_code + "" + test_name + " failed to compare screen capture " + str(capture_index) + " <br> \n"
-                                            image_comparison_errors_code = image_comparison_errors_code + "Source : " + capture_result["Source Filename"] + " <br>  Reference : " + capture_result["Reference Filename"] + " <br> \n"
-                                            image_comparison_errors_code = image_comparison_errors_code + "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br></p>"
+                                            image_comparison_errors_code += "<p><b>" + test_name + " failed to compare screen capture " + str(capture_index) + "</b><br> \n"
+                                            image_comparison_errors_code += "<b>Source</b> : " + capture_result["Source Filename"] + " <br>  <b>Reference</b> : " + capture_result["Reference Filename"] + " <br> \n"
+                                            image_comparison_errors_code += "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br></p>"
                                             image_comparison_table_code += '<td bgcolor="red"><font color="white">Error</font></td>\n'
                                             continue
 
