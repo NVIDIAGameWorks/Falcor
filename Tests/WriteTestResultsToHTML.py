@@ -38,9 +38,9 @@ def get_image_comparison_table_code(tests_sets_results):
 
     max_image_comparison_counts = 0
 
-    # For each test group.
-    for current_test_group_result_name in tests_sets_results['Tests Groups']:
-        current_test_group = tests_sets_results['Tests Groups'][current_test_group_result_name]
+    # Find table width
+    for current_test_group_name in tests_sets_results['Tests Groups']:
+        current_test_group = tests_sets_results['Tests Groups'][current_test_group_name]
 
         if current_test_group['Enabled'] == True:
             if 'Results' in current_test_group:
@@ -66,8 +66,8 @@ def get_image_comparison_table_code(tests_sets_results):
         for i in range (0, max_image_comparison_counts):
             image_comparison_table_code += '<th>SS' + str(i) + '</th>\n'
 
-        for current_test_group_result_name in tests_sets_results['Tests Groups']:
-            current_test_group = tests_sets_results['Tests Groups'][current_test_group_result_name]
+        for current_test_group_name in tests_sets_results['Tests Groups']:
+            current_test_group = tests_sets_results['Tests Groups'][current_test_group_name]
 
             # Check if the current test group is enabled.
             if current_test_group['Enabled'] == True:
@@ -79,9 +79,19 @@ def get_image_comparison_table_code(tests_sets_results):
 
                         # For every test run (every time executable is ran with arguments)
                         for test_index, test_captures in enumerate(screen_captures_list):
-                            if(test_captures['Capture Count'] > 0):
-                                image_comparison_table_code += '<tr>\n'
-                                image_comparison_table_code += '<td>' + current_test_group_result_name + '_' + str(test_index) + '</td>\n'
+                            image_comparison_table_code += '<tr>\n'
+                            test_name = current_test_group_name + '_' + str(test_index)
+
+                            # If zero captures, test probably failed to run. Color the test name red
+                            if test_captures['Capture Count'] == 0:
+                                image_comparison_table_code += '<td bgcolor="red"><font color="white">' + test_name + '</font></td>\n'
+
+                                # If this failure has an error message, add it to output
+                                if 'Errors' in current_test_group['Results'] and test_index in current_test_group['Results']['Errors']:
+                                    image_comparison_errors_code += "<p><b> Error running test " + test_name + "</b>: " + current_test_group['Results']['Errors'][test_index] + "<br></p>\n"
+
+                            if test_captures['Capture Count'] > 0:
+                                image_comparison_table_code += '<td>' + test_name + '</td>\n'
 
                                 # Get the frame or time capture list, whichever one has contents
                                 screen_capture_types = ['Frame Screen Captures', 'Time Screen Captures']
@@ -90,21 +100,20 @@ def get_image_comparison_table_code(tests_sets_results):
                                     # For each single capture comparison result
                                     for capture_index, capture_result in enumerate(test_captures[capture_type]):
 
-                                        # Check if this was a comparison.
+                                        # Check if comparison was successful. It should be convertible to a number if it was
                                         try:
                                             result_value = float(capture_result['Compare Result'])
-
-                                            if not capture_result['Test Passed']:
-                                                image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(result_value) + '</font></td>\n'
-                                            else:
-                                                image_comparison_table_code += '<td>' + str(result_value) + '</td>\n'
-
                                         except ValueError:
-                                            image_comparison_errors_code = "<p> " + image_comparison_errors_code + "" + current_test_group_result_name + '_' + str(test_index) + " failed to compare screen capture " + str(capture_index) + " <br> \n"
-                                            image_comparison_errors_code = image_comparison_errors_code + "Source : " + capture_result["Source Filename"] + " <br>  Reference : " + capture_result["Reference Filename"] + " <br> \n"
-                                            image_comparison_errors_code = image_comparison_errors_code + "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br></p>"
+                                            image_comparison_errors_code += "<p><b>" + test_name + " failed to compare screen capture " + str(capture_index) + "</b><br> \n"
+                                            image_comparison_errors_code += "<b>Source</b> : " + capture_result["Source Filename"] + " <br>  <b>Reference</b> : " + capture_result["Reference Filename"] + " <br> \n"
+                                            image_comparison_errors_code += "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br></p>"
                                             image_comparison_table_code += '<td bgcolor="red"><font color="white">Error</font></td>\n'
                                             continue
+
+                                        if not capture_result['Test Passed']:
+                                            image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(result_value) + '</font></td>\n'
+                                        else:
+                                            image_comparison_table_code += '<td>' + str(result_value) + '</td>\n'
 
                             image_comparison_table_code += '</tr>\n'
 
@@ -120,8 +129,8 @@ def write_test_set_results_to_html(tests_set_results):
     html_code = html_code + get_html_begin()
 
     html_code = html_code + "<body>"
-    if tests_set_results['Tests Set Error Status'] is True:
-        html_code = html_code + '<p>' + tests_set_results['Tests Set Error Message'] + '</p>'
+    if tests_set_results['Error'] is not None:
+        html_code = html_code + '<p>' + tests_set_results['Error'] + '</p>'
     else:
         image_comparisons = get_image_comparison_table_code(tests_set_results)
         html_code = html_code + image_comparisons[0]
