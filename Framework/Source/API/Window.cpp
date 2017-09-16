@@ -310,7 +310,7 @@ namespace Falcor
 
         static inline bool prepareKeyboardEvent(int key, int action, int modifiers, KeyboardEvent& event)
         {
-            if (action == GLFW_REPEAT)
+            if (action == GLFW_REPEAT || key == GLFW_KEY_UNKNOWN)
             {
                 return false;
             }
