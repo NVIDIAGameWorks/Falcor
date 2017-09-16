@@ -46,8 +46,8 @@
                 "-test -fixedtimedelta 0.03333 -loadscene bathroom2\\bathroom.fscene -sstimes 10 20 30 -shutdowntime 35",
                 "-test -fixedtimedelta 0.03333 -loadscene living_room\\living_room.fscene -sstimes 10 20 30 -shutdowntime 35",
                 "-test -fixedtimedelta 0.03333 -loadscene UE4\\SunTemple\\SunTemple.fscene -sstimes 10 27 50 -shutdowntime 55",
-                "-test -fixedtimedelta 0.03333 -loadscene Bistro\\Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 35",
-                "-test -fixedtimedelta 0.03333 -loadscene Bistro\\Bistro_Exterior.fscene -sstimes 103 128 136 165 -shutdowntime 180"
+                "-test -fixedtimedelta 0.03333 -loadscene Bistro\\Compressed\\Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 35",
+                "-test -fixedtimedelta 0.03333 -loadscene Bistro\\Compressed\\Bistro_Exterior.fscene -sstimes 103 128 136 165 -shutdowntime 180"
             ]
         },
 
