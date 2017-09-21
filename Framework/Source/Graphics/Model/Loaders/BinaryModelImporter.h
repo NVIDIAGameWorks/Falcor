@@ -60,5 +60,6 @@ namespace Falcor
         };
 
         static const uint32_t kInvalidOffset = uint32_t(-1);
+
     };
 }

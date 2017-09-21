@@ -555,7 +555,7 @@ namespace Falcor
             return originalFormat;
         }
     }
-    
+
     bool BinaryModelImporter::importModel(Model& model, Model::LoadFlags flags)
     {
         // Format ID and version.
@@ -589,7 +589,6 @@ namespace Falcor
             should_not_get_here();
             return false;
         }
-
 
         // File header
         int32_t numTextures = 0;

@@ -111,7 +111,7 @@ VS_OUT defaultVS(VS_IN vIn)
 #ifdef HAS_COLORS
     vOut.colorV = vIn.color;
 #else
-    vOut.colorV = 0;
+    vOut.colorV = 1;
 #endif
 
 #ifdef HAS_NORMAL

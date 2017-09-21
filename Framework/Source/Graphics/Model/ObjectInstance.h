@@ -181,6 +181,10 @@ namespace Falcor
         */
         void setTarget(const glm::vec3& target) { mBase.target = target; mBase.matrixDirty = true; }
 
+		/** Sets the per instance offset
+		*/
+		void setPerInstanceOffset(uint64_t offset) { mPerInstanceOffset = offset; }
+
         /** Gets the up vector of the instance
             \return Up vector
         */
@@ -323,5 +327,8 @@ namespace Falcor
 
         mutable glm::mat4 mFinalTransformMatrix;
         mutable BoundingBox mBoundingBox;
+
+		uint64_t mPerInstanceOffset;
+
     };
 }

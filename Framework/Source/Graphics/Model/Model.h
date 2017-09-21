@@ -67,6 +67,18 @@ namespace Falcor
             BuffersAsShaderResource     = 0x10,   ///< Generate the VBs and IB with the shader-resource-view bind flag
         };
 
+		struct AOModel
+		{
+			struct PerInstanceAO
+			{
+				uint64_t mIdentifier;
+				uint64_t mVertexOffset;
+				uint64_t mNumVertices;
+			};
+			std::vector<PerInstanceAO> mInstances;
+			Buffer::SharedPtr mAOBuffer;
+		};
+
         /** Create a new model from file
         */
         static SharedPtr createFromFile(const char* filename, LoadFlags flags = LoadFlags::None);
@@ -229,6 +241,12 @@ namespace Falcor
         */
         static void resetGlobalIdCounter();
 
+		void exportAOMeshes(std::string& filename);
+
+		void importAO(std::string& filename);
+
+		bool hasAO() { return mAO.mInstances.size() > 0; }
+
     protected:
         friend class SimpleModelImporter;
 
@@ -236,6 +254,7 @@ namespace Falcor
         Model(const Model& other);
         void sortMeshes();
         void deleteCulledMeshInstances(MeshInstanceList& meshInstances, const Camera *pCamera);
+
 
         BoundingBox mBoundingBox;
         float mRadius;
@@ -253,6 +272,8 @@ namespace Falcor
         std::vector<MeshInstanceList> mMeshes; // [Mesh][Instance]
 
         AnimationController::UniquePtr mpAnimationController;
+
+		AOModel mAO;	//ambient occlusion data
 
         std::string mName;
         std::string mFilename;
