@@ -206,28 +206,50 @@ namespace Falcor
 				{
 					if (mAO.mInstances[instance_id].mIdentifier == meshID)
 					{
-						VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
-						pLayout->addBufferLayout((uint32_t)(pLayout->getBufferCount()), pBufferLayout);
-
-						const std::string falcorName = VERTEX_DIFFUSE_COLOR_NAME;
-						ResourceFormat falcorFormat = ResourceFormat::RGB32Float;
-						uint32_t shaderLocation = VERTEX_DIFFUSE_COLOR_LOC;
-						pBufferLayout->addElement(falcorName, 0, falcorFormat, 1, shaderLocation);
-
-						//create a vertex buffer
-						uint32_t numVerticesMesh= pMesh->getVertexCount();
+						uint32_t numVerticesMesh = pMesh->getVertexCount();
 						assert(numVerticesMesh == mAO.mInstances[instance_id].mNumVertices);
-						float3 *aoValuesmesh = new float3[numVerticesMesh];
 						float *aoValues = &AOValues[mAO.mInstances[instance_id].mVertexOffset];
-						for (unsigned int i = 0; i < numVerticesMesh; i++)
+
+						bool has_color = false;
+						for (int bi = 0; bi < pLayout->getBufferCount(); bi++)
 						{
-							aoValuesmesh[i][0] = aoValuesmesh[i][1] = aoValuesmesh[i][2] = max(aoValues[i], 0.0f);
+
+							if (pLayout->getBufferLayout(bi)->getElementName(0) == VERTEX_DIFFUSE_COLOR_NAME)
+							{
+								Buffer::SharedPtr aoBuffer = vAO->getVertexBuffer(bi);
+								float4 *aoValuesmesh = new float4[numVerticesMesh];
+								for (unsigned int i = 0; i < numVerticesMesh; i++)
+								{
+									aoValuesmesh[i][0] = aoValuesmesh[i][1] = aoValuesmesh[i][2] = aoValuesmesh[i][3] = max(aoValues[i], 0.0f);
+								}
+								aoBuffer->updateData(aoValuesmesh, 0, numVerticesMesh * sizeof(float4));
+								has_color = true;
+								break;
+							}
 						}
-							
-						Buffer::SharedPtr aoBuffer = Buffer::create(sizeof(float3)*numVerticesMesh, Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, aoValuesmesh);
-						vAO->addVertexBuffer(aoBuffer);
-						delete[] aoValuesmesh;
-						break;
+
+						if (!has_color)
+						{
+							VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
+							pLayout->addBufferLayout((uint32_t)(pLayout->getBufferCount()), pBufferLayout);
+
+							const std::string falcorName = VERTEX_DIFFUSE_COLOR_NAME;
+							ResourceFormat falcorFormat = ResourceFormat::RGBA32Float;
+							uint32_t shaderLocation = VERTEX_DIFFUSE_COLOR_LOC;
+							pBufferLayout->addElement(falcorName, 0, falcorFormat, 1, shaderLocation);
+
+							float4 *aoValuesmesh = new float4[numVerticesMesh];
+							for (unsigned int i = 0; i < numVerticesMesh; i++)
+							{
+								aoValuesmesh[i][0] = aoValuesmesh[i][1] = aoValuesmesh[i][2] = aoValuesmesh[i][3] = max(aoValues[i], 0.0f);
+							}
+
+							Buffer::SharedPtr aoBuffer = Buffer::create(sizeof(float4)*numVerticesMesh, Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, aoValuesmesh);
+							vAO->addVertexBuffer(aoBuffer);
+							delete[] aoValuesmesh;
+							break;
+						}
+
 					}
 				}
 			}

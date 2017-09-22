@@ -45,7 +45,7 @@ struct VS_IN
     float2 lightmapC   : LIGHTMAP_UV;
 #endif
 #ifdef HAS_COLORS
-    float3 color       : DIFFUSE_COLOR;
+    float4 color       : DIFFUSE_COLOR;
 #endif
 #ifdef _VERTEX_BLENDING
     float4 boneWeights : BONE_WEIGHTS;
@@ -64,7 +64,7 @@ struct VS_OUT
     INTERPOLATION_MODE float3 bitangentW : BITANGENT;
     INTERPOLATION_MODE float2 texC       : TEXCRD;
     INTERPOLATION_MODE float3 posW       : POSW;
-    INTERPOLATION_MODE float3 colorV     : COLOR;
+    INTERPOLATION_MODE float4 colorV     : COLOR;
     INTERPOLATION_MODE float4 prevPosH : PREVPOSH;
     float4 posH : SV_POSITION;
 #ifdef _SINGLE_PASS_STEREO
