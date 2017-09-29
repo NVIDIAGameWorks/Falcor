@@ -218,9 +218,13 @@ namespace Falcor
 							{
 								Buffer::SharedPtr aoBuffer = vAO->getVertexBuffer(bi);
 								float4 *aoValuesmesh = new float4[numVerticesMesh];
+								float4 *originalColors = (float4 *)aoBuffer->map(Buffer::MapType::Read);
 								for (unsigned int i = 0; i < numVerticesMesh; i++)
 								{
-									aoValuesmesh[i][0] = aoValuesmesh[i][1] = aoValuesmesh[i][2] = aoValuesmesh[i][3] = max(aoValues[i], 0.0f);
+									aoValuesmesh[i][0] = originalColors[i][0];
+									aoValuesmesh[i][1] = originalColors[i][1];
+									aoValuesmesh[i][2] = originalColors[i][2];
+									aoValuesmesh[i][3] = aoValues[i];
 								}
 								aoBuffer->updateData(aoValuesmesh, 0, numVerticesMesh * sizeof(float4));
 								has_color = true;
