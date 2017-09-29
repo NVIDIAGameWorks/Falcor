@@ -191,6 +191,10 @@ namespace Falcor
 
     void RenderContext::prepareForDraw()
     {
+        assert(mpGraphicsState);
+        // Vao must be valid so at least primitive topology is known
+        assert(mpGraphicsState->getVao().get());
+
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if(mpGraphicsVars)
         {
@@ -203,7 +207,7 @@ namespace Falcor
         transitionFboResources(this, mpGraphicsState->getFbo().get());
         setViewports(mpLowLevelData->getCommandList(), mpGraphicsState->getViewports());
         setScissors(mpLowLevelData->getCommandList(), mpGraphicsState->getScissors());
-        setVao(this, mpGraphicsState->getVao().get());        
+        setVao(this, mpGraphicsState->getVao().get());
         beginRenderPass(mpLowLevelData->getCommandList(), mpGraphicsState->getFbo().get());
     }
 

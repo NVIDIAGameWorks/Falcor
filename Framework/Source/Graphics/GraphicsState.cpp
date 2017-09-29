@@ -171,7 +171,7 @@ namespace Falcor
             mDesc.setVao(pVao);
 #endif
 
-            mpGsoGraph->walk((void*)pVao->getVertexLayout().get());
+            mpGsoGraph->walk(pVao ? (void*)pVao->getVertexLayout().get() : nullptr);
         }
         return *this;
     }
