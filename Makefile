@@ -21,7 +21,7 @@ INCLUDES = \
 # Compiler Flags
 DEBUG_FLAGS := -O0
 RELEASE_FLAGS := -O3
-COMMON_FLAGS := -c -Wall -Werror -Wno-unknown-pragmas
+COMMON_FLAGS := -c -Wall -Werror -std=c++11 -m64 -Wno-unknown-pragmas -Wno-reorder
 
 # Defines
 DEBUG_DEFINES := -D "_DEBUG"
@@ -63,8 +63,8 @@ else
 	RemoveDir = @rm -rf "$(1)"
 endif
 
-DebugVK : DebugConfig $(ALL_OBJ_FILES)
 ReleaseVK : ReleaseConfig $(ALL_OBJ_FILES)
+DebugVK : DebugConfig $(ALL_OBJ_FILES)
 
 # Compiles a single file without linking
 # Targets are the same path as the cpp, only with a .o extension.
