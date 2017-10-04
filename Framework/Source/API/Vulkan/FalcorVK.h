@@ -41,7 +41,7 @@
 
 #include "API/Vulkan/VKSmartHandle.h"
 
-__forceinline BOOL vkBool(bool b) { return b ? VK_TRUE : VK_FALSE; }
+forceinline BOOL vkBool(bool b) { return b ? VK_TRUE : VK_FALSE; }
 
 namespace Falcor
 {

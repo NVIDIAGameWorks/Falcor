@@ -61,7 +61,11 @@ using namespace glm;
 #define assert(a)
 #endif
 
+#ifdef _MSC_VER
 #define should_not_get_here() __assume(0)
+#else
+#define should_not_get_here()
+#endif
 #endif
 
 #define safe_delete(_a) {delete _a; _a = nullptr;}
@@ -70,9 +74,11 @@ using namespace glm;
 
 #if defined(_MSC_VER)
 #define FALCOR_DEPRECATED(MESSAGE) __declspec(deprecated(MESSAGE))
+#define forceinline __forceinline
 #else
 // TODO: add cases for clang/gcc when/if needed
 #define FALCOR_DEPRECATED(MESSAGE) /* emtpy */
+#define forceinline __attribute__((always_inline))
 #endif
 
 namespace Falcor
@@ -156,8 +162,14 @@ namespace Falcor
     inline uint32_t getLowerPowerOf2(uint32_t a)
     {
         assert(a != 0);
+
+#ifdef _MSC_VER
         unsigned long index;
         _BitScanReverse(&index, a);
+#elif defined(__GNUC__)
+        // The function counts zeros from the MSB, must convert to index
+        uint32_t index = (sizeof(uint32_t) * 8) - (uint32_t)__builtin_clz(a) - 1;
+#endif
         return 1 << index;
     }
 

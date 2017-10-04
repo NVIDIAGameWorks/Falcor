@@ -21,7 +21,7 @@ INCLUDES = \
 # Compiler Flags
 DEBUG_FLAGS := -O0
 RELEASE_FLAGS := -O3
-COMMON_FLAGS := -c -Wall -Werror
+COMMON_FLAGS := -c -Wall -Werror -Wno-unknown-pragmas
 
 # Defines
 DEBUG_DEFINES := -D "_DEBUG"
@@ -41,7 +41,7 @@ Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/  \
 VR/ VR/OpenVR/
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(word 3,$(RELATIVE_DIRS)))
 
 # All source files enumerated with paths relative to Makefile (base repo)
 ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))

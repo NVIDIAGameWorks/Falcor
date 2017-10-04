@@ -37,10 +37,10 @@ namespace Falcor
     };
 
     template<typename ApiHandle>
-    class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkHandle<typename ApiHandle>>
+    class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkHandle<ApiHandle>>
     {
     public:
-        class SharedPtr : public std::shared_ptr<VkHandle<ApiHandle>>
+        class SharedPtr : public std::shared_ptr<VkHandle<ApiHandle> >
         {
         public:
             SharedPtr() = default;
@@ -101,7 +101,7 @@ namespace Falcor
             VkDeviceData* get() const { return std::shared_ptr<VkDeviceData>::get(); }
         };
 
-        ~VkDeviceData();        
+        ~VkDeviceData();
     private:
         friend SharedPtr;
         VkDeviceData(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface) :
@@ -121,7 +121,7 @@ namespace Falcor
     };
 
     template<typename ImageType, typename BufferType>
-    class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkResource<typename ImageType, typename BufferType>>
+    class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkResource<ImageType, BufferType>>
     {
     public:
         class SharedPtr : public std::shared_ptr<VkResource<ImageType, BufferType>>
