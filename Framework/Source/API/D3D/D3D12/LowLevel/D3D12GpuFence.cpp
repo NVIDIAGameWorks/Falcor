@@ -31,15 +31,22 @@
 
 namespace Falcor
 {
+    struct FenceApiData
+    {
+        HANDLE eventHandle = INVALID_HANDLE_VALUE;
+    };
+
     GpuFence::~GpuFence()
     {
-        CloseHandle(mEvent);
+        CloseHandle(mpApiData->eventHandle);
+        safe_delete(mpApiData);
     }
 
     GpuFence::SharedPtr GpuFence::create()
     {
         SharedPtr pFence = SharedPtr(new GpuFence());
-        pFence->mEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        pFence->mpApiData = new FenceApiData;
+        pFence->mpApiData->eventHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         ID3D12Device* pDevice = gpDevice->getApiHandle().GetInterfacePtr();
 
         HRESULT hr = pDevice->CreateFence(pFence->mCpuValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&pFence->mApiHandle));
@@ -70,8 +77,8 @@ namespace Falcor
         uint64_t gpuVal = getGpuValue();
         if (gpuVal < mCpuValue - 1)
         {
-            d3d_call(mApiHandle->SetEventOnCompletion(mCpuValue - 1, mEvent));
-            WaitForSingleObject(mEvent, INFINITE);
+            d3d_call(mApiHandle->SetEventOnCompletion(mCpuValue - 1, mpApiData->eventHandle));
+            WaitForSingleObject(mpApiData->eventHandle, INFINITE);
         }
     }
 
