@@ -31,7 +31,7 @@
 #include "BinaryModelSpec.h"
 #include "../Model.h"
 #include "glm/vec3.hpp"
-#include "../../../Framework/Source/Data/VertexAttrib.h"
+#include "Data/VertexAttrib.h"
 #include "Graphics/Model/Loaders/ModelImporter.h"
 
 namespace Falcor

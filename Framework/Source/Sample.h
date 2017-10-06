@@ -31,9 +31,9 @@
 #include <string>
 #include <stdint.h>
 #include "API/Window.h"
-#include "utils/FrameRate.h"
-#include "utils/Gui.h"
-#include "utils/TextRenderer.h"
+#include "Utils/FrameRate.h"
+#include "Utils/Gui.h"
+#include "Utils/TextRenderer.h"
 #include "API/RenderContext.h"
 #include "Utils/Video/VideoEncoderUI.h"
 #include "API/Device.h"

@@ -33,7 +33,7 @@
     #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 
-#include <Vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
 
 #ifdef _WIN32
     #pragma comment(lib, "vulkan-1.lib")
@@ -41,7 +41,7 @@
 
 #include "API/Vulkan/VKSmartHandle.h"
 
-forceinline BOOL vkBool(bool b) { return b ? VK_TRUE : VK_FALSE; }
+forceinline VkBool32 vkBool(bool b) { return b ? VK_TRUE : VK_FALSE; }
 
 namespace Falcor
 {

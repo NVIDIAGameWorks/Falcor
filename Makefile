@@ -21,7 +21,7 @@ INCLUDES = \
 # Compiler Flags
 DEBUG_FLAGS := -O0
 RELEASE_FLAGS := -O3
-COMMON_FLAGS := -c -Wall -Werror -std=c++11 -m64 -Wno-unknown-pragmas -Wno-reorder
+COMMON_FLAGS := -c -Wall -Werror -std=c++14 -m64 -Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function
 
 # Defines
 DEBUG_DEFINES := -D "_DEBUG"
@@ -40,8 +40,11 @@ Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loa
 Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/  \
 VR/ VR/OpenVR/
 
+# 1, 2-4, 5-12, 13-20, 21-25, 26-27
+
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(word 3,$(RELATIVE_DIRS)))
+#SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,20,$(RELATIVE_DIRS)))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)
 ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))
@@ -86,7 +89,7 @@ ReleaseConfig :
 	$(eval OUT_DIR=$(RELEASE_OUT_DIR))
 	$(call CreateDir, $(dir $(RELEASE_OUT_DIR)))
 	$(eval CONFIG_ARGS=$(RELEASE_FLAGS) $(RELEASE_DEFINES))
-	@echo Compiling to $(OUT_DIR)
+#	@echo Compiling $(ALL_SOURCE_FILES) files to $(OUT_DIR)
 
 .PHONY : Clean
 Clean :

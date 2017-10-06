@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "material.h"
+#include "Material.h"
 
 namespace Falcor
 {
@@ -65,7 +65,7 @@ namespace Falcor
 
         Texture::SharedPtr  pTextures[MapType::Count];      ///< Array of available types of textures
 
-        BasicMaterial() { memset(pTextures, 0x00, sizeof(pTextures)); }
+        BasicMaterial();
 
         /** Returns a regular Material object containing the same properties.
         */

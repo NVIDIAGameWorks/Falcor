@@ -40,7 +40,7 @@ namespace Falcor
     class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkHandle<ApiHandle>>
     {
     public:
-        class SharedPtr : public std::shared_ptr<VkHandle<ApiHandle> >
+        class SharedPtr : public std::shared_ptr<VkHandle<ApiHandle>>
         {
         public:
             SharedPtr() = default;

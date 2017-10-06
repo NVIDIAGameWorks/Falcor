@@ -29,7 +29,7 @@
 #include <memory>
 #include "API/Sampler.h"
 #include "API/Texture.h"
-#include "graphics/Model/Model.h"
+#include "Graphics/Model/Model.h"
 #include "Graphics/Program.h"
 #include "API/ConstantBuffer.h"
 #include "API/DepthStencilState.h"

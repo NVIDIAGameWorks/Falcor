@@ -32,6 +32,7 @@
 #include "Utils/DDSHeader.h"
 #include "Utils/BinaryFileStream.h"
 #include "Utils/StringUtils.h"
+#include <cstring>
 
 static const bool kTopDown = true;
 
@@ -41,6 +42,7 @@ namespace Falcor
 
     static const uint32_t kDdsMagicNumber = 0x20534444;
 
+#ifdef _WIN32
     bool checkDdsChannelMask(const DdsHeader::PixelFormat& format, uint32_t r, uint32_t g, uint32_t b, uint32_t a)
     {
         return (format.rMask == r && format.gMask == g && format.bMask == b && format.aMask == a);
@@ -528,7 +530,7 @@ namespace Falcor
                     
                     for (uint32_t heightCounter = 1; heightCounter <= currentMipHeight; ++heightCounter)
                     {
-                        memcpy(currentPos, currentTexture + (currentMipHeight - heightCounter) * heightPitch, heightPitch);
+                        std::memcpy(currentPos, currentTexture + (currentMipHeight - heightCounter) * heightPitch, heightPitch);
                         currentPos += heightPitch;
                     }
                     
@@ -693,9 +695,10 @@ namespace Falcor
         {
             return createTextureFromLegacyDds(ddsData, filename, format, mipLevels, bindFlags);
         }
-        
         return nullptr;
     }
+
+#endif // _WIN32
 
     Texture::SharedPtr createTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
     {
@@ -707,7 +710,13 @@ namespace Falcor
 
         if (hasSuffix(filename, ".dds"))
         {
+#ifdef _WIN32
             return createTextureFromDDSFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
+#else
+            // TODO: Support DDS on Linux
+            logWarning("createTextureFromFile() -" + filename + " Loading DDS images is currently not supported on Linux.")
+            return nullptr;
+#endif // _WIN32
         }
 
         Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(filename, kTopDown);

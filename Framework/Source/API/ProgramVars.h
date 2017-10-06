@@ -41,6 +41,33 @@ namespace Falcor
     class ComputeContext;
     class DescriptorSet;
 
+    // This is here because gcc doesn't like explicit specialization in the class scope e.g. ResourceData<Sampler>
+    // TODO: Can we handle the Sampler case without specializing the template?
+    struct RootData
+    {
+        RootData() = default;
+        RootData(uint32_t root, uint32_t range) : rootIndex(root), rangeIndex(range) {}
+        uint32_t rootIndex = uint32_t(-1);
+        uint32_t rangeIndex = uint32_t(-1);
+    };
+
+    template<typename ViewType>
+    struct ResourceData
+    {
+        ResourceData(const RootData& data) : rootData(data) {}
+        typename ViewType::SharedPtr pView = nullptr;
+        Resource::SharedPtr pResource = nullptr;
+        RootData rootData;
+    };
+
+    template<>
+    struct ResourceData<Sampler>
+    {
+        ResourceData(const RootData& data) : rootData(data) {}
+        Sampler::SharedPtr pSampler;
+        RootData rootData;
+    };
+
     /** This class manages a program's reflection and variable assignment.
         It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
     */
@@ -53,7 +80,7 @@ namespace Falcor
         public:
             SharedPtrT() : std::shared_ptr<T>() {}
             SharedPtrT(T* pProgVars) : std::shared_ptr<T>(pProgVars) {}
-            ConstantBuffer::SharedPtr operator[](const std::string& cbName) { return get()->getConstantBuffer(cbName); }
+            ConstantBuffer::SharedPtr operator[](const std::string& cbName) { return std::shared_ptr<T>::get()->getConstantBuffer(cbName); }
             ConstantBuffer::SharedPtr operator[](uint32_t index) = delete; // No set by index. This is here because if we didn't explicitly delete it, the compiler will try to convert to int into a string, resulting in runtime error
         };
 
@@ -197,32 +224,6 @@ namespace Falcor
         /** Get the root signature object
         */
         RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
-
-        struct RootData
-        {
-            RootData() = default;
-            RootData(uint32_t root, uint32_t range) : rootIndex(root), rangeIndex(range) {}
-            uint32_t rootIndex = uint32_t(-1);
-            uint32_t rangeIndex = uint32_t(-1);
-        };
-
-        template<typename ViewType>
-        struct ResourceData
-        {
-            ResourceData(const RootData& data) : rootData(data) {}
-            typename ViewType::SharedPtr pView = nullptr;
-            Resource::SharedPtr pResource = nullptr;
-            RootData rootData;
-        };
-
-        template<>
-        struct ResourceData<Sampler>
-        {
-            ResourceData(const RootData& data) : rootData(data) {}
-            Sampler::SharedPtr pSampler;
-            RootData rootData;
-        };
-
 
         struct RootSet
         {

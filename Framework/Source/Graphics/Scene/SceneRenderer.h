@@ -30,7 +30,7 @@
 #include "Utils/Gui.h"
 #include "Graphics/Camera/CameraController.h"
 #include "Graphics/Scene/Scene.h"
-#include "utils/CpuTimer.h"
+#include "Utils/CpuTimer.h"
 #include "API/ConstantBuffer.h"
 #include "Utils/DebugDrawer.h"
 

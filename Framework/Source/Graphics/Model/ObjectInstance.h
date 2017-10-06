@@ -44,11 +44,11 @@ namespace Falcor
         transform is applied after the Base transform can be set through the IMovableObject interface. This is currently used by paths.
     */
     template<typename ObjectType>
-    class ObjectInstance : public IMovableObject, public inherit_shared_from_this<IMovableObject, ObjectInstance<typename ObjectType>>
+    class ObjectInstance : public IMovableObject, public inherit_shared_from_this<IMovableObject, ObjectInstance<ObjectType>>
     {
     public:
-        using SharedPtr = std::shared_ptr<ObjectInstance<typename ObjectType>>;
-        using SharedConstPtr = std::shared_ptr<const ObjectInstance<typename ObjectType>>;
+        using SharedPtr = std::shared_ptr<ObjectInstance<ObjectType>>;
+        using SharedConstPtr = std::shared_ptr<const ObjectInstance<ObjectType>>;
 
         /** Constructs an object instance with a transform
             \param[in] pObject Object to create an instance of

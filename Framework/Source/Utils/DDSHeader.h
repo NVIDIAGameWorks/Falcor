@@ -28,6 +28,8 @@
 #pragma once
 #include "Utils/OS.h"
 #include "Framework.h"
+
+#ifdef _WIN32
 #include <D3D11.h>
 
 namespace Falcor
@@ -120,3 +122,5 @@ namespace Falcor
         };
     }
 }
+
+#endif // _WIN32

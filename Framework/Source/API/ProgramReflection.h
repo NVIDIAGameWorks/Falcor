@@ -28,7 +28,7 @@
 #pragma once
 #include "Framework.h"
 #include <unordered_map>
-#include "Externals/slang/slang.h"
+#include "Externals/Slang/slang.h"
 
 namespace Falcor
 {

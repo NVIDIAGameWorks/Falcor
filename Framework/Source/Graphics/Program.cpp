@@ -399,7 +399,7 @@ namespace Falcor
         // Each entry point references the index of the source
         // it uses, and luckily, the Slang API can use these
         // indices directly.
-        for(int i = 0; i < kShaderCount; ++i)
+        for(uint32_t i = 0; i < kShaderCount; ++i)
         {
             auto& entryPoint = mDesc.mEntryPoints[i];
 

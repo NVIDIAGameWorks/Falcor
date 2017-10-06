@@ -41,7 +41,7 @@ namespace Falcor
         /** Create a new object
             \param[in] pBackBuffer Pointer to the back buffer FBO
         */
-        static SharedPtr PixelZoom::create(const Fbo* pBackbuffer);
+        static SharedPtr create(const Fbo* pBackbuffer);
 
         /** Does zoom operation if mShouldZoom is true (if ctrl+alt pressed this frame)
             \param pCtx Pointer to the render context
