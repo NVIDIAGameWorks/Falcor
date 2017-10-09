@@ -110,14 +110,17 @@ namespace Falcor
 
         Fbo::SharedPtr mpAOFbo;
         GraphicsState::SharedPtr mpSSAOState;
-        Sampler::SharedPtr mpPointSampler;
+        Sampler::SharedPtr mpNoiseSampler;
         Texture::SharedPtr mpNoiseTexture;
+
+        Sampler::SharedPtr mpTextureSampler;
 
         struct
         {
             ProgramVars::BindLocation internalPerFrameCB;
             ProgramVars::BindLocation ssaoCB;
-            ProgramVars::BindLocation sampler;
+            ProgramVars::BindLocation noiseSampler;
+            ProgramVars::BindLocation textureSampler;
             ProgramVars::BindLocation depthTex;
             ProgramVars::BindLocation normalTex;
             ProgramVars::BindLocation noiseTex;

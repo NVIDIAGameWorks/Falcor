@@ -81,7 +81,8 @@ namespace Falcor
 
         // Update state/vars
         mpSSAOState->setFbo(mpAOFbo);
-        mpSSAOVars->setSampler(mBindLocations.sampler.regSpace, mBindLocations.sampler.baseRegIndex, 0, mpPointSampler);
+        mpSSAOVars->setSampler(mBindLocations.noiseSampler.regSpace, mBindLocations.noiseSampler.baseRegIndex, 0, mpNoiseSampler);
+        mpSSAOVars->setSampler(mBindLocations.textureSampler.regSpace, mBindLocations.textureSampler.baseRegIndex, 0, mpTextureSampler);
         mpSSAOVars->setSrv(mBindLocations.depthTex.regSpace, mBindLocations.depthTex.baseRegIndex, 0, pDepthTexture->getSRV());
         mpSSAOVars->setSrv(mBindLocations.noiseTex.regSpace, mBindLocations.noiseTex.baseRegIndex, 0, mpNoiseTexture->getSRV());
         mpSSAOVars->setSrv(mBindLocations.normalTex.regSpace, mBindLocations.normalTex.baseRegIndex, 0, pNormalTexture->getSRV());
@@ -122,7 +123,10 @@ namespace Falcor
 
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
-        mpPointSampler = Sampler::create(samplerDesc);
+        mpNoiseSampler = Sampler::create(samplerDesc);
+
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+        mpTextureSampler = Sampler::create(samplerDesc);
 
         setKernel(kernelSize, distribution);
         setNoiseTexture(noiseSize.x, noiseSize.y);
@@ -150,7 +154,8 @@ namespace Falcor
         const ProgramReflection* pReflector = mpSSAOPass->getProgram()->getActiveVersion()->getReflector().get();
         mBindLocations.internalPerFrameCB = getBufferBindLocation(pReflector, "InternalPerFrameCB");
         mBindLocations.ssaoCB = getBufferBindLocation(pReflector, "SSAOCB");
-        mBindLocations.sampler = getResourceBindLocation(pReflector, "gSampler");
+        mBindLocations.noiseSampler = getResourceBindLocation(pReflector, "gNoiseSampler");
+        mBindLocations.textureSampler = getResourceBindLocation(pReflector, "gTextureSampler");
         mBindLocations.depthTex = getResourceBindLocation(pReflector, "gDepthTex");
         mBindLocations.normalTex = getResourceBindLocation(pReflector, "gNormalTex");
         mBindLocations.noiseTex = getResourceBindLocation(pReflector, "gNoiseTex");
