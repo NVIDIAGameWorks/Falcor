@@ -60,7 +60,6 @@ namespace Falcor
             ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format
             int apiMajorVersion = DEFAULT_API_MAJOR_VERSION;                ///< Requested API major version. Context creation fails if this version is not supported.
             int apiMinorVersion = DEFAULT_API_MINOR_VERSION;                ///< Requested API minor version. Context creation fails if this version is not supported.
-            bool useDebugContext = false;                                   ///< create a debug context. NOTE: Debug configuration always creates a debug context
             std::vector<std::string> requiredExtensions;                    ///< Extensions required by the sample
             bool enableVsync = false;                                       ///< Controls vertical-sync
             bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
