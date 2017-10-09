@@ -63,33 +63,21 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
     // Calculate world position of pixel
     float3 posW = getPosition(texC).xyz;
 
-#ifdef HEMISPHERE
     float3 normal = gNormalTex.Sample(gSampler, texC).xyz * 2.0f - 1.0f;
-    // Bias
-    posW += normal * gData.surfaceOffset;
-#endif
 
     float originDist = length(posW - gCam.position);
 
     float3 randDir = gNoiseTex.Sample(gSampler, texC * gData.noiseScale).xyz * 2.0f - 1.0f;
 
-#ifdef HEMISPHERE
     float3 tangent = normalize(randDir - normal * dot(randDir, normal));
     float3 bitangent = cross(normal, tangent);
     float3x3 tbn = float3x3(tangent, bitangent, normal);
-#endif
 
     float occlusion = 0.0f;
     for (uint i = 0; i < gData.kernelSize; i++)
     {
-#ifdef HEMISPHERE
         // Orient sample
         float3 kernelPos = mul(gData.sampleKernel[i].xyz, tbn);
-#endif
-#ifdef SPHERE
-        float3 kernelPos = gData.sampleKernel[i].xyz;
-        kernelPos = reflect(kernelPos, randDir);
-#endif
 
         // Calculate sample world space pos
         float3 samplePosW = posW + (kernelPos * gData.radius);
@@ -107,12 +95,6 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
         occlusion += step(sceneDepth, sampleDepth) * rangeCheck;
     }
 
-#ifdef HEMISPHERE
     float factor = 1 - (occlusion / float(gData.kernelSize));
-#endif
-#ifdef SPHERE
-    float factor = 1 - (occlusion / float(gData.kernelSize)) * 0.5f;
-#endif
-
     return float4(factor.xxx, 1);
 }

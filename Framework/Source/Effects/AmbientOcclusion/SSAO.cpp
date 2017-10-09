@@ -37,12 +37,6 @@
 
 namespace Falcor
 {
-    const Gui::DropdownList SSAO::kKernelDropdown = 
-    {
-        { (int32_t)KernelShape::Hemisphere, "Hemisphere" },
-        { (int32_t)KernelShape::Sphere, "Sphere" }
-    };
-
     const Gui::DropdownList SSAO::kDistributionDropdown = 
     {
         { (int32_t)SampleDistribution::Random, "Random" },
@@ -73,11 +67,6 @@ namespace Falcor
             mDirty = true;
         }
 
-        if (pGui->addFloatVar("Surface Offset", mData.surfaceOffset, 0.0f, FLT_MAX))
-        {
-            mDirty = true;
-        }
-
         pGui->addCheckBox("Apply Blur", mApplyBlur);
 
         if (mApplyBlur)
@@ -88,14 +77,6 @@ namespace Falcor
 
     Texture::SharedPtr SSAO::generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
     {
-        // Check if we need to recreate the shader and kernel for different arguments.
-        if ((pNormalTexture != nullptr && mKernelShape == KernelShape::Sphere) || (pNormalTexture == nullptr && mKernelShape == KernelShape::Hemisphere))
-        {
-            mKernelShape = pNormalTexture != nullptr ? KernelShape::Hemisphere : KernelShape::Sphere;
-            initShader();
-            setKernel(mData.kernelSize, (SampleDistribution)mHemisphereDistribution);
-        }
-
         upload();
 
         // Update state/vars
@@ -103,11 +84,7 @@ namespace Falcor
         mpSSAOVars->setSampler(mBindLocations.sampler.regSpace, mBindLocations.sampler.baseRegIndex, 0, mpPointSampler);
         mpSSAOVars->setSrv(mBindLocations.depthTex.regSpace, mBindLocations.depthTex.baseRegIndex, 0, pDepthTexture->getSRV());
         mpSSAOVars->setSrv(mBindLocations.noiseTex.regSpace, mBindLocations.noiseTex.baseRegIndex, 0, mpNoiseTexture->getSRV());
-
-        if (mKernelShape == KernelShape::Hemisphere)
-        {
-            mpSSAOVars->setSrv(mBindLocations.normalTex.regSpace, mBindLocations.normalTex.baseRegIndex, 0, pNormalTexture->getSRV());
-        }
+        mpSSAOVars->setSrv(mBindLocations.normalTex.regSpace, mBindLocations.normalTex.baseRegIndex, 0, pNormalTexture->getSRV());
 
         ConstantBuffer* pCB = mpSSAOVars->getConstantBuffer(mBindLocations.internalPerFrameCB.regSpace, mBindLocations.internalPerFrameCB.baseRegIndex, 0).get();
         if (pCB != nullptr)
@@ -137,7 +114,6 @@ namespace Falcor
         fboDesc.setColorTarget(0, Falcor::ResourceFormat::RGBA8Unorm);
         mpAOFbo = FboHelper::create2D(aoMapSize.x, aoMapSize.y, fboDesc);
 
-        mKernelShape = KernelShape::Hemisphere;
         initShader();
 
         mpSSAOState = GraphicsState::create();
@@ -169,7 +145,6 @@ namespace Falcor
     void SSAO::initShader()
     {
         mpSSAOPass = FullScreenPass::create("Effects/SSAO.ps.slang");
-        mpSSAOPass->getProgram()->addDefine(mKernelShape == KernelShape::Hemisphere ? "HEMISPHERE": "SPHERE");
         mpSSAOVars = GraphicsVars::create(mpSSAOPass->getProgram()->getActiveVersion()->getReflector());
 
         const ProgramReflection* pReflector = mpSSAOPass->getProgram()->getActiveVersion()->getReflector().get();
@@ -190,32 +165,24 @@ namespace Falcor
 
         for (uint32_t i = 0; i < kernelSize; i++)
         {
-            if(mKernelShape == KernelShape::Sphere)
+            // Hemisphere in the Z+ direction
+            glm::vec3 p;
+            switch (distribution)
             {
-                // Sphere ignores hemisphere distribution type
-                mData.sampleKernel[i] = glm::vec4(glm::sphericalRand(1.0f), 1.0f);
+            case SampleDistribution::Random:
+                p = glm::normalize(glm::linearRand(glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
+                break;
+
+            case SampleDistribution::UniformHammersley:
+                p = hammersleyUniform(i, kernelSize);
+                break;
+
+            case SampleDistribution::CosineHammersley:
+                p = hammersleyCosine(i, kernelSize);
+                break;
             }
-            else
-            {
-                // Hemisphere in the Z+ direction
-                glm::vec3 p;
-                switch (distribution)
-                {
-                case SampleDistribution::Random:
-                    p = glm::normalize(glm::linearRand(glm::vec3(-1.0f, -1.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f)));
-                    break;
 
-                case SampleDistribution::UniformHammersley:
-                    p = hammersleyUniform(i, kernelSize);
-                    break;
-
-                case SampleDistribution::CosineHammersley:
-                    p = hammersleyCosine(i, kernelSize);
-                    break;
-                }
-
-                mData.sampleKernel[i] = glm::vec4(p, 1.0f);
-            }
+            mData.sampleKernel[i] = glm::vec4(p, 0.0f);
 
             // Skew sample point distance on a curve so more cluster around the origin
             float dist = (float)i / (float)kernelSize;
