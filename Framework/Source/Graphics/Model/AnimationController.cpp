@@ -103,7 +103,7 @@ namespace Falcor
             mBones[i].globalTransform = mBones[i].localTransform;
             if(mBones[i].parentID != kInvalidBoneID)
             {
-                mBones[i].globalTransform = mBones[mBones[i].parentID].globalTransform * mBones[i].globalTransform;
+                mBones[i].globalTransform = mBones[mBones[i].parentID].globalTransform * mBones[i].localTransform;
             }
             mBoneTransforms[i] = mBones[i].globalTransform * mBones[i].offset;
         }

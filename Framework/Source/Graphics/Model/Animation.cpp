@@ -117,7 +117,13 @@ namespace Falcor
         {
             glm::mat4 translation;
             translation[3] = glm::vec4(calcCurrentKey(Key.translation, ticks, Key.lastUpdateTime), 1);
-            glm::mat4 scaling = glm::scale(calcCurrentKey(Key.scaling, ticks, Key.lastUpdateTime));
+
+            glm::mat4 scaling;
+            if (Key.scaling.keys.size() > 0)
+            {
+                glm::scale(calcCurrentKey(Key.scaling, ticks, Key.lastUpdateTime));
+            }
+
             glm::quat q = calcCurrentKey(Key.rotation, ticks, Key.lastUpdateTime);
             glm::mat4 rotation = glm::mat4_cast(q);
 
