@@ -496,7 +496,6 @@ namespace Falcor
         }
 
         uint32_t AssimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
-            aiProcess_OptimizeGraph |
             aiProcess_FlipUVs |
             // aiProcess_FixInfacingNormals | // causes incorrect facing normals for crytek-sponza
             0;
@@ -510,7 +509,7 @@ namespace Falcor
         // Avoid merging original meshes
         if(is_set(mFlags, Model::LoadFlags::DontMergeMeshes))
         {
-            AssimpFlags &= ~aiProcess_OptimizeGraph;
+            AssimpFlags &= ~aiProcess_OptimizeMeshes;
         }
 
         // Never use Assimp's tangent gen code
