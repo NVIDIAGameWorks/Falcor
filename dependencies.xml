@@ -1,7 +1,7 @@
 <project toolsVersion="4.0" packageSource="s3">
     <platform name="win">
         <dependency name="openvr" version="1.0.8" linkPath="Framework/Externals/OpenVR"/>
-        <dependency name="assimp" version="3.3.0" linkPath="Framework/Externals/ASSIMP"/>
+        <dependency name="assimp" version="4.0.1" linkPath="Framework/Externals/ASSIMP"/>
         <dependency name="dear_imgui" version="1.50.wip" linkPath="Framework/Externals/dear_imgui"/>
         <dependency name="glm" version="0.9.8.4" linkPath="Framework/Externals/GLM"/>
         <dependency name="ffmpeg" version="3.1.4" linkPath="Framework/Externals/FFMPEG"/>

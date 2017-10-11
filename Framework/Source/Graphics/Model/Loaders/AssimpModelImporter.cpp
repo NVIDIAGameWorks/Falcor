@@ -27,13 +27,13 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "AssimpModelImporter.h"
-#include "../Model.h"
-#include "Importer.hpp"
-#include "postprocess.h"
-#include "scene.h"
-#include "../Animation.h"
-#include "../Mesh.h"
-#include "../AnimationController.h"
+#include "Graphics/Model/Model.h"
+#include "assimp/Importer.hpp"
+#include "assimp/postprocess.h"
+#include "assimp/scene.h"
+#include "Graphics/Model/Animation.h"
+#include "Graphics/Model/Mesh.h"
+#include "Graphics/Model/AnimationController.h"
 #include "glm/common.hpp"
 #include "glm/geometric.hpp"
 #include "API/Texture.h"
@@ -732,7 +732,8 @@ namespace Falcor
         auto pIB = createIndexBuffer(pAiMesh);
         BoundingBox boundingBox = createMeshBbox(pAiMesh);
 
-        if((pAiMesh->HasTangentsAndBitangents() == false) && (is_set(mFlags, Model::LoadFlags::DontGenerateTangentSpace) == false))
+        const bool generateTangentSpace = (pAiMesh->HasTangentsAndBitangents() == false) && (is_set(mFlags, Model::LoadFlags::DontGenerateTangentSpace) == false);
+        if (generateTangentSpace)
         {
             genTangentSpace(pAiMesh);
         }
@@ -783,7 +784,7 @@ namespace Falcor
 
         Mesh::SharedPtr pMesh = Mesh::create(pVBs, vertexCount, pIB, indexCount, pLayout, topology, pMaterial, boundingBox, pAiMesh->HasBones());
 
-        if (is_set(mFlags, Model::LoadFlags::DontGenerateTangentSpace) == false)
+        if (generateTangentSpace)
         {
             aiMesh* pM = const_cast<aiMesh*>(pAiMesh);
             safe_delete_array(pM->mBitangents);
