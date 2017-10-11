@@ -243,6 +243,12 @@ namespace Falcor
 
         if (setPerMeshData(currentData, pMesh))
         {
+            Program* pProgram = currentData.pState->getProgram().get();
+            if (pMesh->hasBones())
+            {
+                pProgram->addDefine("_VERTEX_BLENDING");
+            }
+
             // Bind VAO and set topology
             currentData.pState->setVao(pMesh->getVao());
 
@@ -278,6 +284,12 @@ namespace Falcor
             {
                 draw(currentData, pMesh, activeInstances);
             }
+
+            // Restore the program state
+            if (pMesh->hasBones())
+            {
+                pProgram->removeDefine("_VERTEX_BLENDING");
+            }
         }
     }
 
@@ -287,25 +299,12 @@ namespace Falcor
 
         if (setPerModelData(currentData))
         {
-            Program* pProgram = currentData.pState->getProgram().get();
-            // Bind the program
-            if(pModel->hasBones())
-            {
-                pProgram->addDefine("_VERTEX_BLENDING");
-            }
-
             mpLastMaterial = nullptr;
 
             // Loop over the meshes
             for (uint32_t meshID = 0; meshID < pModel->getMeshCount(); meshID++)
             {
                 renderMeshInstances(currentData, pModelInstance, meshID);
-            }
-
-            // Restore the program state
-            if(pModel->hasBones())
-            {
-                pProgram->removeDefine("_VERTEX_BLENDING");
             }
         }
 
