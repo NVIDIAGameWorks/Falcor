@@ -29,6 +29,16 @@
             ]
         },
 
+        "AnimationTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "FeatureDemo",
+            "Project Tests Args" :
+            [
+                "-test -fixedtimedelta 0.03333 -loadscene Cerberus\\Compressed\\Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
+            ]
+        },
+
         "FeatureDemoTest":
         {
             "Enabled" : true,
@@ -54,7 +64,6 @@
 
         "ShadowsTest":
         {
-
             "Enabled" : true,
             "Project Name" : "Shadows",
             "Project Tests Args" :
@@ -94,6 +103,7 @@
             ]
 
         },
+
         "NormalMapFilteringTest":
         {
             "Enabled" : true,
