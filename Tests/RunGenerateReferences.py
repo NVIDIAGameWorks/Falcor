@@ -30,7 +30,7 @@ def main():
     
     # Exception handling.
     except rTC.TestsCollectionError as tests_collection_error: 
-        print tests_collection_error.args
+        print(tests_collection_error.args)
         return None
 
     # Run the Tests Collections.
@@ -39,7 +39,7 @@ def main():
 
     # Exception handling.
     except rTC.TestsCollectionError as tests_collection_error:
-        print tests_collection_error.args
+        print(tests_collection_error.args)
         return None
 
     # Verify the Results.
@@ -52,7 +52,7 @@ def main():
             helpers.directory_copy('TestsResults\\' + json_data['Tests Collections'][current_test_collections]['Source Branch Target'] + '\\' + current_test_collections + '\\', destination_reference_directory)
 
     else:
-        print "All tests did not run successfully. No references were generated."
+        print("All tests did not run successfully. No references were generated.")
 
 #
 if __name__ == '__main__':

@@ -450,7 +450,7 @@ namespace Falcor
             std::vector<ArgList::Arg> ssTimes = mArgList.getValues("sstimes");
             for (uint32_t i = 0; i < ssTimes.size(); ++i)
             {
-                uint32_t captureTime = ssTimes[i].asFloat();
+                float captureTime = ssTimes[i].asFloat();
                 std::shared_ptr<ScreenCaptureTimeTask> screenCaptureTimeTask = std::make_shared<ScreenCaptureTimeTask>(captureTime);
                 mTimeTasks.push_back(screenCaptureTimeTask);
             }
