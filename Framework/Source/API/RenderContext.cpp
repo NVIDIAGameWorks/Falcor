@@ -38,6 +38,14 @@ namespace Falcor
     CommandSignatureHandle RenderContext::spDrawCommandSig = nullptr;
     CommandSignatureHandle RenderContext::spDrawIndexCommandSig = nullptr;
 
+    RenderContext::RenderContext()
+    {
+        if (spDrawCommandSig == nullptr)
+        {
+            initDrawCommandSignatures();
+        }
+    }
+
     void RenderContext::pushGraphicsState(const GraphicsState::SharedPtr& pState)
     {
         mPipelineStateStack.push(mpGraphicsState);

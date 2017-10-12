@@ -172,7 +172,7 @@ namespace Falcor
         */
         void flush(bool wait = false) override;
     private:
-        RenderContext() = default;
+        RenderContext();
         GraphicsVars::SharedPtr mpGraphicsVars;
         GraphicsState::SharedPtr mpGraphicsState;
         bool mBindGraphicsRootSig = true;

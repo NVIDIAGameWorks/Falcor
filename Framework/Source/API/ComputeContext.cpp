@@ -30,6 +30,14 @@
 
 namespace Falcor
 {
+    ComputeContext::ComputeContext()
+    {
+        if (spDispatchCommandSig == nullptr)
+        {
+            initDispatchCommandSignature();
+        }
+    }
+
     ComputeContext::~ComputeContext() = default;
     CommandSignatureHandle ComputeContext::spDispatchCommandSig = nullptr;
 

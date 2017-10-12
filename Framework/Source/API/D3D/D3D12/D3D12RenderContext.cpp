@@ -99,12 +99,6 @@ namespace Falcor
         {
             return nullptr;
         }
-
-        if (spDrawCommandSig == nullptr)
-        {
-            initDrawCommandSignatures();
-        }
-
         return pCtx;
     }
     

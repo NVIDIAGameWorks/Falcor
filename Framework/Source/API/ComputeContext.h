@@ -107,7 +107,7 @@ namespace Falcor
         */
         virtual void flush(bool wait = false) override;
     protected:
-        ComputeContext() = default;
+        ComputeContext();
         void prepareForDispatch();
         void applyComputeVars();
 
