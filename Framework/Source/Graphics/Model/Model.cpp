@@ -245,7 +245,8 @@ namespace Falcor
 							float4 *aoValuesmesh = new float4[numVerticesMesh];
 							for (unsigned int i = 0; i < numVerticesMesh; i++)
 							{
-								aoValuesmesh[i][0] = aoValuesmesh[i][1] = aoValuesmesh[i][2] = aoValuesmesh[i][3] = max(aoValues[i], 0.0f);
+								aoValuesmesh[i][0] = aoValuesmesh[i][1] = aoValuesmesh[i][2] = 1.0f;
+								aoValuesmesh[i][3] = max(aoValues[i], 0.0f);
 							}
 
 							Buffer::SharedPtr aoBuffer = Buffer::create(sizeof(float4)*numVerticesMesh, Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, aoValuesmesh);
