@@ -43,7 +43,7 @@ namespace Falcor
 
         // Vertex Input State
         VertexInputStateCreateInfo vertexInputInfo;
-        initVkVertexLayoutInfo(mDesc.getVertexLayout().get(), vertexInputInfo);
+        initVkVertexLayoutInfo(mDesc.getVertexLayout().get(), vertexInputInfo, mDesc.getProgramVersion()->getReflector().get());
 
         // Input Assembly State
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;

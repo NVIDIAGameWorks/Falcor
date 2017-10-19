@@ -175,6 +175,12 @@ namespace Falcor
         return (it == mVertAttr.end()) ? nullptr : &(it->second);
     }
 
+    const ProgramReflection::Variable* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const
+    {
+        const auto& it = mVertAttrBySemantic.find(semantic);
+        return (it == mVertAttrBySemantic.end()) ? nullptr : &(it->second);
+    }
+
     const ProgramReflection::Variable* ProgramReflection::getFragmentOutput(const std::string& name) const
     {
         const auto& it = mFragOut.find(name);
@@ -392,6 +398,7 @@ namespace Falcor
     // information over to the Falcor equivalent
     struct ReflectionGenerationContext
     {
+        SlangStage stage = SLANG_STAGE_NONE;
         ProgramReflection*  pReflector = nullptr;
         ProgramReflection::VariableMap* pVariables = nullptr;
         ProgramReflection::ResourceMap* pResourceMap = nullptr;
@@ -710,6 +717,99 @@ namespace Falcor
         return true;
     }
 
+    // Given the path to a reflection variable, extract its semantic name and index.
+    static char const* getSemantic(
+        ReflectionPath* pPath,
+        uint32_t*       outSemanticIndex)
+    {
+        // For the most part we just want to walk up the path until we find
+        // a concrete variable and then return its name/index.
+        //
+        // TODO: If the path references an element of a varying array, then
+        // we should technically apply a suitable offset to the semantic index,
+        // based on the chosen array element. E.g., given:
+        //
+        //     float4 uvs[4] : TEXCOORD;
+        //
+        // we should report `uvs` as having semantic `TEXCOORD` with index `0`,
+        // while `uvs[2]` should report semantic `TEXCOORD` with index `2`.
+        //
+        auto pp = pPath;
+        while (pp)
+        {
+            if (auto var = pp->var)
+            {
+                auto semanticName = var->getSemanticName();
+                if (outSemanticIndex)
+                    *outSemanticIndex = (uint32_t) var->getSemanticIndex();
+
+                return semanticName;
+            }
+
+            pp = pp->parent;
+        }
+
+        return nullptr;
+    }
+
+    static void maybeReflectVaryingParameter(
+        ReflectionGenerationContext*    pContext,
+        TypeLayoutReflection*           pSlangType,
+        const std::string&              name,
+        ReflectionPath*                 pPath,
+        slang::ParameterCategory        category,
+        ProgramReflection::VariableMap* ioVarMap,
+        ProgramReflection::VariableMap* ioVarBySemanticMap = nullptr)
+    {
+        // Skip parameters that don't consume space in the given category
+        if (pSlangType->getSize(category) == 0)
+            return;
+
+        ProgramReflection::Variable desc;
+        desc.location = getBindingIndex(pPath, category);
+        desc.type = getVariableType(
+            pSlangType->getScalarType(),
+            pSlangType->getRowCount(),
+            pSlangType->getColumnCount());
+
+        switch (pSlangType->getKind())
+        {
+        default:
+            break;
+
+        case TypeReflection::Kind::Array:
+            desc.arraySize = (uint32_t)pSlangType->getElementCount();
+            desc.arrayStride = (uint32_t)pSlangType->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
+            break;
+
+        case TypeReflection::Kind::Matrix:
+            // TODO(tfoley): Slang needs to report this information!
+            //                desc.isRowMajor = (typeDesc.Class == D3D_SVC_MATRIX_ROWS);
+            break;
+        }
+
+        // Register this varying parameter in the appropriate map
+        // for lookup by name.
+        if (ioVarMap)
+        {
+            (*ioVarMap)[name] = desc;
+        }
+
+        // Does this variable have a semantic attached?
+        uint32_t semanticIndex = 0;
+        char const* semanticName = getSemantic(pPath, &semanticIndex);
+        if (semanticName && ioVarBySemanticMap)
+        {
+            if (semanticIndex == 0)
+            {
+                (*ioVarBySemanticMap)[semanticName] = desc;
+            }
+
+            std::string fullSemanticName = std::string(semanticName) + std::to_string(semanticIndex);
+            (*ioVarBySemanticMap)[fullSemanticName] = desc;
+        }
+    }
+
     static void reflectType(
         ReflectionGenerationContext*    pContext,
         TypeLayoutReflection*    pSlangType,
@@ -754,6 +854,56 @@ namespace Falcor
 
             (*pContext->pVariables)[name] = desc;
         }
+
+        // We might be looking at a varying input/output parameter,
+        // so let's try to detect that here. We only want to concern
+        // ourselves with varying parameters once they have been
+        // broken down to leaf parameters, though.
+        //
+        // Are we looking at a leaf parameter?
+        switch (pSlangType->unwrapArray()->getKind())
+        {
+        case TypeReflection::Kind::Scalar:
+        case TypeReflection::Kind::Vector:
+        case TypeReflection::Kind::Matrix:
+            // Are we looking at a vertex or fragment entry-point parameter?
+            //
+            // TODO: This logic will fail to catch GLSL varying parameters,
+            // since they aren't declared under a corresponding entry-point.
+            // Fixing this would require the Slang API to be able to identify
+            // the stage corresponding to any global-scope parameter in GLSL.
+            switch (pContext->stage)
+            {
+            case SLANG_STAGE_VERTEX:
+                maybeReflectVaryingParameter(
+                    pContext,
+                    pSlangType,
+                    name,
+                    pPath,
+                    slang::ParameterCategory::VertexInput,
+                    &pContext->pReflector->mVertAttr,
+                    &pContext->pReflector->mVertAttrBySemantic);
+                break;
+
+            case SLANG_STAGE_FRAGMENT:
+                maybeReflectVaryingParameter(
+                    pContext,
+                    pSlangType,
+                    name,
+                    pPath,
+                    slang::ParameterCategory::FragmentOutput,
+                    &pContext->pReflector->mFragOut);
+                break;
+
+            default:
+                break;
+            }
+            break;
+
+        default:
+            break;
+        }
+
 
         // We want to reflect resource parameters as soon as we find a
         // type that is an (array of)* (sampler|texture|...)
@@ -872,6 +1022,7 @@ namespace Falcor
                 fieldPath.parent = pPath;
                 fieldPath.typeLayout = pSlangType;
                 fieldPath.childIndex = ff;
+                fieldPath.var = field;
 
                 reflectType(pContext, field->getTypeLayout(), fullName, &fieldPath);
             }
@@ -1071,8 +1222,8 @@ namespace Falcor
     }
 
     bool ProgramReflection::reflectVertexAttributes(
-        ShaderReflection*    pSlangReflector,
-        std::string&                log)
+        ShaderReflection*   pSlangReflector,
+        std::string&        log)
     {
         // TODO(tfoley): Add vertex input reflection capability to Slang
         return true;
@@ -1323,6 +1474,17 @@ namespace Falcor
         for (SlangUInt ee = 0; ee < entryPointCount; ++ee)
         {
             EntryPointReflection* entryPoint = pSlangReflector->getEntryPointByIndex(ee);
+
+            // We need to reflect entry-point parameters just like any others
+            context.stage = entryPoint->getStage();
+
+            uint32_t entryPointParamCount = entryPoint->getParameterCount();
+            for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
+            {
+                VariableLayoutReflection* param = entryPoint->getParameterByIndex(pp);
+                res = reflectParameter(&context, param);
+            }
+
 
             switch (entryPoint->getStage())
             {
