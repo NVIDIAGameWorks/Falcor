@@ -114,6 +114,19 @@ namespace Falcor
         return sourceFile("DefaultVS.slang").entryPoint(ShaderType::Vertex, "defaultVS");
     }
 
+    const std::string& Program::Desc::getShaderEntryPoint(ShaderType shaderType) const
+    {
+        static std::string s;
+        return mEntryPoints[(uint32_t)shaderType].isValid() ? mEntryPoints[(uint32_t)shaderType].name : s;
+    }
+
+    const std::string& Program::Desc::getShaderSource(ShaderType shaderType) const
+    {
+        static std::string s;
+        const auto& e = mEntryPoints[(uint32_t)shaderType];
+
+        return e.isValid() ? mSources[e.sourceIndex].value : s;
+    }
     // Program
 
     std::vector<Program*> Program::sPrograms;

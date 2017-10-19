@@ -279,10 +279,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3DWindow.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="API\DepthStencilState.cpp" />
     <ClCompile Include="API\DescriptorSet.cpp" />
     <ClCompile Include="API\Device.cpp" />
@@ -524,6 +520,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D11|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="API\Window.cpp" />
     <ClCompile Include="ArgList.cpp" />
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp" />
     <ClCompile Include="Effects\NormalMap\LeanMap.cpp" />
@@ -577,6 +574,7 @@
     <ClCompile Include="Graphics\Scene\SceneRenderer.cpp" />
     <ClCompile Include="Graphics\Scene\SceneUtils.cpp" />
     <ClCompile Include="Graphics\TextureHelper.cpp" />
+    <ClCompile Include="MultiRendererSample.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
@@ -592,6 +590,7 @@
     <ClCompile Include="Utils\ProgressBarWin.cpp" />
     <ClCompile Include="Utils\Psychophysics\Experiment.cpp" />
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
+    <ClCompile Include="Utils\PythonEmbedding.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoder.cpp" />
@@ -886,6 +885,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="API\D3D\D3D12\D3D12ApiData.h" />
     <ClInclude Include="API\D3D\D3D12\D3D12NvApiExDesc.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
@@ -1050,6 +1050,7 @@
     <ClInclude Include="Graphics\Scene\SceneRenderer.h" />
     <ClInclude Include="Graphics\Scene\SceneUtils.h" />
     <ClInclude Include="Graphics\TextureHelper.h" />
+    <ClInclude Include="MultiRendererSample.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
     <ClInclude Include="Utils\AABB.h" />
@@ -1074,6 +1075,8 @@
     <ClInclude Include="Utils\ProgressBar.h" />
     <ClInclude Include="Utils\Psychophysics\Experiment.h" />
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
+    <ClInclude Include="Utils\PythonEmbedding.h" />
+    <ClInclude Include="Utils\Renderer\Renderer.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
@@ -1131,8 +1134,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\CopyData.bat" />
-    <None Include="..\CopyLibs.bat" />
     <None Include="..\Externals\dear_imgui\LICENSE" />
     <None Include="..\Externals\dear_imgui\README.md" />
     <None Include="..\Externals\GLM\glm\detail\func_common.inl" />
@@ -1398,7 +1399,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_D3D11;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1407,12 +1408,9 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Debug $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Debug</Command>
-    </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D11</Command>
+      <Command>call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1430,7 +1428,7 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1439,12 +1437,9 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Debug $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Debug</Command>
-    </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D12</Command>
+      <Command>call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1466,7 +1461,7 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1475,12 +1470,9 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Debug $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Debug</Command>
-    </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_VK</Command>
+      <Command>call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1506,7 +1498,7 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_D3D11;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -1516,11 +1508,9 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release</Command>
-    </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D11</Command>
+      <Command>call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1540,7 +1530,7 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -1550,12 +1540,9 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release</Command>
-    </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_D3D12</Command>
+      <Command>call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>
@@ -1580,7 +1567,7 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\AntTweakBar\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\assimp\include;$(ProjectDir)\..\Externals\FFMpeg\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\openvr\headers;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -1590,12 +1577,9 @@ $(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falc
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <PostBuildEvent>
-      <Command>$(ProjectDir)\..\CopyLibs.bat Release $(PlatformName) $(SolutionDir)Bin\$(PlatformShortName)\Release</Command>
-    </PostBuildEvent>
     <PreBuildEvent>
-      <Command>call $(ProjectDir)\..\..\update_dependencies.bat 
-$(ProjectDir)\..\PatchFalcorPropertySheet.exe $(SolutionPath) $(ProjectDir)\Falcor.props FALCOR_VK</Command>
+      <Command>call $(ProjectDir)\..\BuildScripts\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)
+      </Command>
     </PreBuildEvent>
     <CustomBuildStep>
       <Command>

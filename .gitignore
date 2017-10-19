@@ -1,6 +1,7 @@
-Test/Bin/*
-Test/TestResults/*
-Test/.vs/*
+Tests/Bin/*
+Tests/TestsResults/*
+Tests/TestConfigsDev/*
+Tests/.vs/*
 Bin/*
 *.user
 *.sdf
@@ -10,6 +11,7 @@ Bin/*
 *.pyc
 Falcor.VC.db
 FalcorTest.VC.db
+Framework/BuildScripts/PatchFalcorProps/PatchFalcorPropertySheet/PatchFalcorPropertySheet.VC.db
 FalcorTest/TestResults/*
 Falcor.VC.VC.opendb
 Framework/Externals/NVAPI/

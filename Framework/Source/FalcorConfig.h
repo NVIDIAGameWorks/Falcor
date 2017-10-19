@@ -45,3 +45,5 @@
 #if (FALCOR_USE_SLANG_AS_PREPROCESSOR) && !FALCOR_BUILD_SLANG
 #error Trying to use Slang without building it
 #endif
+
+#define FALCOR_USE_PYTHON                   0 // Set to 1 to build Python embedding API and samples.  See README.txt in "LearningWithEmbeddedPython" sample for more information.

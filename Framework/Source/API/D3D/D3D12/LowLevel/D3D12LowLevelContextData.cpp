@@ -28,14 +28,10 @@
 #include "Framework.h"
 #include "API/LowLevel/LowLevelContextData.h"
 #include "API/Device.h"
+#include "API/D3D/D3D12/D3D12ApiData.h"
 
 namespace Falcor
 {
-    struct LowLevelContextApiData
-    {
-        FencedPool<CommandAllocatorHandle>::SharedPtr pAllocatorPool;
-    };
-
     template<D3D12_COMMAND_LIST_TYPE type>
     static ID3D12CommandAllocatorPtr newCommandAllocator(void* pUserData)
     {

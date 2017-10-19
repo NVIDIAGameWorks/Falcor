@@ -71,7 +71,8 @@ namespace Falcor
         enum class Type
         {
             KeyPressed,     ///< Key was pressed.
-            KeyReleased     ///< Key was released.
+            KeyReleased,    ///< Key was released.
+            Input           ///< Character input
         };
         
         /** Use this enum to find out which key was pressed. Alpha-numeric keys use their uppercase ASCII code, so you can use that as well.
@@ -191,6 +192,6 @@ namespace Falcor
         Type type;              ///< The event type
         Key  key;               ///< The last key that was pressed/released
         InputModifiers mods;    ///< Keyboard modifiers
-        char asciiChar;         ///< The matching ASCII char, or zero if the key type doesn't have one
+        uint32_t codepoint = 0; ///< UTF-32 codepoint from GLFW for Input event types
     };
 }

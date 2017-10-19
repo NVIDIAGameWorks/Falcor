@@ -55,7 +55,7 @@ namespace Falcor
         CommandQueueHandle getCommandQueue() const { return mpQueue; }
         CommandAllocatorHandle getCommandAllocator() const { return mpAllocator; }
         GpuFence::SharedPtr getFence() const { return mpFence; }
-
+        LowLevelContextApiData* getApiData() const { return mpApiData; }
         void setCommandList(CommandListHandle pList) { mpList = pList; }
 
     protected:

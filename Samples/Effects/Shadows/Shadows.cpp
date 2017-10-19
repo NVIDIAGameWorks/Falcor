@@ -75,7 +75,6 @@ void Shadows::displayLoadSceneDialog()
 void Shadows::setLightIndex(int32_t index)
 {
     mControls.lightIndex = max(min(index, (int32_t)mpScene->getLightCount() - 1), 0);
-    mpCsmTech[mControls.lightIndex]->renderUi(mpGui.get(), "CSM");
 }
 
 void Shadows::createScene(const std::string& filename)

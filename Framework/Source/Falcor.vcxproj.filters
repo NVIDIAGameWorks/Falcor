@@ -208,9 +208,6 @@
     <ClCompile Include="API\D3D\D3DState.cpp">
       <Filter>API\D3D</Filter>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3DWindow.cpp">
-      <Filter>API\D3D</Filter>
-    </ClCompile>
     <ClCompile Include="API\D3D\D3D11\D3D11BlendState.cpp">
       <Filter>API\D3D\D3D11</Filter>
     </ClCompile>
@@ -530,6 +527,13 @@
     </ClCompile>
     <ClCompile Include="Effects\TAA\TAA.cpp">
       <Filter>Effects\TAA</Filter>
+    </ClCompile>
+    <ClCompile Include="MultiRendererSample.cpp" />
+    <ClCompile Include="Utils\PythonEmbedding.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="API\Window.cpp">
+      <Filter>API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1642,6 +1646,16 @@
     <ClInclude Include="Utils\ThreadPool.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\Renderer\Renderer.h">
+      <Filter>Utils\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="MultiRendererSample.h" />
+    <ClInclude Include="Utils\PythonEmbedding.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D\D3D12\D3D12ApiData.h">
+      <Filter>API\D3D\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1812,10 +1826,11 @@
     <Filter Include="Effects\TAA">
       <UniqueIdentifier>{d1b8a19e-aea1-4b27-862a-06434b845be7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Utils\Renderer">
+      <UniqueIdentifier>{32802cf1-128c-4a2c-835a-17d0a3dd0976}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\CopyLibs.bat" />
-    <None Include="..\CopyData.bat" />
     <None Include="..\Externals\dear_imgui\LICENSE">
       <Filter>Externals\dear_imgui</Filter>
     </None>

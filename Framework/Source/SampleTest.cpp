@@ -29,465 +29,462 @@
 
 namespace Falcor
 {
-
-    bool SampleTest::hasTests() const
-    {
-        return !mTestTasks.empty() || !mTimedTestTasks.empty();
-    }
-
+    // Initialize the Testing.
     void SampleTest::initializeTesting()
     {
         if (mArgList.argExists("test"))
         {
-            initFrameTests();
-            initTimeTests();
+            // Initialize the Tests.
+            initializeTests();
+
+            // Initialize Testing Callback.
             onInitializeTesting();
         }
     }
 
+    // Begin Test Frame.
     void SampleTest::beginTestFrame()
-    {   
-        if (!hasTests()) return;
-
-        uint32_t frameId = frameRate().getFrameCount();
-        //  Check if it's time for a time based task
-        if (mCurrentTimeTest != mTimedTestTasks.end() && mCurrentTime >= mCurrentTimeTest->mStartTime)
+    {
+        // Check if we have any tests.
+        if (!(mCurrentTimeTaskIndex < mTimeTasks.size() || mCurrentFrameTaskIndex < mFrameTasks.size()))
         {
-            if (mCurrentTimeTest->mTask == TaskType::ScreenCapture)
-            {
-                //disable text, the fps text will cause image compare failures
-                toggleText(false);
-                //Set the current time to make the screen capture results deterministic 
-                mCurrentTime = mCurrentTimeTest->mStartTime;
-            }
-            else if (mCurrentTimeTest->mTask == TaskType::MeasureFps)
-            {
-                //  Mark the start frame. Required for time based perf ranges to know the 
-                //  Amount of frames that passed in the time range to calculate the avg frame time
-                //  Across the perf range
-                if (mCurrentTimeTest->mStartFrame == 0)
-                {
-                    mCurrentTimeTest->mStartFrame = frameRate().getFrameCount();
-                }
-            }
-
-
-            mCurrentTrigger = TriggerType::Time;
+            return;
         }
-        //  Check if it's the frame for a frame based task
-        else if (mCurrentFrameTest != mTestTasks.end() && frameId >= mCurrentFrameTest->mStartFrame)
-        {
-            if (mCurrentFrameTest->mTask == TaskType::ScreenCapture)
-            {
-                //disable text, the fps text will cause image compare failures
-                toggleText(false);
-            }
 
-            mCurrentTrigger = TriggerType::Frame;
-        }
-        else
+        mCurrentTriggerType = TriggerType::None;
+
+        if (mCurrentTimeTaskIndex < mTimeTasks.size() && mCurrentTriggerType == TriggerType::None)
         {
-            //No test tasks this frame
-            mCurrentTrigger = TriggerType::None;
+            if (mTimeTasks[mCurrentTimeTaskIndex]->isActive(this))
+            {
+                mCurrentTriggerType = TriggerType::Time;
+
+                mTimeTasks[mCurrentTimeTaskIndex]->onFrameBegin(this);
+            }
+        }
+
+        if (mCurrentFrameTaskIndex < mFrameTasks.size() && mCurrentTriggerType == TriggerType::None)
+        {
+            if (mFrameTasks[mCurrentFrameTaskIndex]->isActive(this))
+            {
+                mCurrentTriggerType = TriggerType::Frame;
+
+                mFrameTasks[mCurrentFrameTaskIndex]->onFrameBegin(this);
+            }
         }
 
         onBeginTestFrame();
     }
 
+    // End Test Frame.
     void SampleTest::endTestFrame()
     {
-        if (!hasTests()) return;
-
-        //Begin frame checks against the test tasks and returns a trigger type based
-        //on the testing this frame, which is passed into this function
-        if (mCurrentTrigger == TriggerType::Frame)
+        if (!(mCurrentTimeTaskIndex < mTimeTasks.size() || mCurrentFrameTaskIndex < mFrameTasks.size()))
         {
-            runFrameTests();
+            return;
         }
-        else if (mCurrentTrigger == TriggerType::Time)
+
+        if (mCurrentTriggerType == TriggerType::Time)
         {
-            runTimeTests();
+            mTimeTasks[mCurrentTimeTaskIndex]->onFrameEnd(this);
+
+            if (mTimeTasks[mCurrentTimeTaskIndex]->mIsTaskComplete)
+            {
+                mCurrentTimeTaskIndex++;
+            }
+        }
+
+        if (mCurrentTriggerType == TriggerType::Frame)
+        {
+            mFrameTasks[mCurrentFrameTaskIndex]->onFrameEnd(this);
+
+            if (mFrameTasks[mCurrentFrameTaskIndex]->mIsTaskComplete)
+            {
+                mCurrentFrameTaskIndex++;
+            }
         }
 
         onEndTestFrame();
     }
 
-    void SampleTest::outputXML()
+    // Write the JSON Literal.
+    template<typename T>
+    void SampleTest::writeJsonLiteral(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value)
     {
-        //only output a file if there was actually testing
-        if (hasTests())
-        {
-            float frameTime = 0.f;
-            float loadTime = 0.f;
-            uint32_t numFpsRanges = 0;
-            uint32_t numScreenshots = 0;
-            uint32_t numMemFrameCheck = 0;
-            uint32_t numMemTimeCheck = 0;
-
-            //frame based tests
-            for (auto it = mTestTasks.begin(); it != mTestTasks.end(); ++it)
-            {
-                switch (it->mTask)
-                {
-                case TaskType::MemoryCheck:
-                    ++numMemFrameCheck;
-                    break;
-                case TaskType::LoadTime:
-                    loadTime = it->mResult;
-                    break;
-                case TaskType::MeasureFps:
-                {
-                    frameTime += it->mResult;
-                    ++numFpsRanges;
-                    break;
-                }
-                case TaskType::ScreenCapture:
-                    ++numScreenshots;
-                    break;
-                case TaskType::Shutdown:
-                    continue;
-                default:
-                    should_not_get_here();
-                }
-            }
-
-            //time based tests
-            for (auto it = mTimedTestTasks.begin(); it != mTimedTestTasks.end(); ++it)
-            {
-                switch (it->mTask)
-                {
-                case TaskType::MemoryCheck:
-                    ++numMemTimeCheck;
-                    break;
-                case TaskType::ScreenCapture:
-                    ++numScreenshots;
-                    break;
-                case TaskType::MeasureFps:
-                    frameTime += it->mResult;
-                    ++numFpsRanges;
-                    break;
-                case TaskType::LoadTime:
-                case TaskType::Shutdown:
-                    continue;
-                default:
-                    should_not_get_here();
-                }
-            }
-
-            //average all performance ranges if there are any
-            numFpsRanges ? frameTime /= numFpsRanges : frameTime = 0;
-
-            std::ofstream of;
-            std::string exeName = getExecutableName();
-            //strip off .exe
-            std::string shortName = exeName.substr(0, exeName.size() - 4);
-            of.open(shortName + "_TestingLog_0.xml");
-            of << "<?xml version = \"1.0\" encoding = \"UTF-8\"?>\n";
-            of << "<TestLog>\n";
-            of << "<Summary\n";
-            of << "\tLoadTime=\"" << std::to_string(loadTime) << "\"\n";
-            of << "\tFrameTime=\"" << std::to_string(frameTime) << "\"\n";
-            of << "\tNumScreenshots=\"" << std::to_string(numScreenshots) << "\"\n";
-            of << "\tNumMemoryFrameChecks=\"" << std::to_string(numMemFrameCheck) << "\"\n";
-            of << "\tNumMemoryTimeChecks=\"" << std::to_string(numMemTimeCheck) << "\"\n";
-            of << "/>\n";
-            of << "</TestLog>";
-            of.close();
-        }
+        rapidjson::Value jkey;
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+        jval.AddMember(jkey, value, jallocator);
     }
 
-    void SampleTest::initFrameTests()
+    // Write the JSON Array.
+    template<typename T>
+    void SampleTest::writeJsonArray(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const T& value)
     {
-        //  Load time
-        if (mArgList.argExists("loadtime"))
+        rapidjson::Value jkey;
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+        rapidjson::Value jvec(rapidjson::kArrayType);
+        for (int32_t i = 0; i < value.length(); i++)
         {
-            Task newTask(2u, 3u, TaskType::LoadTime);
-            mTestTasks.push_back(newTask);
+            jvec.PushBack(value[i], jallocator);
         }
 
-        //  Shutdown
-        std::vector<ArgList::Arg> shutdownFrame = mArgList.getValues("shutdown");
-        if (!shutdownFrame.empty())
-        {
-            uint32_t startFame = shutdownFrame[0].asUint();
-            Task newTask(startFame, startFame + 1, TaskType::Shutdown);
-            mTestTasks.push_back(newTask);
-        }
-
-        //  Memory Check Frames.
-        std::vector<ArgList::Arg> mCheckFrames = mArgList.getValues("memframes");
-        for (uint32_t i = 0; i < mCheckFrames.size(); ++i)
-        {
-            std::vector<std::string> frames = splitString(mCheckFrames[i].asString(), "-");
-
-            if (frames.size() != 2)
-            {
-                logWarning("Bad Frame Range : " + mCheckFrames[i].asString() + " Memory Check Ignored.");
-            }
-            if (std::stoul(frames[0]) >= std::stoul(frames[1]))
-            {
-                logWarning("Bad Frame Range : " + mCheckFrames[i].asString() + " Memory Check Ignored.");
-            }
-
-            Task memoryCheckTask(std::stoul(frames[0]), std::stoul(frames[1]), TaskType::MemoryCheck);
-            mTestTasks.push_back(memoryCheckTask);
-        }
-
-        //  Screenshot Frames
-        std::vector<ArgList::Arg> ssFrames = mArgList.getValues("ssframes");
-        for (uint32_t i = 0; i < ssFrames.size(); ++i)
-        {
-            uint32_t startFrame = ssFrames[i].asUint();
-            Task newTask(startFrame, startFrame + 1, TaskType::ScreenCapture);
-            mTestTasks.push_back(newTask);
-        }
-
-        //  fps capture frames
-        std::vector<ArgList::Arg> fpsRange = mArgList.getValues("perfframes");
-
-        //  integer division on purpose, only care about ranges with start and end
-        size_t numRanges = fpsRange.size() / 2;
-        if (fpsRange.size() % 2 != 0)
-        {
-            logInfo(std::to_string(fpsRange.size()) + " values were provided for perfframes. " +
-                "Perfframes expects an even number of values, as each pair of values represents a start and end of a testing range." +
-                "The final odd value out will be ignored.");
-        }
-        for (size_t i = 0; i < numRanges; ++i)
-        {
-            uint32_t rangeStart = fpsRange[2 * i].asUint();
-            uint32_t rangeEnd = fpsRange[2 * i + 1].asUint();
-            //only add if valid range
-            if (rangeEnd > rangeStart)
-            {
-                Task newTask(rangeStart, rangeEnd, TaskType::MeasureFps);
-                mTestTasks.push_back(newTask);
-            }
-            else
-            {
-                logInfo("Test Range from frames " + std::to_string(rangeStart) + " to " + std::to_string(rangeEnd) +
-                    " is invalid. End must be greater than start");
-                continue;
-            }
-        }
-
-        //If there are tests, sort them and fix any overalpping ranges
-        if (!mTestTasks.empty())
-        {
-            //Put the tasks in start frame order
-            std::sort(mTestTasks.begin(), mTestTasks.end());
-            //ensure no task ranges overlap
-            auto previousIt = mTestTasks.begin();
-            for (auto it = mTestTasks.begin() + 1; it != mTestTasks.end(); ++it)
-            {
-                //if overlap, log it and remove the overlapping test task
-                if (it->mStartFrame < previousIt->mEndFrame)
-                {
-                    logInfo("Test Range from frames " + std::to_string(it->mStartFrame) + " to " + std::to_string(it->mEndFrame) +
-                        " overlaps existing range from " + std::to_string(previousIt->mStartFrame) + " to " + std::to_string(previousIt->mEndFrame));
-                    it = mTestTasks.erase(it);
-                    --it;
-                }
-                else
-                {
-                    previousIt = it;
-                }
-            }
-        }
-        mCurrentFrameTest = mTestTasks.begin();
+        jval.AddMember(jkey, jvec, jallocator);
     }
 
-    void SampleTest::initTimeTests()
+    // Write the JSON Value.
+    void SampleTest::writeJsonValue(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, rapidjson::Value& value)
     {
-        //  Screenshots
-        std::vector<ArgList::Arg> timedScreenshots = mArgList.getValues("sstimes");
-        for (auto it = timedScreenshots.begin(); it != timedScreenshots.end(); ++it)
-        {
-            float startTime = it->asFloat();
-            TimedTask newTask(startTime, startTime + 1, TaskType::ScreenCapture);
-            mTimedTestTasks.push_back(newTask);
-        }
-
-        //  Memory Check Times.
-        std::vector<ArgList::Arg> mCheckTimes = mArgList.getValues("memtimes");
-        for (uint32_t i = 0; i < mCheckTimes.size(); ++i)
-        {
-            std::vector<std::string> times = splitString(mCheckTimes[i].asString(), "-");
-
-            if (times.size() != 2)
-            {
-                logWarning("Bad Time Range : " + mCheckTimes[i].asString() + " Memory Check Ignored.");
-            }
-            if (std::stoul(times[0]) >= std::stoul(times[1]))
-            {
-                logWarning("Bad Time Range : " + mCheckTimes[i].asString() + " Memory Check Ignored.");
-            }
-
-            TimedTask memoryCheckTask(std::stof(times[0]), std::stof(times[1]), TaskType::MemoryCheck);
-            mTimedTestTasks.push_back(memoryCheckTask);
-        }
-
-
-        //fps capture times
-        std::vector<ArgList::Arg> fpsTimeRange = mArgList.getValues("perftimes");
-        //integer division on purpose, only care about ranges with start and end
-        size_t numTimedRanges = fpsTimeRange.size() / 2;
-        if (fpsTimeRange.size() % 2 != 0)
-        {
-            logInfo(std::to_string(fpsTimeRange.size()) + " values were provided for perftimes. " +
-                "Perftimes expects an even number of values, as each pair of values represents a start and end of a testing range." +
-                "The final odd value out will be ignored.");
-        }
-
-        for (size_t i = 0; i < numTimedRanges; ++i)
-        {
-            float rangeStart = fpsTimeRange[2 * i].asFloat();
-            float rangeEnd = fpsTimeRange[2 * i + 1].asFloat();
-            //only add if valid range
-            if (rangeEnd > rangeStart)
-            {
-                TimedTask newTask(rangeStart, rangeEnd, TaskType::MeasureFps);
-                mTimedTestTasks.push_back(newTask);
-            }
-            else
-            {
-                logInfo("Test Range from frames " + std::to_string(rangeStart) + " to " + std::to_string(rangeEnd) +
-                    " is invalid. End must be greater than start");
-                continue;
-            }
-        }
-
-        //Shutdown
-        std::vector<ArgList::Arg> shutdownTimeArg = mArgList.getValues("shutdowntime");
-        if (!shutdownTimeArg.empty())
-        {
-            float shutdownTime = shutdownTimeArg[0].asFloat();
-            TimedTask newTask(shutdownTime, shutdownTime + 1, TaskType::Shutdown);
-            mTimedTestTasks.push_back(newTask);
-        }
-
-        //Sort and make sure no times overlap
-        if (!mTimedTestTasks.empty())
-        {
-            //Put the tasks in start time order
-            std::sort(mTimedTestTasks.begin(), mTimedTestTasks.end());
-            //ensure no task ranges overlap
-            auto previousIt = mTimedTestTasks.begin();
-            for (auto it = mTimedTestTasks.begin() + 1; it != mTimedTestTasks.end(); ++it)
-            {
-                //if overlap, log it and remove the overlapping test task
-                if (it->mStartTime < previousIt->mEndTime)
-                {
-                    logInfo("Test Range from time " + std::to_string(it->mStartTime) + " to " + std::to_string(it->mEndTime) +
-                        " overlaps existing range from " + std::to_string(previousIt->mStartTime) + " to " + std::to_string(previousIt->mEndTime));
-                    it = mTimedTestTasks.erase(it);
-                    --it;
-                }
-                else
-                {
-                    previousIt = it;
-                }
-            }
-        }
-        mCurrentTimeTest = mTimedTestTasks.begin();
+        rapidjson::Value jkey;
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+        jval.AddMember(jkey, value, jallocator);
     }
 
-    void SampleTest::runFrameTests()
+    // Write the JSON String.
+    void SampleTest::writeJsonString(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, const std::string& value)
     {
-        if (frameRate().getFrameCount() == mCurrentFrameTest->mEndFrame)
-        {
-            if (mCurrentFrameTest->mTask == TaskType::MeasureFps)
-            {
-                mCurrentFrameTest->mResult /= (mCurrentFrameTest->mEndFrame - mCurrentFrameTest->mStartFrame);
-            }
-            else if (mCurrentFrameTest->mTask == TaskType::MemoryCheck)
-            {
-                captureMemory(frameRate().getFrameCount(), mCurrentTime, true, true);
-            }
+        rapidjson::Value jstring, jkey;
+        jstring.SetString(value.c_str(), (uint32_t)value.size(), jallocator);
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
 
-            ++mCurrentFrameTest;
+        jval.AddMember(jkey, jstring, jallocator);
+    }
+
+    // Write the JSON Bool.
+    void SampleTest::writeJsonBool(rapidjson::Value& jval, rapidjson::Document::AllocatorType& jallocator, const std::string& key, bool isValue)
+    {
+        rapidjson::Value jbool, jkey;
+        jbool.SetBool(isValue);
+        jkey.SetString(key.c_str(), (uint32_t)key.size(), jallocator);
+
+        jval.AddMember(jkey, jbool, jallocator);
+    }
+
+    // Write the Test Results.
+    void SampleTest::writeJsonTestResults()
+    {
+        // Create the Test Results.
+        rapidjson::Document jsonTestResults;
+        jsonTestResults.SetObject();
+
+        // Get the json Value and the Allocator.
+        rapidjson::Value & jsonVal = jsonTestResults;
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
+
+        writeJsonLiteral(jsonVal, jsonAllocator, "Frame Tasks", mFrameTasks.size());
+        writeJsonLiteral(jsonVal, jsonAllocator, "Time Tasks", mTimeTasks.size());
+
+        // Write the Json Test Results.
+        writeJsonTestResults(jsonTestResults);
+
+        // Get String Buffer for the json.
+        rapidjson::StringBuffer jsonStringBuffer;
+
+        // Get the PrettyWriter for the json.
+        rapidjson::PrettyWriter<rapidjson::StringBuffer> jsonWriter(jsonStringBuffer);
+
+        // Set the Indent.
+        jsonWriter.SetIndent(' ', 4);
+
+        // Use the jsonwriter.
+        jsonTestResults.Accept(jsonWriter);
+
+        // Construct the json string from the string buffer.
+        std::string jsonString(jsonStringBuffer.GetString(), jsonStringBuffer.GetSize());
+
+        std::string exeName = getExecutableName();
+        std::string shortName = exeName.substr(0, exeName.size() - 4);
+
+        std::string jsonFilename = "";
+
+        if (mHasSetFilename)
+        {
+            jsonFilename = mTestOutputFilename + ".json";
         }
         else
         {
-            switch (mCurrentFrameTest->mTask)
-            {
-            case TaskType::MemoryCheck:
-                captureMemory(frameRate().getFrameCount(), mCurrentTime, true, false);
-                break;
-            case TaskType::LoadTime:
-            case TaskType::MeasureFps:
-                mCurrentFrameTest->mResult += frameRate().getLastFrameTime();
-                break;
-            case TaskType::ScreenCapture:
-                captureScreen();
-                //re-enable text
-                toggleText(true);
-                break;
-            case TaskType::Shutdown:
-                outputXML();
-                onTestShutdown();
-                shutdownApp();
-                break;
-            default:
-                should_not_get_here();
-            }
+            // Write the json file.
+            jsonFilename = shortName + ".json";
         }
+
+        if (mHasSetDirectory)
+        {
+            jsonFilename = mTestOutputDirectory + jsonFilename;
+        }
+
+        std::ofstream outputStream(jsonFilename.c_str());
+        if (outputStream.fail())
+        {
+            logError("Cannot write to " + jsonFilename + ".\n");
+        }
+        outputStream << jsonString;
+        outputStream.close();
     }
 
-    void SampleTest::runTimeTests()
+    // Write the Json Test Results.
+    void SampleTest::writeJsonTestResults(rapidjson::Document & jsonTestResults)
     {
-        switch (mCurrentTimeTest->mTask)
-        {
+        // Write the Load Time Check Results.
+        writeLoadTimeCheckResults(jsonTestResults);
 
-        case TaskType::MemoryCheck:
+        // Write the Memory Range Results.
+        writeMemoryRangesResults(jsonTestResults);
+
+        // Write the Performance Range Results.
+        writePerformanceRangesResults(jsonTestResults);
+
+        // Write the Screen Capture Results.
+        writeScreenCaptureResults(jsonTestResults);
+    }
+
+    // Write Load Time.
+    void SampleTest::writeLoadTimeCheckResults(rapidjson::Document & jsonTestResults)
+    {
+        // Get the json Value and the Allocator.
+        rapidjson::Value & jsonVal = jsonTestResults;
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
+
+        if (mLoadTimeCheckTask != nullptr)
         {
-            if (mCurrentTime >= mCurrentTimeTest->mEndTime)
-            {
-                captureMemory(frameRate().getFrameCount(), mCurrentTime, false, true);
-                ++mCurrentTimeTest;
-            }
-            else
-            {
-                captureMemory(frameRate().getFrameCount(), mCurrentTime, false, false);
-            }
-            break;
-        }
-        case TaskType::ScreenCapture:
-        {
-            captureScreen();
-            toggleText(true);
-            ++mCurrentTimeTest;
-            break;
-        }
-        case TaskType::MeasureFps:
-        {
-            if (mCurrentTime >= mCurrentTimeTest->mEndTime)
-            {
-                mCurrentTimeTest->mResult /= (frameRate().getFrameCount() - mCurrentTimeTest->mStartFrame);
-                ++mCurrentTimeTest;
-            }
-            else
-            {
-                mCurrentTimeTest->mResult += frameRate().getLastFrameTime();
-            }
-            break;
-        }
-        case TaskType::Shutdown:
-        {
-            outputXML();
-            onTestShutdown();
-            shutdownApp();
-            break;
-        }
-        default:
-            should_not_get_here();
+            writeJsonLiteral(jsonVal, jsonAllocator, "Load Time Check", mLoadTimeCheckTask->mLoadTimeCheckResult);
         }
     }
 
-    
+    // Write the Memory Ranges Results.
+    void SampleTest::writeMemoryRangesResults(rapidjson::Document & jsonTestResults)
+    {
+    }
 
+    // Write the Performance Ranges Results.
+    void SampleTest::writePerformanceRangesResults(rapidjson::Document & jsonTestResults)
+    {
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
 
-    //  Capture the Current Memory and write it to the provided memory check.
+        // Write the screen captured image files to the output file.
+        rapidjson::Value pcfArray(rapidjson::kArrayType);
+
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            if (mFrameTasks[i]->mTaskType == TaskType::PerformanceCheckTask)
+            {
+            }
+        }
+
+        jsonTestResults.AddMember("Performance Frame Checks", pcfArray, jsonAllocator);
+
+        // Write the time based performance checks.
+        rapidjson::Value pctArray(rapidjson::kArrayType);
+
+        for (uint32_t i = 0; i < mTimeTasks.size(); i++)
+        {
+            if (mTimeTasks[i]->mTaskType == TaskType::PerformanceCheckTask)
+            {
+            }
+        }
+
+        jsonTestResults.AddMember("Performance Time Checks", pctArray, jsonAllocator);
+    }
+
+    // Write the Screen Capture Results.
+    void SampleTest::writeScreenCaptureResults(rapidjson::Document & jsonTestResults)
+    {
+        auto & jsonAllocator = jsonTestResults.GetAllocator();
+
+        // Write the screen captured image files to the output file.
+        rapidjson::Value scfArray(rapidjson::kArrayType);
+
+        for (uint32_t i = 0; i < mFrameTasks.size(); i++)
+        {
+            if (mFrameTasks[i]->mTaskType == TaskType::ScreenCaptureTask)
+            {
+                std::shared_ptr<ScreenCaptureFrameTask> scfTask = std::dynamic_pointer_cast<ScreenCaptureFrameTask>(mFrameTasks[i]);
+
+                if (scfTask != nullptr)
+                {
+                    rapidjson::Value scffilename;
+                    scffilename.SetString(scfTask->mCaptureFilename.c_str(), jsonAllocator);
+
+                    rapidjson::Value scffilepath;
+                    scffilepath.SetString(scfTask->mCaptureFilepath.c_str(), jsonAllocator);
+
+                    rapidjson::Value scfFile;
+                    scfFile.SetObject();
+                    scfFile.AddMember("Filename", scffilename, jsonAllocator);
+                    scfFile.AddMember("Filepath", scffilepath, jsonAllocator);
+
+                    scfArray.PushBack(scfFile, jsonAllocator);
+                }
+            }
+        }
+
+        jsonTestResults.AddMember("Frame Screen Captures", scfArray, jsonAllocator);
+
+        // Write the screen captured image files to the output file.
+        rapidjson::Value sctArray(rapidjson::kArrayType);
+
+        for (uint32_t i = 0; i < mTimeTasks.size(); i++)
+        {
+            if (mTimeTasks[i]->mTaskType == TaskType::ScreenCaptureTask)
+            {
+                std::shared_ptr<ScreenCaptureTimeTask> sctTask = std::dynamic_pointer_cast<ScreenCaptureTimeTask>(mTimeTasks[i]);
+
+                if (sctTask != nullptr)
+                {
+                    rapidjson::Value sctfilename;
+                    sctfilename.SetString(sctTask->mCaptureFilename.c_str(), jsonAllocator);
+
+                    rapidjson::Value sctfilepath;
+                    sctfilepath.SetString(sctTask->mCaptureFilepath.c_str(), jsonAllocator);
+
+                    rapidjson::Value sctFile;
+                    sctFile.SetObject();
+                    sctFile.AddMember("Filename", sctfilename, jsonAllocator);
+                    sctFile.AddMember("Filepath", sctfilepath, jsonAllocator);
+
+                    sctArray.PushBack(sctFile, jsonAllocator);
+                }
+            }
+        }
+
+        jsonTestResults.AddMember("Time Screen Captures", sctArray, jsonAllocator);
+    }
+
+    // Initialize the Tests.
+    void SampleTest::initializeTests()
+    {
+        // Check for an Output Directory.
+        if (mArgList.argExists("outputdir"))
+        {
+            std::vector<ArgList::Arg> odArgs = mArgList.getValues("outputdir");
+            if (!odArgs.empty())
+            {
+                mHasSetDirectory = true;
+                mTestOutputDirectory = odArgs[0].asString();
+            }
+        }
+
+        // Check for a Results File.
+        if (mArgList.argExists("outputfilename"))
+        {
+            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("outputfilename");
+            if (!orfArgs.empty())
+            {
+                mHasSetFilename = true;
+                mTestOutputFilename = orfArgs[0].asString();
+            }
+        }
+
+        if (mArgList.argExists("fixedtimedelta"))
+        {
+            std::vector<ArgList::Arg> ftdArgs = mArgList.getValues("fixedtimedelta");
+            if (!ftdArgs.empty())
+            {
+                setFixedTimeDelta(ftdArgs[0].asFloat());
+            }
+        }
+
+        // Ready the Frame Based Tests.
+        initializeFrameTests();
+
+        // Ready the Time Based Tests.
+        initializeTimeTests();
+    }
+
+    // Initialize Frame Tests.
+    void SampleTest::initializeFrameTests()
+    {
+        // Check for a Load Time.
+        if (mArgList.argExists("loadtime"))
+        {
+            mLoadTimeCheckTask = std::make_shared<LoadTimeCheckTask>();
+            mFrameTasks.push_back(mLoadTimeCheckTask);
+        }
+
+        //
+        // Check for a Shutdown Frame.
+        if (mArgList.argExists("shutdown"))
+        {
+            std::vector<ArgList::Arg> shutdownFrame = mArgList.getValues("shutdown");
+            if (!shutdownFrame.empty())
+            {
+                uint32_t startFrame = shutdownFrame[0].asUint();
+                std::shared_ptr<ShutdownFrameTask> shutdownframeTask = std::make_shared<ShutdownFrameTask>(startFrame);
+                mFrameTasks.push_back(shutdownframeTask);
+            }
+        }
+
+        // Check for a Screenshot Frame.
+        if (mArgList.argExists("ssframes"))
+        {
+            std::vector<ArgList::Arg> ssFrames = mArgList.getValues("ssframes");
+            for (uint32_t i = 0; i < ssFrames.size(); ++i)
+            {
+                uint32_t captureFrame = ssFrames[i].asUint();
+                std::shared_ptr<ScreenCaptureFrameTask> screenCaptureFrameTask = std::make_shared<ScreenCaptureFrameTask>(captureFrame);
+                mFrameTasks.push_back(screenCaptureFrameTask);
+            }
+        }
+
+        std::sort(mFrameTasks.begin(), mFrameTasks.end(), FrameTaskPtrCompare());
+    }
+
+    // Initialize Time Tests.
+    void SampleTest::initializeTimeTests()
+    {
+        //
+        // Check for a Shutdown Time.
+        if (mArgList.argExists("shutdowntime"))
+        {
+            //Shutdown
+            std::vector<ArgList::Arg> shutdownTimeArg = mArgList.getValues("shutdowntime");
+            if (!shutdownTimeArg.empty())
+            {
+                float shutdownTime = shutdownTimeArg[0].asFloat();
+                std::shared_ptr<ShutdownTimeTask> shutdowntimeTask = std::make_shared<ShutdownTimeTask>(shutdownTime);
+                mTimeTasks.push_back(shutdowntimeTask);
+            }
+        }
+
+        // Check for a Screenshot Frame.
+        if (mArgList.argExists("sstimes"))
+        {
+            std::vector<ArgList::Arg> ssTimes = mArgList.getValues("sstimes");
+            for (uint32_t i = 0; i < ssTimes.size(); ++i)
+            {
+                uint32_t captureTime = ssTimes[i].asFloat();
+                std::shared_ptr<ScreenCaptureTimeTask> screenCaptureTimeTask = std::make_shared<ScreenCaptureTimeTask>(captureTime);
+                mTimeTasks.push_back(screenCaptureTimeTask);
+            }
+        }
+
+        // Check for Performance Time Ranges.
+        if (mArgList.argExists("perftimes"))
+        {
+            // Performance Check Frames.
+            std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perftimes");
+
+            if (perfframeRanges.size() % 2 != 0)
+            {
+                logError("Please provide a start and end frame for each Performance Frame Range. The extra one will be discarded.");
+                perfframeRanges.pop_back();
+            }
+
+            for (uint32_t i = 0; i < perfframeRanges.size() / 2; i++)
+            {
+                std::shared_ptr<PerformanceCheckTimeTask> performanceCheckTimeTask = std::make_shared<PerformanceCheckTimeTask>(perfframeRanges[i].asFloat(), perfframeRanges[i + 1].asFloat());
+            }
+        }
+
+        // Check for Memory Time Ranges.
+        if (mArgList.argExists("memtimes"))
+        {
+            // Memory Check Frames.
+            std::vector<ArgList::Arg> memframeRanges = mArgList.getValues("memtimes");
+        }
+
+        std::sort(mTimeTasks.begin(), mTimeTasks.end(), TimeTaskPtrCompare());
+    }
+
+    // Capture the Current Memory and write it to the provided memory check.
     void SampleTest::getMemoryStatistics(MemoryCheck & memoryCheck)
     {
         memoryCheck.totalVirtualMemory = getTotalVirtualMemory();
@@ -495,11 +492,10 @@ namespace Falcor
         memoryCheck.currentlyUsedVirtualMemory = getProcessUsedVirtualMemory();
     }
 
-
-    //  Write the Memory Check Range, either in terms of Time or Frames to a file. Outputs Difference, Start and End Times and Memories.
+    // Write the Memory Check Range, either in terms of Time or Frames to a file. Outputs Difference, Start and End Times and Memories.
     void SampleTest::writeMemoryRange(const MemoryCheckRange & memoryCheckRange, bool frameTest /*= true*/)
     {
-        //  Get the Strings for the Memory in Bytes - Start Frame
+        // Get the Strings for the Memory in Bytes - Start Frame
         std::string startTVM_B = std::to_string(memoryCheckRange.startCheck.totalVirtualMemory);
         std::string startTUVM_B = std::to_string(memoryCheckRange.startCheck.totalUsedVirtualMemory);
         std::string startCUVM_B = std::to_string(memoryCheckRange.startCheck.currentlyUsedVirtualMemory);
@@ -508,7 +504,7 @@ namespace Falcor
         std::string startTUVM_MB = std::to_string(memoryCheckRange.startCheck.totalUsedVirtualMemory / (1024 * 1024));
         std::string startCUVM_MB = std::to_string(memoryCheckRange.startCheck.currentlyUsedVirtualMemory / (1024 * 1024));
 
-        //  Check what the file description should say.
+        // Check what the file description should say.
         std::string startCheck = "";
         if (frameTest)
         {
@@ -522,7 +518,7 @@ namespace Falcor
         startCheck = startCheck + ("Total Used Virtual Memory By All Processes : " + startTUVM_B + " bytes, " + startTUVM_MB + " MB. \n");
         startCheck = startCheck + ("Virtual Memory used by this Process : " + startCUVM_B + " bytes, " + startCUVM_MB + " MB. \n \n");
 
-        //  Get the Strings for the Memory in Bytes - End Frame
+        // Get the Strings for the Memory in Bytes - End Frame
         std::string endTVM_B = std::to_string(memoryCheckRange.endCheck.totalVirtualMemory);
         std::string endTUVM_B = std::to_string(memoryCheckRange.endCheck.totalUsedVirtualMemory);
         std::string endCUVM_B = std::to_string(memoryCheckRange.endCheck.currentlyUsedVirtualMemory);
@@ -531,7 +527,7 @@ namespace Falcor
         std::string endTUVM_MB = std::to_string(memoryCheckRange.endCheck.totalUsedVirtualMemory / (1024 * 1024));
         std::string endCUVM_MB = std::to_string(memoryCheckRange.endCheck.currentlyUsedVirtualMemory / (1024 * 1024));
 
-        //  Check what the file description should say.
+        // Check what the file description should say.
         std::string endCheck = "";
         if (frameTest)
         {
@@ -546,7 +542,7 @@ namespace Falcor
         endCheck = endCheck + ("Total Used Virtual Memory By All Processes : " + endTUVM_B + " bytes, " + endTUVM_MB + " MB. \n");
         endCheck = endCheck + ("Virtual Memory used by this Process : " + endCUVM_B + " bytes, " + endCUVM_MB + " MB. \n \n");
 
-        //  Compute the Difference Between the Two.
+        // Compute the Difference Between the Two.
         std::string differenceCheck = "Difference : \n";
         int64_t difference = 0;
         {
@@ -554,8 +550,7 @@ namespace Falcor
             differenceCheck = differenceCheck + std::to_string(difference) + "\n \n";
         }
 
-
-        //  Key string for difference.
+        // Key string for difference.
         std::string keystring = "";
         if (frameTest)
         {
@@ -566,12 +561,12 @@ namespace Falcor
             keystring = std::to_string(memoryCheckRange.startCheck.effectiveTime) + " " + std::to_string(memoryCheckRange.endCheck.effectiveTime) + " " + (startCUVM_B)+" " + (endCUVM_B)+" " + std::to_string(difference) + " \n";
         }
 
-        //  Get the name of the current program.
+        // Get the name of the current program.
         std::string filename = getExecutableName();
 
-        //  Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
+        // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
         std::string prefix = std::string(filename);
-        //  Frame Test.
+        // Frame Test.
         if (frameTest)
         {
             prefix = prefix + ".MemoryFrameCheck";
@@ -582,10 +577,10 @@ namespace Falcor
         }
         std::string executableDir = getExecutableDirectory();
         std::string txtFile;
-        //  Get an available filename.
+        // Get an available filename.
         if (findAvailableFilename(prefix, executableDir, "txt", txtFile))
         {
-            //  Output the memory check.
+            // Output the memory check.
             std::ofstream of;
             of.open(txtFile);
             of << keystring;
@@ -596,14 +591,12 @@ namespace Falcor
         }
         else
         {
-            //  Log Error.
+            // Log Error.
             logError("Could not find available filename when checking memory.");
         }
     }
 
-
-
-    //  Capture the Memory and return a representative string.
+    // Capture the Memory and return a representative string.
     void SampleTest::captureMemory(uint64_t frameCount, float currentTime, bool frameTest /*= true*/, bool endRange /*= false*/)
     {
         if (frameTest && !endRange && !mMemoryFrameCheckRange.active)
@@ -638,4 +631,174 @@ namespace Falcor
         }
     }
 
+    // LoadTimeCheckTask
+
+    bool SampleTest::LoadTimeCheckTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
+    }
+
+    void SampleTest::LoadTimeCheckTask::onFrameBegin(SampleTest* sampleTest)
+    {
+        mLoadTimeCheckResult = sampleTest->frameRate().getLastFrameTime();
+    }
+
+    void SampleTest::LoadTimeCheckTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    // ScreenCaptureFrameTask
+
+    bool SampleTest::ScreenCaptureFrameTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->getFrameID() == mCaptureFrame && !mIsTaskComplete;
+    }
+
+    void SampleTest::ScreenCaptureFrameTask::onFrameBegin(SampleTest* sampleTest)
+    {
+        sampleTest->toggleText(false);
+    }
+
+    void SampleTest::ScreenCaptureFrameTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (sampleTest->mHasSetDirectory)
+        {
+            // Capture the Screen.
+            std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename, sampleTest->mTestOutputDirectory);
+            mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+            mCaptureFilename = getFilenameFromPath(mCaptureFile);
+        }
+        else
+        {
+            // Capture the Screen.
+            std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename);
+            mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+            mCaptureFilename = getFilenameFromPath(mCaptureFile);
+        }
+
+        // Toggle the Text Back.
+        sampleTest->toggleText(true);
+
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    // ShutdownFrameTask
+
+    bool SampleTest::ShutdownFrameTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
+    }
+
+    void SampleTest::ShutdownFrameTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        // Write the json Test Results.
+        sampleTest->writeJsonTestResults();
+
+        // Shutdown the App.
+        sampleTest->shutdownApp();
+
+        // On Test Shutdown.
+        sampleTest->onTestShutdown();
+
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    // MemoryCheckTimeTask
+
+    void SampleTest::MemoryCheckTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime && !mIsActive)
+        {
+            mIsActive = true;
+            sampleTest->getMemoryStatistics(mStartCheck);
+        }
+
+        if (sampleTest->mCurrentTime >= mEndTime && mIsActive)
+        {
+            sampleTest->getMemoryStatistics(mEndCheck);
+            mIsActive = false;
+            mIsTaskComplete = true;
+        }
+    }
+
+    bool SampleTest::PerformanceCheckTimeTask::isActive(SampleTest* sampleTest)
+    {
+        return sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime;
+    }
+
+    void SampleTest::PerformanceCheckTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        // Task is Complete!
+        mIsTaskComplete = true;
+    }
+
+    bool SampleTest::ScreenCaptureTimeTask::isActive(SampleTest* sampleTest)
+    {
+        return mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
+    }
+
+    void SampleTest::ScreenCaptureTimeTask::onFrameBegin(SampleTest* sampleTest)
+    {
+        if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        {
+            // Sneakily set the time of the program! For perfect pictures.
+            sampleTest->mCurrentTime = mCaptureTime;
+
+            sampleTest->toggleText(false);
+        }
+    }
+
+    void SampleTest::ScreenCaptureTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        {
+            if (sampleTest->mHasSetDirectory)
+            {
+                // Capture the Screen.
+                std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename, sampleTest->mTestOutputDirectory);
+                mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                mCaptureFilename = getFilenameFromPath(mCaptureFile);
+            }
+            else
+            {
+                // Capture the Screen.
+                std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename);
+                mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
+                mCaptureFilename = getFilenameFromPath(mCaptureFile);
+            }
+
+            // Toggle the Text Back.
+            sampleTest->toggleText(true);
+
+            // Task is Complete!
+            mIsTaskComplete = true;
+        }
+    }
+
+    bool SampleTest::ShutdownTimeTask::isActive(SampleTest* sampleTest)
+    {
+        return mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
+    }
+
+    void SampleTest::ShutdownTimeTask::onFrameEnd(SampleTest* sampleTest)
+    {
+        if (mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        {
+            // Write the json Test Results.
+            sampleTest->writeJsonTestResults();
+
+            // Shutdown the App.
+            sampleTest->shutdownApp();
+
+            // On Test Shutdown.
+            sampleTest->onTestShutdown();
+
+            // Task is Complete!
+            mIsTaskComplete = true;
+        }
+    }
 }

@@ -53,14 +53,14 @@
 @set PM_PYTHON_PACKAGE=python@2.7.6-windows-x86.exe
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do @set TEMP_FILE_NAME=%%a
 @set TARGET=%TEMP_FILE_NAME%.exe
-@call "%~dp0fetch_file_from_s3.cmd" %PM_PYTHON_PACKAGE% %TARGET%
+@call "%~dp0fetch_file_from_s3.cmd" %PM_PYTHON_PACKAGE% "%TARGET%"
 @if errorlevel 1 goto ERROR
 
 @echo Unpacking ...
-@%TARGET% -o"%PM_PYTHON_DIR%" -y 1> nul
+@"%TARGET%" -o"%PM_PYTHON_DIR%" -y 1> nul
 @if errorlevel 1 goto ERROR
 
-@del %TARGET%
+@del "%TARGET%"
 
 :PACKMAN
 :: The packman module may already be externally configured
@@ -77,14 +77,14 @@
 @set PM_MODULE_PACKAGE=packman@%PM_PACKMAN_VERSION%-common.zip
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do @set TEMP_FILE_NAME=%%a
 @set TARGET=%TEMP_FILE_NAME%
-@call "%~dp0fetch_file_from_s3.cmd" %PM_MODULE_PACKAGE% %TARGET%
+@call "%~dp0fetch_file_from_s3.cmd" %PM_MODULE_PACKAGE% "%TARGET%"
 @if errorlevel 1 goto ERROR
 
 @echo Unpacking ...
-@"%PM_PYTHON%" "%~dp0\install_package.py" %TARGET% "%PM_MODULE_DIR%"
+@"%PM_PYTHON%" "%~dp0\install_package.py" "%TARGET%" "%PM_MODULE_DIR%"
 @if errorlevel 1 goto ERROR
 
-@del %TARGET%
+@del "%TARGET%"
 
 @goto END
 

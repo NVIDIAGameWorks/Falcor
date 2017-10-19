@@ -63,7 +63,7 @@ namespace Falcor
         {
             mPressedKeys.insert(keyEvent.key);
         }
-        else
+        else if (keyEvent.type == KeyboardEvent::Type::KeyReleased)
         {
             mPressedKeys.erase(keyEvent.key);
         }
@@ -245,6 +245,8 @@ namespace Falcor
 
     void Sample::renderGUI()
     {
+        mpGui->beginFrame();
+
         constexpr char help[] =
             "  'F1'      - Show\\Hide text\n"
             "  'F2'      - Show\\Hide GUI\n"
@@ -353,15 +355,15 @@ namespace Falcor
         }
     }
 
-    void Sample::captureScreen()
+    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory)
     {
-        std::string filename = getExecutableName();
+        mCaptureScreen = false;
 
-        // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
-        std::string prefix = std::string(filename);
-        std::string executableDir = getExecutableDirectory();
+        std::string filename = explicitFilename != "" ? explicitFilename : getExecutableName();
+        std::string outputDirectory = explicitOutputDirectory != "" ? explicitOutputDirectory : getExecutableDirectory();
+
         std::string pngFile;
-        if (findAvailableFilename(prefix, executableDir, "png", pngFile))
+        if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
         {
             Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
@@ -369,8 +371,10 @@ namespace Falcor
         else
         {
             logError("Could not find available filename when capturing screen");
+            return "";
         }
-        mCaptureScreen = false;
+
+         return pngFile;
     }
 
     void Sample::initUI()

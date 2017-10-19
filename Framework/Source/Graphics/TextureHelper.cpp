@@ -41,13 +41,13 @@ namespace Falcor
 
     static const uint32_t kDdsMagicNumber = 0x20534444;
 
-	bool checkDdsChannelMask(const DdsHeader::PixelFormat& format, uint32_t r, uint32_t g, uint32_t b, uint32_t a)
-	{
+    bool checkDdsChannelMask(const DdsHeader::PixelFormat& format, uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+    {
         return (format.rMask == r && format.gMask == g && format.bMask == b && format.aMask == a);
-	}
+    }
 
-	uint32_t makeFourCC(char name[4])
-	{
+    uint32_t makeFourCC(char name[4])
+    {
         uint32_t fourCC = 0;
         for(uint32_t i = 0; i < 4; i++)
         {
@@ -57,186 +57,186 @@ namespace Falcor
         return fourCC;
     }
 
-	ResourceFormat falcorFormatFromDXGIFormat(DXGI_FORMAT fmt) 
-	{
-		switch (fmt)
-		{
-		case DXGI_FORMAT_R32G8X24_TYPELESS:
-		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
-		case DXGI_FORMAT_R32G32B32_TYPELESS:
-		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
-		case DXGI_FORMAT_R16G16B16A16_SNORM:
-		case DXGI_FORMAT_R32G32_TYPELESS:
-		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
-		case DXGI_FORMAT_Y416:
-		case DXGI_FORMAT_Y210:
-		case DXGI_FORMAT_Y216:
-		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-		case DXGI_FORMAT_R16G16_TYPELESS:
-		case DXGI_FORMAT_R32_TYPELESS:
-		case DXGI_FORMAT_R24G8_TYPELESS:
-		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-		case DXGI_FORMAT_R8G8_B8G8_UNORM:
-		case DXGI_FORMAT_G8R8_G8B8_UNORM:
-		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
-		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
-		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
-		case DXGI_FORMAT_AYUV:
-		case DXGI_FORMAT_Y410:
-		case DXGI_FORMAT_YUY2:
-		case DXGI_FORMAT_P010:
-		case DXGI_FORMAT_P016:
-		case DXGI_FORMAT_R8G8_TYPELESS:
-		case DXGI_FORMAT_R16_TYPELESS:
-		case DXGI_FORMAT_A8P8:
-		case DXGI_FORMAT_B4G4R4A4_UNORM:
-		case DXGI_FORMAT_NV12:
-		case DXGI_FORMAT_420_OPAQUE:
-		case DXGI_FORMAT_NV11:
-		case DXGI_FORMAT_R8_TYPELESS:
-		case DXGI_FORMAT_AI44:
-		case DXGI_FORMAT_IA44:
-		case DXGI_FORMAT_P8:
-		case DXGI_FORMAT_R1_UNORM:
-		case DXGI_FORMAT_BC1_TYPELESS:
-		case DXGI_FORMAT_BC4_TYPELESS:
-		case DXGI_FORMAT_BC2_TYPELESS:
-		case DXGI_FORMAT_BC3_TYPELESS:
-		case DXGI_FORMAT_BC5_TYPELESS:
-		case DXGI_FORMAT_BC6H_TYPELESS:
-		case DXGI_FORMAT_BC7_TYPELESS:
-			return ResourceFormat::Unknown;
-		case DXGI_FORMAT_R32G32B32A32_FLOAT:
-			return ResourceFormat::RGBA32Float;
-		case DXGI_FORMAT_R32G32B32A32_UINT:
-			return ResourceFormat::RGBA32Uint;
-		case DXGI_FORMAT_R32G32B32A32_SINT:
-			return ResourceFormat::RGBA32Int;
-		case DXGI_FORMAT_R32G32B32_FLOAT:
-			return ResourceFormat::RGB32Float;
-		case DXGI_FORMAT_R32G32B32_UINT:
-			return ResourceFormat::RGB32Uint;
-		case DXGI_FORMAT_R32G32B32_SINT:
-			return ResourceFormat::RGB32Int;
-		case DXGI_FORMAT_R16G16B16A16_FLOAT:
-			return ResourceFormat::RGBA16Float;
-		case DXGI_FORMAT_R16G16B16A16_UNORM:
-			return ResourceFormat::RGBA16Unorm;
-		case DXGI_FORMAT_R16G16B16A16_UINT:
-			return ResourceFormat::RGBA16Uint;
-		case DXGI_FORMAT_R16G16B16A16_SINT:
-			return ResourceFormat::RGBA16Int;
-		case DXGI_FORMAT_R32G32_FLOAT:
-			return ResourceFormat::RG32Float;
-		case DXGI_FORMAT_R32G32_UINT:
-			return ResourceFormat::RG32Uint;
-		case DXGI_FORMAT_R32G32_SINT:
-			return ResourceFormat::RG32Int;
-		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-			return ResourceFormat::D32FloatS8X24;
-		case DXGI_FORMAT_R10G10B10A2_UNORM:
-			return ResourceFormat::RGB10A2Unorm;
-		case DXGI_FORMAT_R10G10B10A2_UINT:
-			return ResourceFormat::RGB10A2Uint;
-		case DXGI_FORMAT_R11G11B10_FLOAT:
-			return ResourceFormat::R11G11B10Float;
-		case DXGI_FORMAT_R8G8B8A8_UNORM:
-			return ResourceFormat::RGBA8Unorm;
-		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-			return ResourceFormat::RGBA8UnormSrgb;
-		case DXGI_FORMAT_R8G8B8A8_UINT:
-			return ResourceFormat::RGBA8Uint;
-		case DXGI_FORMAT_R8G8B8A8_SNORM:
-			return ResourceFormat::RGBA8Snorm;
-		case DXGI_FORMAT_R8G8B8A8_SINT:
-			return ResourceFormat::RGBA8Int;
-		case DXGI_FORMAT_R16G16_FLOAT:
-			return ResourceFormat::RG16Float;
-		case DXGI_FORMAT_R16G16_UNORM:
-			return ResourceFormat::RG16Unorm;
-		case DXGI_FORMAT_R16G16_UINT:
-			return ResourceFormat::RG16Uint;
-		case DXGI_FORMAT_R16G16_SNORM:
-			return ResourceFormat::RG16Snorm;
-		case DXGI_FORMAT_R16G16_SINT:
-			return ResourceFormat::RG16Int;
-		case DXGI_FORMAT_D32_FLOAT:
-			return ResourceFormat::D32Float;
-		case DXGI_FORMAT_R32_FLOAT:
-			return ResourceFormat::R32Float;
-		case DXGI_FORMAT_R32_UINT:
-			return ResourceFormat::R32Uint;
-		case DXGI_FORMAT_R32_SINT:
-			return ResourceFormat::R32Int;
-		case DXGI_FORMAT_D24_UNORM_S8_UINT:
-			return ResourceFormat::D24UnormS8;
-		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
-			return ResourceFormat::RGB9E5Float;
-		case DXGI_FORMAT_B8G8R8A8_UNORM:
-			return ResourceFormat::BGRA8Unorm;
-		case DXGI_FORMAT_B8G8R8X8_UNORM:
-			return ResourceFormat::BGRX8Unorm;
-		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-			return ResourceFormat::BGRA8UnormSrgb;
-		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
-			return ResourceFormat::BGRX8UnormSrgb;
-		case DXGI_FORMAT_R8G8_UNORM:
-			return ResourceFormat::RG8Unorm;
-		case DXGI_FORMAT_R8G8_UINT:
-			return ResourceFormat::RG8Uint;
-		case DXGI_FORMAT_R8G8_SNORM:
-			return ResourceFormat::RG8Snorm;
-		case DXGI_FORMAT_R8G8_SINT:
-			return ResourceFormat::RG8Int;
-		case DXGI_FORMAT_R16_FLOAT:
-			return ResourceFormat::R16Float;
-		case DXGI_FORMAT_D16_UNORM:
-			return ResourceFormat::D16Unorm;
-		case DXGI_FORMAT_R16_UNORM:
-			return ResourceFormat::R16Unorm;
-		case DXGI_FORMAT_R16_UINT:
-			return ResourceFormat::R16Uint;
-		case DXGI_FORMAT_R16_SNORM:
-			return ResourceFormat::R16Snorm;
-		case DXGI_FORMAT_R16_SINT:
-			return ResourceFormat::R16Int;
-		case DXGI_FORMAT_B5G6R5_UNORM:
-			return ResourceFormat::R5G6B5Unorm;
-		case DXGI_FORMAT_B5G5R5A1_UNORM:
-			return ResourceFormat::RGB5A1Unorm;
-		case DXGI_FORMAT_R8_UNORM:
-			return ResourceFormat::R8Unorm;
-		case DXGI_FORMAT_R8_UINT:
-			return ResourceFormat::R8Uint;
-		case DXGI_FORMAT_R8_SNORM:
-			return ResourceFormat::R8Snorm;
-		case DXGI_FORMAT_R8_SINT:
-			return ResourceFormat::R8Int;
-		case DXGI_FORMAT_A8_UNORM:
-			return ResourceFormat::Alpha8Unorm;
-		case DXGI_FORMAT_BC1_UNORM:
-			return ResourceFormat::BC1Unorm;
-		case DXGI_FORMAT_BC1_UNORM_SRGB:
-			return ResourceFormat::BC1UnormSrgb;
-		case DXGI_FORMAT_BC4_UNORM:
-			return ResourceFormat::BC4Unorm;
-		case DXGI_FORMAT_BC4_SNORM:
-			return ResourceFormat::BC4Snorm;
-		case DXGI_FORMAT_BC2_UNORM:
-			return ResourceFormat::BC2Unorm;
-		case DXGI_FORMAT_BC2_UNORM_SRGB:
-			return ResourceFormat::BC2UnormSrgb;
-		case DXGI_FORMAT_BC3_UNORM:
-			return ResourceFormat::BC3Unorm;
-		case DXGI_FORMAT_BC3_UNORM_SRGB:
-			return ResourceFormat::BC3UnormSrgb;
-		case DXGI_FORMAT_BC5_UNORM:
-			return ResourceFormat::BC5Unorm;
-		case DXGI_FORMAT_BC5_SNORM:
-			return ResourceFormat::BC5Snorm;
+    ResourceFormat falcorFormatFromDXGIFormat(DXGI_FORMAT fmt) 
+    {
+        switch (fmt)
+        {
+        case DXGI_FORMAT_R32G8X24_TYPELESS:
+        case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+        case DXGI_FORMAT_R32G32B32_TYPELESS:
+        case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+        case DXGI_FORMAT_R16G16B16A16_SNORM:
+        case DXGI_FORMAT_R32G32_TYPELESS:
+        case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+        case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+        case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+        case DXGI_FORMAT_Y416:
+        case DXGI_FORMAT_Y210:
+        case DXGI_FORMAT_Y216:
+        case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+        case DXGI_FORMAT_R16G16_TYPELESS:
+        case DXGI_FORMAT_R32_TYPELESS:
+        case DXGI_FORMAT_R24G8_TYPELESS:
+        case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+        case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+        case DXGI_FORMAT_R8G8_B8G8_UNORM:
+        case DXGI_FORMAT_G8R8_G8B8_UNORM:
+        case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+        case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+        case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+        case DXGI_FORMAT_AYUV:
+        case DXGI_FORMAT_Y410:
+        case DXGI_FORMAT_YUY2:
+        case DXGI_FORMAT_P010:
+        case DXGI_FORMAT_P016:
+        case DXGI_FORMAT_R8G8_TYPELESS:
+        case DXGI_FORMAT_R16_TYPELESS:
+        case DXGI_FORMAT_A8P8:
+        case DXGI_FORMAT_B4G4R4A4_UNORM:
+        case DXGI_FORMAT_NV12:
+        case DXGI_FORMAT_420_OPAQUE:
+        case DXGI_FORMAT_NV11:
+        case DXGI_FORMAT_R8_TYPELESS:
+        case DXGI_FORMAT_AI44:
+        case DXGI_FORMAT_IA44:
+        case DXGI_FORMAT_P8:
+        case DXGI_FORMAT_R1_UNORM:
+        case DXGI_FORMAT_BC1_TYPELESS:
+        case DXGI_FORMAT_BC4_TYPELESS:
+        case DXGI_FORMAT_BC2_TYPELESS:
+        case DXGI_FORMAT_BC3_TYPELESS:
+        case DXGI_FORMAT_BC5_TYPELESS:
+        case DXGI_FORMAT_BC6H_TYPELESS:
+        case DXGI_FORMAT_BC7_TYPELESS:
+            return ResourceFormat::Unknown;
+        case DXGI_FORMAT_R32G32B32A32_FLOAT:
+            return ResourceFormat::RGBA32Float;
+        case DXGI_FORMAT_R32G32B32A32_UINT:
+            return ResourceFormat::RGBA32Uint;
+        case DXGI_FORMAT_R32G32B32A32_SINT:
+            return ResourceFormat::RGBA32Int;
+        case DXGI_FORMAT_R32G32B32_FLOAT:
+            return ResourceFormat::RGB32Float;
+        case DXGI_FORMAT_R32G32B32_UINT:
+            return ResourceFormat::RGB32Uint;
+        case DXGI_FORMAT_R32G32B32_SINT:
+            return ResourceFormat::RGB32Int;
+        case DXGI_FORMAT_R16G16B16A16_FLOAT:
+            return ResourceFormat::RGBA16Float;
+        case DXGI_FORMAT_R16G16B16A16_UNORM:
+            return ResourceFormat::RGBA16Unorm;
+        case DXGI_FORMAT_R16G16B16A16_UINT:
+            return ResourceFormat::RGBA16Uint;
+        case DXGI_FORMAT_R16G16B16A16_SINT:
+            return ResourceFormat::RGBA16Int;
+        case DXGI_FORMAT_R32G32_FLOAT:
+            return ResourceFormat::RG32Float;
+        case DXGI_FORMAT_R32G32_UINT:
+            return ResourceFormat::RG32Uint;
+        case DXGI_FORMAT_R32G32_SINT:
+            return ResourceFormat::RG32Int;
+        case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+            return ResourceFormat::D32FloatS8X24;
+        case DXGI_FORMAT_R10G10B10A2_UNORM:
+            return ResourceFormat::RGB10A2Unorm;
+        case DXGI_FORMAT_R10G10B10A2_UINT:
+            return ResourceFormat::RGB10A2Uint;
+        case DXGI_FORMAT_R11G11B10_FLOAT:
+            return ResourceFormat::R11G11B10Float;
+        case DXGI_FORMAT_R8G8B8A8_UNORM:
+            return ResourceFormat::RGBA8Unorm;
+        case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+            return ResourceFormat::RGBA8UnormSrgb;
+        case DXGI_FORMAT_R8G8B8A8_UINT:
+            return ResourceFormat::RGBA8Uint;
+        case DXGI_FORMAT_R8G8B8A8_SNORM:
+            return ResourceFormat::RGBA8Snorm;
+        case DXGI_FORMAT_R8G8B8A8_SINT:
+            return ResourceFormat::RGBA8Int;
+        case DXGI_FORMAT_R16G16_FLOAT:
+            return ResourceFormat::RG16Float;
+        case DXGI_FORMAT_R16G16_UNORM:
+            return ResourceFormat::RG16Unorm;
+        case DXGI_FORMAT_R16G16_UINT:
+            return ResourceFormat::RG16Uint;
+        case DXGI_FORMAT_R16G16_SNORM:
+            return ResourceFormat::RG16Snorm;
+        case DXGI_FORMAT_R16G16_SINT:
+            return ResourceFormat::RG16Int;
+        case DXGI_FORMAT_D32_FLOAT:
+            return ResourceFormat::D32Float;
+        case DXGI_FORMAT_R32_FLOAT:
+            return ResourceFormat::R32Float;
+        case DXGI_FORMAT_R32_UINT:
+            return ResourceFormat::R32Uint;
+        case DXGI_FORMAT_R32_SINT:
+            return ResourceFormat::R32Int;
+        case DXGI_FORMAT_D24_UNORM_S8_UINT:
+            return ResourceFormat::D24UnormS8;
+        case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+            return ResourceFormat::RGB9E5Float;
+        case DXGI_FORMAT_B8G8R8A8_UNORM:
+            return ResourceFormat::BGRA8Unorm;
+        case DXGI_FORMAT_B8G8R8X8_UNORM:
+            return ResourceFormat::BGRX8Unorm;
+        case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+            return ResourceFormat::BGRA8UnormSrgb;
+        case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+            return ResourceFormat::BGRX8UnormSrgb;
+        case DXGI_FORMAT_R8G8_UNORM:
+            return ResourceFormat::RG8Unorm;
+        case DXGI_FORMAT_R8G8_UINT:
+            return ResourceFormat::RG8Uint;
+        case DXGI_FORMAT_R8G8_SNORM:
+            return ResourceFormat::RG8Snorm;
+        case DXGI_FORMAT_R8G8_SINT:
+            return ResourceFormat::RG8Int;
+        case DXGI_FORMAT_R16_FLOAT:
+            return ResourceFormat::R16Float;
+        case DXGI_FORMAT_D16_UNORM:
+            return ResourceFormat::D16Unorm;
+        case DXGI_FORMAT_R16_UNORM:
+            return ResourceFormat::R16Unorm;
+        case DXGI_FORMAT_R16_UINT:
+            return ResourceFormat::R16Uint;
+        case DXGI_FORMAT_R16_SNORM:
+            return ResourceFormat::R16Snorm;
+        case DXGI_FORMAT_R16_SINT:
+            return ResourceFormat::R16Int;
+        case DXGI_FORMAT_B5G6R5_UNORM:
+            return ResourceFormat::R5G6B5Unorm;
+        case DXGI_FORMAT_B5G5R5A1_UNORM:
+            return ResourceFormat::RGB5A1Unorm;
+        case DXGI_FORMAT_R8_UNORM:
+            return ResourceFormat::R8Unorm;
+        case DXGI_FORMAT_R8_UINT:
+            return ResourceFormat::R8Uint;
+        case DXGI_FORMAT_R8_SNORM:
+            return ResourceFormat::R8Snorm;
+        case DXGI_FORMAT_R8_SINT:
+            return ResourceFormat::R8Int;
+        case DXGI_FORMAT_A8_UNORM:
+            return ResourceFormat::Alpha8Unorm;
+        case DXGI_FORMAT_BC1_UNORM:
+            return ResourceFormat::BC1Unorm;
+        case DXGI_FORMAT_BC1_UNORM_SRGB:
+            return ResourceFormat::BC1UnormSrgb;
+        case DXGI_FORMAT_BC4_UNORM:
+            return ResourceFormat::BC4Unorm;
+        case DXGI_FORMAT_BC4_SNORM:
+            return ResourceFormat::BC4Snorm;
+        case DXGI_FORMAT_BC2_UNORM:
+            return ResourceFormat::BC2Unorm;
+        case DXGI_FORMAT_BC2_UNORM_SRGB:
+            return ResourceFormat::BC2UnormSrgb;
+        case DXGI_FORMAT_BC3_UNORM:
+            return ResourceFormat::BC3Unorm;
+        case DXGI_FORMAT_BC3_UNORM_SRGB:
+            return ResourceFormat::BC3UnormSrgb;
+        case DXGI_FORMAT_BC5_UNORM:
+            return ResourceFormat::BC5Unorm;
+        case DXGI_FORMAT_BC5_SNORM:
+            return ResourceFormat::BC5Snorm;
         case DXGI_FORMAT_BC6H_SF16:
             return ResourceFormat::BC6HS16;
         case DXGI_FORMAT_BC6H_UF16:
@@ -246,9 +246,9 @@ namespace Falcor
         case DXGI_FORMAT_BC7_UNORM_SRGB:
             return ResourceFormat::BC7UnormSrgb;
         default:
-			return ResourceFormat::Unknown;
-		}
-	}
+            return ResourceFormat::Unknown;
+        }
+    }
 
     DXGI_FORMAT getRgbDxgiFormat(const DdsHeader::PixelFormat& format)
     {
@@ -456,127 +456,127 @@ namespace Falcor
     }
 
     DXGI_FORMAT getDxgiFormatFromPixelFormat(const DdsHeader::PixelFormat& format)
-	{
+    {
         if(format.flags & DdsHeader::PixelFormat::kRgbMask)
-		{
+        {
             return getRgbDxgiFormat(format);
-		}
-		else if (format.flags & DdsHeader::PixelFormat::kLuminanceMask)
-		{
+        }
+        else if (format.flags & DdsHeader::PixelFormat::kLuminanceMask)
+        {
             return getLuminanceDxgiFormat(format);
-		}
+        }
         else if(format.flags & DdsHeader::PixelFormat::kAlphaMask)
-		{
+        {
             return getDxgiAlphaFormat(format);
-		}
-		else if (format.flags & DdsHeader::PixelFormat::kBumpMask)
-		{
+        }
+        else if (format.flags & DdsHeader::PixelFormat::kBumpMask)
+        {
             return getDxgiBumpFormat(format);
-		}
+        }
         else if(format.flags & DdsHeader::PixelFormat::kFourCCFlag)
-		{
+        {
             return getDxgiFormatFrom4CC(format.fourCC);
-		}
+        }
 
-		return DXGI_FORMAT_UNKNOWN;
-	}
+        return DXGI_FORMAT_UNKNOWN;
+    }
 
-	ResourceFormat getDdsResourceFormat(const DdsData& data)
-	{
-		if(data.hasDX10Header)
-		{
-			return falcorFormatFromDXGIFormat(data.dx10Header.dxgiFormat);
-		}
-		else
-		{
-			return falcorFormatFromDXGIFormat(getDxgiFormatFromPixelFormat(data.header.pixelFormat));
-		}
-	}
+    ResourceFormat getDdsResourceFormat(const DdsData& data)
+    {
+        if(data.hasDX10Header)
+        {
+            return falcorFormatFromDXGIFormat(data.dx10Header.dxgiFormat);
+        }
+        else
+        {
+            return falcorFormatFromDXGIFormat(getDxgiFormatFromPixelFormat(data.header.pixelFormat));
+        }
+    }
 
-	//Flip the data so it follows opengl conventions
-	void flipData(DdsData& ddsData, ResourceFormat format, uint32_t width, uint32_t height, uint32_t depth, uint32_t mipDepth, bool isCubemap = false)
-	{
-		if (!isCompressedFormat(format) && !kTopDown)
-		{
-			std::vector<uint8_t> oldData(ddsData.data.size());
-			oldData.swap(ddsData.data);
-			const uint8_t* currentTexture = oldData.data();
-			const uint8_t* currentDepth = oldData.data();
-			uint8_t* currentPos = ddsData.data.data();
+    //Flip the data so it follows opengl conventions
+    void flipData(DdsData& ddsData, ResourceFormat format, uint32_t width, uint32_t height, uint32_t depth, uint32_t mipDepth, bool isCubemap = false)
+    {
+        if (!isCompressedFormat(format) && !kTopDown)
+        {
+            std::vector<uint8_t> oldData(ddsData.data.size());
+            oldData.swap(ddsData.data);
+            const uint8_t* currentTexture = oldData.data();
+            const uint8_t* currentDepth = oldData.data();
+            uint8_t* currentPos = ddsData.data.data();
 
-			for (uint32_t mipCounter = 0; mipCounter < mipDepth; ++mipCounter)
-			{
-				uint32_t heightPitch = max(width >> mipCounter, 1U) * getFormatBytesPerBlock(format);
-				uint32_t currentMipHeight = max(height >> mipCounter, 1U);
-				uint32_t depthPitch = currentMipHeight * heightPitch;	
+            for (uint32_t mipCounter = 0; mipCounter < mipDepth; ++mipCounter)
+            {
+                uint32_t heightPitch = max(width >> mipCounter, 1U) * getFormatBytesPerBlock(format);
+                uint32_t currentMipHeight = max(height >> mipCounter, 1U);
+                uint32_t depthPitch = currentMipHeight * heightPitch;	
 
-				for (uint32_t depthCounter = 0; depthCounter < depth; ++depthCounter)
-				{
-					currentTexture = currentDepth + depthPitch * depthCounter;
-					
-					if (isCubemap)
-					{
-						if (depthCounter % 6 == 2)
-						{
-							currentTexture += depthPitch;
-						}
-						else if (depthCounter % 6 == 3)
-						{
-							currentTexture -= depthPitch;
-						}
-					}
-					
-					for (uint32_t heightCounter = 1; heightCounter <= currentMipHeight; ++heightCounter)
-					{
-						memcpy(currentPos, currentTexture + (currentMipHeight - heightCounter) * heightPitch, heightPitch);
-						currentPos += heightPitch;
-					}
-					
-				}
+                for (uint32_t depthCounter = 0; depthCounter < depth; ++depthCounter)
+                {
+                    currentTexture = currentDepth + depthPitch * depthCounter;
+                    
+                    if (isCubemap)
+                    {
+                        if (depthCounter % 6 == 2)
+                        {
+                            currentTexture += depthPitch;
+                        }
+                        else if (depthCounter % 6 == 3)
+                        {
+                            currentTexture -= depthPitch;
+                        }
+                    }
+                    
+                    for (uint32_t heightCounter = 1; heightCounter <= currentMipHeight; ++heightCounter)
+                    {
+                        memcpy(currentPos, currentTexture + (currentMipHeight - heightCounter) * heightPitch, heightPitch);
+                        currentPos += heightPitch;
+                    }
+                    
+                }
 
-				currentDepth += depthPitch * depth;
-			}
-		}
-	}
+                currentDepth += depthPitch * depth;
+            }
+        }
+    }
 
-	void loadDDSDataFromFile(const std::string filename, DdsData& ddsData)
-	{
+    void loadDDSDataFromFile(const std::string filename, DdsData& ddsData)
+    {
         std::string fullpath;
-		if (findFileInDataDirectories(filename, fullpath) == false)
-		{
-			logError(std::string("Can't find texture file ") + filename);
-			//could not find file
-			return;
-		}
+        if (findFileInDataDirectories(filename, fullpath) == false)
+        {
+            logError(std::string("Can't find texture file ") + filename);
+            //could not find file
+            return;
+        }
 
-		BinaryFileStream stream(fullpath, BinaryFileStream::Mode::Read);
+        BinaryFileStream stream(fullpath, BinaryFileStream::Mode::Read);
 
-		//check the dds identifier
-		uint32_t ddsIdentifier;
-		stream >> ddsIdentifier;
-		if (ddsIdentifier != kDdsMagicNumber)
-		{
-			//not valid dds file apparently
-			logError(std::string("The dds file ") + filename + std::string(" is not a valid dds file"));
-			return;
-		}
+        //check the dds identifier
+        uint32_t ddsIdentifier;
+        stream >> ddsIdentifier;
+        if (ddsIdentifier != kDdsMagicNumber)
+        {
+            //not valid dds file apparently
+            logError(std::string("The dds file ") + filename + std::string(" is not a valid dds file"));
+            return;
+        }
 
         stream >> ddsData.header;
 
         if((ddsData.header.pixelFormat.flags & DdsHeader::PixelFormat::kFourCCFlag) && (makeFourCC("DX10") == ddsData.header.pixelFormat.fourCC))
-		{
+        {
             ddsData.hasDX10Header = true;
             stream >> ddsData.dx10Header;
-		}
-		else
-		{
+        }
+        else
+        {
             ddsData.hasDX10Header = false;
-		}
+        }
 
         uint32_t dataSize = stream.getRemainingStreamSize();
         ddsData.data.resize(dataSize);
         stream.read(ddsData.data.data(), dataSize);
-	}
+    }
 
     static ResourceFormat convertBgrxFormatToBgra(DdsData& ddsData, ResourceFormat format)
     {
@@ -586,7 +586,7 @@ namespace Falcor
         case ResourceFormat::BGRX8Unorm:
             format = ResourceFormat::BGRA8Unorm;
             break;
-        case ResourceFormat::BGRA8UnormSrgb:
+        case ResourceFormat::BGRX8UnormSrgb:
             format = ResourceFormat::BGRA8UnormSrgb;
             break;
         default:
@@ -662,48 +662,53 @@ namespace Falcor
         return nullptr;
     }
 
-	Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool generateMips, Texture::BindFlags bindFlags)
-	{
-		DdsData ddsData;
-		loadDDSDataFromFile(filename, ddsData);
-		
-		ResourceFormat format = getDdsResourceFormat(ddsData);
-		assert(format != ResourceFormat::Unknown);
+    Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags)
+    {
+        DdsData ddsData;
+        loadDDSDataFromFile(filename, ddsData);
 
-		uint32_t mipLevels;
-		if (generateMips)
-		{
-			mipLevels = Texture::kMaxPossible;
-		} 
-		else
-		{
-			mipLevels = (ddsData.header.flags & DdsHeader::kMipCountMask) ? max(ddsData.header.mipCount, 1U) : 1;
-		}
-	
-		if (ddsData.hasDX10Header)
-		{
+        ResourceFormat format = getDdsResourceFormat(ddsData);
+        assert(format != ResourceFormat::Unknown);
+
+        if (loadAsSrgb)
+        {
+            format = linearToSrgbFormat(format);
+        }
+
+        uint32_t mipLevels;
+        if (generateMips == false || isCompressedFormat(format))
+        {
+            mipLevels = (ddsData.header.flags & DdsHeader::kMipCountMask) ? max(ddsData.header.mipCount, 1U) : 1;
+        }
+        else
+        {
+            mipLevels = Texture::kMaxPossible;
+        }
+
+        if (ddsData.hasDX10Header)
+        {
             return createTextureFromDx10Dds(ddsData, filename, format, mipLevels, bindFlags);
-		}
-		else
-		{
+        }
+        else
+        {
             return createTextureFromLegacyDds(ddsData, filename, format, mipLevels, bindFlags);
-		}
-		
-		return nullptr;
-	}
+        }
+        
+        return nullptr;
+    }
 
-	Texture::SharedPtr createTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
+    Texture::SharedPtr createTextureFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
     {
 #define no_srgb()   \
     if(loadAsSrgb)  \
     {               \
         logWarning("createTexture2DFromFile() warning. " + std::to_string(pBitmap->getBytesPerPixel()) + " channel images doesn't have a matching sRGB format. Loading in linear space.");  \
     }
-			
-		if (hasSuffix(filename, ".dds"))
-		{
-			return createTextureFromDDSFile(filename, generateMipLevels, bindFlags);
-		}
+
+        if (hasSuffix(filename, ".dds"))
+        {
+            return createTextureFromDDSFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
+        }
 
         Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(filename, kTopDown);
         Texture::SharedPtr pTex;

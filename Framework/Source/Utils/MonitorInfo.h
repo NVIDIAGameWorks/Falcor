@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 
-#include <atlstr.h>
 #include <vector>
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtx/polar_coordinates.hpp"
