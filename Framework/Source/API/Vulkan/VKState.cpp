@@ -344,8 +344,13 @@ namespace Falcor
                 {
                     // Per shader location specified
                     VkVertexInputAttributeDescription attribDesc = {};
-                    attribDesc.location = pVB->getElementShaderLocation(elemID);
-                    attribDesc.binding = (uint32_t)vb;
+                    //attribDesc.location = pVB->getElementShaderLocation(elemID);
+					attribDesc.location = pVB->getElementShaderLocation(elemID);
+					// horrible hack to get around a SLANG bug
+					if (attribDesc.location == VERTEX_DIFFUSE_COLOR_LOC)
+						attribDesc.location = (uint32_t)vb;
+
+	                attribDesc.binding = (uint32_t)vb;
                     attribDesc.format = getVkFormat(pVB->getElementFormat(elemID));
                     attribDesc.offset = pVB->getElementOffset(elemID);
 
