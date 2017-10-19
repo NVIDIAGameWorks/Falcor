@@ -88,6 +88,12 @@ namespace Falcor
         */
         VertexLayout::SharedConstPtr getVertexLayout() const { return mpVertexLayout; }
 
+		/** Get a vertex buffer layout
+		*/
+		VertexLayout::SharedPtr getVertexLayoutForModify() const { return mpVertexLayout; }
+
+		void addVertexBuffer(Buffer::SharedPtr buffer){ mpVBs.push_back(buffer); }
+
         /** Return the vertex buffer index and the element index by its location.
             If the element is not found, returns the default ElementDesc
         */

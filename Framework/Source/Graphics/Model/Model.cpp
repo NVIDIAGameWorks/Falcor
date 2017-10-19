@@ -86,10 +86,191 @@ namespace Falcor
 
     Model::~Model() = default;
 
+	void Model::exportAOMeshes(std::string& filename)
+	{
+		FILE* file = NULL;
+		fopen_s(&file, filename.c_str(), "wb");
+		if (file)
+		{
+			uint64_t numVertices = this->getVertexCount();
+			uint64_t numIndices = this->getIndexCount();
+
+			//write number of meshes
+			uint32_t numMeshes = this->getMeshCount();
+			fwrite(&numMeshes, sizeof(numMeshes), 1, file);
+
+			//for each mesh
+			for (uint32_t meshID = 0; meshID < this->getMeshCount(); meshID++)
+			{
+				Mesh::SharedPtr pMesh = mMeshes[meshID][0]->getObject();
+				Vao::SharedPtr vAO = pMesh->getVao();
+				VertexLayout::SharedConstPtr vLayout= vAO->getVertexLayout();
+
+				//only support triangle list
+				uint32 vertex_count = 0;
+				uint32 index_count = 0;
+				uint32 mesh_identifier = meshID;
+				fwrite(&mesh_identifier, sizeof(mesh_identifier), 1, file);
+				if (vAO->getPrimitiveTopology() != Vao::Topology::TriangleList)
+				{
+					fwrite(&vertex_count, sizeof(vertex_count), 1, file);
+					fwrite(&index_count, sizeof(index_count), 1, file);
+				}
+				else
+				{
+					vertex_count = pMesh->getVertexCount();
+					index_count = pMesh->getIndexCount();
+					fwrite(&vertex_count, sizeof(vertex_count), 1, file);
+					fwrite(&index_count, sizeof(index_count), 1, file);
+
+					bool hasPosition = false;
+					bool hasNormal = false;
+					for (int bi = 0; bi < vLayout->getBufferCount(); bi++)
+					{
+						VertexBufferLayout::SharedConstPtr bLayout = vLayout->getBufferLayout(bi);
+
+						if (bLayout->getElementName(0) == VERTEX_POSITION_NAME)
+						{
+							Buffer::SharedPtr vb = vAO->getVertexBuffer(bi);
+							float3 *positions = (float3 *)vb->map(Falcor::Buffer::MapType::Read);
+							fwrite(positions, sizeof(float3), vertex_count, file);
+							hasPosition = true;
+						}
+						else if(bLayout->getElementName(0) == VERTEX_NORMAL_NAME)
+						{
+							Buffer::SharedPtr vb = vAO->getVertexBuffer(bi);
+							float3 *normals = (float3 *)vb->map(Falcor::Buffer::MapType::Read);
+							fwrite(normals, sizeof(float3), pMesh->getVertexCount(), file);
+							hasNormal = true;
+						}
+					}
+
+					assert(hasPosition && hasNormal);
+
+					//write indices
+					Buffer::SharedPtr ib = vAO->getIndexBuffer();
+					uint32 *indices = (uint32 *)ib->map(Falcor::Buffer::MapType::Read);
+					fwrite(indices, sizeof(uint32), pMesh->getIndexCount(), file);
+
+				}
+			}
+
+			fclose(file);
+		}
+	}
+
+	void Model::importAO(std::string& filename)
+	{
+		FILE* file = NULL;
+		fopen_s(&file, filename.c_str(), "rb");
+		if (file)
+		{
+			uint64_t numInstances = 0;
+			uint64_t numVertices = 0;
+
+			// read header
+			fread(&numInstances, sizeof(numInstances), 1, file);
+			fread(&numVertices, sizeof(numVertices), 1, file);
+
+			mAO.mInstances.resize(numInstances);
+
+			// read instances
+			for (size_t i = 0; i < numInstances; i++)
+			{
+				uint64_t identifier = 0;
+				uint64_t vertexOffset = 0;
+				uint64_t numVerticesPerInstance = 0;
+
+				fread(&identifier, sizeof(identifier), 1, file);
+				fread(&vertexOffset, sizeof(vertexOffset), 1, file);
+				fread(&numVerticesPerInstance, sizeof(numVerticesPerInstance), 1, file);
+				mAO.mInstances[i].mIdentifier = identifier;
+				mAO.mInstances[i].mVertexOffset = vertexOffset;
+				mAO.mInstances[i].mNumVertices = numVerticesPerInstance;
+			}
+
+			//read vertices
+			float *AOValues = new float[numVertices];
+			if (numVertices > 0)
+			{
+				fread(AOValues, sizeof(float)*numVertices, 1, file);
+			}
+
+			for (uint32_t meshID = 0; meshID < this->getMeshCount(); meshID++)
+			{
+				Mesh::SharedPtr pMesh = mMeshes[meshID][0]->getObject();
+				Falcor::Vao::SharedPtr vAO = pMesh->getVao();
+				VertexLayout::SharedPtr pLayout = vAO->getVertexLayoutForModify();
+
+				for (uint32_t instance_id = 0; instance_id < numInstances; instance_id++)
+				{
+					if (mAO.mInstances[instance_id].mIdentifier == meshID)
+					{
+						uint32_t numVerticesMesh = pMesh->getVertexCount();
+						assert(numVerticesMesh == mAO.mInstances[instance_id].mNumVertices);
+						float *aoValues = &AOValues[mAO.mInstances[instance_id].mVertexOffset];
+
+						bool has_color = false;
+						for (int bi = 0; bi < pLayout->getBufferCount(); bi++)
+						{
+
+							if (pLayout->getBufferLayout(bi)->getElementName(0) == VERTEX_DIFFUSE_COLOR_NAME)
+							{
+								Buffer::SharedPtr aoBuffer = vAO->getVertexBuffer(bi);
+								float4 *aoValuesmesh = new float4[numVerticesMesh];
+								float4 *originalColors = (float4 *)aoBuffer->map(Buffer::MapType::Read);
+								for (unsigned int i = 0; i < numVerticesMesh; i++)
+								{
+									aoValuesmesh[i][0] = originalColors[i][0];
+									aoValuesmesh[i][1] = originalColors[i][1];
+									aoValuesmesh[i][2] = originalColors[i][2];
+									aoValuesmesh[i][3] = aoValues[i];
+								}
+								aoBuffer->updateData(aoValuesmesh, 0, numVerticesMesh * sizeof(float4));
+								has_color = true;
+								break;
+							}
+						}
+
+						if (!has_color)
+						{
+							VertexBufferLayout::SharedPtr pBufferLayout = VertexBufferLayout::create();
+							pLayout->addBufferLayout((uint32_t)(pLayout->getBufferCount()), pBufferLayout);
+
+							const std::string falcorName = VERTEX_DIFFUSE_COLOR_NAME;
+							ResourceFormat falcorFormat = ResourceFormat::RGBA32Float;
+							uint32_t shaderLocation = VERTEX_DIFFUSE_COLOR_LOC;
+							pBufferLayout->addElement(falcorName, 0, falcorFormat, 1, shaderLocation);
+
+							float4 *aoValuesmesh = new float4[numVerticesMesh];
+							for (unsigned int i = 0; i < numVerticesMesh; i++)
+							{
+								aoValuesmesh[i][0] = aoValuesmesh[i][1] = aoValuesmesh[i][2] = 1.0f;
+								aoValuesmesh[i][3] = max(aoValues[i], 0.0f);
+							}
+
+							Buffer::SharedPtr aoBuffer = Buffer::create(sizeof(float4)*numVerticesMesh, Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, aoValuesmesh);
+							vAO->addVertexBuffer(aoBuffer);
+							delete[] aoValuesmesh;
+							break;
+						}
+
+					}
+				}
+			}
+
+			delete[] AOValues;
+
+			fclose(file);
+
+		}
+	}
+
     Model::SharedPtr Model::createFromFile(const char* filename, LoadFlags flags)
     {
         SharedPtr pModel = SharedPtr(new Model());
         bool res;
+
         if(hasSuffix(filename, ".bin", false))
         {
             res = BinaryModelImporter::import(*pModel, filename, flags);

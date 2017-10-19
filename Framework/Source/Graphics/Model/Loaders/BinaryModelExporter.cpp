@@ -201,7 +201,7 @@ namespace Falcor
             const auto& pMesh = mpModel->getMesh(i);
             if(pMesh->getVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
             {
-                warning("Binary format doesn't support topologies other than triangles.");
+                //warning("Binary format doesn't support topologies other than triangles.");
                 continue;
             }
 

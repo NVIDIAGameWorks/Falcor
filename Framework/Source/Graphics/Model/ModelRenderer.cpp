@@ -31,10 +31,10 @@
 
 namespace Falcor
 {
-    void ModelRenderer::render(RenderContext* pRenderContext, Model::SharedPtr pModel, Camera* pCamera, bool frustumCulling)
+    void ModelRenderer::render(RenderContext* pRenderContext, Model::SharedPtr pModel, Camera* pCamera, bool frustumCulling, glm::vec3& translation, glm::vec3& yawPitchRoll, glm::vec3& scale)
     {
         Scene::SharedPtr pScene = Scene::create();
-        pScene->addModelInstance(pModel, "");
+        pScene->addModelInstance(pModel, "", translation, yawPitchRoll, scale);
 
         SceneRenderer::SharedPtr pSceneRenderer = SceneRenderer::create(pScene);
         pSceneRenderer->setObjectCullState(frustumCulling);
