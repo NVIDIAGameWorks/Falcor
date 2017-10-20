@@ -332,7 +332,7 @@ namespace Falcor
             uint64_t id;
             uint32_t refCount;
         };
-        mutable bool mDescDirty = false;
+        mutable bool mDescDirty = true;
         mutable std::string mDescString;
         mutable size_t mDescIdentifier;
         void updateDescIdentifier() const;
