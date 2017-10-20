@@ -1,7 +1,7 @@
-@set PM_PACKMAN_VERSION=4.1
+@set PM_PACKMAN_VERSION=5.0.1
 
-:: Specify where config file could exist
-@set PM_CONFIG_PATH=%~dp0..\packman_config.txt
+:: Specify where packman command is rooted
+@set PM_INSTALL_PATH=%~dp0..
 
 :: The external root may already be configured and we should do minimal work in that case
 @if defined PM_PACKAGES_ROOT goto ENSURE_DIR
@@ -66,15 +66,15 @@
 :: The packman module may already be externally configured
 @if defined PM_MODULE_EXT (
 	@set PM_MODULE=%PM_MODULE_EXT%
-	@goto END
+	@goto ENSURE_7za
 )
 
-@set PM_MODULE_DIR=%PM_PACKAGES_ROOT%\packman\%PM_PACKMAN_VERSION%-common
+@set PM_MODULE_DIR=%PM_PACKAGES_ROOT%\packman-common\%PM_PACKMAN_VERSION%
 @set PM_MODULE=%PM_MODULE_DIR%\packman.py
 
-@if exist "%PM_MODULE%" goto END
+@if exist "%PM_MODULE%" goto ENSURE_7ZA
 
-@set PM_MODULE_PACKAGE=packman@%PM_PACKMAN_VERSION%-common.zip
+@set PM_MODULE_PACKAGE=packman-common@%PM_PACKMAN_VERSION%.zip
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do @set TEMP_FILE_NAME=%%a
 @set TARGET=%TEMP_FILE_NAME%
 @call "%~dp0fetch_file_from_s3.cmd" %PM_MODULE_PACKAGE% "%TARGET%"
@@ -85,6 +85,14 @@
 @if errorlevel 1 goto ERROR
 
 @del "%TARGET%"
+
+:ENSURE_7ZA
+@set PM_7Za_VERSION=16.02
+@set PM_7Za_PATH=%PM_PACKAGES_ROOT%\chk\7za\%PM_7ZA_VERSION%
+@if exist "%PM_7Za_PATH%" goto END
+
+@"%PM_PYTHON%" "%PM_MODULE%" install 7za %PM_7za_VERSION% -r packman:s3
+@if errorlevel 1 goto ERROR
 
 @goto END
 
