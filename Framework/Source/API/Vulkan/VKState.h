@@ -56,7 +56,7 @@ namespace Falcor
     void initVkBlendInfo(const BlendState* pState, ColorBlendStateCreateInfo& infoOut);
     void initVkRasterizerInfo(const RasterizerState* pState, VkPipelineRasterizationStateCreateInfo& infoOut);
     void initVkDepthStencilInfo(const DepthStencilState* pState, VkPipelineDepthStencilStateCreateInfo& infoOut);
-    void initVkVertexLayoutInfo(const VertexLayout* pLayout, VertexInputStateCreateInfo& infoOut);
+    void initVkVertexLayoutInfo(const VertexLayout* pLayout, VertexInputStateCreateInfo& infoOut, ProgramReflection const* pReflector);
     void initVkSamplerInfo(const Sampler* pSampler, VkSamplerCreateInfo& infoOut);
     void initVkMultiSampleInfo(const BlendState* pState, const Fbo::Desc& fboDesc, const uint32_t& sampleMask, VkPipelineMultisampleStateCreateInfo& infoOut, bool enableSampleFrequency);
     void initVkInputAssemblyInfo(const Vao* pVao, VkPipelineInputAssemblyStateCreateInfo& infoOut);
