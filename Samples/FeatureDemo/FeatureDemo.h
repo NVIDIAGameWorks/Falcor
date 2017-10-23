@@ -44,7 +44,7 @@ public:
 
 private:
     Fbo::SharedPtr mpMainFbo;
-	Fbo::SharedPtr mpDepthPassFbo;
+    Fbo::SharedPtr mpDepthPassFbo;
     Fbo::SharedPtr mpResolveFbo;
     Fbo::SharedPtr mpPostProcessFbo;
 
@@ -69,16 +69,16 @@ private:
     {
         GraphicsVars::SharedPtr pVars;
         GraphicsProgram::SharedPtr pProgram;
-		DepthStencilState::SharedPtr pDsState;
+        DepthStencilState::SharedPtr pDsState;
         RasterizerState::SharedPtr pNoCullRS;
         BlendState::SharedPtr pAlphaBlendBS;
-	} mLightingPass;
+    } mLightingPass;
 
-	struct
-	{
-		GraphicsVars::SharedPtr pVars;
-		GraphicsProgram::SharedPtr pProgram;
-	} mDepthPass;
+    struct
+    {
+        GraphicsVars::SharedPtr pVars;
+        GraphicsProgram::SharedPtr pProgram;
+    } mDepthPass;
 
 
     //  The Temporal Anti-Aliasing Pass.
@@ -121,7 +121,7 @@ private:
 
     void beginFrame();
     void endFrame();
-	void depthPass();
+    void depthPass();
     void shadowPass();
     void renderSkyBox();
     void lightingPass();
@@ -139,7 +139,7 @@ private:
     void initSkyBox(const std::string& name);
     void initPostProcess();
     void initLightingPass();
-	void initDepthPass();
+    void initDepthPass();
     void initShadowPass();
     void initSSAO();
     void initEnvMap(const std::string& name);
@@ -153,6 +153,7 @@ private:
     void loadScene(const std::string& filename, bool showProgressBar);
     void initScene(Scene::SharedPtr pScene);
     void applyCustomSceneVars(const Scene* pScene, const std::string& filename);
+    void resetScene();
 
     void setActiveCameraAspectRatio();
     void setSceneSampler(uint32_t maxAniso);
@@ -205,8 +206,8 @@ private:
 
     bool mUseCameraPath = true;
     void applyCameraPathState();
-    bool mPerMaterialShader = true;
-	bool mEnableDepthPass = true;
+    bool mPerMaterialShader = false;
+    bool mEnableDepthPass = true;
 
     // Testing 
     void onInitializeTesting() override;

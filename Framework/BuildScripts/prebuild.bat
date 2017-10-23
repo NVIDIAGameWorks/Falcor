@@ -47,5 +47,5 @@ start /wait /b %1BuildScripts\PatchFalcorProps\PatchFalcorPropertySheet.exe %1 %
 
 rem Call Update Dependencies - Runs packman.
 call %1\..\update_dependencies.bat
-
+if errorlevel 1 exit /b 1
 

@@ -33,7 +33,8 @@ cbuffer SSAOCB : register(b0)
     SSAOData gData;
 }
 
-SamplerState gSampler;
+SamplerState gNoiseSampler;
+SamplerState gTextureSampler;
 
 Texture2D gDepthTex;
 Texture2D gNormalTex;
@@ -44,7 +45,7 @@ float4 getPosition(float2 uv)
     float4 pos;
     pos.x = uv.x * 2.0f - 1.0f;
     pos.y = (1.0f - uv.y) * 2.0f - 1.0f;
-    pos.z = gDepthTex.SampleLevel(gSampler, uv, 0).r;
+    pos.z = gDepthTex.SampleLevel(gTextureSampler, uv, 0).r;
     pos.w = 1.0f;
 
     float4 posW = mul(pos, gCam.invViewProj);
@@ -55,7 +56,7 @@ float4 getPosition(float2 uv)
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-    if (gDepthTex.SampleLevel(gSampler, texC, 0).r >= 1)
+    if (gDepthTex.SampleLevel(gTextureSampler, texC, 0).r >= 1)
     {
         return 1.0f;
     }
@@ -63,33 +64,21 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
     // Calculate world position of pixel
     float3 posW = getPosition(texC).xyz;
 
-#ifdef HEMISPHERE
-    float3 normal = gNormalTex.Sample(gSampler, texC).xyz * 2.0f - 1.0f;
-    // Bias
-    posW += normal * gData.surfaceOffset;
-#endif
+    float3 normal = normalize(gNormalTex.Sample(gTextureSampler, texC).xyz * 2.0f - 1.0f);
 
     float originDist = length(posW - gCam.position);
 
-    float3 randDir = gNoiseTex.Sample(gSampler, texC * gData.noiseScale).xyz * 2.0f - 1.0f;
+    float3 randDir = gNoiseTex.Sample(gNoiseSampler, texC * gData.noiseScale).xyz * 2.0f - 1.0f;
 
-#ifdef HEMISPHERE
     float3 tangent = normalize(randDir - normal * dot(randDir, normal));
     float3 bitangent = cross(normal, tangent);
     float3x3 tbn = float3x3(tangent, bitangent, normal);
-#endif
 
     float occlusion = 0.0f;
     for (uint i = 0; i < gData.kernelSize; i++)
     {
-#ifdef HEMISPHERE
         // Orient sample
         float3 kernelPos = mul(gData.sampleKernel[i].xyz, tbn);
-#endif
-#ifdef SPHERE
-        float3 kernelPos = gData.sampleKernel[i].xyz;
-        kernelPos = reflect(kernelPos, randDir);
-#endif
 
         // Calculate sample world space pos
         float3 samplePosW = posW + (kernelPos * gData.radius);
@@ -107,12 +96,6 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
         occlusion += step(sceneDepth, sampleDepth) * rangeCheck;
     }
 
-#ifdef HEMISPHERE
     float factor = 1 - (occlusion / float(gData.kernelSize));
-#endif
-#ifdef SPHERE
-    float factor = 1 - (occlusion / float(gData.kernelSize)) * 0.5f;
-#endif
-
     return float4(factor.xxx, 1);
 }

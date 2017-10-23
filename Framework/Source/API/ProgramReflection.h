@@ -363,6 +363,12 @@ namespace Falcor
         */
         const Variable* getVertexAttribute(const std::string& name) const;
 
+        /** Get the descriptor for a vertex-attribute with the given semantic
+            \param[in] semantic The semantic name used in the program
+            \return The variable desc of the attribute if it is found, otherwise nullptr
+        */
+        const Variable* getVertexAttributeBySemantic(const std::string& semantic) const;
+
         /** Get the descriptor for a fragment shader output
             \param[in] name The output variable name in the program
             \return The variable desc of the output if it is found, otherwise nullptr
@@ -413,6 +419,7 @@ namespace Falcor
         BufferData mBuffers[BufferReflection::kTypeCount];
         VariableMap mFragOut;
         VariableMap mVertAttr;
+        VariableMap mVertAttrBySemantic;
         ResourceMap mResources;
         uvec3 mThreadGroupSize;
         bool mIsSampleFrequency = false;

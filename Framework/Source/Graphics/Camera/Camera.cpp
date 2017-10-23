@@ -102,13 +102,15 @@ namespace Falcor
             mData.invViewProj = glm::inverse(mData.viewProjMat);
 
             // Extract camera space frustum planes from the VP matrix
-            // Note: this method **ONLY** works for OpenGL. D3D requires a slightly different test for the near plane.
             // See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
             glm::mat4 tempMat = glm::transpose(mData.viewProjMat);
             for (int i = 0; i < 6; i++)
             {
                 glm::vec4 plane = (i & 1) ? tempMat[i >> 1] : -tempMat[i >> 1];
-                plane += tempMat[3];
+                if(i != 5) // Z range is [0, w]. For the 0 <= z plane we don't need to add w
+                {
+                    plane += tempMat[3];
+                }
 
                 mFrustumPlanes[i].xyz = glm::vec3(plane);
                 mFrustumPlanes[i].sign = glm::sign(mFrustumPlanes[i].xyz);
@@ -188,7 +190,7 @@ namespace Falcor
         {
             glm::vec3 signedExtent = box.extent * mFrustumPlanes[plane].sign;
             float dr = glm::dot(box.center + signedExtent, mFrustumPlanes[plane].xyz);
-            isInside = isInside & (dr > mFrustumPlanes[plane].negW);
+            isInside = isInside && (dr > mFrustumPlanes[plane].negW);
         }
 
         return !isInside;

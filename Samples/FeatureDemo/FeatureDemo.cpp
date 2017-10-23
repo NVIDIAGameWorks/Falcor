@@ -49,8 +49,8 @@ static const float kDX11SamplePattern[8][2] = { { 1.0f / 16.0f, -3.0f / 16.0f },
 
 void FeatureDemo::initDepthPass()
 {
-	mDepthPass.pProgram = GraphicsProgram::createFromFile("DepthPass.vs.slang", "DepthPass.ps.slang");
-	mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getActiveVersion()->getReflector());
+    mDepthPass.pProgram = GraphicsProgram::createFromFile("DepthPass.vs.slang", "DepthPass.ps.slang");
+    mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getActiveVersion()->getReflector());
 }
 
 void FeatureDemo::initLightingPass()
@@ -59,10 +59,10 @@ void FeatureDemo::initLightingPass()
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpSceneRenderer->getScene()->getLightCount()));
     initControls();
     mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getActiveVersion()->getReflector());
-	
+    
     DepthStencilState::Desc dsDesc;
-	dsDesc.setDepthTest(true).setStencilTest(false).setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
-	mLightingPass.pDsState = DepthStencilState::create(dsDesc);
+    dsDesc.setDepthTest(true).setStencilTest(false).setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
+    mLightingPass.pDsState = DepthStencilState::create(dsDesc);
 
     RasterizerState::Desc rsDesc;
     rsDesc.setCullMode(RasterizerState::CullMode::None);
@@ -104,6 +104,7 @@ void FeatureDemo::setSceneSampler(uint32_t maxAniso)
 void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& filename)
 {
     std::string folder = getDirectoryFromFile(filename);
+
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
     if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '\\' + var.str);
 
@@ -161,10 +162,17 @@ void FeatureDemo::initScene(Scene::SharedPtr pScene)
     mCurrentTime = 0;
 }
 
+void FeatureDemo::resetScene()
+{
+    mpSceneRenderer = nullptr;
+    mSkyBox.pEffect = nullptr;
+    mpEnvMap = nullptr;
+}
+
 void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
-    mpSceneRenderer = nullptr;
+    resetScene();
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
@@ -181,7 +189,7 @@ void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
 void FeatureDemo::loadScene(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
-    mpSceneRenderer = nullptr;
+    resetScene();
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
@@ -232,24 +240,25 @@ void FeatureDemo::onLoad()
 {
     mpState = GraphicsState::create();
 
-    initSkyBox("LightProbes\\10-Shiodome_Stairs_3k.dds");
-    initEnvMap("LightProbes\\10-Shiodome_Stairs_3k.dds");
     initPostProcess();
     initializeTesting();
 }
 
 void FeatureDemo::renderSkyBox()
 {
-    PROFILE(skyBox);
-    mpState->setDepthStencilState(mSkyBox.pDS);
-    mSkyBox.pEffect->render(mpRenderContext.get(), mpSceneRenderer->getScene()->getActiveCamera().get());
-    mpState->setDepthStencilState(nullptr);
+    if (mSkyBox.pEffect)
+    {
+        PROFILE(skyBox);
+        mpState->setDepthStencilState(mSkyBox.pDS);
+        mSkyBox.pEffect->render(mpRenderContext.get(), mpSceneRenderer->getScene()->getActiveCamera().get());
+        mpState->setDepthStencilState(nullptr);
+    }
 }
 
 void FeatureDemo::beginFrame()
 {
     mpRenderContext->pushGraphicsState(mpState);
-    mpRenderContext->clearFbo(mpMainFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::All);
+    mpRenderContext->clearFbo(mpMainFbo.get(), glm::vec4(0.7f, 0.7f, 0.7f, 1.0f), 1, 0, FboAttachmentType::All);
     mpRenderContext->clearFbo(mpPostProcessFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
 
     if (mAAMode == AAMode::TAA)
@@ -279,15 +288,15 @@ void FeatureDemo::postProcess()
 
 void FeatureDemo::depthPass()
 {
-	PROFILE(depthPass);
-	if (mEnableDepthPass == false) 
-	{
-		return;
-	}
+    PROFILE(depthPass);
+    if (mEnableDepthPass == false) 
+    {
+        return;
+    }
 
     mpState->setFbo(mpDepthPassFbo);
-	mpState->setProgram(mDepthPass.pProgram);
-	mpRenderContext->setGraphicsVars(mDepthPass.pVars);
+    mpState->setProgram(mDepthPass.pProgram);
+    mpRenderContext->setGraphicsVars(mDepthPass.pVars);
     
     auto renderMode = mControls[EnableTransparency].enabled ? FeatureDemoSceneRenderer::Mode::Opaque : FeatureDemoSceneRenderer::Mode::All;
     mpSceneRenderer->setRenderMode(renderMode);
@@ -298,7 +307,7 @@ void FeatureDemo::lightingPass()
 {
     PROFILE(lightingPass);
     mpState->setProgram(mLightingPass.pProgram);
-	mpState->setDepthStencilState(mEnableDepthPass ? mLightingPass.pDsState : nullptr);
+    mpState->setDepthStencilState(mEnableDepthPass ? mLightingPass.pDsState : nullptr);
     mpRenderContext->setGraphicsVars(mLightingPass.pVars);
     ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
     pCB["gEnvMapFactorScale"] = mEnvMapFactorScale;
@@ -332,8 +341,8 @@ void FeatureDemo::lightingPass()
         mpSceneRenderer->setRenderMode(FeatureDemoSceneRenderer::Mode::All);
         mpSceneRenderer->renderScene(mpRenderContext.get());
     }
-	mpRenderContext->flush();
-	mpState->setDepthStencilState(nullptr);
+    mpRenderContext->flush();
+    mpState->setDepthStencilState(nullptr);
 }
 
 void FeatureDemo::renderOpaqueObjects()
@@ -366,7 +375,7 @@ void FeatureDemo::shadowPass()
     {
         mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
         mShadowPass.pCsm->setup(mpRenderContext.get(), mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
-		mpRenderContext->flush();
+        mpRenderContext->flush();
     }
 }
 
@@ -439,7 +448,7 @@ void FeatureDemo::onBeginTestFrame()
 void FeatureDemo::onFrameRender()
 {
     beginTestFrame();
-	
+    
     if (mpSceneRenderer)
     {
         beginFrame();
@@ -449,9 +458,9 @@ void FeatureDemo::onFrameRender()
             mpSceneRenderer->update(mCurrentTime);
         }
 
-		depthPass();
+        depthPass();
         shadowPass();
-		mpState->setFbo(mpMainFbo);
+        mpState->setFbo(mpMainFbo);
         renderSkyBox();
         lightingPass();
         antiAliasing();

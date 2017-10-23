@@ -38,8 +38,6 @@ struct SSAOData
     uint32_t kernelSize DEFAULTS(1);
     float2 noiseScale DEFAULTS(float2(1, 1));
     float radius DEFAULTS(0.1f);
-    float surfaceOffset DEFAULTS(0.1f);
-    float3 padding;
 };
 
 #endif //SSAODATA_H

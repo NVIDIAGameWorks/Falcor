@@ -321,7 +321,7 @@ namespace Falcor
         }
     }
 
-    void initVkVertexLayoutInfo(const VertexLayout* pLayout, VertexInputStateCreateInfo& infoOut)
+    void initVkVertexLayoutInfo(const VertexLayout* pLayout, VertexInputStateCreateInfo& infoOut, ProgramReflection const* pReflector)
     {
         // Build Vertex input and binding info
         infoOut.bindingDescs.clear();
@@ -342,9 +342,23 @@ namespace Falcor
 
                 for (uint32_t elemID = 0; elemID < pVB->getElementCount(); elemID++)
                 {
+                    // The vertex layout element will include a specified
+                    // shader location, but we may decide to override this
+                    // if the reflection data includes HLSL semantic
+                    // information that tells us the "right" location
+                    // for the given element.
+                    uint32_t shaderLocation = pVB->getElementShaderLocation(elemID);
+
+                    auto pAttribReflector = pReflector->getVertexAttributeBySemantic(
+                        pVB->getElementName(elemID));
+                    if (pAttribReflector)
+                    {
+                        shaderLocation = (uint32_t) pAttribReflector->location;
+                    }
+
                     // Per shader location specified
                     VkVertexInputAttributeDescription attribDesc = {};
-                    attribDesc.location = pVB->getElementShaderLocation(elemID);
+                    attribDesc.location = shaderLocation;
                     attribDesc.binding = (uint32_t)vb;
                     attribDesc.format = getVkFormat(pVB->getElementFormat(elemID));
                     attribDesc.offset = pVB->getElementOffset(elemID);

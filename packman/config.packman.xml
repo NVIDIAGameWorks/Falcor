@@ -1,0 +1,6 @@
+<config remotes="s3">
+	<remote name="s3" type="s3" packageLocation="packman">
+			<credentials id="AKIAJHPSPBMWMTZS6TJA" key="vK3d0lHiQjEW9krFfvKA4OLpuHGxi2L4/Q4r4IuT"
+				errorUrl="https://gtl-gitlab.nvidia.com/halldor/packman/wikis/credentials/failure-using-s3-packman-read-access"/>
+	</remote>
+</config>

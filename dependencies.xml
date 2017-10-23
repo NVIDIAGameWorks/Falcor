@@ -1,15 +1,37 @@
-<project toolsVersion="4.0" packageSource="s3">
-    <platform name="win">
-        <dependency name="openvr" version="1.0.8" linkPath="Framework/Externals/OpenVR"/>
-        <dependency name="assimp" version="3.3.0" linkPath="Framework/Externals/ASSIMP"/>
-        <dependency name="dear_imgui" version="1.50.wip" linkPath="Framework/Externals/dear_imgui"/>
-        <dependency name="glm" version="0.9.8.4" linkPath="Framework/Externals/GLM"/>
-        <dependency name="ffmpeg" version="3.1.4" linkPath="Framework/Externals/FFMPEG"/>
-        <dependency name="freeimage" version="3.17.0" linkPath="Framework/Externals/FreeImage"/>
-        <dependency name="vulkansdk" version="1.0.51.0" linkPath="Framework/Externals/VulkanSDK"/>
-        <dependency name="rapidjson" version="0.1" linkPath="Framework/Externals/RapidJson"/>
-        <dependency name="slang" version="0.7.8" linkPath="Framework/Externals/Slang"/>
-        <dependency name="glfw" version="3.2.1" linkPath="Framework/Externals/GLFW"/>
-        <dependency name="falcor_media" version="1.0" linkPath="Media"/>
-    </platform>
+<project toolsVersion="5.0">
+    <remote name="github-slang" type="https"
+            packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
+    <dependency name="openvr" linkPath="Framework/Externals/OpenVR">
+        <package name="openvr" version="1.0.8" />
+    </dependency>
+    <dependency name="assimp" linkPath="Framework/Externals/ASSIMP">
+        <package name="assimp" version="4.0.1" />
+    </dependency>
+    <dependency name="dear_imgui" linkPath="Framework/Externals/dear_imgui">
+        <package name="dear_imgui" version="1.50.wip" />
+    </dependency>
+    <dependency name="glm" linkPath="Framework/Externals/GLM">
+        <package name="glm" version="0.9.8.4" />
+    </dependency>
+    <dependency name="ffmpeg" linkPath="Framework/Externals/FFMPEG">
+        <package name="ffmpeg" version="3.1.4" />
+    </dependency>
+    <dependency name="freeimage" linkPath="Framework/Externals/FreeImage">
+        <package name="freeimage" version="3.17.0" />
+    </dependency>
+    <dependency name="vulkansdk" linkPath="Framework/Externals/VulkanSDK">
+        <package name="vulkansdk" version="1.0.51.0" />
+    </dependency>
+    <dependency name="rapidjson" linkPath="Framework/Externals/RapidJson">
+        <package name="rapidjson" version="0.1" />
+    </dependency>
+    <dependency name="slang" linkPath="Framework/Externals/Slang">
+        <package name="slang" version="0.8.9" remotes="github-slang" />
+    </dependency>
+    <dependency name="glfw" linkPath="Framework/Externals/GLFW">
+        <package name="glfw" version="3.2.1" />
+    </dependency>
+    <dependency name="falcor_media" linkPath="Media">
+        <package name="falcor_media" version="1.0" />
+    </dependency>
 </project>
