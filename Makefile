@@ -19,32 +19,33 @@ INCLUDES = \
 -I "$(VK_SDK_PATH)/Include"
 
 # Compiler Flags
-DEBUG_FLAGS := -O0
-RELEASE_FLAGS := -O3
-COMMON_FLAGS := -c -Wall -Werror -std=c++14 -m64 -Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function
+DEBUG_FLAGS:=-O0
+RELEASE_FLAGS:=-O3
+COMMON_FLAGS:=-c -Wall -Werror -std=c++14 -m64 -Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch
 
 # Defines
-DEBUG_DEFINES := -D "_DEBUG"
-RELEASE_DEFINES := -D "NDEBUG"
-COMMON_DEFINES := -D "FALCOR_VK" -D "WIN32" -D "_LIB" -D "_UNICODE" -D "UNICODE" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+DEBUG_DEFINES:=-D "_DEBUG"
+RELEASE_DEFINES:=-D "NDEBUG"
+COMMON_DEFINES:=-D "FALCOR_VK" -D "WIN32" -D "_LIB" -D "_UNICODE" -D "UNICODE" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
 
 # Base source directory
-SOURCE_DIR := Framework/Source/
+SOURCE_DIR:=Framework/Source/
 
 # All directories containing source code relative from the base Source folder. The "/" in the first line is to include the base Source directory
 #RELATIVE_DIRS := TestCode/
-RELATIVE_DIRS := / \
+RELATIVE_DIRS:=\
+/ \
 API/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
 Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/  \
 VR/ VR/OpenVR/
 
-# 1, 2-4, 5-12, 13-20, 21-25, 26-27
+# 1,1    2,4    5,12    13, 20    21, 25     26,27
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-#SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,20,$(RELATIVE_DIRS)))
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,1,$(RELATIVE_DIRS)))
+#SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)
 ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))
@@ -52,9 +53,9 @@ ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))
 # All expected .o files with the same path as their corresponding .cpp. Output redirected to actual output folder during compilation recipe
 ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
 
-BASE_OUT_DIR := Bin/gcc/
-DEBUG_OUT_DIR = $(BASE_OUT_DIR)DebugVK/
-RELEASE_OUT_DIR = $(BASE_OUT_DIR)ReleaseVK/
+BASE_OUT_DIR:=Bin/gcc/
+DEBUG_OUT_DIR=$(BASE_OUT_DIR)DebugVK/
+RELEASE_OUT_DIR=$(BASE_OUT_DIR)ReleaseVK/
 
 # OS specific versions of shell commands
 ifeq ($(OS),Windows_NT)
