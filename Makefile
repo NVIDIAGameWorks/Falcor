@@ -44,7 +44,7 @@ VR/ VR/OpenVR/
 # 1,1    2,4    5,12    13, 20    21, 25     26,27
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 2,4,$(RELATIVE_DIRS)))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 5,12,$(RELATIVE_DIRS)))
 #SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)

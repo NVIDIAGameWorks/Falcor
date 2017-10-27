@@ -138,7 +138,7 @@ namespace Falcor
             if (currentData.pMaterial->getAlphaMap())
             {
                 float alphaThreshold = currentData.pMaterial->getAlphaThreshold();
-                auto& pVars = currentData.pContext->getGraphicsVars();
+                auto pVars = currentData.pContext->getGraphicsVars();
                 pVars->getConstantBuffer(mBindLocations.alphaCB.regSpace, mBindLocations.alphaCB.baseRegIndex, 0)->setBlob(&alphaThreshold, 0u, sizeof(float));
                 pVars->setSrv(mBindLocations.alphaMap.regSpace, mBindLocations.alphaMap.baseRegIndex, 0, currentData.pMaterial->getAlphaMap()->getSRV());
                 pVars->setSampler(mBindLocations.alphaMapSampler.regSpace, mBindLocations.alphaMapSampler.baseRegIndex, 0, mpAlphaSampler);
@@ -475,7 +475,7 @@ namespace Falcor
         }
     }
 
-    __forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const glm::vec2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
+    forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const glm::vec2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
     {
         // Convert to camera space
         float minDepth = nearPlane + distanceRange.x * camDepthRange;
@@ -608,7 +608,7 @@ namespace Falcor
 
     void CascadedShadowMaps::renderScene(RenderContext* pCtx)
     {
-        auto& pCB = mShadowPass.pGraphicsVars->getConstantBuffer(mPerLightCbLoc.regSpace, mPerLightCbLoc.baseRegIndex, 0);
+        auto pCB = mShadowPass.pGraphicsVars->getConstantBuffer(mPerLightCbLoc.regSpace, mPerLightCbLoc.baseRegIndex, 0);
         check_offset(globalMat);
         check_offset(cascadeScale[0]);
         check_offset(cascadeOffset[0]);
