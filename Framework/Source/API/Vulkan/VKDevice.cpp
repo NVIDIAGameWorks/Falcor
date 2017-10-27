@@ -275,7 +275,15 @@ namespace Falcor
         std::vector<VkExtensionProperties> supportedExtensions = enumarateInstanceExtensions();
 
         // Extensions to use when creating instance
-        std::vector<const char*> requiredExtensions = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+        std::vector<const char*> requiredExtensions = { 
+            "VK_KHR_surface",
+#ifdef _WIN32
+            "VK_KHR_win32_surface"
+#else
+            "VK_KHR wayland_surface"
+#endif
+        };
+
         if (desc.enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
 
         // Get the VR extensions
@@ -501,17 +509,31 @@ namespace Falcor
 
     VkSurfaceKHR createSurface(VkInstance instance, VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Window* pWindow)
     {
+        VkSurfaceKHR surface;
+
+#ifdef _WIN32
         VkWin32SurfaceCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
         createInfo.hwnd = pWindow->getApiHandle();
         createInfo.hinstance = GetModuleHandle(nullptr);
 
-        VkSurfaceKHR surface;
         if (VK_FAILED(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface)))
         {
             logError("Could not create Vulkan surface.");
             return nullptr;
         }
+#else
+        VkWaylandSurfaceCreateInfoKHR createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+        createInfo.display = pWindow->getApiHandle().pWlDisplay;
+        createInfo.surface = pWindow->getApiHandle().pWlSurface;
+
+        if (VK_FAILED(vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface)))
+        {
+            logError("Could not create Vulkan surface.");
+            return nullptr;
+        }
+#endif
 
         VkBool32 supported = VK_FALSE;
         vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, pData->falcorToVulkanQueueType[uint32_t(LowLevelContextData::CommandQueueType::Direct)], surface, &supported);
@@ -684,11 +706,9 @@ namespace Falcor
 
     uint32_t Device::getVkMemoryType(MemoryType falcorType, uint32_t memoryTypeBits) const
     {
-		uint32_t mask = mpApiData->vkMemoryTypeBits[(uint32_t)falcorType] & memoryTypeBits;
-		assert(mask != 0);
-		unsigned long index;
-		BitScanForward(&index, mask);
-		return index;
+        uint32_t mask = mpApiData->vkMemoryTypeBits[(uint32_t)falcorType] & memoryTypeBits;
+        assert(mask != 0);
+        return bitScanForward(mask);
     }
 
     const VkPhysicalDeviceLimits& Device::getPhysicalDeviceLimits() const

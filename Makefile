@@ -21,7 +21,7 @@ INCLUDES = \
 # Compiler Flags
 DEBUG_FLAGS:=-O0
 RELEASE_FLAGS:=-O3
-COMMON_FLAGS:=-c -Wall -Werror -std=c++14 -m64 -Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch
+COMMON_FLAGS:=-c -Wall -Werror -std=c++14 -m64 -Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address
 
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"
@@ -44,7 +44,7 @@ VR/ VR/OpenVR/
 # 1,1    2,4    5,12    13, 20    21, 25     26,27
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,1,$(RELATIVE_DIRS)))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 2,4,$(RELATIVE_DIRS)))
 #SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)
@@ -73,8 +73,11 @@ DebugVK : DebugConfig $(ALL_OBJ_FILES)
 # Compiles a single file without linking
 # Targets are the same path as the cpp, only with a .o extension.
 # Path will be manipulated to point to proper output folder within this recipe
+# TODO: Leaving the targets the same as cpp path but output elsewhere will break incremental building
+#       If I leave the output in the same directory as the cpp, remember to copy the .o to the output folder on recipe completion
 $(ALL_OBJ_FILES) : %.o : %.cpp
-	$(eval OUT_FILE=$(OUT_DIR)$(notdir $@))
+#	$(eval OUT_FILE=$(OUT_DIR)$(notdir $@))
+	$(eval OUT_FILE=$@)
 	@echo $^ $(OUT_FILE)
 	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $^ -o $(OUT_FILE)
 
@@ -94,8 +97,9 @@ ReleaseConfig :
 
 .PHONY : Clean
 Clean :
-	@echo Cleaning $(BASE_OUT_DIR)
-	$(call RemoveDir,$(BASE_OUT_DIR))
+	find . -name "*.o" -type f -delete
+#	@echo Cleaning $(BASE_OUT_DIR)
+#	$(call RemoveDir,$(BASE_OUT_DIR))
 
 .PHONY : CleanDebug
 CleanDebug :

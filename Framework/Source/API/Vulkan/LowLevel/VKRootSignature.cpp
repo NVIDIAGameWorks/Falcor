@@ -133,7 +133,7 @@ namespace Falcor
         RootSignature::DescType type;
         uint32_t regSpace;
         uint32_t regIndex;
-		uint32_t descOffst;
+        uint32_t descOffst;
         uint32_t count;
     };
 
@@ -162,7 +162,7 @@ namespace Falcor
         data.count = resource.arraySize ? resource.arraySize : 1;
         data.regIndex = resource.regIndex;
         data.regSpace = resource.regSpace;
-		data.descOffst = resource.descOffset;
+        data.descOffst = resource.descOffset;
         return data;
     }
 
@@ -179,17 +179,17 @@ namespace Falcor
             rangeMap[data.type] = {};
         }
 
-		// Check if we already have a range with the same base index
-		for (auto& r : rangeMap[data.type])
-		{
-			if (r.baseIndex == data.regIndex)
-			{
-				r.count = max(r.count, data.count + data.descOffst);
-				return;
-			}
-		}
+        // Check if we already have a range with the same base index
+        for (auto& r : rangeMap[data.type])
+        {
+            if (r.baseIndex == data.regIndex)
+            {
+                r.count = max(r.count, data.count + data.descOffst);
+                return;
+            }
+        }
 
-		// New Range
+        // New Range
         rangeMap[data.type].push_back({ data.regIndex, data.count + data.descOffst });
     }
 
@@ -197,7 +197,6 @@ namespace Falcor
 
     static void insertBuffers(const ProgramReflection* pReflector, SetMap& setMap, ProgramReflection::BufferReflection::Type bufferType, RootSignature::DescType descType)
     {
-        uint32_t cost = 0;
         const auto& bufMap = pReflector->getBufferMap(bufferType);
         for (const auto& buf : bufMap)
         {
@@ -206,7 +205,7 @@ namespace Falcor
             {
                 ResData resData;
                 resData.count = 1;
-				resData.descOffst = 0;
+                resData.descOffst = 0;
                 resData.regIndex = pBuffer->getRegisterIndex();
                 resData.regSpace = pBuffer->getRegisterSpace();
                 resData.type = descType;

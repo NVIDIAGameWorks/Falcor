@@ -33,8 +33,8 @@
 #include "Graphics/Program.h"
 #include "Utils/OS.h"
 #include "API/FBO.h"
-#include "VR\OpenVR\VRSystem.h"
-#include "Utils\ProgressBar.h"
+#include "VR/OpenVR/VRSystem.h"
+#include "Utils/ProgressBar.h"
 #include <sstream>
 #include <iomanip>
 

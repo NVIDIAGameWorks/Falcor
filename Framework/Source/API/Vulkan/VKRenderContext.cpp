@@ -175,11 +175,11 @@ namespace Falcor
         {
             for (uint32_t i = 0; i < colorTargets; i++)
             {
-                auto& pTexture = pFbo->getColorTexture(i);
+                auto pTexture = pFbo->getColorTexture(i);
                 if (pTexture) pCtx->resourceBarrier(pTexture.get(), Resource::State::RenderTarget);
             }
 
-            auto& pTexture = pFbo->getDepthStencilTexture();
+            auto pTexture = pFbo->getDepthStencilTexture();
             if (pTexture) pCtx->resourceBarrier(pTexture.get(), Resource::State::DepthStencil);
         }
     }

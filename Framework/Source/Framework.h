@@ -54,19 +54,22 @@ using namespace glm;
     }
 
 #define should_not_get_here() assert(false);
-#else
+
+#else // _DEBUG
+
 #ifdef _AUTOTESTING
 #define assert(a) if (!(a)) throw std::exception("Assertion Failure");
-#else
-#define assert(a)
-#endif
+#else // _AUTOTESTING
+#define assert(a) (void)(a)
+#endif // _AUTOTESTING
 
 #ifdef _MSC_VER
 #define should_not_get_here() __assume(0)
-#else
+#else // _MSC_VER
 #define should_not_get_here()
-#endif
-#endif
+#endif // _MSC_VER
+
+#endif // _DEBUG
 
 #define safe_delete(_a) {delete _a; _a = nullptr;}
 #define safe_delete_array(_a) {delete[] _a; _a = nullptr;}
@@ -157,20 +160,41 @@ namespace Falcor
         return (t & (t - 1)) == 0;
     }
 
+    /** Returns index of most significant set bit, or 0 if no bits were set
+    */
+    inline uint32_t bitScanReverse(uint32_t a)
+    {
+#ifdef _MSC_VER
+        unsigned long index;
+        _BitScanReverse(&index, a);
+        return (uint32_t)index;
+#elif defined(__GNUC__)
+        // __builtin_clz counts 0's from the MSB, convert to index from the LSB
+        return (sizeof(uint32_t) * 8) - (uint32_t)__builtin_clz(a) - 1;
+#endif
+    }
+
+    /** Returns index of least significant set bit, or 0 if no bits were set
+    */
+    inline uint32_t bitScanForward(uint32_t a)
+    {
+#ifdef _MSC_VER
+        unsigned long index;
+        _BitScanForward(&index, a);
+        return (uint32_t)index;
+#elif defined(__GNUC__)
+        // __builtin_ctz() counts 0's from LSB, which is the same as the index of the first set bit
+        // Manually return 0 if a is 0 to match Microsoft behavior. __builtin_ctz(0) produces undefined results.
+        return (a > 0) ? ((uint32_t)__builtin_ctz(a)) : 0;
+#endif
+    }
+
     /** Gets the closest power of two to a number, rounded down.
     */
     inline uint32_t getLowerPowerOf2(uint32_t a)
     {
         assert(a != 0);
-
-#ifdef _MSC_VER
-        unsigned long index;
-        _BitScanReverse(&index, a);
-#elif defined(__GNUC__)
-        // The function counts zeros from the MSB, must convert to index
-        uint32_t index = (sizeof(uint32_t) * 8) - (uint32_t)__builtin_clz(a) - 1;
-#endif
-        return 1 << index;
+        return 1 << bitScanReverse(a);
     }
 
     /*! @} */

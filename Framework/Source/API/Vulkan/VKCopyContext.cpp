@@ -29,6 +29,7 @@
 #include "API/CopyContext.h"
 #include "API/Buffer.h"
 #include "API/Texture.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -225,7 +226,7 @@ namespace Falcor
         mCommandsPending = true;
         VkBufferImageCopy vkCopy;
         Buffer::SharedPtr pStaging;
-        size_t dataSize;
+        size_t dataSize = 0;
         initTexAccessParams(pTexture, subresourceIndex, vkCopy, pStaging, nullptr, dataSize);
 
         // Execute the copy
@@ -238,7 +239,7 @@ namespace Falcor
         // Map and read the results
         std::vector<uint8> result(dataSize);
         uint8* pData = reinterpret_cast<uint8*>(pStaging->map(Buffer::MapType::Read));
-        memcpy_s(result.data(), result.size(), pData, dataSize);
+        std::memcpy(result.data(), pData, dataSize);
 
         return result;
     }

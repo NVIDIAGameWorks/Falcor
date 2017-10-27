@@ -40,7 +40,7 @@ namespace Falcor
     void bindConstantBuffers(CopyContext* pContext, const ProgramVars::ResourceMap<ConstantBuffer>& cbMap, const ProgramVars::RootSetVec& rootSets, bool forceBind);
     ProgramReflection::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
 
-    ProgramVars::RootData findRootData(const RootSignature* pRootSig, uint32_t regIndex, uint32_t regSpace, RootSignature::DescType descType)
+    RootData findRootData(const RootSignature* pRootSig, uint32_t regIndex, uint32_t regSpace, RootSignature::DescType descType)
     {
         // Search the descriptor-tables
         for (size_t i = 0; i < pRootSig->getDescriptorSetCount(); i++)
@@ -53,13 +53,13 @@ namespace Falcor
                 {
                     if (range.baseRegIndex == regIndex)
                     {
-                        return ProgramVars::RootData((uint32_t)i, r);
+                        return RootData((uint32_t)i, r);
                     }
                 }
             }
         }
         should_not_get_here();
-        return ProgramVars::RootData();
+        return RootData();
     }
 
     template<typename BufferType, typename ViewType, RootSignature::DescType descType, typename ViewInitFunc>
@@ -75,7 +75,7 @@ namespace Falcor
                 uint32_t regIndex = pReflector->getRegisterIndex();
                 uint32_t regSpace = pReflector->getRegisterSpace();
                 uint32_t arraySize = max(1u, pReflector->getArraySize());
-                ProgramVars::ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
+                ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
                 if (data.rootData.rootIndex == -1)
                 {
                     logError("Can't find a root-signature information matching buffer '" + pReflector->getName() + " when creating ProgramVars");
@@ -168,8 +168,8 @@ namespace Falcor
         // Mark the active descs (not empty, not CBs)
         for (size_t i = 0; i < mpRootSignature->getDescriptorSetCount(); i++)
         {
-            const auto& set = mpRootSignature->getDescriptorSet(i);
 #ifdef FALCOR_D3D12
+            const auto& set = mpRootSignature->getDescriptorSet(i);
             mRootSets[i].active = (set.getRangeCount() >= 1 && set.getRange(0).type != RootSignature::DescType::Cbv);
 #else
             mRootSets[i].active = true;
@@ -203,7 +203,7 @@ namespace Falcor
             }
         }
 
-        auto& pDesc = pReflector->getBufferDesc(name, bufferType);
+        auto pDesc = pReflector->getBufferDesc(name, bufferType);
         if (pDesc->getType() != bufferType)
         {
             logWarning("Buffer \"" + name + "\" is not a " + to_string(bufferType) + ". Type = " + to_string(pDesc->getType()));
@@ -226,7 +226,7 @@ namespace Falcor
 
     ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
     {
-        auto& it = mAssignedCbs.find({ regSpace, baseRegIndex });
+        auto it = mAssignedCbs.find({ regSpace, baseRegIndex });
         if (it == mAssignedCbs.end())
         {
             logWarning("Can't find constant buffer at index " + std::to_string(baseRegIndex) + ", space " + std::to_string(regSpace) + ". Ignoring getConstantBuffer() call.");
@@ -253,7 +253,7 @@ namespace Falcor
             logError("Can't attach the constant buffer. Size mismatch.");
             return false;
         }
-       mAssignedCbs[loc][arrayIndex].pResource = pCB;
+        mAssignedCbs[loc][arrayIndex].pResource = pCB;
         return true;
     }
 
@@ -408,7 +408,7 @@ namespace Falcor
         if (pBufDesc == nullptr)
         {
             logWarning("Structured buffer \"" + name + "\" was not found. Ignoring " + callStr + "StructuredBuffer() call.");
-            return false;
+            return nullptr;
         }
         return pBufDesc;
     }
@@ -723,7 +723,7 @@ namespace Falcor
                 {
                     auto& resDesc = resVec[i];
                     Resource* pResource = resDesc.pResource.get();
-                    ViewType::SharedPtr view = pResource ? resDesc.pView : ViewType::getNullView();
+                    typename ViewType::SharedPtr view = pResource ? resDesc.pView : ViewType::getNullView();
 
                     // Get the set and copy the GPU handle
                     const auto& pDescSet = rootSets[rootData.rootIndex].pDescSet;

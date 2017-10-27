@@ -31,6 +31,8 @@
 
 #ifdef _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
+#else
+    #define VK_USE_PLATFORM_WAYLAND_KHR
 #endif
 
 #include <vulkan/vulkan.h>
@@ -68,7 +70,12 @@ namespace Falcor
 #ifdef _WIN32
     using WindowHandle = HWND;
 #else
-    using WindowHandle = void*;
+    struct WindowHandle
+    {
+        wl_display* pWlDisplay;
+        wl_surface* pWlSurface;
+        wl_output* pWlOutput;
+    };
 #endif
 
     using DeviceHandle = VkDeviceData::SharedPtr;

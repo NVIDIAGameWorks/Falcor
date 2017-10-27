@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "API/StructuredBuffer.h"
 #include "API/Buffer.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -86,7 +87,7 @@ namespace Falcor
         {
             mGpuCopyDirty = false;
             const uint8_t* pData = (uint8_t*)map(Buffer::MapType::Read);
-            memcpy(mData.data(), pData, mData.size());
+            std::memcpy(mData.data(), pData, mData.size());
             unmap();
         }
     }
@@ -106,7 +107,7 @@ namespace Falcor
             return;
         }
         readFromGPU();
-        memcpy(pDest, mData.data() + offset, size);
+        std::memcpy(pDest, mData.data() + offset, size);
     }
 
     template<typename VarType> 

@@ -29,6 +29,7 @@
 #include "API/ComputeContext.h"
 #include "API/Device.h"
 #include "API/DescriptorSet.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -54,7 +55,8 @@ namespace Falcor
         }
         pCtx->resourceBarrier(pView->getResource(), Resource::State::CopyDest);
         VkClearColorValue colVal;
-        memcpy_s(colVal.float32, sizeof(colVal.float32), &clearVal, sizeof(clearVal)); // VkClearColorValue is a union, so should work regardless of the ClearType
+        assert(sizeof(ClearType) <= sizeof(colVal.float32));
+        std::memcpy(colVal.float32, &clearVal, sizeof(clearVal)); // VkClearColorValue is a union, so should work regardless of the ClearType
         VkImageSubresourceRange range;
         const auto& viewInfo = pView->getViewInfo();
         range.baseArrayLayer = viewInfo.firstArraySlice;
@@ -78,8 +80,7 @@ namespace Falcor
     {
         if(pUav->getApiHandle().getType() == VkResourceType::Buffer)
         {
-
-            if ((value.x != value.y) || (value.x != value.z) && (value.x != value.w))
+            if ((value.x != value.y) || ((value.x != value.z) && (value.x != value.w)))
             {
                 logWarning("Vulkan buffer clears only support a single element. A vector was supplied which has different elements per channel. only `x` will be used'");
             }

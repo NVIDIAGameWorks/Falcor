@@ -30,18 +30,26 @@
 #include "Utils/UserInput.h"
 #include "Utils/OS.h"
 #include <algorithm>
-#include "API/texture.h"
+#include "API/Texture.h"
 #include "API/FBO.h"
 #include "Utils/StringUtils.h"
 
-#define GLFW_DLL
+// Don't include GL/GLES headers
+#define GLFW_INCLUDE_NONE
 
 #ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
+#else
+#define GLFW_EXPOSE_NATIVE_WAYLAND
 #endif
 
 #include "glfw3.h"
 #include "glfw3native.h"
+
+// #HACK Why does glfw3.h define _WIN32 on linux/gcc?
+#ifndef _MSC_VER
+#undef _WIN32
+#endif
 
 namespace Falcor
 {
@@ -370,9 +378,15 @@ namespace Falcor
 
 #ifdef _WIN32
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
-#endif
-
         assert(pWindow->mApiHandle);
+#else
+        pWindow->mApiHandle.pWlDisplay = glfwGetWaylandDisplay();
+        pWindow->mApiHandle.pWlSurface = glfwGetWaylandWindow(pGLFWWindow);
+
+        // #TODO: Fullscreen handling
+        //pWindow->mApiHandle.pWlOutput = glfwGetWaylandMonitor(pGLFWMonitor);
+        assert(pWindow->mApiHandle.pWlDisplay && pWindow->mApiHandle.pWlSurface);
+#endif
 
         glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
 

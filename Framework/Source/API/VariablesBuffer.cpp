@@ -33,6 +33,7 @@
 #include "Texture.h"
 #include "API/ProgramReflection.h"
 #include "API/Device.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -249,7 +250,6 @@ namespace Falcor
     {
         size_t offset;
         const auto* pVar = mpReflector->getVariableData(name, offset);
-        bool valid = true;
         if((_LOG_ENABLED == 0) || (offset != ProgramReflection::kInvalidLocation && checkVariableType<VarType>(pVar->type, name, mpReflector->getName())))
         {
             setVariable<VarType>(offset, element, value);
@@ -405,7 +405,7 @@ namespace Falcor
             logError(Msg);
             return;
         }
-        memcpy(mData.data() + offset, pSrc, size);
+        std::memcpy(mData.data() + offset, pSrc, size);
         mDirty = true;
     }
 
@@ -569,14 +569,14 @@ namespace Falcor
     void VariablesBuffer::setTexture(const std::string& name, const Texture* pTexture, const Sampler* pSampler)
     {
         size_t offset;
-        const auto& pVarDesc = mpReflector->getVariableData(name, offset);
+        mpReflector->getVariableData(name, offset);
         if(offset != ProgramReflection::kInvalidLocation)
         {
             bool bOK = true;
 #if _LOG_ENABLED == 1
             if(pTexture != nullptr)
             {
-                const auto& pDesc = getResourceDesc(name, mpReflector.get());
+                const auto pDesc = getResourceDesc(name, mpReflector.get());
                 bOK = (pDesc != nullptr) && checkResourceDimension(pTexture, pDesc, name, mpReflector->getName());
             }
 #endif
