@@ -37,7 +37,7 @@ namespace Falcor
     void dumpBonesHeirarchy(const std::string& filename, Bone* pBone, uint32_t count)
     {
         std::ofstream dotfile;
-        dotfile.open(filename.c_str(), 'w');
+        dotfile.open(filename.c_str());
 
         // Header
         dotfile << "digraph BonesGraph {" << std::endl;

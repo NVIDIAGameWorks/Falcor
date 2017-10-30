@@ -60,7 +60,7 @@ using namespace glm;
 #ifdef _AUTOTESTING
 #define assert(a) if (!(a)) throw std::exception("Assertion Failure");
 #else // _AUTOTESTING
-#define assert(a) (void)(a)
+#define assert(a) ((void)(a))
 #endif // _AUTOTESTING
 
 #ifdef _MSC_VER
@@ -195,6 +195,17 @@ namespace Falcor
     {
         assert(a != 0);
         return 1 << bitScanReverse(a);
+    }
+
+    /** Gets the number of set bits
+    */
+    inline uint32_t popcount(uint32_t a)
+    {
+#ifdef _MSC_VER
+        return __popcnt(a);
+#elif defined(__GNUC__)
+        return (uint32_t)__builtin_popcount(a);
+#endif
     }
 
     /*! @} */

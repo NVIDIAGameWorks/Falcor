@@ -25,15 +25,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/prettywriter.h"
+#include "glm/detail/func_trigonometric.hpp"
+
 #include "Framework.h"
 #include "SceneExporter.h"
 #include <fstream>
-#include "Externals/RapidJson/include/rapidjson/stringbuffer.h"
-#include "Externals/RapidJson/include/rapidjson/prettywriter.h"
-#include "SceneExportImportCommon.h"
-#include "glm/detail/func_trigonometric.hpp"
 #include "Utils/OS.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
+
+#include "SceneExportImportCommon.h"
+
 
 namespace Falcor
 {

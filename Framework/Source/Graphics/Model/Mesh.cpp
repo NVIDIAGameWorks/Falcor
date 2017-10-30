@@ -71,7 +71,7 @@ namespace Falcor
         , mBoundingBox(boundingBox)
         , mHasBones(hasBones)
     {
-        uint32_t VertsPerPrim;
+        uint32_t VertsPerPrim = 3;
         switch(topology)
         {
         case Vao::Topology::PointList:

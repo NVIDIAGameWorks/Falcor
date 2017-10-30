@@ -372,8 +372,6 @@ namespace Falcor
     {
         if(mpCamera)
         {
-            VRDisplay* pDisplay = VRSystem::instance()->getHMD().get();
-
             // Calculate the view params based on the center matrix
             setCameraParamsFromViewMat(mpCamera.get(), mInvPrevHmdViewMat * mpCamera->getViewMatrix());
 

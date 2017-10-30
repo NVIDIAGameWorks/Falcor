@@ -6,12 +6,13 @@ INCLUDES = \
 -I "Framework/Externals/GLFW/include" \
 -I "Framework/Externals/AntTweakBar/include" \
 -I "Framework/Externals/FreeImage" \
--I "Framework/Externals/assimp/include" \
+-I "Framework/Externals/ASSIMP/Include" \
 -I "Framework/Externals/FFMpeg/Include" \
 -I "Framework/Externals/OculusSDK/LibOVR/Include" \
 -I "Framework/Externals/OculusSDK/LibOVRKernel/Src" \
 -I "Framework/Externals/openvr/headers" \
 -I "Framework/Externals/VulkanSDK/Include" \
+-I "Framework/Externals/RapidJson/include" \
 -I "Framework/" \
 -I "$(FALCOR_PYBIND11_PATH)/include" \
 -I "$(FALCOR_PYTHON_PATH)/include" \
@@ -26,7 +27,8 @@ COMMON_FLAGS:=-c -Wall -Werror -std=c++14 -m64 -Wno-unknown-pragmas -Wno-reorder
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"
 RELEASE_DEFINES:=-D "NDEBUG"
-COMMON_DEFINES:=-D "FALCOR_VK" -D "WIN32" -D "_LIB" -D "_UNICODE" -D "UNICODE" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+# Windows defines  -D "WIN32" -D "_LIB" -D "_UNICODE" -D "UNICODE" 
 
 # Base source directory
 SOURCE_DIR:=Framework/Source/
@@ -44,7 +46,7 @@ VR/ VR/OpenVR/
 # 1,1    2,4    5,12    13, 20    21, 25     26,27
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 5,12,$(RELATIVE_DIRS)))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 13,20,$(RELATIVE_DIRS)))
 #SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)

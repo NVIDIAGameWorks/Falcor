@@ -354,11 +354,6 @@ namespace Falcor
         renderScene(currentData);
     }
 
-    static CameraController::SharedPtr createHmdCameraController()
-    {
-
-    }
-
     void SceneRenderer::setCameraControllerType(CameraControllerType type)
     {
         switch(type)

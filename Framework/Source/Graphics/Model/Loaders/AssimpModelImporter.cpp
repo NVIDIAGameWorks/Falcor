@@ -25,20 +25,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "AssimpModelImporter.h"
-#include "Graphics/Model/Model.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
+#include "glm/matrix.hpp"
+#include "glm/common.hpp"
+#include "glm/geometric.hpp"
+
+#include "Framework.h"
+#include "AssimpModelImporter.h"
+#include "Graphics/Model/Model.h"
 #include "Graphics/Model/Animation.h"
 #include "Graphics/Model/Mesh.h"
 #include "Graphics/Model/AnimationController.h"
-#include "glm/common.hpp"
-#include "glm/geometric.hpp"
 #include "API/Texture.h"
 #include "API/Buffer.h"
-#include "glm/matrix.hpp"
 #include "Utils/OS.h"
 #include "Graphics/TextureHelper.h"
 #include "API/VertexLayout.h"
@@ -492,7 +493,7 @@ namespace Falcor
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
             logError(std::string("Can't find model file ") + filename, true);
-            return nullptr;
+            return false;
         }
 
         uint32_t AssimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
@@ -762,7 +763,7 @@ namespace Falcor
             pVBs[i] = createVertexBuffer(pAiMesh, pVbLayout, (uint8_t*)ids.data(), weights.data());
         }
 
-        Vao::Topology topology;
+        Vao::Topology topology = Vao::Topology::TriangleList;
         switch (pAiMesh->mFaces[0].mNumIndices)
         {
         case 1:

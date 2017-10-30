@@ -205,6 +205,15 @@ namespace Falcor
         return false;
     }
 
+    /** Copy text from a std::string to a char buffer, ensures null termination.
+    */
+    inline void copyStringToBuffer(char* buffer, uint32_t bufferSize, const std::string& s)
+    {
+        const uint32_t length = min(bufferSize - 1, (uint32_t)s.length());
+        s.copy(buffer, length);
+        buffer[length] = '\0';
+    }
+
     /** Convert an ASCII string to a UTF-8 wstring
     */
     inline std::wstring string_2_wstring(const std::string& s)

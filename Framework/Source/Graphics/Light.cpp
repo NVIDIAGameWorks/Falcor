@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "light.h"
+#include "Light.h"
 #include "Utils/Gui.h"
 #include "API/Device.h"
 #include "API/ConstantBuffer.h"
