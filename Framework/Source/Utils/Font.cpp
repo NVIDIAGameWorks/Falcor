@@ -116,7 +116,6 @@ namespace Falcor
         {
             FontCharData CharData;
             Data.read((char*)&CharData, sizeof(FontCharData));
-            char Char = i + mFirstChar;
             if(CharData.Char != i + mFirstChar)
             {
                 Data.close();

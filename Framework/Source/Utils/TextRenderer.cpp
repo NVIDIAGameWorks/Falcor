@@ -101,9 +101,9 @@ namespace Falcor
         // Create and initialize the program variables
         mpProgramVars = GraphicsVars::create(pProgram->getActiveVersion()->getReflector(), true);
         // Initialize the buffer
-        auto& pCB = mpProgramVars["PerFrameCB"];
-        mVarOffsets.vpTransform = mpProgramVars["PerFrameCB"]->getVariableOffset("gvpTransform");
-        mVarOffsets.fontColor = mpProgramVars["PerFrameCB"]->getVariableOffset("gFontColor");
+        auto pCB = mpProgramVars["PerFrameCB"];
+        mVarOffsets.vpTransform = pCB->getVariableOffset("gvpTransform");
+        mVarOffsets.fontColor = pCB->getVariableOffset("gFontColor");
         mpProgramVars->setTexture("gFontTex", mpFont->getTexture());
     }
 

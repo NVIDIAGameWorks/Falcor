@@ -25,6 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
+#ifdef _WIN32
+
 #include "Framework.h"
 #include "ProgressBar.h"
 #include <CommCtrl.h>
@@ -131,3 +134,5 @@ namespace Falcor
         return create(list, delayInMs);
     }
 }
+
+#endif // _WIN32

@@ -7,7 +7,7 @@ INCLUDES = \
 -I "Framework/Externals/AntTweakBar/include" \
 -I "Framework/Externals/FreeImage" \
 -I "Framework/Externals/ASSIMP/Include" \
--I "Framework/Externals/FFMpeg/Include" \
+-I "Framework/Externals/FFMPEG/include" \
 -I "Framework/Externals/OculusSDK/LibOVR/Include" \
 -I "Framework/Externals/OculusSDK/LibOVRKernel/Src" \
 -I "Framework/Externals/openvr/headers" \
@@ -22,11 +22,12 @@ INCLUDES = \
 # Compiler Flags
 DEBUG_FLAGS:=-O0
 RELEASE_FLAGS:=-O3
-COMMON_FLAGS:=-c -Wall -Werror -std=c++14 -m64 -Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address
+DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing
+COMMON_FLAGS:=-c -Wall -Werror -std=c++14 -m64 $(DISABLED_WARNINGS)
 
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"
-RELEASE_DEFINES:=-D "NDEBUG"
+RELEASE_DEFINES:=
 COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
 # Windows defines  -D "WIN32" -D "_LIB" -D "_UNICODE" -D "UNICODE" 
 
@@ -46,7 +47,7 @@ VR/ VR/OpenVR/
 # 1,1    2,4    5,12    13, 20    21, 25     26,27
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 13,20,$(RELATIVE_DIRS)))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 21,25,$(RELATIVE_DIRS)))
 #SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)

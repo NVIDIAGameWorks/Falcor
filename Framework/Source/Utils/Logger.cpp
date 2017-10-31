@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "Logger.h"
 #include "Utils/OS.h"
+#include <cstdio>
 
 namespace Falcor
 {
@@ -54,7 +55,8 @@ namespace Falcor
         std::string logFile;
         if(findAvailableFilename(prefix, executableDir, "log", logFile))
         {
-            if(fopen_s(&pFile, logFile.c_str(), "w") == 0)
+            pFile = std::fopen(logFile.c_str(), "w");
+            if(pFile != nullptr)
             {
                 // Success
                 return pFile;

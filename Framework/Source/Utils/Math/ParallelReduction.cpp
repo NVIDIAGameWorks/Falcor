@@ -30,6 +30,7 @@
 #include "Graphics/FboHelper.h"
 #include "API/RenderContext.h"
 #include "glm/vec2.hpp"
+#include <cstring>
 
 namespace Falcor
 {
@@ -136,7 +137,7 @@ namespace Falcor
         }
 
         auto texData = pRenderCtx->readTextureSubresource(mpResultFbo[mCurFbo]->getColorTexture(0).get(), 0);
-        result = *(vec4*)texData.data();
+        std::memcpy(&result[0], texData.data(), min(bytesToRead, (uint32_t)sizeof(vec4)));
         return result;
     }
 }

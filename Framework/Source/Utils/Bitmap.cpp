@@ -199,7 +199,7 @@ namespace Falcor
         }
 
         int flags = 0;
-        FIBITMAP* pImage;
+        FIBITMAP* pImage = nullptr;
         uint32_t bytesPerPixel = getFormatBytesPerBlock(resourceFormat);
 
         //TODO replace this code for swapping channels. Can't use freeimage masks b/c they only care about 16 bpp images
