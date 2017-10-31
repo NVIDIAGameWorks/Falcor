@@ -10,7 +10,7 @@ INCLUDES = \
 -I "Framework/Externals/FFMPEG/include" \
 -I "Framework/Externals/OculusSDK/LibOVR/Include" \
 -I "Framework/Externals/OculusSDK/LibOVRKernel/Src" \
--I "Framework/Externals/openvr/headers" \
+-I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/VulkanSDK/Include" \
 -I "Framework/Externals/RapidJson/include" \
 -I "Framework/" \
@@ -47,7 +47,7 @@ VR/ VR/OpenVR/
 # 1,1    2,4    5,12    13, 20    21, 25     26,27
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 21,25,$(RELATIVE_DIRS)))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 26,27,$(RELATIVE_DIRS)))
 #SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)
