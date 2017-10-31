@@ -35,7 +35,7 @@ namespace Falcor
 
     Shader::~Shader() = default;
 
-    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, std::string& log)
+    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log)
     {
         if (shaderBlob.type != Blob::Type::Bytecode)
         {

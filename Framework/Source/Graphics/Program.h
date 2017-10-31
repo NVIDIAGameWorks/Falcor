@@ -113,6 +113,18 @@ namespace Falcor
             /** Get the name of the shader entry point associated with a shader stage, or an empty string if no stage found
             */
             const std::string& getShaderEntryPoint(ShaderType shaderType) const;
+
+            /** Enable/disable treat-warnings-as-error compilation flag
+            */
+            void warningsAsErrors(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : shaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); }
+
+            /** Enable/disable pre-processed shader dump
+            */
+            void dumpIntermediates(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::DumpIntermediates : shaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); }
+
+            /** Get the compiler flags
+            */
+            Shader::CompilerFlags getCompilerFlags() const { return shaderFlags; }
         private:
             friend class Program;
             friend class GraphicsProgram;
@@ -166,6 +178,10 @@ namespace Falcor
             By default, this is invalid, as there are no sources at first.
             */
             int activeSourceIndex = -1;
+
+            /** The compiler flags to use when compiling shaders
+            */
+            Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
         };
 
         virtual ~Program() = 0;

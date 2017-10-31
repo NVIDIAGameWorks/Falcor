@@ -44,6 +44,7 @@ namespace Falcor
     size_t SceneRenderer::sCameraDataOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sWorldMatArraySize = 0;
     size_t SceneRenderer::sWorldMatOffset = ConstantBuffer::kInvalidOffset;
+    size_t SceneRenderer::sPrevWorldMatOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sWorldInvTransposeMatOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sMeshIdOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sDrawIDOffset = ConstantBuffer::kInvalidOffset;
@@ -82,6 +83,7 @@ namespace Falcor
                 sWorldInvTransposeMatOffset = pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->location;
                 sMeshIdOffset = pPerMeshCbData->getVariableData("gMeshId")->location;
                 sDrawIDOffset = pPerMeshCbData->getVariableData("gDrawId[0]")->location;
+                sPrevWorldMatOffset = pPerMeshCbData->getVariableData("gPrevWorldMat[0]")->location;
             }
         }
 
@@ -174,10 +176,12 @@ namespace Falcor
             {
                 glm::mat4 worldMat = pModelInstance->getTransformMatrix() * pMeshInstance->getTransformMatrix();
                 glm::mat3x4 worldInvTransposeMat = transpose(inverse(glm::mat3(worldMat)));
+                glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix() * pMeshInstance->getPrevTransformMatrix();
 
                 assert(drawInstanceID < sWorldMatArraySize);
                 pCB->setBlob(&worldMat, sWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
                 pCB->setBlob(&worldInvTransposeMat, sWorldInvTransposeMatOffset + drawInstanceID * sizeof(glm::mat3x4), sizeof(glm::mat3x4)); // HLSL uses column-major and packing rules require 16B alignment, hence use glm:mat3x4
+                pCB->setBlob(&prevWorldMat, sPrevWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
             }
 
             // Set mesh id

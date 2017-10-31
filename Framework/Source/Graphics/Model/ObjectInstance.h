@@ -200,6 +200,12 @@ namespace Falcor
             return mFinalTransformMatrix;
         }
 
+        const glm::mat4& getPrevTransformMatrix() const
+        {
+            updateInstanceProperties();
+            return mPrevFinalTransformMatrix;
+        }
+
         /** Gets the bounding box
             \return Bounding box
         */
@@ -235,6 +241,9 @@ namespace Falcor
         {
             if (mBase.matrixDirty || mMovable.matrixDirty)
             {
+                
+                bool baseDirty = mBase.matrixDirty;
+
                 if (mBase.matrixDirty)
                 {
                     mBase.matrix = calculateTransformMatrix(mBase.translation, mBase.target, mBase.up, mBase.scale);
@@ -243,11 +252,14 @@ namespace Falcor
 
                 if (mMovable.matrixDirty)
                 {
+                    mPrevMovable = mMovable;
                     mMovable.matrix = calculateTransformMatrix(mMovable.translation, mMovable.target, mMovable.up, mMovable.scale);
                     mMovable.matrixDirty = false;
                 }
 
                 mFinalTransformMatrix = mMovable.matrix * mBase.matrix;
+                mPrevFinalTransformMatrix = mPrevMovable.matrix * mBase.matrix;
+
                 mBoundingBox = mpObject->getBoundingBox().transform(mFinalTransformMatrix);
             }
         }
@@ -320,8 +332,10 @@ namespace Falcor
 
         mutable Transform mBase;
         mutable Transform mMovable;
+        mutable Transform mPrevMovable;
 
         mutable glm::mat4 mFinalTransformMatrix;
+        mutable glm::mat4 mPrevFinalTransformMatrix;
         mutable BoundingBox mBoundingBox;
     };
 }

@@ -46,6 +46,7 @@ cbuffer InternalPerFrameCB : register(b10)
 cbuffer InternalPerMeshCB : register(b11)
 {
     float4x4 gWorldMat[64]; // If the mesh has bones, these are the bones matrices
+    float4x4 gPrevWorldMat[64]; // previous world mat
     float3x3 gWorldInvTransposeMat[64]; // Per-instance matrices for transforming normals
     uint32_t gDrawId[64]; // Zero-based order/ID of Mesh Instances drawn per SceneRenderer::renderScene call.
     uint32_t gMeshId;

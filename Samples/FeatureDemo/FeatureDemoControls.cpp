@@ -150,7 +150,7 @@ void FeatureDemo::onGuiRender()
 
         if(mpGui->beginGroup("Scene Settings"))
         {
-            Scene* pScene = mpSceneRenderer->getScene();
+            Scene* pScene = mpSceneRenderer->getScene().get();
             float camSpeed = pScene->getCameraSpeed();
             if (mpGui->addFloatVar("Camera Speed", camSpeed))
             {

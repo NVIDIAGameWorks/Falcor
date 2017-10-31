@@ -93,7 +93,7 @@ void FeatureDemo::initSSAO()
 
 void FeatureDemo::setSceneSampler(uint32_t maxAniso)
 {
-    Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene());
+    Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene().get());
     Sampler::Desc samplerDesc;
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
@@ -478,7 +478,7 @@ void FeatureDemo::onFrameRender()
 
 void FeatureDemo::applyCameraPathState()
 {
-    const Scene* pScene = mpSceneRenderer->getScene();
+    const Scene* pScene = mpSceneRenderer->getScene().get();
     if (mUseCameraPath)
     {
         pScene->getPath(0)->attachObject(pScene->getActiveCamera());

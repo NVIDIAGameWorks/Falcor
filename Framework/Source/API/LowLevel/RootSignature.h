@@ -68,9 +68,12 @@ namespace Falcor
 
         void bindForGraphics(CopyContext* pCtx);
         void bindForCompute(CopyContext* pCtx);
-    private:
+    protected:
         RootSignature(const Desc& desc);
         bool apiInit();
+#ifdef FALCOR_D3D12
+        virtual void createApiHandle(ID3DBlobPtr pSigBlob);
+#endif
         ApiHandle mApiHandle;
         Desc mDesc;
         static SharedPtr spEmptySig;

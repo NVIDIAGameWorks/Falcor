@@ -170,10 +170,14 @@ namespace Falcor
             return false;
         }
 
+        createApiHandle(pSigBlob);       
+        return true;
+    }
+
+    void RootSignature::createApiHandle(ID3DBlobPtr pSigBlob)
+    {
         Device::ApiHandle pDevice = gpDevice->getApiHandle();
         d3d_call(pDevice->CreateRootSignature(0, pSigBlob->GetBufferPointer(), pSigBlob->GetBufferSize(), IID_PPV_ARGS(&mApiHandle)));
-       
-        return true;
     }
 
     ProgramReflection::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
@@ -197,10 +201,10 @@ namespace Falcor
         return cost;
     }
 
-    RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector)
+    uint32_t getRootDescFromReflector(const ProgramReflection* pReflector, RootSignature::Desc& d)
     {
         uint32_t cost = 0;
-        RootSignature::Desc d;
+        d = RootSignature::Desc();
 
         cost += initializeBufferDescriptors(pReflector, d, ProgramReflection::BufferReflection::Type::Constant, RootSignature::DescType::Cbv);
         cost += initializeBufferDescriptors(pReflector, d, ProgramReflection::BufferReflection::Type::Structured, RootSignature::DescType::StructuredBufferSrv);
@@ -210,7 +214,7 @@ namespace Falcor
         for (auto& resIt : resMap)
         {
             const ProgramReflection::Resource& resource = resIt.second;
-			assert(resource.descOffset == 0);
+            assert(resource.descOffset == 0);
             RootSignature::DescType descType;
             if (resource.type == ProgramReflection::Resource::ResourceType::Sampler)
             {
@@ -241,6 +245,14 @@ namespace Falcor
             d.addDescriptorSet(descTable);
             cost += 1;
         }
+
+        return cost;
+    }
+
+    RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector)
+    {
+        RootSignature::Desc d;
+        uint32_t cost = getRootDescFromReflector(pReflector, d);
 
         if (cost > 64)
         {

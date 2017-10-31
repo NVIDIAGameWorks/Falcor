@@ -92,7 +92,7 @@ namespace Falcor
 
         void detachCameraController();
 
-        Scene* getScene() const { return mpScene.get(); }
+        Scene::SharedPtr getScene() const { return mpScene; }
 
         void toggleStaticMaterialCompilation(bool on) { mCompileMaterialWithProgram = on; }
 
@@ -124,6 +124,7 @@ namespace Falcor
         static size_t sAmbientLightOffset;
         static size_t sWorldMatArraySize;
         static size_t sWorldMatOffset;
+        static size_t sPrevWorldMatOffset;
         static size_t sWorldInvTransposeMatOffset;
         static size_t sMeshIdOffset;
         static size_t sDrawIDOffset;

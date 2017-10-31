@@ -29,7 +29,7 @@
 
 void NormalMapFiltering::onGuiRender()
 {
-    const Scene* pScene = mpRenderer->getScene();
+    const Scene* pScene = mpRenderer->getScene().get();
     for(uint32_t i = 0; i < pScene->getLightCount(); i++)
     {
         std::string group = "Light " + std::to_string(i);

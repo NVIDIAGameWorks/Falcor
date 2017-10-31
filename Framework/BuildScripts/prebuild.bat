@@ -1,4 +1,4 @@
-@echo on
+@echo off
 
 rem %1 -> Falcor Core Directory Path
 rem %2 -> Solution Directory Path

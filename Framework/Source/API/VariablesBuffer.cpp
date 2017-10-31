@@ -123,7 +123,7 @@ namespace Falcor
 #if _LOG_ENABLED
         ProgramReflection::Variable::Type callType = getReflectionTypeFromCType<VarType>();
         // Check that the types match
-        if(callType != shaderType)
+        if(callType != shaderType && shaderType != ProgramReflection::Variable::Type::Unknown)
         {
             std::string msg("Error when setting variable \"");
             msg += name + "\" to buffer \"" + bufferName + "\".\n";

@@ -49,30 +49,30 @@ public:
 	virtual ~Renderer() = default;
 
 	/** Callback on program initialization
-		\param[in] context Provides the current context to initialize resources for your renderer
+		\param[in] pContext Provides the current context to initialize resources for your renderer
 	*/
-	virtual void onInitialize(RenderContext::SharedPtr context) = 0;
+	virtual void onInitialize(RenderContext::SharedPtr pContext) = 0;
 
 	/** Callback on scene load
-		\param[in] scene Provides the newly loaded scene (if you need to update resources or stash the scene)
+		\param[in] pSceneRenderer Provides the newly loaded scene (if you need to update resources or stash the scene)
 	*/
-	virtual void onInitNewScene(SceneRenderer::SharedPtr scene) { }
+	virtual void onInitNewScene(SceneRenderer::SharedPtr pSceneRenderer) { }
 
 	/** Callback on GUI render.  Allows addition of renderer-specific UI widgets into the widget window.
 	*/
 	virtual void onGuiRender() { }
 
 	/** Callback for rendering.  Called whenever a display refresh requested. 
-	    \param[in] context Provides the current context to initialize resources for your renderer
-		\param[in] targetFbo The framebuffer where the app expects the final rendering.
+	    \param[in] pContext Provides the current context to initialize resources for your renderer
+		\param[in] pTargetFbo The framebuffer where the app expects the final rendering.
 	*/
-	virtual void onDisplay(RenderContext::SharedPtr context, Fbo::SharedPtr targetFbo) = 0;
+	virtual void onFrameRender(RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo) = 0;
 
 	/** Callback when the image/resources need to be resized.  (Also called during initialization)
-		\param[in] newWidth The new width or your "window" (i.e., the width of targetFbo in onDisplay())
-		\param[in] newHeight The new width or your "window" (i.e., the height of targetFbo in onDisplay())
+		\param[in] width The new width or your back-buffer
+		\param[in] height The new width or your back-buffer
 	*/
-	virtual void onResizeSwapChain(uint32_t newWidth, uint32_t newHeight) { }
+	virtual void onResizeSwapChain(uint32_t width, uint32_t height) { }
 
 	/** Callback executed when switching to this renderer.  Called when a user switches between renderers
 		via the UI (or upon initialization when starting the default renderer)
@@ -157,6 +157,6 @@ public:
 		Note that this order guarantee is only within this renderer (i.e., other virtual callbacks in Renderer B may be called
 		before initializizeSharedState() in Renderer A).
 	*/
-	virtual void initializeSharedState(Gui::UniquePtr& gui, GraphicsState::SharedPtr gfxState) { mpGui = gui.get(); mpState = gfxState; }
+	virtual void initializeSharedState(Gui::UniquePtr& pGui, GraphicsState::SharedPtr pGfxState) { mpGui = pGui.get(); mpState = pGfxState; }
 
 };
