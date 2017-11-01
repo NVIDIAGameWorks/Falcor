@@ -169,6 +169,7 @@ namespace Falcor
         Logger::init();
         Logger::showBoxOnError(config.showMessageBoxOnError);
 
+#ifdef _WIN32
         // Show the progress bar
         ProgressBar::MessageList msgList =
         {
@@ -182,6 +183,7 @@ namespace Falcor
         };
 
         ProgressBar::SharedPtr pBar = ProgressBar::create(msgList);
+#endif
 
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
@@ -218,11 +220,15 @@ namespace Falcor
         initUI();
 
         // Load and run
+#ifdef _WIN32
         mArgList.parseCommandLine(GetCommandLineA());
+#endif
         mpPixelZoom = PixelZoom::create(mpDefaultFBO.get());
 
         onLoad();
+#ifdef _WIN32
         pBar = nullptr;
+#endif
         mFrameRate.resetClock();
         mpWindow->msgLoop();
 
