@@ -31,7 +31,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "Graphics/TextureHelper.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "API/Shader.h"
 #include "API/ProgramVersion.h"
 #include "API/Texture.h"

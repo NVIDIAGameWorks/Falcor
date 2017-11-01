@@ -41,10 +41,11 @@ RELATIVE_DIRS:=\
 API/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/  \
+Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/ Utils/OS/ \
 VR/ VR/OpenVR/
+# Utils/OS/Linux/
 
-# 1,1    2,4    5,12    13, 20    21, 25     26,27
+# 1,1    2,4    5,12    13,20    21,25    26,27
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
 SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,27,$(RELATIVE_DIRS)))

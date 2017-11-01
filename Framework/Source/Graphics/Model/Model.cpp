@@ -30,7 +30,7 @@
 #include "Loaders/AssimpModelImporter.h"
 #include "Loaders/BinaryModelImporter.h"
 #include "Loaders/BinaryModelExporter.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Mesh.h"
 #include "glm/geometric.hpp"
 #include "AnimationController.h"

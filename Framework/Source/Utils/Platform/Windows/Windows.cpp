@@ -29,7 +29,7 @@
 // #TODO Separate this into a Windows subdirectory and implement Linux
 #ifdef _WIN32
 #include "Framework.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include <fstream>
 #include <vector>
 #include <stdint.h>

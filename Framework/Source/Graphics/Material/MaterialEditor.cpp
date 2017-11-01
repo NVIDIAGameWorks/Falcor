@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "Graphics/Material/MaterialEditor.h"
 #include "Utils/Gui.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Graphics/TextureHelper.h"
 #include "API/Texture.h"
 #include "Graphics/Scene/Scene.h"

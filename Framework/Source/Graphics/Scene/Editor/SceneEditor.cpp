@@ -31,7 +31,7 @@
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
 #include "Utils/Gui.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Graphics/Scene/SceneExporter.h"
 #include "Graphics/Model/AnimationController.h"
 #include "API/Device.h"

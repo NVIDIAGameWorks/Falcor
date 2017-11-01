@@ -274,7 +274,7 @@ namespace Falcor
     }
 }
 
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Utils/Profiler.h"
 
 #if (_ENABLE_NVAPI == true)

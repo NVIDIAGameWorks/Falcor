@@ -586,6 +586,15 @@
     <ClCompile Include="Utils\MonitorInfo.cpp" />
     <ClCompile Include="Utils\Picking\Picking.cpp" />
     <ClCompile Include="Utils\PixelZoom.cpp" />
+    <ClCompile Include="Utils\Platform\Linux\Linux.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D11|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\Windows\Windows.cpp" />
     <ClCompile Include="Utils\Profiler.cpp" />
     <ClCompile Include="Utils\ProgressBarWin.cpp" />
     <ClCompile Include="Utils\Psychophysics\Experiment.cpp" />
@@ -595,7 +604,6 @@
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoderUI.cpp" />
-    <ClCompile Include="Utils\Windows.cpp" />
     <ClCompile Include="VR\OpenVR\VRController.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
@@ -1068,9 +1076,9 @@
     <ClInclude Include="Utils\Math\FalcorMath.h" />
     <ClInclude Include="Utils\Math\ParallelReduction.h" />
     <ClInclude Include="Utils\MonitorInfo.h" />
-    <ClInclude Include="Utils\OS.h" />
     <ClInclude Include="Utils\Picking\Picking.h" />
     <ClInclude Include="Utils\PixelZoom.h" />
+    <ClInclude Include="Utils\Platform\OS.h" />
     <ClInclude Include="Utils\Profiler.h" />
     <ClInclude Include="Utils\ProgressBar.h" />
     <ClInclude Include="Utils\Psychophysics\Experiment.h" />

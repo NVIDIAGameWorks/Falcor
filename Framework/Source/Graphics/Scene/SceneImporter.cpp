@@ -32,7 +32,7 @@
 #include "SceneImporter.h"
 #include "rapidjson/error/en.h"
 #include "Scene.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include <sstream>
 #include <fstream>
 #include <algorithm>

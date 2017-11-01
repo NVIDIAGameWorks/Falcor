@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "Bitmap.h"
 #include "FreeImage.h"
-#include "OS.h"
+#include "Utils/Platform/OS.h"
 #include "API/Device.h"
 #include <cstring>
 
