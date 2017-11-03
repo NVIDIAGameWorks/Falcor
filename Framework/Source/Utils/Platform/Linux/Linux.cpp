@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Utils/StringUtils.h"
-#include "Utils/OS/Platform/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Utils/Logger.h"
 
 #include <iostream>
@@ -44,7 +44,7 @@
 #include <libgen.h>
 #include <errno.h>
 #include <algorithm>
-#include <filesystem>
+#include <experimental/filesystem>
 
 namespace Falcor
 {
@@ -152,8 +152,12 @@ namespace Falcor
     const std::string getWorkingDirectory()
     {
         char cwd[1024];
-        if (getcwd(cwd, sizeof(cwd)) != NULL)
+        if (getcwd(cwd, sizeof(cwd)) != nullptr)
+        {
             return std::string(cwd);
+        }
+
+        return std::string();
     }
 
     const std::string& getExecutableName()
@@ -163,10 +167,9 @@ namespace Falcor
         return filename;
     }
 
-    bool getEnvironemntVariable(const std::string& varName, std::string& value)
+    bool getEnvironmentVariable(const std::string& varName, std::string& value)
     {
-        char result[PATH_MAX];
-        const char * val = ::getenv(varName.c_str());
+        const char* val = ::getenv(varName.c_str());
         if (val == 0)
         {
             return false;
@@ -204,10 +207,7 @@ namespace Falcor
 
     std::string canonicalizeFilename(const std::string& filename)
     {
-        //It might be tempting to try to figure out a nicer bound ourselves, but the documentation says "You must set the
-        //	size of this buffer to MAX_PATH to ensure that it is large enough to hold the returned string.".
-        std::string actual_path = std::filesystem::canonical(filename).string();
-        return actual_path;
+        return std::experimental::filesystem::canonical(filename).string();
     }
 
     bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)
@@ -216,7 +216,7 @@ namespace Falcor
         if (bInit == false)
         {
             std::string dataDirs;
-            if (getEnvironemntVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
+            if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
             {
                 auto folders = splitString(dataDirs, ";");
                 gDataDirectories.insert(gDataDirectories.end(), folders.begin(), folders.end());
@@ -258,9 +258,9 @@ namespace Falcor
         dialog = gtk_file_chooser_dialog_new("File Dialog",
             NULL,
             action,
-            GTK_STOCK_CANCEL,
+            "_Cancel",
             GTK_RESPONSE_CANCEL,
-            GTK_STOCK_OPEN,
+            "_Open",
             GTK_RESPONSE_ACCEPT,
             NULL);
 
@@ -270,7 +270,7 @@ namespace Falcor
             char *fn;
             GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
             fn = gtk_file_chooser_get_filename(chooser);
-            stringstream ss;
+            std::stringstream ss;
             ss << fn;
             ss >> filename;
             //open_file(fn);
@@ -310,7 +310,7 @@ namespace Falcor
 
     bool findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension, std::string& filename)
     {
-        for (UINT32 i = 0; i < UINT32_MAX; i++)
+        for (uint32_t i = 0; i < (uint32_t)-1; i++)
         {
             std::string newPrefix = prefix + '.' + std::to_string(i);
             filename = directory + '/' + newPrefix + "." + extension;
@@ -330,7 +330,6 @@ namespace Falcor
         //////////////////////////////////////////
         // THIS IS NOT IMPLEMENTED IN LINUX.
         //////////////////////////////////////////
-        int k = 5;
     }
 
     int getDisplayDpi()
@@ -377,18 +376,16 @@ namespace Falcor
 
     std::string getDirectoryFromFile(const std::string& filename)
     {
-        char *path = filename.c_str();
+        char* path = const_cast<char*>(filename.c_str());
         path = dirname(path);
-        static std::string ret(path);
-        return ret;
+        return std::string(path);
     }
 
     std::string getFilenameFromPath(const std::string& filename)
     {
-        char *path = filename.c_str();
+        char* path = const_cast<char*>(filename.c_str());
         path = basename(path);
-        static std::string ret(path);
-        return ret;
+        return std::string(path);
     }
 
     std::string swapFileExtension(const std::string& str, const std::string& currentExtension, const std::string& newExtension)
@@ -418,6 +415,7 @@ namespace Falcor
         // THIS IS NOT IMPLEMENTED IN LINUX.
         //////////////////////////////////////////
         should_not_get_here();
+        return std::thread::native_handle_type();
     }
 
     void setThreadAffinity(std::thread::native_handle_type thread, uint32_t affinityMask)

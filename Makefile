@@ -8,8 +8,6 @@ INCLUDES = \
 -I "Framework/Externals/FreeImage" \
 -I "Framework/Externals/ASSIMP/Include" \
 -I "Framework/Externals/FFMPEG/include" \
--I "Framework/Externals/OculusSDK/LibOVR/Include" \
--I "Framework/Externals/OculusSDK/LibOVRKernel/Src" \
 -I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/VulkanSDK/Include" \
 -I "Framework/Externals/RapidJson/include" \
@@ -17,13 +15,14 @@ INCLUDES = \
 -I "$(FALCOR_PYBIND11_PATH)/include" \
 -I "$(FALCOR_PYTHON_PATH)/include" \
 -I "Framework/Externals/nvapi" \
--I "$(VK_SDK_PATH)/Include"
+-I "$(VULKAN_SDK)/include" \
+$(shell pkg-config --cflags gtk+-3.0)
 
 # Compiler Flags
 DEBUG_FLAGS:=-O0
 RELEASE_FLAGS:=-O3
 DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing
-COMMON_FLAGS:=-c -Wall -Werror -std=c++14 -m64 $(DISABLED_WARNINGS)
+COMMON_FLAGS:=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
 
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"
@@ -41,14 +40,13 @@ RELATIVE_DIRS:=\
 API/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/ Utils/OS/ \
+Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/ Utils/Platform/ Utils/Platform/Linux/ \
 VR/ VR/OpenVR/
-# Utils/OS/Linux/
 
-# 1,1    2,4    5,12    13,20    21,25    26,27
+# 1,1    2,4    5,12    13,20    21,28    29,30
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,27,$(RELATIVE_DIRS)))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,30,$(RELATIVE_DIRS)))
 #SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)
@@ -99,18 +97,6 @@ ReleaseConfig :
 	$(eval CONFIG_ARGS=$(RELEASE_FLAGS) $(RELEASE_DEFINES))
 #	@echo Compiling $(ALL_SOURCE_FILES) files to $(OUT_DIR)
 
-.PHONY : Clean
-Clean :
-	find . -name "*.o" -type f -delete
-#	@echo Cleaning $(BASE_OUT_DIR)
-#	$(call RemoveDir,$(BASE_OUT_DIR))
-
-.PHONY : CleanDebug
-CleanDebug :
-	@echo Cleaning $(DEBUG_OUT_DIR)
-	$(call RemoveDir,$(DEBUG_OUT_DIR))
-
-.PHONY : CleanRelease
-CleanRelease :
-	@echo Cleaning $(RELEASE_OUT_DIR)
-	$(call RemoveDir,$(RELEASE_OUT_DIR))
+.PHONY : clean
+clean :
+	@find . -name "*.o" -type f -delete
