@@ -33,7 +33,7 @@
 #include "API/VAO.h"
 #include "API/Buffer.h"
 #include "Graphics/GraphicsState.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 #include "API/RenderContext.h"
 
 namespace Falcor

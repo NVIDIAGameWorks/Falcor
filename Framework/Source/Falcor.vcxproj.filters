@@ -154,17 +154,8 @@
     <ClCompile Include="Graphics\Model\Loaders\BinaryImage.cpp">
       <Filter>Graphics\Model\Loaders</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\Program.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
     <ClCompile Include="VR\VrFbo.cpp">
       <Filter>VR</Filter>
-    </ClCompile>
-    <ClCompile Include="API\ProgramVars.cpp">
-      <Filter>API</Filter>
-    </ClCompile>
-    <ClCompile Include="API\ProgramVersion.cpp">
-      <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\RenderContext.cpp">
       <Filter>API</Filter>
@@ -188,9 +179,6 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\Formats.cpp">
-      <Filter>API</Filter>
-    </ClCompile>
-    <ClCompile Include="API\ProgramReflection.cpp">
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\LowLevel\RootSignature.cpp">
@@ -331,12 +319,6 @@
     </ClCompile>
     <ClCompile Include="API\VariablesBuffer.cpp">
       <Filter>API</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\GraphicsProgram.cpp">
-      <Filter>Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\ComputeProgram.cpp">
-      <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="API\ComputeStateObject.cpp">
       <Filter>API</Filter>
@@ -535,6 +517,27 @@
     <ClCompile Include="API\Window.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\Program\ParameterBlock.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Program\Program.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Program\ProgramReflection.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Program\ProgramVars.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Program\ProgramVersion.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Program\ComputeProgram.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Program\GraphicsProgram.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -732,17 +735,8 @@
     <ClInclude Include="Graphics\Model\Loaders\BinaryImage.hpp">
       <Filter>Graphics\Model\Loaders</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\Program.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
     <ClInclude Include="VR\VrFbo.h">
       <Filter>VR</Filter>
-    </ClInclude>
-    <ClInclude Include="API\ProgramVars.h">
-      <Filter>API</Filter>
-    </ClInclude>
-    <ClInclude Include="API\ProgramVersion.h">
-      <Filter>API</Filter>
     </ClInclude>
     <ClInclude Include="API\RasterizerState.h">
       <Filter>API</Filter>
@@ -787,9 +781,6 @@
       <Filter>API</Filter>
     </ClInclude>
     <ClInclude Include="API\GpuTimer.h">
-      <Filter>API</Filter>
-    </ClInclude>
-    <ClInclude Include="API\ProgramReflection.h">
       <Filter>API</Filter>
     </ClInclude>
     <ClInclude Include="API\LowLevel\FencedPool.h">
@@ -1519,12 +1510,6 @@
     <ClInclude Include="API\VariablesBuffer.h">
       <Filter>API</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\GraphicsProgram.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\ComputeProgram.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
     <ClInclude Include="API\ComputeStateObject.h">
       <Filter>API</Filter>
     </ClInclude>
@@ -1655,6 +1640,27 @@
     </ClInclude>
     <ClInclude Include="API\D3D\D3D12\D3D12ApiData.h">
       <Filter>API\D3D\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\ParameterBlock.h">
+      <Filter>Graphics\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\Program.h">
+      <Filter>Graphics\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\ProgramReflection.h">
+      <Filter>Graphics\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\ProgramVars.h">
+      <Filter>Graphics\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\ProgramVersion.h">
+      <Filter>Graphics\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\ComputeProgram.h">
+      <Filter>Graphics\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\GraphicsProgram.h">
+      <Filter>Graphics\Program</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1828,6 +1834,9 @@
     </Filter>
     <Filter Include="Utils\Renderer">
       <UniqueIdentifier>{32802cf1-128c-4a2c-835a-17d0a3dd0976}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Program">
+      <UniqueIdentifier>{a2a4ca1c-043f-4b99-8d25-5f413799c4c8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

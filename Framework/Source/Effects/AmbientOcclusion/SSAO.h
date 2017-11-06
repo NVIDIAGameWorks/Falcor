@@ -30,7 +30,7 @@
 
 #include "API/FBO.h"
 //#include "Graphics/GraphicsState.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 #include "Graphics/FullScreenPass.h"
 #include "Data/Effects/SSAOData.h"
 #include "Effects/Utils/GaussianBlur.h"

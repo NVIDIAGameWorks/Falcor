@@ -31,7 +31,7 @@
 #include <map>
 #include <vector>
 #include "API/Shader.h"
-#include "API/ProgramReflection.h"
+#include "Graphics/Program//ProgramReflection.h"
 
 namespace Falcor
 {

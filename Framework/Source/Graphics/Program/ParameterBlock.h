@@ -26,59 +26,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "API/ComputeStateObject.h"
-#include "Graphics/Program/ComputeProgram.h"
-#include <stack>
-#include "Utils/Graph.h"
+#include "API/DescriptorSet.h"
+#include "API/ConstantBuffer.h"
 
 namespace Falcor
 {
-    class ComputeVars;
+    class ProgramReflection;
 
-    /** Compute state.
-        This class contains the entire state required by a single dispatch call. It's not an immutable object - you can change it dynamically during rendering.
-        The recommended way to use it is to create multiple ComputeState objects (ideally, a single object per program)
-    */
-    class ComputeState
+    class ParameterBlock : public std::enable_shared_from_this<ParameterBlock>
     {
     public:
-        using SharedPtr = std::shared_ptr<ComputeState>;
-        using SharedConstPtr = std::shared_ptr<const ComputeState>;
-        ~ComputeState();
+        using SharedPtr = std::shared_ptr<ParameterBlock>;
+        using SharedConstPtr = std::shared_ptr<const ParameterBlock>;
+        ~ParameterBlock();
 
         /** Create a new object
         */
-        static SharedPtr create() { return SharedPtr(new ComputeState()); }
-
-        /** Copy constructor. Useful if you need to make minor changes to an already existing object
-        */
-        SharedPtr operator=(const SharedPtr& other);
-
-        /** Bind a program to the pipeline
-        */
-        ComputeState& setProgram(const ComputeProgram::SharedPtr& pProgram) { mpProgram = pProgram; return *this; }
-
-        /** Get the currently bound program
-        */
-        ComputeProgram::SharedPtr getProgram() const { return mpProgram; }
-
-        /** Get the active compute state object
-        */
-        ComputeStateObject::SharedPtr getCSO(const ComputeVars* pVars);
-        
+        static SharedPtr create(const ProgramReflection* pReflection);
     private:
-        ComputeState();
-        ComputeProgram::SharedPtr mpProgram;
-        ComputeStateObject::Desc mDesc;
+        ParameterBlock(const ProgramReflection* pReflection);
 
-        struct CachedData
-        {
-            const ProgramVersion* pProgramVersion = nullptr;
-            const RootSignature* pRootSig = false;
-        };
-        CachedData mCachedData;
-
-        using StateGraph = Graph<ComputeStateObject::SharedPtr, void*>;
-        StateGraph::SharedPtr mpCsoGraph;
+        DescriptorSet::SharedPtr mpDescriptorSet;
+        ConstantBuffer::SharedPtr mpConstantBuffer;
     };
 }

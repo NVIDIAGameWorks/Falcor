@@ -27,10 +27,10 @@
 ***************************************************************************/
 #pragma once
 #include <string>
-#include "ProgramReflection.h"
+#include "Graphics/Program/ProgramReflection.h"
 #include "Texture.h"
 #include "Buffer.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program//Program.h"
 
 namespace Falcor
 {

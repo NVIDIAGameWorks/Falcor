@@ -289,9 +289,6 @@
     <ClCompile Include="API\LowLevel\ResourceAllocator.cpp" />
     <ClCompile Include="API\LowLevel\RootSignature.cpp" />
     <ClCompile Include="API\GraphicsStateObject.cpp" />
-    <ClCompile Include="API\ProgramReflection.cpp" />
-    <ClCompile Include="API\ProgramVars.cpp" />
-    <ClCompile Include="API\ProgramVersion.cpp" />
     <ClCompile Include="API\RenderContext.cpp" />
     <ClCompile Include="API\Resource.cpp" />
     <ClCompile Include="API\ResourceViews.cpp" />
@@ -532,11 +529,9 @@
     <ClCompile Include="Effects\Utils\GaussianBlur.cpp" />
     <ClCompile Include="Graphics\Camera\Camera.cpp" />
     <ClCompile Include="Graphics\Camera\CameraController.cpp" />
-    <ClCompile Include="Graphics\ComputeProgram.cpp" />
     <ClCompile Include="Graphics\ComputeState.cpp" />
     <ClCompile Include="Graphics\FboHelper.cpp" />
     <ClCompile Include="Graphics\FullScreenPass.cpp" />
-    <ClCompile Include="Graphics\GraphicsProgram.cpp" />
     <ClCompile Include="Graphics\Light.cpp" />
     <ClCompile Include="Graphics\Material\BasicMaterial.cpp" />
     <ClCompile Include="Graphics\Material\Material.cpp" />
@@ -556,8 +551,14 @@
     <ClCompile Include="Graphics\Model\ModelRenderer.cpp" />
     <ClCompile Include="Graphics\Paths\ObjectPath.cpp" />
     <ClCompile Include="Graphics\Paths\PathEditor.cpp" />
-    <ClCompile Include="Graphics\Program.cpp" />
     <ClCompile Include="Graphics\GraphicsState.cpp" />
+    <ClCompile Include="Graphics\Program\ComputeProgram.cpp" />
+    <ClCompile Include="Graphics\Program\GraphicsProgram.cpp" />
+    <ClCompile Include="Graphics\Program\ParameterBlock.cpp" />
+    <ClCompile Include="Graphics\Program\Program.cpp" />
+    <ClCompile Include="Graphics\Program\ProgramReflection.cpp" />
+    <ClCompile Include="Graphics\Program\ProgramVars.cpp" />
+    <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D11|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
@@ -930,9 +931,6 @@
     <ClInclude Include="API\LowLevel\ResourceAllocator.h" />
     <ClInclude Include="API\LowLevel\RootSignature.h" />
     <ClInclude Include="API\GraphicsStateObject.h" />
-    <ClInclude Include="API\ProgramReflection.h" />
-    <ClInclude Include="API\ProgramVars.h" />
-    <ClInclude Include="API\ProgramVersion.h" />
     <ClInclude Include="API\QueryHeap.h" />
     <ClInclude Include="API\RasterizerState.h" />
     <ClInclude Include="API\RenderContext.h" />
@@ -1004,11 +1002,9 @@
     <ClInclude Include="Framework.h" />
     <ClInclude Include="Graphics\Camera\Camera.h" />
     <ClInclude Include="Graphics\Camera\CameraController.h" />
-    <ClInclude Include="Graphics\ComputeProgram.h" />
     <ClInclude Include="Graphics\ComputeState.h" />
     <ClInclude Include="Graphics\FboHelper.h" />
     <ClInclude Include="Graphics\FullScreenPass.h" />
-    <ClInclude Include="Graphics\GraphicsProgram.h" />
     <ClInclude Include="Graphics\Light.h" />
     <ClInclude Include="Graphics\Material\BasicMaterial.h" />
     <ClInclude Include="Graphics\Material\Material.h" />
@@ -1031,8 +1027,14 @@
     <ClInclude Include="Graphics\Paths\MovableObject.h" />
     <ClInclude Include="Graphics\Paths\ObjectPath.h" />
     <ClInclude Include="Graphics\Paths\PathEditor.h" />
-    <ClInclude Include="Graphics\Program.h" />
     <ClInclude Include="Graphics\GraphicsState.h" />
+    <ClInclude Include="Graphics\Program\ComputeProgram.h" />
+    <ClInclude Include="Graphics\Program\GraphicsProgram.h" />
+    <ClInclude Include="Graphics\Program\ParameterBlock.h" />
+    <ClInclude Include="Graphics\Program\Program.h" />
+    <ClInclude Include="Graphics\Program\ProgramReflection.h" />
+    <ClInclude Include="Graphics\Program\ProgramVars.h" />
+    <ClInclude Include="Graphics\Program\ProgramVersion.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D11|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>

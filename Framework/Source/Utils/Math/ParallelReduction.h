@@ -28,7 +28,7 @@
 #pragma once
 #include "Framework.h"
 #include "Graphics/FullScreenPass.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 #include "API/FBO.h"
 #include "API/Sampler.h"
 

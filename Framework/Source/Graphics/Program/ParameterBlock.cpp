@@ -25,43 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Graphics/Program/ProgramVersion.h"
-#include "API/LowLevel/RootSignature.h"
+#include "Framework.h"
+#include "ParameterBlock.h"
 
 namespace Falcor
 {
-    class RenderContext;
 
-    class ComputeStateObject
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ComputeStateObject>;
-        using SharedConstPtr = std::shared_ptr<const ComputeStateObject>;
-        using ApiHandle = ComputeStateHandle;
-
-        ~ComputeStateObject();
-
-        class Desc
-        {
-        public:
-            Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
-            Desc& setProgramVersion(ProgramVersion::SharedConstPtr pProgram) { mpProgram = pProgram; return *this; }
-            ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram; }
-            bool operator==(const Desc& other) const;
-        private:
-            friend class ComputeStateObject;
-            ProgramVersion::SharedConstPtr mpProgram;
-            RootSignature::SharedPtr mpRootSignature;
-        };
-
-        static SharedPtr create(const Desc& desc);
-        ApiHandle getApiHandle() { return mApiHandle; }
-        const Desc& getDesc() const { return mDesc; }
-    private:
-        ComputeStateObject(const Desc& desc) : mDesc(desc) {}
-        Desc mDesc;
-        ApiHandle mApiHandle;
-        bool apiInit();
-    };
 }

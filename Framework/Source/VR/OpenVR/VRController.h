@@ -40,7 +40,7 @@
 #include "glm/vec3.hpp"
 #include "API/FBO.h"
 #include "API/RenderContext.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 #include "API/Texture.h"
 
 // Forward declare OpenVR system class types to remove "openvr.h" dependencies from Falcor headers
