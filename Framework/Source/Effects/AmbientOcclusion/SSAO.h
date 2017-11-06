@@ -29,7 +29,6 @@
 #pragma once
 
 #include "API/FBO.h"
-//#include "Graphics/GraphicsState.h"
 #include "Graphics/Program/ProgramVars.h"
 #include "Graphics/FullScreenPass.h"
 #include "Data/Effects/SSAOData.h"
