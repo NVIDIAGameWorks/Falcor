@@ -141,9 +141,8 @@ namespace Falcor
     bool checkVariableByOffset(size_t offset, size_t count, const ProgramReflection::BufferReflection* pBufferDesc)
     {
 #if _LOG_ENABLED
-        ProgramReflection::Variable::Type callType = getReflectionTypeFromCType<VarType>();
         // Find the variable
-        for(auto& a = pBufferDesc->varBegin() ; a != pBufferDesc->varEnd() ; a++)
+        for(auto a = pBufferDesc->varBegin() ; a != pBufferDesc->varEnd() ; a++)
         {
             const auto& varDesc = a->second;
             const auto& varName = a->first;
@@ -514,7 +513,7 @@ namespace Falcor
         // Debug checks
         if(pTexture)
         {
-            for(auto& a = mpReflector->varBegin() ; a != mpReflector->varEnd() ; a++)
+            for(auto a = mpReflector->varBegin() ; a != mpReflector->varEnd() ; a++)
             {
                 const auto& varDesc = a->second;
                 const auto& varName = a->first;

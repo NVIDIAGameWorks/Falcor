@@ -19,6 +19,7 @@
     </dependency>
     <dependency name="ffmpeg" linkPath="Framework/Externals/FFMPEG">
         <package name="ffmpeg" version="3.1.4" platforms="win" />
+        <package name="ffmpeg" version="3.1.11-linux" platforms="linux" />
     </dependency>
     <dependency name="freeimage" linkPath="Framework/Externals/FreeImage">
         <package name="freeimage" version="3.17.0" platforms="win" />

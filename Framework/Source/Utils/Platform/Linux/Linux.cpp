@@ -30,16 +30,17 @@
 #include "Utils/Platform/OS.h"
 #include "Utils/Logger.h"
 
-#include <iostream>
+//#include <iostream>
+//#include <stdint.h>
+//#include <sstream>
+//#include <string>
+//#include <vector>
+//#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ptrace.h>
 #include <gtk/gtk.h>
-#include <stdint.h>
 #include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <unistd.h>
 #include <fcntl.h>
 #include <libgen.h>
 #include <errno.h>
@@ -343,7 +344,22 @@ namespace Falcor
     bool isDebuggerPresent()
     {
 #ifdef _DEBUG
-        return ::IsDebuggerPresent() == TRUE;
+        static bool debuggerAttached = false;
+        static bool isChecked = false;
+        if(isChecked == false)
+        {
+            if(ptrace(PTRACE_TRACEME, 0, 1, 0) < 0)
+            {
+                debuggerAttached = true;
+            }
+            else
+            {
+                ptrace(PTRACE_DETACH, 0, 1, 0);
+            }
+            isChecked = true;
+        }
+
+        return debuggerAttached;
 #else
         return false;
 #endif
