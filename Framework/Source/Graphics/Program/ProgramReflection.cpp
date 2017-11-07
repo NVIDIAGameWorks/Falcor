@@ -29,14 +29,13 @@
 #include "Framework.h"
 #include "ProgramReflection.h"
 #include "Utils/StringUtils.h"
-#include <unordered_set>
 using namespace slang;
 
 namespace Falcor
 {
-    static std::unordered_set<std::string> gParameterBlocksRegistry;
+    std::unordered_set<std::string> ProgramReflection::sParameterBlockRegistry;
 
-    bool isParameterBlock(VariableLayoutReflection* pSlangVar)
+    bool isParameterBlockReflection(VariableLayoutReflection* pSlangVar, const std::unordered_set<std::string>& parameterBlockRegistry)
     {
         // A candidate for a parameter block must be a top-level constant buffer containing a single struct
         TypeLayoutReflection* pSlangType = pSlangVar->getTypeLayout();
@@ -47,7 +46,8 @@ namespace Falcor
                 TypeLayoutReflection* pFieldLayout = pSlangType->unwrapArray()->getFieldByIndex(0)->getTypeLayout();
                 if (pFieldLayout->getTotalArrayElementCount() == 0 && pFieldLayout->unwrapArray()->getKind() == TypeReflection::Kind::Struct)
                 {
-                    return true;
+                    const std::string name = "";
+                    return parameterBlockRegistry.find(name) != parameterBlockRegistry.end();
                 }
             }
         }
@@ -78,11 +78,11 @@ namespace Falcor
                 return ReflectionType::Type::Texture;
             }
             break;
-
+        case TypeReflection::Kind::Struct:
+            return ReflectionType::Type::Struct;
         default:
-            break;
+            return ReflectionType::Type::Unknown;
         }
-        return ReflectionType::Type::Unknown;
     }
 
     static ReflectionType::ShaderAccess getShaderAccess(TypeReflection* pSlangType)
@@ -139,7 +139,6 @@ namespace Falcor
             return ReflectionType::ReturnType::Unknown;
 
         default:
-            should_not_get_here();
             return ReflectionType::ReturnType::Unknown;
         }
     }
@@ -177,33 +176,175 @@ namespace Falcor
         }
     }
 
-    ReflectionVar::SharedPtr reflectVariable(VariableLayoutReflection* pSlangLayout);
-
-    ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType)
+    ReflectionType::Type getVariableType(TypeReflection::ScalarType slangScalarType, uint32_t rows, uint32_t columns)
     {
-        ReflectionType::Dimensions dims = getResourceDimensions(pSlangType->getResourceShape());
-        ReflectionType::ShaderAccess shaderAccess = getShaderAccess(pSlangType->getType());
-        ReflectionType::ReturnType retType = getReturnType(pSlangType->getType());
-        ReflectionType::Type type = getResourceType(pSlangType->getType());
+        switch (slangScalarType)
+        {
+        case TypeReflection::ScalarType::None:
+            // This isn't a scalar/matrix/vector, so it can't
+            // be encoded in the `enum` that Falcor provides.
+            return ReflectionType::Type::Unknown;
 
-        ReflectionType::SharedPtr pType = ReflectionType::create(type, 0, (uint32_t)pSlangType->getElementCount(), 0, shaderAccess, retType, dims);
-        auto pElementLayout = pSlangType->unwrapArray()->getElementTypeLayout();
+        case TypeReflection::ScalarType::Bool:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1:
+                return ReflectionType::Type::Bool;
+            case 2:
+                return ReflectionType::Type::Bool2;
+            case 3:
+                return ReflectionType::Type::Bool3;
+            case 4:
+                return ReflectionType::Type::Bool4;
+            }
+        case TypeReflection::ScalarType::UInt32:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1:
+                return ReflectionType::Type::Uint;
+            case 2:
+                return ReflectionType::Type::Uint2;
+            case 3:
+                return ReflectionType::Type::Uint3;
+            case 4:
+                return ReflectionType::Type::Uint4;
+            }
+        case TypeReflection::ScalarType::Int32:
+            assert(rows == 1);
+            switch (columns)
+            {
+            case 1:
+                return ReflectionType::Type::Int;
+            case 2:
+                return ReflectionType::Type::Int2;
+            case 3:
+                return ReflectionType::Type::Int3;
+            case 4:
+                return ReflectionType::Type::Int4;
+            }
+        case TypeReflection::ScalarType::Float32:
+            switch (rows)
+            {
+            case 1:
+                switch (columns)
+                {
+                case 1:
+                    return ReflectionType::Type::Float;
+                case 2:
+                    return ReflectionType::Type::Float2;
+                case 3:
+                    return ReflectionType::Type::Float3;
+                case 4:
+                    return ReflectionType::Type::Float4;
+                }
+                break;
+            case 2:
+                switch (columns)
+                {
+                case 2:
+                    return ReflectionType::Type::Float2x2;
+                case 3:
+                    return ReflectionType::Type::Float2x3;
+                case 4:
+                    return ReflectionType::Type::Float2x4;
+                }
+                break;
+            case 3:
+                switch (columns)
+                {
+                case 2:
+                    return ReflectionType::Type::Float3x2;
+                case 3:
+                    return ReflectionType::Type::Float3x3;
+                case 4:
+                    return ReflectionType::Type::Float3x4;
+                }
+                break;
+            case 4:
+                switch (columns)
+                {
+                case 2:
+                    return ReflectionType::Type::Float4x2;
+                case 3:
+                    return ReflectionType::Type::Float4x3;
+                case 4:
+                    return ReflectionType::Type::Float4x4;
+                }
+                break;
+            }
+        }
+
+        should_not_get_here();
+        return ReflectionType::Type::Unknown;
+    }
+
+    static bool isResourceType(ReflectionType::Type t)
+    {
+        switch (t)
+        {
+        case ReflectionType::Type::Texture:
+        case ReflectionType::Type::StructuredBuffer:
+        case ReflectionType::Type::RawBuffer:
+        case ReflectionType::Type::TypedBuffer:
+        case ReflectionType::Type::Sampler:
+        case ReflectionType::Type::ConstantBuffer:
+            return true;
+        default:
+            return false;
+        }
+    }
+    ReflectionVar::SharedPtr reflectVariable(VariableLayoutReflection* pSlangLayout, size_t offset, uint32_t bindIndex, uint32_t regSpace);
+
+    ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
+    {
+        ReflectionType::Type type = getResourceType(pSlangType->getType());
+        ReflectionType::Dimensions dims = ReflectionType::Dimensions::Unknown;
+        ReflectionType::ShaderAccess shaderAccess = ReflectionType::ShaderAccess::Undefined;
+        ReflectionType::ReturnType retType = ReflectionType::ReturnType::Unknown;
+
+        if (type == ReflectionType::Type::Unknown)
+        {
+            type = getVariableType(pSlangType->unwrapArray()->getScalarType(), pSlangType->unwrapArray()->getRowCount(), pSlangType->unwrapArray()->getColumnCount());
+        }
+        else if(isResourceType(type))
+        {
+            dims = getResourceDimensions(pSlangType->getResourceShape());
+            shaderAccess = getShaderAccess(pSlangType->getType());
+            retType = getReturnType(pSlangType->getType());
+        }
+        auto pElementLayout = (type == ReflectionType::Type::Struct) ? pSlangType->unwrapArray() : pSlangType->unwrapArray()->getElementTypeLayout();
+        ReflectionType::SharedPtr pType = ReflectionType::create(type, pElementLayout->getSize(), 0, (uint32_t)pSlangType->getElementCount(), 0, shaderAccess, retType, dims);
+
         for (uint32_t i = 0; i < pElementLayout->getFieldCount(); i++)
         {
-            ReflectionVar::SharedPtr pVar = reflectVariable(pElementLayout->getFieldByIndex(i));
+            ReflectionVar::SharedPtr pVar = reflectVariable(pElementLayout->getFieldByIndex(i), offset, bindIndex, regSpace);
             pType->addMember(pVar);
         }
         return pType;
     }
 
-    ReflectionVar::SharedPtr reflectVariable(VariableLayoutReflection* pSlangLayout)
+    ReflectionVar::SharedPtr reflectVariable(VariableLayoutReflection* pSlangLayout, size_t offset, uint32_t bindIndex, uint32_t regSpace)
     {
         std::string name(pSlangLayout->getName());
-        ReflectionType::SharedPtr pType = reflectType(pSlangLayout->getTypeLayout());
-        uint32_t index = pSlangLayout->getBindingIndex();
-        uint32_t space = pSlangLayout->getBindingSpace();
-        uint32_t offset = (uint32_t)pSlangLayout->getOffset();
-        return ReflectionVar::create(name, pType, offset, space);
+        uint32_t index = pSlangLayout->getBindingIndex() + bindIndex;
+        uint32_t space = pSlangLayout->getBindingSpace() + regSpace;
+        size_t curOffset = (uint32_t)pSlangLayout->getOffset() + offset;
+        ReflectionType::SharedPtr pType = reflectType(pSlangLayout->getTypeLayout(), curOffset, index, space);
+        
+        switch (pType->getType())
+        {
+        case ReflectionType::Type::Texture:
+        case ReflectionType::Type::StructuredBuffer:
+        case ReflectionType::Type::RawBuffer:
+        case ReflectionType::Type::TypedBuffer:
+        case ReflectionType::Type::Sampler:
+        case ReflectionType::Type::ConstantBuffer:
+            return ReflectionVar::create(name, pType, index, space);
+        default:
+            return ReflectionVar::create(name, pType, curOffset, space);
+        }
     }
 
     ProgramReflection::SharedPtr ProgramReflection::create(slang::ShaderReflection* pSlangReflector, std::string& log)
@@ -213,58 +354,115 @@ namespace Falcor
 
     ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log)
     {
-        ReflectionType::SharedPtr pGlobalBlockType = ReflectionType::create(ReflectionType::Type::ParameterBlock, 0, 0, 0);
+        ParameterBlockReflection::SharedPtr pGlobalBlock = ParameterBlockReflection::create("");
         for (uint32_t i = 0; i < pSlangReflector->getParameterCount(); i++)
         {
             VariableLayoutReflection* pSlangLayout = pSlangReflector->getParameterByIndex(i);
-            ReflectionVar::SharedPtr pVar = reflectVariable(pSlangLayout);
+            ReflectionVar::SharedPtr pVar = reflectVariable(pSlangLayout, 0, 0, 0);
 
-            if (isParameterBlock(pSlangLayout))
+            if (isParameterBlockReflection(pSlangLayout, sParameterBlockRegistry))
             {
-                ReflectionType::SharedPtr pBlock = ReflectionType::create(ReflectionType::Type::ParameterBlock, 0, 0, 0);
-                pBlock->addMember(pVar);
                 std::string name = std::string(pSlangLayout->getName());
-                addParameterBlock(name, pBlock);
+                ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
+                pBlock->addResource(pVar);
+                addParameterBlock(pBlock);
             }
             else
             {
-                pGlobalBlockType->addMember(pVar);
+                pGlobalBlock->addResource(pVar);
             }
         }
 
-        if (pGlobalBlockType->getMemberCount())
+        if (pGlobalBlock->isEmpty() == false)
         {
-            addParameterBlock("", pGlobalBlockType);
+            addParameterBlock(pGlobalBlock);
         }
     }
 
-    void ProgramReflection::addParameterBlock(const std::string& name, const ReflectionType::SharedConstPtr& pType)
+    void ProgramReflection::addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock)
     {
-
+        assert(mParameterBlocks.find(pBlock->getName()) == mParameterBlocks.end());
+        mParameterBlocks[pBlock->getName()] = pBlock;
     }
 
-    ReflectionType::SharedPtr ReflectionType::create(Type type, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims)
+    void ProgramReflection::registerParameterBlock(const std::string& name)
     {
-        return SharedPtr(new ReflectionType(type, offset, arraySize, arrayStride, shaderAccess, retType, dims));
+        sParameterBlockRegistry.insert(name);
     }
 
-    ReflectionType::ReflectionType(Type type, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims) :
-        mType(type), mOffset(offset), mArraySize(arraySize), mArrayStride(arrayStride), mShaderAccess(shaderAccess), mReturnType(retType), mDimensions(dims)
+    void ProgramReflection::unregisterParameterBlock(const std::string& name)
+    {
+        sParameterBlockRegistry.erase(name);
+    }
+
+    ReflectionType::SharedPtr ReflectionType::create(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims)
+    {
+        return SharedPtr(new ReflectionType(type, size, offset, arraySize, arrayStride, shaderAccess, retType, dims));
+    }
+
+    ReflectionType::ReflectionType(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims) :
+        mType(type), mSize(size), mOffset(offset), mArraySize(arraySize), mArrayStride(arrayStride), mShaderAccess(shaderAccess), mReturnType(retType), mDimensions(dims)
     {
 
     }
     void ReflectionType::addMember(const std::shared_ptr<const ReflectionVar>& pVar)
     {
+        assert(mNameToIndex.find(pVar->getName()) == mNameToIndex.end());
         mMembers.push_back(pVar);
+        mNameToIndex[pVar->getName()] = mMembers.size() - 1;
     }
 
-    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, uint32_t offset, uint32_t regSpace)
+    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace)
     {
         return SharedPtr(new ReflectionVar(name, pType, offset, regSpace));
     }
 
-    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, uint32_t offset, uint32_t regSpace) : mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace)
+    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace) : mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace)
     {
 
+    }
+
+    ParameterBlockReflection::SharedPtr ParameterBlockReflection::create(const std::string& name)
+    {
+        return SharedPtr(new ParameterBlockReflection(name));
+    }
+
+    ParameterBlockReflection::ParameterBlockReflection(const std::string& name) : mName(name)
+    {
+
+    }
+
+    bool ParameterBlockReflection::isEmpty() const
+    {
+        return mResources.empty() && mConstantBuffers.empty() && mStructuredBuffers.empty() && mSamplers.empty();
+    }
+
+    void ParameterBlockReflection::addResource(const ReflectionVar::SharedConstPtr& pVar)
+    {
+        const std::string& name = pVar->getName();
+        decltype(mResources)* pMap = nullptr;
+
+        switch (pVar->getType()->getType())
+        {
+        case ReflectionType::Type::ConstantBuffer:
+            pMap = &mConstantBuffers;
+            break;
+        case ReflectionType::Type::Sampler:
+            pMap = &mSamplers;
+            break;
+        case ReflectionType::Type::StructuredBuffer:
+            pMap = &mStructuredBuffers;
+            break;
+        case ReflectionType::Type::Texture:
+        case ReflectionType::Type::RawBuffer:
+        case ReflectionType::Type::TypedBuffer:
+            pMap = &mResources;
+            break;
+        default:
+            break;
+        }
+        assert(pMap);
+        assert((*pMap).find(name) == (*pMap).end());
+        (*pMap)[name] = pVar;
     }
 }

@@ -28,6 +28,7 @@
 #pragma once
 #include "Framework.h"
 #include <unordered_map>
+#include <unordered_set>
 #include "Externals/slang/slang.h"
 
 namespace Falcor
@@ -82,8 +83,6 @@ namespace Falcor
             TypedBuffer,
             Sampler,
             ConstantBuffer,
-
-            ParameterBlock,
             Struct,
         };
 
@@ -120,7 +119,7 @@ namespace Falcor
 
         static const uint32_t kInvalidOffset = -1;
 
-        static SharedPtr create(Type type, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess = ShaderAccess::Undefined, ReturnType retType = ReturnType::Unknown, Dimensions dims = Dimensions::Unknown);
+        static SharedPtr create(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess = ShaderAccess::Undefined, ReturnType retType = ReturnType::Unknown, Dimensions dims = Dimensions::Unknown);
 
         void addMember(const std::shared_ptr<const ReflectionVar>& pVar);
 
@@ -136,9 +135,9 @@ namespace Falcor
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator begin() const { return mMembers.begin(); }
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator end() const { return mMembers.end(); }
     private:
-        ReflectionType(Type type, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims);
+        ReflectionType(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims);
         std::vector<std::shared_ptr<const ReflectionVar>> mMembers;   // Struct members
-        std::unordered_map<std::string, uint32_t> mMembersDictionary; // Translates from a name to an index in mMembers
+        std::unordered_map<std::string, size_t> mNameToIndex; // Translates from a name to an index in mMembers
 
         Type mType = Type::Unknown;
         ReturnType mReturnType = ReturnType::Unknown;
@@ -148,6 +147,7 @@ namespace Falcor
         bool mIsRowMajor = false;
         uint32_t mArraySize = 0;
         uint32_t mArrayStride = 0;
+        size_t mSize = 0;
     };
 
     class ReflectionVar
@@ -157,16 +157,40 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ReflectionVar>;
         static const uint32_t kInvalidOffset = ReflectionType::kInvalidOffset;
 
-        static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, uint32_t offset, uint32_t regSpace = kInvalidOffset);
+        static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace = kInvalidOffset);
 
+        const std::string& getName() const { return mName; }
         ReflectionType::SharedConstPtr getType() const { return mpType; }
-        uint32_t getOffset() const { return mOffset; }
+        size_t getOffset() const { return mOffset; }
         uint32_t getRegisterSpace() const { return mRegSpace; }
     private:
-        ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, uint32_t offset, uint32_t regSpace);
+        ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace);
         ReflectionType::SharedConstPtr mpType;
-        uint32_t mOffset = kInvalidOffset;
+        size_t mOffset = kInvalidOffset;
         uint32_t mRegSpace = kInvalidOffset;
+        std::string mName;
+        size_t mSize = 0;
+    };
+
+    class ProgramReflection;
+
+    class ParameterBlockReflection
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ParameterBlockReflection>;
+        using SharedConstPtr = std::shared_ptr<const ParameterBlockReflection>;
+        static SharedPtr create(const std::string& name);
+        const std::string& getName() const { return mName; }
+        bool isEmpty() const;
+    private:
+        friend class ProgramReflection;
+        void addResource(const ReflectionVar::SharedConstPtr& pVar);
+        ParameterBlockReflection(const std::string& name);
+        std::unordered_map<std::string, ReflectionVar::SharedConstPtr> mResources;
+        std::unordered_map<std::string, ReflectionVar::SharedConstPtr> mConstantBuffers;
+        std::unordered_map<std::string, ReflectionVar::SharedConstPtr> mStructuredBuffers;
+        std::unordered_map<std::string, ReflectionVar::SharedConstPtr> mSamplers;
+
         std::string mName;
     };
 
@@ -178,12 +202,12 @@ namespace Falcor
 
         static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
 
-        std::vector<ReflectionVar::SharedPtr>::const_iterator begin() const { return mParameterBlocks.begin(); }
-        std::vector<ReflectionVar::SharedPtr>::const_iterator end() const { return mParameterBlocks.end(); }
+        static void registerParameterBlock(const std::string& name);
+        static void unregisterParameterBlock(const std::string& name);
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
-        void addParameterBlock(const std::string& name, const ReflectionType::SharedConstPtr& pType);
-        std::vector<ReflectionVar::SharedPtr> mParameterBlocks;
-        std::unordered_map<std::string, uint32_t> mNameToIndex;
+        void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);
+        std::unordered_map<std::string, ParameterBlockReflection::SharedConstPtr> mParameterBlocks;
+        static std::unordered_set<std::string> sParameterBlockRegistry;
     };
 }
