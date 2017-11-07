@@ -30,7 +30,7 @@
 #include <map>
 #include <fstream>
 #include "API/Window.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 #include "Utils/OS.h"
 #include "API/FBO.h"
 #include "VR\OpenVR\VRSystem.h"

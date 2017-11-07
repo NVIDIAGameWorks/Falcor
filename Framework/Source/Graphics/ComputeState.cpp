@@ -28,7 +28,7 @@
 #pragma once
 #include "Framework.h"
 #include "ComputeState.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 
 namespace Falcor
 {

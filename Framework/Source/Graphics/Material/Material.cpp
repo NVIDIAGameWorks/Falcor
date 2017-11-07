@@ -33,7 +33,7 @@
 #include "Utils/os.h"
 #include "Utils/Math/FalcorMath.h"
 #include "MaterialSystem.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 
 namespace Falcor
 {
@@ -332,38 +332,38 @@ namespace Falcor
 
         // Now set the textures
         std::string resourceName = std::string(varName) + ".textures.layers";
-        const auto pResourceDesc = pVars->getReflection()->getResourceDesc(resourceName);
-        if (pResourceDesc == nullptr)
-        {
-            logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
-            return;
-        }
+//         const auto pResourceDesc = pVars->getReflection()->getResourceDesc(resourceName);
+//         if (pResourceDesc == nullptr)
+//         {
+//             logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
+//             return;
+//         }
 
         // Bind the layers (they are an array)
-        auto pTextures = (Texture::SharedPtr*)&mData.textures;
-        for (uint32_t i = 0; i < MatMaxLayers; i++)
-        {
-            if (pTextures[i] != nullptr)
-            {
-                pVars->setSrv(pResourceDesc->regSpace, pResourceDesc->regIndex, i, pTextures[i]->getSRV());
-            }
-        }
+//         auto pTextures = (Texture::SharedPtr*)&mData.textures;
+//         for (uint32_t i = 0; i < MatMaxLayers; i++)
+//         {
+//             if (pTextures[i] != nullptr)
+//             {
+//                 pVars->setSrv(pResourceDesc->regSpace, pResourceDesc->regIndex, i, pTextures[i]->getSRV());
+//             }
+//         }
 
         // Bind the rest
-        for (uint32_t i = MatMaxLayers; i < kTexCount; i++)
-        {
-            if (pTextures[i] != nullptr)
-            {
-#ifdef FALCOR_VK
-                uint32_t bindIndex = pResourceDesc->regIndex + 1 + i - MatMaxLayers;
-#else
-                uint32_t bindIndex = pResourceDesc->regIndex + i;
-#endif
-                pVars->setSrv(pResourceDesc->regSpace, bindIndex, 0, pTextures[i]->getSRV());
-            }
-        }
-
-        pVars->setSampler("gMaterial.samplerState", mData.samplerState);
+//         for (uint32_t i = MatMaxLayers; i < kTexCount; i++)
+//         {
+//             if (pTextures[i] != nullptr)
+//             {
+// #ifdef FALCOR_VK
+//                 uint32_t bindIndex = pResourceDesc->regIndex + 1 + i - MatMaxLayers;
+// #else
+//                 uint32_t bindIndex = pResourceDesc->regIndex + i;
+// #endif
+//                 pVars->setSrv(pResourceDesc->regSpace, bindIndex, 0, pTextures[i]->getSRV());
+//             }
+//         }
+// 
+//         pVars->setSampler("gMaterial.samplerState", mData.samplerState);
     }
 
     bool Material::operator==(const Material& other) const

@@ -85,7 +85,7 @@ namespace Falcor
             \param[in] bindFlags The bind flags for the resource
             \return A new buffer object if the operation was successful, otherwise nullptr
         */
-        static SharedPtr create(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementCount = 1, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, size_t elementCount = 1, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         
         /** Create a structured buffer. Fetches the requested buffer reflector from the active program version and create the buffer from it
             \param[in] pProgram A program object which defines the buffer
@@ -159,7 +159,7 @@ namespace Falcor
         const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
     private:
-        StructuredBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementCount, Resource::BindFlags bindFlags);
+        StructuredBuffer(const ProgramReflection::SharedConstPtr& pReflector, size_t elementCount, Resource::BindFlags bindFlags);
         mutable bool mGpuCopyDirty = false;
 
         Buffer::SharedPtr mpUAVCounter;

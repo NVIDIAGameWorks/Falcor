@@ -27,23 +27,23 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "ConstantBuffer.h"
-#include "ProgramVersion.h"
+#include "Graphics/Program/ProgramVersion.h"
 #include "Buffer.h"
 #include "glm/glm.hpp"
 #include "Texture.h"
-#include "API/ProgramReflection.h"
+#include "Graphics/Program/ProgramReflection.h"
 #include "API/Device.h"
 
 namespace Falcor
 {
-    ConstantBuffer::ConstantBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t size) :
+    ConstantBuffer::ConstantBuffer(const ProgramReflection::SharedConstPtr& pReflector, size_t size) :
         VariablesBuffer(pReflector, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
     {
     }
 
-    ConstantBuffer::SharedPtr ConstantBuffer::create(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t overrideSize)
+    ConstantBuffer::SharedPtr ConstantBuffer::create(const ProgramReflection::SharedConstPtr& pReflector, size_t overrideSize)
     {
-        size_t size = (overrideSize == 0) ? pReflector->getRequiredSize() : overrideSize;        
+        size_t size = 0;// (overrideSize == 0) ? pReflector->getRequiredSize() : overrideSize;
         SharedPtr pBuffer = SharedPtr(new ConstantBuffer(pReflector, size));
         return pBuffer;
     }
@@ -51,15 +51,15 @@ namespace Falcor
     ConstantBuffer::SharedPtr ConstantBuffer::create(Program::SharedPtr& pProgram, const std::string& name, size_t overrideSize)
     {
         const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
-        const auto& pBufferReflector = pProgReflector->getBufferDesc(name, ProgramReflection::BufferReflection::Type::Constant);
-        if (pBufferReflector)
-        {
-            return create(pBufferReflector, overrideSize);
-        }
-        else
-        {
-            logError("Can't find a constant buffer named \"" + name + "\" in the program");
-        }
+//         const auto& pBufferReflector = pProgReflector->getBufferDesc(name, ProgramReflection::Type::Constant);
+//         if (pBufferReflector)
+//         {
+//             return create(pBufferReflector, overrideSize);
+//         }
+//         else
+//         {
+//             logError("Can't find a constant buffer named \"" + name + "\" in the program");
+//         }
         return nullptr;
     }
 
