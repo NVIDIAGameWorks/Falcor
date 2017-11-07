@@ -113,7 +113,6 @@ namespace Falcor
             break;
 
         default:
-            should_not_get_here();
             return ReflectionType::ShaderAccess::Undefined;
         }
     }
@@ -188,9 +187,10 @@ namespace Falcor
         ReflectionType::Type type = getResourceType(pSlangType->getType());
 
         ReflectionType::SharedPtr pType = ReflectionType::create(type, 0, (uint32_t)pSlangType->getElementCount(), 0, shaderAccess, retType, dims);
-        for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++)
+        auto pElementLayout = pSlangType->unwrapArray()->getElementTypeLayout();
+        for (uint32_t i = 0; i < pElementLayout->getFieldCount(); i++)
         {
-            ReflectionVar::SharedPtr pVar = reflectVariable(pSlangType->getFieldByIndex(i));
+            ReflectionVar::SharedPtr pVar = reflectVariable(pElementLayout->getFieldByIndex(i));
             pType->addMember(pVar);
         }
         return pType;
@@ -248,7 +248,8 @@ namespace Falcor
         return SharedPtr(new ReflectionType(type, offset, arraySize, arrayStride, shaderAccess, retType, dims));
     }
 
-    ReflectionType::ReflectionType(Type type, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims)
+    ReflectionType::ReflectionType(Type type, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims) :
+        mType(type), mOffset(offset), mArraySize(arraySize), mArrayStride(arrayStride), mShaderAccess(shaderAccess), mReturnType(retType), mDimensions(dims)
     {
 
     }
@@ -262,7 +263,7 @@ namespace Falcor
         return SharedPtr(new ReflectionVar(name, pType, offset, regSpace));
     }
 
-    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, uint32_t offset, uint32_t regSpace)
+    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, uint32_t offset, uint32_t regSpace) : mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace)
     {
 
     }
