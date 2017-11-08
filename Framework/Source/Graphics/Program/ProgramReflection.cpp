@@ -308,14 +308,23 @@ namespace Falcor
         {
             type = getVariableType(pSlangType->unwrapArray()->getScalarType(), pSlangType->unwrapArray()->getRowCount(), pSlangType->unwrapArray()->getColumnCount());
         }
-        else if(isResourceType(type))
+        else if (isResourceType(type))
         {
             dims = getResourceDimensions(pSlangType->getResourceShape());
             shaderAccess = getShaderAccess(pSlangType->getType());
             retType = getReturnType(pSlangType->getType());
         }
+
+        uint32_t arraySize = 0;
+        uint32_t arrayStride = 0;
+        if (pSlangType->getType()->getKind() == TypeReflection::Kind::Array)
+        {
+            arraySize = (uint32_t)pSlangType->getElementCount();
+            arrayStride = (uint32_t)pSlangType->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
+        }
+
         auto pElementLayout = (type == ReflectionType::Type::Struct) ? pSlangType->unwrapArray() : pSlangType->unwrapArray()->getElementTypeLayout();
-        ReflectionType::SharedPtr pType = ReflectionType::create(type, pElementLayout->getSize(), 0, (uint32_t)pSlangType->getElementCount(), 0, shaderAccess, retType, dims);
+        ReflectionType::SharedPtr pType = ReflectionType::create(type, pElementLayout->getSize(), 0, arraySize, arrayStride, shaderAccess, retType, dims);
 
         for (uint32_t i = 0; i < pElementLayout->getFieldCount(); i++)
         {
@@ -332,7 +341,7 @@ namespace Falcor
         uint32_t space = pSlangLayout->getBindingSpace() + regSpace;
         size_t curOffset = (uint32_t)pSlangLayout->getOffset() + offset;
         ReflectionType::SharedPtr pType = reflectType(pSlangLayout->getTypeLayout(), curOffset, index, space);
-        
+
         switch (pType->getType())
         {
         case ReflectionType::Type::Texture:
@@ -364,12 +373,12 @@ namespace Falcor
             {
                 std::string name = std::string(pSlangLayout->getName());
                 ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
-                pBlock->addResource(pVar);
+                pBlock->addResource(pVar->getName(), pVar);
                 addParameterBlock(pBlock);
             }
             else
             {
-                pGlobalBlock->addResource(pVar);
+                pGlobalBlock->addResource(pVar->getName(), pVar);
             }
         }
 
@@ -437,9 +446,37 @@ namespace Falcor
         return mResources.empty() && mConstantBuffers.empty() && mStructuredBuffers.empty() && mSamplers.empty();
     }
 
-    void ParameterBlockReflection::addResource(const ReflectionVar::SharedConstPtr& pVar)
+    static void flattenResources(const std::string& name, const ReflectionVar::SharedConstPtr& pVar, std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>>& pResources)
     {
-        const std::string& name = pVar->getName();
+        const ReflectionType* pType = pVar->getType().get();
+        std::string namePrefix = name + (name.size() ? "." : "");
+        for (const auto& pMember : *pType)
+        {
+            if (isResourceType(pMember->getType()->getType()))
+            {
+                pResources.push_back({ namePrefix + pMember->getName() , pMember });
+                continue;
+            }
+            else
+            {
+                std::string newName = name + (name.size() ? "." : "");
+                if (pMember->getType()->getArraySize())
+                {
+                    for (uint32_t j = 0; j < pMember->getType()->getArraySize(); j++)
+                    {
+                        flattenResources(namePrefix + pMember->getName() + '[' + std::to_string(j) + ']', pMember, pResources);
+                    }
+                }
+                else
+                {
+                    flattenResources(namePrefix + pMember->getName(), pMember, pResources);
+                }
+            }
+        }
+    }
+
+    void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar)
+    {
         decltype(mResources)* pMap = nullptr;
 
         switch (pVar->getType()->getType())
@@ -462,7 +499,18 @@ namespace Falcor
             break;
         }
         assert(pMap);
-        assert((*pMap).find(name) == (*pMap).end());
-        (*pMap)[name] = pVar;
+        assert((*pMap).find(fullName) == (*pMap).end());
+        (*pMap)[fullName] = pVar;
+
+        // If this is a constant-buffer, it might contain resources. Extract them.
+        if (pVar->getType()->getType() == ReflectionType::Type::ConstantBuffer)
+        {
+            std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>> pResources;
+            flattenResources("", pVar, pResources);
+            for (const auto& r : pResources)
+            {
+                addResource(r.first, r.second);
+            }
+        }
     }
 }

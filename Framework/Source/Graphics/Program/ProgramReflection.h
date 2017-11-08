@@ -184,7 +184,7 @@ namespace Falcor
         bool isEmpty() const;
     private:
         friend class ProgramReflection;
-        void addResource(const ReflectionVar::SharedConstPtr& pVar);
+        void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar);
         ParameterBlockReflection(const std::string& name);
         std::unordered_map<std::string, ReflectionVar::SharedConstPtr> mResources;
         std::unordered_map<std::string, ReflectionVar::SharedConstPtr> mConstantBuffers;
