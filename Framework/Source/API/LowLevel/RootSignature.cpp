@@ -28,7 +28,7 @@
 #pragma once
 #include "Framework.h"
 #include "API/LowLevel/RootSignature.h"
-#include "API/ProgramReflection.h"
+#include "Graphics/Program/ProgramReflection.h"
 
 namespace Falcor
 {
@@ -75,7 +75,7 @@ namespace Falcor
         return pSig;
     }
 
-    ProgramReflection::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type)
+    ReflectionType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type)
     {
         switch (type)
         {
@@ -84,14 +84,14 @@ namespace Falcor
         case Falcor::RootSignature::DescType::StructuredBufferSrv:
         case Falcor::RootSignature::DescType::Cbv:
         case Falcor::RootSignature::DescType::Sampler:
-            return ProgramReflection::ShaderAccess::Read;
+            return ReflectionType::ShaderAccess::Read;
         case Falcor::RootSignature::DescType::TextureUav:
         case Falcor::RootSignature::DescType::StructuredBufferUav:
         case Falcor::RootSignature::DescType::TypedBufferUav:
-            return ProgramReflection::ShaderAccess::ReadWrite;
+            return ReflectionType::ShaderAccess::ReadWrite;
         default:
             should_not_get_here();
-            return ProgramReflection::ShaderAccess(-1);
+            return ReflectionType::ShaderAccess(-1);
         }
     }
 }

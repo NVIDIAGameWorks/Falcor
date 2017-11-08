@@ -88,7 +88,7 @@ namespace Falcor
                     // Only create the buffer if needed
                     if (createBuffers)
                     {
-                        data.pResource = BufferType::create(pType);
+                        data.pResource = BufferType::create(pVar->getName(), pType);
                         data.pView = viewInitFunc(data.pResource);
                     }
 

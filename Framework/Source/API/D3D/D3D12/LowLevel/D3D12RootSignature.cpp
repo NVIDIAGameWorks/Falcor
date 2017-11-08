@@ -180,24 +180,27 @@ namespace Falcor
         d3d_call(pDevice->CreateRootSignature(0, pSigBlob->GetBufferPointer(), pSigBlob->GetBufferSize(), IID_PPV_ARGS(&mApiHandle)));
     }
 
-//    ProgramReflection::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
+    ReflectionType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
 
     static uint32_t initializeBufferDescriptors(const ProgramReflection* pReflector, RootSignature::Desc& desc, RootSignature::DescType descType)
     {
         uint32_t cost = 0;
-//         const auto& bufMap = pReflector->getBufferMap(bufferType);
-//         for (const auto& buf : bufMap)
-//         {
-//             const ProgramReflection::BufferReflection* pBuffer = buf.second.get();
-//             if (pBuffer->getShaderAccess() == getRequiredShaderAccess(descType))
-//             {
-//                 RootSignature::DescriptorSetLayout descTable;
-//                 uint32_t count = buf.second->getArraySize() ? buf.second->getArraySize() : 1;
-//                 descTable.addRange(descType, pBuffer->getRegisterIndex(), count, pBuffer->getRegisterSpace());
-//                 cost += 1;
-//                 desc.addDescriptorSet(descTable);
-//             }
-//         }
+        assert(descType == RootSignature::DescType::Cbv || descType == RootSignature::DescType::StructuredBufferSrv || descType == RootSignature::DescType::StructuredBufferUav);
+        const auto& pGlobalBlock = pReflector->getParameterBlock("");
+        const auto& bufMap = (descType == RootSignature::DescType::Cbv) ? pGlobalBlock->getConstantBuffers() : pGlobalBlock->getStructuredBuffers();
+        for (const auto& buf : bufMap)
+        {
+            const ReflectionVar* pVar = buf.second.get();
+            const ReflectionType* pType = pVar->getType().get();
+            if (pType->getShaderAccess() == getRequiredShaderAccess(descType))
+            {
+                RootSignature::DescriptorSetLayout descTable;
+                uint32_t count = pType->getArraySize() ? pType->getArraySize() : 1;
+                descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
+                cost += 1;
+                desc.addDescriptorSet(descTable);
+            }
+        }
         return cost;
     }
 
@@ -206,45 +209,50 @@ namespace Falcor
         uint32_t cost = 0;
         d = RootSignature::Desc();
 
-//         cost += initializeBufferDescriptors(pReflector, d, ProgramReflection::Type::Constant, RootSignature::DescType::Cbv);
-//         cost += initializeBufferDescriptors(pReflector, d, ProgramReflection::Type::Structured, RootSignature::DescType::StructuredBufferSrv);
-//         cost += initializeBufferDescriptors(pReflector, d, ProgramReflection::Type::Structured, RootSignature::DescType::StructuredBufferUav);
+        cost += initializeBufferDescriptors(pReflector, d, RootSignature::DescType::Cbv);
+        cost += initializeBufferDescriptors(pReflector, d, RootSignature::DescType::StructuredBufferSrv);
+        cost += initializeBufferDescriptors(pReflector, d, RootSignature::DescType::StructuredBufferUav);
 
-//         const ProgramReflection::ResourceMap& resMap = pReflector->getResourceMap();
-//         for (auto& resIt : resMap)
-//         {
-//             const ProgramReflection::Resource& resource = resIt.second;
-//             assert(resource.descOffset == 0);
-//             RootSignature::DescType descType;
-//             if (resource.type == ProgramReflection::Resource::ResourceType::Sampler)
-//             {
-//                 descType = RootSignature::DescType::Sampler;
-//             }
-//             else
-//             {
-//                 switch (resource.type)
-//                 {
-//                 case ProgramReflection::Resource::ResourceType::RawBuffer:
-//                 case ProgramReflection::Resource::ResourceType::Texture:
-//                     descType = (resource.shaderAccess == ProgramReflection::ShaderAccess::ReadWrite) ? RootSignature::DescType::TextureUav : RootSignature::DescType::TextureSrv;
-//                     break;
-//                 case ProgramReflection::Resource::ResourceType::StructuredBuffer:
-//                     descType = (resource.shaderAccess == ProgramReflection::ShaderAccess::ReadWrite) ? RootSignature::DescType::StructuredBufferUav : RootSignature::DescType::StructuredBufferSrv;
-//                     break;
-//                 case ProgramReflection::Resource::ResourceType::TypedBuffer:
-//                     descType = (resource.shaderAccess == ProgramReflection::ShaderAccess::ReadWrite) ? RootSignature::DescType::TypedBufferUav : RootSignature::DescType::TypedBufferSrv;
-//                     break;;
-//                 default:
-//                     should_not_get_here();
-//                 }
-//             }
-// 
-//             uint32_t count = resource.arraySize ? resource.arraySize : 1;
-//             RootSignature::DescriptorSetLayout descTable;
-//             descTable.addRange(descType, resource.regIndex, count, resource.regSpace);
-//             d.addDescriptorSet(descTable);
-//             cost += 1;
-//         }
+        const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
+        const ParameterBlockReflection::ResourceMap& resMap = pGlobalBlock->getResources();
+
+        for (auto& resIt : resMap)
+        {
+            const ReflectionVar* pVar = resIt.second.get();
+            const ReflectionType* pType = pVar->getType().get();
+
+//            assert(resource.descOffset == 0); // PARAMBLOCK
+            RootSignature::DescType descType;
+            if (pType->getType() == ReflectionType::Type::Sampler)
+            {
+                descType = RootSignature::DescType::Sampler;
+            }
+            else
+            {
+                ReflectionType::ShaderAccess shaderAccess = pType->getShaderAccess();
+                switch (pType->getType())
+                {
+                case ReflectionType::Type::RawBuffer:
+                case ReflectionType::Type::Texture:
+                    descType = (shaderAccess == ReflectionType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TextureUav : RootSignature::DescType::TextureSrv;
+                    break;
+                case ReflectionType::Type::StructuredBuffer:
+                    descType = (shaderAccess == ReflectionType::ShaderAccess::ReadWrite) ? RootSignature::DescType::StructuredBufferUav : RootSignature::DescType::StructuredBufferSrv;
+                    break;
+                case ReflectionType::Type::TypedBuffer:
+                    descType = (shaderAccess == ReflectionType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TypedBufferUav : RootSignature::DescType::TypedBufferSrv;
+                    break;;
+                default:
+                    should_not_get_here();
+                }
+            }
+
+            uint32_t count = pType->getArraySize() ? pType->getArraySize() : 1;
+            RootSignature::DescriptorSetLayout descTable;
+            descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
+            d.addDescriptorSet(descTable);
+            cost += 1;
+        }
 
         return cost;
     }
