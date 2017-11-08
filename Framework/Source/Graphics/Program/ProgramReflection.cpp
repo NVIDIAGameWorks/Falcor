@@ -518,4 +518,34 @@ namespace Falcor
     {
         return mParameterBlocks.at(name);
     }
+
+    static const ReflectionVar* findMember(const std::string& name, size_t pos, const ReflectionType* pType)
+    {
+        // Find the location of the next '.'
+        size_t newPos = name.find('.', pos);
+        std::string field = name.substr(pos, newPos);
+        size_t fieldIndex = pType->getMemberIndex(field);
+        if (fieldIndex == ReflectionType::kInvalidOffset)
+        {
+            logWarning("Can't find variable + " + name);
+            return nullptr;
+        }
+
+        const auto& pVar = pType->getMember(fieldIndex).get();
+        if (newPos == std::string::npos) return pVar;
+        const auto& pNewType = pVar->getType().get();
+        return Falcor::findMember(name, newPos, pNewType);
+    }
+
+    const ReflectionVar* ReflectionType::findMember(const std::string& name) const
+    {
+        return Falcor::findMember(name, 0, this);
+    }
+
+    size_t ReflectionType::getMemberIndex(const std::string& name) const
+    {
+        auto& it = mNameToIndex.find(name);
+        if (it == mNameToIndex.end()) return kInvalidOffset;
+        return it->second;
+    }
 }

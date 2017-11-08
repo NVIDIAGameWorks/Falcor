@@ -31,7 +31,7 @@
 #include "API/D3D/D3DViews.h"
 #include <vector>
 #include "API/Device.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/GraphicsState.h"
 #include "D3D12Resource.h"

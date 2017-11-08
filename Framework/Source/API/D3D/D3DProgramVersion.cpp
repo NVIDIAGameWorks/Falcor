@@ -26,8 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "API/ProgramVersion.h"
-#include "API/ProgramReflection.h"
+#include "Graphics/Program/ProgramVersion.h"
+#include "Graphics/Program/ProgramReflection.h"
 #include <algorithm>
 #include <iterator>
 

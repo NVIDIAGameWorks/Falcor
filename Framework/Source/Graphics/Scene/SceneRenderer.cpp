@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "SceneRenderer.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 #include "Utils/Gui.h"
 #include "API/ConstantBuffer.h"
 #include "API/RenderContext.h"

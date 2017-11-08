@@ -145,7 +145,10 @@ namespace Falcor
         ReturnType getReturnType() const { return mReturnType; }
         StructuredType getStructuredBufferType() const { return mStructuredType; }
 
-        const std::shared_ptr<const ReflectionVar>& findMember(const std::string& name) const;
+        const ReflectionVar* findMember(const std::string& name) const;
+
+        size_t getMemberIndex(const std::string& name) const;
+        const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
 
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator begin() const { return mMembers.begin(); }
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator end() const { return mMembers.end(); }
