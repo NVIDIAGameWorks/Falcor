@@ -513,4 +513,9 @@ namespace Falcor
             }
         }
     }
+
+    const ParameterBlockReflection::SharedConstPtr& ProgramReflection::getParameterBlock(const std::string& name) const
+    {
+        return mParameterBlocks.at(name);
+    }
 }

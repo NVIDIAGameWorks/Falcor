@@ -70,12 +70,12 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ConstantBuffer>;
 
         /** Create a new constant buffer.
-            Even though the buffer is created with a specific reflection object, it can be used with other programs as long as the buffer declarations are the same across programs.
-            \param[in] pReflector A buffer-reflection object describing the buffer layout
+            Even though the buffer is created with a specific reflection type, it can be used with other programs as long as the buffer declarations are the same across programs.
+            \param[in] pReflectionType A reflection type object containing the buffer layout
             \param[in] overrideSize If 0, will use the buffer size as declared in the shader. Otherwise, will use this value as the buffer size. Useful when using buffers with dynamic arrays.
             \return A new buffer object if the operation was successful, otherwise nullptr
         */
-        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, size_t overrideSize = 0);
+        static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t overrideSize = 0);
 
         /** Create a new constant buffer from a program object. Fetches the requested buffer reflector from the active program version and create the buffer from it
             \param[in] pProgram A program object which defines the buffer
@@ -133,45 +133,11 @@ namespace Falcor
             return VariablesBuffer::setVariableArray(name, 0, pValue, count);
         }
 
-        /** Set a texture or image.
-            The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-            \param[in] name The variable name in the program. See notes about naming in the ConstantBuffer class description.
-            \param[in] pTexture The resource to bind. If bBindAsImage is set, binds as image.
-            \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
-        */
-        void setTexture(const std::string& name, const Texture* pTexture, const Sampler* pSampler)
-        {
-            return VariablesBuffer::setTexture(name, pTexture, pSampler);
-        }
-
-        /** Set a texture or image.
-            The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-            \param[in] name The variable name in the program. See notes about naming in the ConstantBuffer class description.
-            \param[in] pTexture The resource to bind
-            \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
-            \param[in] count Number of textures to bind
-        */
-        void setTextureArray(const std::string& name, const Texture* pTexture[], const Sampler* pSampler, size_t count)
-        {
-            return VariablesBuffer::setTextureArray(name, pTexture, pSampler, count);
-        }
-
-        /** Set a texture or image.
-            The function will validate that the resource Type matches the declaration in the shader. If there's a mismatch, an error will be logged and the call will be ignored.
-            \param[in] offset The variable byte offset inside the buffer
-            \param[in] pTexture The resource to bind. If bBindAsImage is set, binds as image.
-            \param[in] pSampler The sampler to use for filtering. If this is nullptr, the default sampler will be used
-        */
-        void setTexture(size_t Offset, const Texture* pTexture, const Sampler* pSampler)
-        {
-            return VariablesBuffer::setTexture(Offset, pTexture, pSampler);
-        }
-
         virtual bool uploadToGPU(size_t offset = 0, size_t size = -1) override;
 
         ConstantBufferView::SharedPtr getCbv();
     protected:
-        ConstantBuffer(const ProgramReflection::SharedConstPtr& pReflector, size_t size);
+        ConstantBuffer(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;
 #ifdef FALCOR_D3D11
         friend class RenderContext;

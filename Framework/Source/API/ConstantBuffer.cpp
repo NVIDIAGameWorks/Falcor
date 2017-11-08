@@ -36,30 +36,40 @@
 
 namespace Falcor
 {
-    ConstantBuffer::ConstantBuffer(const ProgramReflection::SharedConstPtr& pReflector, size_t size) :
-        VariablesBuffer(pReflector, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
+    ConstantBuffer::ConstantBuffer(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t size) :
+        VariablesBuffer(name, pReflectionType, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
     {
     }
 
-    ConstantBuffer::SharedPtr ConstantBuffer::create(const ProgramReflection::SharedConstPtr& pReflector, size_t overrideSize)
+    ConstantBuffer::SharedPtr ConstantBuffer::create(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t overrideSize)
     {
         size_t size = 0;// (overrideSize == 0) ? pReflector->getRequiredSize() : overrideSize;
-        SharedPtr pBuffer = SharedPtr(new ConstantBuffer(pReflector, size));
+        SharedPtr pBuffer = SharedPtr(new ConstantBuffer(name, pReflectionType, size));
         return pBuffer;
     }
 
     ConstantBuffer::SharedPtr ConstantBuffer::create(Program::SharedPtr& pProgram, const std::string& name, size_t overrideSize)
     {
         const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
-//         const auto& pBufferReflector = pProgReflector->getBufferDesc(name, ProgramReflection::Type::Constant);
-//         if (pBufferReflector)
-//         {
-//             return create(pBufferReflector, overrideSize);
-//         }
-//         else
-//         {
-//             logError("Can't find a constant buffer named \"" + name + "\" in the program");
-//         }
+        const auto& pParamBlockReflection = pProgReflector->getParameterBlock("");
+        ReflectionVar::SharedConstPtr pBufferReflector;
+        if (pParamBlockReflection)
+        {
+            const auto& cb = pParamBlockReflection->getConstantBuffers();
+            if (cb.find(name) != cb.end())
+            {
+                pBufferReflector = cb.at(name);
+            }
+        }
+
+        if (pBufferReflector)
+        {
+            return create(name, pBufferReflector->getType(), overrideSize);
+        }
+        else
+        {
+            logError("Can't find a constant buffer named \"" + name + "\" in the program");
+        }
         return nullptr;
     }
 

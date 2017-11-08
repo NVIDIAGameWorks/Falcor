@@ -49,7 +49,7 @@ namespace Falcor
 
         static const size_t kInvalidOffset = -1;// ProgramReflection::kInvalidLocation;
 
-        VariablesBuffer(const ProgramReflection::SharedConstPtr& pReflector, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess);
+        VariablesBuffer(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess);
 
         virtual ~VariablesBuffer() = 0;
 
@@ -62,7 +62,7 @@ namespace Falcor
 
         /** Get the reflection object describing the CB
         */
-        ProgramReflection::SharedConstPtr getBufferReflector() const { return mpReflector; }
+        ReflectionType::SharedConstPtr getBufferReflector() const { return mpReflector; }
 
         /** Set a block of data into the constant buffer.\n
             If Offset + Size will result in buffer overflow, the call will be ignored and log an error.
@@ -93,18 +93,11 @@ namespace Falcor
         template<typename T>
         void setVariableArray(const std::string& name, size_t elementIndex, const T* pValue, size_t count);
 
-        void setTexture(const std::string& name, const Texture* pTexture, const Sampler* pSampler);
-
-        void setTextureArray(const std::string& name, const Texture* pTexture[], const Sampler* pSampler, size_t count);
-
-        void setTexture(size_t Offset, const Texture* pTexture, const Sampler* pSampler);
-
-        void setTextureInternal(size_t offset, const Texture* pTexture, const Sampler* pSampler);
-
-        ProgramReflection::SharedConstPtr mpReflector;
+        ReflectionType::SharedConstPtr mpReflector;
         std::vector<uint8_t> mData;
         mutable bool mDirty = true;
         size_t mElementCount;
         size_t mElementSize;
+        std::string mName;
     };
 }

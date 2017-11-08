@@ -63,22 +63,23 @@ namespace Falcor
     }
 
     template<typename BufferType, typename ViewType, RootSignature::DescType descType, typename ViewInitFunc>
-    bool initializeBuffersMap(ProgramVars::ResourceMap<ViewType>& bufferMap, bool createBuffers, const ViewInitFunc& viewInitFunc, const RootSignature* pRootSig)
+    bool initializeBuffersMap(ProgramVars::ResourceMap<ViewType>& bufferMap, bool createBuffers, const ViewInitFunc& viewInitFunc, const ParameterBlockReflection::ResourceMap& resMap, const RootSignature* pRootSig)
     {
         ReflectionType::ShaderAccess shaderAccess = getRequiredShaderAccess(descType);
 
-        for (auto& buf : reflectionMap)
+        for (auto& buf : resMap)
         {
-            const ProgramReflection::BufferReflection* pReflector = buf.second.get();
-            if (pReflector->getShaderAccess() == shaderAccess)
+            const ReflectionVar::SharedConstPtr& pVar = buf.second;
+            const ReflectionType::SharedConstPtr& pType = pVar->getType();
+            if (pType->getShaderAccess() == shaderAccess)
             {
-                uint32_t regIndex = pReflector->getRegisterIndex();
-                uint32_t regSpace = pReflector->getRegisterSpace();
-                uint32_t arraySize = max(1u, pReflector->getArraySize());
+                uint32_t regIndex = pVar->getRegisterIndex();
+                uint32_t regSpace = pVar->getRegisterSpace();
+                uint32_t arraySize = max(1u, pType->getArraySize());
                 ProgramVars::ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
                 if (data.rootData.rootIndex == -1)
                 {
-                    logError("Can't find a root-signature information matching buffer '" + pReflector->getName() + " when creating ProgramVars");
+                    logError("Can't find a root-signature information matching buffer '" + pVar->getName() + " when creating ProgramVars");
                     return false;
                 }
 
@@ -87,7 +88,7 @@ namespace Falcor
                     // Only create the buffer if needed
                     if (createBuffers)
                     {
-                        data.pResource = BufferType::create(buf.second);
+                        data.pResource = BufferType::create(pType);
                         data.pView = viewInitFunc(data.pResource);
                     }
 
@@ -98,21 +99,21 @@ namespace Falcor
         return true;
     }
 
-    static RootSignature::DescType getRootDescTypeFromResourceType()
+    static RootSignature::DescType getRootDescTypeFromResourceType(ReflectionType::Type type, ReflectionType::ShaderAccess access)
     {
-//         switch (type)
-//         {
-//         case ProgramReflection::Resource::ResourceType::Texture:
-//         case ProgramReflection::Resource::ResourceType::RawBuffer:  // Vulkan doesn't have raw-buffer and DX doesn't care
-//             return (access == ProgramReflection::ShaderAccess::Read) ? RootSignature::DescType::TextureSrv : RootSignature::DescType::TextureUav;
-//         case ProgramReflection::Resource::ResourceType::StructuredBuffer:
-//             return (access == ProgramReflection::ShaderAccess::Read) ? RootSignature::DescType::StructuredBufferSrv : RootSignature::DescType::StructuredBufferUav;
-//         case ProgramReflection::Resource::ResourceType::TypedBuffer:
-//             return (access == ProgramReflection::ShaderAccess::Read) ? RootSignature::DescType::TypedBufferSrv : RootSignature::DescType::TypedBufferUav;
-//         default:
-//             should_not_get_here();
+        switch (type)
+        {
+        case ReflectionType::Type::Texture:
+        case ReflectionType::Type::RawBuffer:  // Vulkan doesn't have raw-buffer and DX doesn't care
+            return (access == ReflectionType::ShaderAccess::Read) ? RootSignature::DescType::TextureSrv : RootSignature::DescType::TextureUav;
+        case ReflectionType::Type::StructuredBuffer:
+            return (access == ReflectionType::ShaderAccess::Read) ? RootSignature::DescType::StructuredBufferSrv : RootSignature::DescType::StructuredBufferUav;
+        case ReflectionType::Type::TypedBuffer:
+            return (access == ReflectionType::ShaderAccess::Read) ? RootSignature::DescType::TypedBufferSrv : RootSignature::DescType::TypedBufferUav;
+        default:
+            should_not_get_here();
             return RootSignature::DescType(-1);
-//        }
+        }
     }
 
     ProgramVars::ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) : mpReflector(pReflector)
@@ -120,48 +121,53 @@ namespace Falcor
         // Initialize the CB and StructuredBuffer maps. We always do it, to mark which slots are used in the shader.
         mpRootSignature = pRootSig ? pRootSig : RootSignature::create(pReflector.get());
 
-        auto getNullptrFunc = [](const Resource::SharedPtr& pResource) { return nullptr; };
+        auto getNullPtrFunc = [](const Resource::SharedPtr& pResource) { return nullptr; };
         auto getSrvFunc = [](const Resource::SharedPtr& pResource) { return pResource->getSRV(0, 1, 0, 1); };
         auto getUavFunc = [](const Resource::SharedPtr& pResource) { return pResource->getUAV(0, 0, 1); };
 
-//         initializeBuffersMap<ConstantBuffer, ConstantBuffer, RootSignature::DescType::Cbv>(mAssignedCbs, createBuffers, getNullptrFunc, mpReflector->getBufferMap(ProgramReflection::BufferReflection::Type::Constant), mpRootSignature.get());
-//         initializeBuffersMap<StructuredBuffer, ShaderResourceView, RootSignature::DescType::StructuredBufferSrv>(mAssignedSrvs, createBuffers, getSrvFunc, mpReflector->getBufferMap(ProgramReflection::BufferReflection::Type::Structured), mpRootSignature.get());
-//         initializeBuffersMap<StructuredBuffer, UnorderedAccessView, RootSignature::DescType::StructuredBufferUav>(mAssignedUavs, createBuffers, getUavFunc, mpReflector->getBufferMap(ProgramReflection::BufferReflection::Type::Structured), mpRootSignature.get());
+        ParameterBlockReflection::SharedConstPtr pGlobalBlock = pReflector->getParameterBlock("");
+        initializeBuffersMap<ConstantBuffer, ConstantBuffer, RootSignature::DescType::Cbv>(mAssignedCbs, createBuffers, getNullPtrFunc, pGlobalBlock->getConstantBuffers(), mpRootSignature.get());
+        initializeBuffersMap<StructuredBuffer, ShaderResourceView, RootSignature::DescType::StructuredBufferSrv>(mAssignedSrvs, createBuffers, getSrvFunc, pGlobalBlock->getStructuredBuffers(), mpRootSignature.get());
+        initializeBuffersMap<StructuredBuffer, UnorderedAccessView, RootSignature::DescType::StructuredBufferUav>(mAssignedUavs, createBuffers, getUavFunc, pGlobalBlock->getStructuredBuffers(), mpRootSignature.get());
 
         // Initialize the textures and samplers map
-//         for (const auto& res : pReflector->getResourceMap())
-//         {
-//             const auto& desc = res.second;
-//             uint32_t count = desc.arraySize ? desc.arraySize : 1;
-//             for (uint32_t index = desc.descOffset; index < (desc.descOffset + count); ++index)
-//             {
-//                 uint32_t regIndex = desc.regIndex;
-//                 BindLocation loc(desc.regSpace, regIndex);
-//                 switch (desc.type)
-//                 {
-//                 case ProgramReflection::Resource::ResourceType::Sampler:
-//                     mAssignedSamplers[loc].push_back(findRootData(mpRootSignature.get(), regIndex, desc.regSpace, RootSignature::DescType::Sampler));
-//                     break;
-//                 case ProgramReflection::Resource::ResourceType::Texture:
-//                 case ProgramReflection::Resource::ResourceType::RawBuffer:
-//                 case ProgramReflection::Resource::ResourceType::TypedBuffer:
-//                     if (desc.shaderAccess == ProgramReflection::ShaderAccess::Read)
-//                     {
-//                         assert(mAssignedSrvs.find(loc) == mAssignedSrvs.end() || mAssignedSrvs[loc].size() == index);
-//                         mAssignedSrvs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, desc.regSpace, getRootDescTypeFromResourceType(desc.type, desc.shaderAccess)));
-//                     }
-//                     else
-//                     {
-//                         assert(mAssignedUavs.find(loc) == mAssignedUavs.end() || mAssignedUavs[loc].size() == index);
-//                         assert(desc.shaderAccess == ProgramReflection::ShaderAccess::ReadWrite);
-//                         mAssignedUavs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, desc.regSpace, getRootDescTypeFromResourceType(desc.type, desc.shaderAccess)));
-//                     }
-//                     break;
-//                 default:
-//                     should_not_get_here();
-//                 }
-//             }
-//         }
+        for (const auto& res : pGlobalBlock->getResources())
+        {
+            const ReflectionVar::SharedConstPtr& pVar = res.second;
+            const ReflectionType::SharedConstPtr& pType = pVar->getType();
+            uint32_t count = pType->getArraySize() ? pType->getArraySize() : 1;
+            for (uint32_t index = 0; index < (0 + count); ++index) // PARAMBLOCK the 0 used to be descOffset
+            {
+                uint32_t regIndex = pVar->getRegisterIndex();
+                uint32_t regSpace = pVar->getRegisterSpace();
+                BindLocation loc(regSpace, regIndex);
+                ReflectionType::ShaderAccess shaderAccess = pType->getShaderAccess();
+                ReflectionType::Type type = pType->getType();
+                switch (type)
+                {
+                case ReflectionType::Type::Sampler:
+                    mAssignedSamplers[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, RootSignature::DescType::Sampler));
+                    break;
+                case ReflectionType::Type::Texture:
+                case ReflectionType::Type::RawBuffer:
+                case ReflectionType::Type::TypedBuffer:
+                    if (shaderAccess == ReflectionType::ShaderAccess::Read)
+                    {
+                        assert(mAssignedSrvs.find(loc) == mAssignedSrvs.end() || mAssignedSrvs[loc].size() == index);
+                        mAssignedSrvs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, getRootDescTypeFromResourceType(type, shaderAccess)));
+                    }
+                    else
+                    {
+                        assert(mAssignedUavs.find(loc) == mAssignedUavs.end() || mAssignedUavs[loc].size() == index);
+                        assert(shaderAccess == ReflectionType::ShaderAccess::ReadWrite);
+                        mAssignedUavs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, getRootDescTypeFromResourceType(type, shaderAccess)));
+                    }
+                    break;
+                default:
+                    should_not_get_here();
+                }
+            }
+        }
 
         mRootSets = RootSetVec(mpRootSignature->getDescriptorSetCount());
 
