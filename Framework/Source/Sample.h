@@ -202,6 +202,7 @@ namespace Falcor
         bool mShowUI = true;
         bool mCaptureScreen = false;
 
+#ifdef _WIN32
         struct VideoCaptureData
         {
             VideoEncoderUI::UniquePtr pUI;
@@ -211,6 +212,7 @@ namespace Falcor
         };
 
         VideoCaptureData mVideoCapture;
+#endif
 
         FrameRate mFrameRate;
         float mTimeScale;

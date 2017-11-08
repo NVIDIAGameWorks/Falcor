@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    forceinline VkBool32 vkBool(bool b)
+    {
+        return b ? VK_TRUE : VK_FALSE;
+    }
 
     VkShaderStageFlagBits getVkShaderStage(ShaderType type)
     {

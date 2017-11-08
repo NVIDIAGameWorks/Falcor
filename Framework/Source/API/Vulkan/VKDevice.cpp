@@ -221,8 +221,9 @@ namespace Falcor
 #ifdef VK_REPORT_PERF_WARNINGS
         callbackCreateInfo.flags |= VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
 #endif
+#ifdef DEFAULT_ENABLE_DEBUG_LAYER
         callbackCreateInfo.pfnCallback = &debugReportCallback;
-        callbackCreateInfo.pUserData = nullptr;
+#endif
 
         // Function to create a debug callback has to be dynamically queried from the instance...
         PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback = VK_NULL_HANDLE;

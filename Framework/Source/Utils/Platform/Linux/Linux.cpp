@@ -370,6 +370,11 @@ namespace Falcor
         raise(SIGTRAP);
     }
 
+    void printToDebugWindow(const std::string& s)
+    {
+        std::cerr << s;
+    }
+
     std::string stripDataDirectories(const std::string& filename)
     {
         std::string stripped = filename;

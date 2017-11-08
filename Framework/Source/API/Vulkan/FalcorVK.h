@@ -43,8 +43,6 @@
 
 #include "API/Vulkan/VKSmartHandle.h"
 
-forceinline VkBool32 vkBool(bool b) { return b ? VK_TRUE : VK_FALSE; }
-
 namespace Falcor
 {
     struct VkFormatDesc

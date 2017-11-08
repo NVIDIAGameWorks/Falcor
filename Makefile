@@ -1,43 +1,47 @@
 CC = g++
 
 INCLUDES = \
--I "Framework/" \
--I "Framework/Source/" \
+-I "Framework" \
+-I "Framework/Source" \
 -I "Framework/Externals/GLM" \
 -I "Framework/Externals/GLFW/include" \
--I "Framework/Externals/FreeImage/include" \
--I "Framework/Externals/ASSIMP/include" \
--I "Framework/Externals/FFMPEG/include" \
 -I "Framework/Externals/OpenVR/headers" \
--I "Framework/Externals/VulkanSDK/Include" \
 -I "Framework/Externals/RapidJson/include" \
--I "$(FALCOR_PYBIND11_PATH)/include" \
--I "$(FALCOR_PYTHON_PATH)/include" \
--I "Framework/Externals/nvapi" \
+-I "Framework/Externals/FFMPEG/include" \
 -I "$(VULKAN_SDK)/include" \
-$(shell pkg-config --cflags gtk+-3.0)
+-I "/usr/include" \
+$(shell pkg-config --cflags assimp gtk+-3.0)
 
-LIB_DIRS = \
--L "Bin/" \
--L "Framework/Externals/ASSIMP/lib/" \
--L "Framework/Externals/FreeImage/lib" \
--L "Framework/Externals/GLFW/lib" \
--L "Framework/Externals/FFMPEG/lib" \
+# No pkg-config metadata: glm freeimage
+# glm needs to be a newer version than what's on Linux repos, so pull from packman
+# Using older version of RapidJson, pull from packman
+# Need newer version of ffmpeg than whats on ubuntu
+# Compiling GLFW with Wayland backend
+
+# -I "Framework/Externals/FreeImage/include" assume in usr/include
+# -I "Framework/Externals/ASSIMP/include"
+# -I "$(FALCOR_PYBIND11_PATH)/include"
+# -I "$(FALCOR_PYTHON_PATH)/include"
+
+ADDITIONAL_LIB_DIRS = -L "Bin/" \
 -L "Framework/Externals/OpenVR/lib" \
--L "Framework/Externals/Slang/bin/linux-x86_64/release"
+-L "Framework/Externals/FFMPEG/lib" \
+-L "Framework/Externals/GLFW/lib" \
+-L "Framework/Externals/Slang/bin/linux-x86_64/release" \
+-L "$(VULKAN_SDK)/lib"
 
-LIBS = \
--lfalcor -lassimp -lfreeimage -lglfw3 -lslang -lslang-glslang \
--lavcodec -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale \
-$(shell pkg-config --libs gtk+-3.0)
-
-# liblrrXML.a from assimp?
+LIBS = -lfalcor \
+-lfreeimage -lslang -lslang-glslang -lopenvr_api \
+$(shell pkg-config --libs assimp gtk+-3.0 ) -lglfw3 \
+-lvulkan -lxkbcommon -lwayland-cursor -lwayland-egl -lwayland-client  \
+-lstdc++fs -lrt -lm -ldl -lz -lpthread
+# ffmpeg stuff: -lavcodec -lavdevice -lavformat -lswscale -lavutil -lopus
 
 # Compiler Flags
 DEBUG_FLAGS:=-O0 -g
 RELEASE_FLAGS:=-O3
-DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing
-COMMON_FLAGS=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
+DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing -Wno-unused-but-set-variable
+COMMON_FLAGS=-c -Wall -Werror -std=c++14 -m64 $(DISABLED_WARNINGS)
 
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"
@@ -50,16 +54,18 @@ SOURCE_DIR:=Framework/Source/
 # All directories containing source code relative from the base Source folder. The "/" in the first line is to include the base Source directory
 RELATIVE_DIRS:= \
 / \
-API/ API/Vulkan/ API/Vulkan/LowLevel/ \
+API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Video/ Utils/Platform/ Utils/Platform/Linux/ \
-VR/ VR/OpenVR/
+Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/  Utils/Platform/ Utils/Platform/Linux/ \
+VR/ VR/OpenVR/ \
+../Externals/dear_imgui/
+# Utils/Video/
 
-# 1,1    2,4    5,12    13,20    21,28    29,30
+# 1,1    2,5    6,13    14,21    22,28    29,31 , 32
+# SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,30,$(RELATIVE_DIRS)))
 # RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(wordlist 1,30,$(RELATIVE_DIRS)))
-#SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 
 # All source files enumerated with paths relative to Makefile (base repo)
 ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))
@@ -72,7 +78,8 @@ OUT_DIR:=Bin/
 ProjectTemplate : DebugVK
 	$(eval DIR=Samples/Core/ProjectTemplate/)
 	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)ProjectTemplate.cpp -o $(DIR)ProjectTemplate.o
-	@$(CC) -o $(OUT_DIR)ProjectTemplate $(DIR)ProjectTemplate.o $(LIB_DIRS) $(LIBS)
+	@$(CC) -o $(OUT_DIR)ProjectTemplate $(DIR)ProjectTemplate.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@echo Built $@
 
 ReleaseVK : ReleaseConfig $(OUT_DIR)libfalcor.a
 
