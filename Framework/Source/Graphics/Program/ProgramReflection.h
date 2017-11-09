@@ -210,7 +210,9 @@ namespace Falcor
         const ResourceMap& getConstantBuffers() const { return mConstantBuffers; }
         const ResourceMap& getStructuredBuffers() const { return mStructuredBuffers; }
 
-        const ReflectionVar* getConstantBuffer(const char* name) const;
+        const ReflectionVar* getConstantBuffer(const std::string& name) const;
+        const ReflectionVar* getResource(const std::string& name) const;
+        const ReflectionVar* getStructuredBuffer(const std::string& name) const;
     private:
         friend class ProgramReflection;
         void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar);

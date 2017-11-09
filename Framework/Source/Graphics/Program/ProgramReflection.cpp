@@ -475,6 +475,31 @@ namespace Falcor
         }
     }
 
+    static const ReflectionVar* findVarCommon(const ParameterBlockReflection::ResourceMap& map, const std::string& name)
+    {
+        const auto& it = map.find(name);
+        if (it == map.end())
+        {
+            return nullptr;
+        }
+        return it->second.get();
+    }
+
+    const ReflectionVar* ParameterBlockReflection::getResource(const std::string& name) const
+    {
+        return findVarCommon(mResources, name);
+    }
+
+    const ReflectionVar* ParameterBlockReflection::getConstantBuffer(const std::string& name) const
+    {
+        return findVarCommon(mConstantBuffers, name);
+    }
+
+    const ReflectionVar* ParameterBlockReflection::getStructuredBuffer(const std::string& name) const
+    {
+        return findVarCommon(mStructuredBuffers, name);
+    }
+
     void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar)
     {
         decltype(mResources)* pMap = nullptr;

@@ -221,7 +221,7 @@ namespace Falcor
             const ReflectionVar* pVar = resIt.second.get();
             const ReflectionType* pType = pVar->getType().get();
 
-//            assert(resource.descOffset == 0); // PARAMBLOCK
+//            assert(resource.descOffset == 0); // #PARAMBLOCK
             RootSignature::DescType descType;
             if (pType->getType() == ReflectionType::Type::Sampler)
             {
