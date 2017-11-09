@@ -41,7 +41,7 @@ $(shell pkg-config --libs assimp gtk+-3.0 ) -lglfw3 \
 DEBUG_FLAGS:=-O0 -g
 RELEASE_FLAGS:=-O3
 DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing -Wno-unused-but-set-variable
-COMMON_FLAGS=-c -Wall -Werror -std=c++14 -m64 $(DISABLED_WARNINGS)
+COMMON_FLAGS=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
 
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"

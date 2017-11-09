@@ -30,12 +30,6 @@
 #include "Utils/Platform/OS.h"
 #include "Utils/Logger.h"
 
-//#include <iostream>
-//#include <stdint.h>
-//#include <sstream>
-//#include <string>
-//#include <vector>
-//#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ptrace.h>
@@ -164,7 +158,7 @@ namespace Falcor
     const std::string& getExecutableName()
     {
         static std::string filename;
-        filename = program_invocation_name;
+        filename = std::experimental::filesystem::path(program_invocation_name).filename();
         return filename;
     }
 
