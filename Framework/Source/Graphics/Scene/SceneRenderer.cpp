@@ -68,38 +68,42 @@ namespace Falcor
 
     void SceneRenderer::updateVariableOffsets(const ProgramReflection* pReflector)
     {
+        const ParameterBlockReflection* pBlock = pReflector->getParameterBlock("").get();
         if (sWorldMatOffset == ConstantBuffer::kInvalidOffset)
         {
-            const auto pPerMeshCbData = pReflector->getBufferDesc(kPerMeshCbName, ProgramReflection::BufferReflection::Type::Constant);
+            const ReflectionVar* pVar = pBlock->getConstantBuffer(kPerMeshCbName);
 
-            if (pPerMeshCbData != nullptr)
+            if (pVar != nullptr)
             {
-                assert(pPerMeshCbData->getVariableData("gWorldMat[0]")->isRowMajor == false); // We copy into CBs as column-major
-                assert(pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->isRowMajor == false);
-                assert(pPerMeshCbData->getVariableData("gWorldMat")->arraySize == pPerMeshCbData->getVariableData("gWorldInvTransposeMat")->arraySize);
+                const ReflectionType* pType = pVar->getType().get();
 
-                sWorldMatArraySize = pPerMeshCbData->getVariableData("gWorldMat")->arraySize;
-                sWorldMatOffset = pPerMeshCbData->getVariableData("gWorldMat[0]")->location;
-                sWorldInvTransposeMatOffset = pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->location;
-                sMeshIdOffset = pPerMeshCbData->getVariableData("gMeshId")->location;
-                sDrawIDOffset = pPerMeshCbData->getVariableData("gDrawId[0]")->location;
-                sPrevWorldMatOffset = pPerMeshCbData->getVariableData("gPrevWorldMat[0]")->location;
+                assert(pType->findMember("gWorldMat[0]")->getType()->isRowMajor() == false); // We copy into CBs as column-major
+                assert(pType->findMember("gWorldInvTransposeMat[0]")->getType()->isRowMajor() == false);
+                assert(pType->findMember("gWorldMat")->getType()->getArraySize() == pType->findMember("gWorldInvTransposeMat")->getType()->getArraySize());
+
+                sWorldMatArraySize = pType->findMember("gWorldMat")->getType()->getArraySize();
+                sWorldMatOffset = pType->findMember("gWorldMat[0]")->getType()->getOffset();
+                sWorldInvTransposeMatOffset = pType->findMember("gWorldInvTransposeMat[0]")->getType()->getOffset();
+                sMeshIdOffset = pType->findMember("gMeshId")->getType()->getOffset();
+                sDrawIDOffset = pType->findMember("gDrawId[0]")->getType()->getOffset();
+                sPrevWorldMatOffset = pType->findMember("gPrevWorldMat[0]")->getType()->getOffset();
             }
         }
 
         if (sCameraDataOffset == ConstantBuffer::kInvalidOffset)
         {
-            const auto pPerFrameCbData = pReflector->getBufferDesc(kPerFrameCbName, ProgramReflection::BufferReflection::Type::Constant);
+            const ReflectionVar* pVar = pBlock->getConstantBuffer(kPerFrameCbName);
 
-            if (pPerFrameCbData != nullptr)
+            if (pVar != nullptr)
             {
-                sCameraDataOffset = pPerFrameCbData->getVariableData("gCam.viewMat")->location;
-                const auto& pCountOffset = pPerFrameCbData->getVariableData("gLightsCount");
-                sLightCountOffset = pCountOffset ? pCountOffset->location : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pPerFrameCbData->getVariableData("gLights[0].worldPos");
-                sLightArrayOffset = pLightOffset ? pLightOffset->location : ConstantBuffer::kInvalidOffset;
-                const auto& pAmbientOffset = pPerFrameCbData->getVariableData("gAmbientLighting");
-                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->location : ConstantBuffer::kInvalidOffset;
+                const ReflectionType* pType = pVar->getType().get();
+                sCameraDataOffset = pType->findMember("gCam.viewMat")->getType()->getOffset();
+                const auto& pCountOffset = pType->findMember("gLightsCount");
+                sLightCountOffset = pCountOffset ? pCountOffset->getType()->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
+                sLightArrayOffset = pLightOffset ? pLightOffset->getType()->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
+                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getType()->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }

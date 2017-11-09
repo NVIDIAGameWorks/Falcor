@@ -43,7 +43,7 @@ namespace Falcor
 
     ConstantBuffer::SharedPtr ConstantBuffer::create(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t overrideSize)
     {
-        size_t size = 0;// (overrideSize == 0) ? pReflector->getRequiredSize() : overrideSize;
+        size_t size = (overrideSize == 0) ? pReflectionType->getSize() : overrideSize;
         SharedPtr pBuffer = SharedPtr(new ConstantBuffer(name, pReflectionType, size));
         return pBuffer;
     }

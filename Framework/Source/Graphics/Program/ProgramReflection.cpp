@@ -443,7 +443,7 @@ namespace Falcor
 
     bool ParameterBlockReflection::isEmpty() const
     {
-        return mResources.empty() && mConstantBuffers.empty() && mStructuredBuffers.empty() && mSamplers.empty();
+        return mResources.empty() && mConstantBuffers.empty() && mStructuredBuffers.empty();
     }
 
     static void flattenResources(const std::string& name, const ReflectionVar::SharedConstPtr& pVar, std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>>& pResources)
@@ -484,12 +484,10 @@ namespace Falcor
         case ReflectionType::Type::ConstantBuffer:
             pMap = &mConstantBuffers;
             break;
-        case ReflectionType::Type::Sampler:
-            pMap = &mSamplers;
-            break;
         case ReflectionType::Type::StructuredBuffer:
             pMap = &mStructuredBuffers;
             break;
+        case ReflectionType::Type::Sampler:
         case ReflectionType::Type::Texture:
         case ReflectionType::Type::RawBuffer:
         case ReflectionType::Type::TypedBuffer:

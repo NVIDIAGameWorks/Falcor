@@ -144,7 +144,8 @@ namespace Falcor
         Dimensions getDimensions() const { return mDimensions; }
         ReturnType getReturnType() const { return mReturnType; }
         StructuredType getStructuredBufferType() const { return mStructuredType; }
-
+        bool isRowMajor() const { return mIsRowMajor; }
+        size_t getSize() const { return mSize; }
         const ReflectionVar* findMember(const std::string& name) const;
 
         size_t getMemberIndex(const std::string& name) const;
@@ -179,7 +180,7 @@ namespace Falcor
         static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace = kInvalidOffset);
 
         const std::string& getName() const { return mName; }
-        ReflectionType::SharedConstPtr getType() const { return mpType; }
+        const ReflectionType::SharedConstPtr getType() const { return mpType; }
         size_t getOffset() const { return mOffset; }
         uint32_t getRegisterSpace() const { return mRegSpace; }
         uint32_t getRegisterIndex() const { return (uint32_t)getOffset(); }
@@ -208,7 +209,8 @@ namespace Falcor
         const ResourceMap& getResources() const { return mResources; }
         const ResourceMap& getConstantBuffers() const { return mConstantBuffers; }
         const ResourceMap& getStructuredBuffers() const { return mStructuredBuffers; }
-        const ResourceMap& getSamplers() const { return mSamplers; }
+
+        const ReflectionVar* getConstantBuffer(const char* name) const;
     private:
         friend class ProgramReflection;
         void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar);
@@ -216,7 +218,6 @@ namespace Falcor
         ResourceMap mResources;
         ResourceMap mConstantBuffers;
         ResourceMap mStructuredBuffers;
-        ResourceMap mSamplers;
 
         std::string mName;
     };
