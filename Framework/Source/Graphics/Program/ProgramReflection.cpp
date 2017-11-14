@@ -54,38 +54,37 @@ namespace Falcor
         return false;
     }
 
-    static ReflectionType::Type getResourceType(TypeReflection* pSlangType)
+    static ReflectionResourceType::Type getResourceType(TypeReflection* pSlangType)
     {
         switch (pSlangType->unwrapArray()->getKind())
         {
         case TypeReflection::Kind::ConstantBuffer:
-            return ReflectionType::Type::ConstantBuffer;
+            return ReflectionResourceType::Type::ConstantBuffer;
         case TypeReflection::Kind::SamplerState:
-            return ReflectionType::Type::Sampler;
+            return ReflectionResourceType::Type::Sampler;
         case TypeReflection::Kind::ShaderStorageBuffer:
-            return ReflectionType::Type::StructuredBuffer;
+            return ReflectionResourceType::Type::StructuredBuffer;
         case TypeReflection::Kind::Resource:
             switch (pSlangType->getResourceShape() & SLANG_RESOURCE_BASE_SHAPE_MASK)
             {
             case SLANG_STRUCTURED_BUFFER:
-                return ReflectionType::Type::StructuredBuffer;
+                return ReflectionResourceType::Type::StructuredBuffer;
 
             case SLANG_BYTE_ADDRESS_BUFFER:
-                return ReflectionType::Type::RawBuffer;
+                return ReflectionResourceType::Type::RawBuffer;
             case SLANG_TEXTURE_BUFFER:
-                return ReflectionType::Type::TypedBuffer;
+                return ReflectionResourceType::Type::TypedBuffer;
             default:
-                return ReflectionType::Type::Texture;
+                return ReflectionResourceType::Type::Texture;
             }
             break;
-        case TypeReflection::Kind::Struct:
-            return ReflectionType::Type::Struct;
         default:
-            return ReflectionType::Type::Unknown;
+            should_not_get_here();
+            return ReflectionResourceType::Type(-1);
         }
     }
 
-    static ReflectionType::ShaderAccess getShaderAccess(TypeReflection* pSlangType)
+    static ReflectionResourceType::ShaderAccess getShaderAccess(TypeReflection* pSlangType)
     {
         // Compute access for an array using the underlying type...
         pSlangType = pSlangType->unwrapArray();
@@ -94,7 +93,7 @@ namespace Falcor
         {
         case TypeReflection::Kind::SamplerState:
         case TypeReflection::Kind::ConstantBuffer:
-            return ReflectionType::ShaderAccess::Read;
+            return ReflectionResourceType::ShaderAccess::Read;
             break;
 
         case TypeReflection::Kind::Resource:
@@ -102,127 +101,122 @@ namespace Falcor
             switch (pSlangType->getResourceAccess())
             {
             case SLANG_RESOURCE_ACCESS_NONE:
-                return ReflectionType::ShaderAccess::Undefined;
+                return ReflectionResourceType::ShaderAccess::Undefined;
 
             case SLANG_RESOURCE_ACCESS_READ:
-                return ReflectionType::ShaderAccess::Read;
+                return ReflectionResourceType::ShaderAccess::Read;
 
             default:
-                return ReflectionType::ShaderAccess::ReadWrite;
+                return ReflectionResourceType::ShaderAccess::ReadWrite;
             }
             break;
 
         default:
-            return ReflectionType::ShaderAccess::Undefined;
+            return ReflectionResourceType::ShaderAccess::Undefined;
         }
     }
 
-    static ReflectionType::ReturnType getReturnType(TypeReflection* pType)
+    static ReflectionResourceType::ReturnType getReturnType(TypeReflection* pType)
     {
         // Could be a resource that doesn't have a specific element type (e.g., a raw buffer)
         if (!pType)
-            return ReflectionType::ReturnType::Unknown;
+            return ReflectionResourceType::ReturnType::Unknown;
 
         switch (pType->getScalarType())
         {
         case TypeReflection::ScalarType::Float32:
-            return ReflectionType::ReturnType::Float;
+            return ReflectionResourceType::ReturnType::Float;
         case TypeReflection::ScalarType::Int32:
-            return ReflectionType::ReturnType::Int;
+            return ReflectionResourceType::ReturnType::Int;
         case TypeReflection::ScalarType::UInt32:
-            return ReflectionType::ReturnType::Uint;
+            return ReflectionResourceType::ReturnType::Uint;
         case TypeReflection::ScalarType::Float64:
-            return ReflectionType::ReturnType::Double;
+            return ReflectionResourceType::ReturnType::Double;
 
             // Could be a resource that uses an aggregate element type (e.g., a structured buffer)
         case TypeReflection::ScalarType::None:
-            return ReflectionType::ReturnType::Unknown;
+            return ReflectionResourceType::ReturnType::Unknown;
 
         default:
-            return ReflectionType::ReturnType::Unknown;
+            return ReflectionResourceType::ReturnType::Unknown;
         }
     }
 
-    static ReflectionType::Dimensions getResourceDimensions(SlangResourceShape shape)
+    static ReflectionResourceType::Dimensions getResourceDimensions(SlangResourceShape shape)
     {
         switch (shape)
         {
         case SLANG_TEXTURE_1D:
-            return ReflectionType::Dimensions::Texture1D;
+            return ReflectionResourceType::Dimensions::Texture1D;
         case SLANG_TEXTURE_1D_ARRAY:
-            return ReflectionType::Dimensions::Texture1DArray;
+            return ReflectionResourceType::Dimensions::Texture1DArray;
         case SLANG_TEXTURE_2D:
-            return ReflectionType::Dimensions::Texture2D;
+            return ReflectionResourceType::Dimensions::Texture2D;
         case SLANG_TEXTURE_2D_ARRAY:
-            return ReflectionType::Dimensions::Texture2DArray;
+            return ReflectionResourceType::Dimensions::Texture2DArray;
         case SLANG_TEXTURE_2D_MULTISAMPLE:
-            return ReflectionType::Dimensions::Texture2DMS;
+            return ReflectionResourceType::Dimensions::Texture2DMS;
         case SLANG_TEXTURE_2D_MULTISAMPLE_ARRAY:
-            return ReflectionType::Dimensions::Texture2DMSArray;
+            return ReflectionResourceType::Dimensions::Texture2DMSArray;
         case SLANG_TEXTURE_3D:
-            return ReflectionType::Dimensions::Texture3D;
+            return ReflectionResourceType::Dimensions::Texture3D;
         case SLANG_TEXTURE_CUBE:
-            return ReflectionType::Dimensions::TextureCube;
+            return ReflectionResourceType::Dimensions::TextureCube;
         case SLANG_TEXTURE_CUBE_ARRAY:
-            return ReflectionType::Dimensions::TextureCubeArray;
+            return ReflectionResourceType::Dimensions::TextureCubeArray;
 
         case SLANG_TEXTURE_BUFFER:
         case SLANG_STRUCTURED_BUFFER:
         case SLANG_BYTE_ADDRESS_BUFFER:
-            return ReflectionType::Dimensions::Buffer;
+            return ReflectionResourceType::Dimensions::Buffer;
 
         default:
-            return ReflectionType::Dimensions::Unknown;
+            return ReflectionResourceType::Dimensions::Unknown;
         }
     }
 
-    ReflectionType::Type getVariableType(TypeReflection::ScalarType slangScalarType, uint32_t rows, uint32_t columns)
+    ReflectionBasicType::Type getVariableType(TypeReflection::ScalarType slangScalarType, uint32_t rows, uint32_t columns)
     {
         switch (slangScalarType)
         {
-        case TypeReflection::ScalarType::None:
-            // This isn't a scalar/matrix/vector, so it can't
-            // be encoded in the `enum` that Falcor provides.
-            return ReflectionType::Type::Unknown;
-
         case TypeReflection::ScalarType::Bool:
             assert(rows == 1);
             switch (columns)
             {
             case 1:
-                return ReflectionType::Type::Bool;
+                return ReflectionBasicType::Type::Bool;
             case 2:
-                return ReflectionType::Type::Bool2;
+                return ReflectionBasicType::Type::Bool2;
             case 3:
-                return ReflectionType::Type::Bool3;
+                return ReflectionBasicType::Type::Bool3;
             case 4:
-                return ReflectionType::Type::Bool4;
+                return ReflectionBasicType::Type::Bool4;
             }
         case TypeReflection::ScalarType::UInt32:
             assert(rows == 1);
             switch (columns)
             {
             case 1:
-                return ReflectionType::Type::Uint;
+                return ReflectionBasicType::Type::Uint;
             case 2:
-                return ReflectionType::Type::Uint2;
+                return ReflectionBasicType::Type::Uint2;
             case 3:
-                return ReflectionType::Type::Uint3;
+                return ReflectionBasicType::Type::Uint3;
             case 4:
-                return ReflectionType::Type::Uint4;
+                return ReflectionBasicType::Type::Uint4;
             }
         case TypeReflection::ScalarType::Int32:
             assert(rows == 1);
             switch (columns)
             {
             case 1:
-                return ReflectionType::Type::Int;
+                return ReflectionBasicType::Type::Int;
             case 2:
-                return ReflectionType::Type::Int2;
+                return ReflectionBasicType::Type::Int2;
             case 3:
-                return ReflectionType::Type::Int3;
+                return ReflectionBasicType::Type::Int3;
             case 4:
-                return ReflectionType::Type::Int4;
+                return ReflectionBasicType::Type::Int4;
             }
         case TypeReflection::ScalarType::Float32:
             switch (rows)
@@ -231,107 +225,153 @@ namespace Falcor
                 switch (columns)
                 {
                 case 1:
-                    return ReflectionType::Type::Float;
+                    return ReflectionBasicType::Type::Float;
                 case 2:
-                    return ReflectionType::Type::Float2;
+                    return ReflectionBasicType::Type::Float2;
                 case 3:
-                    return ReflectionType::Type::Float3;
+                    return ReflectionBasicType::Type::Float3;
                 case 4:
-                    return ReflectionType::Type::Float4;
+                    return ReflectionBasicType::Type::Float4;
                 }
                 break;
             case 2:
                 switch (columns)
                 {
                 case 2:
-                    return ReflectionType::Type::Float2x2;
+                    return ReflectionBasicType::Type::Float2x2;
                 case 3:
-                    return ReflectionType::Type::Float2x3;
+                    return ReflectionBasicType::Type::Float2x3;
                 case 4:
-                    return ReflectionType::Type::Float2x4;
+                    return ReflectionBasicType::Type::Float2x4;
                 }
                 break;
             case 3:
                 switch (columns)
                 {
                 case 2:
-                    return ReflectionType::Type::Float3x2;
+                    return ReflectionBasicType::Type::Float3x2;
                 case 3:
-                    return ReflectionType::Type::Float3x3;
+                    return ReflectionBasicType::Type::Float3x3;
                 case 4:
-                    return ReflectionType::Type::Float3x4;
+                    return ReflectionBasicType::Type::Float3x4;
                 }
                 break;
             case 4:
                 switch (columns)
                 {
                 case 2:
-                    return ReflectionType::Type::Float4x2;
+                    return ReflectionBasicType::Type::Float4x2;
                 case 3:
-                    return ReflectionType::Type::Float4x3;
+                    return ReflectionBasicType::Type::Float4x3;
                 case 4:
-                    return ReflectionType::Type::Float4x4;
+                    return ReflectionBasicType::Type::Float4x4;
                 }
                 break;
             }
         }
 
         should_not_get_here();
-        return ReflectionType::Type::Unknown;
+        return ReflectionBasicType::Type(-1);
     }
 
-    static bool isResourceType(ReflectionType::Type t)
+    static ReflectionResourceType::StructuredType getStructuredBufferType(TypeReflection* pSlangType)
     {
-        switch (t)
+        auto invalid = ReflectionResourceType::StructuredType::Invalid;
+
+        if (pSlangType->getKind() != TypeReflection::Kind::Resource)
+            return invalid; // not a structured buffer
+
+        if (pSlangType->getResourceShape() != SLANG_STRUCTURED_BUFFER)
+            return invalid; // not a structured buffer
+
+        switch (pSlangType->getResourceAccess())
         {
-        case ReflectionType::Type::Texture:
-        case ReflectionType::Type::StructuredBuffer:
-        case ReflectionType::Type::RawBuffer:
-        case ReflectionType::Type::TypedBuffer:
-        case ReflectionType::Type::Sampler:
-        case ReflectionType::Type::ConstantBuffer:
-            return true;
         default:
-            return false;
+            should_not_get_here();
+            return invalid;
+
+        case SLANG_RESOURCE_ACCESS_READ:
+            return ReflectionResourceType::StructuredType::Default;
+
+        case SLANG_RESOURCE_ACCESS_READ_WRITE:
+        case SLANG_RESOURCE_ACCESS_RASTER_ORDERED:
+            return ReflectionResourceType::StructuredType::Counter;
+        case SLANG_RESOURCE_ACCESS_APPEND:
+            return ReflectionResourceType::StructuredType::Append;
+        case SLANG_RESOURCE_ACCESS_CONSUME:
+            return ReflectionResourceType::StructuredType::Consume;
         }
-    }
+    };
+
     ReflectionVar::SharedPtr reflectVariable(VariableLayoutReflection* pSlangLayout, size_t offset, uint32_t bindIndex, uint32_t regSpace);
+    ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace);
 
-    ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
+    ReflectionType::SharedPtr reflectResourceType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
     {
-        ReflectionType::Type type = getResourceType(pSlangType->getType());
-        ReflectionType::Dimensions dims = ReflectionType::Dimensions::Unknown;
-        ReflectionType::ShaderAccess shaderAccess = ReflectionType::ShaderAccess::Undefined;
-        ReflectionType::ReturnType retType = ReflectionType::ReturnType::Unknown;
+        ReflectionResourceType::Type type = getResourceType(pSlangType->getType());
+        ReflectionResourceType::Dimensions dims = getResourceDimensions(pSlangType->getResourceShape());;
+        ReflectionResourceType::ShaderAccess shaderAccess = getShaderAccess(pSlangType->getType());
+        ReflectionResourceType::ReturnType retType = getReturnType(pSlangType->getType());
+        ReflectionResourceType::StructuredType structuredType = getStructuredBufferType(pSlangType->getType());
+        ReflectionResourceType::SharedPtr pType = ReflectionResourceType::create(type, bindIndex, regSpace, dims, structuredType, retType, shaderAccess);
 
-        if (type == ReflectionType::Type::Unknown)
+        if (type == ReflectionResourceType::Type::ConstantBuffer || type == ReflectionResourceType::Type::StructuredBuffer)
         {
-            type = getVariableType(pSlangType->unwrapArray()->getScalarType(), pSlangType->unwrapArray()->getRowCount(), pSlangType->unwrapArray()->getColumnCount());
-        }
-        else if (isResourceType(type))
-        {
-            dims = getResourceDimensions(pSlangType->getResourceShape());
-            shaderAccess = getShaderAccess(pSlangType->getType());
-            retType = getReturnType(pSlangType->getType());
-        }
-
-        uint32_t arraySize = 0;
-        uint32_t arrayStride = 0;
-        if (pSlangType->getType()->getKind() == TypeReflection::Kind::Array)
-        {
-            arraySize = (uint32_t)pSlangType->getElementCount();
-            arrayStride = (uint32_t)pSlangType->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
+            const auto& pElementLayout = pSlangType->getElementTypeLayout();
+            auto& pBufferType = reflectType(pElementLayout, offset, bindIndex, regSpace);
+            ReflectionStructType::SharedPtr pStructType = std::dynamic_pointer_cast<ReflectionStructType>(pBufferType);
+            pType->setStructType(pStructType);
         }
 
-        auto pElementLayout = (type == ReflectionType::Type::Struct) ? pSlangType->unwrapArray() : pSlangType->unwrapArray()->getElementTypeLayout();
-        ReflectionType::SharedPtr pType = ReflectionType::create(type, pElementLayout->getSize(), 0, arraySize, arrayStride, shaderAccess, retType, dims);
+        return pType;
+    }
 
-        for (uint32_t i = 0; i < pElementLayout->getFieldCount(); i++)
+    ReflectionType::SharedPtr reflectStructType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
+    {
+        ReflectionStructType::SharedPtr pType = ReflectionStructType::create(offset, pSlangType->getSize());
+        for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++)
         {
-            ReflectionVar::SharedPtr pVar = reflectVariable(pElementLayout->getFieldByIndex(i), offset, bindIndex, regSpace);
+            ReflectionVar::SharedPtr pVar = reflectVariable(pSlangType->getFieldByIndex(i), offset, bindIndex, regSpace);
             pType->addMember(pVar);
         }
         return pType;
+    }
+
+    ReflectionType::SharedPtr reflectArrayType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
+    {
+        uint32_t arraySize = (uint32_t)pSlangType->getElementCount();
+        uint32_t arrayStride = (uint32_t)pSlangType->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
+        
+        ReflectionType::SharedPtr pType = reflectType(pSlangType->getElementTypeLayout(), offset, bindIndex, regSpace);
+        ReflectionArrayType::SharedPtr pArrayType = ReflectionArrayType::create(offset, arraySize, arrayStride, pType);
+        return pArrayType;
+    }
+
+    ReflectionType::SharedPtr reflectBasicType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
+    {
+        ReflectionBasicType::Type type = getVariableType(pSlangType->getScalarType(), pSlangType->getRowCount(), pSlangType->getColumnCount());
+        ReflectionType::SharedPtr pType = ReflectionBasicType::create(offset, type, true);
+        return pType;
+    }
+
+    ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
+    {
+        auto kind = pSlangType->getType()->getKind();
+        switch (kind)
+        {
+        case TypeReflection::Kind::Resource:
+        case TypeReflection::Kind::SamplerState:
+        case TypeReflection::Kind::ConstantBuffer:
+        case TypeReflection::Kind::ShaderStorageBuffer:
+        case TypeReflection::Kind::TextureBuffer:
+            return reflectResourceType(pSlangType, offset, bindIndex, regSpace);
+        case TypeReflection::Kind::Struct:
+            return reflectStructType(pSlangType, offset, bindIndex, regSpace);
+        case TypeReflection::Kind::Array:
+            return reflectArrayType(pSlangType, offset, bindIndex, regSpace);
+        default:
+            return reflectBasicType(pSlangType, offset, bindIndex, regSpace);
+        }
     }
 
     ReflectionVar::SharedPtr reflectVariable(VariableLayoutReflection* pSlangLayout, size_t offset, uint32_t bindIndex, uint32_t regSpace)
@@ -339,19 +379,16 @@ namespace Falcor
         std::string name(pSlangLayout->getName());
         uint32_t index = pSlangLayout->getBindingIndex() + bindIndex;
         uint32_t space = pSlangLayout->getBindingSpace() + regSpace;
-        size_t curOffset = (uint32_t)pSlangLayout->getOffset() + offset;
+        size_t curOffset = (uint32_t)pSlangLayout->getOffset() + offset;;
         ReflectionType::SharedPtr pType = reflectType(pSlangLayout->getTypeLayout(), curOffset, index, space);
 
-        switch (pType->getType())
+        const ReflectionResourceType* pResType = dynamic_cast<const ReflectionResourceType*>(pType.get());
+        if (pResType)
         {
-        case ReflectionType::Type::Texture:
-        case ReflectionType::Type::StructuredBuffer:
-        case ReflectionType::Type::RawBuffer:
-        case ReflectionType::Type::TypedBuffer:
-        case ReflectionType::Type::Sampler:
-        case ReflectionType::Type::ConstantBuffer:
             return ReflectionVar::create(name, pType, index, space);
-        default:
+        }
+        else
+        {
             return ReflectionVar::create(name, pType, curOffset, space);
         }
     }
@@ -404,17 +441,7 @@ namespace Falcor
         sParameterBlockRegistry.erase(name);
     }
 
-    ReflectionType::SharedPtr ReflectionType::create(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims)
-    {
-        return SharedPtr(new ReflectionType(type, size, offset, arraySize, arrayStride, shaderAccess, retType, dims));
-    }
-
-    ReflectionType::ReflectionType(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims) :
-        mType(type), mSize(size), mOffset(offset), mArraySize(arraySize), mArrayStride(arrayStride), mShaderAccess(shaderAccess), mReturnType(retType), mDimensions(dims)
-    {
-
-    }
-    void ReflectionType::addMember(const std::shared_ptr<const ReflectionVar>& pVar)
+    void ReflectionStructType::addMember(const std::shared_ptr<const ReflectionVar>& pVar)
     {
         assert(mNameToIndex.find(pVar->getName()) == mNameToIndex.end());
         mMembers.push_back(pVar);
@@ -450,9 +477,12 @@ namespace Falcor
     {
         const ReflectionType* pType = pVar->getType().get();
         std::string namePrefix = name + (name.size() ? "." : "");
-        for (const auto& pMember : *pType)
+        const ReflectionStructType* pStructType = dynamic_cast<const ReflectionStructType*>(pType);
+        if(pStructType)
+        for (const auto& pMember : *pStructType)
         {
-            if (isResourceType(pMember->getType()->getType()))
+            const ReflectionResourceType* pResourceType = dynamic_cast<const ReflectionResourceType*>(pMember->getType().get());
+            if (pResourceType)
             {
                 pResources.push_back({ namePrefix + pMember->getName() , pMember });
                 continue;
@@ -460,9 +490,10 @@ namespace Falcor
             else
             {
                 std::string newName = name + (name.size() ? "." : "");
-                if (pMember->getType()->getArraySize())
+                const ReflectionArrayType* pArrayType = dynamic_cast<const ReflectionArrayType*>(pMember->getType().get());
+                if (pArrayType)
                 {
-                    for (uint32_t j = 0; j < pMember->getType()->getArraySize(); j++)
+                    for (uint32_t j = 0; j < pArrayType->getArraySize(); j++)
                     {
                         flattenResources(namePrefix + pMember->getName() + '[' + std::to_string(j) + ']', pMember, pResources);
                     }
@@ -503,19 +534,20 @@ namespace Falcor
     void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar)
     {
         decltype(mResources)* pMap = nullptr;
-
-        switch (pVar->getType()->getType())
+        const ReflectionResourceType* pResourceType = dynamic_cast<const ReflectionResourceType*>(pVar->getType().get());
+        assert(pResourceType);
+        switch (pResourceType->getType())
         {
-        case ReflectionType::Type::ConstantBuffer:
+        case ReflectionResourceType::Type::ConstantBuffer:
             pMap = &mConstantBuffers;
             break;
-        case ReflectionType::Type::StructuredBuffer:
+        case ReflectionResourceType::Type::StructuredBuffer:
             pMap = &mStructuredBuffers;
             break;
-        case ReflectionType::Type::Sampler:
-        case ReflectionType::Type::Texture:
-        case ReflectionType::Type::RawBuffer:
-        case ReflectionType::Type::TypedBuffer:
+        case ReflectionResourceType::Type::Sampler:
+        case ReflectionResourceType::Type::Texture:
+        case ReflectionResourceType::Type::RawBuffer:
+        case ReflectionResourceType::Type::TypedBuffer:
             pMap = &mResources;
             break;
         default:
@@ -526,7 +558,7 @@ namespace Falcor
         (*pMap)[fullName] = pVar;
 
         // If this is a constant-buffer, it might contain resources. Extract them.
-        if (pVar->getType()->getType() == ReflectionType::Type::ConstantBuffer)
+        if (pResourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
         {
             std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>> pResources;
             flattenResources("", pVar, pResources);
@@ -542,33 +574,110 @@ namespace Falcor
         return mParameterBlocks.at(name);
     }
 
-    static const ReflectionVar* findMember(const std::string& name, size_t pos, const ReflectionType* pType)
+    const ReflectionVar* ReflectionBasicType::findMember(const std::string& name) const
+    {
+        logWarning("Can't find variable + " + name);
+        return nullptr;
+    }
+
+    const ReflectionVar* ReflectionResourceType::findMember(const std::string& name) const
+    {
+        if (mpStructType)
+        {
+            return mpStructType->findMember(name);
+        }
+        else
+        {
+            logWarning("Can't find variable + " + name);
+            return nullptr;
+        }
+    }
+
+    const ReflectionVar* ReflectionArrayType::findMember(const std::string& name) const
+    {
+        if (!name.size() || name[0] != '[')
+        {
+            logWarning("Looking for a variable named " + name + " which requires an array-index, but no index provided");
+            return nullptr;
+        }
+        should_not_get_here();
+        return nullptr;
+    }
+
+    const ReflectionVar* ReflectionStructType::findMember(const std::string& name) const
     {
         // Find the location of the next '.'
-        size_t newPos = name.find('.', pos);
-        std::string field = name.substr(pos, newPos);
-        size_t fieldIndex = pType->getMemberIndex(field);
+        size_t newPos = name.find('.');
+        std::string field = name.substr(0, newPos);
+        size_t fieldIndex = getMemberIndex(field);
         if (fieldIndex == ReflectionType::kInvalidOffset)
         {
             logWarning("Can't find variable + " + name);
             return nullptr;
         }
 
-        const auto& pVar = pType->getMember(fieldIndex).get();
+        const auto& pVar = getMember(fieldIndex).get();
         if (newPos == std::string::npos) return pVar;
         const auto& pNewType = pVar->getType().get();
-        return Falcor::findMember(name, newPos, pNewType);
+        return pNewType->findMember(name.substr(newPos + 1));
     }
 
-    const ReflectionVar* ReflectionType::findMember(const std::string& name) const
-    {
-        return Falcor::findMember(name, 0, this);
-    }
-
-    size_t ReflectionType::getMemberIndex(const std::string& name) const
+    size_t ReflectionStructType::getMemberIndex(const std::string& name) const
     {
         auto& it = mNameToIndex.find(name);
         if (it == mNameToIndex.end()) return kInvalidOffset;
         return it->second;
     }
+
+    const ReflectionResourceType* ReflectionType::asResourceType() const
+    {
+        return dynamic_cast<const ReflectionResourceType*>(this);
+    }
+
+    const ReflectionBasicType* ReflectionType::asBasicType() const
+    {
+        return dynamic_cast<const ReflectionBasicType*>(this);
+    }
+
+    const ReflectionStructType* ReflectionType::asStructType() const
+    {
+        return dynamic_cast<const ReflectionStructType*>(this);
+    }
+
+    const ReflectionArrayType* ReflectionType::asArrayType() const
+    {
+        return dynamic_cast<const ReflectionArrayType*>(this);
+    }
+
+    ReflectionArrayType::SharedPtr ReflectionArrayType::create(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType)
+    {
+        return SharedPtr(new ReflectionArrayType(offset, arraySize, arrayStride, pType));
+    }
+
+    ReflectionArrayType::ReflectionArrayType(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType) :
+        ReflectionType(offset), mArraySize(arraySize), mArrayStride(arrayStride), mpType(pType) {}
+
+    ReflectionResourceType::SharedPtr ReflectionResourceType::create(Type type, uint32_t regIndex, uint32_t regSpace, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess)
+    {
+        return SharedPtr(new ReflectionResourceType(type, regIndex, regSpace, structuredType, retType, shaderAccess));
+    }
+
+    ReflectionResourceType::ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess) :
+        ReflectionType(kInvalidOffset), mType(type), mRegIndex(regIndex), mRegSpace(regSpace), mStructuredType(structuredType), mReturnType(retType), mShaderAccess(shaderAccess) {}
+
+    ReflectionBasicType::SharedPtr ReflectionBasicType::create(size_t offset, Type type, bool isRowMajor)
+    {
+        return SharedPtr(new ReflectionBasicType(offset, type, isRowMajor));
+    }
+
+    ReflectionBasicType::ReflectionBasicType(size_t offset, Type type, bool isRowMajor) :
+        ReflectionType(offset), mType(type), mIsRowMajor(isRowMajor) {}
+
+    ReflectionStructType::SharedPtr ReflectionStructType::create(size_t offset, size_t size, const std::string& name)
+    {
+        return SharedPtr(new ReflectionStructType(offset, size, name));
+    }
+
+    ReflectionStructType::ReflectionStructType(size_t offset, size_t size, const std::string& name) :
+        ReflectionType(offset), mSize(size), mName(name) {}
 }

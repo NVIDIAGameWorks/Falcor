@@ -36,12 +36,12 @@
 
 namespace Falcor
 {
-    ConstantBuffer::ConstantBuffer(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t size) :
+    ConstantBuffer::ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size) :
         VariablesBuffer(name, pReflectionType, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
     {
     }
 
-    ConstantBuffer::SharedPtr ConstantBuffer::create(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t overrideSize)
+    ConstantBuffer::SharedPtr ConstantBuffer::create(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t overrideSize)
     {
         size_t size = (overrideSize == 0) ? pReflectionType->getSize() : overrideSize;
         SharedPtr pBuffer = SharedPtr(new ConstantBuffer(name, pReflectionType, size));
@@ -64,12 +64,13 @@ namespace Falcor
 
         if (pBufferReflector)
         {
-            return create(name, pBufferReflector->getType(), overrideSize);
+            ReflectionResourceType::SharedConstPtr pResType = std::dynamic_pointer_cast<const ReflectionResourceType>(pBufferReflector->getType());
+            if(pResType)
+            {
+                return create(name, pResType, overrideSize);
+            }
         }
-        else
-        {
-            logError("Can't find a constant buffer named \"" + name + "\" in the program");
-        }
+        logError("Can't find a constant buffer named \"" + name + "\" in the program");
         return nullptr;
     }
 

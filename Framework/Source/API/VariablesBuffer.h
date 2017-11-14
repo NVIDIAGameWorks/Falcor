@@ -49,7 +49,7 @@ namespace Falcor
 
         static const size_t kInvalidOffset = -1;// ProgramReflection::kInvalidLocation;
 
-        VariablesBuffer(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess);
+        VariablesBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess);
 
         virtual ~VariablesBuffer() = 0;
 
@@ -93,7 +93,7 @@ namespace Falcor
         template<typename T>
         void setVariableArray(const std::string& name, size_t elementIndex, const T* pValue, size_t count);
 
-        ReflectionType::SharedConstPtr mpReflector;
+        ReflectionResourceType::SharedConstPtr mpReflector;
         std::vector<uint8_t> mData;
         mutable bool mDirty = true;
         size_t mElementCount;

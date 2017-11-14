@@ -180,7 +180,7 @@ namespace Falcor
         d3d_call(pDevice->CreateRootSignature(0, pSigBlob->GetBufferPointer(), pSigBlob->GetBufferSize(), IID_PPV_ARGS(&mApiHandle)));
     }
 
-    ReflectionType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
+    ReflectionResourceType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
 
     static uint32_t initializeBufferDescriptors(const ProgramReflection* pReflector, RootSignature::Desc& desc, RootSignature::DescType descType)
     {
@@ -191,11 +191,11 @@ namespace Falcor
         for (const auto& buf : bufMap)
         {
             const ReflectionVar* pVar = buf.second.get();
-            const ReflectionType* pType = pVar->getType().get();
+            const ReflectionResourceType* pType = pVar->getType()->asResourceType();
             if (pType->getShaderAccess() == getRequiredShaderAccess(descType))
             {
                 RootSignature::DescriptorSetLayout descTable;
-                uint32_t count = pType->getArraySize() ? pType->getArraySize() : 1;
+                uint32_t count = 1;// pType->getArraySize() ? pType->getArraySize() : 1; #PARAMBLOCK
                 descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
                 cost += 1;
                 desc.addDescriptorSet(descTable);
@@ -219,35 +219,35 @@ namespace Falcor
         for (auto& resIt : resMap)
         {
             const ReflectionVar* pVar = resIt.second.get();
-            const ReflectionType* pType = pVar->getType().get();
+            const ReflectionResourceType* pType = pVar->getType()->asResourceType();
 
 //            assert(resource.descOffset == 0); // #PARAMBLOCK
             RootSignature::DescType descType;
-            if (pType->getType() == ReflectionType::Type::Sampler)
+            if (pType->getType() == ReflectionResourceType::Type::Sampler)
             {
                 descType = RootSignature::DescType::Sampler;
             }
             else
             {
-                ReflectionType::ShaderAccess shaderAccess = pType->getShaderAccess();
+                ReflectionResourceType::ShaderAccess shaderAccess = pType->getShaderAccess();
                 switch (pType->getType())
                 {
-                case ReflectionType::Type::RawBuffer:
-                case ReflectionType::Type::Texture:
-                    descType = (shaderAccess == ReflectionType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TextureUav : RootSignature::DescType::TextureSrv;
+                case ReflectionResourceType::Type::RawBuffer:
+                case ReflectionResourceType::Type::Texture:
+                    descType = (shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TextureUav : RootSignature::DescType::TextureSrv;
                     break;
-                case ReflectionType::Type::StructuredBuffer:
-                    descType = (shaderAccess == ReflectionType::ShaderAccess::ReadWrite) ? RootSignature::DescType::StructuredBufferUav : RootSignature::DescType::StructuredBufferSrv;
+                case ReflectionResourceType::Type::StructuredBuffer:
+                    descType = (shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite) ? RootSignature::DescType::StructuredBufferUav : RootSignature::DescType::StructuredBufferSrv;
                     break;
-                case ReflectionType::Type::TypedBuffer:
-                    descType = (shaderAccess == ReflectionType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TypedBufferUav : RootSignature::DescType::TypedBufferSrv;
+                case ReflectionResourceType::Type::TypedBuffer:
+                    descType = (shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TypedBufferUav : RootSignature::DescType::TypedBufferSrv;
                     break;;
                 default:
                     should_not_get_here();
                 }
             }
 
-            uint32_t count = pType->getArraySize() ? pType->getArraySize() : 1;
+            uint32_t count = 1;// pType->getArraySize() ? pType->getArraySize() : 1; #PARAMBLOCK
             RootSignature::DescriptorSetLayout descTable;
             descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
             d.addDescriptorSet(descTable);

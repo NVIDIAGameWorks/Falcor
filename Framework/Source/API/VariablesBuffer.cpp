@@ -39,9 +39,9 @@ namespace Falcor
     VariablesBuffer::~VariablesBuffer() = default;
 
     template<typename VarType>
-    ReflectionType::Type getReflectionTypeFromCType()
+    ReflectionBasicType::Type getReflectionTypeFromCType()
     {
-#define c_to_prog(cType, progType) if(typeid(VarType) == typeid(cType)) return ReflectionType::Type::progType;
+#define c_to_prog(cType, progType) if(typeid(VarType) == typeid(cType)) return ReflectionBasicType::Type::progType;
         c_to_prog(bool,  Bool);
         c_to_prog(bvec2, Bool2);
         c_to_prog(bvec3, Bool3);
@@ -76,10 +76,10 @@ namespace Falcor
 
 #undef c_to_prog
         should_not_get_here();
-        return ReflectionType::Type::Unknown;
+        return ReflectionBasicType::Type::Unknown;
     }
 
-    VariablesBuffer::VariablesBuffer(const std::string& name, const ReflectionType::SharedConstPtr& pReflectionType, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess) :
+    VariablesBuffer::VariablesBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess) :
        mName(name), mpReflector(pReflectionType), Buffer(elementSize * elementCount, bindFlags, cpuAccess), mElementCount(elementCount), mElementSize(elementSize)
     {
         Buffer::apiInit(false);
@@ -90,7 +90,7 @@ namespace Falcor
     {
         size_t offset = 0;
         const auto& pVar = mpReflector->findMember(varName);
-        return pVar->getOffset();
+        return pVar ? pVar->getOffset() : kInvalidOffset;
     }
 
     bool VariablesBuffer::uploadToGPU(size_t offset, size_t size)
@@ -117,10 +117,12 @@ namespace Falcor
     }
 
     template<typename VarType>
-    bool checkVariableType(ReflectionType::Type shaderType, const std::string& name, const std::string& bufferName)
+    bool checkVariableType(const ReflectionType* pShaderType, const std::string& name, const std::string& bufferName)
     {
 #if _LOG_ENABLED
         auto callType = getReflectionTypeFromCType<VarType>();
+        const ReflectionBasicType* pBasicType = pShaderType->asBasicType();
+        ReflectionBasicType::Type shaderType = pBasicType ? pBasicType->getType() : ReflectionBasicType::Type::Unknown;
         // Check that the types match
         if(callType != shaderType)
         {
@@ -248,7 +250,7 @@ namespace Falcor
     {
         const auto& pVar = mpReflector->findMember(name);
         bool valid = true;
-        if((_LOG_ENABLED == 0) || (pVar && checkVariableType<VarType>(pVar->getType()->getType(), name, mName)))
+        if((_LOG_ENABLED == 0) || (pVar && checkVariableType<VarType>(pVar->getType().get(), name, mName)))
         {
             setVariable<VarType>(pVar->getOffset(), element, value);
         }
@@ -349,19 +351,21 @@ namespace Falcor
     void VariablesBuffer::setVariableArray(const std::string& name, size_t elementIndex, const VarType* pValue, size_t count)
     {
         const auto& pVar = mpReflector->findMember(name);
-        if( _LOG_ENABLED == 0 || (pVar && checkVariableType<VarType>(pVar->getType()->getType(), name, mName)))
+        if( _LOG_ENABLED == 0 || (pVar && checkVariableType<VarType>(pVar->getType().get(), name, mName)))
         {
 #if _LOG_ENABLED
-            if (pVar->getType()->getArraySize() == 0)
+            if (pVar->getType()->asArrayType() == nullptr)
             {
                 logWarning("Can't use VariablesBuffer::setVariableArray() on " + name + ". It is not an array.");
                 return;
             }
-            if (count - elementIndex > pVar->getType()->getArraySize())
-            {
-                logWarning("VariablesBuffer::setVariableArray() - setting to many elements. Clamping...");
-                count = pVar->getType()->getArraySize() - elementIndex;
-            }
+
+            // #PARAMBLOCK
+//             if (count - elementIndex > pVar->getType()->getArraySize())
+//             {
+//                 logWarning("VariablesBuffer::setVariableArray() - setting to many elements. Clamping...");
+//                 count = pVar->getType()->getArraySize() - elementIndex;
+//             }
 #endif
             setVariableArray(pVar->getOffset(), elementIndex, pValue, count);
         }

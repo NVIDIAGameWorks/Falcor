@@ -34,15 +34,87 @@
 namespace Falcor
 {
     class ReflectionVar;
+    class ReflectionResourceType;
+    class ReflectionBasicType;
+    class ReflectionStructType;
+    class ReflectionArrayType;
 
-    class ReflectionType
+    class ReflectionType : public std::enable_shared_from_this<ReflectionType>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionType>;
+        static const uint32_t kInvalidOffset = -1;
+        virtual ~ReflectionType() = default;
+        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const = 0;
+
+        const ReflectionResourceType* asResourceType() const;
+        const ReflectionBasicType* asBasicType() const;
+        const ReflectionStructType* asStructType() const;
+        const ReflectionArrayType* asArrayType() const;
+    protected:
+        ReflectionType(size_t offset) : mOffset(offset) {}
+        size_t mOffset;
+    };
+
+    class ReflectionArrayType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionArrayType>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ReflectionArrayType>;
+        using SharedConstPtr = std::shared_ptr<const ReflectionArrayType>;
+        static SharedPtr create(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType);
+
+        uint32_t getArraySize() const { return mArraySize; }
+        uint32_t getArrayStride() const { return mArrayStride; }
+        const ReflectionType::SharedConstPtr& getType() const { return mpType; }
+
+        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
+    private:
+        ReflectionArrayType(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType);
+        uint32_t mArraySize = 0;
+        uint32_t mArrayStride = 0;
+        ReflectionType::SharedConstPtr mpType;
+    };
+
+    class ReflectionStructType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionStructType>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ReflectionStructType>;
+        using SharedConstPtr = std::shared_ptr<const ReflectionStructType>;
+
+        static SharedPtr create(size_t offset, size_t size, const std::string& name = "");
+
+        void addMember(const std::shared_ptr<const ReflectionVar>& pVar);
+        const std::shared_ptr<const ReflectionVar>& getMember(const std::string& name);
+        const std::shared_ptr<const ReflectionVar>& getMember(uint32_t index);
+        uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
+
+        size_t getMemberIndex(const std::string& name) const;
+        const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
+
+        std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator begin() const { return mMembers.begin(); }
+        std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator end() const { return mMembers.end(); }
+
+        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
+
+        size_t getSize() const { return mSize; }
+        const std::string& getName() const { return mName; }
+    private:
+        ReflectionStructType(size_t offset, size_t size, const std::string& name);
+        std::vector<std::shared_ptr<const ReflectionVar>> mMembers;   // Struct members
+        std::unordered_map<std::string, size_t> mNameToIndex; // Translates from a name to an index in mMembers
+        size_t mSize;
+        std::string mName;
+    };
+
+    class ReflectionBasicType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionBasicType>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ReflectionBasicType>;
+        using SharedConstPtr = std::shared_ptr<const ReflectionBasicType>;
+
         enum class Type
         {
-            Unknown,
             Bool,
             Bool2,
             Bool3,
@@ -77,15 +149,23 @@ namespace Falcor
             Float4x3,
             Float4x4,
 
-            Texture,
-            StructuredBuffer,
-            RawBuffer,
-            TypedBuffer,
-            Sampler,
-            ConstantBuffer,
-            Struct,
+            Unknown = -1
         };
 
+        static SharedPtr create(size_t offset, Type type, bool isRowMajor);
+        Type getType() const { return mType; }
+        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
+    private:
+        ReflectionBasicType(size_t offset, Type type, bool isRowMajor);
+        Type mType;
+        bool mIsRowMajor;
+    };
+
+    class ReflectionResourceType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionResourceType>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ReflectionResourceType>;
+        using SharedConstPtr = std::shared_ptr<const ReflectionResourceType>;
         enum class ShaderAccess
         {
             Undefined,
@@ -126,48 +206,39 @@ namespace Falcor
             Consume     ///< ConsumeStructuredBuffer
         };
 
-        static const uint32_t kInvalidOffset = -1;
+        enum class Type
+        {
+            Texture,
+            StructuredBuffer,
+            RawBuffer,
+            TypedBuffer,
+            Sampler,
+            ConstantBuffer,
+        };
+        
+        static SharedPtr create(Type type, uint32_t regIndex, uint32_t regSpace, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
+        void setStructType(const ReflectionStructType::SharedPtr& pType) { mpStructType = pType; }
 
-        static SharedPtr create(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess = ShaderAccess::Undefined, ReturnType retType = ReturnType::Unknown, Dimensions dims = Dimensions::Unknown);
-
-        void addMember(const std::shared_ptr<const ReflectionVar>& pVar);
-
-        const std::shared_ptr<const ReflectionVar>& getMember(const std::string& name);
-        const std::shared_ptr<const ReflectionVar>& getMember(uint32_t index);
-        uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
-
-        uint32_t getOffset() const { return mOffset; }
-        Type getType() const { return mType; }
-        uint32_t getArraySize() const { return mArraySize; }
-        uint32_t getArrayStride() const { return mArrayStride; }
-        ShaderAccess getShaderAccess() const { return mShaderAccess; }
+        const ReflectionStructType::SharedPtr& getStructType() const { return mpStructType; }
         Dimensions getDimensions() const { return mDimensions; }
-        ReturnType getReturnType() const { return mReturnType; }
         StructuredType getStructuredBufferType() const { return mStructuredType; }
-        bool isRowMajor() const { return mIsRowMajor; }
-        size_t getSize() const { return mSize; }
-        const ReflectionVar* findMember(const std::string& name) const;
-
-        size_t getMemberIndex(const std::string& name) const;
-        const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
-
-        std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator begin() const { return mMembers.begin(); }
-        std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator end() const { return mMembers.end(); }
+        ReturnType getReturnType() const { return mReturnType; }
+        ShaderAccess getShaderAccess() const { return mShaderAccess; }
+        uint32_t getRegisterIndex() const { return mRegIndex; }
+        uint32_t getRegisterSpace() const { return mRegSpace; }
+        Type getType() const { return mType; }
+        size_t getSize() const { return mpStructType ? mpStructType->getSize() : 0; }
+        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
     private:
-        ReflectionType(Type type, size_t size, uint32_t offset, uint32_t arraySize, uint32_t arrayStride, ShaderAccess shaderAccess, ReturnType retType, Dimensions dims);
-        std::vector<std::shared_ptr<const ReflectionVar>> mMembers;   // Struct members
-        std::unordered_map<std::string, size_t> mNameToIndex; // Translates from a name to an index in mMembers
-
-        Type mType = Type::Unknown;
-        ReturnType mReturnType = ReturnType::Unknown;
-        ShaderAccess mShaderAccess = ShaderAccess::Undefined;
-        Dimensions mDimensions = Dimensions::Unknown;
-        StructuredType mStructuredType = StructuredType::Invalid;
-        uint32_t mOffset = kInvalidOffset;
-        bool mIsRowMajor = false;
-        uint32_t mArraySize = 0;
-        uint32_t mArrayStride = 0;
-        size_t mSize = 0;
+        ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
+        Dimensions mDimensions;
+        StructuredType mStructuredType;
+        ReturnType mReturnType;
+        ShaderAccess mShaderAccess;
+        uint32_t mRegIndex;
+        uint32_t mRegSpace;
+        Type mType;
+        ReflectionStructType::SharedPtr mpStructType;   // For constant- and structured-buffers
     };
 
     class ReflectionVar
@@ -242,12 +313,11 @@ namespace Falcor
         static std::unordered_set<std::string> sParameterBlockRegistry;
     };
 
-    inline const std::string to_string(ReflectionType::Type type)
+    inline const std::string to_string(ReflectionBasicType::Type type)
     {
-#define type_2_string(a) case ReflectionType::Type::a: return #a;
+#define type_2_string(a) case ReflectionBasicType::Type::a: return #a;
         switch (type)
         {
-            type_2_string(Unknown);
             type_2_string(Bool);
             type_2_string(Bool2);
             type_2_string(Bool3);
@@ -273,13 +343,6 @@ namespace Falcor
             type_2_string(Float4x2);
             type_2_string(Float4x3);
             type_2_string(Float4x4);
-            type_2_string(Texture);
-            type_2_string(StructuredBuffer);
-            type_2_string(RawBuffer);
-            type_2_string(TypedBuffer);
-            type_2_string(Sampler);
-            type_2_string(ConstantBuffer);
-            type_2_string(Struct);
         default:
             should_not_get_here();
             return "";
@@ -287,9 +350,9 @@ namespace Falcor
 #undef type_2_string
     }
 
-    inline const std::string to_string(ReflectionType::ShaderAccess access)
+    inline const std::string to_string(ReflectionResourceType::ShaderAccess access)
     {
-#define access_2_string(a) case ReflectionType::ShaderAccess::a: return #a;
+#define access_2_string(a) case ReflectionResourceType::ShaderAccess::a: return #a;
         switch (access)
         {
             access_2_string(Undefined);
@@ -302,9 +365,9 @@ namespace Falcor
 #undef access_2_string
     }
 
-    inline const std::string to_string(ReflectionType::ReturnType retType)
+    inline const std::string to_string(ReflectionResourceType::ReturnType retType)
     {
-#define type_2_string(a) case ReflectionType::ReturnType::a: return #a;
+#define type_2_string(a) case ReflectionResourceType::ReturnType::a: return #a;
         switch (retType)
         {
             type_2_string(Unknown);
@@ -318,9 +381,9 @@ namespace Falcor
 #undef type_2_string
     }
 
-    inline const std::string to_string(ReflectionType::Dimensions resource)
+    inline const std::string to_string(ReflectionResourceType::Dimensions resource)
     {
-#define type_2_string(a) case ReflectionType::Dimensions::a: return #a;
+#define type_2_string(a) case ReflectionResourceType::Dimensions::a: return #a;
         switch (resource)
         {
             type_2_string(Unknown);
@@ -334,6 +397,23 @@ namespace Falcor
             type_2_string(Texture2DMSArray);
             type_2_string(TextureCubeArray);
             type_2_string(Buffer);
+        default:
+            should_not_get_here();
+            return "";
+        }
+#undef type_2_string
+    }
+
+    inline const std::string to_string(ReflectionResourceType::Type type)
+    {
+#define type_2_string(a) case ReflectionResourceType::Type::a: return #a;
+        switch (type)
+        {
+            type_2_string(Texture);
+            type_2_string(StructuredBuffer);
+            type_2_string(RawBuffer);
+            type_2_string(TypedBuffer);
+            type_2_string(Sampler);
         default:
             should_not_get_here();
             return "";

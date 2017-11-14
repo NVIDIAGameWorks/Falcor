@@ -38,7 +38,7 @@ namespace Falcor
 {
     template<bool forGraphics>
     void bindConstantBuffers(CopyContext* pContext, const ProgramVars::ResourceMap<ConstantBuffer>& cbMap, const ProgramVars::RootSetVec& rootSets, bool forceBind);
-    ReflectionType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
+    ReflectionResourceType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
 
     ProgramVars::RootData findRootData(const RootSignature* pRootSig, uint32_t regIndex, uint32_t regSpace, RootSignature::DescType descType)
     {
@@ -65,17 +65,18 @@ namespace Falcor
     template<typename BufferType, typename ViewType, RootSignature::DescType descType, typename ViewInitFunc>
     bool initializeBuffersMap(ProgramVars::ResourceMap<ViewType>& bufferMap, bool createBuffers, const ViewInitFunc& viewInitFunc, const ParameterBlockReflection::ResourceMap& resMap, const RootSignature* pRootSig)
     {
-        ReflectionType::ShaderAccess shaderAccess = getRequiredShaderAccess(descType);
+        ReflectionResourceType::ShaderAccess shaderAccess = getRequiredShaderAccess(descType);
 
         for (auto& buf : resMap)
         {
             const ReflectionVar::SharedConstPtr& pVar = buf.second;
-            const ReflectionType::SharedConstPtr& pType = pVar->getType();
+            const ReflectionResourceType::SharedConstPtr& pType = std::dynamic_pointer_cast<const ReflectionResourceType>(pVar->getType());
+            assert(pType);
             if (pType->getShaderAccess() == shaderAccess)
             {
                 uint32_t regIndex = pVar->getRegisterIndex();
                 uint32_t regSpace = pVar->getRegisterSpace();
-                uint32_t arraySize = max(1u, pType->getArraySize());
+                uint32_t arraySize = 1;// #PARAMBLOCK max(1u, pType->getArraySize());
                 ProgramVars::ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
                 if (data.rootData.rootIndex == -1)
                 {
@@ -99,17 +100,17 @@ namespace Falcor
         return true;
     }
 
-    static RootSignature::DescType getRootDescTypeFromResourceType(ReflectionType::Type type, ReflectionType::ShaderAccess access)
+    static RootSignature::DescType getRootDescTypeFromResourceType(ReflectionResourceType::Type type, ReflectionResourceType::ShaderAccess access)
     {
         switch (type)
         {
-        case ReflectionType::Type::Texture:
-        case ReflectionType::Type::RawBuffer:  // Vulkan doesn't have raw-buffer and DX doesn't care
-            return (access == ReflectionType::ShaderAccess::Read) ? RootSignature::DescType::TextureSrv : RootSignature::DescType::TextureUav;
-        case ReflectionType::Type::StructuredBuffer:
-            return (access == ReflectionType::ShaderAccess::Read) ? RootSignature::DescType::StructuredBufferSrv : RootSignature::DescType::StructuredBufferUav;
-        case ReflectionType::Type::TypedBuffer:
-            return (access == ReflectionType::ShaderAccess::Read) ? RootSignature::DescType::TypedBufferSrv : RootSignature::DescType::TypedBufferUav;
+        case ReflectionResourceType::Type::Texture:
+        case ReflectionResourceType::Type::RawBuffer:  // Vulkan doesn't have raw-buffer and DX doesn't care
+            return (access == ReflectionResourceType::ShaderAccess::Read) ? RootSignature::DescType::TextureSrv : RootSignature::DescType::TextureUav;
+        case ReflectionResourceType::Type::StructuredBuffer:
+            return (access == ReflectionResourceType::ShaderAccess::Read) ? RootSignature::DescType::StructuredBufferSrv : RootSignature::DescType::StructuredBufferUav;
+        case ReflectionResourceType::Type::TypedBuffer:
+            return (access == ReflectionResourceType::ShaderAccess::Read) ? RootSignature::DescType::TypedBufferSrv : RootSignature::DescType::TypedBufferUav;
         default:
             should_not_get_here();
             return RootSignature::DescType(-1);
@@ -134,24 +135,25 @@ namespace Falcor
         for (const auto& res : pGlobalBlock->getResources())
         {
             const ReflectionVar::SharedConstPtr& pVar = res.second;
-            const ReflectionType::SharedConstPtr& pType = pVar->getType();
-            uint32_t count = pType->getArraySize() ? pType->getArraySize() : 1;
+            const ReflectionResourceType* pType = pVar->getType()->asResourceType();
+            assert(pType);
+            uint32_t count = 1;//#PARAMBLOCK pType->getArraySize() ? pType->getArraySize() : 1;
             for (uint32_t index = 0; index < (0 + count); ++index) // #PARAMBLOCK the 0 used to be descOffset
             {
                 uint32_t regIndex = pVar->getRegisterIndex();
                 uint32_t regSpace = pVar->getRegisterSpace();
                 BindLocation loc(regSpace, regIndex);
-                ReflectionType::ShaderAccess shaderAccess = pType->getShaderAccess();
-                ReflectionType::Type type = pType->getType();
+                ReflectionResourceType::ShaderAccess shaderAccess = pType->getShaderAccess();
+                ReflectionResourceType::Type type = pType->getType();
                 switch (type)
                 {
-                case ReflectionType::Type::Sampler:
+                case ReflectionResourceType::Type::Sampler:
                     mAssignedSamplers[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, RootSignature::DescType::Sampler));
                     break;
-                case ReflectionType::Type::Texture:
-                case ReflectionType::Type::RawBuffer:
-                case ReflectionType::Type::TypedBuffer:
-                    if (shaderAccess == ReflectionType::ShaderAccess::Read)
+                case ReflectionResourceType::Type::Texture:
+                case ReflectionResourceType::Type::RawBuffer:
+                case ReflectionResourceType::Type::TypedBuffer:
+                    if (shaderAccess == ReflectionResourceType::ShaderAccess::Read)
                     {
                         assert(mAssignedSrvs.find(loc) == mAssignedSrvs.end() || mAssignedSrvs[loc].size() == index);
                         mAssignedSrvs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, getRootDescTypeFromResourceType(type, shaderAccess)));
@@ -159,7 +161,7 @@ namespace Falcor
                     else
                     {
                         assert(mAssignedUavs.find(loc) == mAssignedUavs.end() || mAssignedUavs[loc].size() == index);
-                        assert(shaderAccess == ReflectionType::ShaderAccess::ReadWrite);
+                        assert(shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite);
                         mAssignedUavs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, getRootDescTypeFromResourceType(type, shaderAccess)));
                     }
                     break;
@@ -280,7 +282,7 @@ namespace Falcor
 
     void setResourceSrvUavCommon(const ProgramVars::BindLocation& bindLoc, 
         uint32_t arrayIndex, 
-        ReflectionType::ShaderAccess shaderAccess, 
+        ReflectionResourceType::ShaderAccess shaderAccess,
         const Resource::SharedPtr& resource, 
         ProgramVars::ResourceMap<ShaderResourceView>& assignedSrvs, 
         ProgramVars::ResourceMap<UnorderedAccessView>& assignedUavs,
@@ -288,7 +290,7 @@ namespace Falcor
     {
         switch (shaderAccess)
         {
-        case ReflectionType::ShaderAccess::ReadWrite:
+        case ReflectionResourceType::ShaderAccess::ReadWrite:
         {
             auto uavIt = assignedUavs.find(bindLoc);
             assert(uavIt != assignedUavs.end());
@@ -303,7 +305,7 @@ namespace Falcor
             break;
         }
 
-        case ReflectionType::ShaderAccess::Read:
+        case ReflectionResourceType::ShaderAccess::Read:
         {
             auto srvIt = assignedSrvs.find(bindLoc);
             assert(srvIt != assignedSrvs.end());
@@ -328,7 +330,7 @@ namespace Falcor
     void setResourceSrvUavCommon(const ReflectionVar* pVar, uint32_t arrayIndex, const Resource::SharedPtr& resource, ProgramVars::ResourceMap<ShaderResourceView>& assignedSrvs, ProgramVars::ResourceMap<UnorderedAccessView>& assignedUavs, std::vector<ProgramVars::RootSet>& rootSets)
     {
 //        arrayIndex += pDesc->descOffset; // #PARAMBLOCK
-        setResourceSrvUavCommon({ pVar->getRegisterSpace(), pVar->getRegisterIndex() }, arrayIndex, pVar->getType()->getShaderAccess(), resource, assignedSrvs, assignedUavs, rootSets);
+        setResourceSrvUavCommon({ pVar->getRegisterSpace(), pVar->getRegisterIndex() }, arrayIndex, pVar->getType()->asResourceType()->getShaderAccess(), resource, assignedSrvs, assignedUavs, rootSets);
     }
 
 //     void setResourceSrvUavCommon(const ProgramReflection::BufferReflection *pDesc, uint32_t arrayIndex, const Resource::SharedPtr& resource, ProgramVars::ResourceMap<ShaderResourceView>& assignedSrvs, ProgramVars::ResourceMap<UnorderedAccessView>& assignedUavs, std::vector<ProgramVars::RootSet>& rootSets)
@@ -367,7 +369,7 @@ namespace Falcor
             std::string nameNoIndex;
             if (parseArrayIndex(name, nameNoIndex, arrayIndex) == false) return nullptr;
             pVar = pReflector->getResource(nameNoIndex.c_str());
-            if (pVar->getType()->getArraySize() == 0) return nullptr;
+            if (pVar->getType()->asArrayType() == nullptr) return nullptr;
         }
         return pVar;
     }
@@ -514,14 +516,19 @@ namespace Falcor
         return nullptr;
     }
 
-    bool verifyResourceVar(const ReflectionVar* pVar, uint32_t arrayIndex, ReflectionType::Type type, ReflectionType::ShaderAccess access, const std::string& varName, const std::string& funcName)
+    bool verifyResourceVar(const ReflectionVar* pVar, uint32_t arrayIndex, ReflectionResourceType::Type type, ReflectionResourceType::ShaderAccess access, const std::string& varName, const std::string& funcName)
     {
         if (pVar == nullptr)
         {
             logWarning(to_string(type) + " \"" + varName + "\" was not found. Ignoring " + funcName + " call.");
             return false;
         }
-        const ReflectionType* pType = pVar->getType().get();
+        const ReflectionResourceType* pType = pVar->getType()->asResourceType();
+        if (!pType)
+        {
+            logWarning(varName + " is not a resource. Ignoring " + funcName + " call.");
+            return false;
+        }
 #if _LOG_ENABLED
         if (pType->getType() != type)
         {
@@ -529,17 +536,18 @@ namespace Falcor
             return false;
         }
 
-        if (access != ReflectionType::ShaderAccess::Undefined && pType->getShaderAccess() != access)
+        if (access != ReflectionResourceType::ShaderAccess::Undefined && pType->getShaderAccess() != access)
         {
             logWarning("ProgramVars::" + funcName + " was called, but variable \"" + varName + "\" has different shader access type. Expecting + " + to_string(pType->getShaderAccess()) + " but provided resource is " + to_string(access) + ". Ignoring call");
             return false;
         }
 
-        if (pType->getArraySize() && arrayIndex >= pType->getArraySize())
-        {
-            logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
-            return false;
-        }
+        // #PARAMBLOCK
+//         if (pType->getArraySize() && arrayIndex >= pType->getArraySize())
+//         {
+//             logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
+//             return false;
+//         }
 #endif
         return true;
     }
@@ -624,7 +632,7 @@ namespace Falcor
        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
        const ReflectionVar* pVar = getResourceDescAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionType::Type::Texture, ReflectionType::ShaderAccess::Undefined,  name, "setTexture()") == false)
+        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined,  name, "setTexture()") == false)
         {
             return false;
         }
