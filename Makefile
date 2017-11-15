@@ -38,9 +38,11 @@ $(shell pkg-config --libs assimp gtk+-3.0 ) -lglfw3 \
 # ffmpeg stuff: -lavcodec -lavdevice -lavformat -lswscale -lavutil -lopus
 
 # Compiler Flags
-DEBUG_FLAGS:=-O0 -g
+DEBUG_FLAGS:=-O0 -g -Wno-unused-variable
 RELEASE_FLAGS:=-O3
-DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing -Wno-unused-but-set-variable
+DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing -Wno-nonnull-compare \
+-Wno-unused-but-set-variable -Wno-misleading-indentation
+# Disabling "unused-but-set-variable and misleading-indenttion" ignores warnings when compiling imgui, not Falcor
 COMMON_FLAGS=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
 
 # Defines
@@ -57,7 +59,7 @@ RELATIVE_DIRS:= \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/  Utils/Platform/ Utils/Platform/Linux/ \
+Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ \
 VR/ VR/OpenVR/ \
 ../Externals/dear_imgui/
 # Utils/Video/
@@ -74,6 +76,30 @@ ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))
 ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
 
 OUT_DIR:=Bin/
+
+Shadows : DebugVK
+	$(eval DIR=Samples/Effects/Shadows/)
+	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)Shadows.cpp -o $(DIR)Shadows.o
+	@$(CC) -o $(OUT_DIR)Shadows $(DIR)Shadows.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@echo Built $@
+
+ShaderToy : DebugVK
+	$(eval DIR=Samples/Core/ShaderToy/)
+	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)ShaderToy.cpp -o $(DIR)ShaderToy.o
+	@$(CC) -o $(OUT_DIR)ShaderToy $(DIR)ShaderToy.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@echo Built $@
+
+MultiPassPostProcess : DebugVK
+	$(eval DIR=Samples/Core/MultiPassPostProcess/)
+	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)MultiPassPostProcess.cpp -o $(DIR)MultiPassPostProcess.o
+	@$(CC) -o $(OUT_DIR)MultiPassPostProcess $(DIR)MultiPassPostProcess.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@echo Built $@
+
+ModelViewer : DebugVK
+	$(eval DIR=Samples/Utils/ModelViewer/)
+	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)ModelViewer.cpp -o $(DIR)ModelViewer.o
+	@$(CC) -o $(OUT_DIR)ModelViewer $(DIR)ModelViewer.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@echo Built $@
 
 ProjectTemplate : DebugVK
 	$(eval DIR=Samples/Core/ProjectTemplate/)
@@ -105,5 +131,5 @@ ReleaseConfig :
 .PHONY : clean
 clean :
 	@find . -name "*.o" -type f -delete
-	@rm -rf "Bin/"
-	@rm -f Falcor.a
+#	@rm -rf "Bin/"
+#	@rm -f Falcor.a

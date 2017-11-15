@@ -44,7 +44,7 @@ namespace Falcor
         Scene::SharedPtr pScene = create();
         if (SceneImporter::loadScene(*pScene, filename, modelLoadFlags, sceneLoadFlags) == false)
         {
-            pScene = false;
+            pScene = nullptr;
         }
         return pScene;
     }

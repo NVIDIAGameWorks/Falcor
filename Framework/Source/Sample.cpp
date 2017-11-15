@@ -212,7 +212,7 @@ namespace Falcor
 
 #ifdef _WIN32
         // Set the icon
-        setWindowIcon("Framework\\Nvidia.ico", mpWindow->getApiHandle());
+        setWindowIcon("Framework/Nvidia.ico", mpWindow->getApiHandle());
 #endif
 
         // Get the default objects before calling onLoad()
@@ -356,6 +356,7 @@ namespace Falcor
         }
 
         renderText(getFpsMsg(), glm::vec2(10, 10));
+
         mpPixelZoom->render(mpRenderContext.get(), gpDevice->getSwapChainFbo().get());
 
         captureVideoFrame();
@@ -395,7 +396,9 @@ namespace Falcor
     void Sample::initUI()
     {
         mpGui = Gui::create(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
+#ifdef _WIN32 // Text texture is in DDS, which isn't supported on Linux yet
         mpTextRenderer = TextRenderer::create();
+#endif
     }
 
     const std::string Sample::getFpsMsg() const
@@ -430,7 +433,7 @@ namespace Falcor
 
     void Sample::renderText(const std::string& msg, const glm::vec2& position, const glm::vec2 shadowOffset) const
     {
-        if (mShowText)
+        if (mShowText && mpTextRenderer != nullptr)
         {
             // Render outline first
             if (shadowOffset.x != 0.f || shadowOffset.y != 0)

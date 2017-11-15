@@ -38,7 +38,7 @@ namespace Falcor
         if (gpDevice)
         {
             logError("Falcor only supports a single device");
-            return false;
+            return nullptr;
         }
         gpDevice = SharedPtr(new Device(pWindow));
         if (gpDevice->init(desc) == false) { gpDevice = nullptr;}

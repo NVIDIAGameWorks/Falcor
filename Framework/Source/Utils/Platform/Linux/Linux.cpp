@@ -41,6 +41,8 @@
 #include <algorithm>
 #include <experimental/filesystem>
 
+namespace fs = std::experimental::filesystem;
+
 namespace Falcor
 {
     MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType)
@@ -158,7 +160,7 @@ namespace Falcor
     const std::string& getExecutableName()
     {
         static std::string filename;
-        filename = std::experimental::filesystem::path(program_invocation_name).filename();
+        filename = fs::path(program_invocation_name).filename();
         return filename;
     }
 
@@ -178,12 +180,12 @@ namespace Falcor
     {
         // Ordering matters here, we want that while developing, resources will be loaded from the development media directory
         std::string(getWorkingDirectory()),
-        std::string(getWorkingDirectory() + "/data"),
+        std::string(getWorkingDirectory() + "/Data"),
         std::string(getExecutableDirectory()),
-        std::string(getExecutableDirectory() + "/data"),
+        std::string(getExecutableDirectory() + "/Data"),
 
         // The local solution media folder
-        std::string(getExecutableDirectory() + "/../../../Media"),
+        std::string(getExecutableDirectory() + "/../Media"),
     };
 
     const std::vector<std::string>& getDataDirectoriesList()
@@ -202,7 +204,15 @@ namespace Falcor
 
     std::string canonicalizeFilename(const std::string& filename)
     {
-        return std::experimental::filesystem::canonical(filename).string();
+        fs::path path(filename);
+        if(fs::exists(path))
+        {
+            return fs::canonical(path).string();
+        }
+        else
+        {
+            return "";
+        }
     }
 
     bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)

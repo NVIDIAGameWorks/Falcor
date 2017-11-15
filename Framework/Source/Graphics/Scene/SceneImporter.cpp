@@ -190,7 +190,7 @@ namespace Falcor
         }
 
         // Load the model
-        std::string file =  mDirectory + '\\' + modelFile.GetString();
+        std::string file =  mDirectory + '/' + modelFile.GetString();
         if (doesFileExist(file) == false)
         {
             file = modelFile.GetString();
@@ -463,7 +463,7 @@ namespace Falcor
 
         std::string filename = jsonValue.GetString();
         // Check if the file exists relative to the scene file
-        std::string fullpath = mDirectory + "\\" + filename;
+        std::string fullpath = mDirectory + "/" + filename;
         if(doesFileExist(fullpath))
         {
             filename = fullpath;
@@ -953,7 +953,7 @@ namespace Falcor
             {
                 if(createPathFrames(pPath.get(), value) == false)
                 {
-                    return false;
+                    return nullptr;
                 }
             }
             else if (key == SceneKeys::kAttachedObjects)
@@ -1386,7 +1386,7 @@ namespace Falcor
     bool SceneImporter::loadIncludeFile(const std::string& include)
     {
         // Find the file
-        std::string fullpath = mDirectory + '\\' + include;
+        std::string fullpath = mDirectory + '/' + include;
         if(doesFileExist(fullpath) == false)
         {
             // Look in the data directories

@@ -72,10 +72,10 @@ int main(int argc, char* argv[])
     PathRelativePathToA(RelativePath, CSD.c_str(), FILE_ATTRIBUTE_DIRECTORY, FCD.c_str(), FILE_ATTRIBUTE_DIRECTORY);
 
     //  Construct the Solution Directory to Falcor Core Directory.
-    std::string SolutionDirectoryToFalcorCoreDirectory = std::string("$(SolutionDir)\\") + std::string(RelativePath);
+    std::string SolutionDirectoryToFalcorCoreDirectory = std::string("$(SolutionDir)/") + std::string(RelativePath);
 
     //  Read in the Property Sheet.
-    std::string PropsSheetPath = FCD + "\\Source\\Falcor.props";
+    std::string PropsSheetPath = FCD + "/Source/Falcor.props";
     std::string PropsSheet;
     if(ReadFileToString(PropsSheetPath.c_str(), PropsSheet) == false)
     {

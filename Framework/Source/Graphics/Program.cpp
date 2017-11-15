@@ -235,7 +235,7 @@ namespace Falcor
             {
                 if(link() == false)
                 {
-                    return false;
+                    return nullptr;
                 }
                 else
                 {

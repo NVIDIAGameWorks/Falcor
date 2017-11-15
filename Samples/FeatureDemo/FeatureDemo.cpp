@@ -106,10 +106,10 @@ void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& f
     std::string folder = getDirectoryFromFile(filename);
 
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
-    if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '\\' + var.str);
+    if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '/' + var.str);
 
     var = pScene->getUserVariable("env_map");
-    if (var.type == Scene::UserVariable::Type::String) initEnvMap(folder + '\\' + var.str);
+    if (var.type == Scene::UserVariable::Type::String) initEnvMap(folder + '/' + var.str);
 
     var = pScene->getUserVariable("env_map_intensity_scale");
     if (var.type == Scene::UserVariable::Type::Double) mEnvMapFactorScale = (float)var.d64;

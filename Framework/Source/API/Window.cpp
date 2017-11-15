@@ -163,8 +163,9 @@ namespace Falcor
 
         static void errorCallback(int errorCode, const char* pDescription)
         {
-            std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription);
-            logError(errorMsg.c_str());
+            std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
+            printToDebugWindow(errorMsg);
+            //logError(errorMsg.c_str());
         }
 
     private:

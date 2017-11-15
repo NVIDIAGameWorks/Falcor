@@ -281,7 +281,7 @@ namespace Falcor
 #ifdef _WIN32
             "VK_KHR_win32_surface"
 #else
-            "VK_KHR wayland_surface"
+            "VK_KHR_wayland_surface"
 #endif
         };
 
