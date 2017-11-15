@@ -204,7 +204,11 @@ void ShaderBuffersSample::onResizeSwapChain()
     mpCamera->setAspectRatio(width / height);
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main()
+#endif
 {
 #ifdef FALCOR_VK
     msgBox("Vulkan support for the features used in the Shader Buffers sample is coming soon!");
@@ -216,4 +220,5 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     config.windowDesc.title = "Shader Buffers";
     config.windowDesc.resizableWindow = true;
     buffersSample.run(config);
+    return 0;
 }

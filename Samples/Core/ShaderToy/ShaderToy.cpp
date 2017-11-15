@@ -111,7 +111,11 @@ void ShaderToy::onResizeSwapChain()
     mAspectRatio = (float(width) / float(height));
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main()
+#endif
 {
     ShaderToy sample;
     SampleConfig config;
@@ -121,4 +125,5 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     config.windowDesc.resizableWindow = true;
     config.windowDesc.title = "Falcor Shader Toy";
     sample.run(config);
+    return 0;
 }

@@ -279,7 +279,11 @@ void StereoRendering::onResizeSwapChain()
     initVR();
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main()
+#endif
 {
     StereoRendering sample;
     SampleConfig config;
@@ -292,4 +296,5 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     config.deviceDesc.enableDebugLayer = false; // OpenVR requires an extension that the debug layer doesn't recognize. It causes the application to crash
 #endif
     sample.run(config);
+    return 0;
 }

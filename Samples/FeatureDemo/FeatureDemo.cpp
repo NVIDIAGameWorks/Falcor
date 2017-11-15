@@ -173,11 +173,15 @@ void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
+
+#ifdef _WIN32
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
         pBar = ProgressBar::create("Loading Model");
     }
+#endif
+
     Model::SharedPtr pModel = Model::createFromFile(filename.c_str());
     if (!pModel) return;
     Scene::SharedPtr pScene = Scene::create();
@@ -190,11 +194,15 @@ void FeatureDemo::loadScene(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
+
+#ifdef _WIN32
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
         pBar = ProgressBar::create("Loading Scene", 100);
     }
+#endif
+
     Scene::SharedPtr pScene = Scene::loadFromFile(filename);
 
     if (pScene != nullptr)
@@ -568,11 +576,16 @@ void FeatureDemo::onInitializeTesting()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main()
+#endif
 {
     FeatureDemo sample;
     SampleConfig config;
     config.windowDesc.title = "Falcor Feature Demo";
     config.windowDesc.resizableWindow = false;
     sample.run(config);
+    return 0;
 }

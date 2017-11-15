@@ -159,11 +159,16 @@ void HashedAlpha::onResizeSwapChain()
 {
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main()
+#endif
 {
     HashedAlpha sample;
     SampleConfig config;
     config.windowDesc.title = "Hashed Alpha Test";
     config.windowDesc.resizableWindow = true;
     sample.run(config);
+    return 0;
 }
