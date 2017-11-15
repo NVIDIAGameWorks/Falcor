@@ -341,7 +341,7 @@ namespace Falcor
     {
         uint32_t arraySize = (uint32_t)pSlangType->getElementCount();
         uint32_t arrayStride = (uint32_t)pSlangType->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
-        
+
         ReflectionType::SharedPtr pType = reflectType(pSlangType->getElementTypeLayout(), offset, bindIndex, regSpace);
         ReflectionArrayType::SharedPtr pArrayType = ReflectionArrayType::create(offset, arraySize, arrayStride, pType);
         return pArrayType;
@@ -429,6 +429,7 @@ namespace Falcor
     {
         assert(mParameterBlocks.find(pBlock->getName()) == mParameterBlocks.end());
         mParameterBlocks[pBlock->getName()] = pBlock;
+        if (pBlock->getName().size() == 0) mpGlobalBlock = pBlock;
     }
 
     void ProgramReflection::registerParameterBlock(const std::string& name)
@@ -478,32 +479,32 @@ namespace Falcor
         const ReflectionType* pType = pVar->getType().get();
         std::string namePrefix = name + (name.size() ? "." : "");
         const ReflectionStructType* pStructType = dynamic_cast<const ReflectionStructType*>(pType);
-        if(pStructType)
-        for (const auto& pMember : *pStructType)
-        {
-            const ReflectionResourceType* pResourceType = dynamic_cast<const ReflectionResourceType*>(pMember->getType().get());
-            if (pResourceType)
+        if (pStructType)
+            for (const auto& pMember : *pStructType)
             {
-                pResources.push_back({ namePrefix + pMember->getName() , pMember });
-                continue;
-            }
-            else
-            {
-                std::string newName = name + (name.size() ? "." : "");
-                const ReflectionArrayType* pArrayType = dynamic_cast<const ReflectionArrayType*>(pMember->getType().get());
-                if (pArrayType)
+                const ReflectionResourceType* pResourceType = dynamic_cast<const ReflectionResourceType*>(pMember->getType().get());
+                if (pResourceType)
                 {
-                    for (uint32_t j = 0; j < pArrayType->getArraySize(); j++)
-                    {
-                        flattenResources(namePrefix + pMember->getName() + '[' + std::to_string(j) + ']', pMember, pResources);
-                    }
+                    pResources.push_back({ namePrefix + pMember->getName() , pMember });
+                    continue;
                 }
                 else
                 {
-                    flattenResources(namePrefix + pMember->getName(), pMember, pResources);
+                    std::string newName = name + (name.size() ? "." : "");
+                    const ReflectionArrayType* pArrayType = dynamic_cast<const ReflectionArrayType*>(pMember->getType().get());
+                    if (pArrayType)
+                    {
+                        for (uint32_t j = 0; j < pArrayType->getArraySize(); j++)
+                        {
+                            flattenResources(namePrefix + pMember->getName() + '[' + std::to_string(j) + ']', pMember, pResources);
+                        }
+                    }
+                    else
+                    {
+                        flattenResources(namePrefix + pMember->getName(), pMember, pResources);
+                    }
                 }
             }
-        }
     }
 
     static const ReflectionVar* findVarCommon(const ParameterBlockReflection::ResourceMap& map, const std::string& name)
@@ -703,4 +704,23 @@ namespace Falcor
 
     ReflectionStructType::ReflectionStructType(size_t offset, size_t size, const std::string& name) :
         ReflectionType(offset), mSize(size), mName(name) {}
+
+    ProgramReflection::ResourceBinding ProgramReflection::getBufferBinding(const std::string& name) const
+    {
+        ResourceBinding binding;
+        if (mpGlobalBlock == nullptr) return binding;
+        // Search the constant-buffers
+        const ReflectionVar* pVar = mpGlobalBlock->getConstantBuffer(name);
+        if (!pVar)
+        {
+            pVar = mpGlobalBlock->getStructuredBuffer(name);
+        }
+
+        if (pVar)
+        {
+            binding.regIndex = pVar->getRegisterIndex();
+            binding.regSpace = pVar->getRegisterSpace();
+        }
+        return binding;
+    }
 }

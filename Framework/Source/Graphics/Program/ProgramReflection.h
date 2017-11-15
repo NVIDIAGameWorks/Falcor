@@ -307,11 +307,21 @@ namespace Falcor
         static void registerParameterBlock(const std::string& name);
         static void unregisterParameterBlock(const std::string& name);
         const ParameterBlockReflection::SharedConstPtr& getParameterBlock(const std::string& name) const;
+
+        static const uint32_t kInvalidLocation = -1;
+        struct ResourceBinding
+        {
+            uint32_t regIndex = kInvalidLocation;
+            uint32_t regSpace = kInvalidLocation;
+        };
+
+        ResourceBinding getBufferBinding(const std::string& name) const;
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);
         std::unordered_map<std::string, ParameterBlockReflection::SharedConstPtr> mParameterBlocks;
         static std::unordered_set<std::string> sParameterBlockRegistry;
+        ParameterBlockReflection::SharedConstPtr mpGlobalBlock;
     };
 
     inline const std::string to_string(ReflectionBasicType::Type type)
