@@ -172,7 +172,7 @@ namespace Falcor
     template<typename VarType>
     void StructuredBuffer::getVariable(const std::string& name, size_t elementIndex, VarType& value)
     {
-       const auto* pVar = mpReflector->findMember(name);
+       const auto& pVar = mpReflector->findMember(name);
        
         if ((_LOG_ENABLED == 0) || (pVar && checkVariableType<VarType>(pVar->getType().get(), name, mName)))
         {
@@ -275,7 +275,7 @@ namespace Falcor
     template<typename VarType>
     void StructuredBuffer::getVariableArray(const std::string& name, size_t count, size_t elementIndex, VarType value[])
     {
-        const auto* pVar = mpReflector->findMember(name);
+        const auto& pVar = mpReflector->findMember(name);
         if ((_LOG_ENABLED == 0) || (pVar && checkVariableType<VarType>(pVar->getType().get(), name, mName)))
         {
             getVariableArray(pVar->getOffset(), count, elementIndex, value);

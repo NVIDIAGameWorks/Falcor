@@ -574,52 +574,75 @@ namespace Falcor
         return mParameterBlocks.at(name);
     }
 
-    const ReflectionVar* ReflectionBasicType::findMember(const std::string& name) const
+    ReflectionVar::SharedConstPtr ReflectionType::findMember(const std::string& name) const
     {
+        return findMemberInternal(name, 0, 0, 0, 0);
+    }
+
+    ReflectionVar::SharedConstPtr ReflectionBasicType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
+    {
+        // We shouldn't get here
         logWarning("Can't find variable + " + name);
         return nullptr;
     }
 
-    const ReflectionVar* ReflectionResourceType::findMember(const std::string& name) const
+    ReflectionVar::SharedConstPtr ReflectionResourceType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
     {
         if (mpStructType)
         {
-            return mpStructType->findMember(name);
+            return mpStructType->findMemberInternal(name, strPos, offset, regIndex, regSpace);
         }
         else
         {
-            logWarning("Can't find variable + " + name);
+            logWarning("Can't find variable '" + name + "'");
             return nullptr;
         }
     }
 
-    const ReflectionVar* ReflectionArrayType::findMember(const std::string& name) const
+    ReflectionVar::SharedConstPtr ReflectionArrayType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
     {
-        if (!name.size() || name[0] != '[')
+        if (!name.size() || name[strPos] != '[')
         {
             logWarning("Looking for a variable named " + name + " which requires an array-index, but no index provided");
             return nullptr;
         }
-        should_not_get_here();
-        return nullptr;
-    }
-
-    const ReflectionVar* ReflectionStructType::findMember(const std::string& name) const
-    {
-        // Find the location of the next '.'
-        size_t newPos = name.find('.');
-        std::string field = name.substr(0, newPos);
-        size_t fieldIndex = getMemberIndex(field);
-        if (fieldIndex == ReflectionType::kInvalidOffset)
+        size_t endPos = name.find(']', strPos);
+        if (endPos == std::string::npos)
         {
-            logWarning("Can't find variable + " + name);
+            logWarning("Missing `]` when parsing array variable '" + name + "'");
             return nullptr;
         }
 
-        const auto& pVar = getMember(fieldIndex).get();
+        // Get the array index
+        std::string indexStr = name.substr(strPos + 1, endPos);
+        uint32_t index = (uint32_t)std::stoi(indexStr);
+        if (index >= mArraySize)
+        {
+            logWarning("Array index out of range when parsing variable '" + name + "'. Must be less than " + std::to_string(mArraySize));
+            return nullptr;
+        }
+        offset += index * mArrayStride;
+        // Find the offset of the leaf
+        ReflectionVar::SharedPtr pVar = ReflectionVar::create(name.substr(0, endPos), mpType, offset, regSpace);
+        return pVar;
+    }
+
+    ReflectionVar::SharedConstPtr ReflectionStructType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
+    {
+        // Find the location of the next '.'
+        size_t newPos = name.find_first_of(".[");
+        std::string field = name.substr(strPos, newPos);
+        size_t fieldIndex = getMemberIndex(field);
+        if (fieldIndex == ReflectionType::kInvalidOffset)
+        {
+            logWarning("Can't find variable '" + name + "'");
+            return nullptr;
+        }
+
+        const auto& pVar = getMember(fieldIndex);
         if (newPos == std::string::npos) return pVar;
         const auto& pNewType = pVar->getType().get();
-        return pNewType->findMember(name.substr(newPos + 1));
+        return pNewType->findMemberInternal(name, newPos, pVar->getOffset(), pVar->getRegisterIndex(), pVar->getRegisterSpace());
     }
 
     size_t ReflectionStructType::getMemberIndex(const std::string& name) const

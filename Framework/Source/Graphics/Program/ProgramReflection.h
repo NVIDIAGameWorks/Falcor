@@ -46,12 +46,13 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ReflectionType>;
         static const uint32_t kInvalidOffset = -1;
         virtual ~ReflectionType() = default;
-        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const = 0;
+        virtual std::shared_ptr<const ReflectionVar> findMember(const std::string& name) const;
 
         const ReflectionResourceType* asResourceType() const;
         const ReflectionBasicType* asBasicType() const;
         const ReflectionStructType* asStructType() const;
         const ReflectionArrayType* asArrayType() const;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const = 0;
     protected:
         ReflectionType(size_t offset) : mOffset(offset) {}
         size_t mOffset;
@@ -67,13 +68,13 @@ namespace Falcor
         uint32_t getArraySize() const { return mArraySize; }
         uint32_t getArrayStride() const { return mArrayStride; }
         const ReflectionType::SharedConstPtr& getType() const { return mpType; }
-
-        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
     private:
         ReflectionArrayType(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType);
         uint32_t mArraySize = 0;
         uint32_t mArrayStride = 0;
         ReflectionType::SharedConstPtr mpType;
+
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
     };
 
     class ReflectionStructType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionStructType>
@@ -95,10 +96,9 @@ namespace Falcor
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator begin() const { return mMembers.begin(); }
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator end() const { return mMembers.end(); }
 
-        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
-
         size_t getSize() const { return mSize; }
         const std::string& getName() const { return mName; }
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
     private:
         ReflectionStructType(size_t offset, size_t size, const std::string& name);
         std::vector<std::shared_ptr<const ReflectionVar>> mMembers;   // Struct members
@@ -154,11 +154,11 @@ namespace Falcor
 
         static SharedPtr create(size_t offset, Type type, bool isRowMajor);
         Type getType() const { return mType; }
-        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
     private:
         ReflectionBasicType(size_t offset, Type type, bool isRowMajor);
         Type mType;
         bool mIsRowMajor;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
     };
 
     class ReflectionResourceType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionResourceType>
@@ -228,7 +228,6 @@ namespace Falcor
         uint32_t getRegisterSpace() const { return mRegSpace; }
         Type getType() const { return mType; }
         size_t getSize() const { return mpStructType ? mpStructType->getSize() : 0; }
-        virtual const ReflectionVar* ReflectionType::findMember(const std::string& name) const;
     private:
         ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
         Dimensions mDimensions;
@@ -239,6 +238,8 @@ namespace Falcor
         uint32_t mRegSpace;
         Type mType;
         ReflectionStructType::SharedPtr mpStructType;   // For constant- and structured-buffers
+
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
     };
 
     class ReflectionVar

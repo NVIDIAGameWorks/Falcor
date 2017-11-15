@@ -29,7 +29,7 @@
 layout(set = 0, binding = 1) cbuffer PerFrameCB : register(b0)
 {
 	float4x4 gvpTransform;
-	float3 gFontColor;
+	float3 gFontColor[2];
 };
 
 layout(set = 0, binding = 2) Texture2D gFontTex;
@@ -37,7 +37,7 @@ layout(set = 0, binding = 2) Texture2D gFontTex;
 float4 calcColor(float2 texC)
 {
 	float4 color = gFontTex.Load(int3(texC, 0));
-	color.rgb = gFontColor;
+	color.rgb = gFontColor[0];
 	return color;
 }
 
