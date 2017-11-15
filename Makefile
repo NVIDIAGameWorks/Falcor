@@ -77,33 +77,41 @@ ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
 
 OUT_DIR:=Bin/
 
+FeatureDemo : DebugVK
+	$(eval DIR=Samples/FeatureDemo/)
+	@$(CC) $(COMPILE_ARGS) $(DIR)FeatureDemo.cpp -o $(DIR)FeatureDemo.o
+	@$(CC) $(COMPILE_ARGS) $(DIR)FeatureDemoControls.cpp -o $(DIR)FeatureDemoControls.o
+	@$(CC) $(COMPILE_ARGS) $(DIR)FeatureDemoSceneRenderer.cpp -o $(DIR)FeatureDemoSceneRenderer.o
+	@$(CC) -o $(OUT_DIR)FeatureDemo $(DIR)FeatureDemo.o $(DIR)FeatureDemoControls.o $(DIR)FeatureDemoSceneRenderer.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@echo Built $@
+
 Shadows : DebugVK
 	$(eval DIR=Samples/Effects/Shadows/)
-	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)Shadows.cpp -o $(DIR)Shadows.o
+	@$(CC) $(COMPILE_ARGS) $(DIR)Shadows.cpp -o $(DIR)Shadows.o
 	@$(CC) -o $(OUT_DIR)Shadows $(DIR)Shadows.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
 	@echo Built $@
 
 ShaderToy : DebugVK
 	$(eval DIR=Samples/Core/ShaderToy/)
-	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)ShaderToy.cpp -o $(DIR)ShaderToy.o
+	@$(CC) $(COMPILE_ARGS) $(DIR)ShaderToy.cpp -o $(DIR)ShaderToy.o
 	@$(CC) -o $(OUT_DIR)ShaderToy $(DIR)ShaderToy.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
 	@echo Built $@
 
 MultiPassPostProcess : DebugVK
 	$(eval DIR=Samples/Core/MultiPassPostProcess/)
-	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)MultiPassPostProcess.cpp -o $(DIR)MultiPassPostProcess.o
+	@$(CC) $(COMPILE_ARGS) $(DIR)MultiPassPostProcess.cpp -o $(DIR)MultiPassPostProcess.o
 	@$(CC) -o $(OUT_DIR)MultiPassPostProcess $(DIR)MultiPassPostProcess.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
 	@echo Built $@
 
 ModelViewer : DebugVK
 	$(eval DIR=Samples/Utils/ModelViewer/)
-	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)ModelViewer.cpp -o $(DIR)ModelViewer.o
+	@$(CC) $(COMPILE_ARGS) $(DIR)ModelViewer.cpp -o $(DIR)ModelViewer.o
 	@$(CC) -o $(OUT_DIR)ModelViewer $(DIR)ModelViewer.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
 	@echo Built $@
 
 ProjectTemplate : DebugVK
 	$(eval DIR=Samples/Core/ProjectTemplate/)
-	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $(DIR)ProjectTemplate.cpp -o $(DIR)ProjectTemplate.o
+	@$(CC) $(COMPILE_ARGS) $(DIR)ProjectTemplate.cpp -o $(DIR)ProjectTemplate.o
 	@$(CC) -o $(OUT_DIR)ProjectTemplate $(DIR)ProjectTemplate.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
 	@echo Built $@
 
@@ -118,15 +126,15 @@ $(OUT_DIR)libfalcor.a : $(ALL_OBJ_FILES)
 
 $(ALL_OBJ_FILES) : %.o : %.cpp
 	@echo $^ $@
-	@$(CC) $(INCLUDES) $(CONFIG_ARGS) $(COMMON_FLAGS) $(COMMON_DEFINES) $^ -o $@
+	@$(CC) $(COMPILE_ARGS) $^ -o $@
 
 .PHONY : DebugConfig
 DebugConfig :
-	$(eval CONFIG_ARGS=$(DEBUG_FLAGS) $(DEBUG_DEFINES))
+	$(eval COMPILE_ARGS=$(INCLUDES) $(DEBUG_FLAGS) $(DEBUG_DEFINES) $(COMMON_FLAGS) $(COMMON_DEFINES))
 
 .PHONY : ReleaseConfig
 ReleaseConfig :
-	$(eval CONFIG_ARGS=$(RELEASE_FLAGS) $(RELEASE_DEFINES))
+	$(eval COMPILE_ARGS=$(INCLUDES) $(RELEASE_FLAGS) $(RELEASE_DEFINES) $(COMMON_FLAGS) $(COMMON_DEFINES))
 
 .PHONY : clean
 clean :
