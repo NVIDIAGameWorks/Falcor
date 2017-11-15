@@ -474,12 +474,12 @@ namespace Falcor
         return mResources.empty() && mConstantBuffers.empty() && mStructuredBuffers.empty();
     }
 
-    static void flattenResources(const std::string& name, const ReflectionVar::SharedConstPtr& pVar, std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>>& pResources)
+    static void flattenResources(const std::string& name, const ReflectionType* pType, std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>>& pResources)
     {
-        const ReflectionType* pType = pVar->getType().get();
         std::string namePrefix = name + (name.size() ? "." : "");
         const ReflectionStructType* pStructType = dynamic_cast<const ReflectionStructType*>(pType);
         if (pStructType)
+        {
             for (const auto& pMember : *pStructType)
             {
                 const ReflectionResourceType* pResourceType = dynamic_cast<const ReflectionResourceType*>(pMember->getType().get());
@@ -496,15 +496,16 @@ namespace Falcor
                     {
                         for (uint32_t j = 0; j < pArrayType->getArraySize(); j++)
                         {
-                            flattenResources(namePrefix + pMember->getName() + '[' + std::to_string(j) + ']', pMember, pResources);
+                            flattenResources(namePrefix + pMember->getName() + '[' + std::to_string(j) + ']', pMember->getType().get(), pResources);
                         }
                     }
                     else
                     {
-                        flattenResources(namePrefix + pMember->getName(), pMember, pResources);
+                        flattenResources(namePrefix + pMember->getName(), pMember->getType().get(), pResources);
                     }
                 }
             }
+        }
     }
 
     static const ReflectionVar* findVarCommon(const ParameterBlockReflection::ResourceMap& map, const std::string& name)
@@ -562,7 +563,7 @@ namespace Falcor
         if (pResourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
         {
             std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>> pResources;
-            flattenResources("", pVar, pResources);
+            flattenResources("", pVar->getType()->asResourceType()->getStructType().get(), pResources);
             for (const auto& r : pResources)
             {
                 addResource(r.first, r.second);
@@ -683,11 +684,11 @@ namespace Falcor
 
     ReflectionResourceType::SharedPtr ReflectionResourceType::create(Type type, uint32_t regIndex, uint32_t regSpace, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess)
     {
-        return SharedPtr(new ReflectionResourceType(type, regIndex, regSpace, structuredType, retType, shaderAccess));
+        return SharedPtr(new ReflectionResourceType(type, regIndex, regSpace, dims, structuredType, retType, shaderAccess));
     }
 
-    ReflectionResourceType::ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess) :
-        ReflectionType(kInvalidOffset), mType(type), mRegIndex(regIndex), mRegSpace(regSpace), mStructuredType(structuredType), mReturnType(retType), mShaderAccess(shaderAccess) {}
+    ReflectionResourceType::ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess) :
+        ReflectionType(kInvalidOffset), mType(type), mRegIndex(regIndex), mRegSpace(regSpace), mStructuredType(structuredType), mReturnType(retType), mShaderAccess(shaderAccess), mDimensions(dims) {}
 
     ReflectionBasicType::SharedPtr ReflectionBasicType::create(size_t offset, Type type, bool isRowMajor)
     {
@@ -716,6 +717,20 @@ namespace Falcor
             pVar = mpGlobalBlock->getStructuredBuffer(name);
         }
 
+        if (pVar)
+        {
+            binding.regIndex = pVar->getRegisterIndex();
+            binding.regSpace = pVar->getRegisterSpace();
+        }
+        return binding;
+    }
+
+    ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const
+    {
+        ResourceBinding binding;
+        if (mpGlobalBlock == nullptr) return binding;
+        // Search the constant-buffers
+        const ReflectionVar* pVar = mpGlobalBlock->getResource(name);
         if (pVar)
         {
             binding.regIndex = pVar->getRegisterIndex();

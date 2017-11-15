@@ -229,7 +229,7 @@ namespace Falcor
         Type getType() const { return mType; }
         size_t getSize() const { return mpStructType ? mpStructType->getSize() : 0; }
     private:
-        ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
+        ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
         Dimensions mDimensions;
         StructuredType mStructuredType;
         ReturnType mReturnType;
@@ -316,6 +316,7 @@ namespace Falcor
         };
 
         ResourceBinding getBufferBinding(const std::string& name) const;
+        ResourceBinding getResourceBinding(const std::string& name) const;
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);

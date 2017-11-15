@@ -338,29 +338,37 @@ namespace Falcor
 // //         setResourceSrvUavCommon({ pDesc->getRegisterSpace(), pDesc->getRegisterIndex() }, arrayIndex, pDesc->getShaderAccess(), resource, assignedSrvs, assignedUavs, rootSets);
 //     }
 
-//     bool verifyBufferResourceDesc(const ProgramReflection::Resource* pDesc, uint32_t arrayIndex, const std::string& name, ProgramReflection::Resource::ResourceType expectedType, ProgramReflection::Resource::Dimensions expectedDims, const std::string& funcName)
-//     {
-//         if (pDesc == nullptr)
-//         {
-//             logWarning("ProgramVars::" + funcName + " - resource \"" + name + "\" was not found. Ignoring " + funcName + " call.");
-//             return false;
-//         }
-// 
-//         if (pDesc->type != expectedType || pDesc->dims != expectedDims)
-//         {
-//             logWarning("ProgramVars::" + funcName + " - variable '" + name + "' is the incorrect type. VarType = " + to_string(pDesc->type) + ", VarDims = " + to_string(pDesc->dims) + ". Ignoring call");
-//             return false;
-//         }
-// 
+    bool verifyBufferResourceDesc(const ReflectionVar* pVar, uint32_t arrayIndex, const std::string& name, ReflectionResourceType::Type expectedType, ReflectionResourceType::Dimensions expectedDims, const std::string& funcName)
+    {
+        if (pVar == nullptr)
+        {
+            logWarning("ProgramVars::" + funcName + " - resource \"" + name + "\" was not found. Ignoring " + funcName + " call.");
+            return false;
+        }
+
+        const ReflectionResourceType* pType = pVar->getType()->asResourceType();
+        if (pType == nullptr)
+        {
+            logWarning("ProgramVars::" + funcName + " - variable \"" + name + "\" is not a resource. Ignoring " + funcName + " call.");
+            return false;
+        }
+
+        if (pType->getType() != expectedType || pType->getDimensions() != expectedDims)
+        {
+            logWarning("ProgramVars::" + funcName + " - variable '" + name + "' is the incorrect type. VarType = " + to_string(pType->getType()) + ", VarDims = " + to_string(pType->getDimensions()) + ". Ignoring call");
+            return false;
+        }
+
+        // #PARAMBLOCK
 //         if (pDesc->arraySize && arrayIndex >= pDesc->arraySize)
 //         {
 //             logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
 //             return false;
 //         }
-//         return true;
-//     }
+        return true;
+    }
 
-    static const ReflectionVar* getResourceDescAndArrayIndex(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex)
+    static const ReflectionVar* getResourceVarAndArrayIndex(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex)
     {
         const ReflectionVar* pVar = pReflector->getResource(name.c_str());
         arrayIndex = 0;
@@ -393,16 +401,17 @@ namespace Falcor
     bool ProgramVars::setTypedBuffer(const std::string& name, TypedBufferBase::SharedPtr pBuf)
     {
         // Find the buffer
-//         uint32_t arrayIndex;
-//         const ProgramReflection::Resource* pDesc = getResourceDescAndArrayIndex(mpReflector.get(), name, arrayIndex);
-// 
-//         if (verifyBufferResourceDesc(pDesc, arrayIndex, name, ProgramReflection::Resource::ResourceType::TypedBuffer, ProgramReflection::Resource::Dimensions::Buffer, "setTypedBuffer()") == false)
-//         {
-//             return false;
-//         }
-// 
-//         setResourceSrvUavCommon(pDesc, arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
-// 
+        uint32_t arrayIndex;
+        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
+        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+
+        if (verifyBufferResourceDesc(pVar, arrayIndex, name, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::Dimensions::Buffer, "setTypedBuffer()") == false)
+        {
+            return false;
+        }
+
+        setResourceSrvUavCommon(pVar, arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
+ 
         return true;
     }
 
@@ -630,7 +639,7 @@ namespace Falcor
     {
        uint32_t arrayIndex;
        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-       const ReflectionVar* pVar = getResourceDescAndArrayIndex(pGlobalBlock, name, arrayIndex);
+       const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
         if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined,  name, "setTexture()") == false)
         {
@@ -905,19 +914,18 @@ namespace Falcor
     ProgramVars::BindLocation getResourceBindLocation(const ProgramReflection* pReflector, const std::string& name)
     {
         ProgramVars::BindLocation loc;
-//         const auto& pDesc = pReflector->getResourceDesc(name);
-//         if (!pDesc) return loc;
-//         loc.baseRegIndex = pDesc->regIndex;
-//         loc.regSpace = pDesc->regSpace;
+        const auto& desc = pReflector->getResourceBinding(name);
+        loc.baseRegIndex = desc.regIndex;
+        loc.regSpace = desc.regSpace;
         return loc;
     }
 
     ProgramVars::BindLocation getBufferBindLocation(const ProgramReflection* pReflector, const std::string& name)
     {
         ProgramVars::BindLocation loc;
-//         const auto& desc = pReflector->getBufferBinding(name);
-//         loc.baseRegIndex = desc.baseRegIndex;
-//         loc.regSpace = desc.regSpace;
+        const auto& desc = pReflector->getBufferBinding(name);
+        loc.baseRegIndex = desc.regIndex;
+        loc.regSpace = desc.regSpace;
         return loc;
     }
 }
