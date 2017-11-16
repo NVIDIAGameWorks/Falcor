@@ -52,6 +52,8 @@ namespace Falcor
         const ReflectionBasicType* asBasicType() const;
         const ReflectionStructType* asStructType() const;
         const ReflectionArrayType* asArrayType() const;
+        const ReflectionType* unwrapArray() const;
+        uint32_t getTotalArraySize() const;
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const = 0;
     protected:
         ReflectionType(size_t offset) : mOffset(offset) {}
@@ -161,7 +163,7 @@ namespace Falcor
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
     };
 
-    class ReflectionResourceType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionResourceType>
+    class ReflectionResourceType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionResourceType>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionResourceType>;

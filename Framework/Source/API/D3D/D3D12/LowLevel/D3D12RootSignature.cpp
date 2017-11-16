@@ -191,11 +191,23 @@ namespace Falcor
         for (const auto& buf : bufMap)
         {
             const ReflectionVar* pVar = buf.second.get();
-            const ReflectionResourceType* pType = pVar->getType()->asResourceType();
+            const ReflectionArrayType* pArray = pVar->getType()->asArrayType();
+            const ReflectionResourceType* pType;
+            uint32_t count = 1;
+            if(pArray)
+            {
+                // #PARAMBLOCK support non-1D arrays
+                count = pArray->getArraySize();
+                pType = pArray->getType()->asResourceType();
+            }
+            else
+            {
+                pType = pVar->getType()->asResourceType();
+            }
+            assert(pType);
             if (pType->getShaderAccess() == getRequiredShaderAccess(descType))
             {
                 RootSignature::DescriptorSetLayout descTable;
-                uint32_t count = 1;// pType->getArraySize() ? pType->getArraySize() : 1; #PARAMBLOCK
                 descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
                 cost += 1;
                 desc.addDescriptorSet(descTable);
@@ -219,7 +231,8 @@ namespace Falcor
         for (auto& resIt : resMap)
         {
             const ReflectionVar* pVar = resIt.second.get();
-            const ReflectionResourceType* pType = pVar->getType()->asResourceType();
+            const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
+            assert(pType);
 
 //            assert(resource.descOffset == 0); // #PARAMBLOCK
             RootSignature::DescType descType;

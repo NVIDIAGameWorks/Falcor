@@ -39,7 +39,7 @@ namespace Falcor
 #define verify_element_index() if(elementIndex >= mElementCount) {logWarning(std::string(__FUNCTION__) + ": elementIndex is out-of-bound. Ignoring call."); return;}
 
     StructuredBuffer::StructuredBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflector, size_t elementCount, Resource::BindFlags bindFlags)
-        : VariablesBuffer(name, pReflector, 0, elementCount, bindFlags, Buffer::CpuAccess::None)
+        : VariablesBuffer(name, pReflector, pReflector->getStructType()->getSize(), elementCount, bindFlags, Buffer::CpuAccess::None)
     {
         if (hasUAVCounter())
         {
@@ -59,18 +59,11 @@ namespace Falcor
     {
         const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
         const auto& pGlobalBlock = pProgReflector->getParameterBlock("");
-        ReflectionVar::SharedConstPtr pVar;
-        if (pGlobalBlock)
-        {
-            const auto& buffers = pGlobalBlock->getConstantBuffers();
-            if (buffers.find(name) != buffers.end())
-            {
-                pVar = buffers.at(name);
-            }
-        }
+        const ReflectionVar* pVar = pGlobalBlock ? pGlobalBlock->getStructuredBuffer(name) : nullptr;
+
         if (pVar)
         {
-            const ReflectionResourceType::SharedConstPtr pType = std::dynamic_pointer_cast<const ReflectionResourceType>(pVar->getType());
+            ReflectionResourceType::SharedConstPtr pType = pVar->getType()->unwrapArray()->asResourceType()->inherit_shared_from_this::shared_from_this();
             if(pType)
             {
                 return create(pVar->getName(), pType, elementCount, bindFlags);

@@ -70,13 +70,13 @@ namespace Falcor
         for (auto& buf : resMap)
         {
             const ReflectionVar::SharedConstPtr& pVar = buf.second;
-            const ReflectionResourceType::SharedConstPtr& pType = std::dynamic_pointer_cast<const ReflectionResourceType>(pVar->getType());
+            const ReflectionResourceType::SharedConstPtr pType = pVar->getType()->unwrapArray()->asResourceType()->inherit_shared_from_this::shared_from_this();
             assert(pType);
             if (pType->getShaderAccess() == shaderAccess)
             {
                 uint32_t regIndex = pVar->getRegisterIndex();
                 uint32_t regSpace = pVar->getRegisterSpace();
-                uint32_t arraySize = 1;// #PARAMBLOCK max(1u, pType->getArraySize());
+                uint32_t arraySize = max(1u, pVar->getType()->getTotalArraySize());
                 ProgramVars::ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
                 if (data.rootData.rootIndex == -1)
                 {
@@ -135,9 +135,9 @@ namespace Falcor
         for (const auto& res : pGlobalBlock->getResources())
         {
             const ReflectionVar::SharedConstPtr& pVar = res.second;
-            const ReflectionResourceType* pType = pVar->getType()->asResourceType();
+            const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
             assert(pType);
-            uint32_t count = 1;//#PARAMBLOCK pType->getArraySize() ? pType->getArraySize() : 1;
+            uint32_t count = max(1u, pVar->getType()->getTotalArraySize());
             for (uint32_t index = 0; index < (0 + count); ++index) // #PARAMBLOCK the 0 used to be descOffset
             {
                 uint32_t regIndex = pVar->getRegisterIndex();

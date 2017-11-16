@@ -381,9 +381,7 @@ namespace Falcor
         uint32_t space = pSlangLayout->getBindingSpace() + regSpace;
         size_t curOffset = (uint32_t)pSlangLayout->getOffset() + offset;;
         ReflectionType::SharedPtr pType = reflectType(pSlangLayout->getTypeLayout(), curOffset, index, space);
-
-        const ReflectionResourceType* pResType = dynamic_cast<const ReflectionResourceType*>(pType.get());
-        if (pResType)
+        if (pType->unwrapArray()->asResourceType())
         {
             return ReflectionVar::create(name, pType, index, space);
         }
@@ -536,7 +534,8 @@ namespace Falcor
     void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar)
     {
         decltype(mResources)* pMap = nullptr;
-        const ReflectionResourceType* pResourceType = dynamic_cast<const ReflectionResourceType*>(pVar->getType().get());
+
+        const ReflectionResourceType* pResourceType = pVar->getType()->unwrapArray()->asResourceType();
         assert(pResourceType);
         switch (pResourceType->getType())
         {
@@ -672,6 +671,29 @@ namespace Falcor
     const ReflectionArrayType* ReflectionType::asArrayType() const
     {
         return dynamic_cast<const ReflectionArrayType*>(this);
+    }
+
+    const ReflectionType* ReflectionType::unwrapArray() const
+    {
+        const ReflectionType* pType = this;
+        while (pType->asArrayType())
+        {
+            pType = pType->asArrayType()->getType().get();
+        }
+        return pType;
+    }
+
+    uint32_t ReflectionType::getTotalArraySize() const
+    {
+        const ReflectionArrayType* pArray = asArrayType();
+        if (pArray == nullptr) return 0;
+        uint32_t arraySize = 1;
+        while (pArray)
+        {
+            arraySize *= pArray->getArraySize();
+            pArray = pArray->getType()->asArrayType();
+        }
+        return arraySize;
     }
 
     ReflectionArrayType::SharedPtr ReflectionArrayType::create(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType)
