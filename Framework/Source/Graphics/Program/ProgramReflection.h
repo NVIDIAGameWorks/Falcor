@@ -219,7 +219,7 @@ namespace Falcor
             ConstantBuffer,
         };
         
-        static SharedPtr create(Type type, uint32_t regIndex, uint32_t regSpace, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
+        static SharedPtr create(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
         void setStructType(const ReflectionStructType::SharedPtr& pType) { mpStructType = pType; }
 
         const ReflectionStructType::SharedPtr& getStructType() const { return mpStructType; }
@@ -227,18 +227,14 @@ namespace Falcor
         StructuredType getStructuredBufferType() const { return mStructuredType; }
         ReturnType getReturnType() const { return mReturnType; }
         ShaderAccess getShaderAccess() const { return mShaderAccess; }
-        uint32_t getRegisterIndex() const { return mRegIndex; }
-        uint32_t getRegisterSpace() const { return mRegSpace; }
         Type getType() const { return mType; }
         size_t getSize() const { return mpStructType ? mpStructType->getSize() : 0; }
     private:
-        ReflectionResourceType(Type type, uint32_t regIndex, uint32_t regSpace, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
+        ReflectionResourceType(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
         Dimensions mDimensions;
         StructuredType mStructuredType;
         ReturnType mReturnType;
         ShaderAccess mShaderAccess;
-        uint32_t mRegIndex;
-        uint32_t mRegSpace;
         Type mType;
         ReflectionStructType::SharedPtr mpStructType;   // For constant- and structured-buffers
 

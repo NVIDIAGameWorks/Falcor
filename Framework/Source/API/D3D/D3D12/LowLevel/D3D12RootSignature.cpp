@@ -260,7 +260,7 @@ namespace Falcor
                 }
             }
 
-            uint32_t count = 1;// pType->getArraySize() ? pType->getArraySize() : 1; #PARAMBLOCK
+            uint32_t count = max(1u, pVar->getType()->getTotalArraySize());
             RootSignature::DescriptorSetLayout descTable;
             descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
             d.addDescriptorSet(descTable);
