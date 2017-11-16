@@ -350,7 +350,7 @@ namespace Falcor
     ReflectionType::SharedPtr reflectBasicType(TypeLayoutReflection* pSlangType, size_t offset, uint32_t bindIndex, uint32_t regSpace)
     {
         ReflectionBasicType::Type type = getVariableType(pSlangType->getScalarType(), pSlangType->getRowCount(), pSlangType->getColumnCount());
-        ReflectionType::SharedPtr pType = ReflectionBasicType::create(offset, type, true);
+        ReflectionType::SharedPtr pType = ReflectionBasicType::create(offset, type, false);
         return pType;
     }
 
@@ -602,7 +602,8 @@ namespace Falcor
 
     ReflectionVar::SharedConstPtr ReflectionArrayType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
     {
-        if (!name.size() || name[strPos] != '[')
+        if (name[strPos] == '[') ++strPos;
+        if (name.size() <= strPos)
         {
             logWarning("Looking for a variable named " + name + " which requires an array-index, but no index provided");
             return nullptr;
@@ -615,7 +616,7 @@ namespace Falcor
         }
 
         // Get the array index
-        std::string indexStr = name.substr(strPos + 1, endPos);
+        std::string indexStr = name.substr(strPos, endPos);
         uint32_t index = (uint32_t)std::stoi(indexStr);
         if (index >= mArraySize)
         {
@@ -631,8 +632,8 @@ namespace Falcor
     ReflectionVar::SharedConstPtr ReflectionStructType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
     {
         // Find the location of the next '.'
-        size_t newPos = name.find_first_of(".[");
-        std::string field = name.substr(strPos, newPos);
+        size_t newPos = name.find_first_of(".[", strPos);
+        std::string field = name.substr(strPos, newPos - strPos);
         size_t fieldIndex = getMemberIndex(field);
         if (fieldIndex == ReflectionType::kInvalidOffset)
         {
@@ -643,7 +644,7 @@ namespace Falcor
         const auto& pVar = getMember(fieldIndex);
         if (newPos == std::string::npos) return pVar;
         const auto& pNewType = pVar->getType().get();
-        return pNewType->findMemberInternal(name, newPos, pVar->getOffset(), pVar->getRegisterIndex(), pVar->getRegisterSpace());
+        return pNewType->findMemberInternal(name, newPos + 1, pVar->getOffset(), pVar->getRegisterIndex(), pVar->getRegisterSpace());
     }
 
     size_t ReflectionStructType::getMemberIndex(const std::string& name) const

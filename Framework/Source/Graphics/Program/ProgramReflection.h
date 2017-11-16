@@ -156,6 +156,7 @@ namespace Falcor
 
         static SharedPtr create(size_t offset, Type type, bool isRowMajor);
         Type getType() const { return mType; }
+        bool isRowMajor() const { return mIsRowMajor; }
     private:
         ReflectionBasicType(size_t offset, Type type, bool isRowMajor);
         Type mType;

@@ -218,6 +218,8 @@ namespace Falcor
             logWarning("Couldn't find a " + to_string(bufferType) + " named " + name);
             return ProgramReflection::ResourceBinding();
         }
+        // #PARAMBLOCK Handle arrays
+        arrayIndex = 0;
         return pReflector->getBufferBinding(name);
     }
 
@@ -230,7 +232,7 @@ namespace Falcor
             logWarning("Constant buffer \"" + name + "\" was not found. Ignoring getConstantBuffer() call.");
             return nullptr;
         }
-        return getConstantBuffer(0, 0, 0);
+        return getConstantBuffer(binding.regSpace, binding.regIndex, arrayIndex);
     }
 
     ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const

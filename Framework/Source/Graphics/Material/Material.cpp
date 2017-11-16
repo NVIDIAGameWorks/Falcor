@@ -316,11 +316,11 @@ namespace Falcor
         static const size_t dataSize = sizeof(MaterialDesc) + sizeof(MaterialValues);
         static_assert(dataSize % sizeof(glm::vec4) == 0, "Material::MaterialData size should be a multiple of 16");
 
-        size_t offset = pCB->getVariableOffset(std::string(varName) + ".desc.layers[0].type");
+        size_t offset = pCB->getVariableOffset(std::string(varName));
 
         if(offset == ConstantBuffer::kInvalidOffset)
         {
-            logError(std::string("Material::setIntoConstantBuffer() - variable \"") + varName + "\"not found in constant buffer\n");
+            logError(std::string("Material::setIntoConstantBuffer() - variable \"") + varName + "\" not found in constant buffer\n");
             return;
         }
 

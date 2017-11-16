@@ -77,17 +77,16 @@ namespace Falcor
             {
                 const ReflectionType* pType = pVar->getType().get();
 
-// #PARAMBLOCK
-//                 assert(pType->findMember("gWorldMat[0]")->getType()->isRowMajor() == false); // We copy into CBs as column-major
-//                 assert(pType->findMember("gWorldInvTransposeMat[0]")->getType()->isRowMajor() == false);
-//                 assert(pType->findMember("gWorldMat")->getType()->getArraySize() == pType->findMember("gWorldInvTransposeMat")->getType()->getArraySize());
+                assert(pType->findMember("gWorldMat[0]")->getType()->asBasicType()->isRowMajor() == false); // We copy into CBs as column-major
+                assert(pType->findMember("gWorldInvTransposeMat[0]")->getType()->asBasicType()->isRowMajor() == false);
+                assert(pType->findMember("gWorldMat")->getType()->getTotalArraySize() == pType->findMember("gWorldInvTransposeMat")->getType()->getTotalArraySize());
 
-//                 sWorldMatArraySize = pType->findMember("gWorldMat")->getType()->getArraySize();
-//                 sWorldMatOffset = pType->findMember("gWorldMat[0]")->getType()->getOffset();
-//                 sWorldInvTransposeMatOffset = pType->findMember("gWorldInvTransposeMat[0]")->getType()->getOffset();
-//                 sMeshIdOffset = pType->findMember("gMeshId")->getType()->getOffset();
-//                 sDrawIDOffset = pType->findMember("gDrawId[0]")->getType()->getOffset();
-//                 sPrevWorldMatOffset = pType->findMember("gPrevWorldMat[0]")->getType()->getOffset();
+                sWorldMatArraySize = pType->findMember("gWorldMat")->getType()->getTotalArraySize();
+                sWorldMatOffset = pType->findMember("gWorldMat[0]")->getOffset();
+                sWorldInvTransposeMatOffset = pType->findMember("gWorldInvTransposeMat[0]")->getOffset();
+                sMeshIdOffset = pType->findMember("gMeshId")->getOffset();
+                sDrawIDOffset = pType->findMember("gDrawId[0]")->getOffset();
+                sPrevWorldMatOffset = pType->findMember("gPrevWorldMat[0]")->getOffset();
             }
         }
 
@@ -97,15 +96,14 @@ namespace Falcor
 
             if (pVar != nullptr)
             {
-// #PARAMBLOCK
-//                 const ReflectionType* pType = pVar->getType().get();
-//                 sCameraDataOffset = pType->findMember("gCam.viewMat")->getType()->getOffset();
-//                 const auto& pCountOffset = pType->findMember("gLightsCount");
-//                 sLightCountOffset = pCountOffset ? pCountOffset->getType()->getOffset() : ConstantBuffer::kInvalidOffset;
-//                 const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
-//                 sLightArrayOffset = pLightOffset ? pLightOffset->getType()->getOffset() : ConstantBuffer::kInvalidOffset;
-//                 const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
-//                 sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getType()->getOffset() : ConstantBuffer::kInvalidOffset;
+                const ReflectionType* pType = pVar->getType().get();
+                sCameraDataOffset = pType->findMember("gCam.viewMat")->getOffset();
+                const auto& pCountOffset = pType->findMember("gLightsCount");
+                sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
+                sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
+                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }
