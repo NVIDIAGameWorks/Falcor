@@ -480,7 +480,7 @@ namespace Falcor
         {
             for (const auto& pMember : *pStructType)
             {
-                const ReflectionResourceType* pResourceType = dynamic_cast<const ReflectionResourceType*>(pMember->getType().get());
+                const ReflectionResourceType* pResourceType = pMember->getType()->unwrapArray()->asResourceType();
                 if (pResourceType)
                 {
                     pResources.push_back({ namePrefix + pMember->getName() , pMember });
@@ -561,6 +561,7 @@ namespace Falcor
         // If this is a constant-buffer, it might contain resources. Extract them.
         if (pResourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
         {
+            assert(pVar->getName() != "InternalPerMaterialCB");
             std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>> pResources;
             flattenResources("", pVar->getType()->asResourceType()->getStructType().get(), pResources);
             for (const auto& r : pResources)
