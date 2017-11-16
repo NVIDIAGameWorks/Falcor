@@ -84,9 +84,12 @@ namespace Falcor
 
     void RenderContext::clearFbo(const Fbo* pFbo, const glm::vec4& color, float depth, uint8_t stencil, FboAttachmentType flags)
     {
-        bool clearDepth = (flags & FboAttachmentType::Depth) != FboAttachmentType::None;
+        bool hasDepthStencilTexture = pFbo->getDepthStencilTexture() != nullptr;
+        ResourceFormat depthStencilFormat = hasDepthStencilTexture ? pFbo->getDepthStencilTexture()->getFormat() : ResourceFormat::Unknown;
+
         bool clearColor = (flags & FboAttachmentType::Color) != FboAttachmentType::None;
-        bool clearStencil = (flags & FboAttachmentType::Stencil) != FboAttachmentType::None;
+        bool clearDepth = hasDepthStencilTexture && ((flags & FboAttachmentType::Depth) != FboAttachmentType::None);
+        bool clearStencil = hasDepthStencilTexture && ((flags & FboAttachmentType::Stencil) != FboAttachmentType::None) && isStencilFormat(depthStencilFormat);
 
         if (clearColor)
         {
@@ -99,7 +102,7 @@ namespace Falcor
             }
         }
 
-        if ((clearDepth | clearStencil) && pFbo->getDepthStencilTexture() != nullptr)
+        if (clearDepth || clearStencil)
         {
             clearDsv(pFbo->getDepthStencilView().get(), depth, stencil, clearDepth, clearStencil);
         }
