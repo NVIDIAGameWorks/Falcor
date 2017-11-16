@@ -236,7 +236,11 @@ namespace Falcor
     */
     inline std::string utf32ToUtf8(uint32_t codepoint)
     {
+#ifdef _WIN32
+        std::wstring_convert<std::codecvt_utf8<uint32_t>, uint32_t> cvt;
+#else
         std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cvt;
+#endif
         return cvt.to_bytes(codepoint);
     }
 
