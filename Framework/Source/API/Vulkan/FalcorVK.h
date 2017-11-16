@@ -114,7 +114,7 @@ namespace Falcor
     using RasterizerStateHandle = void*;
     using BlendStateHandle = void*;
 
-    static const uint32_t kSwapChainBuffers = 4;
+    static const uint32_t kDefaultSwapChainBuffers = 3;
 
     using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 

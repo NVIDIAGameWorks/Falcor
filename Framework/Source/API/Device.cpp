@@ -53,8 +53,6 @@ namespace Falcor
         assert(desc.cmdQueues[kDirectQueueIndex] > 0);
         if (apiInit(desc) == false) return false;
 
-        mpRenderContext = RenderContext::create(mCmdQueues[kDirectQueueIndex][0]);
-
         // Create the descriptor pools
         DescriptorPool::Desc poolDesc;
         // For DX12 there is no difference between the different SRV/UAV types. For Vulkan it matters, hence the #ifdef
@@ -73,10 +71,6 @@ namespace Falcor
 
         // Create the swap-chain
         mpResourceAllocator = ResourceAllocator::create(1024 * 1024 * 2, mpRenderContext->getLowLevelData()->getFence());
-        if (createSwapChain(desc.colorFormat) == false)
-        {
-            return false;
-        }
 
         mpFrameFence = GpuFence::create();
 
@@ -95,7 +89,7 @@ namespace Falcor
     void Device::releaseFboData()
     {
         // First, delete all FBOs
-        for (uint32_t i = 0; i < arraysize(mpSwapChainFbos); i++)
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
         {
             mpSwapChainFbos[i]->attachColorTarget(nullptr, 0);
             mpSwapChainFbos[i]->attachDepthStencilTarget(nullptr);
@@ -107,10 +101,12 @@ namespace Falcor
 
     bool Device::updateDefaultFBO(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat)
     {
-        std::vector<ResourceHandle> apiHandles(kSwapChainBuffers);
+        mpSwapChainFbos.resize(mSwapChainBufferCount);
+
+        std::vector<ResourceHandle> apiHandles(mSwapChainBufferCount);
         getApiFboData(width, height, colorFormat, depthFormat, apiHandles, mCurrentBackBufferIndex);
 
-        for (uint32_t i = 0; i < kSwapChainBuffers; i++)
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
         {
             // Create a texture object
             auto pColorTex = Texture::SharedPtr(new Texture(width, height, 1, 1, 1, 1, colorFormat, Texture::Type::Texture2D, Texture::BindFlags::RenderTarget));
@@ -178,7 +174,7 @@ namespace Falcor
         mpRenderContext->setComputeVars(nullptr);
 
         for (uint32_t i = 0; i < arraysize(mCmdQueues); i++) mCmdQueues[i].clear();
-        for (uint32_t i = 0; i < arraysize(mpSwapChainFbos); i++) mpSwapChainFbos[i].reset();
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++) mpSwapChainFbos[i].reset();
         mDeferredReleases = decltype(mDeferredReleases)();
 
         mpRenderContext.reset();

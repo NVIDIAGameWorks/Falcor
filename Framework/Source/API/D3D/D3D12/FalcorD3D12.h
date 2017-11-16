@@ -98,7 +98,7 @@ namespace Falcor
     using BlendStateHandle = void*;
     using DescriptorSetApiHandle = void*;
 
-    static const uint32_t kSwapChainBuffers = 3;
+    static const uint32_t kDefaultSwapChainBuffers = 3;
 
     inline constexpr uint32_t getMaxViewportCount() { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
     /*! @} */

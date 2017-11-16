@@ -72,7 +72,7 @@ namespace Falcor
 
         struct  
         {
-            VkFence f[kSwapChainBuffers];
+            std::vector<VkFence> f;
             uint32_t cur = 0;
         } presentFences;
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
@@ -84,23 +84,23 @@ namespace Falcor
     {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-		uint32_t bits = 0;
+        uint32_t bits = 0;
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
         {
             if ((memProperties.memoryTypes[i].propertyFlags & memFlagBits) == memFlagBits)
             {
-				bits |= (1 << i);
+                bits |= (1 << i);
             }
         }
-		return bits;
+        return bits;
     }
 
-    static uint32_t getCurrentBackBufferIndex(VkDevice device, DeviceApiData* pApiData)
+    static uint32_t getCurrentBackBufferIndex(VkDevice device, uint32_t backBufferCount, DeviceApiData* pApiData)
     {
         VkFence fence = pApiData->presentFences.f[pApiData->presentFences.cur];
         vk_call(vkWaitForFences(device, 1, &fence, false, -1));
 
-        pApiData->presentFences.cur = (pApiData->presentFences.cur + 1) % kSwapChainBuffers;
+        pApiData->presentFences.cur = (pApiData->presentFences.cur + 1) % backBufferCount;
         fence = pApiData->presentFences.f[pApiData->presentFences.cur];
         vkResetFences(device, 1, &fence);
         uint32_t newIndex;
@@ -141,7 +141,7 @@ namespace Falcor
         }
 
         // Get the back-buffer
-        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mpApiData);
+        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mSwapChainBufferCount, mpApiData);
         return true;
     }
 
@@ -622,7 +622,7 @@ namespace Falcor
         info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         info.surface = mApiHandle;
         uint32 maxImageCount = surfaceCapabilities.maxImageCount ? surfaceCapabilities.maxImageCount : UINT32_MAX; // 0 means no limit on the number of images
-        info.minImageCount = clamp(kSwapChainBuffers, surfaceCapabilities.minImageCount, maxImageCount);
+        info.minImageCount = clamp(kDefaultSwapChainBuffers, surfaceCapabilities.minImageCount, maxImageCount);
         info.imageFormat = requestedFormat;
         info.imageColorSpace = requestedColorSpace;
         info.imageExtent = { swapchainExtent.width, swapchainExtent.height };
@@ -643,6 +643,8 @@ namespace Falcor
             return false;
         }
 
+        vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &mSwapChainBufferCount, nullptr);
+
         return true;
     }
 
@@ -653,12 +655,12 @@ namespace Falcor
         info.pSwapchains = &mpApiData->swapchain;
         info.pImageIndices = &mCurrentBackBufferIndex;
         vk_call(vkQueuePresentKHR(mpRenderContext->getLowLevelData()->getCommandQueue(), &info));
-        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mpApiData);
+        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mSwapChainBufferCount, mpApiData);
     }
 
     bool Device::apiInit(const Desc& desc)
     {
-		mRgb32FloatSupported = false;
+        mRgb32FloatSupported = false;
 
         mpApiData = new DeviceApiData;
         VkInstance instance = createInstance(mpApiData, desc);
@@ -674,12 +676,21 @@ namespace Falcor
         mApiHandle = DeviceHandle::create(instance, physicalDevice, device, surface);
         mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
 
+        if (createSwapChain(desc.colorFormat) == false)
+        {
+            return false;
+        }
+
+        mpApiData->presentFences.f.resize(mSwapChainBufferCount);
         for (auto& f : mpApiData->presentFences.f)
         {
             VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
             info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
             vk_call(vkCreateFence(device, &info, nullptr, &f));
         }
+
+        mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+
         return true;
     }
 
