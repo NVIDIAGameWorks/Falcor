@@ -342,7 +342,8 @@ namespace Falcor
     void setResourceSrvUavCommon(const ReflectionVar* pVar, uint32_t arrayIndex, const Resource::SharedPtr& resource, ProgramVars::ResourceMap<ShaderResourceView>& assignedSrvs, ProgramVars::ResourceMap<UnorderedAccessView>& assignedUavs, std::vector<ProgramVars::RootSet>& rootSets)
     {
 //        arrayIndex += pDesc->descOffset; // #PARAMBLOCK
-        setResourceSrvUavCommon({ pVar->getRegisterSpace(), pVar->getRegisterIndex() }, arrayIndex, pVar->getType()->asResourceType()->getShaderAccess(), resource, assignedSrvs, assignedUavs, rootSets);
+        auto shaderAccess = pVar->getType()->unwrapArray()->asResourceType()->getShaderAccess();
+        setResourceSrvUavCommon({ pVar->getRegisterSpace(), pVar->getRegisterIndex() }, arrayIndex, shaderAccess, resource, assignedSrvs, assignedUavs, rootSets);
     }
 
 //     void setResourceSrvUavCommon(const ProgramReflection::BufferReflection *pDesc, uint32_t arrayIndex, const Resource::SharedPtr& resource, ProgramVars::ResourceMap<ShaderResourceView>& assignedSrvs, ProgramVars::ResourceMap<UnorderedAccessView>& assignedUavs, std::vector<ProgramVars::RootSet>& rootSets)
@@ -358,7 +359,7 @@ namespace Falcor
             return false;
         }
 
-        const ReflectionResourceType* pType = pVar->getType()->asResourceType();
+        const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
         if (pType == nullptr)
         {
             logWarning("ProgramVars::" + funcName + " - variable \"" + name + "\" is not a resource. Ignoring " + funcName + " call.");
@@ -371,12 +372,12 @@ namespace Falcor
             return false;
         }
 
-        // #PARAMBLOCK
-//         if (pDesc->arraySize && arrayIndex >= pDesc->arraySize)
-//         {
-//             logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
-//             return false;
-//         }
+        const ReflectionArrayType* pArray = pVar->getType()->asArrayType();
+        if (pArray && (arrayIndex >= pArray->getArraySize()))
+        {
+            logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
+            return false;
+        }
         return true;
     }
 
@@ -434,15 +435,14 @@ namespace Falcor
         const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
         const ReflectionVar* pVar = pGlobalBlock->getStructuredBuffer(name);
 
-        // #PARAMBLOCK
-//         if (pType == nullptr)
-//         {
-//             std::string noArray;
-//             if (parseArrayIndex(name, noArray, arrayIndex))
-//             {
-//                 pBufDesc = pReflector->getBufferDesc(noArray, ProgramReflection::BufferReflection::Type::Structured).get();
-//             }
-//         }
+        if (pVar == nullptr)
+        {
+            std::string noArray;
+            if (parseArrayIndex(name, noArray, arrayIndex))
+            {
+                pVar = pGlobalBlock->getStructuredBuffer(noArray);
+            }
+        }
 
         if (pVar == nullptr)
         {
