@@ -182,48 +182,10 @@ namespace Falcor
 
     ReflectionResourceType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
 
-    static uint32_t initializeBufferDescriptors(const ProgramReflection* pReflector, RootSignature::Desc& desc, RootSignature::DescType descType)
-    {
-        uint32_t cost = 0;
-        assert(descType == RootSignature::DescType::Cbv || descType == RootSignature::DescType::StructuredBufferSrv || descType == RootSignature::DescType::StructuredBufferUav);
-        const auto& pGlobalBlock = pReflector->getParameterBlock("");
-        const auto& bufMap = (descType == RootSignature::DescType::Cbv) ? pGlobalBlock->getConstantBuffers() : pGlobalBlock->getStructuredBuffers();
-        for (const auto& buf : bufMap)
-        {
-            const ReflectionVar* pVar = buf.second.get();
-            const ReflectionArrayType* pArray = pVar->getType()->asArrayType();
-            const ReflectionResourceType* pType;
-            uint32_t count = 1;
-            if(pArray)
-            {
-                // #PARAMBLOCK support non-1D arrays
-                count = pArray->getArraySize();
-                pType = pArray->getType()->asResourceType();
-            }
-            else
-            {
-                pType = pVar->getType()->asResourceType();
-            }
-            assert(pType);
-            if (pType->getShaderAccess() == getRequiredShaderAccess(descType))
-            {
-                RootSignature::DescriptorSetLayout descTable;
-                descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
-                cost += 1;
-                desc.addDescriptorSet(descTable);
-            }
-        }
-        return cost;
-    }
-
     uint32_t getRootDescFromReflector(const ProgramReflection* pReflector, RootSignature::Desc& d)
     {
         uint32_t cost = 0;
         d = RootSignature::Desc();
-
-        cost += initializeBufferDescriptors(pReflector, d, RootSignature::DescType::Cbv);
-        cost += initializeBufferDescriptors(pReflector, d, RootSignature::DescType::StructuredBufferSrv);
-        cost += initializeBufferDescriptors(pReflector, d, RootSignature::DescType::StructuredBufferUav);
 
         const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
         const ParameterBlockReflection::ResourceMap& resMap = pGlobalBlock->getResources();
@@ -254,7 +216,10 @@ namespace Falcor
                     break;
                 case ReflectionResourceType::Type::TypedBuffer:
                     descType = (shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TypedBufferUav : RootSignature::DescType::TypedBufferSrv;
-                    break;;
+                    break;
+                case ReflectionResourceType::Type::ConstantBuffer:
+                    descType = RootSignature::DescType::Cbv;
+                    break;
                 default:
                     should_not_get_here();
                 }

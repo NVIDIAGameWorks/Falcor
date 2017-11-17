@@ -71,7 +71,8 @@ namespace Falcor
         const ParameterBlockReflection* pBlock = pReflector->getParameterBlock("").get();
         if (sWorldMatOffset == ConstantBuffer::kInvalidOffset)
         {
-            const ReflectionVar* pVar = pBlock->getConstantBuffer(kPerMeshCbName);
+            const ReflectionVar* pVar = pBlock->getResource(kPerMeshCbName).get();
+            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
             if (pVar != nullptr)
             {
@@ -92,7 +93,8 @@ namespace Falcor
 
         if (sCameraDataOffset == ConstantBuffer::kInvalidOffset)
         {
-            const ReflectionVar* pVar = pBlock->getConstantBuffer(kPerFrameCbName);
+            const ReflectionVar* pVar = pBlock->getResource(kPerFrameCbName).get();
+            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
             if (pVar != nullptr)
             {

@@ -55,6 +55,9 @@ namespace Falcor
         const ReflectionType* unwrapArray() const;
         uint32_t getTotalArraySize() const;
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const = 0;
+
+        virtual bool operator==(const ReflectionType& other) const = 0;
+        virtual bool operator!=(const ReflectionType& other) const { return !(*this == other); }
     protected:
         ReflectionType(size_t offset) : mOffset(offset) {}
         size_t mOffset;
@@ -70,6 +73,8 @@ namespace Falcor
         uint32_t getArraySize() const { return mArraySize; }
         uint32_t getArrayStride() const { return mArrayStride; }
         const ReflectionType::SharedConstPtr& getType() const { return mpType; }
+        bool operator==(const ReflectionArrayType& other) const;
+        bool operator==(const ReflectionType& other) const override;
     private:
         ReflectionArrayType(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType);
         uint32_t mArraySize = 0;
@@ -101,6 +106,9 @@ namespace Falcor
         size_t getSize() const { return mSize; }
         const std::string& getName() const { return mName; }
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
+
+        bool operator==(const ReflectionStructType& other) const;
+        bool operator==(const ReflectionType& other) const override;
     private:
         ReflectionStructType(size_t offset, size_t size, const std::string& name);
         std::vector<std::shared_ptr<const ReflectionVar>> mMembers;   // Struct members
@@ -157,6 +165,9 @@ namespace Falcor
         static SharedPtr create(size_t offset, Type type, bool isRowMajor);
         Type getType() const { return mType; }
         bool isRowMajor() const { return mIsRowMajor; }
+
+        bool operator==(const ReflectionBasicType& other) const;
+        bool operator==(const ReflectionType& other) const override;
     private:
         ReflectionBasicType(size_t offset, Type type, bool isRowMajor);
         Type mType;
@@ -229,6 +240,9 @@ namespace Falcor
         ShaderAccess getShaderAccess() const { return mShaderAccess; }
         Type getType() const { return mType; }
         size_t getSize() const { return mpStructType ? mpStructType->getSize() : 0; }
+
+        bool operator==(const ReflectionResourceType& other) const;
+        bool operator==(const ReflectionType& other) const override;
     private:
         ReflectionResourceType(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
         Dimensions mDimensions;
@@ -255,6 +269,9 @@ namespace Falcor
         size_t getOffset() const { return mOffset; }
         uint32_t getRegisterSpace() const { return mRegSpace; }
         uint32_t getRegisterIndex() const { return (uint32_t)getOffset(); }
+
+        bool operator==(const ReflectionVar& other) const;
+        bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
     private:
         ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace);
         ReflectionType::SharedConstPtr mpType;
@@ -278,20 +295,14 @@ namespace Falcor
         bool isEmpty() const;
 
         const ResourceMap& getResources() const { return mResources; }
-        const ResourceMap& getConstantBuffers() const { return mConstantBuffers; }
-        const ResourceMap& getStructuredBuffers() const { return mStructuredBuffers; }
-
-        const ReflectionVar* getConstantBuffer(const std::string& name) const;
-        const ReflectionVar* getResource(const std::string& name) const;
-        const ReflectionVar* getStructuredBuffer(const std::string& name) const;
+        const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
     private:
         friend class ProgramReflection;
-        void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar);
+        void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar, bool addToStruct);
         ParameterBlockReflection(const std::string& name);
         ResourceMap mResources;
-        ResourceMap mConstantBuffers;
-        ResourceMap mStructuredBuffers;
 
+        ReflectionStructType::SharedPtr mpResourceVars;
         std::string mName;
     };
 
@@ -314,7 +325,6 @@ namespace Falcor
             uint32_t regSpace = kInvalidLocation;
         };
 
-        ResourceBinding getBufferBinding(const std::string& name) const;
         ResourceBinding getResourceBinding(const std::string& name) const;
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);

@@ -105,47 +105,40 @@ namespace Falcor
     }
 
     template<typename BufferType, typename ViewType, RootSignature::DescType descType, typename ViewInitFunc>
-    bool initializeBuffersMap(ProgramVars::ResourceMap<ViewType>& bufferMap, bool createBuffers, const ViewInitFunc& viewInitFunc, const ParameterBlockReflection::ResourceMap& resMap, const RootSignature* pRootSig)
+    void addBuffers(const ReflectionVar::SharedConstPtr& pVar, ProgramVars::ResourceMap<ViewType>& bufferMap, bool createBuffers, const ViewInitFunc& viewInitFunc, const RootSignature* pRootSig)
     {
-        ReflectionResourceType::ShaderAccess shaderAccess = getRequiredShaderAccess(descType);
+        const ReflectionResourceType::SharedConstPtr pType = pVar->getType()->unwrapArray()->asResourceType()->inherit_shared_from_this::shared_from_this();
+        assert(pType);
 
-        for (auto& buf : resMap)
+        uint32_t regIndex = pVar->getRegisterIndex();
+        uint32_t regSpace = pVar->getRegisterSpace();
+        uint32_t arraySize = max(1u, pVar->getType()->getTotalArraySize());
+        ProgramVars::ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
+        if (data.rootData.rootIndex == -1)
         {
-            const ReflectionVar::SharedConstPtr& pVar = buf.second;
-            const ReflectionResourceType::SharedConstPtr pType = pVar->getType()->unwrapArray()->asResourceType()->inherit_shared_from_this::shared_from_this();
-            assert(pType);
-            if (pType->getShaderAccess() == shaderAccess)
-            {
-                uint32_t regIndex = pVar->getRegisterIndex();
-                uint32_t regSpace = pVar->getRegisterSpace();
-                uint32_t arraySize = max(1u, pVar->getType()->getTotalArraySize());
-                ProgramVars::ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
-                if (data.rootData.rootIndex == -1)
-                {
-                    logError("Can't find a root-signature information matching buffer '" + pVar->getName() + " when creating ProgramVars");
-                    return false;
-                }
-
-                for(uint32_t a = 0 ; a < arraySize ; a++)
-                {
-                    // Only create the buffer if needed
-                    if (createBuffers)
-                    {
-                        data.pResource = BufferType::create(pVar->getName(), pType);
-                        data.pView = viewInitFunc(data.pResource);
-                    }
-
-                    bufferMap[ProgramVars::BindLocation(regSpace, regIndex)].push_back(data);
-                }
-            }
+            logError("Can't find a root-signature information matching buffer '" + pVar->getName() + " when creating ProgramVars");
+            return;
         }
-        return true;
+
+        for (uint32_t a = 0; a < arraySize; a++)
+        {
+            // Only create the buffer if needed
+            if (createBuffers)
+            {
+                data.pResource = BufferType::create(pVar->getName(), pType);
+                data.pView = viewInitFunc(data.pResource);
+            }
+
+            bufferMap[ProgramVars::BindLocation(regSpace, regIndex)].push_back(data);
+        }
     }
 
     static RootSignature::DescType getRootDescTypeFromResourceType(ReflectionResourceType::Type type, ReflectionResourceType::ShaderAccess access)
     {
         switch (type)
         {
+        case ReflectionResourceType::Type::Sampler:
+            return RootSignature::DescType::Sampler;
         case ReflectionResourceType::Type::Texture:
         case ReflectionResourceType::Type::RawBuffer:  // Vulkan doesn't have raw-buffer and DX doesn't care
             return (access == ReflectionResourceType::ShaderAccess::Read) ? RootSignature::DescType::TextureSrv : RootSignature::DescType::TextureUav;
@@ -153,6 +146,8 @@ namespace Falcor
             return (access == ReflectionResourceType::ShaderAccess::Read) ? RootSignature::DescType::StructuredBufferSrv : RootSignature::DescType::StructuredBufferUav;
         case ReflectionResourceType::Type::TypedBuffer:
             return (access == ReflectionResourceType::ShaderAccess::Read) ? RootSignature::DescType::TypedBufferSrv : RootSignature::DescType::TypedBufferUav;
+        case ReflectionResourceType::Type::ConstantBuffer:
+            return RootSignature::DescType::Cbv;
         default:
             should_not_get_here();
             return RootSignature::DescType(-1);
@@ -169,9 +164,6 @@ namespace Falcor
         auto getUavFunc = [](const Resource::SharedPtr& pResource) { return pResource->getUAV(0, 0, 1); };
 
         ParameterBlockReflection::SharedConstPtr pGlobalBlock = pReflector->getParameterBlock("");
-        initializeBuffersMap<ConstantBuffer, ConstantBuffer, RootSignature::DescType::Cbv>(mAssignedCbs, createBuffers, getNullPtrFunc, pGlobalBlock->getConstantBuffers(), mpRootSignature.get());
-        initializeBuffersMap<StructuredBuffer, ShaderResourceView, RootSignature::DescType::StructuredBufferSrv>(mAssignedSrvs, createBuffers, getSrvFunc, pGlobalBlock->getStructuredBuffers(), mpRootSignature.get());
-        initializeBuffersMap<StructuredBuffer, UnorderedAccessView, RootSignature::DescType::StructuredBufferUav>(mAssignedUavs, createBuffers, getUavFunc, pGlobalBlock->getStructuredBuffers(), mpRootSignature.get());
 
         // Initialize the textures and samplers map
         for (const auto& res : pGlobalBlock->getResources())
@@ -187,10 +179,12 @@ namespace Falcor
                 BindLocation loc(regSpace, regIndex);
                 ReflectionResourceType::ShaderAccess shaderAccess = pType->getShaderAccess();
                 ReflectionResourceType::Type type = pType->getType();
+                ProgramVars::RootData rootData = findRootData(mpRootSignature.get(), regIndex, regSpace, getRootDescTypeFromResourceType(type, shaderAccess));
+
                 switch (type)
                 {
                 case ReflectionResourceType::Type::Sampler:
-                    mAssignedSamplers[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, RootSignature::DescType::Sampler));
+                    mAssignedSamplers[loc].push_back(rootData);
                     break;
                 case ReflectionResourceType::Type::Texture:
                 case ReflectionResourceType::Type::RawBuffer:
@@ -198,13 +192,27 @@ namespace Falcor
                     if (shaderAccess == ReflectionResourceType::ShaderAccess::Read)
                     {
                         assert(mAssignedSrvs.find(loc) == mAssignedSrvs.end() || mAssignedSrvs[loc].size() == index);
-                        mAssignedSrvs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, getRootDescTypeFromResourceType(type, shaderAccess)));
+                        mAssignedSrvs[loc].push_back(rootData);
                     }
                     else
                     {
                         assert(mAssignedUavs.find(loc) == mAssignedUavs.end() || mAssignedUavs[loc].size() == index);
                         assert(shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite);
-                        mAssignedUavs[loc].push_back(findRootData(mpRootSignature.get(), regIndex, regSpace, getRootDescTypeFromResourceType(type, shaderAccess)));
+                        mAssignedUavs[loc].push_back(rootData);
+                    }
+                    break;
+                case ReflectionResourceType::Type::ConstantBuffer:
+                    addBuffers<ConstantBuffer, ConstantBuffer, RootSignature::DescType::Cbv>(pVar, mAssignedCbs, createBuffers, getNullPtrFunc, mpRootSignature.get());
+                    break;
+                case ReflectionResourceType::Type::StructuredBuffer:
+                    if (shaderAccess == ReflectionResourceType::ShaderAccess::Read)
+                    {
+                        addBuffers<StructuredBuffer, ShaderResourceView, RootSignature::DescType::StructuredBufferSrv>(pVar, mAssignedSrvs, createBuffers, getSrvFunc, mpRootSignature.get());
+                    }
+                    else
+                    {
+                        assert(shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite);
+                        addBuffers<StructuredBuffer, UnorderedAccessView, RootSignature::DescType::StructuredBufferUav>(pVar, mAssignedUavs, createBuffers, getUavFunc, mpRootSignature.get());
                     }
                     break;
                 default:
@@ -242,27 +250,22 @@ namespace Falcor
     {
         // #PARAMBLOCK handle non-global blocks
         const ReflectionVar* pVar = nullptr;
-        switch (bufferType)
-        {
-        case Falcor::ReflectionResourceType::Type::StructuredBuffer:
-            pVar = pReflector->getParameterBlock("")->getStructuredBuffer(name);
-            break;
-        case Falcor::ReflectionResourceType::Type::ConstantBuffer:
-            pVar = pReflector->getParameterBlock("")->getConstantBuffer(name);
-            break;
-        default:
-            should_not_get_here();
-            return ProgramReflection::ResourceBinding();
-        }
+        pVar = pReflector->getParameterBlock("")->getResource(name).get();
 
         if (pVar == nullptr)
         {
             logWarning("Couldn't find a " + to_string(bufferType) + " named " + name);
             return ProgramReflection::ResourceBinding();
         }
+        else if (pVar->getType()->unwrapArray()->asResourceType()->getType() != bufferType)
+        {
+            logWarning("Found a variable named '" + name + "' but it is not a " + to_string(bufferType));
+            return ProgramReflection::ResourceBinding();
+        }
+
         // #PARAMBLOCK Handle arrays
         arrayIndex = 0;
-        return pReflector->getBufferBinding(name);
+        return pReflector->getResourceBinding(name);
     }
 
     ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(const std::string& name) const
@@ -301,7 +304,7 @@ namespace Falcor
 
         // Just need to make sure the buffer is large enough
         // #PARAMBLOCK optimize this, maybe add a helper function to parameter block. Handle arrays
-        const auto& cbs = mpReflector->getParameterBlock("")->getConstantBuffers();
+        const auto& cbs = mpReflector->getParameterBlock("")->getResources();
         for (const auto& pCbVar : cbs)
         {
             if (pCbVar.second->getRegisterIndex() == baseRegIndex && pCbVar.second->getRegisterSpace() == regSpace)
@@ -395,13 +398,13 @@ namespace Falcor
 
     static const ReflectionVar* getResourceVarAndArrayIndex(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex)
     {
-        const ReflectionVar* pVar = pReflector->getResource(name.c_str());
+        const ReflectionVar* pVar = pReflector->getResource(name.c_str()).get();
         arrayIndex = 0;
         if (!pVar)
         {
             std::string nameNoIndex;
             if (parseArrayIndex(name, nameNoIndex, arrayIndex) == false) return nullptr;
-            pVar = pReflector->getResource(nameNoIndex.c_str());
+            pVar = pReflector->getResource(nameNoIndex.c_str()).get();
             if (pVar->getType()->asArrayType() == nullptr) return nullptr;
         }
         return pVar;
@@ -445,14 +448,14 @@ namespace Falcor
     {
         arrayIndex = 0;
         const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = pGlobalBlock->getStructuredBuffer(name);
+        const ReflectionVar* pVar = pGlobalBlock->getResource(name).get();
 
         if (pVar == nullptr)
         {
             std::string noArray;
             if (parseArrayIndex(name, noArray, arrayIndex))
             {
-                pVar = pGlobalBlock->getStructuredBuffer(noArray);
+                pVar = pGlobalBlock->getResource(noArray).get();
             }
         }
 
@@ -461,6 +464,13 @@ namespace Falcor
             logWarning("Structured buffer \"" + name + "\" was not found. Ignoring " + callStr + "StructuredBuffer() call.");
             return false;
         }
+
+        if (pVar->getType()->unwrapArray()->asResourceType()->getType() != ReflectionResourceType::Type::StructuredBuffer)
+        {
+            logWarning("Variable '" + name + "' is not a structured-buffer. Ignoring " + callStr + "StructuredBuffer() call.");
+            return false;
+        }
+
         return pVar;
     }
 
@@ -915,7 +925,7 @@ namespace Falcor
     ProgramVars::BindLocation getBufferBindLocation(const ProgramReflection* pReflector, const std::string& name)
     {
         ProgramVars::BindLocation loc;
-        const auto& desc = pReflector->getBufferBinding(name);
+        const auto& desc = pReflector->getResourceBinding(name);
         loc.baseRegIndex = desc.regIndex;
         loc.regSpace = desc.regSpace;
         return loc;

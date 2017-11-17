@@ -52,20 +52,12 @@ namespace Falcor
     {
         const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
         const auto& pParamBlockReflection = pProgReflector->getParameterBlock("");
-        ReflectionVar::SharedConstPtr pBufferReflector;
-        if (pParamBlockReflection)
-        {
-            const auto& cb = pParamBlockReflection->getConstantBuffers();
-            if (cb.find(name) != cb.end())
-            {
-                pBufferReflector = cb.at(name);
-            }
-        }
+        ReflectionVar::SharedConstPtr pBufferReflector = pParamBlockReflection ? pParamBlockReflection->getResource(name) : nullptr;
 
         if (pBufferReflector)
         {
-            ReflectionResourceType::SharedConstPtr pResType = std::dynamic_pointer_cast<const ReflectionResourceType>(pBufferReflector->getType());
-            if(pResType)
+            ReflectionResourceType::SharedConstPtr pResType = pBufferReflector->getType()->asResourceType()->inherit_shared_from_this::shared_from_this();
+            if(pResType && pResType->getType() == ReflectionResourceType::Type::ConstantBuffer)
             {
                 return create(name, pResType, overrideSize);
             }

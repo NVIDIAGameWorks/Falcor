@@ -59,12 +59,12 @@ namespace Falcor
     {
         const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
         const auto& pGlobalBlock = pProgReflector->getParameterBlock("");
-        const ReflectionVar* pVar = pGlobalBlock ? pGlobalBlock->getStructuredBuffer(name) : nullptr;
+        const ReflectionVar* pVar = pGlobalBlock ? pGlobalBlock->getResource(name).get() : nullptr;
 
         if (pVar)
         {
             ReflectionResourceType::SharedConstPtr pType = pVar->getType()->unwrapArray()->asResourceType()->inherit_shared_from_this::shared_from_this();
-            if(pType)
+            if(pType && pType->getType() == ReflectionResourceType::Type::StructuredBuffer)
             {
                 return create(pVar->getName(), pType, elementCount, bindFlags);
             }

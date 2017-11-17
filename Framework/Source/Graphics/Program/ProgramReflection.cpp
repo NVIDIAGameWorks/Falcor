@@ -511,12 +511,12 @@ namespace Falcor
             {
                 std::string name = std::string(pSlangLayout->getName());
                 ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
-                pBlock->addResource(pVar->getName(), pVar);
+                pBlock->addResource(pVar->getName(), pVar, true);
                 addParameterBlock(pBlock);
             }
             else
             {
-                pGlobalBlock->addResource(pVar->getName(), pVar);
+                pGlobalBlock->addResource(pVar->getName(), pVar, true);
             }
         }
 
@@ -545,7 +545,15 @@ namespace Falcor
 
     void ReflectionStructType::addMember(const std::shared_ptr<const ReflectionVar>& pVar)
     {
-        assert(mNameToIndex.find(pVar->getName()) == mNameToIndex.end());
+        if (mNameToIndex.find(pVar->getName()) != mNameToIndex.end())
+        {
+            size_t index = mNameToIndex[pVar->getName()];
+            if (*pVar != *mMembers[index])
+            {
+                logError("Mismatch in variable declarations between different shader stages. Variable name is `" + pVar->getName() + "', struct name is '" + mName);
+            }
+            return;
+        }
         mMembers.push_back(pVar);
         mNameToIndex[pVar->getName()] = mMembers.size() - 1;
     }
@@ -567,12 +575,12 @@ namespace Falcor
 
     ParameterBlockReflection::ParameterBlockReflection(const std::string& name) : mName(name)
     {
-
+        mpResourceVars = ReflectionStructType::create(0, 0);
     }
 
     bool ParameterBlockReflection::isEmpty() const
     {
-        return mResources.empty() && mConstantBuffers.empty() && mStructuredBuffers.empty();
+        return mResources.empty();
     }
 
     static void flattenResources(const std::string& name, const ReflectionType* pType, std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>>& pResources)
@@ -609,57 +617,34 @@ namespace Falcor
         }
     }
 
-    static const ReflectionVar* findVarCommon(const ParameterBlockReflection::ResourceMap& map, const std::string& name)
+    static bool doesTypeContainsResources(const ReflectionType* pType)
     {
-        const auto& it = map.find(name);
-        if (it == map.end())
+        const ReflectionType* pUnwrapped = pType->unwrapArray();
+        if (pUnwrapped->asResourceType()) return true;
+        const ReflectionStructType* pStruct = pType->asStructType();
+        if (pStruct)
         {
-            return nullptr;
+            for (const auto& pMember : *pStruct)
+            {
+                if (doesTypeContainsResources(pMember->getType().get())) return true;
+            }
         }
-        return it->second.get();
+        return false;
     }
 
-    const ReflectionVar* ParameterBlockReflection::getResource(const std::string& name) const
+    const ReflectionVar::SharedConstPtr ParameterBlockReflection::getResource(const std::string& name) const
     {
-        return findVarCommon(mResources, name);
+        return mpResourceVars->findMember(name);
     }
 
-    const ReflectionVar* ParameterBlockReflection::getConstantBuffer(const std::string& name) const
+    void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar, bool addToStruct)
     {
-        return findVarCommon(mConstantBuffers, name);
-    }
-
-    const ReflectionVar* ParameterBlockReflection::getStructuredBuffer(const std::string& name) const
-    {
-        return findVarCommon(mStructuredBuffers, name);
-    }
-
-    void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar)
-    {
-        decltype(mResources)* pMap = nullptr;
-
         const ReflectionResourceType* pResourceType = pVar->getType()->unwrapArray()->asResourceType();
         assert(pResourceType);
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            pMap = &mConstantBuffers;
-            break;
-        case ReflectionResourceType::Type::StructuredBuffer:
-            pMap = &mStructuredBuffers;
-            break;
-        case ReflectionResourceType::Type::Sampler:
-        case ReflectionResourceType::Type::Texture:
-        case ReflectionResourceType::Type::RawBuffer:
-        case ReflectionResourceType::Type::TypedBuffer:
-            pMap = &mResources;
-            break;
-        default:
-            break;
-        }
-        assert(pMap);
-        assert((*pMap).find(fullName) == (*pMap).end());
-        (*pMap)[fullName] = pVar;
+        assert(mResources.find(fullName) == mResources.end());
+        mResources[fullName] = pVar;
+
+        if(addToStruct) mpResourceVars->addMember(pVar);
 
         // If this is a constant-buffer, it might contain resources. Extract them.
         if (pResourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
@@ -668,7 +653,20 @@ namespace Falcor
             flattenResources("", pVar->getType()->asResourceType()->getStructType().get(), pResources);
             for (const auto& r : pResources)
             {
-                addResource(r.first, r.second);
+                addResource(r.first, r.second, false);
+            }
+
+            if(addToStruct)
+            {
+                const ReflectionStructType* pStruct = pResourceType->getStructType().get();
+                assert(pStruct);
+                for (const auto& pMember : *pStruct)
+                {
+                    if (doesTypeContainsResources(pMember->getType().get()))
+                    {
+                        mpResourceVars->addMember(pMember);
+                    }
+                }
             }
         }
     }
@@ -832,17 +830,12 @@ namespace Falcor
     ReflectionStructType::ReflectionStructType(size_t offset, size_t size, const std::string& name) :
         ReflectionType(offset), mSize(size), mName(name) {}
 
-    ProgramReflection::ResourceBinding ProgramReflection::getBufferBinding(const std::string& name) const
+    ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const
     {
         ResourceBinding binding;
         if (mpGlobalBlock == nullptr) return binding;
         // Search the constant-buffers
-        const ReflectionVar* pVar = mpGlobalBlock->getConstantBuffer(name);
-        if (!pVar)
-        {
-            pVar = mpGlobalBlock->getStructuredBuffer(name);
-        }
-
+        const ReflectionVar* pVar = mpGlobalBlock->getResource(name).get();
         if (pVar)
         {
             binding.regIndex = pVar->getRegisterIndex();
@@ -851,17 +844,84 @@ namespace Falcor
         return binding;
     }
 
-    ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const
+    bool ReflectionArrayType::operator==(const ReflectionType& other) const
     {
-        ResourceBinding binding;
-        if (mpGlobalBlock == nullptr) return binding;
-        // Search the constant-buffers
-        const ReflectionVar* pVar = mpGlobalBlock->getResource(name);
-        if (pVar)
+        const ReflectionArrayType* pOther = other.asArrayType();
+        if (!pOther) return false;
+        return (*this == *pOther);
+    }
+
+    bool ReflectionResourceType::operator==(const ReflectionType& other) const
+    {
+        const ReflectionResourceType* pOther = other.asResourceType();
+        if (!pOther) return false;
+        return (*this == *pOther);
+    }
+
+    bool ReflectionStructType::operator==(const ReflectionType& other) const
+    {
+        const ReflectionStructType* pOther = other.asStructType();
+        if (!pOther) return false;
+        return (*this == *pOther);
+    }
+
+    bool ReflectionBasicType::operator==(const ReflectionType& other) const
+    {
+        const ReflectionBasicType* pOther = other.asBasicType();
+        if (!pOther) return false;
+        return (*this == *pOther);
+    }
+
+    bool ReflectionArrayType::operator==(const ReflectionArrayType& other) const
+    {
+        if (mArraySize != other.mArraySize) return false;
+        if (mArrayStride != other.mArrayStride) return false;
+        if (*mpType != *other.mpType) return false;
+        return true;
+    }
+
+    bool ReflectionStructType::operator==(const ReflectionStructType& other) const
+    {
+        // We only care about the struct layout. Checking the members should be enough
+        if (mMembers.size() != other.mMembers.size()) return false;
+        for (size_t i = 0 ; i < mMembers.size() ; i++)
         {
-            binding.regIndex = pVar->getRegisterIndex();
-            binding.regSpace = pVar->getRegisterSpace();
+            // Theoretically, the order of the struct members should match
+            if (*mMembers[i] != *other.mMembers[i]) return false;
         }
-        return binding;
+        return true;
+    }
+
+    bool ReflectionBasicType::operator==(const ReflectionBasicType& other) const
+    {
+        if (mType != other.mType) return false;
+        if (mIsRowMajor != other.mIsRowMajor) return false;
+        return true;
+    }
+
+    bool ReflectionResourceType::operator==(const ReflectionResourceType& other) const
+    {
+        if (mDimensions != other.mDimensions) return false;
+        if (mStructuredType != other.mStructuredType) return false;
+        if (mReturnType != other.mReturnType) return false;
+        if(mShaderAccess != other.mShaderAccess) return false;
+        if(mType != other.mType) return false;
+        bool hasStruct = (mpStructType != nullptr);
+        bool otherHasStruct = (other.mpStructType != nullptr);
+        if (hasStruct != otherHasStruct) return false;
+        if (hasStruct && (*mpStructType != *other.mpStructType)) return false;
+
+        return true;
+    }
+
+    bool ReflectionVar::operator==(const ReflectionVar& other) const
+    {
+        if (*mpType != *other.mpType) return false;
+        if (mOffset != other.mOffset) return false;
+        if (mRegSpace != other.mRegSpace) return false;
+        if (mName != other.mName) return false;
+        if (mSize != other.mSize) return false;
+
+        return true;
     }
 }

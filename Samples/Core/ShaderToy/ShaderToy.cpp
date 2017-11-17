@@ -58,7 +58,7 @@ void ShaderToy::onLoad()
     mpToyVars = GraphicsVars::create(mpMainPass->getProgram()->getActiveVersion()->getReflector());
 
     // Get buffer finding
-    mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getBufferBinding("ToyCB").regIndex;
+    mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("ToyCB").regIndex;
 }
 
 void ShaderToy::onFrameRender()
