@@ -47,3 +47,14 @@
 #endif
 
 #define FALCOR_USE_PYTHON                   0 // Set to 1 to build Python embedding API and samples.  See README.txt in "LearningWithEmbeddedPython" sample for more information.
+
+// #TODO MOVE FUNCTIONALITY TO MAKEFILE?
+// Linux Display Backend
+#ifdef __GNUC__
+//#define LINUX_WAYLAND // Define to use Wayland
+#define LINUX_XORG    // Define to use X.Org
+
+#if !(defined(LINUX_WAYLAND) ^ defined(LINUX_XORG))
+#error Must define a single Linux display backend 
+#endif
+#endif

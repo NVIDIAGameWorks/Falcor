@@ -518,23 +518,30 @@ namespace Falcor
         createInfo.hwnd = pWindow->getApiHandle();
         createInfo.hinstance = GetModuleHandle(nullptr);
 
-        if (VK_FAILED(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface)))
-        {
-            logError("Could not create Vulkan surface.");
-            return nullptr;
-        }
-#else
+        VkResult result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface);
+
+#elif defined(LINUX_WAYLAND)
         VkWaylandSurfaceCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
-        createInfo.display = pWindow->getApiHandle().pWlDisplay;
-        createInfo.surface = pWindow->getApiHandle().pWlSurface;
+        createInfo.display = pWindow->getApiHandle().pDisplay;
+        createInfo.surface = pWindow->getApiHandle().pSurface;
 
-        if (VK_FAILED(vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface)))
+        VkResult result = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface);
+
+#elif defined(LINUX_XORG)
+        VkXlibSurfaceCreateInfoKHR createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+        createInfo.dpy= pWindow->getApiHandle().pDisplay;
+        createInfo.window = pWindow->getApiHandle().window;
+
+        VkResult result = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface);
+#endif
+
+        if (VK_FAILED(result))
         {
             logError("Could not create Vulkan surface.");
             return nullptr;
         }
-#endif
 
         VkBool32 supported = VK_FALSE;
         vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, pData->falcorToVulkanQueueType[uint32_t(LowLevelContextData::CommandQueueType::Direct)], surface, &supported);

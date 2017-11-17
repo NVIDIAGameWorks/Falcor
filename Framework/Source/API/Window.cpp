@@ -39,8 +39,16 @@
 
 #ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
-#else
+#elif defined(LINUX_WAYLAND)
 #define GLFW_EXPOSE_NATIVE_WAYLAND
+#elif defined(LINUX_XORG)
+#define GLFW_EXPOSE_NATIVE_X11
+
+// Replace the defines we undef'd in FalcorVK.h, because glfw will need them when it includes Xlib
+#define None 0L
+#define Bool int
+#define Status int
+#define Always 2
 #endif
 
 #include "glfw3.h"
@@ -380,13 +388,17 @@ namespace Falcor
 #ifdef _WIN32
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
         assert(pWindow->mApiHandle);
-#else
-        pWindow->mApiHandle.pWlDisplay = glfwGetWaylandDisplay();
-        pWindow->mApiHandle.pWlSurface = glfwGetWaylandWindow(pGLFWWindow);
+#elif defined(LINUX_WAYLAND)
+        pWindow->mApiHandle.pDisplay = glfwGetWaylandDisplay();
+        pWindow->mApiHandle.pSurface = glfwGetWaylandWindow(pGLFWWindow);
 
-        // #TODO: Fullscreen handling
-        //pWindow->mApiHandle.pWlOutput = glfwGetWaylandMonitor(pGLFWMonitor);
-        assert(pWindow->mApiHandle.pWlDisplay && pWindow->mApiHandle.pWlSurface);
+        // #TODO: Fullscreen handling goes here
+        //pWindow->mApiHandle.pOutput = glfwGetWaylandMonitor(pGLFWMonitor);
+        assert(pWindow->mApiHandle.pDisplay && pWindow->mApiHandle.pSurface);
+#elif defined(LINUX_XORG)
+        pWindow->mApiHandle.pDisplay = glfwGetX11Display();
+        pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
+        assert(pWindow->mApiHandle.pDisplay != nullptr);
 #endif
 
         glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
