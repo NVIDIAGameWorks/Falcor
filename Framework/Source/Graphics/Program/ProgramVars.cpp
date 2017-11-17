@@ -40,6 +40,48 @@ namespace Falcor
     void bindConstantBuffers(CopyContext* pContext, const ProgramVars::ResourceMap<ConstantBuffer>& cbMap, const ProgramVars::RootSetVec& rootSets, bool forceBind);
     ReflectionResourceType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
 
+    bool verifyResourceVar(const ReflectionVar* pVar, uint32_t arrayIndex, ReflectionResourceType::Type type, ReflectionResourceType::ShaderAccess access, bool expectBuffer, const std::string& varName, const std::string& funcName)
+    {
+        if (pVar == nullptr)
+        {
+            logWarning(to_string(type) + " \"" + varName + "\" was not found. Ignoring " + funcName + " call.");
+            return false;
+        }
+        const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
+        if (!pType)
+        {
+            logWarning(varName + " is not a resource. Ignoring " + funcName + " call.");
+            return false;
+        }
+#if _LOG_ENABLED
+        if (pType->getType() != type)
+        {
+            logWarning("ProgramVars::" + funcName + " was called, but variable \"" + varName + "\" has different resource type. Expecting + " + to_string(pType->getType()) + " but provided resource is " + to_string(type) + ". Ignoring call");
+            return false;
+        }
+
+        if (expectBuffer && pType->getDimensions() != ReflectionResourceType::Dimensions::Buffer)
+        {
+            logWarning("ProgramVars::" + funcName + " was called expecting a buffer variable, but the variable \"" + varName + "\" is not a buffer. Ignoring call");
+            return false;
+        }
+
+        if (access != ReflectionResourceType::ShaderAccess::Undefined && pType->getShaderAccess() != access)
+        {
+            logWarning("ProgramVars::" + funcName + " was called, but variable \"" + varName + "\" has different shader access type. Expecting + " + to_string(pType->getShaderAccess()) + " but provided resource is " + to_string(access) + ". Ignoring call");
+            return false;
+        }
+
+        const ReflectionArrayType* pArray = pVar->getType()->asArrayType();
+        if (pArray && (arrayIndex >= pArray->getArraySize()))
+        {
+            logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
+            return false;
+        }
+#endif
+        return true;
+    }
+
     ProgramVars::RootData findRootData(const RootSignature* pRootSig, uint32_t regIndex, uint32_t regSpace, RootSignature::DescType descType)
     {
         // Search the descriptor-tables
@@ -351,36 +393,6 @@ namespace Falcor
 // //         setResourceSrvUavCommon({ pDesc->getRegisterSpace(), pDesc->getRegisterIndex() }, arrayIndex, pDesc->getShaderAccess(), resource, assignedSrvs, assignedUavs, rootSets);
 //     }
 
-    bool verifyBufferResourceDesc(const ReflectionVar* pVar, uint32_t arrayIndex, const std::string& name, ReflectionResourceType::Type expectedType, ReflectionResourceType::Dimensions expectedDims, const std::string& funcName)
-    {
-        if (pVar == nullptr)
-        {
-            logWarning("ProgramVars::" + funcName + " - resource \"" + name + "\" was not found. Ignoring " + funcName + " call.");
-            return false;
-        }
-
-        const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
-        if (pType == nullptr)
-        {
-            logWarning("ProgramVars::" + funcName + " - variable \"" + name + "\" is not a resource. Ignoring " + funcName + " call.");
-            return false;
-        }
-
-        if (pType->getType() != expectedType || pType->getDimensions() != expectedDims)
-        {
-            logWarning("ProgramVars::" + funcName + " - variable '" + name + "' is the incorrect type. VarType = " + to_string(pType->getType()) + ", VarDims = " + to_string(pType->getDimensions()) + ". Ignoring call");
-            return false;
-        }
-
-        const ReflectionArrayType* pArray = pVar->getType()->asArrayType();
-        if (pArray && (arrayIndex >= pArray->getArraySize()))
-        {
-            logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
-            return false;
-        }
-        return true;
-    }
-
     static const ReflectionVar* getResourceVarAndArrayIndex(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex)
     {
         const ReflectionVar* pVar = pReflector->getResource(name.c_str());
@@ -402,7 +414,7 @@ namespace Falcor
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
         const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyBufferResourceDesc(pVar, arrayIndex, name, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::Dimensions::Buffer, "setRawBuffer()") == false)
+        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "setRawBuffer()") == false)
         {
             return false;
         }
@@ -419,7 +431,7 @@ namespace Falcor
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
         const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyBufferResourceDesc(pVar, arrayIndex, name, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::Dimensions::Buffer, "setTypedBuffer()") == false)
+        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "setTypedBuffer()") == false)
         {
             return false;
         }
@@ -504,7 +516,7 @@ namespace Falcor
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
         const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyBufferResourceDesc(pVar, arrayIndex, name, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::Dimensions::Buffer, "getRawBuffer()") == false)
+        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getRawBuffer()") == false)
         {
             return false;
         }
@@ -520,7 +532,8 @@ namespace Falcor
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
         const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyBufferResourceDesc(pVar, arrayIndex, name, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::Dimensions::Buffer, "getTypedBuffer()") == false)
+        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getTypedBuffer()") == false)
+
         {
             return false;
         }
@@ -539,42 +552,6 @@ namespace Falcor
         return nullptr;
     }
 
-    bool verifyResourceVar(const ReflectionVar* pVar, uint32_t arrayIndex, ReflectionResourceType::Type type, ReflectionResourceType::ShaderAccess access, const std::string& varName, const std::string& funcName)
-    {
-        if (pVar == nullptr)
-        {
-            logWarning(to_string(type) + " \"" + varName + "\" was not found. Ignoring " + funcName + " call.");
-            return false;
-        }
-        const ReflectionResourceType* pType = pVar->getType()->asResourceType();
-        if (!pType)
-        {
-            logWarning(varName + " is not a resource. Ignoring " + funcName + " call.");
-            return false;
-        }
-#if _LOG_ENABLED
-        if (pType->getType() != type)
-        {
-            logWarning("ProgramVars::" + funcName + " was called, but variable \"" + varName + "\" has different resource type. Expecting + " + to_string(pType->getType()) + " but provided resource is " + to_string(type) + ". Ignoring call");
-            return false;
-        }
-
-        if (access != ReflectionResourceType::ShaderAccess::Undefined && pType->getShaderAccess() != access)
-        {
-            logWarning("ProgramVars::" + funcName + " was called, but variable \"" + varName + "\" has different shader access type. Expecting + " + to_string(pType->getShaderAccess()) + " but provided resource is " + to_string(access) + ". Ignoring call");
-            return false;
-        }
-
-        // #PARAMBLOCK
-//         if (pType->getArraySize() && arrayIndex >= pType->getArraySize())
-//         {
-//             logWarning("ProgramVars::" + funcName + " was called, but array index is out-of-bound. Ignoring call");
-//             return false;
-//         }
-#endif
-        return true;
-    }
-
     bool ProgramVars::setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
         auto& it = mAssignedSamplers.at({regSpace, baseRegIndex})[arrayIndex];
@@ -591,7 +568,7 @@ namespace Falcor
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
         const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, name, "setSampler()") == false)
+        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, false, name, "setSampler()") == false)
         {
             return false;
         }
@@ -605,7 +582,7 @@ namespace Falcor
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
         const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
-        if (verifyResourceVar(pVar, 0, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, name, "getSampler()") == false)
+        if (verifyResourceVar(pVar, 0, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, false, name, "getSampler()") == false)
         {
             return nullptr;
         }
@@ -656,7 +633,7 @@ namespace Falcor
        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined,  name, "setTexture()") == false)
+        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined, false,  name, "setTexture()") == false)
         {
             return false;
         }
@@ -672,7 +649,7 @@ namespace Falcor
        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-       if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined, name, "getTexture()") == false)
+       if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined, false, name, "getTexture()") == false)
         {
             return nullptr;
         }

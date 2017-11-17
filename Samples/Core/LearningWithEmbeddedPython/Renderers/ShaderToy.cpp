@@ -58,7 +58,7 @@ void ShaderToyRenderer::onInitialize(RenderContext::SharedPtr)
     mpToyVars = GraphicsVars::create(mpMainPass->getProgram()->getActiveVersion()->getReflector());
 
     // Get buffer finding
-    mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getBufferBinding("ToyCB").baseRegIndex;
+    mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getBufferBinding("ToyCB").regIndex;
 
     // Create a text renderer
     mTextRender = TextRenderer::create();
