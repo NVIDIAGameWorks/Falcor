@@ -469,7 +469,10 @@ namespace Falcor
     {
         assert(pPath);
         std::string name(pSlangLayout->getName());
-
+        if (name == "gCsmData")
+        {
+            name = name;
+        }
         ReflectionType::SharedPtr pType = reflectType(pSlangLayout->getTypeLayout(), pPath);
         ReflectionVar::SharedPtr pVar;
 
@@ -624,7 +627,7 @@ namespace Falcor
     {
         const ReflectionType* pUnwrapped = pType->unwrapArray();
         if (pUnwrapped->asResourceType()) return true;
-        const ReflectionStructType* pStruct = pType->asStructType();
+        const ReflectionStructType* pStruct = pUnwrapped->asStructType();
         if (pStruct)
         {
             for (const auto& pMember : *pStruct)
@@ -718,12 +721,19 @@ namespace Falcor
         }
         offset += index * mArrayStride;
         // Find the offset of the leaf
-        ReflectionVar::SharedPtr pVar = ReflectionVar::create(name.substr(0, endPos) + ']', mpType, offset, regSpace);
-        return pVar;
+        if (endPos + 1 == name.size())
+        {
+            ReflectionVar::SharedPtr pVar = ReflectionVar::create(name.substr(0, endPos + 1), mpType, offset, regSpace);
+            return pVar;
+        }
+
+        return mpType->findMemberInternal(name, endPos + 1, offset, regIndex, regSpace);
     }
 
     ReflectionVar::SharedConstPtr ReflectionStructType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
     {
+        if (name[strPos] == '.') strPos++; // This happens for arrays-of-structs. The array will only skip the array index, which means the first character will be a '.'
+
         // Find the location of the next '.'
         size_t newPos = name.find_first_of(".[", strPos);
         std::string field = name.substr(strPos, newPos - strPos);
