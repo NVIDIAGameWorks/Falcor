@@ -396,15 +396,15 @@ namespace Falcor
 // //         setResourceSrvUavCommon({ pDesc->getRegisterSpace(), pDesc->getRegisterIndex() }, arrayIndex, pDesc->getShaderAccess(), resource, assignedSrvs, assignedUavs, rootSets);
 //     }
 
-    static const ReflectionVar* getResourceVarAndArrayIndex(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex)
+    static const ReflectionVar::SharedConstPtr getResourceVarAndArrayIndex(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex)
     {
-        const ReflectionVar* pVar = pReflector->getResource(name.c_str()).get();
+        ReflectionVar::SharedConstPtr pVar = pReflector->getResource(name.c_str());
         arrayIndex = 0;
         if (!pVar)
         {
             std::string nameNoIndex;
             if (parseArrayIndex(name, nameNoIndex, arrayIndex) == false) return nullptr;
-            pVar = pReflector->getResource(nameNoIndex.c_str()).get();
+            pVar = pReflector->getResource(nameNoIndex.c_str());
             if (pVar->getType()->asArrayType() == nullptr) return nullptr;
         }
         return pVar;
@@ -415,14 +415,14 @@ namespace Falcor
         // Find the buffer
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+        const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "setRawBuffer()") == false)
+        if (verifyResourceVar(pVar.get(), arrayIndex, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "setRawBuffer()") == false)
         {
             return false;
         }
 
-        setResourceSrvUavCommon(pVar, arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
+        setResourceSrvUavCommon(pVar.get(), arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
 
         return true;
     }
@@ -432,31 +432,33 @@ namespace Falcor
         // Find the buffer
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+        const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "setTypedBuffer()") == false)
+        if (verifyResourceVar(pVar.get(), arrayIndex, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "setTypedBuffer()") == false)
         {
             return false;
         }
 
-        setResourceSrvUavCommon(pVar, arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
+        setResourceSrvUavCommon(pVar.get(), arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
  
         return true;
     }
 
-    static const ReflectionVar* getStructuredBufferReflection(const ProgramReflection* pReflector, const std::string& name, uint32_t& arrayIndex, const std::string& callStr)
+    static const ReflectionVar::SharedConstPtr getStructuredBufferReflection(const ProgramReflection* pReflector, const std::string& name, uint32_t& arrayIndex, const std::string& callStr)
     {
         arrayIndex = 0;
         const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = pGlobalBlock->getResource(name).get();
-
-        if (pVar == nullptr)
+        ReflectionVar::SharedConstPtr pVar;
+        
+        std::string noArray;
+        if (parseArrayIndex(name, noArray, arrayIndex))
         {
-            std::string noArray;
-            if (parseArrayIndex(name, noArray, arrayIndex))
-            {
-                pVar = pGlobalBlock->getResource(noArray).get();
-            }
+            // #PARAMBLOCK nope, handling of the array index should happen elsewhere
+            pVar = pGlobalBlock->getResource(noArray);
+        }
+        else
+        {
+            pVar = pGlobalBlock->getResource(name);
         }
 
         if (pVar == nullptr)
@@ -477,9 +479,9 @@ namespace Falcor
     bool ProgramVars::setStructuredBuffer(const std::string& name, StructuredBuffer::SharedPtr pBuf)
     {
         uint32_t arrayIndex;
-        const ReflectionVar* pVar = getStructuredBufferReflection(mpReflector.get(), name, arrayIndex, "set");
+        const ReflectionVar::SharedConstPtr pVar = getStructuredBufferReflection(mpReflector.get(), name, arrayIndex, "set");
         if (!pVar) return false;
-        setResourceSrvUavCommon(pVar, arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
+        setResourceSrvUavCommon(pVar.get(), arrayIndex, pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
         return true;
     }
 
@@ -524,14 +526,14 @@ namespace Falcor
         // Find the buffer
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+        const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getRawBuffer()") == false)
+        if (verifyResourceVar(pVar.get(), arrayIndex, ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getRawBuffer()") == false)
         {
             return false;
         }
 
-        return getResourceFromSrvUavCommon<Buffer>(pVar, arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getRawBuffer()");
+        return getResourceFromSrvUavCommon<Buffer>(pVar.get(), arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getRawBuffer()");
         return nullptr;
     }
 
@@ -540,25 +542,25 @@ namespace Falcor
         // Find the buffer
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+        const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getTypedBuffer()") == false)
+        if (verifyResourceVar(pVar.get(), arrayIndex, ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getTypedBuffer()") == false)
 
         {
             return false;
         }
 
-        return getResourceFromSrvUavCommon<TypedBufferBase>(pVar, arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getTypedBuffer()");
+        return getResourceFromSrvUavCommon<TypedBufferBase>(pVar.get(), arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getTypedBuffer()");
         return nullptr;
     }
 
     StructuredBuffer::SharedPtr ProgramVars::getStructuredBuffer(const std::string& name) const
     {
         uint32_t arrayIndex;
-        const ReflectionVar* pVar = getStructuredBufferReflection(mpReflector.get(), name, arrayIndex, "get");
+        const ReflectionVar::SharedConstPtr pVar = getStructuredBufferReflection(mpReflector.get(), name, arrayIndex, "get");
 
         if (pVar == nullptr) return nullptr;
-        return getResourceFromSrvUavCommon<StructuredBuffer>(pVar, arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getStructuredBuffer()");
+        return getResourceFromSrvUavCommon<StructuredBuffer>(pVar.get(), arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getStructuredBuffer()");
         return nullptr;
     }
 
@@ -577,8 +579,8 @@ namespace Falcor
     {
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, false, name, "setSampler()") == false)
+        const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+        if (verifyResourceVar(pVar.get(), arrayIndex, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, false, name, "setSampler()") == false)
         {
             return false;
         }
@@ -591,8 +593,8 @@ namespace Falcor
     {
         uint32_t arrayIndex;
         const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-        const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
-        if (verifyResourceVar(pVar, 0, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, false, name, "getSampler()") == false)
+        const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+        if (verifyResourceVar(pVar.get(), 0, ReflectionResourceType::Type::Sampler, ReflectionResourceType::ShaderAccess::Read, false, name, "getSampler()") == false)
         {
             return nullptr;
         }
@@ -641,14 +643,14 @@ namespace Falcor
     {
        uint32_t arrayIndex;
        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-       const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+       const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-        if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined, false,  name, "setTexture()") == false)
+        if (verifyResourceVar(pVar.get(), arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined, false,  name, "setTexture()") == false)
         {
             return false;
         }
 
-        setResourceSrvUavCommon(pVar, arrayIndex, pTexture, mAssignedSrvs, mAssignedUavs, mRootSets);
+        setResourceSrvUavCommon(pVar.get(), arrayIndex, pTexture, mAssignedSrvs, mAssignedUavs, mRootSets);
 
         return true;
     }
@@ -657,14 +659,14 @@ namespace Falcor
     {
        uint32_t arrayIndex;
        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
-       const ReflectionVar* pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
+       const ReflectionVar::SharedConstPtr pVar = getResourceVarAndArrayIndex(pGlobalBlock, name, arrayIndex);
 
-       if (verifyResourceVar(pVar, arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined, false, name, "getTexture()") == false)
+       if (verifyResourceVar(pVar.get(), arrayIndex, ReflectionResourceType::Type::Texture, ReflectionResourceType::ShaderAccess::Undefined, false, name, "getTexture()") == false)
         {
             return nullptr;
         }
 
-        return getResourceFromSrvUavCommon<Texture>(pVar, arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getTexture()");
+        return getResourceFromSrvUavCommon<Texture>(pVar.get(), arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getTexture()");
     }
 
     template<typename ViewType>

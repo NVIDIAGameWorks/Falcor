@@ -718,7 +718,7 @@ namespace Falcor
         }
         offset += index * mArrayStride;
         // Find the offset of the leaf
-        ReflectionVar::SharedPtr pVar = ReflectionVar::create(name.substr(0, endPos), mpType, offset, regSpace);
+        ReflectionVar::SharedPtr pVar = ReflectionVar::create(name.substr(0, endPos) + ']', mpType, offset, regSpace);
         return pVar;
     }
 
