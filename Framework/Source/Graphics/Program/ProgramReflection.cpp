@@ -511,12 +511,12 @@ namespace Falcor
             {
                 std::string name = std::string(pSlangLayout->getName());
                 ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
-                pBlock->addResource(pVar->getName(), pVar, true);
+                pBlock->addResource(pVar->getName(), pVar);
                 addParameterBlock(pBlock);
             }
             else
             {
-                pGlobalBlock->addResource(pVar->getName(), pVar, true);
+                pGlobalBlock->addResource(pVar->getName(), pVar);
             }
         }
 
@@ -583,37 +583,40 @@ namespace Falcor
         return mResources.empty();
     }
 
-    static void flattenResources(const std::string& name, const ReflectionType* pType, std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>>& pResources)
+    static void flattenResources(const ReflectionVar::SharedConstPtr& pVar, ParameterBlockReflection::ResourceVec& resources)
     {
-        std::string namePrefix = name + (name.size() ? "." : "");
-        const ReflectionStructType* pStructType = dynamic_cast<const ReflectionStructType*>(pType);
+        const ReflectionType* pType = pVar->getType().get();
+        if (pType->asResourceType())
+        {
+            resources.push_back(pVar);
+            return;
+        }
+        const ReflectionArrayType* pArrayType = pType->asArrayType();
+
+        if (pArrayType)
+        {
+            if (pArrayType->unwrapArray()->asResourceType())
+            {
+                resources.push_back(pVar);
+            }
+            return;
+        }
+
+        const ReflectionStructType* pStructType = pType->asStructType();
         if (pStructType)
         {
             for (const auto& pMember : *pStructType)
             {
-                const ReflectionResourceType* pResourceType = pMember->getType()->unwrapArray()->asResourceType();
-                if (pResourceType)
-                {
-                    pResources.push_back({ namePrefix + pMember->getName() , pMember });
-                    continue;
-                }
-                else
-                {
-                    std::string newName = name + (name.size() ? "." : "");
-                    const ReflectionArrayType* pArrayType = dynamic_cast<const ReflectionArrayType*>(pMember->getType().get());
-                    if (pArrayType)
-                    {
-                        for (uint32_t j = 0; j < pArrayType->getArraySize(); j++)
-                        {
-                            flattenResources(namePrefix + pMember->getName() + '[' + std::to_string(j) + ']', pMember->getType().get(), pResources);
-                        }
-                    }
-                    else
-                    {
-                        flattenResources(namePrefix + pMember->getName(), pMember->getType().get(), pResources);
-                    }
-                }
+                flattenResources(pMember, resources);
             }
+        }
+    }
+
+    static void flattenResources(const ReflectionStructType* pStructType, ParameterBlockReflection::ResourceVec& resources)
+    {
+        for (const auto& pMember : *pStructType)
+        {
+            flattenResources(pMember, resources);
         }
     }
 
@@ -637,37 +640,26 @@ namespace Falcor
         return mpResourceVars->findMember(name);
     }
 
-    void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar, bool addToStruct)
+    void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar)
     {
         const ReflectionResourceType* pResourceType = pVar->getType()->unwrapArray()->asResourceType();
         assert(pResourceType);
-        assert(mResources.find(fullName) == mResources.end());
-        mResources[fullName] = pVar;
-
-        if(addToStruct) mpResourceVars->addMember(pVar);
+        mResources.push_back(pVar);
+        mpResourceVars->addMember(pVar);
 
         // If this is a constant-buffer, it might contain resources. Extract them.
         if (pResourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
         {
-            std::vector<std::pair<std::string, ReflectionVar::SharedConstPtr>> pResources;
-            flattenResources("", pVar->getType()->asResourceType()->getStructType().get(), pResources);
-            for (const auto& r : pResources)
+            const ReflectionStructType* pStruct = pResourceType->getStructType().get();
+            assert(pStruct);
+            for (const auto& pMember : *pStruct)
             {
-                addResource(r.first, r.second, false);
-            }
-
-            if(addToStruct)
-            {
-                const ReflectionStructType* pStruct = pResourceType->getStructType().get();
-                assert(pStruct);
-                for (const auto& pMember : *pStruct)
+                if (doesTypeContainsResources(pMember->getType().get()))
                 {
-                    if (doesTypeContainsResources(pMember->getType().get()))
-                    {
-                        mpResourceVars->addMember(pMember);
-                    }
+                    mpResourceVars->addMember(pMember);
                 }
             }
+            flattenResources(pStruct, mResources);
         }
     }
 

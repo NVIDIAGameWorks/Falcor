@@ -188,11 +188,10 @@ namespace Falcor
         d = RootSignature::Desc();
 
         const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
-        const ParameterBlockReflection::ResourceMap& resMap = pGlobalBlock->getResources();
+        const ParameterBlockReflection::ResourceVec& resVec = pGlobalBlock->getResources();
 
-        for (auto& resIt : resMap)
+        for (const auto& pVar : resVec)
         {
-            const ReflectionVar* pVar = resIt.second.get();
             const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
             assert(pType);
 

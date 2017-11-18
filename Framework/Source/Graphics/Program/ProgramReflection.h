@@ -288,19 +288,19 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ParameterBlockReflection>;
         using SharedConstPtr = std::shared_ptr<const ParameterBlockReflection>;
-        using ResourceMap = std::unordered_map<std::string, ReflectionVar::SharedConstPtr>;
-            
+        using ResourceVec = std::vector<ReflectionVar::SharedConstPtr>;
+
         static SharedPtr create(const std::string& name);
         const std::string& getName() const { return mName; }
         bool isEmpty() const;
 
-        const ResourceMap& getResources() const { return mResources; }
+        const ResourceVec& getResources() const { return mResources; }
         const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
     private:
         friend class ProgramReflection;
-        void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar, bool addToStruct);
+        void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar);
         ParameterBlockReflection(const std::string& name);
-        ResourceMap mResources;
+        ResourceVec mResources;
 
         ReflectionStructType::SharedPtr mpResourceVars;
         std::string mName;

@@ -166,9 +166,8 @@ namespace Falcor
         ParameterBlockReflection::SharedConstPtr pGlobalBlock = pReflector->getParameterBlock("");
 
         // Initialize the textures and samplers map
-        for (const auto& res : pGlobalBlock->getResources())
+        for (const auto& pVar : pGlobalBlock->getResources())
         {
-            const ReflectionVar::SharedConstPtr& pVar = res.second;
             const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
             assert(pType);
             uint32_t count = max(1u, pVar->getType()->getTotalArraySize());
@@ -305,11 +304,12 @@ namespace Falcor
         // Just need to make sure the buffer is large enough
         // #PARAMBLOCK optimize this, maybe add a helper function to parameter block. Handle arrays
         const auto& cbs = mpReflector->getParameterBlock("")->getResources();
-        for (const auto& pCbVar : cbs)
+        for (const auto& pVar : cbs)
         {
-            if (pCbVar.second->getRegisterIndex() == baseRegIndex && pCbVar.second->getRegisterSpace() == regSpace)
+            if (pVar->getType()->unwrapArray()->asResourceType()->getType() != ReflectionResourceType::Type::ConstantBuffer) continue;
+            if (pVar->getRegisterIndex() == baseRegIndex && pVar->getRegisterSpace() == regSpace)
             {
-                if (pCbVar.second->getType()->asResourceType()->getSize() > pCB->getSize())
+                if (pVar->getType()->asResourceType()->getSize() > pCB->getSize())
                 {
                     logError("Can't attach the constant buffer. Size mismatch.");
                     return false;
