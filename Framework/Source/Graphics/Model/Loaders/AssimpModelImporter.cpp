@@ -298,6 +298,7 @@ namespace Falcor
                 {
                     // create a new texture
                     std::string fullpath = folder + '/' + s;
+                    fullpath = replaceSubstring(fullpath, "\\", "/");
                     pTex = createTextureFromFile(fullpath, true, isSrgbRequired(aiType, useSrgb));
                     if (pTex)
                     {

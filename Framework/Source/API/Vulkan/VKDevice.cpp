@@ -281,7 +281,7 @@ namespace Falcor
 #ifdef _WIN32
             "VK_KHR_win32_surface"
 #else
-            "VK_KHR_wayland_surface"
+            "VK_KHR_xlib_surface"
 #endif
         };
 
@@ -519,16 +519,7 @@ namespace Falcor
         createInfo.hinstance = GetModuleHandle(nullptr);
 
         VkResult result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface);
-
-#elif defined(LINUX_WAYLAND)
-        VkWaylandSurfaceCreateInfoKHR createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
-        createInfo.display = pWindow->getApiHandle().pDisplay;
-        createInfo.surface = pWindow->getApiHandle().pSurface;
-
-        VkResult result = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface);
-
-#elif defined(LINUX_XORG)
+#else
         VkXlibSurfaceCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
         createInfo.dpy= pWindow->getApiHandle().pDisplay;

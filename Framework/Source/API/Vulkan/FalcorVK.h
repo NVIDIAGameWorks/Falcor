@@ -32,17 +32,13 @@
 #ifdef _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
 #else
-    #ifdef LINUX_WAYLAND
-        #define VK_USE_PLATFORM_WAYLAND_KHR
-    #elif defined(LINUX_XORG)
-        #define VK_USE_PLATFORM_XLIB_KHR
-    #endif
+    #define VK_USE_PLATFORM_XLIB_KHR
 #endif
 
 #include <vulkan/vulkan.h>
 
-// Remove defines from XLib.h included by vulkan.h
-#ifdef LINUX_XORG
+// Remove defines from XLib.h (included by vulkan.h) that cause conflicts
+#ifndef _WIN32
 #undef None
 #undef Status
 #undef Bool
@@ -82,14 +78,8 @@ namespace Falcor
 #else
     struct WindowHandle
     {
-    #ifdef LINUX_WAYLAND
-        wl_display* pDisplay;
-        wl_surface* pSurface;
-        wl_output* pOutput;
-    #elif defined(LINUX_XORG)
         Display* pDisplay;
         Window window;
-    #endif
     };
 #endif
 
