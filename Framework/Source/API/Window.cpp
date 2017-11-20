@@ -54,12 +54,6 @@
 #include "GLFW/glfw3native.h"
 #endif
 
-
-// #HACK Why does glfw3.h define _WIN32 on linux/gcc?
-// #ifndef _MSC_VER
-// #undef _WIN32
-// #endif
-
 namespace Falcor
 {
     class ApiCallbacks
