@@ -17,7 +17,6 @@ $(shell pkg-config --cflags assimp gtk+-3.0 glfw3)
 
 ADDITIONAL_LIB_DIRS = -L "Bin/" \
 -L "Framework/Externals/OpenVR/lib" \
--L "Framework/Externals/FFMPEG/lib" \
 -L "Framework/Externals/Slang/bin/linux-x86_64/release" \
 -L "$(VULKAN_SDK)/lib"
 
