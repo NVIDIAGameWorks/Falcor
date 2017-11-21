@@ -71,6 +71,8 @@ FeatureDemo : $(SAMPLE_CONFIG)
 	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemoControls.cpp -o $(DIR)FeatureDemoControls.o
 	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemoSceneRenderer.cpp -o $(DIR)FeatureDemoSceneRenderer.o
 	@$(CC) -o $(OUT_DIR)FeatureDemo $(DIR)FeatureDemo.o $(DIR)FeatureDemoControls.o $(DIR)FeatureDemoSceneRenderer.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	$(call MoveFalcorData,$(OUT_DIR))
+	$(call MoveProjectData,$(DIR), $(OUT_DIR))
 	@echo Built $@
 
 # Core Samples
@@ -126,7 +128,22 @@ define CompileSample
 	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
 	@$(CC) $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE)
 	@$(CC) -o $(OUT_DIR)$(3) $(1)$(O_FILE) $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	$(call MoveFalcorData,$(OUT_DIR))
+	$(call MoveProjectData,$(1), $(OUT_DIR))
 	@echo Built $(3)
+endef
+
+# Moves Falcor Data folder and ShadingUtils files to target directory. Contents of ShadingUtils will be placed inside a Data folder at destination
+# Args: (1) Destination directory
+define MoveFalcorData
+	$(call MoveProjectData,Framework/Source/,$(1))
+	@cp -r Framework/Source/ShadingUtils/* $(1)/Data/
+endef
+
+# Copies the "Data" folder inside the directory specified by Source path to the Destination path
+# Args: (1) Source, (2) Destination
+define MoveProjectData
+	@cp -r $(1)Data $(2)
 endef
 
 # Builds Falcor library in Release
