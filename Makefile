@@ -1,7 +1,7 @@
 CC:=g++
 
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
-SAMPLE_CONFIG:=Release
+SAMPLE_CONFIG:=Debug
 
 INCLUDES = \
 -I "Framework" \
@@ -64,6 +64,7 @@ ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
 
 OUT_DIR:=Bin/
 
+# A sample demonstrating Falcor's effects library
 FeatureDemo : $(SAMPLE_CONFIG)
 	$(eval DIR=Samples/FeatureDemo/)
 	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemo.cpp -o $(DIR)FeatureDemo.o
@@ -72,35 +73,61 @@ FeatureDemo : $(SAMPLE_CONFIG)
 	@$(CC) -o $(OUT_DIR)FeatureDemo $(DIR)FeatureDemo.o $(DIR)FeatureDemoControls.o $(DIR)FeatureDemoSceneRenderer.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
 	@echo Built $@
 
-Shadows : $(SAMPLE_CONFIG)
-	$(eval DIR=Samples/Effects/Shadows/)
-	@$(CC) $(CXXFLAGS) $(DIR)Shadows.cpp -o $(DIR)Shadows.o
-	@$(CC) -o $(OUT_DIR)Shadows $(DIR)Shadows.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
-	@echo Built $@
-
-ShaderToy : $(SAMPLE_CONFIG)
-	$(eval DIR=Samples/Core/ShaderToy/)
-	@$(CC) $(CXXFLAGS) $(DIR)ShaderToy.cpp -o $(DIR)ShaderToy.o
-	@$(CC) -o $(OUT_DIR)ShaderToy $(DIR)ShaderToy.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
-	@echo Built $@
+# Core Samples
 
 ComputeShader : $(SAMPLE_CONFIG)
-	$(eval DIR=Samples/Core/ComputeShader/)
-	@$(CC) $(CXXFLAGS) $(DIR)ComputeShader.cpp -o $(DIR)ComputeShader.o
-	@$(CC) -o $(OUT_DIR)ComputeShader $(DIR)ComputeShader.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
-	@echo Built $@
+	$(call CompileSample,Samples/Core/ComputeShader/,ComputeShader.cpp,ComputeShader)
 
 MultiPassPostProcess : $(SAMPLE_CONFIG)
-	$(eval DIR=Samples/Core/MultiPassPostProcess/)
-	@$(CC) $(CXXFLAGS) $(DIR)MultiPassPostProcess.cpp -o $(DIR)MultiPassPostProcess.o
-	@$(CC) -o $(OUT_DIR)MultiPassPostProcess $(DIR)MultiPassPostProcess.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
-	@echo Built $@
+	$(call CompileSample,Samples/Core/MultiPassPostProcess/,MultiPassPostProcess.cpp,MultiPassPostProcess)
+
+ShaderToy : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Core/ShaderToy/,ShaderToy.cpp,ShaderToy)
+
+SimpleDeferred : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Core/SimpleDeferred/,SimpleDeferred.cpp,SimpleDeferred)
+
+StereoRendering : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Core/StereoRendering/,StereoRendering.cpp,StereoRendering)
+
+# Effect Samples
+
+AmbientOcclusion : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/AmbientOcclusion/,AmbientOcclusion.cpp,AmbientOcclusion)
+
+EnvMap : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/EnvMap/,EnvMap.cpp,EnvMap)
+
+HashedAlpha : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/HashedAlpha/,HashedAlpha.cpp,HashedAlpha)
+
+NormalMapFiltering : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/NormalMapFiltering/,NormalMapFiltering.cpp,NormalMapFiltering)
+
+Particles : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/Particles/,Particles.cpp,Particles)
+
+PostProcess : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/PostProcess/,PostProcess.cpp,PostProcess)
+
+Shadows : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/Shadows/,Shadows.cpp,Shadows)
+
+# Utilities
 
 ModelViewer : $(SAMPLE_CONFIG)
-	$(eval DIR=Samples/Utils/ModelViewer/)
-	@$(CC) $(CXXFLAGS) $(DIR)ModelViewer.cpp -o $(DIR)ModelViewer.o
-	@$(CC) -o $(OUT_DIR)ModelViewer $(DIR)ModelViewer.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
-	@echo Built $@
+	$(call CompileSample,Samples/Utils/ModelViewer/,ModelViewer.cpp,ModelViewer)
+
+SceneEditor : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorSample.cpp,SceneEditor)
+
+# Args: (1) Relative Directory, (2) Cpp filename, (3) Executable name
+define CompileSample
+	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
+	@$(CC) $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE)
+	@$(CC) -o $(OUT_DIR)$(3) $(1)$(O_FILE) $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@echo Built $(3)
+endef
 
 # Builds Falcor library in Release
 Release : ReleaseConfig $(OUT_DIR)libfalcor.a
@@ -129,5 +156,5 @@ ReleaseConfig :
 .PHONY : clean
 clean :
 	@find . -name "*.o" -type f -delete
-#	@rm -rf "Bin/"
-#	@rm -f Falcor.a
+	@rm -rf "Bin/"
+	@rm -f Falcor.a
