@@ -30,6 +30,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "Externals/slang/slang.h"
+#include "API/DescriptorSet.h"
 
 namespace Falcor
 {
@@ -54,7 +55,7 @@ namespace Falcor
         const ReflectionArrayType* asArrayType() const;
         const ReflectionType* unwrapArray() const;
         uint32_t getTotalArraySize() const;
-        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const = 0;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const = 0;
 
         virtual bool operator==(const ReflectionType& other) const = 0;
         virtual bool operator!=(const ReflectionType& other) const { return !(*this == other); }
@@ -81,7 +82,7 @@ namespace Falcor
         uint32_t mArrayStride = 0;
         ReflectionType::SharedConstPtr mpType;
 
-        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
 
     class ReflectionStructType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionStructType>
@@ -105,7 +106,7 @@ namespace Falcor
 
         size_t getSize() const { return mSize; }
         const std::string& getName() const { return mName; }
-        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
 
         bool operator==(const ReflectionStructType& other) const;
         bool operator==(const ReflectionType& other) const override;
@@ -172,7 +173,7 @@ namespace Falcor
         ReflectionBasicType(size_t offset, Type type, bool isRowMajor);
         Type mType;
         bool mIsRowMajor;
-        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
 
     class ReflectionResourceType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionResourceType>
@@ -252,7 +253,7 @@ namespace Falcor
         Type mType;
         ReflectionStructType::SharedPtr mpStructType;   // For constant- and structured-buffers
 
-        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const override;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
 
     class ReflectionVar
@@ -262,23 +263,25 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ReflectionVar>;
         static const uint32_t kInvalidOffset = ReflectionType::kInvalidOffset;
 
-        static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace = kInvalidOffset);
+        static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset = 0, uint32_t regSpace = kInvalidOffset);
 
         const std::string& getName() const { return mName; }
         const ReflectionType::SharedConstPtr getType() const { return mpType; }
         size_t getOffset() const { return mOffset; }
         uint32_t getRegisterSpace() const { return mRegSpace; }
         uint32_t getRegisterIndex() const { return (uint32_t)getOffset(); }
+        uint32_t getDescOffset() const { return mDescOffset; }
 
         bool operator==(const ReflectionVar& other) const;
         bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
     private:
-        ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace);
+        ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace);
         ReflectionType::SharedConstPtr mpType;
         size_t mOffset = kInvalidOffset;
         uint32_t mRegSpace = kInvalidOffset;
         std::string mName;
         size_t mSize = 0;
+        uint32_t mDescOffset = 0;
     };
 
     class ProgramReflection;
@@ -288,7 +291,18 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ParameterBlockReflection>;
         using SharedConstPtr = std::shared_ptr<const ParameterBlockReflection>;
-        using ResourceVec = std::vector<ReflectionVar::SharedConstPtr>;
+
+        struct ResourceDesc
+        {
+            using Type = DescriptorSet::Type;
+            uint32_t descOffset = 0;
+            uint32_t descCount = 0;
+            uint32_t regIndex = 0;
+            uint32_t regSpace = 0;
+            Type type;
+            std::string name;
+        };
+        using ResourceVec = std::vector<ResourceDesc>;
 
         static SharedPtr create(const std::string& name);
         const std::string& getName() const { return mName; }

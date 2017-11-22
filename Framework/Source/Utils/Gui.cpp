@@ -89,6 +89,7 @@ namespace Falcor
         io.Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
         Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
         mpProgramVars->setTexture("gFont", pTexture);
+        mpProgramVars->setTexture("gCsmData[1].shadowMap", pTexture);
 
         // Create the blend state
         BlendState::Desc blendDesc;

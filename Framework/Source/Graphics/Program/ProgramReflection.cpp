@@ -331,6 +331,26 @@ namespace Falcor
     ReflectionVar::SharedPtr reflectVariable(VariableLayoutReflection* pSlangLayout, const ReflectionPath* pPath);
     ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath);
 
+    // Once we've found the path from the root down to a particular leaf
+    // variable, `getDescOffset` can be used to find the final summed-up descriptor offset of the element
+    static uint32_t getDescOffsetFromPath(const ReflectionPath* path, uint32_t arraySize, SlangParameterCategory category)
+    {
+#ifndef FALCOR_VK
+        return 0;
+#else
+        uint32_t offset = 0;
+        bool first = true;
+        for (auto pp = path; pp; pp = pp->parent)
+        {
+            if ((pp->typeLayout) && (pp->typeLayout->getKind() == TypeReflection::Kind::Array))
+            {
+                offset += (uint32_t)pp->childIndex * arraySize;
+                arraySize *= (uint32_t)pp->typeLayout->getElementCount();
+            }
+        }
+        return offset;
+#endif
+    }
 
     static size_t getRegisterIndexFromPath(const ReflectionPath* pPath, SlangParameterCategory category)
     {
@@ -481,11 +501,12 @@ namespace Falcor
             ParameterCategory category = getParameterCategory(pSlangLayout);
             uint32_t index = (uint32_t)getRegisterIndexFromPath(pPath, category);
             uint32_t space = getRegisterSpaceFromPath(pPath, category);
-            pVar = ReflectionVar::create(name, pType, index, space);
+            uint32_t descOffset = getDescOffsetFromPath(pPath, max(1u, pType->getTotalArraySize()), category);
+            pVar = ReflectionVar::create(name, pType, index, descOffset, space);
         }
         else
         {
-            pVar = ReflectionVar::create(name, pType, getUniformOffset(pPath), 0);
+            pVar = ReflectionVar::create(name, pType, getUniformOffset(pPath));
         }
         return pVar;
     }
@@ -561,12 +582,12 @@ namespace Falcor
         mNameToIndex[pVar->getName()] = mMembers.size() - 1;
     }
 
-    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace)
+    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace)
     {
-        return SharedPtr(new ReflectionVar(name, pType, offset, regSpace));
+        return SharedPtr(new ReflectionVar(name, pType, offset, descOffset, regSpace));
     }
 
-    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t regSpace) : mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace)
+    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace) : mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace), mDescOffset(descOffset)
     {
 
     }
@@ -586,22 +607,50 @@ namespace Falcor
         return mResources.empty();
     }
 
-    static void flattenResources(const ReflectionVar::SharedConstPtr& pVar, ParameterBlockReflection::ResourceVec& resources)
+    static ParameterBlockReflection::ResourceDesc getResourceDesc(const ReflectionVar::SharedConstPtr& pVar, uint32_t descCount, const std::string& name)
     {
-        const ReflectionType* pType = pVar->getType().get();
+        ParameterBlockReflection::ResourceDesc d;
+        d.descCount = descCount;
+        d.descOffset = 0;
+        d.regIndex = pVar->getRegisterIndex();
+        d.regSpace = pVar->getRegisterSpace();
+
+        const ReflectionResourceType* pResource = pVar->getType()->unwrapArray()->asResourceType();
+        assert(pResource);
+        auto shaderAccess = pResource->getShaderAccess();
+        switch (pResource->getType())
+        {
+        case ReflectionResourceType::Type::ConstantBuffer:
+            d.type = ParameterBlockReflection::ResourceDesc::Type::Cbv;
+            break;
+        case ReflectionResourceType::Type::RawBuffer:
+        case ReflectionResourceType::Type::Texture:
+            d.type = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::TextureSrv : ParameterBlockReflection::ResourceDesc::Type::TextureUav;
+            break;
+        case ReflectionResourceType::Type::Sampler:
+            d.type = ParameterBlockReflection::ResourceDesc::Type::Sampler;
+            break;
+        case ReflectionResourceType::Type::StructuredBuffer:
+            d.type = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::StructuredBufferSrv : ParameterBlockReflection::ResourceDesc::Type::StructuredBufferUav;
+            break;
+        case ReflectionResourceType::Type::TypedBuffer:
+            d.type = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::TypedBufferSrv : ParameterBlockReflection::ResourceDesc::Type::TypedBufferUav;
+            break;
+        default:
+            should_not_get_here();
+            d.type = ParameterBlockReflection::ResourceDesc::Type::Count;
+        }
+        d.name = name;
+        return d;
+    }
+
+    static void flattenResources(const ReflectionVar::SharedConstPtr& pVar, ParameterBlockReflection::ResourceVec& resources, uint32_t arrayElements)
+    {
+        const ReflectionType* pType = pVar->getType()->unwrapArray();
+        uint32_t elementCount = max(1u, pVar->getType()->getTotalArraySize()) * arrayElements;
         if (pType->asResourceType())
         {
-            resources.push_back(pVar);
-            return;
-        }
-        const ReflectionArrayType* pArrayType = pType->asArrayType();
-
-        if (pArrayType)
-        {
-            if (pArrayType->unwrapArray()->asResourceType())
-            {
-                resources.push_back(pVar);
-            }
+            resources.push_back(getResourceDesc(pVar, elementCount, pVar->getName()));
             return;
         }
 
@@ -610,7 +659,7 @@ namespace Falcor
         {
             for (const auto& pMember : *pStructType)
             {
-                flattenResources(pMember, resources);
+                flattenResources(pMember, resources, elementCount);
             }
         }
     }
@@ -619,7 +668,7 @@ namespace Falcor
     {
         for (const auto& pMember : *pStructType)
         {
-            flattenResources(pMember, resources);
+            flattenResources(pMember, resources, 1);
         }
     }
 
@@ -647,7 +696,8 @@ namespace Falcor
     {
         const ReflectionResourceType* pResourceType = pVar->getType()->unwrapArray()->asResourceType();
         assert(pResourceType);
-        mResources.push_back(pVar);
+        uint32_t elementCount = max(1u, pVar->getType()->getTotalArraySize());
+        mResources.push_back(getResourceDesc(pVar, elementCount, pVar->getName()));
         mpResourceVars->addMember(pVar);
 
         // If this is a constant-buffer, it might contain resources. Extract them.
@@ -673,21 +723,21 @@ namespace Falcor
 
     ReflectionVar::SharedConstPtr ReflectionType::findMember(const std::string& name) const
     {
-        return findMemberInternal(name, 0, 0, 0, 0);
+        return findMemberInternal(name, 0, 0, 0, 0, 0);
     }
 
-    ReflectionVar::SharedConstPtr ReflectionBasicType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
+    ReflectionVar::SharedConstPtr ReflectionBasicType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const
     {
         // We shouldn't get here
         logWarning("Can't find variable + " + name);
         return nullptr;
     }
 
-    ReflectionVar::SharedConstPtr ReflectionResourceType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
+    ReflectionVar::SharedConstPtr ReflectionResourceType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const
     {
         if (mpStructType)
         {
-            return mpStructType->findMemberInternal(name, strPos, offset, regIndex, regSpace);
+            return mpStructType->findMemberInternal(name, strPos, offset, regIndex, regSpace, descOffset);
         }
         else
         {
@@ -696,7 +746,7 @@ namespace Falcor
         }
     }
 
-    ReflectionVar::SharedConstPtr ReflectionArrayType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
+    ReflectionVar::SharedConstPtr ReflectionArrayType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const
     {
         if (name[strPos] == '[') ++strPos;
         if (name.size() <= strPos)
@@ -723,14 +773,46 @@ namespace Falcor
         // Find the offset of the leaf
         if (endPos + 1 == name.size())
         {
-            ReflectionVar::SharedPtr pVar = ReflectionVar::create(name.substr(0, endPos + 1), mpType, offset, regSpace);
+            descOffset += index;
+            ReflectionVar::SharedPtr pVar;
+            if (mpType->asResourceType())
+            {
+                pVar = ReflectionVar::create(name, mpType, regIndex, descOffset, regSpace);
+            }
+            else
+            {
+              pVar = ReflectionVar::create(name, mpType, offset);
+            }
             return pVar;
         }
 
-        return mpType->findMemberInternal(name, endPos + 1, offset, regIndex, regSpace);
+        return mpType->findMemberInternal(name, endPos + 1, offset, regIndex, regSpace, descOffset + (index * max(1u, mpType->getTotalArraySize())));
     }
 
-    ReflectionVar::SharedConstPtr ReflectionStructType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace) const
+    static ReflectionVar::SharedConstPtr returnOrCreateVar(ReflectionVar::SharedConstPtr pVar, const std::string& name, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset)
+    {
+        if (pVar->getType()->asResourceType())
+        {
+            assert(regSpace == pVar->getRegisterSpace());
+            if(regIndex || descOffset)
+            {
+                regIndex += pVar->getRegisterIndex();
+                descOffset += pVar->getDescOffset();
+                pVar = ReflectionVar::create(name, pVar->getType(), regIndex, descOffset, regSpace);
+            }
+        }
+        else
+        {
+            if (offset)
+            {
+                offset += pVar->getOffset();
+                pVar = ReflectionVar::create(name, pVar->getType(), offset);
+            }
+        }
+        return pVar;
+    }
+
+    ReflectionVar::SharedConstPtr ReflectionStructType::findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const
     {
         if (name[strPos] == '.') strPos++; // This happens for arrays-of-structs. The array will only skip the array index, which means the first character will be a '.'
 
@@ -745,9 +827,12 @@ namespace Falcor
         }
 
         const auto& pVar = getMember(fieldIndex);
-        if (newPos == std::string::npos) return pVar;
+        if (newPos == std::string::npos) return returnOrCreateVar(pVar, name, offset, regIndex, regSpace, descOffset);
         const auto& pNewType = pVar->getType().get();
-        return pNewType->findMemberInternal(name, newPos + 1, pVar->getOffset(), pVar->getRegisterIndex(), pVar->getRegisterSpace());
+        uint32_t varRegIndex = pVar->getType()->asResourceType() ? pVar->getRegisterIndex() : 0;
+        uint32_t varRegSpace = pVar->getType()->asResourceType() ? pVar->getRegisterSpace() : 0;
+        size_t varOffset = pVar->getType()->asResourceType() ? 0 : pVar->getOffset();
+        return pNewType->findMemberInternal(name, newPos + 1, varOffset, varRegIndex, varRegSpace, descOffset + pVar->getDescOffset());
     }
 
     size_t ReflectionStructType::getMemberIndex(const std::string& name) const

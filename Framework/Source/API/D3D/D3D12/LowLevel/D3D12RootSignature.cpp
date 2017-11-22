@@ -190,43 +190,11 @@ namespace Falcor
         const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
         const ParameterBlockReflection::ResourceVec& resVec = pGlobalBlock->getResources();
 
-        for (const auto& pVar : resVec)
+        for (const auto& res : resVec)
         {
-            const ReflectionResourceType* pType = pVar->getType()->unwrapArray()->asResourceType();
-            assert(pType);
-
-//            assert(resource.descOffset == 0); // #PARAMBLOCK
-            RootSignature::DescType descType;
-            if (pType->getType() == ReflectionResourceType::Type::Sampler)
-            {
-                descType = RootSignature::DescType::Sampler;
-            }
-            else
-            {
-                ReflectionResourceType::ShaderAccess shaderAccess = pType->getShaderAccess();
-                switch (pType->getType())
-                {
-                case ReflectionResourceType::Type::RawBuffer:
-                case ReflectionResourceType::Type::Texture:
-                    descType = (shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TextureUav : RootSignature::DescType::TextureSrv;
-                    break;
-                case ReflectionResourceType::Type::StructuredBuffer:
-                    descType = (shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite) ? RootSignature::DescType::StructuredBufferUav : RootSignature::DescType::StructuredBufferSrv;
-                    break;
-                case ReflectionResourceType::Type::TypedBuffer:
-                    descType = (shaderAccess == ReflectionResourceType::ShaderAccess::ReadWrite) ? RootSignature::DescType::TypedBufferUav : RootSignature::DescType::TypedBufferSrv;
-                    break;
-                case ReflectionResourceType::Type::ConstantBuffer:
-                    descType = RootSignature::DescType::Cbv;
-                    break;
-                default:
-                    should_not_get_here();
-                }
-            }
-
-            uint32_t count = max(1u, pVar->getType()->getTotalArraySize());
+            assert(res.descCount);
             RootSignature::DescriptorSetLayout descTable;
-            descTable.addRange(descType, pVar->getRegisterIndex(), count, pVar->getRegisterSpace());
+            descTable.addRange(res.type, res.regIndex, res.descCount, res.regSpace);
             d.addDescriptorSet(descTable);
             cost += 1;
         }
