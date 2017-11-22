@@ -298,7 +298,7 @@ namespace Falcor
         const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
     private:
         friend class ProgramReflection;
-        void addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar);
+        void addResource(const ReflectionVar::SharedConstPtr& pVar);
         ParameterBlockReflection(const std::string& name);
         ResourceVec mResources;
 

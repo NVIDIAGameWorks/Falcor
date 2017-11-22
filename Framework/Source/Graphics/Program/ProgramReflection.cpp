@@ -514,12 +514,12 @@ namespace Falcor
             {
                 std::string name = std::string(pSlangLayout->getName());
                 ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
-                pBlock->addResource(pVar->getName(), pVar);
+                pBlock->addResource(pVar);
                 addParameterBlock(pBlock);
             }
             else
             {
-                pGlobalBlock->addResource(pVar->getName(), pVar);
+                pGlobalBlock->addResource(pVar);
             }
         }
 
@@ -643,7 +643,7 @@ namespace Falcor
         return mpResourceVars->findMember(name);
     }
 
-    void ParameterBlockReflection::addResource(const std::string& fullName, const ReflectionVar::SharedConstPtr& pVar)
+    void ParameterBlockReflection::addResource(const ReflectionVar::SharedConstPtr& pVar)
     {
         const ReflectionResourceType* pResourceType = pVar->getType()->unwrapArray()->asResourceType();
         assert(pResourceType);
