@@ -1,67 +1,5 @@
-CC:=g++
-
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
-SAMPLE_CONFIG:=Debug
-
-INCLUDES = \
--I "Framework" \
--I "Framework/Source" \
--I "Framework/Externals/GLM" \
--I "Framework/Externals/OpenVR/headers" \
--I "Framework/Externals/RapidJson/include" \
--I "$(VULKAN_SDK)/include" \
-$(shell pkg-config --cflags assimp gtk+-3.0 glfw3)
-
-# freeimage has no pkg-config data, but should be in /usr/include
-# glfw3 too
-
-ADDITIONAL_LIB_DIRS = -L "Bin/" \
--L "Framework/Externals/OpenVR/lib" \
--L "Framework/Externals/Slang/bin/linux-x86_64/release" \
--L "$(VULKAN_SDK)/lib"
-
-LIBS = -lfalcor \
--lfreeimage -lslang -lslang-glslang -lopenvr_api \
-$(shell pkg-config --libs assimp gtk+-3.0 glfw3) \
-$(shell pkg-config --static --libs x11)\
--lvulkan -lstdc++fs -lrt -lm -ldl -lz
-# ffmpeg stuff: -lavcodec -lavdevice -lavformat -lswscale -lavutil -lopus
-
-# Compiler Flags
-DEBUG_FLAGS:=-O0 -g -Wno-unused-variable
-RELEASE_FLAGS:=-Og
-#-fno-branch-count-reg -fno-if-conversion -fno-if-conversion2 -fno-inline-functions-called-once -fno-move-loop-invariants -fno-ssa-phiopt -fno-tree-bit-ccp -fno-tree-pta -fno-tree-sra
-DISABLED_WARNINGS:=-Wno-unknown-pragmas -Wno-reorder -Wno-attributes -Wno-unused-function -Wno-switch -Wno-sign-compare -Wno-address -Wno-strict-aliasing -Wno-nonnull-compare \
--Wno-unused-but-set-variable -Wno-misleading-indentation
-# Disabling "unused-but-set-variable and misleading-indentation" ignores warnings when compiling imgui, not Falcor
-COMMON_FLAGS=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
-
-# Defines
-DEBUG_DEFINES:=-D "_DEBUG"
-RELEASE_DEFINES:=
-COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
-
-# Base source directory
-SOURCE_DIR:=Framework/Source/
-
-# All directories containing source code relative from the base Source folder. The "/" in the first line is to include the base Source directory
-RELATIVE_DIRS:= / \
-API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
-Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
-Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ \
-VR/ VR/OpenVR/ \
-../Externals/dear_imgui/
-# Utils/Video/
-
-# RELATIVE_DIRS, but now with paths relative to Makefile
-SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
-# All source files enumerated with paths relative to Makefile (base repo)
-ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))
-# All expected .o files with the same path as their corresponding .cpp. Output redirected to actual output folder during compilation recipe
-ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
-
-OUT_DIR:=Bin/
+SAMPLE_CONFIG:=Release
 
 # A sample demonstrating Falcor's effects library
 FeatureDemo : $(SAMPLE_CONFIG)
@@ -122,6 +60,66 @@ ModelViewer : $(SAMPLE_CONFIG)
 SceneEditor : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorSample.cpp,SceneEditor)
 
+CC:=g++
+
+INCLUDES = \
+-I "Framework" \
+-I "Framework/Source" \
+-I "Framework/Externals/GLM" \
+-I "Framework/Externals/OpenVR/headers" \
+-I "Framework/Externals/RapidJson/include" \
+-I "$(VULKAN_SDK)/include" \
+$(shell pkg-config --cflags assimp gtk+-3.0 glfw3)
+
+# freeimage has no pkg-config data, but should be in /usr/include
+# glfw3 too
+
+ADDITIONAL_LIB_DIRS = -L "Bin/" \
+-L "Framework/Externals/OpenVR/lib" \
+-L "Framework/Externals/Slang/bin/linux-x86_64/release" \
+-L "$(VULKAN_SDK)/lib"
+
+LIBS = -lfalcor \
+-lfreeimage -lslang -lslang-glslang -lopenvr_api \
+$(shell pkg-config --libs assimp gtk+-3.0 glfw3) \
+$(shell pkg-config --static --libs x11)\
+-lvulkan -lstdc++fs -lrt -lm -ldl -lz
+# ffmpeg stuff: -lavcodec -lavdevice -lavformat -lswscale -lavutil -lopus
+
+# Compiler Flags
+DEBUG_FLAGS:=-O0 -g -Wno-unused-variable
+RELEASE_FLAGS:=$(GCC_O2)
+DISABLED_WARNINGS:=-Wno-reorder -Wno-switch -Wno-unknown-pragmas -Wno-unused-function -Wno-sign-compare -Wno-nonnull-compare -Wno-attributes -Wno-address \
+-Wno-unused-but-set-variable -Wno-misleading-indentation -Wno-strict-aliasing
+# Disabling "unused-but-set-variable and misleading-indentation" ignores warnings when compiling imgui, not Falcor
+COMMON_FLAGS=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
+
+# Defines
+DEBUG_DEFINES:=-D "_DEBUG"
+RELEASE_DEFINES:=-D "_DEBUG"
+COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+
+# Base source directory
+SOURCE_DIR:=Framework/Source/
+
+# All directories containing source code relative from the base Source folder. The "/" in the first line is to include the base Source directory
+RELATIVE_DIRS:= / \
+API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
+Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
+Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
+Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ \
+VR/ VR/OpenVR/ \
+../Externals/dear_imgui/
+# Utils/Video/
+
+# RELATIVE_DIRS, but now with paths relative to Makefile
+SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
+# All source files enumerated with paths relative to Makefile (base repo)
+ALL_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS)))
+# All expected .o files with the same path as their corresponding .cpp. Output redirected to actual output folder during compilation recipe
+ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
+OUT_DIR:=Bin/
+
 # Args: (1) Relative Directory, (2) Cpp filename, (3) Executable name
 define CompileSample
 	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
@@ -144,6 +142,9 @@ endef
 define MoveProjectData
 	@cp -r $(1)Data $(2)
 endef
+
+GCC_O1=-ffloat-store -fauto-inc-dec -fbranch-count-reg -fcombine-stack-adjustments -fcompare-elim -fcprop-registers -fdce -fdefer-pop -fdse -fforward-propagate -fguess-branch-probability -fif-conversion2 -fif-conversion -finline-functions-called-once -fipa-pure-const -fipa-profile -fipa-reference -fmerge-constants -fmove-loop-invariants -fomit-frame-pointer -freorder-blocks -fshrink-wrap -fshrink-wrap-separate -fsplit-wide-types -fssa-backprop -fssa-phiopt -ftree-bit-ccp -ftree-ccp -ftree-ch -ftree-coalesce-vars -ftree-copy-prop -ftree-dce -ftree-dominator-opts -ftree-dse -ftree-forwprop -ftree-fre -ftree-phiprop -ftree-sink -ftree-slsr -ftree-sra -ftree-pta -ftree-ter -funit-at-a-time
+GCC_O2=$(GCC_O1) -fthread-jumps -falign-functions -falign-jumps -falign-loops -falign-labels -fcaller-saves -fcrossjumping -fcse-follow-jumps  -fcse-skip-blocks -fdelete-null-pointer-checks -fdevirtualize -fdevirtualize-speculatively -fexpensive-optimizations -fgcse  -fgcse-lm  -fhoist-adjacent-loads -finline-small-functions -findirect-inlining -fipa-cp -fipa-bit-cp -fipa-vrp -fipa-sra -fipa-icf -fisolate-erroneous-paths-dereference -flra-remat -foptimize-sibling-calls -foptimize-strlen -fpartial-inlining -fpeephole2 -freorder-blocks-algorithm=stc -freorder-blocks-and-partition -freorder-functions -frerun-cse-after-loop  -fsched-interblock  -fsched-spec -fschedule-insns  -fschedule-insns2 -fstore-merging -ftree-builtin-call-dce -ftree-switch-conversion -ftree-tail-merge -fcode-hoisting -ftree-pre -ftree-vrp -fipa-ra
 
 # Builds Falcor library in Release
 Release : ReleaseConfig $(OUT_DIR)libfalcor.a
@@ -172,5 +173,6 @@ ReleaseConfig :
 .PHONY : clean
 clean :
 	@find . -name "*.o" -type f -delete
+	@find ./Framework/Externals/dear_imgui/ -name '*.o' -delete
 	@rm -rf "Bin/"
 	@rm -f Falcor.a
