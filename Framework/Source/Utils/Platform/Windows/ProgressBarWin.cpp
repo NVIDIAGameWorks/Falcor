@@ -26,10 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#ifdef _WIN32
-
 #include "Framework.h"
-#include "ProgressBar.h"
+#include "Utils/Platform/ProgressBar.h"
 #include <CommCtrl.h>
 #include <random>
 
@@ -134,5 +132,3 @@ namespace Falcor
         return create(list, delayInMs);
     }
 }
-
-#endif // _WIN32

@@ -34,7 +34,7 @@
 #include "Utils/Platform/OS.h"
 #include "API/FBO.h"
 #include "VR/OpenVR/VRSystem.h"
-#include "Utils/ProgressBar.h"
+#include "Utils/Platform/ProgressBar.h"
 #include <sstream>
 #include <iomanip>
 
@@ -173,7 +173,6 @@ namespace Falcor
         Logger::init();
         Logger::showBoxOnError(config.showMessageBoxOnError);
 
-#ifdef _WIN32
         // Show the progress bar
         ProgressBar::MessageList msgList =
         {
@@ -187,7 +186,6 @@ namespace Falcor
         };
 
         ProgressBar::SharedPtr pBar = ProgressBar::create(msgList);
-#endif
 
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
@@ -232,9 +230,8 @@ namespace Falcor
         mpPixelZoom = PixelZoom::create(mpDefaultFBO.get());
 
         onLoad();
-#ifdef _WIN32
         pBar = nullptr;
-#endif
+
         mFrameRate.resetClock();
         mpWindow->msgLoop();
 

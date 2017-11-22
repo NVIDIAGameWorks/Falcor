@@ -27,10 +27,7 @@
 ***************************************************************************/
 #pragma once
 
-#ifdef _WIN32 // Implement ProgressBar for Linux
-
 #include <vector>
-#include <string>
 #include "API/Window.h"
 
 namespace Falcor
@@ -64,5 +61,3 @@ namespace Falcor
         ProgressBarData* mpData;
     };
 }
-
-#endif // _WIN32

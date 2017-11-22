@@ -115,7 +115,6 @@
 #include "Utils/Font.h"
 #include "Utils/Gui.h"
 #include "Utils/Logger.h"
-#include "Utils/Platform/OS.h"
 #include "Utils/TextRenderer.h"
 #include "Utils/CpuTimer.h"
 #include "Utils/UserInput.h"
@@ -125,7 +124,8 @@
 #include "Utils/Video/VideoEncoder.h"
 #include "Utils/Video/VideoEncoderUI.h"
 #include "Utils/Video/VideoDecoder.h"
-#include "Utils/ProgressBar.h"
+#include "Utils/Platform/OS.h"
+#include "Utils/Platform/ProgressBar.h"
 #include "Utils/ThreadPool.h"
 
 // VR

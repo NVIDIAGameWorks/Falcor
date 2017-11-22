@@ -174,13 +174,11 @@ void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
     Mesh::resetGlobalIdCounter();
     resetScene();
 
-#ifdef _WIN32
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
         pBar = ProgressBar::create("Loading Model");
     }
-#endif
 
     Model::SharedPtr pModel = Model::createFromFile(filename.c_str());
     if (!pModel) return;
@@ -195,13 +193,11 @@ void FeatureDemo::loadScene(const std::string& filename, bool showProgressBar)
     Mesh::resetGlobalIdCounter();
     resetScene();
 
-#ifdef _WIN32
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
         pBar = ProgressBar::create("Loading Scene", 100);
     }
-#endif
 
     Scene::SharedPtr pScene = Scene::loadFromFile(filename);
 
