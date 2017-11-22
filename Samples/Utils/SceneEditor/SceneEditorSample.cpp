@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "SceneEditorSample.h"
-#include "Graphics\Scene\SceneImporter.h"
+#include "Graphics/Scene/SceneImporter.h"
 
 void SceneEditorSample::onGuiRender()
 {

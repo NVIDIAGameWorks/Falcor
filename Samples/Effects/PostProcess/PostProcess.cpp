@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "postprocess.h"
+#include "PostProcess.h"
 
 using namespace Falcor;
 
@@ -47,7 +47,7 @@ void PostProcess::onLoad()
     mCameraController.setModelParams(mpTeapot->getCenter(), mpTeapot->getRadius(), 2.0f);    
     
     //Program
-    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("PostProcess.vs"), appendShaderExtension("Postprocess.ps"));
+    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("PostProcess.vs"), appendShaderExtension("PostProcess.ps"));
     mpProgramVars = GraphicsVars::create(mpMainProg->getActiveVersion()->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setFbo(mpDefaultFBO);

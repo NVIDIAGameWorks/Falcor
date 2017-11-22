@@ -89,24 +89,6 @@ bool EnvMap::onMouseEvent(const MouseEvent& mouseEvent)
     return mpCameraController->onMouseEvent(mouseEvent);
 }
 
-void GUI_CALL EnvMap::getScaleCB(void* pData, void* pThis)
-{
-    EnvMap* pEnv = (EnvMap*)pThis;
-    if(pEnv->mpSkybox)
-    {
-        *(float*)pData = pEnv->mpSkybox->getScale();
-    }
-}
-
-void GUI_CALL EnvMap::setScaleCB(const void* pData, void* pThis)
-{
-    EnvMap* pEnv = (EnvMap*)pThis;
-    if(pEnv->mpSkybox)
-    {
-        pEnv->mpSkybox->setScale(*(float*)pData);
-    }
-}
-
 void EnvMap::onResizeSwapChain()
 {
     float h = (float)mpDefaultFBO->getHeight();

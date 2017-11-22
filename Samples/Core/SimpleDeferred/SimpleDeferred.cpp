@@ -222,9 +222,6 @@ void SimpleDeferred::onFrameRender()
 {
     beginTestFrame();
 
-    uint32_t width = mpDefaultFBO->getWidth();
-    uint32_t height = mpDefaultFBO->getHeight();
-
     GraphicsState* pState = mpRenderContext->getGraphicsState().get();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
@@ -259,8 +256,8 @@ void SimpleDeferred::onFrameRender()
 
     // Lighting pass (fullscreen quad)
     {
-		pState->setFbo(mpDefaultFBO);
-		mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
+        pState->setFbo(mpDefaultFBO);
+        mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
 
         // Reset render state
         pState->setRasterizerState(mpCullRastState[0]);

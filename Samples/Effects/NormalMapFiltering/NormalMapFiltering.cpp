@@ -70,7 +70,7 @@ void NormalMapFiltering::updateProgram()
 
 void NormalMapFiltering::onLoad()
 {
-    Scene::SharedPtr pScene = Scene::loadFromFile("scenes/ogre.fscene");
+    Scene::SharedPtr pScene = Scene::loadFromFile("Scenes/ogre.fscene");
     if(pScene == nullptr)
     {
         exit(1);
@@ -98,7 +98,7 @@ void NormalMapFiltering::onFrameRender()
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
-    auto& pState = mpRenderContext->getGraphicsState();
+    auto pState = mpRenderContext->getGraphicsState();
     pState->setBlendState(nullptr);
     pState->setDepthStencilState(nullptr);
     pState->setProgram(mpProgram);

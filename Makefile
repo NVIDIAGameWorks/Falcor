@@ -1,6 +1,11 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
 SAMPLE_CONFIG:=Release
 
+All : AllCore AllEffects AllUtils
+AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
+AllEffects : AmbientOcclusion EnvMap HashedAlpha NormalMapFiltering Particles PostProcess Shadows
+AllUtils : ModelViewer SceneEditor
+
 # A sample demonstrating Falcor's effects library
 FeatureDemo : $(SAMPLE_CONFIG)
 	$(eval DIR=Samples/FeatureDemo/)
@@ -140,7 +145,7 @@ endef
 # Copies the "Data" folder inside the directory specified by Source path to the Destination path
 # Args: (1) Source, (2) Destination
 define MoveProjectData
-	@cp -r $(1)Data $(2)
+	@cp -r $(1)Data $(2) 2>/dev/null || :
 endef
 
 GCC_O1=-ffloat-store -fauto-inc-dec -fbranch-count-reg -fcombine-stack-adjustments -fcompare-elim -fcprop-registers -fdce -fdefer-pop -fdse -fforward-propagate -fguess-branch-probability -fif-conversion2 -fif-conversion -finline-functions-called-once -fipa-pure-const -fipa-profile -fipa-reference -fmerge-constants -fmove-loop-invariants -fomit-frame-pointer -freorder-blocks -fshrink-wrap -fshrink-wrap-separate -fsplit-wide-types -fssa-backprop -fssa-phiopt -ftree-bit-ccp -ftree-ccp -ftree-ch -ftree-coalesce-vars -ftree-copy-prop -ftree-dce -ftree-dominator-opts -ftree-dse -ftree-forwprop -ftree-fre -ftree-phiprop -ftree-sink -ftree-slsr -ftree-sra -ftree-pta -ftree-ter -funit-at-a-time

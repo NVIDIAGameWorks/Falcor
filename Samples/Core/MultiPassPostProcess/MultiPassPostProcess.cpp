@@ -63,7 +63,7 @@ void MultiPassPostProcess::loadImageFromFile(std::string filename)
 {
     auto fboFormat = mpDefaultFBO->getColorTexture(0)->getFormat();
     mpImage = createTextureFromFile(filename, false, isSrgbFormat(fboFormat));
-    ResourceFormat imageFormat = mpImage->getFormat();
+
     Fbo::Desc fboDesc;
     fboDesc.setColorTarget(0, mpImage->getFormat());
     mpTempFB = FboHelper::create2D(mpImage->getWidth(), mpImage->getHeight(), fboDesc);

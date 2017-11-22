@@ -40,6 +40,8 @@
 
 namespace Falcor
 {
+    const uint32_t SceneExporter::kVersion = 2;
+
     bool SceneExporter::saveScene(const std::string& filename, const Scene::SharedPtr& pScene, uint32_t exportOptions)
     {
         SceneExporter exporter(filename, pScene);

@@ -63,8 +63,6 @@ void StereoRendering::initVR()
 
     if (VRSystem::instance())
     {
-        VRDisplay* pDisplay = VRSystem::instance()->getHMD().get();
-
         // Create the FBOs
         Fbo::Desc vrFboDesc;
 
@@ -81,7 +79,7 @@ void StereoRendering::initVR()
         }
         else
         {
-            static bool first = displaySpsWarning();
+            displaySpsWarning();
         }
     }
     else
