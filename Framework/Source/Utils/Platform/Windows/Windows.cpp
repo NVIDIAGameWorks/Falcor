@@ -138,7 +138,7 @@ namespace Falcor
         return filename;
     }
 
-    bool getEnvironemntVariable(const std::string& varName, std::string& value)
+    bool getEnvironmentVariable(const std::string& varName, std::string& value)
     {
         static char buff[4096];
         int numChar = GetEnvironmentVariableA(varName.c_str(), buff, arraysize(buff)); //what is the best way to deal with wchar ?
@@ -192,7 +192,7 @@ namespace Falcor
         if (bInit == false)
         {
             std::string dataDirs;
-            if (getEnvironemntVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
+            if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
             {
                 auto folders = splitString(dataDirs, ";");
                 gDataDirectories.insert(gDataDirectories.end(), folders.begin(), folders.end());

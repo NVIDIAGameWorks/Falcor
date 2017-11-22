@@ -138,7 +138,7 @@ namespace Falcor
         \param[out] value On success, will hold the value of the environment variable.
         \return true if environment variable was found, otherwise false.
     */
-    bool getEnvironemntVariable(const std::string& varName, std::string& value);
+    bool getEnvironmentVariable(const std::string& varName, std::string& value);
 
     /** Get a list of all recorded data directories.
     */
