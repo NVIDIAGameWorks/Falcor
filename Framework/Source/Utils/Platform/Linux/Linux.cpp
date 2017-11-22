@@ -47,12 +47,11 @@ namespace Falcor
 {
     MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType)
     {
-        const char *message = msg.c_str();
         if (!gtk_init_check(0, nullptr))
         {
             should_not_get_here();
         }
-        std::string title = "Falcor";
+
         GtkButtonsType buttontype = GTK_BUTTONS_OK;
         switch (mbType)
         {
@@ -69,6 +68,7 @@ namespace Falcor
             should_not_get_here();
             break;
         }
+
         GtkWidget *parent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
         GtkWidget *dialog = gtk_message_dialog_new(
             GTK_WINDOW(parent),
@@ -76,29 +76,27 @@ namespace Falcor
             GTK_MESSAGE_INFO,
             buttontype,
             "%s",
-            message
+            msg.c_str()
         );
+
         gtk_window_set_title(GTK_WINDOW(dialog), "Falcor");
         gint value = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(GTK_WIDGET(dialog));
-        gtk_widget_destroy(GTK_WIDGET(parent));
+        gtk_widget_destroy(dialog);
+        gtk_widget_destroy(parent);
+        while(gtk_events_pending())
+        {
+            gtk_main_iteration();
+        }
+
         switch (value)
         {
-        case GTK_RESPONSE_OK:
-            while (gtk_events_pending())
-                gtk_main_iteration();
+        case GTK_RESPONSE_OK: 
             return MsgBoxButton::Ok;
         case GTK_RESPONSE_CANCEL:
-            while (gtk_events_pending())
-                gtk_main_iteration();
             return MsgBoxButton::Cancel;
         case GTK_RESPONSE_YES:
-            while (gtk_events_pending())
-                gtk_main_iteration();
             return MsgBoxButton::Retry;
         default:
-            while (gtk_events_pending())
-                gtk_main_iteration();
             should_not_get_here();
             return MsgBoxButton::Cancel;
         }
@@ -106,31 +104,18 @@ namespace Falcor
 
     bool doesFileExist(const std::string& filename)
     {
-        const char *file = filename.c_str();
-        int fn = open(file, O_RDONLY);
+        int handle = open(filename.c_str(), O_RDONLY);
         struct stat fileStat;
-        if (fstat(fn, &fileStat) < 0)
-        {
-            return 0;
-        }
-        else
-        {
-            return 1;
-        }
+        const bool exists = fstat(handle, &fileStat) == 0;
+        close(handle);
+        return exists;
     }
 
     bool isDirectoryExists(const std::string& filename)
     {
         const char *pathname = filename.c_str();
         struct stat sb;
-        if (stat(pathname, &sb) == 0 && S_ISDIR(sb.st_mode))
-        {
-            return 1;
-        }
-        else
-        {
-            return 0;
-        }
+        return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
 
     const std::string& getExecutableDirectory()
@@ -204,15 +189,8 @@ namespace Falcor
 
     std::string canonicalizeFilename(const std::string& filename)
     {
-        fs::path path(filename);
-        if(fs::exists(path))
-        {
-            return fs::canonical(path).string();
-        }
-        else
-        {
-            return "";
-        }
+        fs::path path(replaceSubstring(filename, "\\", "/"));
+        return fs::exists(path) ? fs::canonical(path).string() : "";
     }
 
     bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)
@@ -256,40 +234,66 @@ namespace Falcor
             should_not_get_here();
         }
 
-        GtkWidget *dialog;
-        GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
-        gint res;
+        GtkWidget *pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        GtkWidget *pDialog = nullptr;
+        gint res = 0;
 
-        dialog = gtk_file_chooser_dialog_new("File Dialog",
-            NULL,
-            action,
-            "_Cancel",
-            GTK_RESPONSE_CANCEL,
-            "_Open",
-            GTK_RESPONSE_ACCEPT,
-            NULL);
-
-        res = gtk_dialog_run(GTK_DIALOG(dialog));
-        if (res == GTK_RESPONSE_ACCEPT)
+        bool success = false;
+        if(bOpen)
         {
-            char *fn;
-            GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
-            fn = gtk_file_chooser_get_filename(chooser);
-            std::stringstream ss;
-            ss << fn;
-            ss >> filename;
-            //open_file(fn);
-            //g_free(fn);
-            gtk_widget_destroy(dialog);
-            while (gtk_events_pending())
-                gtk_main_iteration();
-            return true;
+            pDialog = gtk_file_chooser_dialog_new(
+                "Open File",
+                GTK_WINDOW(pParent),
+                GTK_FILE_CHOOSER_ACTION_OPEN,
+                "_Cancel",
+                GTK_RESPONSE_CANCEL,
+                "_Open",
+                GTK_RESPONSE_ACCEPT,
+                NULL);
+
+            res = gtk_dialog_run(GTK_DIALOG(pDialog));
+            if (res == GTK_RESPONSE_ACCEPT)
+            {
+                char *gtkFilename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(pDialog));
+                filename = std::string(gtkFilename);
+                g_free(gtkFilename);
+                success = true;
+            }
+        }
+        else
+        {
+            pDialog = gtk_file_chooser_dialog_new(
+                "Save File",
+                GTK_WINDOW(pParent),
+                GTK_FILE_CHOOSER_ACTION_SAVE,
+                "_Cancel",
+                GTK_RESPONSE_CANCEL,
+                "_Save",
+                GTK_RESPONSE_ACCEPT,
+                NULL);
+
+            GtkFileChooser *pAsChooser = GTK_FILE_CHOOSER(pDialog);
+
+            gtk_file_chooser_set_do_overwrite_confirmation(pAsChooser, TRUE);
+            gtk_file_chooser_set_current_name(pAsChooser, "");
+
+            res = gtk_dialog_run(GTK_DIALOG(pDialog));
+            if (res == GTK_RESPONSE_ACCEPT)
+            {
+                char *gtkFilename = gtk_file_chooser_get_filename(pAsChooser);
+                filename = std::string(gtkFilename);
+                g_free(gtkFilename);
+                success = true;
+            }
         }
 
-        while (gtk_events_pending())
+        gtk_widget_destroy(pDialog);
+        gtk_widget_destroy(pParent);
+        while(gtk_events_pending())
+        {
             gtk_main_iteration();
-        gtk_widget_destroy(dialog);
-        return false;
+        }
+        return success;
     }
 
     bool openFileDialog(const char* pFilters, std::string& filename)
