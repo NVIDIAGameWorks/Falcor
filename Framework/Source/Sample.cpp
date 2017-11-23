@@ -112,13 +112,11 @@ namespace Falcor
                     onDataReload();
                     break;
                 case KeyboardEvent::Key::Escape:
-#ifdef _WIN32
                     if (mVideoCapture.pVideoCapture)
                     {
                         endVideoCapture();
                     }
                     else
-#endif
                     {
                         mpWindow->shutdown();
                     }
@@ -144,12 +142,10 @@ namespace Falcor
     // Sample functions
     Sample::~Sample()
     {
-#ifdef _WIN32
         if (mVideoCapture.pVideoCapture)
         {
             endVideoCapture();
         }
-#endif
 
         VRSystem::cleanup();
 
@@ -281,12 +277,11 @@ namespace Falcor
         {
             mpGui->addFloatVar("Time", mCurrentTime, 0, FLT_MAX);
             mpGui->addFloatVar("Time Scale", mTimeScale, 0, FLT_MAX);
-#ifdef _WIN32
+
             if (mVideoCapture.pVideoCapture == nullptr)
             {
                 mpGui->addFloatVar("Fixed Time Delta", mFixedTimeDelta, 0, FLT_MAX);
             }
-#endif
 
             if (mpGui->addButton("Reset"))
             {
@@ -303,24 +298,24 @@ namespace Falcor
                 mFreezeTime = true;
                 mCurrentTime = 0.0f;
             }
-#ifdef _WIN32
+            
             mCaptureScreen = mpGui->addButton("Screen Capture");
             if (mpGui->addButton("Video Capture", true))
             {
                 initVideoCapture();
             }
-#endif
+
             mpGui->endGroup();
         }
 
         onGuiRender();
         mpGui->popWindow();
-#ifdef _WIN32
+        
         if (mVideoCapture.pUI)
         {
             mVideoCapture.pUI->render(mpGui.get());
         }
-#endif
+
         mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
     }
 
@@ -462,17 +457,14 @@ namespace Falcor
 
     void Sample::initVideoCapture()
     {
-#ifdef _WIN32
         if (mVideoCapture.pUI == nullptr)
         {
             mVideoCapture.pUI = VideoEncoderUI::create(20, 300, 240, 220, [this]() {startVideoCapture(); }, [this]() {endVideoCapture(); });
         }
-#endif
     }
 
     void Sample::startVideoCapture()
     {
-#ifdef _WIN32
         // Create the Capture Object and Framebuffer.
         VideoEncoder::Desc desc;
         desc.flipY = false;
@@ -505,12 +497,10 @@ namespace Falcor
                 mShowUI = false;
             }
         }
-#endif
     }
  
     void Sample::endVideoCapture()
     {
-#ifdef _WIN32
         if (mVideoCapture.pVideoCapture)
         {
             mVideoCapture.pVideoCapture->endCapture();
@@ -520,12 +510,10 @@ namespace Falcor
         mVideoCapture.pVideoCapture = nullptr;
         safe_delete_array(mVideoCapture.pFrame);
         mFixedTimeDelta = mVideoCapture.sampleTimeDelta;
-#endif
     }
 
     void Sample::captureVideoFrame()
     {
-#ifdef _WIN32
         if (mVideoCapture.pVideoCapture)
         {
             mVideoCapture.pVideoCapture->appendFrame(mpRenderContext->readTextureSubresource(mpDefaultFBO->getColorTexture(0).get(), 0).data());
@@ -545,7 +533,6 @@ namespace Falcor
                 }
             }
         }
-#endif
     }
 
     void Sample::shutdownApp()

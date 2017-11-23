@@ -74,10 +74,8 @@ INCLUDES = \
 -I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/RapidJson/include" \
 -I "$(VULKAN_SDK)/include" \
-$(shell pkg-config --cflags assimp gtk+-3.0 glfw3)
-
-# freeimage has no pkg-config data, but should be in /usr/include
-# glfw3 too
+$(shell pkg-config --cflags assimp gtk+-3.0 glfw3) \
+$(shell pkg-config --cflags libavcodec libavdevice libavformat libswscale libavutil)
 
 ADDITIONAL_LIB_DIRS = -L "Bin/" \
 -L "Framework/Externals/OpenVR/lib" \
@@ -87,9 +85,9 @@ ADDITIONAL_LIB_DIRS = -L "Bin/" \
 LIBS = -lfalcor \
 -lfreeimage -lslang -lslang-glslang -lopenvr_api \
 $(shell pkg-config --libs assimp gtk+-3.0 glfw3) \
-$(shell pkg-config --static --libs x11)\
+$(shell pkg-config --static --libs x11) \
+$(shell pkg-config --libs libavcodec libavdevice libavformat libswscale libavutil) \
 -lvulkan -lstdc++fs -lrt -lm -ldl -lz
-# ffmpeg stuff: -lavcodec -lavdevice -lavformat -lswscale -lavutil -lopus
 
 # Compiler Flags
 DEBUG_FLAGS:=-O0 -g -Wno-unused-variable
@@ -112,10 +110,9 @@ RELATIVE_DIRS:= / \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ \
+Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ \
 VR/ VR/OpenVR/ \
 ../Externals/dear_imgui/
-# Utils/Video/
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
 SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
