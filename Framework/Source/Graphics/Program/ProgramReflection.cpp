@@ -801,14 +801,6 @@ namespace Falcor
                 pVar = ReflectionVar::create(name, pVar->getType(), regIndex, descOffset, regSpace);
             }
         }
-        else
-        {
-            if (offset)
-            {
-                offset += pVar->getOffset();
-                pVar = ReflectionVar::create(name, pVar->getType(), offset);
-            }
-        }
         return pVar;
     }
 
@@ -829,10 +821,10 @@ namespace Falcor
         const auto& pVar = getMember(fieldIndex);
         if (newPos == std::string::npos) return returnOrCreateVar(pVar, name, offset, regIndex, regSpace, descOffset);
         const auto& pNewType = pVar->getType().get();
-        uint32_t varRegIndex = pVar->getType()->asResourceType() ? pVar->getRegisterIndex() : 0;
-        uint32_t varRegSpace = pVar->getType()->asResourceType() ? pVar->getRegisterSpace() : 0;
-        size_t varOffset = pVar->getType()->asResourceType() ? 0 : pVar->getOffset();
-        return pNewType->findMemberInternal(name, newPos + 1, varOffset, varRegIndex, varRegSpace, descOffset + pVar->getDescOffset());
+        regIndex = pVar->getType()->asResourceType() ? pVar->getRegisterIndex() : 0;
+        regSpace = pVar->getType()->asResourceType() ? pVar->getRegisterSpace() : 0;
+        descOffset += pVar->getDescOffset();
+        return pNewType->findMemberInternal(name, newPos + 1, pVar->getOffset(), regIndex, regSpace, descOffset);
     }
 
     size_t ReflectionStructType::getMemberIndex(const std::string& name) const
