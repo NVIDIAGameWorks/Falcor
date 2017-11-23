@@ -39,7 +39,7 @@ namespace Falcor
 #define verify_element_index() if(elementIndex >= mElementCount) {logWarning(std::string(__FUNCTION__) + ": elementIndex is out-of-bound. Ignoring call."); return;}
 
     StructuredBuffer::StructuredBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflector, size_t elementCount, Resource::BindFlags bindFlags)
-        : VariablesBuffer(name, pReflector, pReflector->getStructType()->getSize(), elementCount, bindFlags, Buffer::CpuAccess::None)
+        : VariablesBuffer(name, pReflector, pReflector->getSize(), elementCount, bindFlags, Buffer::CpuAccess::None)
     {
         if (hasUAVCounter())
         {

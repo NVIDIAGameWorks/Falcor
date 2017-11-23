@@ -409,8 +409,7 @@ namespace Falcor
         {
             const auto& pElementLayout = pSlangType->getElementTypeLayout();
             auto& pBufferType = reflectType(pElementLayout, pPath);
-            ReflectionStructType::SharedPtr pStructType = std::dynamic_pointer_cast<ReflectionStructType>(pBufferType);
-            pType->setStructType(pStructType);
+            pType->setStructType(pBufferType);
         }
 
         return pType;
@@ -450,7 +449,7 @@ namespace Falcor
     ReflectionType::SharedPtr reflectBasicType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath)
     {
         ReflectionBasicType::Type type = getVariableType(pSlangType->getScalarType(), pSlangType->getRowCount(), pSlangType->getColumnCount());
-        ReflectionType::SharedPtr pType = ReflectionBasicType::create(getUniformOffset(pPath), type, false);
+        ReflectionType::SharedPtr pType = ReflectionBasicType::create(getUniformOffset(pPath), type, false, pSlangType->getSize());
         return pType;
     }
 
@@ -547,6 +546,43 @@ namespace Falcor
         if (pGlobalBlock->isEmpty() == false)
         {
             addParameterBlock(pGlobalBlock);
+        }
+
+        // Reflect per-stage parameters
+        SlangUInt entryPointCount = pSlangReflector->getEntryPointCount();
+        for (SlangUInt ee = 0; ee < entryPointCount; ++ee)
+        {
+            EntryPointReflection* pEntryPoint = pSlangReflector->getEntryPointByIndex(ee);
+
+//             // We need to reflect entry-point parameters just like any others
+//             context.stage = entryPoint->getStage();
+// 
+//             uint32_t entryPointParamCount = entryPoint->getParameterCount();
+//             for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
+//             {
+//                 VariableLayoutReflection* param = entryPoint->getParameterByIndex(pp);
+//                 res = reflectParameter(&context, param);
+//             }
+
+            switch (pEntryPoint->getStage())
+            {
+            case SLANG_STAGE_COMPUTE:
+            {
+                SlangUInt sizeAlongAxis[3];
+                pEntryPoint->getComputeThreadGroupSize(3, &sizeAlongAxis[0]);
+                mThreadGroupSize.x = (uint32_t)sizeAlongAxis[0];
+                mThreadGroupSize.y = (uint32_t)sizeAlongAxis[1];
+                mThreadGroupSize.z = (uint32_t)sizeAlongAxis[2];
+            }
+            break;
+            case SLANG_STAGE_PIXEL:
+#ifdef FALCOR_VK
+                mIsSampleFrequency = entryPoint->usesAnySampleRateInput();
+#else
+                mIsSampleFrequency = true; // #SLANG Slang reports false for DX shaders. There's an open issue, once it's fixed we should remove that
+#endif            default:
+                break;
+            }
         }
     }
 
@@ -703,16 +739,18 @@ namespace Falcor
         // If this is a constant-buffer, it might contain resources. Extract them.
         if (pResourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
         {
-            const ReflectionStructType* pStruct = pResourceType->getStructType().get();
-            assert(pStruct);
-            for (const auto& pMember : *pStruct)
+            const ReflectionStructType* pStruct = pResourceType->getStructType().get()->asStructType();
+            if(pStruct)
             {
-                if (doesTypeContainsResources(pMember->getType().get()))
+                for (const auto& pMember : *pStruct)
                 {
-                    mpResourceVars->addMember(pMember);
+                    if (doesTypeContainsResources(pMember->getType().get()))
+                    {
+                        mpResourceVars->addMember(pMember);
+                    }
                 }
+                flattenResources(pStruct, mResources);
             }
-            flattenResources(pStruct, mResources);
         }
     }
 
@@ -893,13 +931,13 @@ namespace Falcor
     ReflectionResourceType::ReflectionResourceType(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess) :
         ReflectionType(kInvalidOffset), mType(type), mStructuredType(structuredType), mReturnType(retType), mShaderAccess(shaderAccess), mDimensions(dims) {}
 
-    ReflectionBasicType::SharedPtr ReflectionBasicType::create(size_t offset, Type type, bool isRowMajor)
+    ReflectionBasicType::SharedPtr ReflectionBasicType::create(size_t offset, Type type, bool isRowMajor, size_t size)
     {
-        return SharedPtr(new ReflectionBasicType(offset, type, isRowMajor));
+        return SharedPtr(new ReflectionBasicType(offset, type, isRowMajor, size));
     }
 
-    ReflectionBasicType::ReflectionBasicType(size_t offset, Type type, bool isRowMajor) :
-        ReflectionType(offset), mType(type), mIsRowMajor(isRowMajor) {}
+    ReflectionBasicType::ReflectionBasicType(size_t offset, Type type, bool isRowMajor, size_t size) :
+        ReflectionType(offset), mType(type), mIsRowMajor(isRowMajor), mSize(size) {}
 
     ReflectionStructType::SharedPtr ReflectionStructType::create(size_t offset, size_t size, const std::string& name)
     {

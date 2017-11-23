@@ -71,7 +71,7 @@ namespace Falcor
         //get num sim threads, required as a define for emit cs
         uvec3 simThreads;
 
-        simThreads = vec3(0);// pSimulateReflect->getThreadGroupSize();
+        simThreads = pSimulateCs->getActiveVersion()->getReflector()->getThreadGroupSize();
         mSimulateThreads = simThreads.x * simThreads.y * simThreads.z;
 
         //Emit cs

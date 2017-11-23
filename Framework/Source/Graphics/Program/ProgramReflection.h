@@ -59,6 +59,7 @@ namespace Falcor
 
         virtual bool operator==(const ReflectionType& other) const = 0;
         virtual bool operator!=(const ReflectionType& other) const { return !(*this == other); }
+        virtual size_t getSize() const = 0;
     protected:
         ReflectionType(size_t offset) : mOffset(offset) {}
         size_t mOffset;
@@ -76,6 +77,7 @@ namespace Falcor
         const ReflectionType::SharedConstPtr& getType() const { return mpType; }
         bool operator==(const ReflectionArrayType& other) const;
         bool operator==(const ReflectionType& other) const override;
+        virtual size_t getSize() const override { return mArrayStride * mArrayStride; }
     private:
         ReflectionArrayType(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType);
         uint32_t mArraySize = 0;
@@ -104,7 +106,7 @@ namespace Falcor
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator begin() const { return mMembers.begin(); }
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator end() const { return mMembers.end(); }
 
-        size_t getSize() const { return mSize; }
+        virtual size_t getSize() const override { return mSize; }
         const std::string& getName() const { return mName; }
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
 
@@ -163,15 +165,17 @@ namespace Falcor
             Unknown = -1
         };
 
-        static SharedPtr create(size_t offset, Type type, bool isRowMajor);
+        static SharedPtr create(size_t offset, Type type, bool isRowMajor, size_t size);
         Type getType() const { return mType; }
         bool isRowMajor() const { return mIsRowMajor; }
+        virtual size_t getSize() const override { return mSize; }
 
         bool operator==(const ReflectionBasicType& other) const;
         bool operator==(const ReflectionType& other) const override;
     private:
-        ReflectionBasicType(size_t offset, Type type, bool isRowMajor);
+        ReflectionBasicType(size_t offset, Type type, bool isRowMajor, size_t size);
         Type mType;
+        size_t mSize;
         bool mIsRowMajor;
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
@@ -232,9 +236,9 @@ namespace Falcor
         };
         
         static SharedPtr create(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
-        void setStructType(const ReflectionStructType::SharedPtr& pType) { mpStructType = pType; }
+        void setStructType(const ReflectionType::SharedConstPtr& pType) { mpStructType = pType; }
 
-        const ReflectionStructType::SharedPtr& getStructType() const { return mpStructType; }
+        const ReflectionType::SharedConstPtr& getStructType() const { return mpStructType; }
         Dimensions getDimensions() const { return mDimensions; }
         StructuredType getStructuredBufferType() const { return mStructuredType; }
         ReturnType getReturnType() const { return mReturnType; }
@@ -251,7 +255,7 @@ namespace Falcor
         ReturnType mReturnType;
         ShaderAccess mShaderAccess;
         Type mType;
-        ReflectionStructType::SharedPtr mpStructType;   // For constant- and structured-buffers
+        ReflectionType::SharedConstPtr mpStructType;   // For constant- and structured-buffers
 
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
@@ -331,6 +335,8 @@ namespace Falcor
         static void registerParameterBlock(const std::string& name);
         static void unregisterParameterBlock(const std::string& name);
         const ParameterBlockReflection::SharedConstPtr& getParameterBlock(const std::string& name) const;
+        uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
+        bool isSampleFrequency() const { return mIsSampleFrequency; }
 
         static const uint32_t kInvalidLocation = -1;
         struct ResourceBinding
@@ -346,6 +352,8 @@ namespace Falcor
         std::unordered_map<std::string, ParameterBlockReflection::SharedConstPtr> mParameterBlocks;
         static std::unordered_set<std::string> sParameterBlockRegistry;
         ParameterBlockReflection::SharedConstPtr mpGlobalBlock;
+        uvec3 mThreadGroupSize;
+        bool mIsSampleFrequency = false;
     };
 
     inline const std::string to_string(ReflectionBasicType::Type type)
