@@ -517,6 +517,36 @@ namespace Falcor
         return reflectVariable(pSlangLayout, &path);
     }
 
+    static void reflectVaryingParameter(VariableLayoutReflection* pSlangVar, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr)
+    {
+        // Skip parameters that don't consume space in the given category
+        if (pSlangVar->getTypeLayout()->getSize(category) == 0) return;
+
+        ReflectionVar::SharedPtr pVar = reflectTopLevelVariable(pSlangVar);
+        varMap[pVar->getName()] = pVar;
+
+        // Does this variable have a semantic attached?
+        if (pVarMapBySemantic)
+        {
+            size_t semanticIndex = pSlangVar->getSemanticIndex();
+            if (semanticIndex == 0)
+            {
+                std::string semanticName = pSlangVar->getSemanticName();
+                (*pVarMapBySemantic)[semanticName] = pVar;
+            }
+        }
+    }
+
+    static void reflectShaderIO(EntryPointReflection* pEntryPoint, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr)
+    {
+        uint32_t entryPointParamCount = pEntryPoint->getParameterCount();
+        for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
+        {
+            VariableLayoutReflection* pSlangVar = pEntryPoint->getParameterByIndex(pp);
+            reflectVaryingParameter(pSlangVar, category, varMap, pVarMapBySemantic);
+        }
+    }
+
     ProgramReflection::SharedPtr ProgramReflection::create(slang::ShaderReflection* pSlangReflector, std::string& log)
     {
         return SharedPtr(new ProgramReflection(pSlangReflector, log));
@@ -554,16 +584,6 @@ namespace Falcor
         {
             EntryPointReflection* pEntryPoint = pSlangReflector->getEntryPointByIndex(ee);
 
-//             // We need to reflect entry-point parameters just like any others
-//             context.stage = entryPoint->getStage();
-// 
-//             uint32_t entryPointParamCount = entryPoint->getParameterCount();
-//             for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
-//             {
-//                 VariableLayoutReflection* param = entryPoint->getParameterByIndex(pp);
-//                 res = reflectParameter(&context, param);
-//             }
-
             switch (pEntryPoint->getStage())
             {
             case SLANG_STAGE_COMPUTE:
@@ -575,7 +595,12 @@ namespace Falcor
                 mThreadGroupSize.z = (uint32_t)sizeAlongAxis[2];
             }
             break;
-            case SLANG_STAGE_PIXEL:
+            case SLANG_STAGE_FRAGMENT:
+                reflectShaderIO(pEntryPoint, SLANG_PARAMETER_CATEGORY_FRAGMENT_OUTPUT, mPsOut);
+                break;
+            case SLANG_STAGE_VERTEX:
+                reflectShaderIO(pEntryPoint, SLANG_PARAMETER_CATEGORY_VERTEX_INPUT, mVertAttr, &mVertAttrBySemantic);
+                break;
 #ifdef FALCOR_VK
                 mIsSampleFrequency = pEntryPoint->usesAnySampleRateInput();
 #else
@@ -1045,5 +1070,32 @@ namespace Falcor
         if (mSize != other.mSize) return false;
 
         return true;
+    }
+
+    const ReflectionVar* getShaderAttribute(const std::string& name, const ProgramReflection::VariableMap& varMap, const std::string& funcName)
+    {
+#if _LOG_ENABLED
+        if (varMap.find(name) == varMap.end())
+        {
+            logError("Can't find variable '" + name + "' when calling " + funcName);
+            return nullptr;
+        }
+#endif
+        return varMap.at(name).get();
+    }
+
+    const ReflectionVar* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const
+    {
+        return getShaderAttribute(semantic, mVertAttrBySemantic, "getVertexAttributeBySemantic()");
+    }
+
+    const ReflectionVar* ProgramReflection::getVertexAttribute(const std::string& name) const
+    {
+        return getShaderAttribute(name, mVertAttr, "getVertexAttribute()");
+    }
+
+    const ReflectionVar* ProgramReflection::getPixelShaderOutput(const std::string& name) const
+    {
+        return getShaderAttribute(name, mPsOut, "getPixelShaderOutput()");
     }
 }

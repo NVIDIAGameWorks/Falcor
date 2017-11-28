@@ -329,6 +329,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ProgramReflection>;
         using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
+        using VariableMap = std::unordered_map<std::string, ReflectionVar::SharedConstPtr>;
 
         static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
 
@@ -358,6 +359,10 @@ namespace Falcor
         ParameterBlockReflection::SharedConstPtr mpGlobalBlock;
         uvec3 mThreadGroupSize;
         bool mIsSampleFrequency = false;
+
+        VariableMap mPsOut;
+        VariableMap mVertAttr;
+        VariableMap mVertAttrBySemantic;
     };
 
     inline const std::string to_string(ReflectionBasicType::Type type)
