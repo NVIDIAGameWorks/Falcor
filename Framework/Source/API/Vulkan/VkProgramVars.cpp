@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "API/CopyContext.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 
 namespace Falcor
 {

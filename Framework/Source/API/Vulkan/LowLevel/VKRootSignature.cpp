@@ -128,45 +128,7 @@ namespace Falcor
     using SetRangeMap = std::map<RootSignature::DescType, std::vector<Range>>;
     using SetMap = std::map<uint32_t, SetRangeMap>;
 
-    struct ResData
-    {
-        RootSignature::DescType type;
-        uint32_t regSpace;
-        uint32_t regIndex;
-		uint32_t descOffst;
-        uint32_t count;
-    };
-
-    static ResData getResData(const ProgramReflection::Resource& resource)
-    {
-        ResData data;
-        switch (resource.type)
-        {
-        case ProgramReflection::Resource::ResourceType::Sampler:
-                data.type = RootSignature::DescType::Sampler;
-                break;
-            case ProgramReflection::Resource::ResourceType::StructuredBuffer:
-                data.type = (resource.shaderAccess == ProgramReflection::ShaderAccess::Read) ? RootSignature::DescType::StructuredBufferSrv : RootSignature::DescType::StructuredBufferUav;
-                break;
-            case ProgramReflection::Resource::ResourceType::TypedBuffer:
-                data.type = (resource.shaderAccess == ProgramReflection::ShaderAccess::Read) ? RootSignature::DescType::TypedBufferSrv : RootSignature::DescType::TypedBufferUav;
-                break;
-            case ProgramReflection::Resource::ResourceType::Texture:
-                data.type = (resource.shaderAccess == ProgramReflection::ShaderAccess::Read) ? RootSignature::DescType::TextureSrv : RootSignature::DescType::TextureUav;
-                break;
-            default:
-                should_not_get_here();
-        }
-
-
-        data.count = resource.arraySize ? resource.arraySize : 1;
-        data.regIndex = resource.regIndex;
-        data.regSpace = resource.regSpace;
-		data.descOffst = resource.descOffset;
-        return data;
-    }
-
-    void insertResData(SetMap& map, const ResData& data)
+    void insertResData(SetMap& map, const ParameterBlockReflection::ResourceDesc& data)
     {
         if (map.find(data.regSpace) == map.end())
         {
@@ -184,53 +146,27 @@ namespace Falcor
 		{
 			if (r.baseIndex == data.regIndex)
 			{
-				r.count = max(r.count, data.count + data.descOffst);
+				r.count = max(r.count, data.descCount + data.descOffset);
 				return;
 			}
 		}
 
 		// New Range
-        rangeMap[data.type].push_back({ data.regIndex, data.count + data.descOffst });
+        rangeMap[data.type].push_back({ data.regIndex, data.descCount + data.descOffset });
     }
 
-    ProgramReflection::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
-
-    static void insertBuffers(const ProgramReflection* pReflector, SetMap& setMap, ProgramReflection::BufferReflection::Type bufferType, RootSignature::DescType descType)
-    {
-        uint32_t cost = 0;
-        const auto& bufMap = pReflector->getBufferMap(bufferType);
-        for (const auto& buf : bufMap)
-        {
-            const ProgramReflection::BufferReflection* pBuffer = buf.second.get();
-            if (pBuffer->getShaderAccess() == getRequiredShaderAccess(descType))
-            {
-                ResData resData;
-                resData.count = 1;
-				resData.descOffst = 0;
-                resData.regIndex = pBuffer->getRegisterIndex();
-                resData.regSpace = pBuffer->getRegisterSpace();
-                resData.type = descType;
-                insertResData(setMap, resData);
-            }
-        }
-    }
-
+    ReflectionResourceType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
+        
     RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector)
     {
         // We'd like to create an optimized signature (minimize the number of ranges per set). First, go over all of the resources and find packed ranges
         SetMap setMap;
 
-        const auto& resMap = pReflector->getResourceMap();
+        const auto& resMap = pReflector->getParameterBlock("")->getResources();
         for (const auto& res : resMap)
         {
-            const ProgramReflection::Resource& resource = res.second;
-            ResData resData = getResData(resource);
-            insertResData(setMap, resData);
+            insertResData(setMap, res);
         }
-
-        insertBuffers(pReflector, setMap, ProgramReflection::BufferReflection::Type::Constant, RootSignature::DescType::Cbv);
-        insertBuffers(pReflector, setMap, ProgramReflection::BufferReflection::Type::Structured, RootSignature::DescType::StructuredBufferSrv);
-        insertBuffers(pReflector, setMap, ProgramReflection::BufferReflection::Type::Structured, RootSignature::DescType::StructuredBufferUav);
 
         std::map<uint32_t, DescriptorSetLayout> setLayouts;
         for (auto& s : setMap)

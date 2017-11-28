@@ -333,19 +333,19 @@ namespace Falcor
 
     // Once we've found the path from the root down to a particular leaf
     // variable, `getDescOffset` can be used to find the final summed-up descriptor offset of the element
-    static uint32_t getDescOffsetFromPath(const ReflectionPath* path, uint32_t arraySize, SlangParameterCategory category)
+    static uint32_t getDescOffsetFromPath(const ReflectionPath* pPath, uint32_t arraySize, SlangParameterCategory category)
     {
 #ifndef FALCOR_VK
         return 0;
 #else
         uint32_t offset = 0;
         bool first = true;
-        for (auto pp = path; pp; pp = pp->parent)
+        for (auto pp = pPath; pp; pp = pp->pParent)
         {
-            if ((pp->typeLayout) && (pp->typeLayout->getKind() == TypeReflection::Kind::Array))
+            if ((pp->pTypeLayout) && (pp->pTypeLayout->getKind() == TypeReflection::Kind::Array))
             {
                 offset += (uint32_t)pp->childIndex * arraySize;
-                arraySize *= (uint32_t)pp->typeLayout->getElementCount();
+                arraySize *= (uint32_t)pp->pTypeLayout->getElementCount();
             }
         }
         return offset;
@@ -577,7 +577,7 @@ namespace Falcor
             break;
             case SLANG_STAGE_PIXEL:
 #ifdef FALCOR_VK
-                mIsSampleFrequency = entryPoint->usesAnySampleRateInput();
+                mIsSampleFrequency = pEntryPoint->usesAnySampleRateInput();
 #else
                 mIsSampleFrequency = true; // #SLANG Slang reports false for DX shaders. There's an open issue, once it's fixed we should remove that
 #endif            default:

@@ -346,6 +346,10 @@ namespace Falcor
         };
 
         ResourceBinding getResourceBinding(const std::string& name) const;
+        const ReflectionVar* getVertexAttributeBySemantic(const std::string& semantic) const;
+        const ReflectionVar* getVertexAttribute(const std::string& name) const;
+        const ReflectionVar* getPixelShaderOutput(const std::string& name) const;
+
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);
