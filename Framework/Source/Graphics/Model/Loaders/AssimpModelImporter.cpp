@@ -647,7 +647,9 @@ namespace Falcor
     {
         initializeBones(pScene);
 
-        if (pScene->HasAnimations())
+        // Create animation controller as long as there are bones.
+        // This will render bind pose if there are no animations.
+        if (mBones.empty() == false)
         {
             auto pAnimCtrl = AnimationController::create(mBones);
 
