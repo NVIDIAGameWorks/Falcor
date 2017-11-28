@@ -137,8 +137,10 @@ namespace Falcor
 
     bool SceneRenderer::setPerModelData(const CurrentWorkingData& currentData)
     {
+        const Model* pModel = currentData.pModel;
+
         // Set bones
-        if (currentData.pModel->hasBones())
+        if (pModel->hasBones())
         {
             ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kPerMeshCbName).get();
             if (pCB)
@@ -148,7 +150,8 @@ namespace Falcor
                     sBonesOffset = pCB->getVariableOffset("gWorldMat[0]");
                 }
 
-                pCB->setVariableArray(sBonesOffset, currentData.pModel->getBonesMatrices(), currentData.pModel->getBonesCount());
+                pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
+                pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
         }
         return true;
