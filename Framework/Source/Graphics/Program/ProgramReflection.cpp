@@ -599,6 +599,9 @@ namespace Falcor
             VariableLayoutReflection* pSlangLayout = pSlangReflector->getParameterByIndex(i);
             ReflectionVar::SharedPtr pVar = reflectTopLevelVariable(pSlangLayout);
 
+            // In GLSL, the varying (in/out) variables are reflected as globals. Ignore them, we will reflect them later
+            if (pVar->getType()->unwrapArray()->asResourceType() == nullptr) continue;
+
             if (isParameterBlockReflection(pSlangLayout, sParameterBlockRegistry))
             {
                 std::string name = std::string(pSlangLayout->getName());
