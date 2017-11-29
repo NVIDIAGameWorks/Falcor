@@ -1116,14 +1116,8 @@ namespace Falcor
 
     const ProgramReflection::ShaderVariable* getShaderAttribute(const std::string& name, const ProgramReflection::VariableMap& varMap, const std::string& funcName)
     {
-#if _LOG_ENABLED
-        if (varMap.find(name) == varMap.end())
-        {
-            logError("Can't find variable '" + name + "' when calling " + funcName);
-            return nullptr;
-        }
-#endif
-        return &(varMap.at(name));
+        const auto& it = varMap.find(name);
+        return (it == varMap.end()) ? nullptr : &(it->second);
     }
 
     const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const
