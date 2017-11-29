@@ -987,6 +987,43 @@ namespace Falcor
         return arraySize;
     }
 
+    static void extractOffsets(const ReflectionType* pType, size_t offset, uint32_t arraySize, ReflectionResourceType::OffsetDescMap& offsetMap)
+    {
+        if (pType->asResourceType()) return;
+        const ReflectionBasicType* pBasicType = pType->asBasicType();
+        if (pBasicType)
+        {
+            ReflectionResourceType::OffsetDesc desc;
+            desc.type = pBasicType->getType();
+            desc.count = arraySize;
+            offsetMap[offset] = desc;
+            return;
+        }
+
+        const ReflectionArrayType* pArrayType = pType->asArrayType();
+        if (pArrayType)
+        {
+            pType = pArrayType->getType().get();
+            uint32_t arraySize = pArrayType->getArraySize();
+            uint32_t count = arraySize;
+            for (uint32_t i = 0; i < arraySize; i++)
+            {
+                extractOffsets(pType, offset + i * pArrayType->getArrayStride(), count, offsetMap);
+                --count;
+            }
+            return;
+        }
+
+        // If we got here this has to be a struct
+        const ReflectionStructType* pStructType = pType->asStructType();
+        assert(pStructType);
+        for (const auto &pVar : *pStructType)
+        {
+            size_t memberOffset = pVar->getOffset() + offset;
+            extractOffsets(pVar->getType().get(), memberOffset, 0, offsetMap);
+        }
+    }
+
     ReflectionArrayType::SharedPtr ReflectionArrayType::create(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType)
     {
         return SharedPtr(new ReflectionArrayType(offset, arraySize, arrayStride, pType));
@@ -1002,6 +1039,12 @@ namespace Falcor
 
     ReflectionResourceType::ReflectionResourceType(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess) :
         ReflectionType(kInvalidOffset), mType(type), mStructuredType(structuredType), mReturnType(retType), mShaderAccess(shaderAccess), mDimensions(dims) {}
+
+    void ReflectionResourceType::setStructType(const ReflectionType::SharedConstPtr& pType)
+    {
+        mpStructType = pType;
+        extractOffsets(pType.get(), 0, 0, mOffsetDescMap);
+    }
 
     ReflectionBasicType::SharedPtr ReflectionBasicType::create(size_t offset, Type type, bool isRowMajor, size_t size)
     {
@@ -1133,5 +1176,12 @@ namespace Falcor
     const ProgramReflection::ShaderVariable* ProgramReflection::getPixelShaderOutput(const std::string& name) const
     {
         return getShaderAttribute(name, mPsOut, "getPixelShaderOutput()");
+    }
+
+    const ReflectionResourceType::OffsetDesc& ReflectionResourceType::getOffsetDesc(size_t offset) const
+    {
+        static const ReflectionResourceType::OffsetDesc empty;
+        const auto& offsetIt = mOffsetDescMap.find(offset);
+        return (offsetIt == mOffsetDescMap.end()) ? empty : offsetIt->second;
     }
 }

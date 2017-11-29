@@ -31,8 +31,8 @@
 
 namespace Falcor
 {
-//     template<typename VarType>
-//     bool checkVariableByOffset(size_t offset, size_t count, const ProgramReflection::BufferReflection* pBufferDesc);
+    template<typename VarType>
+    bool checkVariableByOffset(size_t offset, size_t count, const ReflectionResourceType* pReflection);
     template<typename VarType>
     bool checkVariableType(const ReflectionType* pShaderType, const std::string& name, const std::string& bufferName);
 
@@ -117,7 +117,7 @@ namespace Falcor
     void StructuredBuffer::getVariable(size_t offset, size_t elementIndex, VarType& value)
     {
         verify_element_index();
-//        if(checkVariableByOffset<VarType>(offset, 1, mpReflector.get()))
+        if(checkVariableByOffset<VarType>(offset, 0, mpReflector.get()))
         {
             readFromGPU();
             const uint8_t* pVar = mData.data() + offset + elementIndex * mElementSize;
@@ -215,7 +215,7 @@ namespace Falcor
     {
         verify_element_index();
 
-//        if (checkVariableByOffset<VarType>(offset, count, mpReflector.get()))
+        if (checkVariableByOffset<VarType>(offset, count, mpReflector.get()))
         {
             readFromGPU();
             const uint8_t* pVar = mData.data() + offset;

@@ -185,6 +185,13 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ReflectionResourceType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionResourceType>;
+        struct OffsetDesc
+        {
+            ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown;
+            uint32_t count;
+        };
+        using OffsetDescMap = std::unordered_map<size_t, OffsetDesc>; // For constant- and structured-buffers
+
         enum class ShaderAccess
         {
             Undefined,
@@ -236,7 +243,7 @@ namespace Falcor
         };
         
         static SharedPtr create(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
-        void setStructType(const ReflectionType::SharedConstPtr& pType) { mpStructType = pType; }
+        void setStructType(const ReflectionType::SharedConstPtr& pType);
 
         const ReflectionType::SharedConstPtr& getStructType() const { return mpStructType; }
         Dimensions getDimensions() const { return mDimensions; }
@@ -245,6 +252,7 @@ namespace Falcor
         ShaderAccess getShaderAccess() const { return mShaderAccess; }
         Type getType() const { return mType; }
         size_t getSize() const { return mpStructType ? mpStructType->getSize() : 0; }
+        const OffsetDesc& getOffsetDesc(size_t offset) const;
 
         bool operator==(const ReflectionResourceType& other) const;
         bool operator==(const ReflectionType& other) const override;
@@ -256,6 +264,7 @@ namespace Falcor
         ShaderAccess mShaderAccess;
         Type mType;
         ReflectionType::SharedConstPtr mpStructType;   // For constant- and structured-buffers
+        OffsetDescMap mOffsetDescMap;
 
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };

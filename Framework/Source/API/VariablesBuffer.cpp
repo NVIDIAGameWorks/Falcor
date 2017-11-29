@@ -137,62 +137,35 @@ namespace Falcor
         return true;
     }
 
-//     template<typename VarType>
-//     bool checkVariableByOffset(size_t offset, size_t count, const ProgramReflection::BufferReflection* pBufferDesc)
-//     {
-// #if _LOG_ENABLED
-//         ProgramReflection::Variable::Type callType = getReflectionTypeFromCType<VarType>();
-//         // Find the variable
-//         for(auto& a = pBufferDesc->varBegin() ; a != pBufferDesc->varEnd() ; a++)
-//         {
-//             const auto& varDesc = a->second;
-//             const auto& varName = a->first;
-//             size_t arrayIndex = 0;
-//             bool checkThis = (varDesc.location == offset);
-// 
-//             // If this is an array, check if we set an element inside it
-//             if(varDesc.arrayStride > 0 && offset > varDesc.location)
-//             {
-//                 size_t stride = offset - varDesc.location;
-//                 if((stride % varDesc.arrayStride) == 0)
-//                 {
-//                     arrayIndex = stride / varDesc.arrayStride;
-//                     if(arrayIndex < varDesc.arraySize)
-//                     {
-//                         checkThis = true;
-//                     }
-//                 }
-//             }
-// 
-//             if(checkThis)
-//             {
-//                 if(varDesc.arraySize == 0)
-//                 {
-//                     if(count > 1)
-//                     {
-//                         std::string Msg("Error when setting constant by offset. Found constant \"" + varName + "\" which is not an array, but trying to set more than 1 element");
-//                         logError(Msg);
-//                         return false;
-//                     }
-//                 }
-//                 else if(arrayIndex + count > varDesc.arraySize)
-//                 {
-//                     std::string Msg("Error when setting constant by offset. Found constant \"" + varName + "\" with array size " + std::to_string(varDesc.arraySize));
-//                     Msg += ". Trying to set " + std::to_string(count) + " elements, starting at index " + std::to_string(arrayIndex) + ", which will cause out-of-bound access. Ignoring call.";
-//                     logError(Msg);
-//                     return false;
-//                 }
-//                 return checkVariableType<VarType>(varDesc.type, varName + "(Set by offset)", pBufferDesc->getName());
-//             }
-//         }
-//         std::string msg("Error when setting constant by offset. No constant found at offset ");
-//         msg += std::to_string(offset) + ". Ignoring call";
-//         logError(msg);
-//         return false;
-// #else
-//         return true;
-// #endif
-//     }
+    template<typename VarType>
+    bool checkVariableByOffset(size_t offset, size_t count, const ReflectionResourceType* pReflection)
+    {
+#if _LOG_ENABLED
+        // Make sure the first element matches what is expected
+        const ReflectionResourceType::OffsetDesc& desc = pReflection->getOffsetDesc(offset);
+        if (desc.type == ReflectionBasicType::Type::Unknown)
+        {
+            logError("Trying to set a variable at offset " + std::to_string(offset) + " but this offset is not used in the buffer");
+            return false;
+        }
+
+        ReflectionBasicType::Type callType = getReflectionTypeFromCType<VarType>();
+        if (desc.type != callType)
+        {
+            logError("Error when setting variable at offset " + std::to_string(offset) + ". Type mismatch. Expecting " + to_string(desc.type) + " but the user provided a " + to_string(callType));
+            return false;
+        }
+
+        if (count != 0 && count > desc.count)
+        {
+            logError("Error when setting variable at offset " + std::to_string(offset) + ". Trying to set too many array elements.");
+            return false;
+        }
+        return true;
+#else
+        return true;
+#endif
+    }
 
 #define verify_element_index() if(elementIndex >= mElementCount) {logWarning(std::string(__FUNCTION__) + ": elementIndex is out-of-bound. Ignoring call."); return;}
 
@@ -200,7 +173,7 @@ namespace Falcor
     void VariablesBuffer::setVariable(size_t offset, size_t elementIndex, const VarType& value)
     {
         verify_element_index();
-//        if(checkVariableByOffset<VarType>(offset, 1, mpReflector.get()))
+        if(checkVariableByOffset<VarType>(offset, 0, mpReflector.get()))
         {
             const uint8_t* pVar = mData.data() + offset + elementIndex * mElementSize;
             *(VarType*)pVar = value;
@@ -297,7 +270,7 @@ namespace Falcor
     void VariablesBuffer::setVariableArray(size_t offset, size_t elementIndex, const VarType* pValue, size_t count)
     {
         verify_element_index();
-//        if(checkVariableByOffset<VarType>(offset, count, mpReflector.get()))
+        if(checkVariableByOffset<VarType>(offset, count, mpReflector.get()))
         {
             const uint8_t* pVar = mData.data() + offset;
             VarType* pData = (VarType*)pVar + elementIndex * mElementSize;
