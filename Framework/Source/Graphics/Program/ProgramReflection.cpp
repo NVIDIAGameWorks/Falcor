@@ -894,16 +894,15 @@ namespace Falcor
         return mpType->findMemberInternal(name, endPos + 1, offset, regIndex, regSpace, descOffset + (index * max(1u, mpType->getTotalArraySize())));
     }
 
-    static ReflectionVar::SharedConstPtr returnOrCreateVar(ReflectionVar::SharedConstPtr pVar, const std::string& name, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset)
+    static ReflectionVar::SharedConstPtr returnOrCreateVar(ReflectionVar::SharedConstPtr pVar, const std::string& name, size_t offset, uint32_t regIndex, uint32_t descOffset)
     {
         if (pVar->getType()->asResourceType())
         {
-            assert(regSpace == pVar->getRegisterSpace());
             if(regIndex || descOffset)
             {
                 regIndex += pVar->getRegisterIndex();
                 descOffset += pVar->getDescOffset();
-                pVar = ReflectionVar::create(name, pVar->getType(), regIndex, descOffset, regSpace);
+                pVar = ReflectionVar::create(name, pVar->getType(), regIndex, descOffset, pVar->getRegisterSpace());
             }
         }
         else if (offset)
@@ -928,7 +927,7 @@ namespace Falcor
         }
 
         const auto& pVar = getMember(fieldIndex);
-        if (newPos == std::string::npos) return returnOrCreateVar(pVar, name, offset, regIndex, regSpace, descOffset);
+        if (newPos == std::string::npos) return returnOrCreateVar(pVar, name, offset, regIndex, descOffset);
         const auto& pNewType = pVar->getType().get();
         regIndex = pVar->getType()->asResourceType() ? pVar->getRegisterIndex() : 0;
         regSpace = pVar->getType()->asResourceType() ? pVar->getRegisterSpace() : 0;
