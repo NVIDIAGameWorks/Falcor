@@ -488,10 +488,7 @@ namespace Falcor
     {
         assert(pPath);
         std::string name(pSlangLayout->getName());
-        if (name == "gCsmData")
-        {
-            name = name;
-        }
+
         ReflectionType::SharedPtr pType = reflectType(pSlangLayout->getTypeLayout(), pPath);
         ReflectionVar::SharedPtr pVar;
 
@@ -517,23 +514,64 @@ namespace Falcor
         return reflectVariable(pSlangLayout, &path);
     }
 
-    static void reflectVaryingParameter(VariableLayoutReflection* pSlangVar, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr)
+    static void storeShaderVariable(const ReflectionPath& path, SlangParameterCategory category, const std::string& name, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic, uint32_t count, uint32_t stride)
     {
-        // Skip parameters that don't consume space in the given category
-        if (pSlangVar->getTypeLayout()->getSize(category) == 0) return;
+        ProgramReflection::ShaderVariable var;
+        const auto& pTypeLayout = path.pVar->getTypeLayout();
+        var.type = getVariableType(pTypeLayout->getScalarType(), pTypeLayout->getRowCount(), pTypeLayout->getColumnCount());
 
-        ReflectionVar::SharedPtr pVar = reflectTopLevelVariable(pSlangVar);
-        varMap[pVar->getName()] = pVar;
-
-        // Does this variable have a semantic attached?
-        if (pVarMapBySemantic)
+        uint32_t baseIndex = (uint32_t)getRegisterIndexFromPath(&path, category);
+        for(uint32_t i = 0 ; i < max(count, 1u) ; i++)
         {
-            size_t semanticIndex = pSlangVar->getSemanticIndex();
-            if (semanticIndex == 0)
+            var.semanticIndex = baseIndex + (i*stride);
+            var.semanticName = path.pVar->getSemanticName();
+            if (count)
             {
-                std::string semanticName = pSlangVar->getSemanticName();
-                (*pVarMapBySemantic)[semanticName] = pVar;
+                var.semanticName += '[' + std::to_string(i) + ']';
             }
+            varMap[name] = var;
+            if (pVarMapBySemantic)
+            {
+                (*pVarMapBySemantic)[var.semanticName] = var;
+            }
+        }
+    }
+
+    static void reflectVaryingParameter(const ReflectionPath& path, const std::string& name, SlangParameterCategory category, ProgramReflection::VariableMap& varMap, ProgramReflection::VariableMap* pVarMapBySemantic = nullptr)
+    {
+        TypeLayoutReflection* pTypeLayout = path.pVar->getTypeLayout();
+        // Skip parameters that don't consume space in the given category
+        if (pTypeLayout->getSize(category) == 0) return;
+
+        TypeReflection::Kind kind = pTypeLayout->getKind();
+        // If this is a leaf node, store it
+        if ((kind == TypeReflection::Kind::Matrix) || (kind == TypeReflection::Kind::Vector) || (kind == TypeReflection::Kind::Scalar))
+        {
+            storeShaderVariable(path, category, name, varMap, pVarMapBySemantic, 0, 0);
+        }
+        else if (kind == TypeReflection::Kind::Array)
+        {
+            auto arrayKind = pTypeLayout->getElementTypeLayout()->getKind();
+            assert((arrayKind == TypeReflection::Kind::Matrix) || (arrayKind == TypeReflection::Kind::Vector) || (arrayKind == TypeReflection::Kind::Scalar));
+            uint32_t arraySize = (uint32_t)pTypeLayout->getTotalArrayElementCount();
+            uint32_t arrayStride = (uint32_t)pTypeLayout->getElementStride(SLANG_PARAMETER_CATEGORY_UNIFORM);
+            storeShaderVariable(path, category, name, varMap, pVarMapBySemantic, arraySize, arrayStride);
+        }
+        else if (kind == TypeReflection::Kind::Struct)
+        {
+            for (uint32_t f = 0; f < pTypeLayout->getFieldCount(); f++)
+            {
+                ReflectionPath newPath;
+                newPath.pVar = pTypeLayout->getFieldByIndex(f);
+                newPath.pParent = &path;
+                newPath.childIndex = f;
+                std::string memberName = name + '.' + newPath.pVar->getName();
+                reflectVaryingParameter(newPath, memberName, category, varMap, pVarMapBySemantic);
+            }
+        }
+        else
+        {
+            should_not_get_here();
         }
     }
 
@@ -542,8 +580,9 @@ namespace Falcor
         uint32_t entryPointParamCount = pEntryPoint->getParameterCount();
         for (uint32_t pp = 0; pp < entryPointParamCount; ++pp)
         {
-            VariableLayoutReflection* pSlangVar = pEntryPoint->getParameterByIndex(pp);
-            reflectVaryingParameter(pSlangVar, category, varMap, pVarMapBySemantic);
+            ReflectionPath path;
+            path.pVar = pEntryPoint->getParameterByIndex(pp);
+            reflectVaryingParameter(path, path.pVar->getName(), category, varMap, pVarMapBySemantic);
         }
     }
 
@@ -1072,7 +1111,7 @@ namespace Falcor
         return true;
     }
 
-    const ReflectionVar* getShaderAttribute(const std::string& name, const ProgramReflection::VariableMap& varMap, const std::string& funcName)
+    const ProgramReflection::ShaderVariable* getShaderAttribute(const std::string& name, const ProgramReflection::VariableMap& varMap, const std::string& funcName)
     {
 #if _LOG_ENABLED
         if (varMap.find(name) == varMap.end())
@@ -1081,20 +1120,20 @@ namespace Falcor
             return nullptr;
         }
 #endif
-        return varMap.at(name).get();
+        return &(varMap.at(name));
     }
 
-    const ReflectionVar* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const
+    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttributeBySemantic(const std::string& semantic) const
     {
         return getShaderAttribute(semantic, mVertAttrBySemantic, "getVertexAttributeBySemantic()");
     }
 
-    const ReflectionVar* ProgramReflection::getVertexAttribute(const std::string& name) const
+    const ProgramReflection::ShaderVariable* ProgramReflection::getVertexAttribute(const std::string& name) const
     {
         return getShaderAttribute(name, mVertAttr, "getVertexAttribute()");
     }
 
-    const ReflectionVar* ProgramReflection::getPixelShaderOutput(const std::string& name) const
+    const ProgramReflection::ShaderVariable* ProgramReflection::getPixelShaderOutput(const std::string& name) const
     {
         return getShaderAttribute(name, mPsOut, "getPixelShaderOutput()");
     }

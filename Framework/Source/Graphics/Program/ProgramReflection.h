@@ -329,7 +329,13 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ProgramReflection>;
         using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
-        using VariableMap = std::unordered_map<std::string, ReflectionVar::SharedConstPtr>;
+        struct ShaderVariable
+        {
+            uint32_t semanticIndex = 0;
+            std::string semanticName;
+            ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown;                                    
+        };
+        using VariableMap = std::unordered_map<std::string, ShaderVariable>;
 
         static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
 
@@ -347,9 +353,9 @@ namespace Falcor
         };
 
         ResourceBinding getResourceBinding(const std::string& name) const;
-        const ReflectionVar* getVertexAttributeBySemantic(const std::string& semantic) const;
-        const ReflectionVar* getVertexAttribute(const std::string& name) const;
-        const ReflectionVar* getPixelShaderOutput(const std::string& name) const;
+        const ShaderVariable* getVertexAttributeBySemantic(const std::string& semantic) const;
+        const ShaderVariable* getVertexAttribute(const std::string& name) const;
+        const ShaderVariable* getPixelShaderOutput(const std::string& name) const;
 
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
