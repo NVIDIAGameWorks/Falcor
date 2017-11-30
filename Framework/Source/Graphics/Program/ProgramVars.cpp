@@ -161,7 +161,7 @@ namespace Falcor
         for (const auto& res : pGlobalBlock->getResources())
         {
             uint32_t count = res.descCount;
-            for (uint32_t index = 0; index < (0 + count); ++index) // #PARAMBLOCK the 0 used to be descOffset
+            for (uint32_t index = 0; index < (res.descOffset + count); ++index)
             {
                 uint32_t regIndex = res.regIndex;
                 uint32_t regSpace = res.regSpace;
