@@ -649,7 +649,7 @@ namespace Falcor
             }
 
             // Now create the hierarchy
-            const size_t hierarchySize = mBoneNameToIdMap.size() + mAdditionalUsedNodes.size();
+            size_t hierarchySize = mBoneNameToIdMap.size() + mAdditionalUsedNodes.size();
             mBones.resize(hierarchySize);
             uint32_t nodeBoneCount = initBone(pScene->mRootNode, AnimationController::kInvalidBoneID, 0);
             assert(uint32_t(hierarchySize) == nodeBoneCount);
@@ -698,10 +698,7 @@ namespace Falcor
 
             // If the bone is not used, skip it
             const auto& idIt = mBoneNameToIdMap.find(pAiNode->mNodeName.C_Str());
-            if (idIt == mBoneNameToIdMap.end())
-            {
-                continue;
-            }
+            if (idIt == mBoneNameToIdMap.end()) continue;
 
             animationSets[i].boneID = idIt->second;
 
