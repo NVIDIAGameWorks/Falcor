@@ -298,19 +298,13 @@ namespace Falcor
 
     void SceneRenderer::renderModelInstance(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance)
     {
-        const Model* pModel = pModelInstance->getObject().get();
+        mpLastMaterial = nullptr;
 
-        if (setPerModelData(currentData))
+        // Loop over the meshes
+        for (uint32_t meshID = 0; meshID < pModelInstance->getObject()->getMeshCount(); meshID++)
         {
-            mpLastMaterial = nullptr;
-
-            // Loop over the meshes
-            for (uint32_t meshID = 0; meshID < pModel->getMeshCount(); meshID++)
-            {
-                renderMeshInstances(currentData, pModelInstance, meshID);
-            }
+            renderMeshInstances(currentData, pModelInstance, meshID);
         }
-
     }
 
     bool SceneRenderer::update(double currentTime)
@@ -331,14 +325,17 @@ namespace Falcor
         {
             currentData.pModel = mpScene->getModel(modelID).get();
 
-            for (uint32_t instanceID = 0; instanceID < mpScene->getModelInstanceCount(modelID); instanceID++)
+            if (setPerModelData(currentData))
             {
-                const auto pInstance = mpScene->getModelInstance(modelID, instanceID).get();
-                if (pInstance->isVisible())
+                for (uint32_t instanceID = 0; instanceID < mpScene->getModelInstanceCount(modelID); instanceID++)
                 {
-                    if (setPerModelInstanceData(currentData, pInstance, instanceID))
+                    const auto pInstance = mpScene->getModelInstance(modelID, instanceID).get();
+                    if (pInstance->isVisible())
                     {
-                        renderModelInstance(currentData, pInstance);
+                        if (setPerModelInstanceData(currentData, pInstance, instanceID))
+                        {
+                            renderModelInstance(currentData, pInstance);
+                        }
                     }
                 }
             }
