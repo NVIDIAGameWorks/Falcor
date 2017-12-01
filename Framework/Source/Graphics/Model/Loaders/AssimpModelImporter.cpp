@@ -496,6 +496,7 @@ namespace Falcor
         }
 
         uint32_t AssimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
+            aiProcess_OptimizeGraph |
             aiProcess_FlipUVs |
             // aiProcess_FixInfacingNormals | // causes incorrect facing normals for crytek-sponza
             0;
@@ -554,11 +555,21 @@ namespace Falcor
         return loader.initModel(filename);
     }
 
+    bool AssimpModelImporter::isUsedNode(const aiNode* pNode) const
+    {
+        return (mBoneNameToIdMap.count(pNode->mName.C_Str()) > 0) || (mAdditionalUsedNodes.count(pNode) > 0);
+    }
+
     uint32_t AssimpModelImporter::initBone(const aiNode* pCurNode, uint32_t parentID, uint32_t boneID)
     {
-        assert(mBoneNameToIdMap.find(pCurNode->mName.C_Str()) != mBoneNameToIdMap.end());
+        assert(isUsedNode(pCurNode));
         assert(pCurNode->mNumMeshes == 0);
-        mBoneNameToIdMap[pCurNode->mName.C_Str()] = boneID;
+
+        auto it = mBoneNameToIdMap.find(pCurNode->mName.C_Str());
+        if (it != mBoneNameToIdMap.end())
+        {
+            it->second = boneID;
+        }
 
         assert(boneID < mBones.size());
         Bone& bone = mBones[boneID];
@@ -579,9 +590,10 @@ namespace Falcor
         for (uint32_t i = 0; i < pCurNode->mNumChildren; i++)
         {
             // Check that the child is actually used
-            if (mBoneNameToIdMap.find(pCurNode->mChildren[i]->mName.C_Str()) != mBoneNameToIdMap.end())
+            const aiNode* pChild = pCurNode->mChildren[i];
+            if (isUsedNode(pChild))
             {
-                boneID = initBone(pCurNode->mChildren[i], bone.boneID, boneID);
+                boneID = initBone(pChild, bone.boneID, boneID);
             }
         }
         return boneID;
@@ -622,22 +634,25 @@ namespace Falcor
         if (mBoneNameToIdMap.size() != 0)
         {
             // For every bone used, all its ancestors are bones too. Mark them
-            auto it = mBoneNameToIdMap.begin();
-            while (it != mBoneNameToIdMap.end())
+            for (auto it = mBoneNameToIdMap.begin(); it != mBoneNameToIdMap.end(); it++)
             {
                 aiNode* pCurNode = pScene->mRootNode->FindNode(it->first.c_str());
                 while (pCurNode)
                 {
-                    mBoneNameToIdMap[pCurNode->mName.C_Str()] = AnimationController::kInvalidBoneID;
+                    // Used bones are already recorded, only record additional nodes
+                    if (mBoneNameToIdMap.count(pCurNode->mName.C_Str()) == 0)
+                    {
+                        mAdditionalUsedNodes.insert(pCurNode);
+                    }
                     pCurNode = pCurNode->mParent;
                 }
-                it++;
             }
 
             // Now create the hierarchy
-            mBones.resize(mBoneNameToIdMap.size());
-            uint32_t bonesCount = initBone(pScene->mRootNode, AnimationController::kInvalidBoneID, 0);
-            assert(mBoneNameToIdMap.size() == bonesCount);
+            const size_t hierarchySize = mBoneNameToIdMap.size() + mAdditionalUsedNodes.size();
+            mBones.resize(hierarchySize);
+            uint32_t nodeBoneCount = initBone(pScene->mRootNode, AnimationController::kInvalidBoneID, 0);
+            assert(uint32_t(hierarchySize) == nodeBoneCount);
 
             initializeBonesOffsetMatrices(pScene);
         }
@@ -672,13 +687,21 @@ namespace Falcor
 
         std::vector<Animation::AnimationSet> animationSets;
         animationSets.resize(pAiAnim->mNumChannels);
+        for (auto& animSet : animationSets)
+        {
+            animSet.boneID = AnimationController::kInvalidBoneID;
+        }
 
         for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++)
         {
             const aiNodeAnim* pAiNode = pAiAnim->mChannels[i];
+
             // If the bone is not used, skip it
             const auto& idIt = mBoneNameToIdMap.find(pAiNode->mNodeName.C_Str());
-            if (idIt == mBoneNameToIdMap.end()) continue;;
+            if (idIt == mBoneNameToIdMap.end())
+            {
+                continue;
+            }
 
             animationSets[i].boneID = idIt->second;
 
@@ -709,6 +732,15 @@ namespace Falcor
                 animationSets[i].rotation.keys.push_back(rotation);
             }
         }
+
+        // Erase empty animation sets
+        animationSets.erase(
+            std::remove_if(
+                animationSets.begin(),
+                animationSets.end(),
+                [](const Animation::AnimationSet& a) { return a.boneID == AnimationController::kInvalidBoneID; }),
+            animationSets.end()
+        );
 
         return Animation::create(std::string(pAiAnim->mName.C_Str()), animationSets, duration, ticksPerSecond);
     }

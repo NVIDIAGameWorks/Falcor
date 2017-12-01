@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include <map>
+#include <unordered_set>
 #include <vector>
 #include "Graphics/Model/Loaders/ModelImporter.h"
 #include "../AnimationController.h"
@@ -87,7 +88,13 @@ namespace Falcor
         void loadTextures(const aiMaterial* pAiMaterial, const std::string& folder, BasicMaterial* pMaterial, bool isObjFile, bool useSrgb);
         Material::SharedPtr createMaterial(const aiMaterial* pAiMaterial, const std::string& folder, bool isObjFile, bool useSrgb);
 
+        // Checks whether a node or its name corresponds to a used bone or node in the skeleton hierarchy
+        bool isUsedNode(const aiNode* pNode) const;
+
         std::map<std::string, uint32_t> mBoneNameToIdMap;
+        // Non-bone nodes need to be counted by pointer because they can have duplicate names after assimp processing (e.g. "RootNode")
+        std::unordered_set<const aiNode*> mAdditionalUsedNodes;
+
         std::map<uint32_t, Material::SharedPtr> mAiMaterialToFalcor;
 
         Model& mModel;
