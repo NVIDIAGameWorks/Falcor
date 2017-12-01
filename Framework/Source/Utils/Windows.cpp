@@ -405,7 +405,10 @@ namespace Falcor
         {
             do
             {
-                filenames.push_back(std::string(ffd.cFileName));
+                if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+                {
+                    filenames.push_back(std::string(ffd.cFileName));
+                }
             } while (FindNextFileA(hFind, &ffd) != 0);
         }
     }
