@@ -167,7 +167,7 @@ namespace Falcor
             {
                 if(varDesc.arraySize == 0)
                 {
-                    if(count > 1)
+                    if(count > 1 && varName.find('[') == std::string::npos)
                     {
                         std::string Msg("Error when setting constant by offset. Found constant \"" + varName + "\" which is not an array, but trying to set more than 1 element");
                         logError(Msg);

@@ -90,7 +90,7 @@ float3x3 getWorldInvTransposeMat(VS_IN vIn)
 #ifdef _VERTEX_BLENDING
     float3x3 worldInvTransposeMat = getBlendedInvTransposeWorldMat(vIn.boneWeights, vIn.boneIds);
 #else
-    float3x3 worldInvTransposeMat = gWorldInvTransposeMat[vIn.instanceID];
+    float3x3 worldInvTransposeMat = (float3x3)gWorldInvTransposeMat[vIn.instanceID];
 #endif
     return worldInvTransposeMat;
 }

@@ -479,13 +479,17 @@ void FeatureDemo::onFrameRender()
 void FeatureDemo::applyCameraPathState()
 {
     const Scene* pScene = mpSceneRenderer->getScene().get();
-    if (mUseCameraPath)
+    if(pScene->getPathCount())
     {
-        pScene->getPath(0)->attachObject(pScene->getActiveCamera());
-    }
-    else
-    {
-        pScene->getPath(0)->detachObject(pScene->getActiveCamera());
+        mUseCameraPath = mUseCameraPath;
+        if (mUseCameraPath)
+        {
+            pScene->getPath(0)->attachObject(pScene->getActiveCamera());
+        }
+        else
+        {
+            pScene->getPath(0)->detachObject(pScene->getActiveCamera());
+        }
     }
 }
 

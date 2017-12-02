@@ -32,6 +32,7 @@
                     Common structures & routines
 *******************************************************************/
 
+#define MAX_INSTANCES_BONES 128 ///< Max supported instances per draw call, or bones per model.
 
 /*******************************************************************
                     Glue code for CPU/GPU compilation
