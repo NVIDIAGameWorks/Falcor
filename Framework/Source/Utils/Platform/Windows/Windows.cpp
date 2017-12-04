@@ -26,8 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-// #TODO Separate this into a Windows subdirectory and implement Linux
-#ifdef _WIN32
 #include "Framework.h"
 #include "Utils/Platform/OS.h"
 #include <fstream>
@@ -496,5 +494,3 @@ namespace Falcor
         return virtualMemUsedByMe;
     }
 }
-
-#endif // _WIN32

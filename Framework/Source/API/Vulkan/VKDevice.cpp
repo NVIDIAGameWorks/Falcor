@@ -522,7 +522,7 @@ namespace Falcor
 #else
         VkXlibSurfaceCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-        createInfo.dpy= pWindow->getApiHandle().pDisplay;
+        createInfo.dpy = pWindow->getApiHandle().pDisplay;
         createInfo.window = pWindow->getApiHandle().window;
 
         VkResult result = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface);

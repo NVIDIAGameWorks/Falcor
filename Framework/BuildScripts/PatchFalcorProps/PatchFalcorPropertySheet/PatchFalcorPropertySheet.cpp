@@ -54,7 +54,7 @@ bool PatchGroup(std::string& PropSheet, const std::string& Group, const std::str
 int main(int argc, char* argv[])
 {
     std::string newline = "\n";
-    
+
 
 
     if(argc != 4)
@@ -72,10 +72,10 @@ int main(int argc, char* argv[])
     PathRelativePathToA(RelativePath, CSD.c_str(), FILE_ATTRIBUTE_DIRECTORY, FCD.c_str(), FILE_ATTRIBUTE_DIRECTORY);
 
     //  Construct the Solution Directory to Falcor Core Directory.
-    std::string SolutionDirectoryToFalcorCoreDirectory = std::string("$(SolutionDir)/") + std::string(RelativePath);
+    std::string SolutionDirectoryToFalcorCoreDirectory = std::string("$(SolutionDir)\\") + std::string(RelativePath);
 
     //  Read in the Property Sheet.
-    std::string PropsSheetPath = FCD + "/Source/Falcor.props";
+    std::string PropsSheetPath = FCD + "\\Source\\Falcor.props";
     std::string PropsSheet;
     if(ReadFileToString(PropsSheetPath.c_str(), PropsSheet) == false)
     {
@@ -86,8 +86,8 @@ int main(int argc, char* argv[])
     if (PatchGroup(PropsSheet, "FALCOR_CORE_DIRECTORY", SolutionDirectoryToFalcorCoreDirectory) == false)
     {
         return -1;
-    } 
-    
+    }
+
     //  Assume that there's already a FALCOR_BACKEND property value. If not, display an error.
     if (PatchGroup(PropsSheet, "FALCOR_BACKEND", FB) == false)
     {

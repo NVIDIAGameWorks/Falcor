@@ -390,9 +390,6 @@
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp">
       <Filter>Effects\AmbientOcclusion</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\ProgressBarWin.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\PixelZoom.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -537,6 +534,12 @@
     </ClCompile>
     <ClCompile Include="Utils\Platform\Windows\Windows.cpp">
       <Filter>Utils\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\Windows\ProgressBarWin.cpp">
+      <Filter>Utils\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\Linux\ProgressBarLinux.cpp">
+      <Filter>Utils\Platform\Linux</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1580,9 +1583,6 @@
     <ClInclude Include="Effects\AmbientOcclusion\SSAO.h">
       <Filter>Effects\AmbientOcclusion</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\ProgressBar.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="API\D3D\D3D12\D3D12NvApiExDesc.h">
       <Filter>API\D3D\D3D12</Filter>
     </ClInclude>
@@ -1657,6 +1657,9 @@
       <Filter>API\D3D\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Platform\OS.h">
+      <Filter>Utils\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Platform\ProgressBar.h">
       <Filter>Utils\Platform</Filter>
     </ClInclude>
   </ItemGroup>

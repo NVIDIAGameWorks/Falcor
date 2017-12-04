@@ -213,7 +213,7 @@ void SimpleDeferred::onLoad()
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
     // Load default model
-    loadModelFromFile("Ogre/bs_rest.obj");
+    loadModelFromFile("ogre/bs_rest.obj");
 
     initializeTesting();
 }

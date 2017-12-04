@@ -25,12 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "glm/detail/func_trigonometric.hpp"
 
 #include "Framework.h"
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
 #include "Utils/Gui.h"
+#include "glm/detail/func_trigonometric.hpp"
 #include "Utils/Platform/OS.h"
 #include "Graphics/Scene/SceneExporter.h"
 #include "Graphics/Model/AnimationController.h"

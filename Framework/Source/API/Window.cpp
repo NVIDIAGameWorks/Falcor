@@ -167,8 +167,7 @@ namespace Falcor
         static void errorCallback(int errorCode, const char* pDescription)
         {
             std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
-            printToDebugWindow(errorMsg);
-            //logError(errorMsg.c_str());
+            logError(errorMsg.c_str());
         }
 
     private:
@@ -382,8 +381,6 @@ namespace Falcor
 
 #ifdef _WIN32
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
-        //glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        //glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
         assert(pWindow->mApiHandle);
 #else
         pWindow->mApiHandle.pDisplay = glfwGetX11Display();

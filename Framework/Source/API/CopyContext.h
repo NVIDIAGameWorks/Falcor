@@ -94,6 +94,7 @@ namespace Falcor
 #endif
     protected:
         void bindDescriptorHeaps();
+        CopyContext() = default;
         bool mCommandsPending = false;
 #ifdef FALCOR_LOW_LEVEL_API
         LowLevelContextData::SharedPtr mpLowLevelData;

@@ -25,11 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "glm/common.hpp"
 
 #include "Framework.h"
 #include "ObjectPath.h"
 #include "MovableObject.h"
+#include "glm/common.hpp"
 #include <algorithm>
 
 namespace Falcor

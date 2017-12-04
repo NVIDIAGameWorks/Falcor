@@ -244,10 +244,8 @@ namespace Falcor
 
     void MultiRendererSample::internalSceneLoader(const std::string& filename)
     {
-#ifdef _WIN32
         // Create a loading bar while loading a scene
         ProgressBar::SharedPtr pBar = ProgressBar::create("Loading Scene", 100);
-#endif
 
         // Call our overloadable method to actually do scene loading
         Scene::SharedPtr pScene = loadScene(filename);

@@ -51,7 +51,12 @@ namespace Falcor
             VkHandle<ApiHandle>* get() const { return std::shared_ptr< VkHandle<ApiHandle>>::get(); }
         };
 
-        ~VkHandle() { /*static_assert(false, "VkHandle missing destructor specialization");*/ }
+        ~VkHandle()
+        {
+#ifdef _WIN32
+            static_assert(false, "VkHandle missing destructor specialization"); 
+#endif
+        }
     private:
         friend class SharedPtr;
         VkHandle(const ApiHandle& apiHandle) : mApiHandle(apiHandle) {}
@@ -140,7 +145,12 @@ namespace Falcor
             VkResource<ImageType, BufferType>* get() const { return std::shared_ptr<VkResource<ImageType, BufferType>>::get(); }
         };
 
-        ~VkResource() { /*static_assert(false, "VkResource missing destructor specialization");*/ }
+        ~VkResource()
+        {
+#ifdef _WIN32
+            static_assert(false, "VkResource missing destructor specialization"); 
+#endif
+        }
     private:
         friend SharedPtr;
         VkResource(ImageType image, VkDeviceMemory mem) : mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) {}
