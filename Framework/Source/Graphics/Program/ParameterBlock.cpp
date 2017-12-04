@@ -30,5 +30,15 @@
 
 namespace Falcor
 {
+    ParameterBlock::~ParameterBlock() = default;
 
+    ParameterBlock::SharedPtr ParameterBlock::create(const ParameterBlockReflection::SharedConstPtr& pReflection)
+    {
+        return SharedPtr(new ParameterBlock(pReflection));
+    }
+
+    ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection) : mpReflector(pReflection)
+    {
+
+    }
 }
