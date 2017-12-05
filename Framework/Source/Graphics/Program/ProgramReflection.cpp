@@ -929,8 +929,8 @@ namespace Falcor
         const auto& pVar = getMember(fieldIndex);
         if (newPos == std::string::npos) return returnOrCreateVar(pVar, name, offset, regIndex, descOffset);
         const auto& pNewType = pVar->getType().get();
-        regIndex = pVar->getType()->asResourceType() ? pVar->getRegisterIndex() : 0;
-        regSpace = pVar->getType()->asResourceType() ? pVar->getRegisterSpace() : 0;
+        regIndex = pVar->getType()->unwrapArray()->asResourceType() ? pVar->getRegisterIndex() : 0;
+        regSpace = pVar->getType()->unwrapArray()->asResourceType() ? pVar->getRegisterSpace() : 0;
         descOffset += pVar->getDescOffset();
         offset += pVar->getOffset();
         return pNewType->findMemberInternal(name, newPos + 1, offset, regIndex, regSpace, descOffset);

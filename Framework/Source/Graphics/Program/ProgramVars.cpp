@@ -389,44 +389,17 @@ namespace Falcor
  
         return true;
     }
-
-    static const ReflectionVar::SharedConstPtr getStructuredBufferReflection(const ProgramReflection* pReflector, const std::string& name, uint32_t& arrayIndex, const std::string& callStr)
-    {
-        arrayIndex = 0;
-        const ParameterBlockReflection* pGlobalBlock = pReflector->getParameterBlock("").get();
-        ReflectionVar::SharedConstPtr pVar;
-        
-        std::string noArray;
-        if (parseArrayIndex(name, noArray, arrayIndex))
-        {
-            // #PARAMBLOCK nope, handling of the array index should happen elsewhere
-            pVar = pGlobalBlock->getResource(noArray);
-        }
-        else
-        {
-            pVar = pGlobalBlock->getResource(name);
-        }
-
-        if (pVar == nullptr)
-        {
-            logWarning("Structured buffer \"" + name + "\" was not found. Ignoring " + callStr + "StructuredBuffer() call.");
-            return false;
-        }
-
-        if (pVar->getType()->unwrapArray()->asResourceType()->getType() != ReflectionResourceType::Type::StructuredBuffer)
-        {
-            logWarning("Variable '" + name + "' is not a structured-buffer. Ignoring " + callStr + "StructuredBuffer() call.");
-            return false;
-        }
-
-        return pVar;
-    }
-
+    
     bool ProgramVars::setStructuredBuffer(const std::string& name, StructuredBuffer::SharedPtr pBuf)
     {
-        uint32_t arrayIndex;
-        const ReflectionVar::SharedConstPtr pVar = getStructuredBufferReflection(mpReflector.get(), name, arrayIndex, "set");
-        if (!pVar) return false;
+        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
+        const ReflectionVar::SharedConstPtr pVar = pGlobalBlock->getResource(name);
+
+        if (verifyResourceVar(pVar.get(), ReflectionResourceType::Type::StructuredBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "setStructuredBuffer()") == false)
+        {
+            return false;
+        }
+
         setResourceSrvUavCommon(pVar.get(), pBuf, mAssignedSrvs, mAssignedUavs, mRootSets);
         return true;
     }
@@ -493,17 +466,15 @@ namespace Falcor
         }
 
         return getResourceFromSrvUavCommon<TypedBufferBase>(pVar.get(), mAssignedSrvs, mAssignedUavs, name, "getTypedBuffer()");
-        return nullptr;
-    }
+   }
 
     StructuredBuffer::SharedPtr ProgramVars::getStructuredBuffer(const std::string& name) const
     {
-        uint32_t arrayIndex;
-        const ReflectionVar::SharedConstPtr pVar = getStructuredBufferReflection(mpReflector.get(), name, arrayIndex, "get");
+        const ParameterBlockReflection* pGlobalBlock = mpReflector->getParameterBlock("").get();
+        const ReflectionVar::SharedConstPtr pVar = pGlobalBlock->getResource(name);
 
         if (pVar == nullptr) return nullptr;
         return getResourceFromSrvUavCommon<StructuredBuffer>(pVar.get(), mAssignedSrvs, mAssignedUavs, name, "getStructuredBuffer()");
-        return nullptr;
     }
 
     bool ProgramVars::setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
@@ -553,7 +524,6 @@ namespace Falcor
         }
 
         return it->second[arrayIndex].pSampler;
-        return nullptr;
     }
 
     ShaderResourceView::SharedPtr ProgramVars::getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
