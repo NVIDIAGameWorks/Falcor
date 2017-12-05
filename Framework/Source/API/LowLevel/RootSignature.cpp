@@ -67,6 +67,8 @@ namespace Falcor
 
     RootSignature::SharedPtr RootSignature::create(const Desc& desc)
     {
+        if (desc.mSets.size() == 0) return getEmpty();
+
         SharedPtr pSig = SharedPtr(new RootSignature(desc));
         if (pSig->apiInit() == false)
         {
@@ -93,5 +95,98 @@ namespace Falcor
             should_not_get_here();
             return ReflectionResourceType::ShaderAccess(-1);
         }
+    }
+
+
+    struct Range
+    {
+        uint32_t baseIndex;
+        uint32_t count;
+        
+        bool operator<(const Range& other) const { return baseIndex < other.baseIndex; }
+    };
+
+    struct SetIndex
+    {
+        bool isSampler = false;
+        uint32_t regSpace;
+        bool operator<(const SetIndex& other) const { return (regSpace == other.regSpace) ? isSampler < other.isSampler : regSpace < other.regSpace; }
+    };
+
+    using SetRangeMap = std::map<RootSignature::DescType, std::vector<Range>>;
+    using SetMap = std::map<SetIndex, SetRangeMap>;
+
+    void insertResData(SetMap& map, const ParameterBlockReflection::ResourceDesc& data)
+    {
+        SetIndex index;
+        index.regSpace = data.regSpace;
+#ifdef FALCOR_D3D12
+        // We only care about samplers in D3D12 builds
+        index.isSampler = (data.type == ParameterBlockReflection::ResourceDesc::Type::Sampler);
+#endif
+
+        if (map.find(index) == map.end())
+        {
+            map[index] = {};
+        }
+
+        SetRangeMap& rangeMap = map[index];
+        if (rangeMap.find(data.type) == rangeMap.end())
+        {
+            rangeMap[data.type] = {};
+        }
+
+        // Check if we already have a range with the same base index
+        for (auto& r : rangeMap[data.type])
+        {
+            if (r.baseIndex == data.regIndex)
+            {
+                r.count = max(r.count, data.descCount + data.descOffset);
+                return;
+            }
+        }
+
+        // New Range
+        rangeMap[data.type].push_back({ data.regIndex, data.descCount + data.descOffset });
+    }
+
+    RootSignature::Desc getRootDescFromReflector(const ProgramReflection* pReflector)
+    {
+        // We'd like to create an optimized signature (minimize the number of ranges per set). First, go over all of the resources and find packed ranges
+        SetMap setMap;
+
+        const auto& resMap = pReflector->getParameterBlock("")->getResources();
+        for (const auto& res : resMap)
+        {
+            insertResData(setMap, res);
+        }
+
+        std::map<SetIndex, RootSignature::DescriptorSetLayout> setLayouts;
+        for (auto& s : setMap)
+        {
+            for (auto& r : s.second)
+            {
+                for (const auto& range : r.second)
+                {
+                    // #TODO set the correct shader flags in the layout
+                    if (setLayouts.find(s.first) == setLayouts.end()) setLayouts[s.first] = {};
+                    setLayouts[s.first].addRange(r.first, range.baseIndex, range.count, s.first.regSpace);
+                }
+            }
+        }
+
+        RootSignature::Desc d;
+        for (const auto& s : setLayouts)
+        {
+            d.addDescriptorSet(s.second);
+        }
+
+        return d;
+    }
+
+    RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector)
+    {
+        RootSignature::Desc d = getRootDescFromReflector(pReflector);
+        return RootSignature::create(d);
     }
 }

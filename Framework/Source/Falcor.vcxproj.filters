@@ -477,9 +477,6 @@
     <ClCompile Include="API\D3D\D3D12\D3D12QueryHeap.cpp">
       <Filter>API\D3D\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12ProgramVars.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="API\ComputeContext.cpp">
       <Filter>API</Filter>
     </ClCompile>
@@ -499,9 +496,6 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="API\Vulkan\VKComputeStateObject.cpp">
-      <Filter>API\Vulkan</Filter>
-    </ClCompile>
-    <ClCompile Include="API\Vulkan\VkProgramVars.cpp">
       <Filter>API\Vulkan</Filter>
     </ClCompile>
     <ClCompile Include="API\Vulkan\VkQueryHeap.cpp">

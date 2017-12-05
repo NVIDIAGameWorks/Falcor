@@ -226,7 +226,6 @@ namespace Falcor
 
         struct RootSet
         {
-            bool active = false;
             mutable std::shared_ptr<DescriptorSet> pDescSet;
             mutable bool dirty = false;
         };

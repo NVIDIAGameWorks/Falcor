@@ -111,6 +111,8 @@ namespace Falcor
 
     void DescriptorSet::setCb(uint32_t rangeIndex, uint32_t descIndex, const Buffer* pBuffer)
     {
-        UNSUPPORTED_IN_D3D12("DescriptorSet::setCb");
+        const ConstantBuffer* pCb = dynamic_cast<const ConstantBuffer*>(pBuffer);
+        assert(pCb);
+        setCpuHandle(this, rangeIndex, descIndex, pCb->getCbv()->getApiHandle()->getCpuHandle(0));
     }
 }
