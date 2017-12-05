@@ -725,13 +725,16 @@ namespace Falcor
     {
         for (auto& bufIt : cbMap)
         {
-            assert(bufIt.second.size() == 1);
-            const auto& rootData = bufIt.second[0].rootData;
-            ConstantBuffer* pCB = dynamic_cast<ConstantBuffer*>(bufIt.second[0].pResource.get());
-
-            if (pCB && pCB->uploadToGPU())
+            const auto& cbVec = bufIt.second;
+            for(size_t i = 0 ; i < cbVec.size() ; i++)
             {
-                rootSets[rootData.rootIndex].pDescSet = nullptr;
+                const auto& rootData = cbVec[i].rootData;
+                ConstantBuffer* pCB = dynamic_cast<ConstantBuffer*>(cbVec[i].pResource.get());
+
+                if (pCB && pCB->uploadToGPU())
+                {
+                    rootSets[rootData.rootIndex].pDescSet = nullptr;
+                }
             }
         }
     }
@@ -784,12 +787,21 @@ namespace Falcor
     {
         for (auto& bufIt : cbMap)
         {
-            const auto& rootData = bufIt.second[0].rootData;
-            ConstantBuffer* pCB = dynamic_cast<ConstantBuffer*>(bufIt.second[0].pResource.get());
+            const auto& cbVec = bufIt.second;
+            auto& rootData = cbVec[0].rootData;
 
             if (rootSets[rootData.rootIndex].dirty)
             {
-                rootSets[rootData.rootIndex].pDescSet->setCb(rootData.rangeIndex, 0, pCB);
+                for (uint32_t i = 0; i < cbVec.size(); i++)
+                {
+                    auto& cbDesc = cbVec[i];
+                    ConstantBuffer* pCB = dynamic_cast<ConstantBuffer*>(cbDesc.pResource.get());
+                    ConstantBufferView::SharedPtr pView = pCB ? pCB->getCbv() : ConstantBufferView::getNullView();
+
+                    // Get the set and copy the GPU handle
+                    const auto& pDescSet = rootSets[rootData.rootIndex].pDescSet;
+                    pDescSet->setCbv(rootData.rangeIndex, i, pView);
+                }
             }
         }
     }
@@ -817,8 +829,7 @@ namespace Falcor
         // Allocate and mark the dirty sets
         for (uint32_t i = 0; i < rootSets.size(); i++)
         {
-            rootSets[i].pDescSet = nullptr;
-            rootSets[i].dirty = true;// (rootSets[i].pDescSet == nullptr);
+            rootSets[i].dirty = (rootSets[i].pDescSet == nullptr);
             if (rootSets[i].pDescSet == nullptr)
             {
                 DescriptorSet::Layout layout;

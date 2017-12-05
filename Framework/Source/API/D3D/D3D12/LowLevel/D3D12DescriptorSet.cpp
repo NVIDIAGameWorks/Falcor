@@ -46,36 +46,43 @@ namespace Falcor
     bool DescriptorSet::apiInit()
     {
         mpApiData = std::make_shared<DescriptorSetApiData>();
+        uint32_t count = 0;
+        const auto& type = falcorToDxDescType(mLayout.getRange(0).type);
 
         // For each range we need to allocate a table from a heap
-        mpApiData->allocations.resize(mLayout.getRangeCount());
-        for (size_t i = 0; i < mpApiData->allocations.size(); i++)
+        mpApiData->rangeBaseOffset.resize(mLayout.getRangeCount());
+
+        for (size_t i = 0; i < mLayout.getRangeCount(); i++)
         {
             const auto& range = mLayout.getRange(i);
-            D3D12DescriptorHeap* pHeap = getHeap(mpPool.get(), range.type);
-            mpApiData->allocations[i] = pHeap->allocateDescriptors(range.descCount);
-            if (mpApiData->allocations[i] == false)
-            {
-                // Execute deferred releases and try again
-                mpPool->executeDeferredReleases();
-                mpApiData->allocations[i] = pHeap->allocateDescriptors(range.descCount);
-                if (!mpApiData->allocations[i])
-                {
-                    return false;
-                }
-            }
+            mpApiData->rangeBaseOffset[i] = count;
+            assert(type == falcorToDxDescType(range.type)); // We can only allocate from a single heap
+            count += range.descCount;
         }
-        return true;
+
+        const auto& range0 = mLayout.getRange(0);
+        D3D12DescriptorHeap* pHeap = getHeap(mpPool.get(), range0.type);
+        mpApiData->pAllocation = pHeap->allocateDescriptors(count);
+        if (mpApiData->pAllocation == false)
+        {
+            // Execute deferred releases and try again
+            mpPool->executeDeferredReleases();
+            mpApiData->pAllocation = pHeap->allocateDescriptors(count);
+        }
+
+        return (mpApiData->pAllocation != nullptr);
     }
 
     DescriptorSet::CpuHandle DescriptorSet::getCpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
     {
-        return mpApiData->allocations[rangeIndex]->getCpuHandle(descInRange);
+        uint32_t index = mpApiData->rangeBaseOffset[rangeIndex] + descInRange;
+        return mpApiData->pAllocation->getCpuHandle(index);
     }
 
     DescriptorSet::GpuHandle DescriptorSet::getGpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
     {
-        return mpApiData->allocations[rangeIndex]->getGpuHandle(descInRange);
+        uint32_t index = mpApiData->rangeBaseOffset[rangeIndex] + descInRange;
+        return mpApiData->pAllocation->getGpuHandle(index);
     }
 
     void setCpuHandle(DescriptorSet* pSet, uint32_t rangeIndex, uint32_t descIndex, const DescriptorSet::CpuHandle& handle)
@@ -109,10 +116,8 @@ namespace Falcor
         pCtx->getLowLevelData()->getCommandList()->SetComputeRootDescriptorTable(rootIndex, getGpuHandle(0));
     }
 
-    void DescriptorSet::setCb(uint32_t rangeIndex, uint32_t descIndex, const Buffer* pBuffer)
+    void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, const ConstantBufferView::SharedPtr& pView)
     {
-        const ConstantBuffer* pCb = dynamic_cast<const ConstantBuffer*>(pBuffer);
-        assert(pCb);
-        setCpuHandle(this, rangeIndex, descIndex, pCb->getCbv()->getApiHandle()->getCpuHandle(0));
+        setCpuHandle(this, rangeIndex, descIndex, pView->getApiHandle()->getCpuHandle(0));
     }
 }

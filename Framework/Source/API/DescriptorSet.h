@@ -98,7 +98,7 @@ namespace Falcor
         void setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv);
         void setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav);
         void setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler);
-        void setCb(uint32_t rangeIndex, uint32_t descIndex, const Buffer* pBuffer);
+        void setCbv(uint32_t rangeIndex, uint32_t descIndex, const ConstantBufferView::SharedPtr& pView);
 
         void bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);
         void bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);

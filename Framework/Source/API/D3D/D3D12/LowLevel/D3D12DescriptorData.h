@@ -37,6 +37,7 @@ namespace Falcor
 
     struct DescriptorSetApiData
     {
-        std::vector<D3D12DescriptorHeap::Allocation::SharedPtr> allocations;
+        D3D12DescriptorHeap::Allocation::SharedPtr pAllocation;
+        std::vector<uint32_t> rangeBaseOffset;
     };
 }
