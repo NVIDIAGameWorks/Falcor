@@ -33,6 +33,8 @@
 
 namespace Falcor
 {
+    class RootSignature;
+
     class ParameterBlock : public std::enable_shared_from_this<ParameterBlock>
     {
     public:
@@ -46,20 +48,13 @@ namespace Falcor
             ConstantBuffer::SharedPtr operator[](uint32_t index) = delete; // No set by index. This is here because if we didn't explicitly delete it, the compiler will try to convert to int into a string, resulting in runtime error
         };
 
-        struct Location
-        {
-            static const uint32_t kInvalidLocation = -1;
-            uint32_t setIndex = kInvalidLocation;
-            uint32_t descIndex = kInvalidLocation;
-        };
-
         using SharedPtr = SharedPtrT<ParameterBlock>;
         using SharedConstPtr = SharedPtrT<const ParameterBlock>;
         ~ParameterBlock();
 
         /** Create a new object
         */
-        static SharedPtr create(const ParameterBlockReflection::SharedConstPtr& pReflection);
+        static SharedPtr create(const ParameterBlockReflection::SharedConstPtr& pReflection, const RootSignature* pRootSig, bool createBuffers);
 
         /** Bind a constant buffer object by name.
         If the name doesn't exists or the CBs size doesn't match the required size, the call will fail.
@@ -78,7 +73,7 @@ namespace Falcor
         \param[in] pCB The constant buffer object
         \return false is the call failed, otherwise true
         */
-        bool setConstantBuffer(uint32_t setIndex, uint32_t descIndex, const ConstantBuffer::SharedPtr& pCB);
+        bool setConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB);
 
         /** Get a constant buffer object.
         \param[in] name The name of the buffer
@@ -91,7 +86,7 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \return If the indices is valid, a shared pointer to the buffer. Otherwise returns nullptr
         */
-        ConstantBuffer::SharedPtr getConstantBuffer(uint32_t setIndex, uint32_t descIndex) const;
+        ConstantBuffer::SharedPtr getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Set a raw-buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
         \param[in] name The name of the buffer
@@ -100,12 +95,11 @@ namespace Falcor
         bool setRawBuffer(const std::string& name, Buffer::SharedPtr pBuf);
 
         /** Set a typed buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
-        \param[in] setIndex The set-index in the block
-        \param[in] descIndex The descriptor index inside the set
+        \param[in] name The name of the buffer
         \param[in] pBuf The buffer object
         */
-        bool setTypedBuffer(uint32_t setIndex, uint32_t descIndex, TypedBufferBase::SharedPtr pBuf);
-
+        bool setTypedBuffer(const std::string& name, TypedBufferBase::SharedPtr pBuf);
+        
         /** Set a structured buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
         \param[in] name The name of the buffer
         \param[in] pBuf The buffer object
@@ -147,28 +141,28 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \param[in] pSrv The shader-resource-view object to bind
         */
-        bool setSrv(uint32_t setIndex, uint32_t descIndex, const ShaderResourceView::SharedPtr& pSrv);
+        bool setSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv);
 
         /** Bind a UAV.
         \param[in] setIndex The set-index in the block
         \param[in] descIndex The descriptor index inside the set
         \param[in] pSrv The unordered-access-view object to bind
         */
-        bool setUav(uint32_t setIndex, uint32_t descIndex, const UnorderedAccessView::SharedPtr& pUav);
+        bool setUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav);
 
         /** Get an SRV object.
         \param[in] setIndex The set-index in the block
         \param[in] descIndex The descriptor index inside the set
         \return If the indices is valid, a shared pointer to the SRV. Otherwise returns nullptr
         */
-        ShaderResourceView::SharedPtr getSrv(uint32_t setIndex, uint32_t descIndex) const;
+        ShaderResourceView::SharedPtr getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Get a UAV object
         \param[in] setIndex The set-index in the block
         \param[in] descIndex The descriptor index inside the set
         \return If the index is valid, a shared pointer to the UAV. Otherwise returns nullptr
         */
-        UnorderedAccessView::SharedPtr getUav(uint32_t setIndex, uint32_t descIndex) const;
+        UnorderedAccessView::SharedPtr getUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Bind a sampler to the program in the global namespace.
         \param[in] name The name of the sampler object in the shader
@@ -182,7 +176,7 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \return false if the sampler was not found in the program, otherwise true
         */
-        bool setSampler(uint32_t setIndex, uint32_t descIndex, const Sampler::SharedPtr& pSampler);
+        bool setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler);
 
         /** Gets a sampler object.
         \return If the index is valid, a shared pointer to the sampler. Otherwise returns nullptr
@@ -194,19 +188,85 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \return If the index is valid, a shared pointer to the sampler. Otherwise returns nullptr
         */
-        Sampler::SharedPtr getSampler(uint32_t setIndex, uint32_t descIndex) const;
+        Sampler::SharedPtr getSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Get the program reflection interface
         */
         ParameterBlockReflection::SharedConstPtr getReflection() const { return mpReflector; }
 
-        /** Get the bind-location of a variable
-        */
-        const Location& getLocation(const std::string& name) const;
+        bool prepareForDraw(CopyContext* pContext, const RootSignature* pRootSig);
+
+        struct RootData
+        {
+            RootData() = default;
+            RootData(uint32_t root, uint32_t range) : rootIndex(root), rangeIndex(range) {}
+            uint32_t rootIndex = uint32_t(-1);
+            uint32_t rangeIndex = uint32_t(-1);
+        };
+
+        template<typename ViewType>
+        struct ResourceData
+        {
+            ResourceData(const RootData& data) : rootData(data) {}
+            typename ViewType::SharedPtr pView = nullptr;
+            Resource::SharedPtr pResource = nullptr;
+            RootData rootData;
+        };
+
+        template<>
+        struct ResourceData<Sampler>
+        {
+            ResourceData(const RootData& data) : rootData(data) {}
+            Sampler::SharedPtr pSampler;
+            RootData rootData;
+        };
+
+
+        struct RootSet
+        {
+            mutable std::shared_ptr<DescriptorSet> pDescSet;
+            mutable bool dirty = false;
+        };
+
+        union BindLocation
+        {
+            BindLocation() = default;
+            BindLocation(uint32_t space, uint32_t index) : baseRegIndex(index), regSpace(space) {}
+            struct
+            {
+                uint32_t baseRegIndex;
+                uint32_t regSpace;
+            };
+            uint64_t u64 = -1;
+            std::size_t operator()(BindLocation b) const { return std::hash<uint64_t>{}(u64); }
+            bool operator==(const BindLocation& other) const { return u64 == other.u64; }
+        };
+
+        template<typename T>
+        using ResourceMap = std::unordered_map<BindLocation, std::vector<ResourceData<T>>, BindLocation>;
+        using SamplerMap = std::unordered_map<BindLocation, std::vector<Sampler::SharedConstPtr>, BindLocation>;
+        using RootSetVec = std::vector<RootSet>;
+
+        const ResourceMap<ConstantBuffer>& getAssignedCbs() const { return mAssignedCbs; }
+        const ResourceMap<ShaderResourceView>& getAssignedSrvs() const { return mAssignedSrvs; }
+        const ResourceMap<UnorderedAccessView>& getAssignedUavs() const { return mAssignedUavs; }
+        const ResourceMap<Sampler>& getAssignedSamplers() const { return mAssignedSamplers; }
+        const RootSetVec getRootSets() const { return mRootSets; }
+
+        // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
+        Sampler::SharedPtr getSampler(uint32_t) const = delete;
+        bool setSampler(uint32_t, const Sampler::SharedPtr&) = delete;
+        bool setConstantBuffer(uint32_t, const ConstantBuffer::SharedPtr&) = delete;
+        ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
     private:
-        ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection);
+        ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, const RootSignature* pRootSig, bool createBuffers);
         ParameterBlockReflection::SharedConstPtr mpReflector;
 
-        std::unordered_map<std::string, Location> mNameToLocation;
+        ResourceMap<ConstantBuffer> mAssignedCbs;        // HLSL 'b' registers
+        ResourceMap<ShaderResourceView> mAssignedSrvs;   // HLSL 't' registers
+        ResourceMap<UnorderedAccessView> mAssignedUavs;  // HLSL 'u' registers
+        ResourceMap<Sampler> mAssignedSamplers;    // HLSL 's' registers
+
+        RootSetVec mRootSets;
     };
 }

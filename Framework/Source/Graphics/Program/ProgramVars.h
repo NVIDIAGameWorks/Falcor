@@ -34,6 +34,7 @@
 #include "API/StructuredBuffer.h"
 #include "API/TypedBuffer.h"
 #include "API/LowLevel/RootSignature.h"
+#include "Graphics/Program/ParameterBlock.h"
 
 namespace Falcor
 {
@@ -198,81 +199,20 @@ namespace Falcor
         */
         RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
 
-        struct RootData
-        {
-            RootData() = default;
-            RootData(uint32_t root, uint32_t range) : rootIndex(root), rangeIndex(range) {}
-            uint32_t rootIndex = uint32_t(-1);
-            uint32_t rangeIndex = uint32_t(-1);
-        };
-
-        template<typename ViewType>
-        struct ResourceData
-        {
-            ResourceData(const RootData& data) : rootData(data) {}
-            typename ViewType::SharedPtr pView = nullptr;
-            Resource::SharedPtr pResource = nullptr;
-            RootData rootData;
-        };
-
-        template<>
-        struct ResourceData<Sampler>
-        {
-            ResourceData(const RootData& data) : rootData(data) {}
-            Sampler::SharedPtr pSampler;
-            RootData rootData;
-        };
-
-
-        struct RootSet
-        {
-            mutable std::shared_ptr<DescriptorSet> pDescSet;
-            mutable bool dirty = false;
-        };
-        
-        union BindLocation
-        {
-            BindLocation() = default;
-            BindLocation(uint32_t space, uint32_t index) : baseRegIndex(index), regSpace(space) {}
-            struct  
-            {
-                uint32_t baseRegIndex;
-                uint32_t regSpace;
-            };
-            uint64_t u64 = -1;
-            std::size_t operator()(BindLocation b) const { return std::hash<uint64_t>{}(u64); }
-            bool operator==(const BindLocation& other) const { return u64 == other.u64; }
-        };
-
-        template<typename T>
-        using ResourceMap = std::unordered_map<BindLocation, std::vector<ResourceData<T>>, BindLocation>;
-        using SamplerMap = std::unordered_map<BindLocation, std::vector<Sampler::SharedConstPtr>, BindLocation>;
-        using RootSetVec = std::vector<RootSet>;
-
-        const ResourceMap<ConstantBuffer>& getAssignedCbs() const { return mAssignedCbs; }
-        const ResourceMap<ShaderResourceView>& getAssignedSrvs() const { return mAssignedSrvs; }
-        const ResourceMap<UnorderedAccessView>& getAssignedUavs() const { return mAssignedUavs; }
-        const ResourceMap<Sampler>& getAssignedSamplers() const { return mAssignedSamplers; }
-        const RootSetVec getRootSets() const { return mRootSets; }
-
         // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
         Sampler::SharedPtr getSampler(uint32_t) const = delete;
         bool setSampler(uint32_t, const Sampler::SharedPtr&) = delete;
         bool setConstantBuffer(uint32_t, const ConstantBuffer::SharedPtr&) = delete;
         ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
 
+        /// #PARAMBLOCK remove this
+        using BindLocation = ParameterBlock::BindLocation;
     protected:
         ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
 
         RootSignature::SharedPtr mpRootSignature;
         ProgramReflection::SharedConstPtr mpReflector;
-
-        ResourceMap<ConstantBuffer> mAssignedCbs;        // HLSL 'b' registers
-        ResourceMap<ShaderResourceView> mAssignedSrvs;   // HLSL 't' registers
-        ResourceMap<UnorderedAccessView> mAssignedUavs;  // HLSL 'u' registers
-        ResourceMap<Sampler> mAssignedSamplers;    // HLSL 's' registers
-
-        RootSetVec mRootSets;
+        ParameterBlock::SharedPtr mpGlobalBlock;
     };
 
     class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>
@@ -311,6 +251,6 @@ namespace Falcor
             ProgramVars(pReflector, createBuffers, pRootSig) {}
     };
 
-    ProgramVars::BindLocation getResourceBindLocation(const ProgramReflection* pReflector, const std::string& name);
-    ProgramVars::BindLocation getBufferBindLocation(const ProgramReflection* pReflector, const std::string& name);
+    ParameterBlock::BindLocation getResourceBindLocation(const ProgramReflection* pReflector, const std::string& name);
+    ParameterBlock::BindLocation getBufferBindLocation(const ProgramReflection* pReflector, const std::string& name);
 }

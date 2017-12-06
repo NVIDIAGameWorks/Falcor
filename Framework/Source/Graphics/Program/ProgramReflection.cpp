@@ -1061,18 +1061,22 @@ namespace Falcor
     ReflectionStructType::ReflectionStructType(size_t offset, size_t size, const std::string& name) :
         ReflectionType(offset), mSize(size), mName(name) {}
 
-    ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const
+    ParameterBlockReflection::ResourceBinding ParameterBlockReflection::getResourceBinding(const std::string& name) const
     {
         ResourceBinding binding;
-        if (mpGlobalBlock == nullptr) return binding;
         // Search the constant-buffers
-        const ReflectionVar* pVar = mpGlobalBlock->getResource(name).get();
+        const ReflectionVar* pVar = getResource(name).get();
         if (pVar)
         {
             binding.regIndex = pVar->getRegisterIndex();
             binding.regSpace = pVar->getRegisterSpace();
         }
         return binding;
+    }
+
+    ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const
+    {
+        return (mpGlobalBlock == nullptr) ? ResourceBinding() : mpGlobalBlock->getResourceBinding(name);
     }
 
     bool ReflectionArrayType::operator==(const ReflectionType& other) const

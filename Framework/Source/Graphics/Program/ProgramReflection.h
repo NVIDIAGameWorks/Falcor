@@ -315,6 +315,13 @@ namespace Falcor
             Type type;
             std::string name;
         };
+        static const uint32_t kInvalidLocation = -1;
+        struct ResourceBinding
+        {
+            uint32_t regIndex = kInvalidLocation;
+            uint32_t regSpace = kInvalidLocation;
+        };
+
         using ResourceVec = std::vector<ResourceDesc>;
 
         static SharedPtr create(const std::string& name);
@@ -323,6 +330,7 @@ namespace Falcor
 
         const ResourceVec& getResources() const { return mResources; }
         const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
+        ResourceBinding getResourceBinding(const std::string& name) const;
     private:
         friend class ProgramReflection;
         void addResource(const ReflectionVar::SharedConstPtr& pVar);
@@ -353,13 +361,7 @@ namespace Falcor
         const ParameterBlockReflection::SharedConstPtr& getParameterBlock(const std::string& name) const;
         uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
         bool isSampleFrequency() const { return mIsSampleFrequency; }
-
-        static const uint32_t kInvalidLocation = -1;
-        struct ResourceBinding
-        {
-            uint32_t regIndex = kInvalidLocation;
-            uint32_t regSpace = kInvalidLocation;
-        };
+        using ResourceBinding = ParameterBlockReflection::ResourceBinding;
 
         ResourceBinding getResourceBinding(const std::string& name) const;
         const ShaderVariable* getVertexAttributeBySemantic(const std::string& semantic) const;
