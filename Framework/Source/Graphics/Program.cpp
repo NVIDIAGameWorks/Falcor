@@ -41,10 +41,10 @@
 
 namespace Falcor
 {
-    static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, std::string& log)
+    static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
     {
         std::string errorMsg;
-        auto pShader = Shader::create(shaderBlob, shaderType, entryPointName, log);
+        auto pShader = Shader::create(shaderBlob, shaderType, entryPointName, flags, log);
         return pShader;
     }
 
@@ -312,6 +312,10 @@ namespace Falcor
             spAddSearchPath(slangRequest, path.c_str());
         }
 
+        // Enable/disable intermediates dump
+        bool dumpIR = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::DumpIntermediates);
+        spSetDumpIntermediates(slangRequest, dumpIR);
+
         // Pass any `#define` flags along to Slang, since we aren't doing our
         // own preprocessing any more.
         for(auto shaderDefine : mDefineList)
@@ -338,7 +342,7 @@ namespace Falcor
         SlangCompileFlags slangFlags = 0;
 
         // Don't actually perform semantic checking: just pass through functions bodies to downstream compiler
-        slangFlags |= SLANG_COMPILE_FLAG_NO_CHECKING;
+        slangFlags |= SLANG_COMPILE_FLAG_NO_CHECKING | SLANG_COMPILE_FLAG_SPLIT_MIXED_TYPES;
         spSetCompileFlags(slangRequest, slangFlags);
 
         // Now lets add all our input shader code, one-by-one
@@ -474,7 +478,7 @@ namespace Falcor
         {
             if (shaderBlob[i].data.size())
             { 
-                shaders[i] = createShaderFromBlob(shaderBlob[i], ShaderType(i), mDesc.mEntryPoints[i].name, log);
+                shaders[i] = createShaderFromBlob(shaderBlob[i], ShaderType(i), mDesc.mEntryPoints[i].name, mDesc.getCompilerFlags(), log);
                 if (!shaders[i]) return nullptr;
             }           
         }

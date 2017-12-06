@@ -50,8 +50,8 @@ public:
 
     /** Callbacks overridden from Renderer base class
     */
-    virtual void onInitialize(RenderContext::SharedPtr context) override;
-    virtual void onDisplay(RenderContext::SharedPtr context, Fbo::SharedPtr targetFbo) override;
+    virtual void onInitialize(RenderContext::SharedPtr pContext) override;
+    virtual void onFrameRender(RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo) override;
 
 private:
     Sampler::SharedPtr              mpLinearSampler;

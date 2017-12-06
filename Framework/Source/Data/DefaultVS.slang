@@ -65,7 +65,8 @@ struct VS_OUT
     INTERPOLATION_MODE float2 texC       : TEXCRD;
     INTERPOLATION_MODE float3 posW       : POSW;
     INTERPOLATION_MODE float3 colorV     : COLOR;
-    INTERPOLATION_MODE float4 prevPosH : PREVPOSH;
+    INTERPOLATION_MODE float4 prevPosH   : PREVPOSH;
+    INTERPOLATION_MODE float2 lightmapC  : LIGHTMAPUV;
     float4 posH : SV_POSITION;
 #ifdef _SINGLE_PASS_STEREO
     INTERPOLATION_MODE float4 rightEyePosS : NV_X_RIGHT;
@@ -89,7 +90,7 @@ float3x3 getWorldInvTransposeMat(VS_IN vIn)
 #ifdef _VERTEX_BLENDING
     float3x3 worldInvTransposeMat = getBlendedInvTransposeWorldMat(vIn.boneWeights, vIn.boneIds);
 #else
-    float3x3 worldInvTransposeMat = gWorldInvTransposeMat[vIn.instanceID];
+    float3x3 worldInvTransposeMat = (float3x3)gWorldInvTransposeMat[vIn.instanceID];
 #endif
     return worldInvTransposeMat;
 }
@@ -126,6 +127,11 @@ VS_OUT defaultVS(VS_IN vIn)
     vOut.bitangentW = 0;
 #endif
 
+#ifdef HAS_LIGHTMAP_UV
+    vOut.lightmapC = vIn.lightmapC;
+#else
+    vOut.lightmapC = 0;
+#endif
     vOut.prevPosH = mul(posW, gCam.prevViewProjMat);
 
 #ifdef _SINGLE_PASS_STEREO

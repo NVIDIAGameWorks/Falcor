@@ -47,10 +47,10 @@ namespace Falcor
     {
     public:
         /** Add a renderer to the list selectable in this application.  First one added runs by default on app load.
-            \param[in] renderMode Shared pointer to a renderer that will be selectable in the application.
+            \param[in] pRenderer Shared pointer to a renderer that will be selectable in the application.
             \return An integer identifier specifying location in internal list of renderers.
         */
-        uint32_t addRenderer(Renderer::SharedPtr renderMode);
+        uint32_t addRenderer(Renderer::SharedPtr pRenderer);
 
         /** An overloadable method that loads and can do custom processing of a newly-loaded scene.  
             \param[in] filename The file of the scene to load, suitable for a direct call to Scene::loadFromFile().

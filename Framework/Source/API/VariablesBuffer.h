@@ -157,7 +157,7 @@ namespace Falcor
 #if _LOG_ENABLED
         ProgramReflection::Variable::Type callType = getReflectionTypeFromCType<VarType>();
         // Check that the types match
-        if(callType != shaderType)
+        if(callType != shaderType && shaderType != ProgramReflection::Variable::Type::Unknown)
         {
             std::string msg("Error when setting variable \"");
             msg += name + "\" to buffer \"" + bufferName + "\".\n";
@@ -200,7 +200,7 @@ namespace Falcor
             {
                 if(varDesc.arraySize == 0)
                 {
-                    if(count > 1)
+                    if(count > 1 && varName.find('[') == std::string::npos)
                     {
                         std::string Msg("Error when setting constant by offset. Found constant \"" + varName + "\" which is not an array, but trying to set more than 1 element");
                         logError(Msg);

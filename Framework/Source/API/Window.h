@@ -48,7 +48,7 @@ namespace Falcor
             uint32_t height = 1080;                 ///< The height of the client area size
             bool fullScreen = false;                ///< Set to true to run the sample in full-screen mode
             std::string title = "Falcor Sample";    ///< Window title
-            bool resizableWindow = false;           ///< Allow the user to resize the window.
+            bool resizableWindow = true;            ///< Allow the user to resize the window.
         };
 
         /** Callbacks interface to be used when creating a new object

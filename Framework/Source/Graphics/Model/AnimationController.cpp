@@ -75,6 +75,7 @@ namespace Falcor
     {
         mBones = Bones;
         mBoneTransforms.resize(mBones.size());
+        mBoneInvTransposeTransforms.resize(mBones.size());
         setActiveAnimation(kBindPoseAnimationId);
     }
 
@@ -103,9 +104,10 @@ namespace Falcor
             mBones[i].globalTransform = mBones[i].localTransform;
             if(mBones[i].parentID != kInvalidBoneID)
             {
-                mBones[i].globalTransform = mBones[mBones[i].parentID].globalTransform * mBones[i].globalTransform;
+                mBones[i].globalTransform = mBones[mBones[i].parentID].globalTransform * mBones[i].localTransform;
             }
             mBoneTransforms[i] = mBones[i].globalTransform * mBones[i].offset;
+            mBoneInvTransposeTransforms[i] = mat3x4(transpose(inverse(mat3(mBoneTransforms[i]))));
         }
     }
 

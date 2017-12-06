@@ -37,10 +37,10 @@ namespace Falcor
         return Scene::loadFromFile(filename);
     }
 
-    uint32_t MultiRendererSample::addRenderer(Renderer::SharedPtr renderMode)
+    uint32_t MultiRendererSample::addRenderer(Renderer::SharedPtr pRenderer)
     { 
         size_t id = mRenderer.size(); 
-        mRenderer.push_back(renderMode);
+        mRenderer.push_back(pRenderer);
         return uint32_t(id); 
     }
 
@@ -105,7 +105,7 @@ namespace Falcor
             mRenderer[mCurRenderer]->setCurrentTime(mCurrentTime);
 
             // Go ahead and draw
-            mRenderer[mCurRenderer]->onDisplay(mpRenderContext, mpDefaultFBO);
+            mRenderer[mCurRenderer]->onFrameRender(mpRenderContext, mpDefaultFBO);
         }
 
         // We're done rendering.  Pop state so we're back to a guaranteed state.

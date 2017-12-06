@@ -267,18 +267,22 @@ namespace Falcor
 
     bool Model::hasBones() const
     {
-        return (getBonesCount() != 0);
+        return (getBoneCount() != 0);
     }
 
-    uint32_t Model::getBonesCount() const
+    uint32_t Model::getBoneCount() const
     {
         return mpAnimationController ? mpAnimationController->getBoneCount() : 0;
     }
 
-    const glm::mat4* Model::getBonesMatrices() const
+    const mat4* Model::getBoneMatrices() const
     {
-        assert(mpAnimationController);
-        return mpAnimationController->getBoneMatrices();
+        return mpAnimationController != nullptr ? mpAnimationController->getBoneMatrices().data() : nullptr;
+    }
+
+    const mat3x4* Model::getBoneInvTransposeMatrices() const
+    {
+        return mpAnimationController != nullptr ? mpAnimationController->getBoneInvTransposeMatrices().data() : nullptr;
     }
 
     void Model::bindSamplerToMaterials(const Sampler::SharedPtr& pSampler)

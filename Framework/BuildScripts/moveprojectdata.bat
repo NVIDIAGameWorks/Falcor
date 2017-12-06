@@ -1,6 +1,6 @@
 
 rem %1==projectDir %2==outputdir
-set local
+setlocal
 
 echo MOVEPROJECTDATA
 echo "%1"

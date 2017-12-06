@@ -8,7 +8,7 @@ rem %5 -> Platform Short Name.
 rem %6 -> Configuration.
 rem %7 -> Output Directory
 
-SETLOCAL ENABLEDELAYEDEXPANSION
+setlocal
 
 SET ExternalsSourceDirectory=%1\Externals\
 SET DestinationDirectory=%2\Bin\%5\%6\

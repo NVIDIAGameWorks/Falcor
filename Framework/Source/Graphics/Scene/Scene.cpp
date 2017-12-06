@@ -129,6 +129,11 @@ namespace Falcor
             }
         }
 
+        for (uint32_t i = 0; i < mModels.size(); i++)
+        {
+            mModels[i][0]->getObject()->animate(currentTime);
+        }
+
         mExtentsDirty = mExtentsDirty || changed;
 
         // Ignore the elapsed time we got from the user. This will allow camera movement in cases where the time is frozen

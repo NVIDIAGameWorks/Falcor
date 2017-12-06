@@ -67,13 +67,13 @@ void ShaderToyRenderer::onInitialize(RenderContext::SharedPtr)
     mIsInitialized = true;
 }
 
-void ShaderToyRenderer::onDisplay(RenderContext::SharedPtr context, Fbo::SharedPtr targetFbo)
+void ShaderToyRenderer::onFrameRender(RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-    mpState->setFbo(targetFbo);
+    mpState->setFbo(pTargetFbo);
 
     // iResolution
-    float width = (float)targetFbo->getWidth();
-    float height = (float)targetFbo->getHeight();
+    float width = (float)pTargetFbo->getWidth();
+    float height = (float)pTargetFbo->getHeight();
     mpToyVars->getConstantBuffer(0, mToyCBBinding, 0)["iResolution"] = glm::vec2(width, height);
 
     // iGlobalTime
@@ -81,11 +81,11 @@ void ShaderToyRenderer::onDisplay(RenderContext::SharedPtr context, Fbo::SharedP
     mpToyVars->getConstantBuffer(0, mToyCBBinding, 0)["iGlobalTime"] = iGlobalTime;
 
     // run final pass
-    context->setGraphicsVars(mpToyVars);
-    mpMainPass->execute(context.get());
+    pContext->setGraphicsVars(mpToyVars);
+    mpMainPass->execute(pContext.get());
 
 #if !FALCOR_USE_PYTHON
-    mTextRender->begin(context, vec2(400, 400));
+    mTextRender->begin(pContext, vec2(400, 400));
     mTextRender->renderLine("Please set FALCOR_USE_PYTHON to 1 in FalcorConfig.h to build this sample with an embedded Python for full functionality!\n");
     mTextRender->renderLine("Also, please read the README.txt in the LearningWithEmbeddedPython directory/project to ensure appropriate version of\n");
     mTextRender->renderLine("    Python, TensorFlow, and other utilities are installed and setup for use in Falcor!");

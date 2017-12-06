@@ -109,16 +109,23 @@ namespace Falcor
         }
     };
 
-    ID3DBlobPtr Shader::compile(const Blob& blob, const std::string& entryPointName, std::string& errorLog)
+    UINT getD3dCompilerFlags(Shader::CompilerFlags flags)
+    {
+        UINT d3dFlags = 0;
+#ifdef _DEBUG
+        d3dFlags |= D3DCOMPILE_DEBUG;
+#endif
+        d3dFlags |= D3DCOMPILE_PACK_MATRIX_ROW_MAJOR;
+        if (is_set(flags, Shader::CompilerFlags::TreatWarningsAsErrors)) d3dFlags |= D3DCOMPILE_WARNINGS_ARE_ERRORS;
+        return d3dFlags;
+    };
+
+    ID3DBlobPtr Shader::compile(const Blob& blob, const std::string& entryPointName, CompilerFlags flags, std::string& errorLog)
     {
         ID3DBlob* pCode;
         ID3DBlobPtr pErrors;
 
-        UINT flags = D3DCOMPILE_WARNINGS_ARE_ERRORS;
-#ifdef _DEBUG
-        flags |= D3DCOMPILE_DEBUG;
-#endif
-        flags |= D3DCOMPILE_PACK_MATRIX_ROW_MAJOR;
+        UINT d3dFlags = getD3dCompilerFlags(flags);
 
         HRESULT hr = D3DCompile(
             blob.data.data(),
@@ -128,7 +135,7 @@ namespace Falcor
             nullptr,
             entryPointName.c_str(),
             getTargetString(mType),
-            flags,
+            d3dFlags,
             0,
             &pCode,
             &pErrors);
@@ -152,7 +159,7 @@ namespace Falcor
         safe_delete(pData);
     }
 
-    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, std::string& log)
+    bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log)
     {
         if (shaderBlob.type != Blob::Type::String)
         {
@@ -161,7 +168,7 @@ namespace Falcor
         }
         // Compile the shader
         ShaderData* pData = (ShaderData*)mpPrivateData;
-        pData->pBlob = compile(shaderBlob, entryPointName, log);
+        pData->pBlob = compile(shaderBlob, entryPointName, flags, log);
 
         if (pData->pBlob == nullptr)
         {

@@ -117,7 +117,7 @@ void FeatureDemo::applyAaMode()
 
 void FeatureDemo::onGuiRender()
 {
-    static const char* kImageFileString = "Image files\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga\0\0";
+    static const char* kImageFileString = "Image files\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga;*.hdr;*.exr\0\0";
     if (mpGui->addButton("Load Model"))
     {
         std::string filename;
@@ -150,7 +150,7 @@ void FeatureDemo::onGuiRender()
 
         if(mpGui->beginGroup("Scene Settings"))
         {
-            Scene* pScene = mpSceneRenderer->getScene();
+            Scene* pScene = mpSceneRenderer->getScene().get();
             float camSpeed = pScene->getCameraSpeed();
             if (mpGui->addFloatVar("Camera Speed", camSpeed))
             {

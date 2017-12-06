@@ -54,6 +54,13 @@ namespace Falcor
             Type type = Type::Undefined;
         };
 
+        enum class CompilerFlags
+        {
+            None                  = 0x0,
+            TreatWarningsAsErrors = 0x1,
+            DumpIntermediates     = 0x2,
+        };
+
         class DefineList : public std::map<std::string, std::string>
         {
         public:
@@ -67,10 +74,10 @@ namespace Falcor
             \param[out] log This string will contain the error log message in case shader compilation failed
             \return If success, a new shader object, otherwise nullptr
         */
-        static SharedPtr create(const Blob& shaderBlob, ShaderType type, std::string const&  entryPointName, std::string& log)
+        static SharedPtr create(const Blob& shaderBlob, ShaderType type, std::string const&  entryPointName, CompilerFlags flags, std::string& log)
         {
             SharedPtr pShader = SharedPtr(new Shader(type));
-            return pShader->init(shaderBlob, entryPointName, log) ? pShader : nullptr;
+            return pShader->init(shaderBlob, entryPointName, flags, log) ? pShader : nullptr;
         }
 
         virtual ~Shader();
@@ -87,16 +94,16 @@ namespace Falcor
 
 #ifdef FALCOR_D3D
         ID3DBlobPtr getD3DBlob() const;
-        virtual ID3DBlobPtr compile(const Blob& blob, const std::string&  entryPointName, std::string& errorLog);
+        virtual ID3DBlobPtr compile(const Blob& blob, const std::string&  entryPointName, CompilerFlags flags, std::string& errorLog);
 #endif
 
     protected:
         // API handle depends on the shader Type, so it stored be stored as part of the private data
-        bool init(const Blob& shaderBlob, const std::string&  entryPointName, std::string& log);
+        bool init(const Blob& shaderBlob, const std::string&  entryPointName, CompilerFlags flags, std::string& log);
         Shader(ShaderType Type);
         ShaderType mType;
         ApiHandle mApiHandle;
         void* mpPrivateData = nullptr;
     };
-
+    enum_class_operators(Shader::CompilerFlags);
 }

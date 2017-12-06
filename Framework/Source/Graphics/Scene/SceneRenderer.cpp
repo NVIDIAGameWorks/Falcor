@@ -44,6 +44,7 @@ namespace Falcor
     size_t SceneRenderer::sCameraDataOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sWorldMatArraySize = 0;
     size_t SceneRenderer::sWorldMatOffset = ConstantBuffer::kInvalidOffset;
+    size_t SceneRenderer::sPrevWorldMatOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sWorldInvTransposeMatOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sMeshIdOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sDrawIDOffset = ConstantBuffer::kInvalidOffset;
@@ -82,6 +83,7 @@ namespace Falcor
                 sWorldInvTransposeMatOffset = pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->location;
                 sMeshIdOffset = pPerMeshCbData->getVariableData("gMeshId")->location;
                 sDrawIDOffset = pPerMeshCbData->getVariableData("gDrawId[0]")->location;
+                sPrevWorldMatOffset = pPerMeshCbData->getVariableData("gPrevWorldMat[0]")->location;
             }
         }
 
@@ -135,8 +137,10 @@ namespace Falcor
 
     bool SceneRenderer::setPerModelData(const CurrentWorkingData& currentData)
     {
+        const Model* pModel = currentData.pModel;
+
         // Set bones
-        if (currentData.pModel->hasBones())
+        if (pModel->hasBones())
         {
             ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kPerMeshCbName).get();
             if (pCB)
@@ -146,7 +150,8 @@ namespace Falcor
                     sBonesOffset = pCB->getVariableOffset("gWorldMat[0]");
                 }
 
-                pCB->setVariableArray(sBonesOffset, currentData.pModel->getBonesMatrices(), currentData.pModel->getBonesCount());
+                pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
+                pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
         }
         return true;
@@ -174,10 +179,12 @@ namespace Falcor
             {
                 glm::mat4 worldMat = pModelInstance->getTransformMatrix() * pMeshInstance->getTransformMatrix();
                 glm::mat3x4 worldInvTransposeMat = transpose(inverse(glm::mat3(worldMat)));
+                glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix() * pMeshInstance->getPrevTransformMatrix();
 
                 assert(drawInstanceID < sWorldMatArraySize);
                 pCB->setBlob(&worldMat, sWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
                 pCB->setBlob(&worldInvTransposeMat, sWorldInvTransposeMatOffset + drawInstanceID * sizeof(glm::mat3x4), sizeof(glm::mat3x4)); // HLSL uses column-major and packing rules require 16B alignment, hence use glm:mat3x4
+                pCB->setBlob(&prevWorldMat, sPrevWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
             }
 
             // Set mesh id
@@ -239,6 +246,12 @@ namespace Falcor
 
         if (setPerMeshData(currentData, pMesh))
         {
+            Program* pProgram = currentData.pState->getProgram().get();
+            if (pMesh->hasBones())
+            {
+                pProgram->addDefine("_VERTEX_BLENDING");
+            }
+
             // Bind VAO and set topology
             currentData.pState->setVao(pMesh->getVao());
 
@@ -274,37 +287,24 @@ namespace Falcor
             {
                 draw(currentData, pMesh, activeInstances);
             }
+
+            // Restore the program state
+            if (pMesh->hasBones())
+            {
+                pProgram->removeDefine("_VERTEX_BLENDING");
+            }
         }
     }
 
     void SceneRenderer::renderModelInstance(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance)
     {
-        const Model* pModel = pModelInstance->getObject().get();
+        mpLastMaterial = nullptr;
 
-        if (setPerModelData(currentData))
+        // Loop over the meshes
+        for (uint32_t meshID = 0; meshID < pModelInstance->getObject()->getMeshCount(); meshID++)
         {
-            Program* pProgram = currentData.pState->getProgram().get();
-            // Bind the program
-            if(pModel->hasBones())
-            {
-                pProgram->addDefine("_VERTEX_BLENDING");
-            }
-
-            mpLastMaterial = nullptr;
-
-            // Loop over the meshes
-            for (uint32_t meshID = 0; meshID < pModel->getMeshCount(); meshID++)
-            {
-                renderMeshInstances(currentData, pModelInstance, meshID);
-            }
-
-            // Restore the program state
-            if(pModel->hasBones())
-            {
-                pProgram->removeDefine("_VERTEX_BLENDING");
-            }
+            renderMeshInstances(currentData, pModelInstance, meshID);
         }
-
     }
 
     bool SceneRenderer::update(double currentTime)
@@ -325,14 +325,17 @@ namespace Falcor
         {
             currentData.pModel = mpScene->getModel(modelID).get();
 
-            for (uint32_t instanceID = 0; instanceID < mpScene->getModelInstanceCount(modelID); instanceID++)
+            if (setPerModelData(currentData))
             {
-                const auto pInstance = mpScene->getModelInstance(modelID, instanceID).get();
-                if (pInstance->isVisible())
+                for (uint32_t instanceID = 0; instanceID < mpScene->getModelInstanceCount(modelID); instanceID++)
                 {
-                    if (setPerModelInstanceData(currentData, pInstance, instanceID))
+                    const auto pInstance = mpScene->getModelInstance(modelID, instanceID).get();
+                    if (pInstance->isVisible())
                     {
-                        renderModelInstance(currentData, pInstance);
+                        if (setPerModelInstanceData(currentData, pInstance, instanceID))
+                        {
+                            renderModelInstance(currentData, pInstance);
+                        }
                     }
                 }
             }
