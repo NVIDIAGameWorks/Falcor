@@ -136,9 +136,11 @@ namespace Falcor
         vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
     }
 
-    void DescriptorSet::setCb(uint32_t rangeIndex, uint32_t descIndex, const Buffer* pBuffer)
+    void DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, const ConstantBufferView::SharedPtr& pView)
     {
         VkDescriptorBufferInfo info;
+        const auto& pBuffer = dynamic_cast<const ConstantBuffer*>(pView->getResource());
+        assert(pBuffer);
         info.buffer = pBuffer->getApiHandle();
         info.offset = pBuffer->getGpuAddressOffset();
         info.range = pBuffer->getSize();
