@@ -47,7 +47,8 @@ namespace Falcor
     {
         mpApiData = std::make_shared<DescriptorSetApiData>();
         uint32_t count = 0;
-        const auto& type = falcorToDxDescType(mLayout.getRange(0).type);
+        const auto falcorType = mLayout.getRange(0).type;
+        const auto d3dType = falcorToDxDescType(falcorType);
 
         // For each range we need to allocate a table from a heap
         mpApiData->rangeBaseOffset.resize(mLayout.getRangeCount());
@@ -56,12 +57,11 @@ namespace Falcor
         {
             const auto& range = mLayout.getRange(i);
             mpApiData->rangeBaseOffset[i] = count;
-            assert(type == falcorToDxDescType(range.type)); // We can only allocate from a single heap
+            assert(d3dType == falcorToDxDescType(range.type)); // We can only allocate from a single heap
             count += range.descCount;
         }
 
-        const auto& range0 = mLayout.getRange(0);
-        D3D12DescriptorHeap* pHeap = getHeap(mpPool.get(), range0.type);
+        D3D12DescriptorHeap* pHeap = getHeap(mpPool.get(), falcorType);
         mpApiData->pAllocation = pHeap->allocateDescriptors(count);
         if (mpApiData->pAllocation == false)
         {

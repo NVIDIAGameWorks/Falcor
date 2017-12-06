@@ -155,7 +155,7 @@ namespace Falcor
         // We'd like to create an optimized signature (minimize the number of ranges per set). First, go over all of the resources and find packed ranges
         SetMap setMap;
 
-        const auto& resMap = pReflector->getParameterBlock("")->getResources();
+        const auto& resMap = pReflector->getDefaultParameterBlock()->getResources();
         for (const auto& res : resMap)
         {
             insertResData(setMap, res);

@@ -68,7 +68,7 @@ namespace Falcor
 
     void SceneRenderer::updateVariableOffsets(const ProgramReflection* pReflector)
     {
-        const ParameterBlockReflection* pBlock = pReflector->getParameterBlock("").get();
+        const ParameterBlockReflection* pBlock = pReflector->getDefaultParameterBlock().get();
         if (sWorldMatOffset == ConstantBuffer::kInvalidOffset)
         {
             const ReflectionVar* pVar = pBlock->getResource(kPerMeshCbName).get();

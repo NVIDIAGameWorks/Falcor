@@ -39,8 +39,8 @@ namespace Falcor
     ProgramVars::ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) : mpReflector(pReflector)
     {
         mpRootSignature = pRootSig ? pRootSig : RootSignature::create(pReflector.get());
-        ParameterBlockReflection::SharedConstPtr pGlobalBlock = pReflector->getParameterBlock("");
-        mpGlobalBlock = ParameterBlock::create(pGlobalBlock, mpRootSignature.get(), createBuffers);
+        ParameterBlockReflection::SharedConstPtr pDefaultBlock = pReflector->getDefaultParameterBlock();
+        mpGlobalBlock = ParameterBlock::create(pDefaultBlock, mpRootSignature.get(), createBuffers);
     }
 
 

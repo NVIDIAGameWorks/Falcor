@@ -348,7 +348,7 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
         struct ShaderVariable
         {
-            uint32_t semanticIndex = 0;
+            uint32_t bindLocation = 0;
             std::string semanticName;
             ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown;                                    
         };
@@ -359,6 +359,8 @@ namespace Falcor
         static void registerParameterBlock(const std::string& name);
         static void unregisterParameterBlock(const std::string& name);
         const ParameterBlockReflection::SharedConstPtr& getParameterBlock(const std::string& name) const;
+        const ParameterBlockReflection::SharedConstPtr& getDefaultParameterBlock() const { return mpDefaultBlock; }
+
         uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
         bool isSampleFrequency() const { return mIsSampleFrequency; }
         using ResourceBinding = ParameterBlockReflection::ResourceBinding;
@@ -371,9 +373,10 @@ namespace Falcor
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);
+
         std::unordered_map<std::string, ParameterBlockReflection::SharedConstPtr> mParameterBlocks;
         static std::unordered_set<std::string> sParameterBlockRegistry;
-        ParameterBlockReflection::SharedConstPtr mpGlobalBlock;
+        ParameterBlockReflection::SharedConstPtr mpDefaultBlock;
         uvec3 mThreadGroupSize;
         bool mIsSampleFrequency = false;
 

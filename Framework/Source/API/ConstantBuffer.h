@@ -30,7 +30,7 @@
 #include "Graphics/Program/ProgramReflection.h"
 #include "Texture.h"
 #include "VariablesBuffer.h"
-#include "Graphics/Program//Program.h"
+#include "Graphics/Program/Program.h"
 
 namespace Falcor
 {

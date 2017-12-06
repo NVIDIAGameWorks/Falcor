@@ -58,8 +58,8 @@ namespace Falcor
     StructuredBuffer::SharedPtr StructuredBuffer::create(const Program::SharedPtr& pProgram, const std::string& name, size_t elementCount, Resource::BindFlags bindFlags)
     {
         const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
-        const auto& pGlobalBlock = pProgReflector->getParameterBlock("");
-        const ReflectionVar* pVar = pGlobalBlock ? pGlobalBlock->getResource(name).get() : nullptr;
+        const auto& pDefaultBlock = pProgReflector->getDefaultParameterBlock();
+        const ReflectionVar* pVar = pDefaultBlock ? pDefaultBlock->getResource(name).get() : nullptr;
 
         if (pVar)
         {

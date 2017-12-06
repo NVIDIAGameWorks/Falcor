@@ -523,7 +523,7 @@ namespace Falcor
         uint32_t baseIndex = (uint32_t)getRegisterIndexFromPath(&path, category);
         for(uint32_t i = 0 ; i < max(count, 1u) ; i++)
         {
-            var.semanticIndex = baseIndex + (i*stride);
+            var.bindLocation = baseIndex + (i*stride);
             var.semanticName = path.pVar->getSemanticName();
             if (count)
             {
@@ -593,7 +593,7 @@ namespace Falcor
 
     ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log)
     {
-        ParameterBlockReflection::SharedPtr pGlobalBlock = ParameterBlockReflection::create("");
+        ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::create("");
         for (uint32_t i = 0; i < pSlangReflector->getParameterCount(); i++)
         {
             VariableLayoutReflection* pSlangLayout = pSlangReflector->getParameterByIndex(i);
@@ -611,13 +611,13 @@ namespace Falcor
             }
             else
             {
-                pGlobalBlock->addResource(pVar);
+                pDefaultBlock->addResource(pVar);
             }
         }
 
-        if (pGlobalBlock->isEmpty() == false)
+        if (pDefaultBlock->isEmpty() == false)
         {
-            addParameterBlock(pGlobalBlock);
+            mpDefaultBlock = pDefaultBlock;
         }
 
         // Reflect per-stage parameters
@@ -657,9 +657,9 @@ namespace Falcor
     {
         assert(mParameterBlocks.find(pBlock->getName()) == mParameterBlocks.end());
         mParameterBlocks[pBlock->getName()] = pBlock;
-        if (pBlock->getName().size() == 0) mpGlobalBlock = pBlock;
+        if (pBlock->getName().size() == 0) mpDefaultBlock = pBlock;
     }
-
+    
     void ProgramReflection::registerParameterBlock(const std::string& name)
     {
         sParameterBlockRegistry.insert(name);
@@ -1076,7 +1076,7 @@ namespace Falcor
 
     ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const
     {
-        return (mpGlobalBlock == nullptr) ? ResourceBinding() : mpGlobalBlock->getResourceBinding(name);
+        return (mpDefaultBlock == nullptr) ? ResourceBinding() : mpDefaultBlock->getResourceBinding(name);
     }
 
     bool ReflectionArrayType::operator==(const ReflectionType& other) const

@@ -40,10 +40,10 @@ namespace Falcor
         mVarOffsets.colorBoxSigma = mpCB->getVariableOffset("gColorBoxSigma");
 
         // Get the textures data
-        mVarOffsets.colorTex = 0;// pReflector->getResourceDesc("gTexColor")->regIndex;
-        mVarOffsets.prevColorTex = 0;// pReflector->getResourceDesc("gTexPrevColor")->regIndex;
-        mVarOffsets.motionVecTex = 0;// pReflector->getResourceDesc("gTexMotionVec")->regIndex;
-        mVarOffsets.sampler = 0;// pReflector->getResourceDesc("gSampler")->regIndex;
+        mVarOffsets.colorTex = pReflector->getResourceBinding("gTexColor").regIndex;
+        mVarOffsets.prevColorTex = pReflector->getResourceBinding("gTexPrevColor").regIndex;
+        mVarOffsets.motionVecTex = pReflector->getResourceBinding("gTexMotionVec").regIndex;
+        mVarOffsets.sampler = pReflector->getResourceBinding("gSampler").regIndex;
     }
 
     void TemporalAA::setVarsData(const Texture::SharedPtr & pCurColor, const Texture::SharedPtr & pPrevColor, const Texture::SharedPtr & pMotionVec)
