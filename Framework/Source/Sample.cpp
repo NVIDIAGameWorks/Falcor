@@ -388,9 +388,7 @@ namespace Falcor
     void Sample::initUI()
     {
         mpGui = Gui::create(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
-#ifdef _WIN32 // Text texture is in DDS, which isn't supported on Linux yet
         mpTextRenderer = TextRenderer::create();
-#endif
     }
 
     const std::string Sample::getFpsMsg() const
@@ -425,7 +423,7 @@ namespace Falcor
 
     void Sample::renderText(const std::string& msg, const glm::vec2& position, const glm::vec2 shadowOffset) const
     {
-        if (mShowText && mpTextRenderer != nullptr)
+        if (mShowText)
         {
             // Render outline first
             if (shadowOffset.x != 0.f || shadowOffset.y != 0)

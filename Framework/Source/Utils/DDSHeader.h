@@ -27,10 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "Utils/Platform/OS.h"
-#include "Framework.h"
-
-#ifdef _WIN32
-#include <D3D11.h>
+#include "Utils/DXHeader.h"
 
 namespace Falcor
 {
@@ -104,11 +101,11 @@ namespace Falcor
 
         struct DdsHeaderDX10
         {
-            DXGI_FORMAT              dxgiFormat;
-            D3D10_RESOURCE_DIMENSION resourceDimension;
-            uint32_t                 miscFlag;
-            uint32_t                 arraySize;
-            uint32_t                 miscFlags2;
+            DXFormat            dxgiFormat;
+            DXResourceDimension resourceDimension;
+            uint32_t            miscFlag;
+            uint32_t            arraySize;
+            uint32_t            miscFlags2;
 
             static const uint32_t kCubeMapMask = 0x4;
         };
@@ -122,5 +119,3 @@ namespace Falcor
         };
     }
 }
-
-#endif // _WIN32

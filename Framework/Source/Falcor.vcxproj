@@ -1075,6 +1075,7 @@
     <ClInclude Include="Utils\CpuTimer.h" />
     <ClInclude Include="Utils\DDSHeader.h" />
     <ClInclude Include="Utils\DebugDrawer.h" />
+    <ClInclude Include="Utils\DXHeader.h" />
     <ClInclude Include="Utils\Font.h" />
     <ClInclude Include="Utils\FrameRate.h" />
     <ClInclude Include="Utils\Graph.h" />
