@@ -288,7 +288,7 @@ namespace Falcor
         return mColorAttachments[index].pTexture;
     }
 
-    Texture::SharedPtr Fbo::getDepthStencilTexture() const
+    const Texture::SharedPtr& Fbo::getDepthStencilTexture() const
     {
         return mDepthStencil.pTexture;
     }

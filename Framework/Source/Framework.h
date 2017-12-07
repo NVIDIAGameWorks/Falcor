@@ -66,7 +66,7 @@ using namespace glm;
 #ifdef _MSC_VER
 #define should_not_get_here() __assume(0)
 #else // _MSC_VER
-#define should_not_get_here()
+#define should_not_get_here() __builtin_unreachable()
 #endif // _MSC_VER
 
 #endif // _DEBUG
@@ -159,54 +159,6 @@ namespace Falcor
     {
         uint64_t t = (uint64_t)a;
         return (t & (t - 1)) == 0;
-    }
-
-    /** Returns index of most significant set bit, or 0 if no bits were set
-    */
-    inline uint32_t bitScanReverse(uint32_t a)
-    {
-#ifdef _MSC_VER
-        unsigned long index;
-        _BitScanReverse(&index, a);
-        return (uint32_t)index;
-#elif defined(__GNUC__)
-        // __builtin_clz counts 0's from the MSB, convert to index from the LSB
-        return (sizeof(uint32_t) * 8) - (uint32_t)__builtin_clz(a) - 1;
-#endif
-    }
-
-    /** Returns index of least significant set bit, or 0 if no bits were set
-    */
-    inline uint32_t bitScanForward(uint32_t a)
-    {
-#ifdef _MSC_VER
-        unsigned long index;
-        _BitScanForward(&index, a);
-        return (uint32_t)index;
-#elif defined(__GNUC__)
-        // __builtin_ctz() counts 0's from LSB, which is the same as the index of the first set bit
-        // Manually return 0 if a is 0 to match Microsoft behavior. __builtin_ctz(0) produces undefined results.
-        return (a > 0) ? ((uint32_t)__builtin_ctz(a)) : 0;
-#endif
-    }
-
-    /** Gets the closest power of two to a number, rounded down.
-    */
-    inline uint32_t getLowerPowerOf2(uint32_t a)
-    {
-        assert(a != 0);
-        return 1 << bitScanReverse(a);
-    }
-
-    /** Gets the number of set bits
-    */
-    inline uint32_t popcount(uint32_t a)
-    {
-#ifdef _MSC_VER
-        return __popcnt(a);
-#elif defined(__GNUC__)
-        return (uint32_t)__builtin_popcount(a);
-#endif
     }
 
     /*! @} */

@@ -25,6 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
 #include "Framework.h"
 #include "Utils/StringUtils.h"
 #include "Utils/Platform/OS.h"
@@ -52,43 +53,43 @@ namespace Falcor
             should_not_get_here();
         }
 
-        GtkButtonsType buttontype = GTK_BUTTONS_OK;
+        GtkButtonsType buttonType = GTK_BUTTONS_OK;
         switch (mbType)
         {
         case MsgBoxType::Ok:
-            buttontype = GTK_BUTTONS_OK;
+            buttonType = GTK_BUTTONS_OK;
             break;
         case MsgBoxType::OkCancel:
-            buttontype = GTK_BUTTONS_OK_CANCEL;
+            buttonType = GTK_BUTTONS_OK_CANCEL;
             break;
         case MsgBoxType::RetryCancel:
-            buttontype = GTK_BUTTONS_YES_NO;
+            buttonType = GTK_BUTTONS_YES_NO;
             break;
         default:
             should_not_get_here();
             break;
         }
 
-        GtkWidget *parent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        GtkWidget *dialog = gtk_message_dialog_new(
-            GTK_WINDOW(parent),
+        GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        GtkWidget* pDialog = gtk_message_dialog_new(
+            GTK_WINDOW(pParent),
             GTK_DIALOG_MODAL,
             GTK_MESSAGE_INFO,
-            buttontype,
+            buttonType,
             "%s",
             msg.c_str()
         );
 
-        gtk_window_set_title(GTK_WINDOW(dialog), "Falcor");
-        gint value = gtk_dialog_run(GTK_DIALOG(dialog));
-        gtk_widget_destroy(dialog);
-        gtk_widget_destroy(parent);
+        gtk_window_set_title(GTK_WINDOW(pDialog), "Falcor");
+        gint result = gtk_dialog_run(GTK_DIALOG(pDialog));
+        gtk_widget_destroy(pDialog);
+        gtk_widget_destroy(pParent);
         while(gtk_events_pending())
         {
             gtk_main_iteration();
         }
 
-        switch (value)
+        switch (result)
         {
         case GTK_RESPONSE_OK: 
             return MsgBoxButton::Ok;
@@ -104,16 +105,16 @@ namespace Falcor
 
     bool doesFileExist(const std::string& filename)
     {
-        int handle = open(filename.c_str(), O_RDONLY);
+        int32_t handle = open(filename.c_str(), O_RDONLY);
         struct stat fileStat;
-        const bool exists = fstat(handle, &fileStat) == 0;
+        bool exists = fstat(handle, &fileStat) == 0;
         close(handle);
         return exists;
     }
 
     bool isDirectoryExists(const std::string& filename)
     {
-        const char *pathname = filename.c_str();
+        const char* pathname = filename.c_str();
         struct stat sb;
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
@@ -122,7 +123,7 @@ namespace Falcor
     {
         char result[PATH_MAX];
         ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-        const char *path;
+        const char* path;
         if (count != -1)
         {
             path = dirname(result);
@@ -144,8 +145,7 @@ namespace Falcor
 
     const std::string& getExecutableName()
     {
-        static std::string filename;
-        filename = fs::path(program_invocation_name).filename();
+        static std::string filename = fs::path(program_invocation_name).filename();
         return filename;
     }
 
@@ -161,71 +161,6 @@ namespace Falcor
         return true;
     }
 
-    std::vector<std::string> gDataDirectories =
-    {
-        // Ordering matters here, we want that while developing, resources will be loaded from the development media directory
-        std::string(getWorkingDirectory()),
-        std::string(getWorkingDirectory() + "/Data"),
-        std::string(getExecutableDirectory()),
-        std::string(getExecutableDirectory() + "/Data"),
-
-        // The local solution media folder
-        std::string(getExecutableDirectory() + "/../Media"),
-    };
-
-    const std::vector<std::string>& getDataDirectoriesList()
-    {
-        return gDataDirectories;
-    }
-
-    void addDataDirectory(const std::string& dataDir)
-    {
-        //Insert unique elements
-        if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dataDir) == gDataDirectories.end())
-        {
-            gDataDirectories.push_back(dataDir);
-        }
-    }
-
-    std::string canonicalizeFilename(const std::string& filename)
-    {
-        fs::path path(replaceSubstring(filename, "\\", "/"));
-        return fs::exists(path) ? fs::canonical(path).string() : "";
-    }
-
-    bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)
-    {
-        static bool bInit = false;
-        if (bInit == false)
-        {
-            std::string dataDirs;
-            if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
-            {
-                auto folders = splitString(dataDirs, ";");
-                gDataDirectories.insert(gDataDirectories.end(), folders.begin(), folders.end());
-            }
-            bInit = true;
-        }
-
-        // Check if this is an absolute path
-        if (doesFileExist(filename))
-        {
-            fullpath = canonicalizeFilename(filename);
-            return true;
-        }
-
-        for (const auto& Dir : gDataDirectories)
-        {
-            fullpath = canonicalizeFilename(Dir + '/' + filename);
-            if (doesFileExist(fullpath))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     template<bool bOpen>
     static bool fileDialogCommon(const char* pFilters, std::string& filename)
     {
@@ -234,9 +169,9 @@ namespace Falcor
             should_not_get_here();
         }
 
-        GtkWidget *pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-        GtkWidget *pDialog = nullptr;
-        gint res = 0;
+        GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        GtkWidget* pDialog = nullptr;
+        gint result = 0;
 
         bool success = false;
         if(bOpen)
@@ -251,10 +186,10 @@ namespace Falcor
                 GTK_RESPONSE_ACCEPT,
                 NULL);
 
-            res = gtk_dialog_run(GTK_DIALOG(pDialog));
-            if (res == GTK_RESPONSE_ACCEPT)
+            result = gtk_dialog_run(GTK_DIALOG(pDialog));
+            if (result == GTK_RESPONSE_ACCEPT)
             {
-                char *gtkFilename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(pDialog));
+                char* gtkFilename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(pDialog));
                 filename = std::string(gtkFilename);
                 g_free(gtkFilename);
                 success = true;
@@ -272,15 +207,15 @@ namespace Falcor
                 GTK_RESPONSE_ACCEPT,
                 NULL);
 
-            GtkFileChooser *pAsChooser = GTK_FILE_CHOOSER(pDialog);
+            GtkFileChooser* pAsChooser = GTK_FILE_CHOOSER(pDialog);
 
             gtk_file_chooser_set_do_overwrite_confirmation(pAsChooser, TRUE);
             gtk_file_chooser_set_current_name(pAsChooser, "");
 
-            res = gtk_dialog_run(GTK_DIALOG(pDialog));
-            if (res == GTK_RESPONSE_ACCEPT)
+            result = gtk_dialog_run(GTK_DIALOG(pDialog));
+            if (result == GTK_RESPONSE_ACCEPT)
             {
-                char *gtkFilename = gtk_file_chooser_get_filename(pAsChooser);
+                char* gtkFilename = gtk_file_chooser_get_filename(pAsChooser);
                 filename = std::string(gtkFilename);
                 g_free(gtkFilename);
                 success = true;
@@ -306,46 +241,14 @@ namespace Falcor
         return fileDialogCommon<false>(pFilters, filename);
     }
 
-    bool readFileToString(const std::string& fullpath, std::string& str)
-    {
-        std::ifstream t(fullpath.c_str());
-        if ((t.rdstate() & std::ifstream::failbit) == 0)
-        {
-            str = std::string((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-            return true;
-        }
-        return false;
-    }
-
-    bool findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension, std::string& filename)
-    {
-        for (uint32_t i = 0; i < (uint32_t)-1; i++)
-        {
-            std::string newPrefix = prefix + '.' + std::to_string(i);
-            filename = directory + '/' + newPrefix + "." + extension;
-
-            if (doesFileExist(filename) == false)
-            {
-                return true;
-            }
-        }
-        should_not_get_here();
-        filename = "";
-        return false;
-    }
-
     void setActiveWindowIcon(const std::string& iconFile)
     {
-        //////////////////////////////////////////
-        // THIS IS NOT IMPLEMENTED IN LINUX.
-        //////////////////////////////////////////
+        // #TODO Not yet implemented
     }
 
     int getDisplayDpi()
     {
-        //////////////////////////////////////////
-        // THIS IS NOT IMPLEMENTED IN LINUX.
-        //////////////////////////////////////////
+        // #TODO Not yet implemented
         return int(200);
     }
 
@@ -383,26 +286,6 @@ namespace Falcor
         std::cerr << s;
     }
 
-    std::string stripDataDirectories(const std::string& filename)
-    {
-        std::string stripped = filename;
-        std::string canonFile = canonicalizeFilename(filename);
-        for (const auto& dir : gDataDirectories)
-        {
-            std::string canonDir = canonicalizeFilename(dir);
-            if (hasPrefix(canonFile, canonDir, false))
-            {
-                std::string tmp = canonFile.erase(0, canonDir.length() + 1);
-                if (tmp.length() < stripped.length())
-                {
-                    stripped = tmp;
-                }
-            }
-        }
-
-        return stripped;
-    }
-
     std::string getDirectoryFromFile(const std::string& filename)
     {
         char* path = const_cast<char*>(filename.c_str());
@@ -417,50 +300,79 @@ namespace Falcor
         return std::string(path);
     }
 
-    std::string swapFileExtension(const std::string& str, const std::string& currentExtension, const std::string& newExtension)
-    {
-        if (hasSuffix(str, currentExtension))
-        {
-            std::string ret = str;
-            return (ret.erase(ret.rfind(currentExtension)) + newExtension);
-        }
-        else
-        {
-            return str;
-        }
-    }
-
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
     {
-        //////////////////////////////////////////
-        // THIS IS NOT IMPLEMENTED IN LINUX.
-        //////////////////////////////////////////
-        should_not_get_here();
+        
     }
 
     std::thread::native_handle_type getCurrentThread()
     {
-        //////////////////////////////////////////
-        // THIS IS NOT IMPLEMENTED IN LINUX.
-        //////////////////////////////////////////
-        should_not_get_here();
-        return std::thread::native_handle_type();
+        return pthread_self();
+    }
+
+    std::string threadErrorToString(int32_t error)
+    {
+        // Error details can vary depending on what function returned it,
+        // just convert error id to string for easy lookup.
+        switch(error)
+        {
+            case EFAULT: return "EFAULT";
+            case ENOTSUP: return "ENOTSUP";
+            case EINVAL: return "EINVAL";
+            case EPERM: return "EPERM";
+            case ESRCH: return "ESRCH";
+            default: return std::to_string(error);
+        }
     }
 
     void setThreadAffinity(std::thread::native_handle_type thread, uint32_t affinityMask)
     {
-        //////////////////////////////////////////
-        // THIS IS NOT IMPLEMENTED IN LINUX.
-        //////////////////////////////////////////
-        should_not_get_here();
+        cpu_set_t cpuMask;
+        CPU_ZERO(&cpuMask);
+
+        uint32_t bitCount = min(sizeof(cpu_set_t), sizeof(uint32_t)) * 8;
+        for(uint32_t i = 0; i < bitCount; i++)
+        {
+            if((affinityMask & (1 << i)) > 0)
+            {
+                CPU_SET(i, &cpuMask);
+            }
+        }
+
+        int32_t result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuMask);
+        if(result != 0)
+        {
+            logError("setThreadAffinity() - pthread_setaffinity_np() failed with error code " + threadErrorToString(result));
+        }
     }
 
     void setThreadPriority(std::thread::native_handle_type thread, ThreadPriorityType priority)
     {
-        //////////////////////////////////////////
-        // THIS IS NOT IMPLEMENTED IN LINUX.
-        //////////////////////////////////////////
-        should_not_get_here();
+        pthread_attr_t thAttr;
+        int32_t policy = 0;
+        pthread_getattr_np(thread, &thAttr);
+        pthread_attr_getschedpolicy(&thAttr, &policy);
+
+        int32_t result = 0;
+        if (priority >= ThreadPriorityType::Lowest)
+        {
+            // Remap enum value range to what was queried from system
+            float minPriority = (float)sched_get_priority_min(policy);
+            float maxPriority = (float)sched_get_priority_max(policy);
+            float value = (float)priority * (maxPriority - minPriority) / (float)(ThreadPriorityType::Highest) + minPriority;
+            result = pthread_setschedprio(thread, (int32_t)value);
+            pthread_attr_destroy(&thAttr);
+        }
+        // #TODO: Is there a "Background" priority in Linux? Is there a way to emulate it?
+        else
+        {
+            should_not_get_here();
+        }
+
+        if(result != 0)
+        {
+            logError("setThreadPriority() - pthread_setschedprio() failed with error code " + threadErrorToString(result));
+        }
     }
 
     time_t getFileModifiedTime(const std::string& filename)
@@ -474,4 +386,25 @@ namespace Falcor
 
         return s.st_mtime;
     }
+
+    uint32_t bitScanReverse(uint32_t a)
+    {
+        // __builtin_clz counts 0's from the MSB, convert to index from the LSB
+        return (sizeof(uint32_t) * 8) - (uint32_t)__builtin_clz(a) - 1;
+    }
+
+    /** Returns index of least significant set bit, or 0 if no bits were set
+    */
+    uint32_t bitScanForward(uint32_t a)
+    {
+        // __builtin_ctz() counts 0's from LSB, which is the same as the index of the first set bit
+        // Manually return 0 if a is 0 to match Microsoft behavior. __builtin_ctz(0) produces undefined results.
+        return (a > 0) ? ((uint32_t)__builtin_ctz(a)) : 0;
+    }
+
+    uint32_t popcount(uint32_t a)
+    {
+        return (uint32_t)__builtin_popcount(a);
+    }
+
 }

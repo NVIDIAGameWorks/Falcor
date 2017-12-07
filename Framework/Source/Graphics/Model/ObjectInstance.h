@@ -241,9 +241,6 @@ namespace Falcor
         {
             if (mBase.matrixDirty || mMovable.matrixDirty)
             {
-                
-                bool baseDirty = mBase.matrixDirty;
-
                 if (mBase.matrixDirty)
                 {
                     mBase.matrix = calculateTransformMatrix(mBase.translation, mBase.target, mBase.up, mBase.scale);

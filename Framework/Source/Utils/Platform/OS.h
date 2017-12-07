@@ -250,5 +250,21 @@ namespace Falcor
     */
     uint64_t  getProcessUsedVirtualMemory();
 
+    /** Returns index of most significant set bit, or 0 if no bits were set.
+    */
+    uint32_t bitScanReverse(uint32_t a);
+
+    /** Returns index of least significant set bit, or 0 if no bits were set.
+    */
+    uint32_t bitScanForward(uint32_t a);
+
+    /** Gets the closest power of two to a number, rounded down.
+    */
+    uint32_t getLowerPowerOf2(uint32_t a);
+
+    /** Gets the number of set bits.
+    */
+    uint32_t popcount(uint32_t a);
+
     /*! @} */
 };

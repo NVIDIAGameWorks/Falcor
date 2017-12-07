@@ -247,8 +247,8 @@ namespace Falcor
             { return getVariableData(name); }
 
             /** Get resource data
-            \param[in] name The name of the requested resource
-            \return Pointer to the resource data, or nullptr if the name wasn't found or is not a resource
+                \param[in] name The name of the requested resource
+                \return Pointer to the resource data, or nullptr if the name wasn't found or is not a resource
             */
             const Resource* getResourceData(const std::string& name) const;
 

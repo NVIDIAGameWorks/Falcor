@@ -541,6 +541,12 @@
     <ClCompile Include="Utils\Platform\Linux\ProgressBarLinux.cpp">
       <Filter>Utils\Platform\Linux</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\Platform\OS.cpp">
+      <Filter>Utils\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\DXHeader.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">

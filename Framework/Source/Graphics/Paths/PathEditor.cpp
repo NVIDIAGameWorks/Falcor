@@ -115,7 +115,7 @@ namespace Falcor
     void PathEditor::editPathName(Gui* pGui)
     {
         char buffer[1024];
-        copyStringToBuffer(buffer, 1024, mpPath->getName());
+        copyStringToBuffer(buffer, arraysize(buffer), mpPath->getName());
 
         if (pGui->addTextBox("Path Name", buffer, arraysize(buffer)))
         {

@@ -579,6 +579,7 @@
     <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
     <ClCompile Include="Utils\DebugDrawer.cpp" />
+    <ClCompile Include="Utils\DXHeader.cpp" />
     <ClCompile Include="Utils\Font.cpp" />
     <ClCompile Include="Utils\Gui.cpp" />
     <ClCompile Include="Utils\Logger.cpp" />
@@ -602,6 +603,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D11|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Utils\Platform\OS.cpp" />
     <ClCompile Include="Utils\Platform\Windows\ProgressBarWin.cpp" />
     <ClCompile Include="Utils\Platform\Windows\Windows.cpp" />
     <ClCompile Include="Utils\Profiler.cpp" />

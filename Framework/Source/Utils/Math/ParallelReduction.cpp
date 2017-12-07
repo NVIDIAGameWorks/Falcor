@@ -124,20 +124,17 @@ namespace Falcor
 
         // Read back the results
         mCurFbo = (mCurFbo + 1) % mpResultFbo.size();
+        auto texData = pRenderCtx->readTextureSubresource(mpResultFbo[mCurFbo]->getColorTexture(0).get(), 0);
 
-        uint32_t bytesToRead = 0;
         glm::vec4 result(0);
         switch(mReductionType)
         {
         case Type::MinMax:
-            bytesToRead = sizeof(glm::vec2);
+            result = vec4(*reinterpret_cast<vec2*>(texData.data()), 0, 0);
             break;
         default:
             should_not_get_here();
         }
-
-        auto texData = pRenderCtx->readTextureSubresource(mpResultFbo[mCurFbo]->getColorTexture(0).get(), 0);
-        std::memcpy(&result[0], texData.data(), min(bytesToRead, (uint32_t)sizeof(vec4)));
         return result;
     }
 }

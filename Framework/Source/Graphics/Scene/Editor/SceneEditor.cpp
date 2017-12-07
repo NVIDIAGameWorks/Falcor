@@ -112,7 +112,7 @@ namespace Falcor
     void SceneEditor::setModelName(Gui* pGui)
     {
         char modelName[1024];
-        copyStringToBuffer(modelName, 1024, mpScene->getModel(mSelectedModel)->getName());
+        copyStringToBuffer(modelName, arraysize(modelName), mpScene->getModel(mSelectedModel)->getName());
         if (pGui->addTextBox(kModelNameStr, modelName, arraysize(modelName)))
         {
             mpScene->getModel(mSelectedModel)->setName(modelName);
@@ -214,7 +214,7 @@ namespace Falcor
     {
         char camName[1024];
         std::string oldName = mpScene->getActiveCamera()->getName();
-        copyStringToBuffer(camName, 1024, oldName);
+        copyStringToBuffer(camName, arraysize(camName), oldName);
         if (pGui->addTextBox("Camera Name", camName, arraysize(camName)))
         {
             std::string newName(camName);
