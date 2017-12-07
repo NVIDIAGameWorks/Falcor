@@ -323,11 +323,6 @@ namespace Falcor
 
     Material::SharedPtr AssimpModelImporter::createMaterial(const aiMaterial* pAiMaterial, const std::string& folder, bool isObjFile, bool useSrgb)
     {
-        aiString name;
-        pAiMaterial->Get(AI_MATKEY_NAME, name);
-        std::string nameStr = std::string(name.C_Str());
-        std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
-
         BasicMaterial basicMaterial;
         loadTextures(pAiMaterial, folder, &basicMaterial, isObjFile, useSrgb);
 
@@ -395,6 +390,15 @@ namespace Falcor
         if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)
         {
             pMaterial->setDoubleSided((isDoubleSided != 0));
+        }
+
+        // Material name
+        aiString name;
+        pAiMaterial->Get(AI_MATKEY_NAME, name);
+        std::string nameStr = std::string(name.C_Str());
+        if (nameStr.length() > 0)
+        {
+            pMaterial->setName(nameStr);
         }
 
         return pMaterial;
