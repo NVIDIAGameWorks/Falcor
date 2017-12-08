@@ -206,8 +206,8 @@ namespace Falcor
     {
         ParameterBlock::BindLocation loc;
         const auto& desc = pReflector->getResourceBinding(name);
-        loc.baseRegIndex = desc.regIndex;
-        loc.regSpace = desc.regSpace;
+        loc.baseRegIndex = desc.rangeIndex;
+        loc.regSpace = desc.setIndex;
         return loc;
     }
 
@@ -215,8 +215,8 @@ namespace Falcor
     {
         ParameterBlock::BindLocation loc;
         const auto& desc = pReflector->getResourceBinding(name);
-        loc.baseRegIndex = desc.regIndex;
-        loc.regSpace = desc.regSpace;
+        loc.baseRegIndex = desc.rangeIndex;
+        loc.regSpace = desc.setIndex;
         return loc;
     }
 }

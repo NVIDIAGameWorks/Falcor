@@ -205,8 +205,6 @@ namespace Falcor
         bool setConstantBuffer(uint32_t, const ConstantBuffer::SharedPtr&) = delete;
         ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
 
-        /// #PARAMBLOCK remove this
-        using BindLocation = ParameterBlock::BindLocation;
     protected:
         ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
 
@@ -250,7 +248,4 @@ namespace Falcor
         ComputeVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
             ProgramVars(pReflector, createBuffers, pRootSig) {}
     };
-
-    ParameterBlock::BindLocation getResourceBindLocation(const ProgramReflection* pReflector, const std::string& name);
-    ParameterBlock::BindLocation getBufferBindLocation(const ProgramReflection* pReflector, const std::string& name);
 }

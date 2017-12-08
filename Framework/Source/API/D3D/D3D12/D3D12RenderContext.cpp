@@ -73,7 +73,7 @@ namespace Falcor
             gBlitData.pLinearSampler = Sampler::create(desc);
             desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
             gBlitData.pPointSampler = Sampler::create(desc);
-            assert(gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getResourceDesc("gTex")->regIndex == 0);
+            assert(gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getResourceDesc("gTex").regIndex == 0);
         }
     }
 

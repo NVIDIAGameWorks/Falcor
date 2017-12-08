@@ -607,6 +607,7 @@ namespace Falcor
                 std::string name = std::string(pSlangLayout->getName());
                 ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
                 pBlock->addResource(pVar);
+                pBlock->finalize();
                 addParameterBlock(pBlock);
             }
             else
@@ -617,6 +618,7 @@ namespace Falcor
 
         if (pDefaultBlock->isEmpty() == false)
         {
+            pDefaultBlock->finalize();
             mpDefaultBlock = pDefaultBlock;
         }
 
@@ -818,6 +820,45 @@ namespace Falcor
                 }
                 flattenResources(pStruct, mResources);
             }
+        }
+    }
+
+    void ParameterBlockReflection::finalize()
+    {
+        struct SetIndex
+        {
+            SetIndex(const ResourceDesc& desc) : regSpace(desc.regSpace),
+#ifdef FALCOR_D3D12
+                isSampler(desc.type == ResourceDesc::Type::Sampler)
+#endif
+            {}
+            bool isSampler = false;
+            uint32_t regSpace;
+            bool operator<(const SetIndex& other) const { return (regSpace == other.regSpace) ? isSampler < other.isSampler : regSpace < other.regSpace; }
+        };
+
+        std::map<SetIndex, uint32_t> newSetIndices;
+
+        // Generate the descriptor sets layouts
+        for (const auto& res : mResources)
+        {
+            SetIndex origIndex(res);
+            uint32_t setIndex;
+            if (newSetIndices.find(origIndex) == newSetIndices.end())
+            {
+                // New set
+                setIndex = (uint32_t)mSetLayouts.size();
+                newSetIndices[origIndex] = setIndex;
+                mSetLayouts.push_back({});
+            }
+            else
+            {
+                setIndex = newSetIndices[origIndex];
+            }
+
+            // Add the current resource range
+            mResourceBindings[res.name] = ResourceBinding(setIndex, (uint32_t)mSetLayouts[setIndex].getRangeCount());
+            mSetLayouts[setIndex].addRange(res.type, res.regIndex, res.descCount, res.regSpace);
         }
     }
 
@@ -1063,15 +1104,8 @@ namespace Falcor
 
     ParameterBlockReflection::ResourceBinding ParameterBlockReflection::getResourceBinding(const std::string& name) const
     {
-        ResourceBinding binding;
-        // Search the constant-buffers
-        const ReflectionVar* pVar = getResource(name).get();
-        if (pVar)
-        {
-            binding.regIndex = pVar->getRegisterIndex();
-            binding.regSpace = pVar->getRegisterSpace();
-        }
-        return binding;
+        const auto it = mResourceBindings.find(name);
+        return (it == mResourceBindings.end()) ? ResourceBinding() : it->second;
     }
 
     ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const

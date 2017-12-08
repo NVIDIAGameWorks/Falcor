@@ -315,30 +315,37 @@ namespace Falcor
             Type type;
             std::string name;
         };
-        static const uint32_t kInvalidLocation = -1;
+
         struct ResourceBinding
         {
-            uint32_t regIndex = kInvalidLocation;
-            uint32_t regSpace = kInvalidLocation;
+            ResourceBinding() = default;
+            ResourceBinding(uint32_t set, uint32_t range) : setIndex(set), rangeIndex(range){}
+            static const uint32_t kInvalidLocation = -1;
+            uint32_t setIndex = kInvalidLocation;
+            uint32_t rangeIndex = kInvalidLocation;
         };
 
         using ResourceVec = std::vector<ResourceDesc>;
-
+        using SetLayoutVec = std::vector<DescriptorSet::Layout>;
         static SharedPtr create(const std::string& name);
         const std::string& getName() const { return mName; }
         bool isEmpty() const;
 
-        const ResourceVec& getResources() const { return mResources; }
         const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
         ResourceBinding getResourceBinding(const std::string& name) const;
+        const ResourceVec& getResourceVec() const { return mResources; }
+        const SetLayoutVec& getDescriptorSetLayouts() const { return mSetLayouts; }
     private:
         friend class ProgramReflection;
         void addResource(const ReflectionVar::SharedConstPtr& pVar);
+        void finalize();
         ParameterBlockReflection(const std::string& name);
         ResourceVec mResources;
-
         ReflectionStructType::SharedPtr mpResourceVars;
         std::string mName;
+        std::unordered_map<std::string, ResourceBinding> mResourceBindings;
+
+        SetLayoutVec mSetLayouts;
     };
 
     class ProgramReflection

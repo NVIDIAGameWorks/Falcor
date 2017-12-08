@@ -333,7 +333,7 @@ namespace Falcor
         // Now set the textures
         std::string resourceName = std::string(varName) + ".textures.layers";
         const auto binding = pVars->getReflection()->getResourceBinding(resourceName);
-        if (binding.regSpace == ParameterBlockReflection::kInvalidLocation)
+        if (binding.setIndex == ParameterBlockReflection::::ResourceBinding::kInvalidLocation)
         {
             logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
             return;
