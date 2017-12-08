@@ -199,6 +199,12 @@ namespace Falcor
         */
         RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
 
+        uint32_t getParameterBlockCount() const { return (uint32_t)mParameterBlocks.size(); }
+
+        const std::vector<uint32_t>& getParameterBlockRootIndices(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].rootIndex; }
+
+        const ParameterBlock::SharedPtr& getParameterBlock(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].pBlock; }
+
         // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
         Sampler::SharedPtr getSampler(uint32_t) const = delete;
         bool setSampler(uint32_t, const Sampler::SharedPtr&) = delete;
@@ -207,10 +213,18 @@ namespace Falcor
 
     protected:
         ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
-
+        
         RootSignature::SharedPtr mpRootSignature;
         ProgramReflection::SharedConstPtr mpReflector;
-        ParameterBlock::SharedPtr mpGlobalBlock;
+
+        struct BlockData
+        {
+            ParameterBlock::SharedPtr pBlock;
+            std::vector<uint32_t> rootIndex;        // Maps the block's set-index to the root-signature entry
+        };
+        std::vector<BlockData> mParameterBlocks; // First element is the global block
+        std::unordered_map<std::string, uint32_t> mParamBlockNameToIndex;
+        void initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
     };
 
     class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>

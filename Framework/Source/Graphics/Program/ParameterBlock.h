@@ -202,6 +202,8 @@ namespace Falcor
         bool setSampler(uint32_t, const Sampler::SharedPtr&) = delete;
         bool setConstantBuffer(uint32_t, const ConstantBuffer::SharedPtr&) = delete;
         ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
+
+        // #PARAMBLOCK I don't like it. This should be private
         struct RootSet
         {
             DescriptorSet::SharedPtr pSet;
