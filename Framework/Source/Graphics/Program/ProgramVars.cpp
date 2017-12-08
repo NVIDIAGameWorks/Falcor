@@ -169,10 +169,10 @@ namespace Falcor
             }
         }
 
-        if (pGlobalBlock->prepareForDraw(pContext)) return false;
+        if (pGlobalBlock->prepareForDraw(pContext) == false) return false;
 
         // Bind the sets
-        const auto& rootSets = pGlobalBlock->getRootSets();
+        auto& rootSets = pGlobalBlock->getRootSets();
 
         for (uint32_t i = 0; i < rootSets.size(); i++)
         {
@@ -181,11 +181,11 @@ namespace Falcor
                 rootSets[i].dirty = false;
                 if (forGraphics)
                 {
-                    rootSets[i].pDescSet->bindForGraphics(pContext, pVars->getRootSignature().get(), i);
+                    rootSets[i].pSet->bindForGraphics(pContext, pVars->getRootSignature().get(), i);
                 }
                 else
                 {
-                    rootSets[i].pDescSet->bindForCompute(pContext, pVars->getRootSignature().get(), i);
+                    rootSets[i].pSet->bindForCompute(pContext, pVars->getRootSignature().get(), i);
                 }
             }
         }

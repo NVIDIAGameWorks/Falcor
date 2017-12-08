@@ -34,6 +34,7 @@
 namespace Falcor
 {
     class RootSignature;
+    class ProgramVars;
 
     class ParameterBlock : public std::enable_shared_from_this<ParameterBlock>
     {
@@ -201,9 +202,16 @@ namespace Falcor
         bool setSampler(uint32_t, const Sampler::SharedPtr&) = delete;
         bool setConstantBuffer(uint32_t, const ConstantBuffer::SharedPtr&) = delete;
         ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
+        struct RootSet
+        {
+            DescriptorSet::SharedPtr pSet;
+            bool dirty = true;
+        };
+        std::vector<RootSet>& getRootSets() { return mRootSets; }
     private:
         ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, const RootSignature* pRootSig, bool createBuffers);
         ParameterBlockReflection::SharedConstPtr mpReflector;
+        friend class ProgramVars;
 
         struct AssignedResource
         {
@@ -227,11 +235,6 @@ namespace Falcor
         std::vector<SetResourceVec> mAssignedResources;
         bool checkResourceIndices(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, DescriptorSet::Type type, const std::string& funcName) const;
 
-        struct RootSet
-        {
-            DescriptorSet::SharedPtr pSet;
-            bool dirty = true;
-        };
         std::vector<RootSet> mRootSets;
         void setResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName);
         template<typename ResourceType>

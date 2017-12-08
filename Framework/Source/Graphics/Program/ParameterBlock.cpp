@@ -139,6 +139,8 @@ namespace Falcor
         // Initialize the resource vectors
         const auto& setLayouts = pReflection->getDescriptorSetLayouts();
         mAssignedResources.resize(setLayouts.size());
+        mRootSets.resize(setLayouts.size());
+
         for (size_t s = 0; s < setLayouts.size(); s++)
         {
             const auto& set = setLayouts[s];
@@ -245,10 +247,10 @@ namespace Falcor
         OK = OK && setIndex < mAssignedResources.size();
         OK = OK && rangeIndex < mAssignedResources[setIndex].size();
         OK = OK && arrayIndex < mAssignedResources[setIndex][rangeIndex].size();
-        OK = OK && ((mAssignedResources[setIndex][rangeIndex][arrayIndex].type != type) || (type == DescriptorSet::Type::Count));
+        OK = OK && ((mAssignedResources[setIndex][rangeIndex][arrayIndex].type == type) || (type == DescriptorSet::Type::Count));
         if (!OK)
         {
-            logWarning("Can't find resource at set index " + std::to_string(setIndex) + ", range index" + std::to_string(rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring " + funcName + " call");
+            logWarning("Can't find resource at set index " + std::to_string(setIndex) + ", range index " + std::to_string(rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring " + funcName + " call");
         }
 #endif
         return OK;
@@ -308,7 +310,7 @@ namespace Falcor
     void ParameterBlock::setResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName)
     {
         ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
-        if (checkResourceIndices(bindLoc.setIndex, bindLoc.rangeIndex, descOffset, type, funcName)) return;
+        if (checkResourceIndices(bindLoc.setIndex, bindLoc.rangeIndex, descOffset, type, funcName) == false) return;
         auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
         desc.pResource = pResource;
 
@@ -328,6 +330,15 @@ namespace Falcor
         mRootSets[bindLoc.setIndex].pSet = nullptr;
     }
     
+    template<typename ResourceType>
+    typename ResourceType::SharedPtr ParameterBlock::getResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const std::string& funcName) const
+    {
+        ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
+        if (checkResourceIndices(bindLoc.setIndex, bindLoc.rangeIndex, descOffset, type, funcName) == false) return nullptr;
+        auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
+        return std::dynamic_pointer_cast<ResourceType>(desc.pResource);
+    }
+
     bool ParameterBlock::setRawBuffer(const std::string& name, Buffer::SharedPtr pBuf)
     {
         // Find the buffer
@@ -629,14 +640,13 @@ namespace Falcor
         for (uint32_t s = 0; s < mAssignedResources.size(); s++)
         {
             if (mRootSets[s].dirty == false) continue;
-            mRootSets[s].dirty = false;
             const auto& pDescSet = mRootSets[s].pSet;
 
             const auto& set = mAssignedResources[s];
             for (uint32_t r = 0 ; r < set.size() ; r++)
             {
                 const auto& range = set[r];
-                for (uint32_t d = 0; range.size(); d++)
+                for (uint32_t d = 0; d < range.size(); d++)
                 {
                     const auto& desc = range[d];
                     switch (desc.type)
