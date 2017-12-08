@@ -316,10 +316,10 @@ namespace Falcor
             std::string name;
         };
 
-        struct ResourceBinding
+        struct BindLocation
         {
-            ResourceBinding() = default;
-            ResourceBinding(uint32_t set, uint32_t range) : setIndex(set), rangeIndex(range){}
+            BindLocation() = default;
+            BindLocation(uint32_t set, uint32_t range) : setIndex(set), rangeIndex(range){}
             static const uint32_t kInvalidLocation = -1;
             uint32_t setIndex = kInvalidLocation;
             uint32_t rangeIndex = kInvalidLocation;
@@ -332,7 +332,7 @@ namespace Falcor
         bool isEmpty() const;
 
         const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
-        ResourceBinding getResourceBinding(const std::string& name) const;
+        BindLocation getResourceBinding(const std::string& name) const;
         const ResourceVec& getResourceVec() const { return mResources; }
         const SetLayoutVec& getDescriptorSetLayouts() const { return mSetLayouts; }
     private:
@@ -343,7 +343,7 @@ namespace Falcor
         ResourceVec mResources;
         ReflectionStructType::SharedPtr mpResourceVars;
         std::string mName;
-        std::unordered_map<std::string, ResourceBinding> mResourceBindings;
+        std::unordered_map<std::string, BindLocation> mResourceBindings;
 
         SetLayoutVec mSetLayouts;
     };
@@ -360,6 +360,7 @@ namespace Falcor
             ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown;                                    
         };
         using VariableMap = std::unordered_map<std::string, ShaderVariable>;
+        using BindLocation = ParameterBlockReflection::BindLocation;
 
         static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
 
@@ -370,7 +371,7 @@ namespace Falcor
 
         uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
         bool isSampleFrequency() const { return mIsSampleFrequency; }
-        using ResourceBinding = ParameterBlockReflection::ResourceBinding;
+        using ResourceBinding = ParameterBlockReflection::BindLocation;
 
         ResourceBinding getResourceBinding(const std::string& name) const;
         const ShaderVariable* getVertexAttributeBySemantic(const std::string& semantic) const;

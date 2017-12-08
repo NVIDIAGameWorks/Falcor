@@ -189,6 +189,6 @@ namespace Falcor
         Controls mControls;
         CsmData mCsmData;
 
-        ProgramVars::BindLocation mPerLightCbLoc;
+        ProgramReflection::BindLocation mPerLightCbLoc;
     };
 }

@@ -146,8 +146,8 @@ namespace Falcor
         ProgramReflection::SharedConstPtr pReflector = mpHorizontalBlur->getProgram()->getActiveVersion()->getReflector();
         mpVars = GraphicsVars::create(pReflector);
 
-        mBindLocations.sampler = getResourceBindLocation(pReflector.get(), "gSampler");
-        mBindLocations.srcTexture = getResourceBindLocation(pReflector.get(), "gSrcTex");
+        mBindLocations.sampler = pReflector->getResourceBinding("gSampler");
+        mBindLocations.srcTexture = pReflector->getResourceBinding("gSrcTex");
 
         updateKernel();
         mDirty = false;
@@ -177,15 +177,15 @@ namespace Falcor
         }
 
         // Horizontal pass
-        mpVars->setSampler(mBindLocations.sampler.regSpace, mBindLocations.sampler.baseRegIndex, 0, mpSampler);
-        mpVars->setSrv(mBindLocations.srcTexture.regSpace, mBindLocations.srcTexture.baseRegIndex, 0, pSrc->getSRV());
+        mpVars->setSampler(mBindLocations.sampler.setIndex, mBindLocations.sampler.rangeIndex, 0, mpSampler);
+        mpVars->setSrv(mBindLocations.srcTexture.setIndex, mBindLocations.srcTexture.rangeIndex, 0, pSrc->getSRV());
         
         pState->pushFbo(mpTmpFbo);
         pRenderContext->pushGraphicsVars(mpVars);
         mpHorizontalBlur->execute(pRenderContext);
 
         // Vertical pass
-        mpVars->setSrv(mBindLocations.srcTexture.regSpace, mBindLocations.srcTexture.baseRegIndex, 0, mpTmpFbo->getColorTexture(0)->getSRV());
+        mpVars->setSrv(mBindLocations.srcTexture.setIndex, mBindLocations.srcTexture.rangeIndex, 0, mpTmpFbo->getColorTexture(0)->getSRV());
         pRenderContext->setGraphicsVars(mpVars);
         pState->setFbo(pDst);
         mpVerticalBlur->execute(pRenderContext);

@@ -333,7 +333,7 @@ namespace Falcor
         // Now set the textures
         std::string resourceName = std::string(varName) + ".textures.layers";
         const auto binding = pVars->getReflection()->getResourceBinding(resourceName);
-        if (binding.setIndex == ParameterBlockReflection::::ResourceBinding::kInvalidLocation)
+        if (binding.setIndex == ParameterBlockReflection::BindLocation::kInvalidLocation)
         {
             logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
             return;
@@ -345,7 +345,7 @@ namespace Falcor
         {
             if (pTextures[i] != nullptr)
             {
-                pVars->setSrv(binding.regSpace, binding.regIndex, i, pTextures[i]->getSRV());
+                pVars->setSrv(binding.setIndex, binding.rangeIndex, i, pTextures[i]->getSRV());
             }
         }
 
@@ -354,12 +354,7 @@ namespace Falcor
         {
             if (pTextures[i] != nullptr)
             {
-#ifdef FALCOR_VK
-                uint32_t bindIndex = binding.regIndex + 1 + i - MatMaxLayers;
-#else
-                uint32_t bindIndex = binding.regIndex + i;
-#endif
-                pVars->setSrv(binding.regSpace, bindIndex, 0, pTextures[i]->getSRV());
+                pVars->setSrv(binding.setIndex, binding.rangeIndex, i, pTextures[i]->getSRV());
             }
         }
 

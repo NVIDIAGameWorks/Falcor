@@ -95,10 +95,10 @@ namespace Falcor
         createLuminanceFbo(pSrc);
 
         //Set shared vars
-        mpToneMapVars->setSrv(mBindLocations.colorTex.regSpace, mBindLocations.colorTex.baseRegIndex, 0, pSrc->getColorTexture(0)->getSRV());
-        mpLuminanceVars->setSrv(mBindLocations.colorTex.regSpace, mBindLocations.colorTex.baseRegIndex, 0, pSrc->getColorTexture(0)->getSRV());
-        mpToneMapVars->setSampler(mBindLocations.colorSampler.regSpace, mBindLocations.colorSampler.baseRegIndex, 0, mpPointSampler);
-        mpLuminanceVars->setSampler(mBindLocations.colorSampler.regSpace, mBindLocations.colorSampler.baseRegIndex, 0, mpLinearSampler);
+        mpToneMapVars->setSrv(mBindLocations.colorTex.setIndex, mBindLocations.colorTex.rangeIndex, 0, pSrc->getColorTexture(0)->getSRV());
+        mpLuminanceVars->setSrv(mBindLocations.colorTex.setIndex, mBindLocations.colorTex.rangeIndex, 0, pSrc->getColorTexture(0)->getSRV());
+        mpToneMapVars->setSampler(mBindLocations.colorSampler.setIndex, mBindLocations.colorSampler.rangeIndex, 0, mpPointSampler);
+        mpLuminanceVars->setSampler(mBindLocations.colorSampler.setIndex, mBindLocations.colorSampler.rangeIndex, 0, mpLinearSampler);
 
         //Calculate luminance
         pRenderContext->setGraphicsVars(mpLuminanceVars);
@@ -110,8 +110,8 @@ namespace Falcor
         if (mOperator != Operator::Clamp)
         {
             mpToneMapCBuffer->setBlob(&mConstBufferData, 0u, sizeof(mConstBufferData));
-            mpToneMapVars->setSampler(mBindLocations.luminanceSampler.regSpace, mBindLocations.luminanceSampler.baseRegIndex, 0, mpLinearSampler);
-            mpToneMapVars->setSrv(mBindLocations.luminanceTex.regSpace, mBindLocations.luminanceTex.baseRegIndex, 0, mpLuminanceFbo->getColorTexture(0)->getSRV());
+            mpToneMapVars->setSampler(mBindLocations.luminanceSampler.setIndex, mBindLocations.luminanceSampler.rangeIndex, 0, mpLinearSampler);
+            mpToneMapVars->setSrv(mBindLocations.luminanceTex.setIndex, mBindLocations.luminanceTex.rangeIndex, 0, mpLuminanceFbo->getColorTexture(0)->getSRV());
         }
 
         //Tone map
@@ -155,10 +155,10 @@ namespace Falcor
         const auto& pReflector = mpToneMapPass->getProgram()->getActiveVersion()->getReflector();
         mpToneMapVars = GraphicsVars::create(pReflector);
         mpToneMapCBuffer = mpToneMapVars["PerImageCB"];
-        mBindLocations.luminanceSampler = getResourceBindLocation(pReflector.get(), "gLuminanceTexSampler");
-        mBindLocations.colorSampler     = getResourceBindLocation(pReflector.get(), "gColorSampler");
-        mBindLocations.colorTex         = getResourceBindLocation(pReflector.get(), "gColorTex");
-        mBindLocations.luminanceTex     = getResourceBindLocation(pReflector.get(), "gLuminanceTex");
+        mBindLocations.luminanceSampler = pReflector->getResourceBinding("gLuminanceTexSampler");
+        mBindLocations.colorSampler     = pReflector->getResourceBinding("gColorSampler");
+        mBindLocations.colorTex         = pReflector->getResourceBinding("gColorTex");
+        mBindLocations.luminanceTex     = pReflector->getResourceBinding("gLuminanceTex");
 
     }
 

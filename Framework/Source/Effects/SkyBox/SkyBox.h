@@ -98,9 +98,9 @@ namespace Falcor
 
         struct
         {
-            ProgramVars::BindLocation perFrameCB;
-            ProgramVars::BindLocation sampler;
-            ProgramVars::BindLocation texture;
+            ProgramReflection::BindLocation perFrameCB;
+            ProgramReflection::BindLocation sampler;
+            ProgramReflection::BindLocation texture;
         } mBindLocations;
     };
 }

@@ -152,9 +152,9 @@ namespace Falcor
         mDrawResources.pState->setVao(Vao::create(topology, pLayout, bufferVec));
 
         // Save bind locations for resourced updated during draw
-        mBindLocations.simulateCB = getBufferBindLocation(pSimulateCs->getActiveVersion()->getReflector().get(), "PerFrame");
-        mBindLocations.drawCB = getBufferBindLocation(pDrawProgram->getActiveVersion()->getReflector().get(), "PerFrame");
-        mBindLocations.emitCB = getBufferBindLocation(pEmitCs->getActiveVersion()->getReflector().get(), "PerEmit");
+        mBindLocations.simulateCB = pSimulateCs->getActiveVersion()->getReflector()->getResourceBinding("PerFrame");
+        mBindLocations.drawCB = pDrawProgram->getActiveVersion()->getReflector()->getResourceBinding("PerFrame");
+        mBindLocations.emitCB = pEmitCs->getActiveVersion()->getReflector()->getResourceBinding("PerEmit");
     }
 
     void ParticleSystem::emit(RenderContext* pCtx, uint32_t num)
@@ -184,7 +184,7 @@ namespace Falcor
 
         //Send vars and call
         pCtx->pushComputeState(mEmitResources.pState);
-        mEmitResources.pVars->getConstantBuffer(mBindLocations.emitCB.regSpace, mBindLocations.emitCB.baseRegIndex, 0)->setBlob(&emitData, 0u, sizeof(EmitData));
+        mEmitResources.pVars->getConstantBuffer(mBindLocations.emitCB.setIndex, mBindLocations.emitCB.rangeIndex, 0)->setBlob(&emitData, 0u, sizeof(EmitData));
         pCtx->pushComputeVars(mEmitResources.pVars);
         uint32_t numGroups = (uint32_t)std::ceil((float)num / EMIT_THREADS);
         pCtx->dispatch(1, numGroups, 1);
@@ -209,7 +209,7 @@ namespace Falcor
             perFrame.view = view;
             perFrame.dt = dt;
             perFrame.maxParticles = mMaxParticles;
-            mSimulateResources.pVars->getConstantBuffer(mBindLocations.simulateCB.regSpace, mBindLocations.simulateCB.baseRegIndex, 0)->setBlob(&perFrame, 0u, sizeof(SimulateWithSortPerFrame));
+            mSimulateResources.pVars->getConstantBuffer(mBindLocations.simulateCB.setIndex, mBindLocations.simulateCB.rangeIndex, 0)->setBlob(&perFrame, 0u, sizeof(SimulateWithSortPerFrame));
             mpAliveList->setBlob(mSortDataReset.data(), 0, sizeof(SortData) * mMaxParticles);
         }
         else
@@ -217,7 +217,7 @@ namespace Falcor
             SimulatePerFrame perFrame;
             perFrame.dt = dt;
             perFrame.maxParticles = mMaxParticles;
-            mSimulateResources.pVars->getConstantBuffer(mBindLocations.simulateCB.regSpace, mBindLocations.simulateCB.baseRegIndex, 0)->setBlob(&perFrame, 0u, sizeof(SimulatePerFrame));
+            mSimulateResources.pVars->getConstantBuffer(mBindLocations.simulateCB.setIndex, mBindLocations.simulateCB.rangeIndex, 0)->setBlob(&perFrame, 0u, sizeof(SimulatePerFrame));
         }
 
         //reset alive list counter to 0
@@ -249,7 +249,7 @@ namespace Falcor
         VSPerFrame cbuf;
         cbuf.view = view;
         cbuf.proj = proj;
-        mDrawResources.pVars->getConstantBuffer(mBindLocations.drawCB.regSpace, mBindLocations.drawCB.baseRegIndex, 0)->setBlob(&cbuf, 0, sizeof(cbuf));
+        mDrawResources.pVars->getConstantBuffer(mBindLocations.drawCB.setIndex, mBindLocations.drawCB.rangeIndex, 0)->setBlob(&cbuf, 0, sizeof(cbuf));
 
         //particle draw uses many of render context's existing state's properties 
         GraphicsState::SharedPtr state = pCtx->getGraphicsState();

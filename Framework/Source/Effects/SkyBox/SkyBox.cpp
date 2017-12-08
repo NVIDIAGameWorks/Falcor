@@ -78,16 +78,17 @@ namespace Falcor
         mpProgram = GraphicsProgram::createFromFile("Effects\\SkyBox.vs.slang", "Effects\\Skybox.ps.slang", defines);
         mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
 
-        mBindLocations.perFrameCB = getBufferBindLocation(mpProgram->getActiveVersion()->getReflector().get(), "PerFrameCB");
-        mBindLocations.texture = getResourceBindLocation(mpProgram->getActiveVersion()->getReflector().get(), "gTexture");
-        mBindLocations.sampler= getResourceBindLocation(mpProgram->getActiveVersion()->getReflector().get(), "gSampler");
+        const ProgramReflection* pReflection = mpProgram->getActiveVersion()->getReflector().get();
+        mBindLocations.perFrameCB = pReflection->getResourceBinding("PerFrameCB");
+        mBindLocations.texture = pReflection->getResourceBinding("gTexture");
+        mBindLocations.sampler= pReflection->getResourceBinding("gSampler");
 
-        ConstantBuffer::SharedPtr& pCB = mpVars->getConstantBuffer(mBindLocations.perFrameCB.regSpace, mBindLocations.perFrameCB.baseRegIndex, 0);
+        ConstantBuffer::SharedPtr& pCB = mpVars->getConstantBuffer(mBindLocations.perFrameCB.setIndex, mBindLocations.perFrameCB.rangeIndex, 0);
         mScaleOffset = pCB->getVariableOffset("gScale");
         mMatOffset = pCB->getVariableOffset("gWorld");
 
-        mpVars->setSrv(mBindLocations.texture.regSpace, mBindLocations.texture.baseRegIndex, 0, mpTexture->getSRV());
-        mpVars->setSampler(mBindLocations.sampler.regSpace, mBindLocations.sampler.baseRegIndex, 0, pSampler);
+        mpVars->setSrv(mBindLocations.texture.setIndex, mBindLocations.texture.rangeIndex, 0, mpTexture->getSRV());
+        mpVars->setSampler(mBindLocations.sampler.setIndex, mBindLocations.sampler.rangeIndex, 0, pSampler);
 
         // Create state
         mpState = GraphicsState::create();
@@ -114,7 +115,7 @@ namespace Falcor
 
     Sampler::SharedPtr SkyBox::getSampler() const
     {
-        return mpVars->getSampler(mBindLocations.sampler.regSpace, mBindLocations.sampler.baseRegIndex, 0);
+        return mpVars->getSampler(mBindLocations.sampler.setIndex, mBindLocations.sampler.rangeIndex, 0);
     }
 
     Texture::SharedPtr SkyBox::getTexture() const
@@ -124,7 +125,7 @@ namespace Falcor
 
     void SkyBox::setSampler(Sampler::SharedPtr pSampler)
     {
-        mpVars->setSampler(mBindLocations.sampler.regSpace, mBindLocations.sampler.baseRegIndex, 0, pSampler);
+        mpVars->setSampler(mBindLocations.sampler.setIndex, mBindLocations.sampler.rangeIndex, 0, pSampler);
     }
 
     SkyBox::UniquePtr SkyBox::createFromTexture(const std::string& textureName, bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
@@ -140,7 +141,7 @@ namespace Falcor
     void SkyBox::render(RenderContext* pRenderCtx, Camera* pCamera)
     {
         glm::mat4 world = glm::translate(pCamera->getPosition());
-        ConstantBuffer::SharedPtr& pCB = mpVars->getConstantBuffer(mBindLocations.perFrameCB.regSpace, mBindLocations.perFrameCB.baseRegIndex, 0);
+        ConstantBuffer::SharedPtr& pCB = mpVars->getConstantBuffer(mBindLocations.perFrameCB.setIndex, mBindLocations.perFrameCB.rangeIndex, 0);
         pCB->setVariable(mMatOffset, world);
         pCB->setVariable(mScaleOffset, mScale);
 

@@ -180,7 +180,7 @@ namespace Falcor
         // Loop over the resources and create structred and constant buffers
         for (const auto& resource : pReflection->getResourceVec())
         {
-            ParameterBlockReflection::ResourceBinding bindLoc = pReflection->getResourceBinding(resource.name);
+            ParameterBlockReflection::BindLocation bindLoc = pReflection->getResourceBinding(resource.name);
             auto& range = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex];
             for (size_t r = 0; r < range.size(); r++)
             {
@@ -230,7 +230,7 @@ namespace Falcor
     {
         uint32_t arrayIndex;
         const auto& binding = getBufferBindLocation(mpReflector.get(), name, arrayIndex, ReflectionResourceType::Type::ConstantBuffer);
-        if (binding.setIndex == ParameterBlockReflection::ResourceBinding::kInvalidLocation)
+        if (binding.setIndex == ParameterBlockReflection::BindLocation::kInvalidLocation)
         {
             logWarning("Constant buffer \"" + name + "\" was not found. Ignoring getConstantBuffer() call.");
             return nullptr;
@@ -283,7 +283,7 @@ namespace Falcor
         uint32_t arrayIndex;
         const auto loc = getBufferBindLocation(mpReflector.get(), name, arrayIndex, ReflectionResourceType::Type::ConstantBuffer);
 
-        if (loc.setIndex == ParameterBlockReflection::ResourceBinding::kInvalidLocation)
+        if (loc.setIndex == ParameterBlockReflection::BindLocation::kInvalidLocation)
         {
             logWarning("Constant buffer \"" + name + "\" was not found. Ignoring setConstantBuffer() call.");
             return false;
@@ -307,7 +307,7 @@ namespace Falcor
 
     void ParameterBlock::setResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName)
     {
-        ParameterBlockReflection::ResourceBinding bindLoc = mpReflector->getResourceBinding(name);
+        ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
         if (checkResourceIndices(bindLoc.setIndex, bindLoc.rangeIndex, descOffset, type, funcName)) return;
         auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
         desc.pResource = pResource;
@@ -376,7 +376,7 @@ namespace Falcor
     template<typename ResourceType>
     typename ResourceType::SharedPtr ParameterBlock::getResourceFromSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const std::string& funcName)
     {
-        ParameterBlockReflection::ResourceBinding bind = mpReflector->getResourceBinding(name);
+        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(name);
         if (checkResourceIndices(bind.setIndex, bind.rangeIndex, descOffset, type, funcName) == false) return nullptr;
         Resource::SharedPtr pResource = mAssignedResources[bind.setIndex][bind.rangeIndex][descOffset];
         return std::dynamic_pointer_cast<ResourceType::SharedPtr>(pResource);
@@ -440,7 +440,7 @@ namespace Falcor
             return false;
         }
 #endif
-        ParameterBlockReflection::ResourceBinding bind = mpReflector->getResourceBinding(pVar->getName());
+        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(pVar->getName());
         return setSampler(bind.setIndex, bind.rangeIndex, pVar->getDescOffset(), pSampler);
     }
 
@@ -453,7 +453,7 @@ namespace Falcor
             return nullptr;
         }
 #endif
-        ParameterBlockReflection::ResourceBinding bind = mpReflector->getResourceBinding(pVar->getName());
+        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(pVar->getName());
         return getSampler(bind.setIndex, bind.rangeIndex, pVar->getDescOffset());
     }
 

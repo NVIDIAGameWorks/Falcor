@@ -104,8 +104,8 @@ namespace Falcor
 
         struct
         {
-            ProgramVars::BindLocation sampler;
-            ProgramVars::BindLocation srcTexture;
+            ParameterBlockReflection::BindLocation sampler;
+            ParameterBlockReflection::BindLocation srcTexture;
         } mBindLocations;
     };
 }

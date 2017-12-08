@@ -116,13 +116,13 @@ namespace Falcor
 
         struct
         {
-            ProgramVars::BindLocation internalPerFrameCB;
-            ProgramVars::BindLocation ssaoCB;
-            ProgramVars::BindLocation noiseSampler;
-            ProgramVars::BindLocation textureSampler;
-            ProgramVars::BindLocation depthTex;
-            ProgramVars::BindLocation normalTex;
-            ProgramVars::BindLocation noiseTex;
+            ProgramReflection::BindLocation internalPerFrameCB;
+            ProgramReflection::BindLocation ssaoCB;
+            ProgramReflection::BindLocation noiseSampler;
+            ProgramReflection::BindLocation textureSampler;
+            ProgramReflection::BindLocation depthTex;
+            ProgramReflection::BindLocation normalTex;
+            ProgramReflection::BindLocation noiseTex;
         } mBindLocations;
 
         uint32_t mHemisphereDistribution = (uint32_t)SampleDistribution::CosineHammersley;

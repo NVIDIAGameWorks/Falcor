@@ -169,7 +169,7 @@ namespace Falcor
             }
         }
 
-        if (pGlobalBlock->prepareForDraw(pContext, pVars->getRootSignature().get()) == false) return false;
+        if (pGlobalBlock->prepareForDraw(pContext)) return false;
 
         // Bind the sets
         const auto& rootSets = pGlobalBlock->getRootSets();
@@ -200,23 +200,5 @@ namespace Falcor
     bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig)
     {
         return applyProgramVarsCommon<true>(this, mpGlobalBlock.get(), pContext, bindRootSig);
-    }
-
-    ParameterBlock::BindLocation getResourceBindLocation(const ProgramReflection* pReflector, const std::string& name)
-    {
-        ParameterBlock::BindLocation loc;
-        const auto& desc = pReflector->getResourceBinding(name);
-        loc.baseRegIndex = desc.rangeIndex;
-        loc.regSpace = desc.setIndex;
-        return loc;
-    }
-
-    ParameterBlock::BindLocation getBufferBindLocation(const ProgramReflection* pReflector, const std::string& name)
-    {
-        ParameterBlock::BindLocation loc;
-        const auto& desc = pReflector->getResourceBinding(name);
-        loc.baseRegIndex = desc.rangeIndex;
-        loc.regSpace = desc.setIndex;
-        return loc;
     }
 }

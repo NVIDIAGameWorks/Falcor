@@ -115,10 +115,10 @@ namespace Falcor
 
         struct PassBindLocations
         {
-            ProgramVars::BindLocation luminanceSampler;
-            ProgramVars::BindLocation colorSampler;
-            ProgramVars::BindLocation colorTex;
-            ProgramVars::BindLocation luminanceTex;
+            ParameterBlockReflection::BindLocation luminanceSampler;
+            ParameterBlockReflection::BindLocation colorSampler;
+            ParameterBlockReflection::BindLocation colorTex;
+            ParameterBlockReflection::BindLocation luminanceTex;
         } mBindLocations;
 
         struct

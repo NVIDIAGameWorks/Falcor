@@ -857,7 +857,7 @@ namespace Falcor
             }
 
             // Add the current resource range
-            mResourceBindings[res.name] = ResourceBinding(setIndex, (uint32_t)mSetLayouts[setIndex].getRangeCount());
+            mResourceBindings[res.name] = BindLocation(setIndex, (uint32_t)mSetLayouts[setIndex].getRangeCount());
             mSetLayouts[setIndex].addRange(res.type, res.regIndex, res.descCount, res.regSpace);
         }
     }
@@ -1102,10 +1102,10 @@ namespace Falcor
     ReflectionStructType::ReflectionStructType(size_t offset, size_t size, const std::string& name) :
         ReflectionType(offset), mSize(size), mName(name) {}
 
-    ParameterBlockReflection::ResourceBinding ParameterBlockReflection::getResourceBinding(const std::string& name) const
+    ParameterBlockReflection::BindLocation ParameterBlockReflection::getResourceBinding(const std::string& name) const
     {
         const auto it = mResourceBindings.find(name);
-        return (it == mResourceBindings.end()) ? ResourceBinding() : it->second;
+        return (it == mResourceBindings.end()) ? BindLocation() : it->second;
     }
 
     ProgramReflection::ResourceBinding ProgramReflection::getResourceBinding(const std::string& name) const

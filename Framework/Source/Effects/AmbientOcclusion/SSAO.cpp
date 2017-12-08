@@ -81,13 +81,13 @@ namespace Falcor
 
         // Update state/vars
         mpSSAOState->setFbo(mpAOFbo);
-        mpSSAOVars->setSampler(mBindLocations.noiseSampler.regSpace, mBindLocations.noiseSampler.baseRegIndex, 0, mpNoiseSampler);
-        mpSSAOVars->setSampler(mBindLocations.textureSampler.regSpace, mBindLocations.textureSampler.baseRegIndex, 0, mpTextureSampler);
-        mpSSAOVars->setSrv(mBindLocations.depthTex.regSpace, mBindLocations.depthTex.baseRegIndex, 0, pDepthTexture->getSRV());
-        mpSSAOVars->setSrv(mBindLocations.noiseTex.regSpace, mBindLocations.noiseTex.baseRegIndex, 0, mpNoiseTexture->getSRV());
-        mpSSAOVars->setSrv(mBindLocations.normalTex.regSpace, mBindLocations.normalTex.baseRegIndex, 0, pNormalTexture->getSRV());
+        mpSSAOVars->setSampler(mBindLocations.noiseSampler.setIndex, mBindLocations.noiseSampler.rangeIndex, 0, mpNoiseSampler);
+        mpSSAOVars->setSampler(mBindLocations.textureSampler.setIndex, mBindLocations.textureSampler.rangeIndex, 0, mpTextureSampler);
+        mpSSAOVars->setSrv(mBindLocations.depthTex.setIndex, mBindLocations.depthTex.rangeIndex, 0, pDepthTexture->getSRV());
+        mpSSAOVars->setSrv(mBindLocations.noiseTex.setIndex, mBindLocations.noiseTex.rangeIndex, 0, mpNoiseTexture->getSRV());
+        mpSSAOVars->setSrv(mBindLocations.normalTex.setIndex, mBindLocations.normalTex.rangeIndex, 0, pNormalTexture->getSRV());
 
-        ConstantBuffer* pCB = mpSSAOVars->getConstantBuffer(mBindLocations.internalPerFrameCB.regSpace, mBindLocations.internalPerFrameCB.baseRegIndex, 0).get();
+        ConstantBuffer* pCB = mpSSAOVars->getConstantBuffer(mBindLocations.internalPerFrameCB.setIndex, mBindLocations.internalPerFrameCB.rangeIndex, 0).get();
         if (pCB != nullptr)
         {
             pCamera->setIntoConstantBuffer(pCB, 0);
@@ -136,7 +136,7 @@ namespace Falcor
     {
         if (mDirty)
         {
-            ConstantBuffer* pCB = mpSSAOVars->getConstantBuffer(mBindLocations.ssaoCB.regSpace, mBindLocations.ssaoCB.baseRegIndex, 0).get();
+            ConstantBuffer* pCB = mpSSAOVars->getConstantBuffer(mBindLocations.ssaoCB.setIndex, mBindLocations.ssaoCB.rangeIndex, 0).get();
             if (pCB != nullptr)
             {
                 pCB->setBlob(&mData, 0, sizeof(mData));
@@ -152,13 +152,13 @@ namespace Falcor
         mpSSAOVars = GraphicsVars::create(mpSSAOPass->getProgram()->getActiveVersion()->getReflector());
 
         const ProgramReflection* pReflector = mpSSAOPass->getProgram()->getActiveVersion()->getReflector().get();
-        mBindLocations.internalPerFrameCB = getBufferBindLocation(pReflector, "InternalPerFrameCB");
-        mBindLocations.ssaoCB = getBufferBindLocation(pReflector, "SSAOCB");
-        mBindLocations.noiseSampler = getResourceBindLocation(pReflector, "gNoiseSampler");
-        mBindLocations.textureSampler = getResourceBindLocation(pReflector, "gTextureSampler");
-        mBindLocations.depthTex = getResourceBindLocation(pReflector, "gDepthTex");
-        mBindLocations.normalTex = getResourceBindLocation(pReflector, "gNormalTex");
-        mBindLocations.noiseTex = getResourceBindLocation(pReflector, "gNoiseTex");
+        mBindLocations.internalPerFrameCB = pReflector->getResourceBinding("InternalPerFrameCB");
+        mBindLocations.ssaoCB = pReflector->getResourceBinding("SSAOCB");
+        mBindLocations.noiseSampler = pReflector->getResourceBinding("gNoiseSampler");
+        mBindLocations.textureSampler = pReflector->getResourceBinding("gTextureSampler");
+        mBindLocations.depthTex = pReflector->getResourceBinding("gDepthTex");
+        mBindLocations.normalTex = pReflector->getResourceBinding("gNormalTex");
+        mBindLocations.noiseTex = pReflector->getResourceBinding("gNoiseTex");
     }
 
     void SSAO::setKernel(uint32_t kernelSize, SampleDistribution distribution)

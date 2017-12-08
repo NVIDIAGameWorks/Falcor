@@ -197,9 +197,9 @@ namespace Falcor
 
         struct
         {
-            ProgramVars::BindLocation simulateCB;
-            ProgramVars::BindLocation drawCB;
-            ProgramVars::BindLocation emitCB;
+            ProgramReflection::BindLocation simulateCB;
+            ProgramReflection::BindLocation drawCB;
+            ProgramReflection::BindLocation emitCB;
         } mBindLocations;
 
         uint32_t mMaxParticles;
