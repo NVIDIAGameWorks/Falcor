@@ -37,6 +37,7 @@
 #include "Utils/Platform/ProgressBar.h"
 #include <sstream>
 #include <iomanip>
+#include "gtk/gtk.h"
 
 namespace Falcor
 {
@@ -176,6 +177,14 @@ namespace Falcor
         Logger::init();
         Logger::showBoxOnError(config.showMessageBoxOnError);
 
+        // Create the window
+        mpWindow = Window::create(config.windowDesc, this);
+        if (mpWindow == nullptr)
+        {
+            logError("Failed to create device and window");
+            return;
+        }
+
         // Show the progress bar
         ProgressBar::MessageList msgList =
         {
@@ -189,14 +198,6 @@ namespace Falcor
         };
 
         ProgressBar::SharedPtr pBar = ProgressBar::create(msgList);
-
-        // Create the window
-        mpWindow = Window::create(config.windowDesc, this);
-        if (mpWindow == nullptr)
-        {
-            logError("Failed to create device and window");
-            return;
-        }
 
         if(is_set(config.flags, SampleConfig::Flags::DoNotCreateDevice) == false)
         {
@@ -237,6 +238,7 @@ namespace Falcor
 
         mArgList.parseCommandLine(GetCommandLineA());
 #endif
+
         // Load and run
         onLoad();
         pBar = nullptr;

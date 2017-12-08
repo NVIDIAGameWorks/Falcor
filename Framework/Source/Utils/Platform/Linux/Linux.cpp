@@ -162,7 +162,7 @@ namespace Falcor
     }
 
     template<bool bOpen>
-    static bool fileDialogCommon(const char* pFilters, std::string& filename)
+    bool fileDialogCommon(const char* pFilters, std::string& filename)
     {
         if (!gtk_init_check(0, nullptr))
         {
@@ -231,15 +231,8 @@ namespace Falcor
         return success;
     }
 
-    bool openFileDialog(const char* pFilters, std::string& filename)
-    {
-        return fileDialogCommon<true>(pFilters, filename);
-    }
-
-    bool saveFileDialog(const char* pFilters, std::string& filename)
-    {
-        return fileDialogCommon<false>(pFilters, filename);
-    }
+    template bool fileDialogCommon<true>(const char* pFilters, std::string& filename);
+    template bool fileDialogCommon<false>(const char* pFilters, std::string& filename);
 
     void setActiveWindowIcon(const std::string& iconFile)
     {
@@ -302,7 +295,21 @@ namespace Falcor
 
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
     {
-        
+        DIR* pDir = opendir(searchString.c_str());
+        if(pDir != nullptr)
+        {
+            struct dirent* pDirEntry = readdir(pDir);
+            while(pDirEntry != nullptr)
+            {
+                // Only add files, no subdirectories, symlinks, or other objects
+                if(pDirEntry->d_type == DT_REG)
+                {
+                    filenames.push_back(pDirEntry->d_name);
+                }
+
+                pDirEntry = readdir(pDir);
+            }
+        }
     }
 
     std::thread::native_handle_type getCurrentThread()

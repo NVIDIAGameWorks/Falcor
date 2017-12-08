@@ -547,6 +547,9 @@
     <ClCompile Include="Utils\DXHeader.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\Platform\ProgressBar.cpp">
+      <Filter>Utils\Platform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">

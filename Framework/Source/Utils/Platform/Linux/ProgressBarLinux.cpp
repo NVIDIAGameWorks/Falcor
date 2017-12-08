@@ -28,27 +28,102 @@
 
 #include "Framework.h"
 #include "Utils/Platform/ProgressBar.h"
+#include <chrono>
+#include <gtk/gtk.h>
 
 namespace Falcor
 {
+    struct ProgressBarData
+    {
+        GtkWidget* pWindow = nullptr;
+        GtkWidget* pBar = nullptr;
+        GtkWidget* pLabel = nullptr;
+        // Event IDs/handles
+        guint pulseTimerId;
+        guint progressUpdateId;
+
+        ProgressBar::MessageList msgList;
+        uint32_t msgIndex = 0;
+
+        bool running = true;
+        std::thread thread;
+    };
 
     ProgressBar::~ProgressBar()
     {
+        gtk_window_close(GTK_WINDOW(mpData->pWindow));
+        mpData->running = false;
+
+        g_source_remove(mpData->progressUpdateId);
+        g_source_remove(mpData->pulseTimerId);
+        gtk_widget_destroy(mpData->pWindow);
+
+        mpData->thread.join();
+        safe_delete(mpData);
     }
 
-    ProgressBar::SharedPtr ProgressBar::create(const MessageList& list, uint32_t delayInMs)
+    void progressBarThread(ProgressBarData* pData)
     {
-        SharedPtr pBar = SharedPtr(new ProgressBar());
-        return pBar;
-    }
-
-    ProgressBar::SharedPtr ProgressBar::create(const char* pMsg, uint32_t delayInMs)
-    {
-        MessageList list;
-        if (pMsg)
+        while(pData->running || gtk_events_pending())
         {
-            list.push_back(pMsg);
+            gtk_main_iteration_do(FALSE);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        return create(list, delayInMs);
+    }
+
+    // At regular intervals, pulse the progress bar
+    gboolean progressBarPulseeCB(gpointer pGtkData)
+    {
+        ProgressBarData* pData = (ProgressBarData*)pGtkData;
+        gtk_progress_bar_pulse(GTK_PROGRESS_BAR(pData->pBar));
+        return TRUE;
+    }
+
+    // At specified intervals, update the window title
+    gboolean progressBarUpdateCB(gpointer pGtkData)
+    {
+        ProgressBarData* pData = (ProgressBarData*)pGtkData;
+        if(pData->msgList.size() > 0)
+        {
+            pData->msgIndex = (pData->msgIndex + 1) % pData->msgList.size();
+            gtk_label_set_text(GTK_LABEL(pData->pLabel), pData->msgList[pData->msgIndex].c_str());
+        }
+        return TRUE;
+    }
+
+    void ProgressBar::platformInit(const MessageList& list, uint32_t delayInMs)
+    {
+        mpData = new ProgressBarData;
+        mpData->msgList = list;
+
+        if (!gtk_init_check(0, nullptr))
+        {
+            should_not_get_here();
+        }
+
+        // Create window
+        mpData->pWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+        gtk_window_set_position(GTK_WINDOW(mpData->pWindow), GTK_WIN_POS_CENTER_ALWAYS);
+        gtk_window_set_decorated(GTK_WINDOW(mpData->pWindow), FALSE);
+
+        GtkWidget* pVBox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
+        gtk_container_add(GTK_CONTAINER(mpData->pWindow), pVBox);
+
+        // Create label for messages
+        std::string initialMsg = (list.size() > 0) ? list[0] : "Loading...";
+        mpData->pLabel = gtk_label_new(initialMsg.c_str());
+        gtk_label_set_justify(GTK_LABEL(mpData->pLabel), GTK_JUSTIFY_CENTER);
+        gtk_label_set_lines(GTK_LABEL(mpData->pLabel), 1);
+        gtk_box_pack_start(GTK_BOX(pVBox), mpData->pLabel, TRUE, FALSE, 0);
+
+        // Create and attach progress bar
+        mpData->pBar = gtk_progress_bar_new();
+        gtk_box_pack_start(GTK_BOX(pVBox), mpData->pBar, TRUE, FALSE, 0);
+
+        mpData->pulseTimerId = g_timeout_add(100, progressBarPulseeCB, mpData);
+        mpData->progressUpdateId = g_timeout_add(delayInMs, progressBarUpdateCB, mpData);
+
+        gtk_widget_show_all(mpData->pWindow);
+        mpData->thread = std::thread(progressBarThread, mpData);
     }
 }

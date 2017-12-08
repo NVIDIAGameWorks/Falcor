@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,41 +25,26 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
 
-#include <vector>
-#include "API/Window.h"
+#include "Framework.h"
+#include "Utils/Platform/ProgressBar.h"
 
 namespace Falcor
 {
-    struct ProgressBarData;
-
-    /** Creates a progress bar visual and manages a new thread for it.
-    */
-    class ProgressBar
+    ProgressBar::SharedPtr ProgressBar::create(const MessageList& list, uint32_t delayInMs)
     {
-    public:
-        using SharedPtr = std::shared_ptr<ProgressBar>;
-        using MessageList = std::vector<std::string>;
+        SharedPtr pBar = SharedPtr(new ProgressBar());
+        pBar->platformInit(list, delayInMs);
+        return pBar;
+    }
 
-        /** Creates a progress bar.
-            \param[in] list List of messages to display on the progress bar
-            \param[in] delayInMs Time between updates in milliseconds
-        */
-        static SharedPtr create(const MessageList& list, uint32_t delayInMs = 1000);
-
-        /** Creates a progress bar.
-            \param[in] pMsg Message to display on the progress bar
-            \param[in] delayInMs Time between updates in milliseconds
-        */
-        static SharedPtr create(const char* pMsg = nullptr, uint32_t delayInMs = 1000);
-
-        ~ProgressBar();
-
-    private:
-        ProgressBar() = default;
-        void platformInit(const MessageList& list, uint32_t delayInMs);
-
-        ProgressBarData* mpData;
-    };
+    ProgressBar::SharedPtr ProgressBar::create(const char* pMsg, uint32_t delayInMs)
+    {
+        MessageList list;
+        if (pMsg)
+        {
+            list.push_back(pMsg);
+        }
+        return create(list, delayInMs);
+    }
 }

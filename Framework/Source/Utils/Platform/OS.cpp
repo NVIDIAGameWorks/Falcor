@@ -28,12 +28,26 @@
 #include "Framework.h"
 #include "Utils/Platform/OS.h"
 #include "Utils/StringUtils.h"
+#include <gtk/gtk.h>
 #include <fstream>
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
 
 namespace Falcor
 {
+    template<bool bOpen>
+    bool fileDialogCommon(const char* pFilters, std::string& filename);
+
+    bool openFileDialog(const char* pFilters, std::string& filename)
+    {
+        return fileDialogCommon<true>(pFilters, filename);
+    }
+
+    bool saveFileDialog(const char* pFilters, std::string& filename)
+    {
+        return fileDialogCommon<false>(pFilters, filename);
+    }
+
     uint32_t getLowerPowerOf2(uint32_t a)
     {
         assert(a != 0);
@@ -173,5 +187,6 @@ namespace Falcor
         }
         return false;
     }
+    
 
 }

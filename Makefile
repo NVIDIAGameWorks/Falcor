@@ -1,7 +1,7 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
-SAMPLE_CONFIG:=Debug
+SAMPLE_CONFIG:=Release
 
-All : AllCore AllEffects AllUtils
+All : FeatureDemo AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
 AllEffects : AmbientOcclusion EnvMap HashedAlpha NormalMapFiltering Particles PostProcess Shadows
 AllUtils : ModelViewer SceneEditor
@@ -132,7 +132,7 @@ define CompileSample
 	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
 	@echo $(2)
 	@$(CC) $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE)
-	@echo Linking...
+	@echo Linking $(3)
 	@$(CC) -o $(OUT_DIR)$(3) $(1)$(O_FILE) $(ADDITIONAL_LIB_DIRS) $(LIBS)
 	$(call MoveFalcorData,$(OUT_DIR))
 	$(call MoveProjectData,$(1), $(OUT_DIR))

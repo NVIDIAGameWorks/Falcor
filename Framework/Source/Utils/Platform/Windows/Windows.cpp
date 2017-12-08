@@ -148,50 +148,8 @@ namespace Falcor
         return true;
     }
 
-    //std::string canonicalizeFilename(const std::string& filename)
-    //{
-    //    //  It might be tempting to try to figure out a nicer bound ourselves, but the documentation says "You must set the
-    //    //  size of this buffer to MAX_PATH to ensure that it is large enough to hold the returned string.".
-    //    char buffer[MAX_PATH];
-    //    PathCanonicalizeA(buffer, filename.c_str());
-    //    return replaceSubstring(buffer, "/", "\\");
-    //}
-
-    //bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)
-    //{
-    //    static bool bInit = false;
-    //    if (bInit == false)
-    //    {
-    //        std::string dataDirs;
-    //        if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
-    //        {
-    //            auto folders = splitString(dataDirs, ";");
-    //            gDataDirectories.insert(gDataDirectories.end(), folders.begin(), folders.end());
-    //        }
-    //        bInit = true;
-    //    }
-
-    //    // Check if this is an absolute path
-    //    if (doesFileExist(filename))
-    //    {
-    //        fullpath = canonicalizeFilename(filename);
-    //        return true;
-    //    }
-
-    //    for (const auto& Dir : gDataDirectories)
-    //    {
-    //        fullpath = canonicalizeFilename(Dir + '\\' + filename);
-    //        if (doesFileExist(fullpath))
-    //        {
-    //            return true;
-    //        }
-    //    }
-
-    //    return false;
-    //}
-
     template<bool bOpen>
-    static bool fileDialogCommon(const char* pFilters, std::string& filename)
+    bool fileDialogCommon(const char* pFilters, std::string& filename)
     {
         OPENFILENAMEA ofn;
         CHAR chars[512] = "";
@@ -219,15 +177,8 @@ namespace Falcor
         return false;
     }
 
-    bool openFileDialog(const char* pFilters, std::string& filename)
-    {
-        return fileDialogCommon<true>(pFilters, filename);
-    }
-
-    bool saveFileDialog(const char* pFilters, std::string& filename)
-    {
-        return fileDialogCommon<false>(pFilters, filename);
-    }
+    template bool fileDialogCommon<true>(const char* pFilters, std::string& filename);
+    template bool fileDialogCommon<false>(const char* pFilters, std::string& filename);
 
     void setWindowIcon(const std::string& iconFile, Window::ApiHandle windowHandle)
     {

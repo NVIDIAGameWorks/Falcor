@@ -40,6 +40,9 @@
 
 namespace Falcor
 {
+    // Must be defined even though it's a const uint because value is passed as reference to functions
+    const uint32_t SceneExporter::kVersion;
+
     bool SceneExporter::saveScene(const std::string& filename, const Scene::SharedPtr& pScene, uint32_t exportOptions)
     {
         SceneExporter exporter(filename, pScene);

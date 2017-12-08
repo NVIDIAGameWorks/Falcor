@@ -604,6 +604,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Utils\Platform\OS.cpp" />
+    <ClCompile Include="Utils\Platform\ProgressBar.cpp" />
     <ClCompile Include="Utils\Platform\Windows\ProgressBarWin.cpp" />
     <ClCompile Include="Utils\Platform\Windows\Windows.cpp" />
     <ClCompile Include="Utils\Profiler.cpp" />
