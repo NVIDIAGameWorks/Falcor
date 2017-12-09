@@ -444,6 +444,7 @@ namespace Falcor
     {
         if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Sampler, "setSampler()") == false) return false;
         mAssignedResources[setIndex][rangeIndex][arrayIndex].pSampler = pSampler ? pSampler : Sampler::getDefault();
+        mRootSets[setIndex].pSet = nullptr;
         return true;
     }
 
