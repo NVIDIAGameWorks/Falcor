@@ -51,6 +51,9 @@ namespace Falcor
         // Variable offsets in constant buffer
         size_t offsetVarOffset;
         size_t scaleVarOffset;
+
+        ProgramReflection::BindLocation texBindLoc;
+        ProgramReflection::BindLocation samplerBindLoc;
     };
 
     static BlitData gBlitData;
@@ -73,8 +76,8 @@ namespace Falcor
             gBlitData.pLinearSampler = Sampler::create(desc);
             desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
             gBlitData.pPointSampler = Sampler::create(desc);
-            assert(gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("gTex").rangeIndex == 0);
-            assert(gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("gTex").setIndex == 0);
+            gBlitData.texBindLoc = gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("gTex");
+            gBlitData.samplerBindLoc = gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("gSampler");
         }
     }
 
@@ -319,11 +322,11 @@ namespace Falcor
         initBlitData(); // This has to be here and can't be in the constructor. FullScreenPass will allocate some buffers which depends on the ResourceAllocator which depends on the fence inside the RenderContext. Dependencies are fun!
         if (filter == Sampler::Filter::Linear)
         {
-            gBlitData.pVars->setSampler(0, 0, 0, gBlitData.pLinearSampler);
+            gBlitData.pVars->setSampler(gBlitData.samplerBindLoc.setIndex, gBlitData.samplerBindLoc.rangeIndex, 0, gBlitData.pLinearSampler);
         }
         else
         {
-            gBlitData.pVars->setSampler(0, 0, 0, gBlitData.pPointSampler);
+            gBlitData.pVars->setSampler(gBlitData.samplerBindLoc.setIndex, gBlitData.samplerBindLoc.rangeIndex, 0, gBlitData.pPointSampler);
         }
 
         assert(pSrc->getViewInfo().arraySize == 1 && pSrc->getViewInfo().mipCount == 1);
@@ -384,11 +387,11 @@ namespace Falcor
         Texture::SharedPtr pSharedTex = std::const_pointer_cast<Texture>(pDstTexture->shared_from_this());
         pFbo->attachColorTarget(pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize);
         gBlitData.pState->pushFbo(pFbo, false);
-        gBlitData.pVars->setSrv(0, 0, 0, pSrc);
+        gBlitData.pVars->setSrv(gBlitData.texBindLoc.setIndex, gBlitData.texBindLoc.rangeIndex, 0, pSrc);
         gBlitData.pPass->execute(this);
 
         // Release the resources we bound
-        gBlitData.pVars->setSrv(0, 0, 0, nullptr);
+        gBlitData.pVars->setSrv(gBlitData.texBindLoc.setIndex, gBlitData.texBindLoc.rangeIndex, 0, nullptr);
         gBlitData.pState->popFbo(false);
         popGraphicsState();
         popGraphicsVars();

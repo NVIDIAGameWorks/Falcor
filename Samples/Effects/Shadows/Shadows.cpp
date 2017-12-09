@@ -218,7 +218,7 @@ void Shadows::createVisualizationProgram()
     {
         mShadowVisualizer.pProgram->getProgram()->addDefine("_USE_2D_ARRAY");
         mShadowVisualizer.pProgramVars = GraphicsVars::create(mShadowVisualizer.pProgram->getProgram()->getActiveVersion()->getReflector());
-        mOffsets.displayedCascade = static_cast<uint32_t>(mShadowVisualizer.pProgramVars->getConstantBuffer(0, 0, 0)->getVariableOffset("cascade"));
+        mOffsets.displayedCascade = static_cast<uint32_t>(mShadowVisualizer.pProgramVars->getConstantBuffer("PerImageCB")->getVariableOffset("cascade"));
     }
     else
     {

@@ -320,7 +320,7 @@ namespace Falcor
 
         if(offset == ConstantBuffer::kInvalidOffset)
         {
-            logError(std::string("Material::setIntoConstantBuffer() - variable \"") + varName + "\" not found in constant buffer\n");
+            logError(std::string("Material::setIntoProgramVars() - variable \"") + varName + "\" not found in constant buffer\n");
             return;
         }
 
@@ -340,25 +340,17 @@ namespace Falcor
         }
 
         // Bind the layers (they are an array)
-        auto pTextures = (Texture::SharedPtr*)&mData.textures;
         for (uint32_t i = 0; i < MatMaxLayers; i++)
         {
-            if (pTextures[i] != nullptr)
-            {
-                pVars->setSrv(binding.setIndex, binding.rangeIndex, i, pTextures[i]->getSRV());
-            }
+            const auto& pSrv = (mData.textures.layers[i] != nullptr) ? mData.textures.layers[i]->getSRV() : nullptr;
+            pVars->setSrv(binding.setIndex, binding.rangeIndex, i, pSrv);
         }
 
-        // Bind the rest
-        for (uint32_t i = MatMaxLayers; i < kTexCount; i++)
-        {
-            if (pTextures[i] != nullptr)
-            {
-                pVars->setSrv(binding.setIndex, binding.rangeIndex, i, pTextures[i]->getSRV());
-            }
-        }
-
-        pVars->setSampler("gMaterial.samplerState", mData.samplerState);
+        pVars->setTexture(std::string(varName) + ".textures.normalMap", mData.textures.normalMap);
+        pVars->setTexture(std::string(varName) + ".textures.ambientMap", mData.textures.ambientMap);
+        pVars->setTexture(std::string(varName) + ".textures.alphaMap", mData.textures.alphaMap);
+        pVars->setTexture(std::string(varName) + ".textures.heightMap", mData.textures.heightMap);
+        pVars->setSampler(std::string(varName) + ".samplerState", mData.samplerState);
     }
 
     bool Material::operator==(const Material& other) const

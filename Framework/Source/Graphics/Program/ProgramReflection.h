@@ -312,8 +312,9 @@ namespace Falcor
             uint32_t descCount = 0;
             uint32_t regIndex = 0;
             uint32_t regSpace = 0;
-            Type type;
+            Type setType;
             std::string name;
+            ReflectionResourceType::SharedConstPtr pType;
         };
 
         struct BindLocation

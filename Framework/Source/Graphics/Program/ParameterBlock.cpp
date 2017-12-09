@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "ParameterBlock.h"
 #include "API/Device.h"
+#include "Utils/StringUtils.h"
 
 namespace Falcor
 {
@@ -179,26 +180,25 @@ namespace Falcor
             }
         }
 
-        // Loop over the resources and create structred and constant buffers
+        // Loop over the resources and create structured and constant buffers
         for (const auto& resource : pReflection->getResourceVec())
         {
             ParameterBlockReflection::BindLocation bindLoc = pReflection->getResourceBinding(resource.name);
             auto& range = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex];
             for (size_t r = 0; r < range.size(); r++)
             {
-                ReflectionResourceType::SharedConstPtr pType = pReflection->getResource(resource.name)->getType()->unwrapArray()->asResourceType()->inherit_shared_from_this::shared_from_this();
-                range[r].requiredSize = pType->getSize();
+                range[r].requiredSize = resource.pType->getSize();
 
                 if(createBuffers)
                 {
-                    if (resource.type == DescriptorSet::Type::StructuredBufferSrv || resource.type == DescriptorSet::Type::StructuredBufferUav)
+                    if (resource.setType == DescriptorSet::Type::StructuredBufferSrv || resource.setType == DescriptorSet::Type::StructuredBufferUav)
                     {
-                        StructuredBuffer::SharedPtr pBuffer = StructuredBuffer::create(resource.name, pType);
+                        StructuredBuffer::SharedPtr pBuffer = StructuredBuffer::create(resource.name, resource.pType);
                         setStructuredBuffer(resource.name, pBuffer);
                     }
-                    else if (resource.type == DescriptorSet::Type::Cbv)
+                    else if (resource.setType == DescriptorSet::Type::Cbv)
                     {
-                        ConstantBuffer::SharedPtr pCB = ConstantBuffer::create(resource.name, pType);
+                        ConstantBuffer::SharedPtr pCB = ConstantBuffer::create(resource.name, resource.pType);
                         setConstantBuffer(resource.name, pCB);
                     }
                 }
@@ -307,8 +307,11 @@ namespace Falcor
         }
     }
 
-    void ParameterBlock::setResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName)
+    void ParameterBlock::setResourceSrvUavCommon(std::string name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName)
     {
+        uint32_t index;
+        while (parseArrayIndex(name, name, index)) {};
+
         ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
         if (checkResourceIndices(bindLoc.setIndex, bindLoc.rangeIndex, descOffset, type, funcName) == false) return;
         auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
@@ -318,11 +321,13 @@ namespace Falcor
         {
         case DescriptorSet::Type::TextureSrv:
         case DescriptorSet::Type::TypedBufferSrv:
-            desc.pSRV = pResource->getSRV();
+        case DescriptorSet::Type::StructuredBufferSrv:
+            desc.pSRV = pResource ? pResource->getSRV() : ShaderResourceView::getNullView();
             break;
         case DescriptorSet::Type::TextureUav:
         case DescriptorSet::Type::TypedBufferUav:
-            desc.pUAV = pResource->getUAV();
+        case DescriptorSet::Type::StructuredBufferUav:
+            desc.pUAV = pResource ? pResource->getUAV() : UnorderedAccessView::getNullView();
             break;
         default:
             should_not_get_here();
@@ -351,7 +356,7 @@ namespace Falcor
         }
 #endif
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TextureSrv, DescriptorSet::Type::TextureUav);
-        setResourceSrvUavCommon(pVar->getName(), pVar->getDescOffset(), type, pBuf, "setRawBuffer()");
+        setResourceSrvUavCommon(name, pVar->getDescOffset(), type, pBuf, "setRawBuffer()");
         return true;
     }
 
@@ -366,7 +371,7 @@ namespace Falcor
         }
 #endif
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TypedBufferSrv, DescriptorSet::Type::TypedBufferUav);
-        setResourceSrvUavCommon(pVar->getName(), pVar->getDescOffset(), type, pBuf, "setTypedBuffer()");
+        setResourceSrvUavCommon(name, pVar->getDescOffset(), type, pBuf, "setTypedBuffer()");
         return true;
     }
 
@@ -379,8 +384,8 @@ namespace Falcor
             return false;
         }
 #endif
-        DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TypedBufferSrv, DescriptorSet::Type::TypedBufferUav);
-        setResourceSrvUavCommon(pVar->getName(), pVar->getDescOffset(), type, pBuf, "setStructuredBuffer()");
+        DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::StructuredBufferSrv, DescriptorSet::Type::StructuredBufferUav);
+        setResourceSrvUavCommon(name, pVar->getDescOffset(), type, pBuf, "setStructuredBuffer()");
         return true;
     }
 
@@ -404,7 +409,7 @@ namespace Falcor
         }
 #endif
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TextureSrv, DescriptorSet::Type::TextureUav);
-        return getResourceSrvUavCommon<Buffer>(pVar->getName(), pVar->getDescOffset(), type, "getRawBuffer()");
+        return getResourceSrvUavCommon<Buffer>(name, pVar->getDescOffset(), type, "getRawBuffer()");
     }
 
     TypedBufferBase::SharedPtr ParameterBlock::getTypedBuffer(const std::string& name) const
@@ -418,7 +423,7 @@ namespace Falcor
         }
 #endif
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TypedBufferSrv, DescriptorSet::Type::TypedBufferUav);
-        return getResourceSrvUavCommon<TypedBufferBase>(pVar->getName(), pVar->getDescOffset(), type, "getTypedBuffer()");
+        return getResourceSrvUavCommon<TypedBufferBase>(name, pVar->getDescOffset(), type, "getTypedBuffer()");
     }
 
     StructuredBuffer::SharedPtr ParameterBlock::getStructuredBuffer(const std::string& name) const
@@ -432,13 +437,13 @@ namespace Falcor
         }
 #endif   
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::StructuredBufferSrv, DescriptorSet::Type::StructuredBufferUav);
-        return getResourceSrvUavCommon<StructuredBuffer>(pVar->getName(), pVar->getDescOffset(), type, "getTypedBuffer()");
+        return getResourceSrvUavCommon<StructuredBuffer>(name, pVar->getDescOffset(), type, "getTypedBuffer()");
     }
 
     bool ParameterBlock::setSampler(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
         if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Sampler, "setSampler()") == false) return false;
-        mAssignedResources[setIndex][rangeIndex][arrayIndex].pSampler = pSampler;
+        mAssignedResources[setIndex][rangeIndex][arrayIndex].pSampler = pSampler ? pSampler : Sampler::getDefault();
         return true;
     }
 
@@ -451,7 +456,7 @@ namespace Falcor
             return false;
         }
 #endif
-        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(pVar->getName());
+        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(name);
         return setSampler(bind.setIndex, bind.rangeIndex, pVar->getDescOffset(), pSampler);
     }
 
@@ -464,7 +469,7 @@ namespace Falcor
             return nullptr;
         }
 #endif
-        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(pVar->getName());
+        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(name);
         return getSampler(bind.setIndex, bind.rangeIndex, pVar->getDescOffset());
     }
 
@@ -498,7 +503,7 @@ namespace Falcor
 #endif
 
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TextureSrv, DescriptorSet::Type::TextureUav);
-        setResourceSrvUavCommon(pVar->getName(), pVar->getDescOffset(), type, pTexture, "setTexture()");
+        setResourceSrvUavCommon(name, pVar->getDescOffset(), type, pTexture, "setTexture()");
         return true;
     }
 
@@ -512,7 +517,7 @@ namespace Falcor
         }
 #endif
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TextureSrv, DescriptorSet::Type::TextureUav);
-        return getResourceSrvUavCommon<Texture>(pVar->getName(), pVar->getDescOffset(), type, "getTexture()");
+        return getResourceSrvUavCommon<Texture>(name, pVar->getDescOffset(), type, "getTexture()");
     }
 
     template<typename ViewType>
@@ -534,6 +539,7 @@ namespace Falcor
 #endif
         desc.pSRV = pSrv ? pSrv : ShaderResourceView::getNullView();
         desc.pResource = getResourceFromView(pSrv.get());
+        mRootSets[setIndex].pSet = nullptr;
         return true;
     }
 
@@ -542,7 +548,7 @@ namespace Falcor
         if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Count, "setUav()") == false) return false;
         auto& desc = mAssignedResources[setIndex][rangeIndex][arrayIndex];
 #if _LOG_ENABLED
-        if (desc.pSRV == nullptr)
+        if (desc.pUAV == nullptr)
         {
             logWarning("Can't find UAV with set index " + std::to_string(setIndex) + ", range index " + std::to_string(rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring setUav() call");
             return false;
@@ -550,6 +556,7 @@ namespace Falcor
 #endif
         desc.pUAV = pUav ? pUav : UnorderedAccessView::getNullView();
         desc.pResource = getResourceFromView(pUav.get());
+        mRootSets[setIndex].pSet = nullptr;
         return true;
     }
     

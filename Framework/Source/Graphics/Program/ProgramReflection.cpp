@@ -720,43 +720,76 @@ namespace Falcor
         d.regIndex = pVar->getRegisterIndex();
         d.regSpace = pVar->getRegisterSpace();
 
-        const ReflectionResourceType* pResource = pVar->getType()->unwrapArray()->asResourceType();
-        assert(pResource);
-        auto shaderAccess = pResource->getShaderAccess();
-        switch (pResource->getType())
+        d.pType = pVar->getType()->unwrapArray()->asResourceType()->inherit_shared_from_this::shared_from_this();
+        assert(d.pType);
+        auto shaderAccess = d.pType->getShaderAccess();
+        switch (d.pType->getType())
         {
         case ReflectionResourceType::Type::ConstantBuffer:
-            d.type = ParameterBlockReflection::ResourceDesc::Type::Cbv;
+            d.setType = ParameterBlockReflection::ResourceDesc::Type::Cbv;
             break;
         case ReflectionResourceType::Type::RawBuffer:
         case ReflectionResourceType::Type::Texture:
-            d.type = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::TextureSrv : ParameterBlockReflection::ResourceDesc::Type::TextureUav;
+            d.setType = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::TextureSrv : ParameterBlockReflection::ResourceDesc::Type::TextureUav;
             break;
         case ReflectionResourceType::Type::Sampler:
-            d.type = ParameterBlockReflection::ResourceDesc::Type::Sampler;
+            d.setType = ParameterBlockReflection::ResourceDesc::Type::Sampler;
             break;
         case ReflectionResourceType::Type::StructuredBuffer:
-            d.type = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::StructuredBufferSrv : ParameterBlockReflection::ResourceDesc::Type::StructuredBufferUav;
+            d.setType = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::StructuredBufferSrv : ParameterBlockReflection::ResourceDesc::Type::StructuredBufferUav;
             break;
         case ReflectionResourceType::Type::TypedBuffer:
-            d.type = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::TypedBufferSrv : ParameterBlockReflection::ResourceDesc::Type::TypedBufferUav;
+            d.setType = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::TypedBufferSrv : ParameterBlockReflection::ResourceDesc::Type::TypedBufferUav;
             break;
         default:
             should_not_get_here();
-            d.type = ParameterBlockReflection::ResourceDesc::Type::Count;
+            d.setType = ParameterBlockReflection::ResourceDesc::Type::Count;
         }
         d.name = name;
         return d;
     }
 
-    static void flattenResources(const ReflectionVar::SharedConstPtr& pVar, ParameterBlockReflection::ResourceVec& resources, uint32_t arrayElements)
+    static void flattenResources(const ReflectionVar::SharedConstPtr& pVar, ParameterBlockReflection::ResourceVec& resources, uint32_t arrayElements, std::string name);
+        
+    static void flattenResources(const ReflectionArrayType* pArrayType, ParameterBlockReflection::ResourceVec& resources, uint32_t arrayElements, std::string name)
+    {
+        assert(pArrayType->asResourceType() == nullptr);
+        if (pArrayType->getType()->asArrayType())
+        {
+            pArrayType = pArrayType->getType()->asArrayType();
+            for (uint32_t i = 0; i < pArrayType->getArraySize(); i++)
+            {
+                flattenResources(pArrayType, resources, 1, name + '[' + std::to_string(i) + ']');
+            }
+        }
+
+        const ReflectionStructType* pStructType = pArrayType->getType()->asStructType();
+        if (pStructType)
+        {
+            for (const auto& pMember : *pStructType)
+            {
+                flattenResources(pMember, resources, 1, name + '.' + pMember->getName());
+            }
+        }
+    }
+
+    static void flattenResources(const ReflectionVar::SharedConstPtr& pVar, ParameterBlockReflection::ResourceVec& resources, uint32_t arrayElements, std::string name)
     {
         const ReflectionType* pType = pVar->getType()->unwrapArray();
         uint32_t elementCount = max(1u, pVar->getType()->getTotalArraySize()) * arrayElements;
         if (pType->asResourceType())
         {
-            resources.push_back(getResourceDesc(pVar, elementCount, pVar->getName()));
+            resources.push_back(getResourceDesc(pVar, elementCount, name));
             return;
+        }
+
+        const ReflectionArrayType* pArrayType = pVar->getType()->asArrayType();
+        if (pArrayType)
+        {
+            for (uint32_t i = 0; i < pArrayType->getArraySize(); i++)
+            {
+                flattenResources(pArrayType, resources, 1, name + '[' + std::to_string(i) + ']');
+            }
         }
 
         const ReflectionStructType* pStructType = pType->asStructType();
@@ -764,7 +797,7 @@ namespace Falcor
         {
             for (const auto& pMember : *pStructType)
             {
-                flattenResources(pMember, resources, elementCount);
+                flattenResources(pMember, resources, elementCount, name + '.' + pMember->getName());
             }
         }
     }
@@ -773,7 +806,7 @@ namespace Falcor
     {
         for (const auto& pMember : *pStructType)
         {
-            flattenResources(pMember, resources, 1);
+            flattenResources(pMember, resources, 1, pMember->getName());
         }
     }
 
@@ -829,7 +862,7 @@ namespace Falcor
         {
             SetIndex(const ResourceDesc& desc) : regSpace(desc.regSpace),
 #ifdef FALCOR_D3D12
-                isSampler(desc.type == ResourceDesc::Type::Sampler)
+                isSampler(desc.setType == ResourceDesc::Type::Sampler)
 #endif
             {}
             bool isSampler = false;
@@ -838,27 +871,66 @@ namespace Falcor
         };
 
         std::map<SetIndex, uint32_t> newSetIndices;
+        std::vector<std::vector<DescriptorSet::Layout::Range>> sets;
 
         // Generate the descriptor sets layouts
         for (const auto& res : mResources)
         {
+            if (hasSuffix(res.name, ".layers"))
+            {
+                std::string a = res.name;
+            }
             SetIndex origIndex(res);
             uint32_t setIndex;
             if (newSetIndices.find(origIndex) == newSetIndices.end())
             {
                 // New set
-                setIndex = (uint32_t)mSetLayouts.size();
+                setIndex = (uint32_t)sets.size();
                 newSetIndices[origIndex] = setIndex;
-                mSetLayouts.push_back({});
+                sets.push_back({});
             }
             else
             {
                 setIndex = newSetIndices[origIndex];
             }
 
-            // Add the current resource range
-            mResourceBindings[res.name] = BindLocation(setIndex, (uint32_t)mSetLayouts[setIndex].getRangeCount());
-            mSetLayouts[setIndex].addRange(res.type, res.regIndex, res.descCount, res.regSpace);
+            // Add the current resource range. We need to check that the range doesn't already exist. If it is, we merge the ranges
+            auto& ranges = sets[setIndex];
+            bool found = false;
+            for (uint32_t r = 0; r < ranges.size(); r++)
+            {
+                auto& range = ranges[r];
+                if (range.baseRegIndex == res.regIndex && (res.setType == range.type))
+                {
+                    range.descCount = max(range.descCount, res.descCount + res.descOffset);
+                    mResourceBindings[res.name] = BindLocation(setIndex, r);
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found == false)
+            {
+                mResourceBindings[res.name] = BindLocation(setIndex, (uint32_t)ranges.size());
+                DescriptorSet::Layout::Range range;
+                range.baseRegIndex = res.regIndex;
+                range.descCount = res.descCount + res.descOffset;
+                range.regSpace = res.regSpace;
+                range.type = res.setType;
+                ranges.push_back(range);
+            }
+        }
+
+        mSetLayouts.resize(sets.size());
+        for (uint32_t s = 0; s < sets.size(); s++)
+        {
+            const auto& src = sets[s];
+            auto& dst = mSetLayouts[s];
+            for (uint32_t r = 0; r < src.size(); r++)
+            {
+                const auto& range = src[r];
+                dst.addRange(range.type, range.baseRegIndex, range.descCount, range.regSpace);
+            }
         }
     }
 

@@ -238,7 +238,7 @@ namespace Falcor
         bool checkResourceIndices(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, DescriptorSet::Type type, const std::string& funcName) const;
 
         std::vector<RootSet> mRootSets;
-        void setResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName);
+        void setResourceSrvUavCommon(std::string name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName);
         template<typename ResourceType>
         typename ResourceType::SharedPtr getResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const std::string& funcName) const;
     };
