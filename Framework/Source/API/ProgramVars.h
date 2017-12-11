@@ -41,33 +41,6 @@ namespace Falcor
     class ComputeContext;
     class DescriptorSet;
 
-    // This is here because gcc doesn't like explicit specialization in the class scope e.g. ResourceData<Sampler>
-    // TODO: Can we handle the Sampler case without specializing the template?
-    struct RootData
-    {
-        RootData() = default;
-        RootData(uint32_t root, uint32_t range) : rootIndex(root), rangeIndex(range) {}
-        uint32_t rootIndex = uint32_t(-1);
-        uint32_t rangeIndex = uint32_t(-1);
-    };
-
-    template<typename ViewType>
-    struct ResourceData
-    {
-        ResourceData(const RootData& data) : rootData(data) {}
-        typename ViewType::SharedPtr pView = nullptr;
-        Resource::SharedPtr pResource = nullptr;
-        RootData rootData;
-    };
-
-    template<>
-    struct ResourceData<Sampler>
-    {
-        ResourceData(const RootData& data) : rootData(data) {}
-        Sampler::SharedPtr pSampler;
-        RootData rootData;
-    };
-
     /** This class manages a program's reflection and variable assignment.
         It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
     */
@@ -225,6 +198,23 @@ namespace Falcor
         */
         RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
 
+        struct RootData
+        {
+            RootData() = default;
+            RootData(uint32_t root, uint32_t range) : rootIndex(root), rangeIndex(range) {}
+            uint32_t rootIndex = uint32_t(-1);
+            uint32_t rangeIndex = uint32_t(-1);
+        };
+
+        template<typename ViewType, typename ResourceType = Resource>
+        struct ResourceData
+        {
+            ResourceData(const RootData& data) : rootData(data) {}
+            typename ViewType::SharedPtr pView = nullptr;
+            typename ResourceType::SharedPtr pResource = nullptr;
+            RootData rootData;
+        };
+
         struct RootSet
         {
             bool active = false;
@@ -246,15 +236,14 @@ namespace Falcor
             bool operator==(const BindLocation& other) const { return u64 == other.u64; }
         };
 
-        template<typename T>
-        using ResourceMap = std::unordered_map<BindLocation, std::vector<ResourceData<T>>, BindLocation>;
-        using SamplerMap = std::unordered_map<BindLocation, std::vector<Sampler::SharedConstPtr>, BindLocation>;
+        template<typename V, typename R = Resource>
+        using ResourceMap = std::unordered_map<BindLocation, std::vector<ResourceData<V, R>>, BindLocation>;
         using RootSetVec = std::vector<RootSet>;
 
         const ResourceMap<ConstantBuffer>& getAssignedCbs() const { return mAssignedCbs; }
         const ResourceMap<ShaderResourceView>& getAssignedSrvs() const { return mAssignedSrvs; }
         const ResourceMap<UnorderedAccessView>& getAssignedUavs() const { return mAssignedUavs; }
-        const ResourceMap<Sampler>& getAssignedSamplers() const { return mAssignedSamplers; }
+        const ResourceMap<Sampler, Sampler>& getAssignedSamplers() const { return mAssignedSamplers; }
         const RootSetVec getRootSets() const { return mRootSets; }
 
         // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
@@ -269,10 +258,10 @@ namespace Falcor
         RootSignature::SharedPtr mpRootSignature;
         ProgramReflection::SharedConstPtr mpReflector;
 
-        ResourceMap<ConstantBuffer> mAssignedCbs;        // HLSL 'b' registers
-        ResourceMap<ShaderResourceView> mAssignedSrvs;   // HLSL 't' registers
-        ResourceMap<UnorderedAccessView> mAssignedUavs;  // HLSL 'u' registers
-        ResourceMap<Sampler> mAssignedSamplers;    // HLSL 's' registers
+        ResourceMap<ConstantBuffer> mAssignedCbs;           // HLSL 'b' registers
+        ResourceMap<ShaderResourceView> mAssignedSrvs;      // HLSL 't' registers
+        ResourceMap<UnorderedAccessView> mAssignedUavs;     // HLSL 'u' registers
+        ResourceMap<Sampler, Sampler> mAssignedSamplers;    // HLSL 's' registers
 
         RootSetVec mRootSets;
     };

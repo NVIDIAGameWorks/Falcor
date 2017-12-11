@@ -40,7 +40,7 @@ namespace Falcor
     void bindConstantBuffers(CopyContext* pContext, const ProgramVars::ResourceMap<ConstantBuffer>& cbMap, const ProgramVars::RootSetVec& rootSets, bool forceBind);
     ProgramReflection::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type);
 
-    RootData findRootData(const RootSignature* pRootSig, uint32_t regIndex, uint32_t regSpace, RootSignature::DescType descType)
+    ProgramVars::RootData findRootData(const RootSignature* pRootSig, uint32_t regIndex, uint32_t regSpace, RootSignature::DescType descType)
     {
         // Search the descriptor-tables
         for (size_t i = 0; i < pRootSig->getDescriptorSetCount(); i++)
@@ -53,13 +53,13 @@ namespace Falcor
                 {
                     if (range.baseRegIndex == regIndex)
                     {
-                        return RootData((uint32_t)i, r);
+                        return ProgramVars::RootData((uint32_t)i, r);
                     }
                 }
             }
         }
         should_not_get_here();
-        return RootData();
+        return ProgramVars::RootData();
     }
 
     template<typename BufferType, typename ViewType, RootSignature::DescType descType, typename ViewInitFunc>
@@ -75,7 +75,7 @@ namespace Falcor
                 uint32_t regIndex = pReflector->getRegisterIndex();
                 uint32_t regSpace = pReflector->getRegisterSpace();
                 uint32_t arraySize = max(1u, pReflector->getArraySize());
-                ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
+                ProgramVars::ResourceData<ViewType> data(findRootData(pRootSig, regIndex, regSpace, descType));
                 if (data.rootData.rootIndex == -1)
                 {
                     logError("Can't find a root-signature information matching buffer '" + pReflector->getName() + " when creating ProgramVars");
@@ -315,7 +315,7 @@ namespace Falcor
 
     void setResourceSrvUavCommon(const ProgramReflection::Resource* pDesc, uint32_t arrayIndex, const Resource::SharedPtr& resource, ProgramVars::ResourceMap<ShaderResourceView>& assignedSrvs, ProgramVars::ResourceMap<UnorderedAccessView>& assignedUavs, std::vector<ProgramVars::RootSet>& rootSets)
     {
-		arrayIndex += pDesc->descOffset;
+        arrayIndex += pDesc->descOffset;
         setResourceSrvUavCommon({ pDesc->regSpace, pDesc->regIndex }, arrayIndex, pDesc->shaderAccess, resource, assignedSrvs, assignedUavs, rootSets);
     }
 
@@ -531,9 +531,9 @@ namespace Falcor
     bool ProgramVars::setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
         auto& it = mAssignedSamplers.at({regSpace, baseRegIndex})[arrayIndex];
-        if (it.pSampler != pSampler)
+        if (it.pResource != pSampler)
         {
-            it.pSampler = pSampler;
+            it.pResource = pSampler;
             mRootSets[it.rootData.rootIndex].pDescSet = nullptr;
         }
         return true;
@@ -572,7 +572,7 @@ namespace Falcor
             return nullptr;
         }
 
-        return it->second[arrayIndex].pSampler;
+        return it->second[arrayIndex].pResource;
     }
 
     ShaderResourceView::SharedPtr ProgramVars::getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
@@ -684,7 +684,7 @@ namespace Falcor
         return true;
     }
 
-    void bindSamplers(const ProgramVars::ResourceMap<Sampler>& samplers, const ProgramVars::RootSetVec& rootSets)
+    void bindSamplers(const ProgramVars::ResourceMap<Sampler, Sampler>& samplers, const ProgramVars::RootSetVec& rootSets)
     {
         // Bind the samplers
         for (auto& samplerIt : samplers)
@@ -695,7 +695,7 @@ namespace Falcor
             {
                 for(uint32_t i = 0 ; i < samplerVec.size() ; i++)
                 {
-                    const Sampler* pSampler = samplerVec[i].pSampler.get();
+                    const Sampler* pSampler = samplerVec[i].pResource.get();
                     if (pSampler == nullptr)
                     {
                         pSampler = Sampler::getDefault().get();
