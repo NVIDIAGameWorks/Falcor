@@ -237,36 +237,36 @@ namespace Falcor
             logWarning("Constant buffer \"" + name + "\" was not found. Ignoring getConstantBuffer() call.");
             return nullptr;
         }
-        return getConstantBuffer(binding.setIndex, binding.rangeIndex, arrayIndex);
+        return getConstantBuffer(binding, arrayIndex);
     }
 
-    bool ParameterBlock::checkResourceIndices(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, DescriptorSet::Type type, const std::string& funcName) const
+    bool ParameterBlock::checkResourceIndices(const BindLocation& bindLocation, uint32_t arrayIndex, DescriptorSet::Type type, const std::string& funcName) const
     {
         bool OK = true;
 #if _LOG_ENABLED
-        OK = OK && setIndex < mAssignedResources.size();
-        OK = OK && rangeIndex < mAssignedResources[setIndex].size();
-        OK = OK && arrayIndex < mAssignedResources[setIndex][rangeIndex].size();
-        OK = OK && ((mAssignedResources[setIndex][rangeIndex][arrayIndex].type == type) || (type == DescriptorSet::Type::Count));
+        OK = OK && bindLocation.setIndex < mAssignedResources.size();
+        OK = OK && bindLocation.rangeIndex < mAssignedResources[bindLocation.setIndex].size();
+        OK = OK && arrayIndex < mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex].size();
+        OK = OK && ((mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].type == type) || (type == DescriptorSet::Type::Count));
         if (!OK)
         {
-            logWarning("Can't find resource at set index " + std::to_string(setIndex) + ", range index " + std::to_string(rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring " + funcName + " call");
+            logWarning("Can't find resource at set index " + std::to_string(bindLocation.setIndex) + ", range index " + std::to_string(bindLocation.rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring " + funcName + " call");
         }
 #endif
         return OK;
     }
 
-    ConstantBuffer::SharedPtr ParameterBlock::getConstantBuffer(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const
+    ConstantBuffer::SharedPtr ParameterBlock::getConstantBuffer(const BindLocation& bindLocation, uint32_t arrayIndex) const
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Cbv, "getConstantBuffer") == false) return nullptr;
-        return std::static_pointer_cast<ConstantBuffer>(mAssignedResources[setIndex][rangeIndex][arrayIndex].pResource);
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Cbv, "getConstantBuffer") == false) return nullptr;
+        return std::static_pointer_cast<ConstantBuffer>(mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pResource);
     }
 
-    bool ParameterBlock::setConstantBuffer(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB)
+    bool ParameterBlock::setConstantBuffer(const BindLocation& bindLocation, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB)
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Cbv, "setConstantBuffer") == false) return false;
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Cbv, "setConstantBuffer") == false) return false;
 
-        auto& res = mAssignedResources[setIndex][rangeIndex][arrayIndex];
+        auto& res = mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex];
 #if _LOG_ENABLED
         if (res.requiredSize > pCB->getSize())
         {
@@ -275,7 +275,7 @@ namespace Falcor
         }
 #endif
         res.pResource = pCB;
-        mRootSets[setIndex].pSet = nullptr;
+        mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
     }
 
@@ -290,7 +290,7 @@ namespace Falcor
             logWarning("Constant buffer \"" + name + "\" was not found. Ignoring setConstantBuffer() call.");
             return false;
         }
-        return setConstantBuffer(loc.setIndex, loc.rangeIndex, arrayIndex, pCB);
+        return setConstantBuffer(loc, arrayIndex, pCB);
     }
 
     static DescriptorSet::Type getSetTypeFromVar(const ReflectionVar::SharedConstPtr& pVar, DescriptorSet::Type srvType, DescriptorSet::Type uavType)
@@ -313,7 +313,7 @@ namespace Falcor
         while (parseArrayIndex(name, name, index)) {};
 
         ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
-        if (checkResourceIndices(bindLoc.setIndex, bindLoc.rangeIndex, descOffset, type, funcName) == false) return;
+        if (checkResourceIndices(bindLoc, descOffset, type, funcName) == false) return;
         auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
         desc.pResource = pResource;
 
@@ -339,7 +339,7 @@ namespace Falcor
     typename ResourceType::SharedPtr ParameterBlock::getResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const std::string& funcName) const
     {
         ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
-        if (checkResourceIndices(bindLoc.setIndex, bindLoc.rangeIndex, descOffset, type, funcName) == false) return nullptr;
+        if (checkResourceIndices(bindLoc, descOffset, type, funcName) == false) return nullptr;
         auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
         return std::dynamic_pointer_cast<ResourceType>(desc.pResource);
     }
@@ -440,11 +440,11 @@ namespace Falcor
         return getResourceSrvUavCommon<StructuredBuffer>(name, pVar->getDescOffset(), type, "getTypedBuffer()");
     }
 
-    bool ParameterBlock::setSampler(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
+    bool ParameterBlock::setSampler(const BindLocation& bindLocation, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Sampler, "setSampler()") == false) return false;
-        mAssignedResources[setIndex][rangeIndex][arrayIndex].pSampler = pSampler ? pSampler : Sampler::getDefault();
-        mRootSets[setIndex].pSet = nullptr;
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Sampler, "setSampler()") == false) return false;
+        mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pSampler = pSampler ? pSampler : Sampler::getDefault();
+        mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
     }
 
@@ -458,7 +458,7 @@ namespace Falcor
         }
 #endif
         ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(name);
-        return setSampler(bind.setIndex, bind.rangeIndex, pVar->getDescOffset(), pSampler);
+        return setSampler(bind, pVar->getDescOffset(), pSampler);
     }
 
     Sampler::SharedPtr ParameterBlock::getSampler(const std::string& name) const
@@ -471,25 +471,25 @@ namespace Falcor
         }
 #endif
         ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(name);
-        return getSampler(bind.setIndex, bind.rangeIndex, pVar->getDescOffset());
+        return getSampler(bind, pVar->getDescOffset());
     }
 
-    Sampler::SharedPtr ParameterBlock::getSampler(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const
+    Sampler::SharedPtr ParameterBlock::getSampler(const BindLocation& bindLocation, uint32_t arrayIndex) const
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Sampler, "getSampler()") == false) return nullptr;
-        return mAssignedResources[setIndex][rangeIndex][arrayIndex].pSampler;
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Sampler, "getSampler()") == false) return nullptr;
+        return mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pSampler;
     }
 
-    ShaderResourceView::SharedPtr ParameterBlock::getSrv(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const
+    ShaderResourceView::SharedPtr ParameterBlock::getSrv(const BindLocation& bindLocation, uint32_t arrayIndex) const
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Sampler, "getSrv()") == false) return nullptr;
-        return mAssignedResources[setIndex][rangeIndex][arrayIndex].pSRV;
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Sampler, "getSrv()") == false) return nullptr;
+        return mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pSRV;
     }
 
-    UnorderedAccessView::SharedPtr ParameterBlock::getUav(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const
+    UnorderedAccessView::SharedPtr ParameterBlock::getUav(const BindLocation& bindLocation, uint32_t arrayIndex) const
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Sampler, "getUav()") == false) return nullptr;
-        return mAssignedResources[setIndex][rangeIndex][arrayIndex].pUAV;
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Sampler, "getUav()") == false) return nullptr;
+        return mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pUAV;
     }
 
     bool ParameterBlock::setTexture(const std::string& name, const Texture::SharedPtr& pTexture)
@@ -527,37 +527,37 @@ namespace Falcor
         return (pView) ? const_cast<Resource*>(pView->getResource())->shared_from_this() : nullptr;
     }
 
-    bool ParameterBlock::setSrv(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv)
+    bool ParameterBlock::setSrv(const BindLocation& bindLocation, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv)
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Count, "setSrv()") == false) return false;
-        auto& desc = mAssignedResources[setIndex][rangeIndex][arrayIndex];
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Count, "setSrv()") == false) return false;
+        auto& desc = mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex];
 #if _LOG_ENABLED
         if (desc.pSRV == nullptr)
         {
-            logWarning("Can't find SRV with set index " + std::to_string(setIndex) + ", range index " + std::to_string(rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring setSrv() call");
+            logWarning("Can't find SRV with set index " + std::to_string(bindLocation.setIndex) + ", range index " + std::to_string(bindLocation.rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring setSrv() call");
             return false;
         }
 #endif
         desc.pSRV = pSrv ? pSrv : ShaderResourceView::getNullView();
         desc.pResource = getResourceFromView(pSrv.get());
-        mRootSets[setIndex].pSet = nullptr;
+        mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
     }
 
-    bool ParameterBlock::setUav(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav)
+    bool ParameterBlock::setUav(const BindLocation& bindLocation, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav)
     {
-        if (checkResourceIndices(setIndex, rangeIndex, arrayIndex, DescriptorSet::Type::Count, "setUav()") == false) return false;
-        auto& desc = mAssignedResources[setIndex][rangeIndex][arrayIndex];
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Count, "setUav()") == false) return false;
+        auto& desc = mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex];
 #if _LOG_ENABLED
         if (desc.pUAV == nullptr)
         {
-            logWarning("Can't find UAV with set index " + std::to_string(setIndex) + ", range index " + std::to_string(rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring setUav() call");
+            logWarning("Can't find UAV with set index " + std::to_string(bindLocation.setIndex) + ", range index " + std::to_string(bindLocation.rangeIndex) + ", array index " + std::to_string(arrayIndex) + ". Ignoring setUav() call");
             return false;
         }
 #endif
         desc.pUAV = pUav ? pUav : UnorderedAccessView::getNullView();
         desc.pResource = getResourceFromView(pUav.get());
-        mRootSets[setIndex].pSet = nullptr;
+        mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
     }
     

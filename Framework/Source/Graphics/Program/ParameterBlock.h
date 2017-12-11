@@ -53,6 +53,8 @@ namespace Falcor
         using SharedConstPtr = SharedPtrT<const ParameterBlock>;
         ~ParameterBlock();
 
+        using BindLocation = ParameterBlockReflection::BindLocation;
+
         /** Create a new object
         */
         static SharedPtr create(const ParameterBlockReflection::SharedConstPtr& pReflection, const RootSignature* pRootSig, bool createBuffers);
@@ -74,7 +76,7 @@ namespace Falcor
         \param[in] pCB The constant buffer object
         \return false is the call failed, otherwise true
         */
-        bool setConstantBuffer(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB);
+        bool setConstantBuffer(const BindLocation& bindLocation, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB);
 
         /** Get a constant buffer object.
         \param[in] name The name of the buffer
@@ -87,7 +89,7 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \return If the indices is valid, a shared pointer to the buffer. Otherwise returns nullptr
         */
-        ConstantBuffer::SharedPtr getConstantBuffer(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const;
+        ConstantBuffer::SharedPtr getConstantBuffer(const BindLocation& bindLocation, uint32_t arrayIndex) const;
 
         /** Set a raw-buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
         \param[in] name The name of the buffer
@@ -142,28 +144,28 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \param[in] pSrv The shader-resource-view object to bind
         */
-        bool setSrv(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv);
+        bool setSrv(const BindLocation& bindLocation, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv);
 
         /** Bind a UAV.
         \param[in] setIndex The set-index in the block
         \param[in] descIndex The descriptor index inside the set
         \param[in] pSrv The unordered-access-view object to bind
         */
-        bool setUav(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav);
+        bool setUav(const BindLocation& bindLocation, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav);
 
         /** Get an SRV object.
         \param[in] setIndex The set-index in the block
         \param[in] descIndex The descriptor index inside the set
         \return If the indices is valid, a shared pointer to the SRV. Otherwise returns nullptr
         */
-        ShaderResourceView::SharedPtr getSrv(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const;
+        ShaderResourceView::SharedPtr getSrv(const BindLocation& bindLocation, uint32_t arrayIndex) const;
 
         /** Get a UAV object
         \param[in] setIndex The set-index in the block
         \param[in] descIndex The descriptor index inside the set
         \return If the index is valid, a shared pointer to the UAV. Otherwise returns nullptr
         */
-        UnorderedAccessView::SharedPtr getUav(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const;
+        UnorderedAccessView::SharedPtr getUav(const BindLocation& bindLocation, uint32_t arrayIndex) const;
 
         /** Bind a sampler to the program in the global namespace.
         \param[in] name The name of the sampler object in the shader
@@ -177,7 +179,7 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \return false if the sampler was not found in the program, otherwise true
         */
-        bool setSampler(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler);
+        bool setSampler(const BindLocation& bindLocation, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler);
 
         /** Gets a sampler object.
         \return If the index is valid, a shared pointer to the sampler. Otherwise returns nullptr
@@ -189,7 +191,7 @@ namespace Falcor
         \param[in] descIndex The descriptor index inside the set
         \return If the index is valid, a shared pointer to the sampler. Otherwise returns nullptr
         */
-        Sampler::SharedPtr getSampler(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex) const;
+        Sampler::SharedPtr getSampler(const BindLocation& bindLocation, uint32_t arrayIndex) const;
 
         /** Get the program reflection interface
         */
@@ -235,7 +237,7 @@ namespace Falcor
         using ResourceVec = std::vector<AssignedResource>;
         using SetResourceVec = std::vector<ResourceVec>;
         std::vector<SetResourceVec> mAssignedResources;
-        bool checkResourceIndices(uint32_t setIndex, uint32_t rangeIndex, uint32_t arrayIndex, DescriptorSet::Type type, const std::string& funcName) const;
+        bool checkResourceIndices(const BindLocation& bindLocation, uint32_t arrayIndex, DescriptorSet::Type type, const std::string& funcName) const;
 
         std::vector<RootSet> mRootSets;
         void setResourceSrvUavCommon(std::string name, uint32_t descOffset, DescriptorSet::Type type, const Resource::SharedPtr& pResource, const std::string& funcName);

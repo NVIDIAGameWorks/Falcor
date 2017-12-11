@@ -107,12 +107,12 @@ namespace Falcor
 
     ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
     {
-        return mParameterBlocks[0].pBlock->getConstantBuffer(regSpace, baseRegIndex, arrayIndex);
+        return mParameterBlocks[0].pBlock->getConstantBuffer({ regSpace, baseRegIndex }, arrayIndex);
     }
 
     bool ProgramVars::setConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB)
     {
-        return mParameterBlocks[0].pBlock->setConstantBuffer(regSpace, baseRegIndex, arrayIndex, pCB);
+        return mParameterBlocks[0].pBlock->setConstantBuffer({ regSpace, baseRegIndex }, arrayIndex, pCB);
     }
 
     bool ProgramVars::setConstantBuffer(const std::string& name, const ConstantBuffer::SharedPtr& pCB)
@@ -152,7 +152,7 @@ namespace Falcor
 
     bool ProgramVars::setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
-        return mParameterBlocks[0].pBlock->setSampler(regSpace, baseRegIndex, arrayIndex, pSampler);
+        return mParameterBlocks[0].pBlock->setSampler({ regSpace, baseRegIndex }, arrayIndex, pSampler);
     }
 
     bool ProgramVars::setSampler(const std::string& name, const Sampler::SharedPtr& pSampler)
@@ -167,17 +167,17 @@ namespace Falcor
 
     Sampler::SharedPtr ProgramVars::getSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
     {
-        return mParameterBlocks[0].pBlock->getSampler(regSpace, baseRegIndex, arrayIndex);
+        return mParameterBlocks[0].pBlock->getSampler({ regSpace, baseRegIndex }, arrayIndex);
     }
 
     ShaderResourceView::SharedPtr ProgramVars::getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
     {
-        return mParameterBlocks[0].pBlock->getSrv(regSpace, baseRegIndex, arrayIndex);
+        return mParameterBlocks[0].pBlock->getSrv({ regSpace, baseRegIndex }, arrayIndex);
     }
 
     UnorderedAccessView::SharedPtr ProgramVars::getUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
     {
-        return mParameterBlocks[0].pBlock->getUav(regSpace, baseRegIndex, arrayIndex);
+        return mParameterBlocks[0].pBlock->getUav({ regSpace, baseRegIndex }, arrayIndex);
     }
 
     bool ProgramVars::setTexture(const std::string& name, const Texture::SharedPtr& pTexture)
@@ -192,12 +192,12 @@ namespace Falcor
 
     bool ProgramVars::setSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv)
     {
-        return mParameterBlocks[0].pBlock->setSrv(regSpace, baseRegIndex, arrayIndex, pSrv);
+        return mParameterBlocks[0].pBlock->setSrv({ regSpace, baseRegIndex }, arrayIndex, pSrv);
     }
 
     bool ProgramVars::setUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav)
     {
-        return mParameterBlocks[0].pBlock->setUav(regSpace, baseRegIndex, arrayIndex, pUav);
+        return mParameterBlocks[0].pBlock->setUav({ regSpace, baseRegIndex }, arrayIndex, pUav);
     }
 
     template<bool forGraphics>
