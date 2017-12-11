@@ -244,5 +244,18 @@ namespace Falcor
         return cvt.to_bytes(codepoint);
     }
 
+    /** Combine command line args to a single string
+    */
+    inline std::string concatCommandLine(uint32_t argc, char** argv)
+    {
+        std::string s;
+        for (uint32_t i = 0; i < argc; i++)
+        {
+            s += std::string(argv[i]) + ((i < argc - 1) ? " " : "");
+        }
+
+        return s;
+    }
+
     /*! @} */
 };

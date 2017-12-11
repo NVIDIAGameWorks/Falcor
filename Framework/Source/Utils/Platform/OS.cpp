@@ -28,7 +28,6 @@
 #include "Framework.h"
 #include "Utils/Platform/OS.h"
 #include "Utils/StringUtils.h"
-#include <gtk/gtk.h>
 #include <fstream>
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;

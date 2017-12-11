@@ -124,7 +124,7 @@ void ComputeShader::onInitializeTesting()
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else
-int main()
+int main(int argc, char** argv)
 #endif
 {
     ComputeShader sample;
@@ -132,6 +132,10 @@ int main()
     config.windowDesc.title = "Falcor Project Template";
     config.windowDesc.resizableWindow = true;
     config.deviceDesc.depthFormat = ResourceFormat::Unknown;
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
     return 0;
 }

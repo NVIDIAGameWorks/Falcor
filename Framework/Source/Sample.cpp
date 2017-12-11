@@ -35,9 +35,9 @@
 #include "API/FBO.h"
 #include "VR/OpenVR/VRSystem.h"
 #include "Utils/Platform/ProgressBar.h"
+#include "Utils/StringUtils.h"
 #include <sstream>
 #include <iomanip>
-#include "gtk/gtk.h"
 
 namespace Falcor
 {
@@ -167,7 +167,7 @@ namespace Falcor
         gpDevice.reset();
     }
 
-    void Sample::run(const SampleConfig& config)
+    void Sample::run(const SampleConfig& config, uint32_t argc, char** argv)
     {
         mTimeScale = config.timeScale;
         mFixedTimeDelta = config.fixedTimeDelta;
@@ -236,8 +236,15 @@ namespace Falcor
         // Set the icon
         setWindowIcon("Framework\\Nvidia.ico", mpWindow->getApiHandle());
 
-        mArgList.parseCommandLine(GetCommandLineA());
+        if (argc == 0 || argv == nullptr)
+        {
+            mArgList.parseCommandLine(GetCommandLineA());
+        }
+        else
 #endif
+        {
+            mArgList.parseCommandLine(concatCommandLine(argc, argv));
+        }
 
         // Load and run
         onLoad();

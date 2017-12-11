@@ -382,7 +382,7 @@ void SimpleDeferred::onEndTestFrame()
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else
-int main()
+int main(int argc, char** argv)
 #endif
 {
     SimpleDeferred sample;
@@ -391,6 +391,10 @@ int main()
     config.windowDesc.height = 720;
     config.windowDesc.resizableWindow = true;
     config.windowDesc.title = "Simple Deferred";
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
     return 0;
 }

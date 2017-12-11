@@ -83,9 +83,14 @@ namespace Falcor
         Sample& operator=(const Sample&) = delete;
 
         /** Entry-point to Sample. User should call this to start processing.
+            On Windows, command line args will be retrieved and parsed even if not passed through this function.
+            On Linux, this function is the only way to feed the sample command line args.
+
             \param[in] config Requested sample configuration
+            \param[in] argc Optional. Number of command line arguments
+            \param[in] argv Optional. Array of command line arguments
         */
-        virtual void run(const SampleConfig& config);
+        virtual void run(const SampleConfig& config, uint32_t argc = 0, char** argv = nullptr);
 
     protected:
         // Callbacks
