@@ -92,8 +92,9 @@ namespace Falcor
 
         if (gBindLocations.inputSrv.rangeIndex == ProgramReflection::BindLocation::kInvalidLocation)
         {
-            gBindLocations.inputSrv = mpFirstIterProg->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("gInputTex");
-            gBindLocations.sampler = mpFirstIterProg->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("gSampler");
+            const auto& pDefaultBlock = mpFirstIterProg->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock();
+            gBindLocations.inputSrv = pDefaultBlock->getResourceBinding("gInputTex");
+            gBindLocations.sampler = pDefaultBlock->getResourceBinding("gSampler");
         }
     }
 
@@ -105,8 +106,9 @@ namespace Falcor
     void runProgram(RenderContext* pRenderCtx, Texture::SharedPtr pInput, const FullScreenPass* pProgram, Fbo::SharedPtr pDst, GraphicsVars::SharedPtr pVars, Sampler::SharedPtr pPointSampler)
     {
         GraphicsState::SharedPtr pState = pRenderCtx->getGraphicsState();
-        pVars->setSrv(gBindLocations.inputSrv.setIndex, gBindLocations.inputSrv.rangeIndex, 0, pInput->getSRV());
-        pVars->setSampler(gBindLocations.sampler.setIndex, gBindLocations.sampler.rangeIndex, 0, pPointSampler);
+        auto pDefaultBlock = pVars->getDefaultBlock().get();
+        pDefaultBlock->setSrv(gBindLocations.inputSrv, 0, pInput->getSRV());
+        pDefaultBlock->setSampler(gBindLocations.sampler, 0, pPointSampler);
 
         //Set draw params
         pState->pushFbo(pDst);

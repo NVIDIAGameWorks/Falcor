@@ -115,7 +115,7 @@ void Particles::CreateSystemGui()
                     mGuiData.mMaxEmitPerFrame, kConstColorPs, ParticleSystem::kDefaultSimulateShader, mGuiData.mSortSystem);
                 mpParticleSystems.push_back(pSys);
                 mPsData.push_back(vec4(0.f, 0.f, 0.f, 1.f));
-                mpParticleSystems[mpParticleSystems.size() - 1]->getDrawVars()->getConstantBuffer("PsPerFrame")->setBlob(&mPsData[mPsData.size() - 1].colorData.color1, 0, sizeof(vec4));
+                mpParticleSystems[mpParticleSystems.size() - 1]->getDrawVars()->getDefaultBlock()->getConstantBuffer("PsPerFrame")->setBlob(&mPsData[mPsData.size() - 1].colorData.color1, 0, sizeof(vec4));
                 break;
             }
             case ExamplePixelShaders::ColorInterp:
@@ -129,7 +129,7 @@ void Particles::CreateSystemGui()
                 perFrame.color2 = vec4(0.f, 0.f, 1.f, 1.f);
                 perFrame.colorT2 = 0.f;
                 mPsData.push_back(perFrame);
-                mpParticleSystems[mpParticleSystems.size() - 1]->getDrawVars()->getConstantBuffer("PsPerFrame")->setBlob(&mPsData[mPsData.size() - 1].colorData, 0, sizeof(ColorInterpPsPerFrame));
+                mpParticleSystems[mpParticleSystems.size() - 1]->getDrawVars()->getDefaultBlock()->getConstantBuffer("PsPerFrame")->setBlob(&mPsData[mPsData.size() - 1].colorData, 0, sizeof(ColorInterpPsPerFrame));
                 break;
             }
             case ExamplePixelShaders::Textured:
@@ -143,8 +143,7 @@ void Particles::CreateSystemGui()
                 perFrame.color2 = vec4(1.f, 1.f, 1.f, 0.1f);
                 perFrame.colorT2 = 0.f;
                 mPsData.push_back(PixelShaderData(0, perFrame));
-                const auto& loc = pSys->getDrawVars()->getReflection()->getResourceBinding("gTex");
-                pSys->getDrawVars()->setSrv(loc.setIndex, loc.rangeIndex, 0, mpTextures[0]->getSRV());
+                pSys->getDrawVars()->setTexture("gTex", mpTextures[0]);
                 mpParticleSystems[mpParticleSystems.size() - 1]->getDrawVars()->getConstantBuffer("PsPerFrame")->setBlob(&mPsData[mPsData.size() - 1].colorData, 0, sizeof(ColorInterpPsPerFrame));
                 break;
             }
@@ -204,8 +203,7 @@ void Particles::EditPropertiesGui()
             uint32_t texIndex = mPsData[mGuiData.mSystemIndex].texIndex;
             if (mpGui->addDropdown("Texture", mGuiData.mTexDropdown, texIndex))
             {
-                const auto& loc = mpParticleSystems[mGuiData.mSystemIndex]->getDrawVars()->getReflection()->getResourceBinding("gTex");
-                mpParticleSystems[mGuiData.mSystemIndex]->getDrawVars()->setSrv(loc.setIndex, loc.rangeIndex, 0, mpTextures[texIndex]->getSRV());
+                mpParticleSystems[mGuiData.mSystemIndex]->getDrawVars()->setTexture("gTex", mpTextures[texIndex]);
                 mPsData[mGuiData.mSystemIndex].texIndex = texIndex;
             }
 

@@ -332,7 +332,7 @@ namespace Falcor
 
         // Now set the textures
         std::string resourceName = std::string(varName) + ".textures.layers";
-        const auto binding = pVars->getReflection()->getResourceBinding(resourceName);
+        const auto binding = pVars->getReflection()->getDefaultParameterBlock()->getResourceBinding(resourceName);
         if (binding.setIndex == ParameterBlockReflection::BindLocation::kInvalidLocation)
         {
             logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
@@ -340,17 +340,18 @@ namespace Falcor
         }
 
         // Bind the layers (they are an array)
+        ParameterBlock* pDefaultBlock = pVars->getDefaultBlock().get();
         for (uint32_t i = 0; i < MatMaxLayers; i++)
         {
             const auto& pSrv = (mData.textures.layers[i] != nullptr) ? mData.textures.layers[i]->getSRV() : nullptr;
-            pVars->setSrv(binding.setIndex, binding.rangeIndex, i, pSrv);
+            pDefaultBlock->setSrv(binding, i, pSrv);
         }
 
-        pVars->setTexture(std::string(varName) + ".textures.normalMap", mData.textures.normalMap);
-        pVars->setTexture(std::string(varName) + ".textures.ambientMap", mData.textures.ambientMap);
-        pVars->setTexture(std::string(varName) + ".textures.alphaMap", mData.textures.alphaMap);
-        pVars->setTexture(std::string(varName) + ".textures.heightMap", mData.textures.heightMap);
-        pVars->setSampler(std::string(varName) + ".samplerState", mData.samplerState);
+        pDefaultBlock->setTexture(std::string(varName) + ".textures.normalMap", mData.textures.normalMap);
+        pDefaultBlock->setTexture(std::string(varName) + ".textures.ambientMap", mData.textures.ambientMap);
+        pDefaultBlock->setTexture(std::string(varName) + ".textures.alphaMap", mData.textures.alphaMap);
+        pDefaultBlock->setTexture(std::string(varName) + ".textures.heightMap", mData.textures.heightMap);
+        pDefaultBlock->setSampler(std::string(varName) + ".samplerState", mData.samplerState);
     }
 
     bool Material::operator==(const Material& other) const

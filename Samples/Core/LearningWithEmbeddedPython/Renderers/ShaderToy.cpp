@@ -58,7 +58,7 @@ void ShaderToyRenderer::onInitialize(RenderContext::SharedPtr)
     mpToyVars = GraphicsVars::create(mpMainPass->getProgram()->getActiveVersion()->getReflector());
 
     // Get buffer finding
-    mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getResourceBinding("ToyCB");
+    mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock()->getResourceBinding("ToyCB");
 
     // Create a text renderer
     mTextRender = TextRenderer::create();
@@ -74,11 +74,12 @@ void ShaderToyRenderer::onFrameRender(RenderContext::SharedPtr pContext, Fbo::Sh
     // iResolution
     float width = (float)pTargetFbo->getWidth();
     float height = (float)pTargetFbo->getHeight();
-    mpToyVars->getConstantBuffer(mToyCBBinding.setIndex, mToyCBBinding.rangeIndex, 0)["iResolution"] = glm::vec2(width, height);
+    ParameterBlock* pDefaultBlock = mpToyVars->getDefaultBlock().get();
+    pDefaultBlock->getConstantBuffer(mToyCBBinding, 0)["iResolution"] = glm::vec2(width, height);
 
     // iGlobalTime
     float iGlobalTime = (float)mCurrentTime;
-    mpToyVars->getConstantBuffer(mToyCBBinding.setIndex, mToyCBBinding.rangeIndex, 0)["iGlobalTime"] = iGlobalTime;
+    pDefaultBlock->getConstantBuffer(mToyCBBinding, 0)["iGlobalTime"] = iGlobalTime;
 
     // run final pass
     pContext->setGraphicsVars(mpToyVars);

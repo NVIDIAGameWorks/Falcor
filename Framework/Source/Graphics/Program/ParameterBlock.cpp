@@ -206,7 +206,7 @@ namespace Falcor
         }
     }
 
-    static const ProgramReflection::ResourceBinding getBufferBindLocation(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex, ReflectionResourceType::Type bufferType)
+    static const ProgramReflection::BindLocation getBufferBindLocation(const ParameterBlockReflection* pReflector, const std::string& name, uint32_t& arrayIndex, ReflectionResourceType::Type bufferType)
     {
         // #PARAMBLOCK handle non-global blocks
         const ReflectionVar* pVar = nullptr;
@@ -215,12 +215,12 @@ namespace Falcor
         if (pVar == nullptr)
         {
             logWarning("Couldn't find a " + to_string(bufferType) + " named " + name);
-            return ProgramReflection::ResourceBinding();
+            return ProgramReflection::BindLocation();
         }
         else if (pVar->getType()->unwrapArray()->asResourceType()->getType() != bufferType)
         {
             logWarning("Found a variable named '" + name + "' but it is not a " + to_string(bufferType));
-            return ProgramReflection::ResourceBinding();
+            return ProgramReflection::BindLocation();
         }
 
         // #PARAMBLOCK Handle arrays

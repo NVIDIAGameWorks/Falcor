@@ -372,12 +372,20 @@ namespace Falcor
 
         uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
         bool isSampleFrequency() const { return mIsSampleFrequency; }
-        using ResourceBinding = ParameterBlockReflection::BindLocation;
 
-        ResourceBinding getResourceBinding(const std::string& name) const;
+        const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
         const ShaderVariable* getVertexAttributeBySemantic(const std::string& semantic) const;
         const ShaderVariable* getVertexAttribute(const std::string& name) const;
         const ShaderVariable* getPixelShaderOutput(const std::string& name) const;
+
+        enum class BindType
+        {
+            Cbv,
+            Srv,
+            Uav,
+            Sampler,
+        };
+        const ParameterBlockReflection::BindLocation translateRegisterIndicesToBindLocation(uint32_t regSpace, uint32_t baseRegIndex, BindType type) const { return mResourceBindMap.at({regSpace, baseRegIndex, type}); }
 
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
@@ -392,6 +400,28 @@ namespace Falcor
         VariableMap mPsOut;
         VariableMap mVertAttr;
         VariableMap mVertAttrBySemantic;
+
+        struct ResourceBinding
+        {
+            static const uint32_t kInvalidLocation = -1;
+            uint32_t regSpace;
+            uint32_t regIndex;
+            BindType type;
+            bool operator==(const ResourceBinding& other) const { return (regIndex == other.regIndex) && (regSpace == other.regSpace) && (type == other.type); }
+        };
+
+        struct ResourceBindingHash
+        {
+            std::size_t operator()(const ResourceBinding& d) const
+            {
+                std::hash<uint32_t> u32hash;
+                size_t h = u32hash(d.regSpace) | ((u32hash(d.regIndex)) << 1);
+                h |= u32hash((uint32_t)d.type) > 1;
+                return h;
+            }
+        };
+
+        std::unordered_map<ResourceBinding, ParameterBlockReflection::BindLocation, ResourceBindingHash> mResourceBindMap;
     };
 
     inline const std::string to_string(ReflectionBasicType::Type type)
