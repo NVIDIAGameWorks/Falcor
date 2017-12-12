@@ -1,5 +1,5 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
-SAMPLE_CONFIG:=Release
+SAMPLE_CONFIG:=Debug
 
 All : FeatureDemo AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
@@ -153,10 +153,10 @@ define MoveProjectData
 endef
 
 # Builds Falcor library in Release
-Release : ReleaseConfig $(OUT_DIR)libfalcor.a
+Release : PreBuild ReleaseConfig $(OUT_DIR)libfalcor.a
 
 # Builds Falcor library in Debug
-Debug : DebugConfig $(OUT_DIR)libfalcor.a
+Debug : PreBuild DebugConfig $(OUT_DIR)libfalcor.a
 
 # Creates the lib
 $(OUT_DIR)libfalcor.a : $(ALL_OBJ_FILES) $(SOURCE_DIR)API/Vulkan/VKGraphicsStateObject.o
@@ -180,6 +180,10 @@ DebugConfig :
 .PHONY : ReleaseConfig
 ReleaseConfig :
 	$(eval CXXFLAGS=$(INCLUDES) $(RELEASE_FLAGS) $(RELEASE_DEFINES) $(COMMON_FLAGS) $(COMMON_DEFINES))
+
+.PHONY : PreBuild
+PreBuild :
+	$(shell ./update_dependencies.sh >&2)
 
 .PHONY : clean
 clean :
