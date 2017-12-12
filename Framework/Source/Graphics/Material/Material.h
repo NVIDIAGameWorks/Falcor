@@ -299,7 +299,7 @@ namespace Falcor
 
         /** Set the sampler used when rendering this material.
         */
-        void setSampler(const Sampler::SharedPtr& pSampler) { mData.samplerState = pSampler; }
+        void setSampler(const Sampler::SharedPtr& pSampler);
 
         /** Get this material's sampler.
         */

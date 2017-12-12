@@ -27,11 +27,14 @@ def get_executable_directory(configuration):
 
 
 # Build the Solution.
-def build_solution(relative_solution_filepath, configuration):
+def build_solution(relative_solution_filepath, configuration, rebuild):
 
     try:
         # Build the Batch Args.
-        batch_args = [machine_configs.machine_build_script, "rebuild", relative_solution_filepath, configuration.lower()]
+        buildType = "build"
+        if rebuild:
+            buildType = "rebuild"
+        batch_args = [machine_configs.machine_build_script, buildType, relative_solution_filepath, configuration.lower()]
 
         # Build Solution.
         if subprocess.call(batch_args) == 0:
@@ -80,7 +83,7 @@ def run_test_run(executable_filepath, current_arguments, output_file_base_name, 
 
 
 # Run the tests set..
-def run_tests_set(main_directory, nobuild, json_filepath, results_directory, reference_directory):
+def run_tests_set(main_directory, rebuild, json_filepath, results_directory, reference_directory):
 
     tests_set_run_data = {}
 
@@ -109,15 +112,14 @@ def run_tests_set(main_directory, nobuild, json_filepath, results_directory, ref
     tests_set_run_data['Reference Directory'] = reference_directory + '\\' + tests_set_run_data['Name'] + '\\'
 
     # Build solution unless disabled by command line argument
-    if not nobuild:
-        try:
-            # Try and Build the Solution.
-            build_solution(main_directory + tests_set_run_data['Solution Target'], tests_set_run_data['Configuration Target'])
+    try:
+        # Try and Build the Solution.
+        build_solution(main_directory + tests_set_run_data['Solution Target'], tests_set_run_data['Configuration Target'], rebuild)
 
-        except TestsSetError as tests_set_error:
-            tests_set_run_data['Error'] = tests_set_error.args
-            tests_set_run_data['Success'] = False
-            return tests_set_run_data
+    except TestsSetError as tests_set_error:
+        tests_set_run_data['Error'] = tests_set_error.args
+        tests_set_run_data['Success'] = False
+        return tests_set_run_data
 
     # Absolute path.
     absolutepath = os.path.abspath(os.path.dirname(main_directory))
@@ -304,7 +306,7 @@ def main():
     parser.add_argument('-md', '--main_directory', action='store', help='Specify the path to the top level directory of Falcor. The path in the Tests Set file is assumed to be relative to that.')
 
     # Add the Argument for which configuration.
-    parser.add_argument('-nb', '--no_build', action='store_true', help='Specify whether or not to build the solution.')
+    parser.add_argument('-rb', '--rebuild', action='store_true', help='Specify whether or not to rebuild the solution.')
 
     # Add the Argument for which Tests Set to run.
     parser.add_argument('-ts', '--tests_set', action='store', help='Specify the Tests Set file.')
@@ -317,7 +319,7 @@ def main():
     main_reference_directory = machine_configs.machine_default_checkin_reference_directory
 
     # Run the Test Set.
-    tests_set_data = run_tests_set(args.main_directory, args.no_build, args.tests_set, main_results_directory, main_reference_directory)
+    tests_set_data = run_tests_set(args.main_directory, args.rebuild, args.tests_set, main_results_directory, main_reference_directory)
 
     # Build the Tests Results.
     get_tests_set_results(tests_set_data)

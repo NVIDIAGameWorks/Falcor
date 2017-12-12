@@ -361,6 +361,12 @@ namespace Falcor
         setMaterialIntoBlockCommon(pVars->getDefaultBlock().get(), pCb, offset, std::string(varName) + '.', mData);
     }
 
+    void Material::setSampler(const Sampler::SharedPtr& pSampler)
+    {
+        mData.samplerState = pSampler;
+        mpParamBlock->setSampler("samplerState", pSampler);
+    }
+
     bool Material::operator==(const Material& other) const
     {
         return memcmp(&mData, &other.mData, sizeof(mData)) == 0 && mData.samplerState == other.mData.samplerState;
@@ -453,8 +459,8 @@ namespace Falcor
             normalize();
             updateTextureCount();
             updateDescString();
+            mDescDirty = false; // setIntoParameterBlock() calls finalize(), need to clear the flag
             setIntoParameterBlock(mpParamBlock.get());
-            mDescDirty = false;
         }
     }
 
