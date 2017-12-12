@@ -230,7 +230,7 @@ namespace Falcor
         };
         BlockData mDefaultBlock;
         std::vector<BlockData> mParameterBlocks; // First element is the global block
-        ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBlock, bool createBuffers);
+        ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers);
     };
 
     class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>

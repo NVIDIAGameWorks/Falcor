@@ -109,8 +109,6 @@ namespace Falcor
     RootSignature::Desc getRootDescFromReflector(const ProgramReflection* pReflector)
     {
         RootSignature::Desc d;
-        addParamBlockSets(pReflector->getDefaultParameterBlock().get(), d);
-
         for (uint32_t i = 0; i < pReflector->getParameterBlockCount(); i++)
         {
             addParamBlockSets(pReflector->getParameterBlock(i).get(), d);

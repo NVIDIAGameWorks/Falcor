@@ -66,10 +66,10 @@ namespace Falcor
         return -1;
     }
 
-    ProgramVars::BlockData ProgramVars::initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBlock, bool createBuffers)
+    ProgramVars::BlockData ProgramVars::initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers)
     {
         BlockData data;
-        if(createBlock)
+        if(pBlockReflection->getName() == "")
         {
             data.pBlock = ParameterBlock::create(pBlockReflection, createBuffers);
         }
@@ -89,13 +89,13 @@ namespace Falcor
         mpRootSignature = pRootSig ? pRootSig : RootSignature::create(pReflector.get());
         ParameterBlockReflection::SharedConstPtr pDefaultBlock = pReflector->getDefaultParameterBlock();
         // Initialize the global-block first so that it's the first entry in the vector
-        mDefaultBlock = initParameterBlock(pDefaultBlock, true, createBuffers);
         for (uint32_t i = 0; i < pReflector->getParameterBlockCount(); i++)
         {
             const auto& pBlock = pReflector->getParameterBlock(i);
-            BlockData data = initParameterBlock(pBlock, false, createBuffers);
+            BlockData data = initParameterBlock(pBlock, createBuffers);
             mParameterBlocks.push_back(data);
         }
+        mDefaultBlock = mParameterBlocks[mpReflector->getParameterBlockIndex("")];
     }
 
     const ParameterBlock::SharedConstPtr ProgramVars::getParameterBlock(const std::string& name) const

@@ -622,7 +622,7 @@ namespace Falcor
         }
 
         pDefaultBlock->finalize();
-        mpDefaultBlock = pDefaultBlock;
+        addParameterBlock(pDefaultBlock);
 
         if (pDefaultBlock->isEmpty() == false)
         {            
