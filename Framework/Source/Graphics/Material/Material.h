@@ -39,7 +39,7 @@
 namespace Falcor
 {
     class Texture;
-    class ProgramVars;
+    class ParameterBlock;
     class ConstantBuffer;
 
     /** A surface material object.
@@ -288,7 +288,7 @@ namespace Falcor
             \param[in] pCB The constant buffer to set the parameters into.
             \param[in] varName The name of the MaterialData member in the buffer.
         */
-        void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCB, const char varName[]) const;
+        void setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const;
 
         /** Set the sampler used when rendering this material.
         */

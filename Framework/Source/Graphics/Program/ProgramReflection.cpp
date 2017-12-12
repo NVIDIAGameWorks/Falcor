@@ -33,7 +33,6 @@ using namespace slang;
 
 namespace Falcor
 {
-    std::unordered_set<std::string> ProgramReflection::sParameterBlockRegistry;
     // Represents a "breadcrumb trail" leading from a particular variable
     // back to the path over member-access and array-indexing operations
     // that led to it.
@@ -60,29 +59,11 @@ namespace Falcor
         uint32_t childIndex = 0;
     };
 
-    bool isParameterBlockReflection(VariableLayoutReflection* pSlangVar, const std::unordered_set<std::string>& parameterBlockRegistry)
-    {
-        // A candidate for a parameter block must be a top-level constant buffer containing a single struct
-        TypeLayoutReflection* pSlangType = pSlangVar->getTypeLayout();
-        if (pSlangType->getTotalArrayElementCount() == 0 && pSlangType->unwrapArray()->getKind() == TypeReflection::Kind::ConstantBuffer)
-        {
-            if (pSlangType->unwrapArray()->getElementCount() == 1)
-            {
-                TypeLayoutReflection* pFieldLayout = pSlangType->unwrapArray()->getFieldByIndex(0)->getTypeLayout();
-                if (pFieldLayout->getTotalArrayElementCount() == 0 && pFieldLayout->unwrapArray()->getKind() == TypeReflection::Kind::Struct)
-                {
-                    const std::string name = "";
-                    return parameterBlockRegistry.find(name) != parameterBlockRegistry.end();
-                }
-            }
-        }
-        return false;
-    }
-
     static ReflectionResourceType::Type getResourceType(TypeReflection* pSlangType)
     {
         switch (pSlangType->unwrapArray()->getKind())
         {
+        case TypeReflection::Kind::ParameterBlock:
         case TypeReflection::Kind::ConstantBuffer:
             return ReflectionResourceType::Type::ConstantBuffer;
         case TypeReflection::Kind::SamplerState:
@@ -405,6 +386,7 @@ namespace Falcor
         ReflectionResourceType::StructuredType structuredType = getStructuredBufferType(pSlangType->getType());
         ReflectionResourceType::SharedPtr pType = ReflectionResourceType::create(type, dims, structuredType, retType, shaderAccess);
 
+        // #PARAMBLOCK Perhaps we can check if pSlangType->getElementTypeLayout() returns nullptr
         if (type == ReflectionResourceType::Type::ConstantBuffer || type == ReflectionResourceType::Type::StructuredBuffer)
         {
             const auto& pElementLayout = pSlangType->getElementTypeLayout();
@@ -417,7 +399,7 @@ namespace Falcor
 
     ReflectionType::SharedPtr reflectStructType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath)
     {
-        ReflectionStructType::SharedPtr pType = ReflectionStructType::create(getUniformOffset(pPath), pSlangType->getSize());
+        ReflectionStructType::SharedPtr pType = ReflectionStructType::create(getUniformOffset(pPath), pSlangType->getSize(), "");
         for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++)
         {
             ReflectionPath fieldPath;
@@ -463,6 +445,7 @@ namespace Falcor
         case TypeReflection::Kind::ConstantBuffer:
         case TypeReflection::Kind::ShaderStorageBuffer:
         case TypeReflection::Kind::TextureBuffer:
+        case TypeReflection::Kind::ParameterBlock:
             return reflectResourceType(pSlangType, pPath);
         case TypeReflection::Kind::Struct:
             return reflectStructType(pSlangType, pPath);
@@ -624,7 +607,7 @@ namespace Falcor
             // In GLSL, the varying (in/out) variables are reflected as globals. Ignore them, we will reflect them later
             if (pVar->getType()->unwrapArray()->asResourceType() == nullptr) continue;
 
-            if (isParameterBlockReflection(pSlangLayout, sParameterBlockRegistry))
+            if (pSlangLayout->getType()->unwrapArray()->getKind() == TypeReflection::Kind::ParameterBlock)
             {
                 std::string name = std::string(pSlangLayout->getName());
                 ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
@@ -690,19 +673,10 @@ namespace Falcor
 
     void ProgramReflection::addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock)
     {
-        assert(mParameterBlocks.find(pBlock->getName()) == mParameterBlocks.end());
-        mParameterBlocks[pBlock->getName()] = pBlock;
+        assert(mParameterBlocksIndices.find(pBlock->getName()) == mParameterBlocksIndices.end());
+        mParameterBlocksIndices[pBlock->getName()] = mpParameterBlocks.size();
+        mpParameterBlocks.push_back(pBlock);
         if (pBlock->getName().size() == 0) mpDefaultBlock = pBlock;
-    }
-    
-    void ProgramReflection::registerParameterBlock(const std::string& name)
-    {
-        sParameterBlockRegistry.insert(name);
-    }
-
-    void ProgramReflection::unregisterParameterBlock(const std::string& name)
-    {
-        sParameterBlockRegistry.erase(name);
     }
 
     void ReflectionStructType::addMember(const std::shared_ptr<const ReflectionVar>& pVar)
@@ -872,20 +846,17 @@ namespace Falcor
         mpResourceVars->addMember(pVar);
 
         // If this is a constant-buffer, it might contain resources. Extract them.
-        if (pResourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
+        const ReflectionStructType* pStruct = pResourceType->getStructType().get()->asStructType();
+        if (pStruct)
         {
-            const ReflectionStructType* pStruct = pResourceType->getStructType().get()->asStructType();
-            if(pStruct)
+            for (const auto& pMember : *pStruct)
             {
-                for (const auto& pMember : *pStruct)
+                if (doesTypeContainsResources(pMember->getType().get()))
                 {
-                    if (doesTypeContainsResources(pMember->getType().get()))
-                    {
-                        mpResourceVars->addMember(pMember);
-                    }
+                    mpResourceVars->addMember(pMember);
                 }
-                flattenResources(pStruct, mResources);
             }
+            flattenResources(pStruct, mResources);
         }
     }
 
@@ -967,9 +938,33 @@ namespace Falcor
         }
     }
 
+    uint32_t ProgramReflection::getParameterBlockIndex(const std::string& name) const
+    {
+        const auto& it = mParameterBlocksIndices.find(name);
+        return (it == mParameterBlocksIndices.end()) ? kInvalidLocation : (uint32_t)it->second;
+    }
+
     const ParameterBlockReflection::SharedConstPtr& ProgramReflection::getParameterBlock(const std::string& name) const
     {
-        return mParameterBlocks.at(name);
+        uint32_t index = getParameterBlockIndex(name);
+        if (index == kInvalidLocation)
+        {
+            static ParameterBlockReflection::SharedConstPtr pNull = nullptr;
+            logWarning("Can't find a parameter block named " + name);
+            return pNull;
+        }
+        return mpParameterBlocks[index];
+    }
+
+    const ParameterBlockReflection::SharedConstPtr& ProgramReflection::getParameterBlock(uint32_t index) const
+    {
+        if (index >= mpParameterBlocks.size())
+        {
+            logWarning("Can't find a parameter block at index " + std::to_string(index));
+            static ParameterBlockReflection::SharedConstPtr pNull = nullptr;
+            return pNull;
+        }
+        return mpParameterBlocks[index];
     }
 
     ReflectionVar::SharedConstPtr ReflectionType::findMember(const std::string& name) const

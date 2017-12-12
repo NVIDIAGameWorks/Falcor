@@ -97,16 +97,24 @@ namespace Falcor
         }
     }
 
-    RootSignature::Desc getRootDescFromReflector(const ProgramReflection* pReflector)
+    static void addParamBlockSets(const ParameterBlockReflection* pBlock, RootSignature::Desc& d)
     {
-        const auto& setLayouts = pReflector->getDefaultParameterBlock()->getDescriptorSetLayouts();
-
-        RootSignature::Desc d;
+        const auto& setLayouts = pBlock->getDescriptorSetLayouts();
         for (const auto& s : setLayouts)
         {
             d.addDescriptorSet(s);
         }
+    }
 
+    RootSignature::Desc getRootDescFromReflector(const ProgramReflection* pReflector)
+    {
+        RootSignature::Desc d;
+        addParamBlockSets(pReflector->getDefaultParameterBlock().get(), d);
+
+        for (uint32_t i = 0; i < pReflector->getParameterBlockCount(); i++)
+        {
+            addParamBlockSets(pReflector->getParameterBlock(i).get(), d);
+        }
         return d;
     }
 

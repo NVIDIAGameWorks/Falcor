@@ -302,21 +302,14 @@ namespace Falcor
 #define check_offset(_a)
 #endif
 
-    void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCB, const char varName[]) const
+    void Material::setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const
     {
-        // OPTME:
-        // We can specialize this function based on the API we are using. This might be worth the extra maintenance cost:
-        // - DX12 - we could create a descriptor-table with all of the SRVs. This will reduce the API overhead to a single call. Pitfall - the textures might be dirty, so we will need to verify it
-        // - Bindless GL - just copy a blob with the GPU pointers. This is actually similar to DX12, but instead of SRVs we store uint64_t
-        // - DX11 - Single call at a time.
-        // Actually, looks like if we will be smart in the way we design ProgramVars::setTextureArray(), we could get away with a unified code
-
         // First set the desc and the values
         finalize();
         static const size_t dataSize = sizeof(MaterialDesc) + sizeof(MaterialValues);
         static_assert(dataSize % sizeof(glm::vec4) == 0, "Material::MaterialData size should be a multiple of 16");
-
-        size_t offset = pCB->getVariableOffset(std::string(varName));
+        ConstantBuffer* pCB = pBlock->getConstantBuffer(varName).get();
+        size_t offset = 0;
 
         if(offset == ConstantBuffer::kInvalidOffset)
         {
@@ -332,7 +325,7 @@ namespace Falcor
 
         // Now set the textures
         std::string resourceName = std::string(varName) + ".textures.layers";
-        const auto binding = pVars->getReflection()->getDefaultParameterBlock()->getResourceBinding(resourceName);
+        const auto binding = pBlock->getReflection()->getResourceBinding(resourceName);
         if (binding.setIndex == ParameterBlockReflection::BindLocation::kInvalidLocation)
         {
             logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
@@ -340,18 +333,17 @@ namespace Falcor
         }
 
         // Bind the layers (they are an array)
-        ParameterBlock* pDefaultBlock = pVars->getDefaultBlock().get();
         for (uint32_t i = 0; i < MatMaxLayers; i++)
         {
             const auto& pSrv = (mData.textures.layers[i] != nullptr) ? mData.textures.layers[i]->getSRV() : nullptr;
-            pDefaultBlock->setSrv(binding, i, pSrv);
+            pBlock->setSrv(binding, i, pSrv);
         }
 
-        pDefaultBlock->setTexture(std::string(varName) + ".textures.normalMap", mData.textures.normalMap);
-        pDefaultBlock->setTexture(std::string(varName) + ".textures.ambientMap", mData.textures.ambientMap);
-        pDefaultBlock->setTexture(std::string(varName) + ".textures.alphaMap", mData.textures.alphaMap);
-        pDefaultBlock->setTexture(std::string(varName) + ".textures.heightMap", mData.textures.heightMap);
-        pDefaultBlock->setSampler(std::string(varName) + ".samplerState", mData.samplerState);
+        pBlock->setTexture(std::string(varName) + ".textures.normalMap", mData.textures.normalMap);
+        pBlock->setTexture(std::string(varName) + ".textures.ambientMap", mData.textures.ambientMap);
+        pBlock->setTexture(std::string(varName) + ".textures.alphaMap", mData.textures.alphaMap);
+        pBlock->setTexture(std::string(varName) + ".textures.heightMap", mData.textures.heightMap);
+        pBlock->setSampler(std::string(varName) + ".samplerState", mData.samplerState);
     }
 
     bool Material::operator==(const Material& other) const

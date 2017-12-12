@@ -239,7 +239,7 @@ namespace Falcor
             RawBuffer,
             TypedBuffer,
             Sampler,
-            ConstantBuffer,
+            ConstantBuffer
         };
         
         static SharedPtr create(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
@@ -354,6 +354,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ProgramReflection>;
         using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
+        static const uint32_t kInvalidLocation = -1;
         struct ShaderVariable
         {
             uint32_t bindLocation = 0;
@@ -365,9 +366,11 @@ namespace Falcor
 
         static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
 
-        static void registerParameterBlock(const std::string& name);
-        static void unregisterParameterBlock(const std::string& name);
+        uint32_t getParameterBlockIndex(const std::string& name) const;
         const ParameterBlockReflection::SharedConstPtr& getParameterBlock(const std::string& name) const;
+        const ParameterBlockReflection::SharedConstPtr& getParameterBlock(uint32_t index) const;
+
+        size_t getParameterBlockCount() const { return mpParameterBlocks.size(); }
         const ParameterBlockReflection::SharedConstPtr& getDefaultParameterBlock() const { return mpDefaultBlock; }
 
         uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
@@ -391,8 +394,9 @@ namespace Falcor
         ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);
 
-        std::unordered_map<std::string, ParameterBlockReflection::SharedConstPtr> mParameterBlocks;
-        static std::unordered_set<std::string> sParameterBlockRegistry;
+        std::vector<ParameterBlockReflection::SharedConstPtr> mpParameterBlocks;
+        std::unordered_map<std::string, size_t> mParameterBlocksIndices;
+
         ParameterBlockReflection::SharedConstPtr mpDefaultBlock;
         uvec3 mThreadGroupSize;
         bool mIsSampleFrequency = false;
@@ -521,6 +525,7 @@ namespace Falcor
         switch (type)
         {
             type_2_string(Texture);
+            type_2_string(ConstantBuffer);
             type_2_string(StructuredBuffer);
             type_2_string(RawBuffer);
             type_2_string(TypedBuffer);
