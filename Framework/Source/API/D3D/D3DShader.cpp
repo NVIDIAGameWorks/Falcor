@@ -41,17 +41,17 @@ namespace Falcor
         switch (type)
         {
         case ShaderType::Vertex:
-            return "vs_5_0";
+            return "vs_5_1";
         case ShaderType::Pixel:
-            return "ps_5_0";
+            return "ps_5_1";
         case ShaderType::Hull:
-            return "hs_5_0";
+            return "hs_5_1";
         case ShaderType::Domain:
-            return "ds_5_0";
+            return "ds_5_1";
         case ShaderType::Geometry:
-            return "gs_5_0";
+            return "gs_5_1";
         case ShaderType::Compute:
-            return "cs_5_0";
+            return "cs_5_1";
         default:
             should_not_get_here();
             return "";
