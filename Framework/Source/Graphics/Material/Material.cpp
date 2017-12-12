@@ -301,12 +301,12 @@ namespace Falcor
     }
 
 #if _LOG_ENABLED
-#define check_offset(_a) assert(pCB->getVariableOffset(std::string(varName) + "." + #_a) == (offsetof(MaterialData, _a) + offset))
+#define check_offset(_a) assert(pCB->getVariableOffset(std::string(varName) + #_a) == (offsetof(MaterialData, _a) + offset))
 #else
 #define check_offset(_a)
 #endif
 
-    static void setMaterialIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, size_t offset, const char varName[], const MaterialData& data)
+    static void setMaterialIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, size_t offset, const std::string& varName, const MaterialData& data)
     {
         // First set the desc and the values
         static const size_t dataSize = sizeof(MaterialDesc) + sizeof(MaterialValues);
@@ -319,11 +319,11 @@ namespace Falcor
         pCB->setBlob(&data, offset, dataSize);
 
         // Now set the textures
-        std::string resourceName = std::string(varName) + ".textures.layers";
+        std::string resourceName = varName + "textures.layers";
         const auto binding = pBlock->getReflection()->getResourceBinding(resourceName);
         if (binding.setIndex == ParameterBlockReflection::BindLocation::kInvalidLocation)
         {
-            logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
+            logWarning(std::string("setMaterialIntoBlockCommon() - can't find the first texture object"));
             return;
         }
 
@@ -334,18 +334,18 @@ namespace Falcor
             pBlock->setSrv(binding, i, pSrv);
         }
 
-        pBlock->setTexture(std::string(varName) + ".textures.normalMap", data.textures.normalMap);
-        pBlock->setTexture(std::string(varName) + ".textures.ambientMap", data.textures.ambientMap);
-        pBlock->setTexture(std::string(varName) + ".textures.alphaMap", data.textures.alphaMap);
-        pBlock->setTexture(std::string(varName) + ".textures.heightMap", data.textures.heightMap);
-        pBlock->setSampler(std::string(varName) + ".samplerState", data.samplerState);
+        pBlock->setTexture(varName + "textures.normalMap", data.textures.normalMap);
+        pBlock->setTexture(varName + "textures.ambientMap", data.textures.ambientMap);
+        pBlock->setTexture(varName + "textures.alphaMap", data.textures.alphaMap);
+        pBlock->setTexture(varName + "textures.heightMap", data.textures.heightMap);
+        pBlock->setSampler(varName + "samplerState", data.samplerState);
     }
 
-    void Material::setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const
+    void Material::setIntoParameterBlock(ParameterBlock* pBlock) const
     {
         finalize();
-        ConstantBuffer* pCB = pBlock->getConstantBuffer(varName).get();
-        setMaterialIntoBlockCommon(pBlock, pCB, 0, varName, mData);
+        ConstantBuffer* pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
+        setMaterialIntoBlockCommon(pBlock, pCB, 0, "", mData);
     }
 
     void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const
@@ -358,7 +358,7 @@ namespace Falcor
             logError(std::string("Material::setIntoProgramVars() - variable \"") + varName + "\" not found in constant buffer\n");
             return;
         }
-        setMaterialIntoBlockCommon(pVars->getDefaultBlock().get(), pCb, offset, varName, mData);
+        setMaterialIntoBlockCommon(pVars->getDefaultBlock().get(), pCb, offset, std::string(varName) + '.', mData);
     }
 
     bool Material::operator==(const Material& other) const
@@ -453,6 +453,7 @@ namespace Falcor
             normalize();
             updateTextureCount();
             updateDescString();
+            setIntoParameterBlock(mpParamBlock.get());
             mDescDirty = false;
         }
     }
@@ -538,11 +539,7 @@ namespace Falcor
 
     ParameterBlock::SharedConstPtr Material::getParameterBlock() const
     {
-        if (mDescDirty)
-        {
-            finalize();
-            setIntoParameterBlock(mpParamBlock.get(), kMaterialVarName);
-        }
+        finalize();
         return ParameterBlock::SharedConstPtr(mpParamBlock);
     }
 

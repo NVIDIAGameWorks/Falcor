@@ -227,10 +227,14 @@ namespace Falcor
         {
             ParameterBlock::SharedPtr pBlock;
             std::vector<uint32_t> rootIndex;        // Maps the block's set-index to the root-signature entry
+            bool bind = true;
         };
         BlockData mDefaultBlock;
         std::vector<BlockData> mParameterBlocks; // First element is the global block
         ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers);
+
+        template<bool forGraphics>
+        bool applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig);
     };
 
     class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>

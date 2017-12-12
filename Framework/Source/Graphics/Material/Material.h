@@ -292,8 +292,10 @@ namespace Falcor
         */
         void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const;
 
-        void setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const;
-
+        /** Set the material parameters into a ParameterBlock. To use this you need to include/import 'ShaderCommon' inside your shader and use Slang's `ParameterBlock<MaterialData>`
+            \param[in] pBlock A parameter block which layout matches `MaterialData`
+        */
+        void setIntoParameterBlock(ParameterBlock* pBlock) const;
 
         /** Set the sampler used when rendering this material.
         */
@@ -315,6 +317,8 @@ namespace Falcor
         */
         uint64_t getDescIdentifier() const;
 
+        /** Get the ParameterBlock object for the material. Each material is created with a parameter-block. Using it is more efficient than assigning data to a custom constant-buffer.
+        */
         ParameterBlock::SharedConstPtr getParameterBlock() const;
     private:
         void finalize() const;

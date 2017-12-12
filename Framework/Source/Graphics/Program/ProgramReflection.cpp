@@ -460,9 +460,15 @@ namespace Falcor
     {
         const auto& pTypeLayout = pSlangLayout->getTypeLayout();
         ParameterCategory category = pTypeLayout->getParameterCategory();
-        if (category == ParameterCategory::Mixed && pTypeLayout->getKind() == TypeReflection::Kind::ConstantBuffer)
+        if (category == ParameterCategory::Mixed)
         {
-            category = ParameterCategory::ConstantBuffer;
+            switch (pTypeLayout->getKind())
+            {
+            case TypeReflection::Kind::ConstantBuffer:
+            case TypeReflection::Kind::ParameterBlock:
+                category = ParameterCategory::ConstantBuffer;
+                break;
+            }
         }
         return category;
     }

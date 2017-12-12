@@ -69,10 +69,7 @@ namespace Falcor
     ProgramVars::BlockData ProgramVars::initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers)
     {
         BlockData data;
-        if(pBlockReflection->getName() == "")
-        {
-            data.pBlock = ParameterBlock::create(pBlockReflection, createBuffers);
-        }
+        data.pBlock = ParameterBlock::create(pBlockReflection, createBuffers);
         // For each set, find the matching root-index. 
         const auto& sets = pBlockReflection->getDescriptorSetLayouts();
         data.rootIndex.resize(sets.size());
@@ -122,7 +119,8 @@ namespace Falcor
             logWarning("Can't find parameter block named " + name + ". Ignoring setParameterBlock() call");
             return;
         }
-        mParameterBlocks[index].pBlock = std::const_pointer_cast<ParameterBlock>(pBlock);   // #PARAMBLOCK
+        mParameterBlocks[index].bind = true;
+        mParameterBlocks[index].pBlock = pBlock ? std::const_pointer_cast<ParameterBlock>(pBlock) : ParameterBlock::create(mpReflector->getParameterBlock(index), true);   // #PARAMBLOCK
     }
 
     void ProgramVars::setParameterBlock(uint32_t blockIndex, const ParameterBlock::SharedConstPtr& pBlock)
@@ -132,7 +130,8 @@ namespace Falcor
             logWarning("setParameterBlock() - block index out-of-bounds");
             return;
         }
-        mParameterBlocks[blockIndex].pBlock = std::const_pointer_cast<ParameterBlock>(pBlock); // #PARAMBLOCK
+        mParameterBlocks[blockIndex].bind = true;
+        mParameterBlocks[blockIndex].pBlock = pBlock ? std::const_pointer_cast<ParameterBlock>(pBlock) : ParameterBlock::create(mpReflector->getParameterBlock(blockIndex), true);   // #PARAMBLOCK
     }
 
     GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig)
@@ -254,43 +253,44 @@ namespace Falcor
     }
 
     template<bool forGraphics>
-    bool applyProgramVarsCommon(const ProgramVars* pVars, CopyContext* pContext, bool bindRootSig)
+    bool ProgramVars::applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig)
     {
         if (bindRootSig)
         {
             if (forGraphics)
             {
-                pVars->getRootSignature()->bindForGraphics(pContext);
+                mpRootSignature->bindForGraphics(pContext);
             }
             else
             {
-                pVars->getRootSignature()->bindForCompute(pContext);
+                mpRootSignature->bindForCompute(pContext);
             }
         }
 
         // Bind the sets
-        for(uint32_t b = 0 ; b < pVars->getParameterBlockCount() ; b++)
+        for(uint32_t b = 0 ; b < getParameterBlockCount() ; b++)
         {
-            ParameterBlock* pBlock = const_cast<ParameterBlock*>(pVars->getParameterBlock(b).get()); // #PARAMBLOCK getParameterBlock() because we don't want the user to change blocks directly, but we need it non-const here
+            ParameterBlock* pBlock = mParameterBlocks[b].pBlock.get(); // #PARAMBLOCK getParameterBlock() because we don't want the user to change blocks directly, but we need it non-const here
             if (pBlock->prepareForDraw(pContext) == false) return false; // #PARAMBLOCK Get rid of it. getRootSets() should have a dirty flag
 
-            const auto& rootIndices = pVars->getParameterBlockRootIndices(b);
-
+            const auto& rootIndices = mParameterBlocks[b].rootIndex;
             auto& rootSets = pBlock->getRootSets();
+            bool forceBind = bindRootSig || mParameterBlocks[b].bind;
+            mParameterBlocks[b].bind = false;
 
             for (uint32_t s = 0; s < rootSets.size(); s++)
             {
-                if (rootSets[s].dirty || bindRootSig)
+                if (rootSets[s].dirty || forceBind)
                 {
                     rootSets[s].dirty = false;
                     uint32_t rootIndex = rootIndices[s];
                     if (forGraphics)
                     {
-                        rootSets[s].pSet->bindForGraphics(pContext, pVars->getRootSignature().get(), rootIndex);
+                        rootSets[s].pSet->bindForGraphics(pContext, mpRootSignature.get(), rootIndex);
                     }
                     else
                     {
-                        rootSets[s].pSet->bindForCompute(pContext, pVars->getRootSignature().get(), rootIndex);
+                        rootSets[s].pSet->bindForCompute(pContext, mpRootSignature.get(), rootIndex);
                     }
                 }
             }
@@ -300,11 +300,11 @@ namespace Falcor
 
     bool ComputeVars::apply(ComputeContext* pContext, bool bindRootSig)
     {
-        return applyProgramVarsCommon<false>(this, pContext, bindRootSig);
+        return applyProgramVarsCommon<false>(pContext, bindRootSig);
     }
 
     bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig)
     {
-        return applyProgramVarsCommon<true>(this, pContext, bindRootSig);
+        return applyProgramVarsCommon<true>(pContext, bindRootSig);
     }
 }
