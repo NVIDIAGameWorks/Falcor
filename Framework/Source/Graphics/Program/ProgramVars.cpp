@@ -66,16 +66,19 @@ namespace Falcor
         return -1;
     }
 
-    ProgramVars::BlockData ProgramVars::initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers, const RootSignature::SharedPtr& pRootSig)
+    ProgramVars::BlockData ProgramVars::initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBlock, bool createBuffers)
     {
         BlockData data;
-        data.pBlock = ParameterBlock::create(pBlockReflection, mpRootSignature.get(), createBuffers);
+        if(createBlock)
+        {
+            data.pBlock = ParameterBlock::create(pBlockReflection, createBuffers);
+        }
         // For each set, find the matching root-index. 
         const auto& sets = pBlockReflection->getDescriptorSetLayouts();
         data.rootIndex.resize(sets.size());
         for (size_t i = 0; i < sets.size(); i++)
         {
-            data.rootIndex[i] = findRootIndex(sets[i], pRootSig);
+            data.rootIndex[i] = findRootIndex(sets[i], mpRootSignature);
         }
 
         return data;
@@ -86,24 +89,50 @@ namespace Falcor
         mpRootSignature = pRootSig ? pRootSig : RootSignature::create(pReflector.get());
         ParameterBlockReflection::SharedConstPtr pDefaultBlock = pReflector->getDefaultParameterBlock();
         // Initialize the global-block first so that it's the first entry in the vector
-        mDefaultBlock = initParameterBlock(pDefaultBlock, createBuffers, mpRootSignature);
+        mDefaultBlock = initParameterBlock(pDefaultBlock, true, createBuffers);
         for (uint32_t i = 0; i < pReflector->getParameterBlockCount(); i++)
         {
             const auto& pBlock = pReflector->getParameterBlock(i);
-            BlockData data = initParameterBlock(pBlock, createBuffers, mpRootSignature);   // #PARAMBLOCK do we still need pRootSig?
+            BlockData data = initParameterBlock(pBlock, false, createBuffers);
             mParameterBlocks.push_back(data);
         }
     }
 
-    const ParameterBlock::SharedPtr& ProgramVars::getParameterBlock(const std::string& name) const
+    const ParameterBlock::SharedConstPtr ProgramVars::getParameterBlock(const std::string& name) const
     {
         uint32_t index = mpReflector->getParameterBlockIndex(name);
         if (index == ProgramReflection::kInvalidLocation)
         {
-            static ParameterBlock::SharedPtr pNull = nullptr;
-            return pNull;
+            logWarning("Can't find parameter block named " + name + ". Ignoring getParameterBlock() call");
+            return nullptr;
         }
         return mParameterBlocks[index].pBlock;
+    }
+
+    const ParameterBlock::SharedConstPtr ProgramVars::getParameterBlock(uint32_t blockIndex) const
+    {
+        return (blockIndex < mParameterBlocks.size()) ? mParameterBlocks[blockIndex].pBlock : nullptr;
+    }
+
+    void ProgramVars::setParameterBlock(const std::string& name, const ParameterBlock::SharedConstPtr& pBlock)
+    {
+        uint32_t index = mpReflector->getParameterBlockIndex(name);
+        if (index == ProgramReflection::kInvalidLocation)
+        {
+            logWarning("Can't find parameter block named " + name + ". Ignoring setParameterBlock() call");
+            return;
+        }
+        mParameterBlocks[index].pBlock = std::const_pointer_cast<ParameterBlock>(pBlock);   // #PARAMBLOCK
+    }
+
+    void ProgramVars::setParameterBlock(uint32_t blockIndex, const ParameterBlock::SharedConstPtr& pBlock)
+    {
+        if (blockIndex >= mParameterBlocks.size())
+        {
+            logWarning("setParameterBlock() - block index out-of-bounds");
+            return;
+        }
+        mParameterBlocks[blockIndex].pBlock = std::const_pointer_cast<ParameterBlock>(pBlock); // #PARAMBLOCK
     }
 
     GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig)
@@ -242,7 +271,7 @@ namespace Falcor
         // Bind the sets
         for(uint32_t b = 0 ; b < pVars->getParameterBlockCount() ; b++)
         {
-            ParameterBlock* pBlock = pVars->getParameterBlock(b).get();
+            ParameterBlock* pBlock = const_cast<ParameterBlock*>(pVars->getParameterBlock(b).get()); // #PARAMBLOCK getParameterBlock() because we don't want the user to change blocks directly, but we need it non-const here
             if (pBlock->prepareForDraw(pContext) == false) return false; // #PARAMBLOCK Get rid of it. getRootSets() should have a dirty flag
 
             const auto& rootIndices = pVars->getParameterBlockRootIndices(b);

@@ -130,12 +130,12 @@ namespace Falcor
         }
     }
 
-    ParameterBlock::SharedPtr ParameterBlock::create(const ParameterBlockReflection::SharedConstPtr& pReflection, const RootSignature* pRootSig, bool createBuffers)
+    ParameterBlock::SharedPtr ParameterBlock::create(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers)
     {
-        return SharedPtr(new ParameterBlock(pReflection, pRootSig, createBuffers));
+        return SharedPtr(new ParameterBlock(pReflection, createBuffers));
     }
 
-    ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, const RootSignature* pRootSig, bool createBuffers) : mpReflector(pReflection)
+    ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers) : mpReflector(pReflection)
     {
         // Initialize the resource vectors
         const auto& setLayouts = pReflection->getDescriptorSetLayouts();

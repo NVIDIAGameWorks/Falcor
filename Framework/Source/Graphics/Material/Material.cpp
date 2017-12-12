@@ -34,16 +34,20 @@
 #include "Utils/Math/FalcorMath.h"
 #include "MaterialSystem.h"
 #include "Graphics/Program/ProgramVars.h"
+#include "Graphics/Program/GraphicsProgram.h"
 
 namespace Falcor
 {
+    static const char* kMaterialVarName = "materialBlock";
     uint32_t Material::sMaterialCounter = 0;
     std::vector<Material::DescId> Material::sDescIdentifier;
+    ParameterBlockReflection::SharedConstPtr Material::spBlockReflection;
 
     Material::Material(const std::string& name) : mName(name)
     {
         mData.values.id = sMaterialCounter;
         sMaterialCounter++;
+        createParameterBlock();
     }
 
     Material::SharedPtr Material::create(const std::string& name)
@@ -302,26 +306,17 @@ namespace Falcor
 #define check_offset(_a)
 #endif
 
-    void Material::setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const
+    static void setMaterialIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, size_t offset, const char varName[], const MaterialData& data)
     {
         // First set the desc and the values
-        finalize();
         static const size_t dataSize = sizeof(MaterialDesc) + sizeof(MaterialValues);
         static_assert(dataSize % sizeof(glm::vec4) == 0, "Material::MaterialData size should be a multiple of 16");
-        ConstantBuffer* pCB = pBlock->getConstantBuffer(varName).get();
-        size_t offset = 0;
-
-        if(offset == ConstantBuffer::kInvalidOffset)
-        {
-            logError(std::string("Material::setIntoProgramVars() - variable \"") + varName + "\" not found in constant buffer\n");
-            return;
-        }
 
         check_offset(values.layers[0].albedo);
         check_offset(values.id);
         assert(offset + dataSize <= pCB->getSize());
 
-        pCB->setBlob(&mData, offset, dataSize);
+        pCB->setBlob(&data, offset, dataSize);
 
         // Now set the textures
         std::string resourceName = std::string(varName) + ".textures.layers";
@@ -335,15 +330,35 @@ namespace Falcor
         // Bind the layers (they are an array)
         for (uint32_t i = 0; i < MatMaxLayers; i++)
         {
-            const auto& pSrv = (mData.textures.layers[i] != nullptr) ? mData.textures.layers[i]->getSRV() : nullptr;
+            const auto& pSrv = (data.textures.layers[i] != nullptr) ? data.textures.layers[i]->getSRV() : nullptr;
             pBlock->setSrv(binding, i, pSrv);
         }
 
-        pBlock->setTexture(std::string(varName) + ".textures.normalMap", mData.textures.normalMap);
-        pBlock->setTexture(std::string(varName) + ".textures.ambientMap", mData.textures.ambientMap);
-        pBlock->setTexture(std::string(varName) + ".textures.alphaMap", mData.textures.alphaMap);
-        pBlock->setTexture(std::string(varName) + ".textures.heightMap", mData.textures.heightMap);
-        pBlock->setSampler(std::string(varName) + ".samplerState", mData.samplerState);
+        pBlock->setTexture(std::string(varName) + ".textures.normalMap", data.textures.normalMap);
+        pBlock->setTexture(std::string(varName) + ".textures.ambientMap", data.textures.ambientMap);
+        pBlock->setTexture(std::string(varName) + ".textures.alphaMap", data.textures.alphaMap);
+        pBlock->setTexture(std::string(varName) + ".textures.heightMap", data.textures.heightMap);
+        pBlock->setSampler(std::string(varName) + ".samplerState", data.samplerState);
+    }
+
+    void Material::setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const
+    {
+        finalize();
+        ConstantBuffer* pCB = pBlock->getConstantBuffer(varName).get();
+        setMaterialIntoBlockCommon(pBlock, pCB, 0, varName, mData);
+    }
+
+    void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const
+    {
+        finalize();
+        size_t offset = pCb->getVariableOffset(varName);
+
+        if (offset == ConstantBuffer::kInvalidOffset)
+        {
+            logError(std::string("Material::setIntoProgramVars() - variable \"") + varName + "\" not found in constant buffer\n");
+            return;
+        }
+        setMaterialIntoBlockCommon(pVars->getDefaultBlock().get(), pCb, offset, varName, mData);
     }
 
     bool Material::operator==(const Material& other) const
@@ -521,4 +536,25 @@ namespace Falcor
         mDescString += "}}";
     }
 
+    ParameterBlock::SharedConstPtr Material::getParameterBlock() const
+    {
+        if (mDescDirty)
+        {
+            finalize();
+            setIntoParameterBlock(mpParamBlock.get(), kMaterialVarName);
+        }
+        return ParameterBlock::SharedConstPtr(mpParamBlock);
+    }
+
+    void Material::createParameterBlock()
+    {
+        if (spBlockReflection == nullptr)
+        {
+            GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
+            ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
+            spBlockReflection = pReflection->getParameterBlock(kMaterialVarName);
+            assert(spBlockReflection);
+        }
+        mpParamBlock = ParameterBlock::create(spBlockReflection, true);
+    }
 }

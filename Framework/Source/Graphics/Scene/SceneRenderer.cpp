@@ -199,12 +199,7 @@ namespace Falcor
 
     bool SceneRenderer::setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial)
     {
-        ParameterBlock* pBlock = currentData.pVars->getParameterBlock("gMaterial").get();
-        if (pBlock)
-        {
-            pMaterial->setIntoParameterBlock(pBlock, "gMaterial");
-        }
-
+        currentData.pVars->setParameterBlock("gMaterial", pMaterial->getParameterBlock());
         return true;
     }
 

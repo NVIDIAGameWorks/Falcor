@@ -2281,5 +2281,8 @@
     <None Include="Data\Framework\Shaders\TextRenderer.ps.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
+    <None Include="Data\Framework\Shaders\MaterialBlock.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -203,8 +203,11 @@ namespace Falcor
 
         const std::vector<uint32_t>& getParameterBlockRootIndices(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].rootIndex; }
 
-        const ParameterBlock::SharedPtr& getParameterBlock(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].pBlock; }
-        const ParameterBlock::SharedPtr& getParameterBlock(const std::string& name) const;
+        const ParameterBlock::SharedConstPtr getParameterBlock(uint32_t blockIndex) const;
+        const ParameterBlock::SharedConstPtr getParameterBlock(const std::string& name) const;
+
+        void setParameterBlock(uint32_t blockIndex, const ParameterBlock::SharedConstPtr& pBlock);
+        void setParameterBlock(const std::string& name, const ParameterBlock::SharedConstPtr& pBlock);
 
         ParameterBlock::SharedPtr getDefaultBlock() const { return mDefaultBlock.pBlock; }
 
@@ -227,7 +230,7 @@ namespace Falcor
         };
         BlockData mDefaultBlock;
         std::vector<BlockData> mParameterBlocks; // First element is the global block
-        ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
+        ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBlock, bool createBuffers);
     };
 
     class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>

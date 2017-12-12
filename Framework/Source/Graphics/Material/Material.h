@@ -35,11 +35,13 @@
 #include "glm/mat4x4.hpp"
 #include "API/Sampler.h"
 #include "Data/HostDeviceData.h"
+#include "Graphics/Program/ParameterBlock.h"
 
 namespace Falcor
 {
     class Texture;
     class ParameterBlock;
+    class ProgramVars;
     class ConstantBuffer;
 
     /** A surface material object.
@@ -288,7 +290,10 @@ namespace Falcor
             \param[in] pCB The constant buffer to set the parameters into.
             \param[in] varName The name of the MaterialData member in the buffer.
         */
+        void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const;
+
         void setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const;
+
 
         /** Set the sampler used when rendering this material.
         */
@@ -310,6 +315,7 @@ namespace Falcor
         */
         uint64_t getDescIdentifier() const;
 
+        ParameterBlock::SharedConstPtr getParameterBlock() const;
     private:
         void finalize() const;
         void normalize() const;
@@ -340,5 +346,9 @@ namespace Falcor
         void updateDescString() const;
         static uint32_t sMaterialCounter;
         static std::vector<DescId> sDescIdentifier; // vector is slower then map, but map requires 'less' operator. This vector is only being used when the material is dirty, which shouldn't happen often
+
+        ParameterBlock::SharedPtr mpParamBlock;
+        static ParameterBlockReflection::SharedConstPtr spBlockReflection;
+        void createParameterBlock();
     };
 }
