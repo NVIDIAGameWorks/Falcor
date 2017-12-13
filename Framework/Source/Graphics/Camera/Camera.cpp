@@ -28,8 +28,8 @@
 #include "Framework.h"
 #include "Camera.h"
 #include "glm/gtx/quaternion.hpp"
-#include "utils/AABB.h"
-#include "Utils/math/FalcorMath.h"
+#include "Utils/AABB.h"
+#include "Utils/Math/FalcorMath.h"
 #include "API/ConstantBuffer.h"
 
 namespace Falcor

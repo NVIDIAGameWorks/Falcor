@@ -28,9 +28,15 @@
 #include "Framework.h"
 #include "BasicMaterial.h"
 #include "Data/HostDeviceData.h"
+#include <cstring>
 
 namespace Falcor
 {
+    BasicMaterial::BasicMaterial()
+    {
+        std::memset(pTextures, 0x00, sizeof(pTextures)); 
+    }
+
     Material::SharedPtr BasicMaterial::convertToMaterial()
     {
         Material::SharedPtr pMaterial = Material::create("");

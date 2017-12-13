@@ -32,8 +32,16 @@ namespace Falcor
 {
     namespace SceneKeys
     {
-        static const char* kVersion = "version";
+        // Values only used in the importer
+#ifdef SCENE_IMPORTER
         static const char* kInclude = "include";
+
+        // Keys for values in older scene versions that are not exported anymore
+        static const char* kCamFovY = "fovY";
+        static const char* kActivePath = "active_path";
+#endif
+
+        static const char* kVersion = "version";
         static const char* kCameraSpeed = "camera_speed";
         static const char* kActiveCamera = "active_camera";
         static const char* kAmbientIntensity = "ambient_intensity";
@@ -53,7 +61,6 @@ namespace Falcor
         static const char* kCamPosition = "pos";
         static const char* kCamTarget = "target";
         static const char* kCamUp = "up";
-        static const char* kCamFovY = "fovY";
         static const char* kCamFocalLength = "focal_length";
         static const char* kCamDepthRange = "depth_range";
         static const char* kCamAspectRatio = "aspect_ratio";
@@ -72,7 +79,6 @@ namespace Falcor
         static const char* kLightDirection = "direction";
 
         static const char* kPaths = "paths";
-        static const char* kActivePath = "active_path";
         static const char* kAttachedObjects = "attached_objects";
         static const char* kModelInstance = "model_instance";
         static const char* kLight = "light";
@@ -92,7 +98,6 @@ namespace Falcor
         static const char* kMaterialHeight = "height";
         static const char* kMaterialAO = "ao";
         static const char* kMaterialTexture = "texture";
-        static const char* kMaterialColor = "color";
         static const char* kMaterialLayers = "layers";
 
         static const char* kMaterialLayerType = "type";

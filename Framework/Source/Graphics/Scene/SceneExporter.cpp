@@ -25,18 +25,24 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/prettywriter.h"
+#include "glm/detail/func_trigonometric.hpp"
+
 #include "Framework.h"
 #include "SceneExporter.h"
 #include <fstream>
-#include "Externals/RapidJson/include/rapidjson/stringbuffer.h"
-#include "Externals/RapidJson/include/rapidjson/prettywriter.h"
-#include "SceneExportImportCommon.h"
-#include "glm/detail/func_trigonometric.hpp"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
+
+#include "SceneExportImportCommon.h"
+
 
 namespace Falcor
 {
+    // Must be defined even though it's a const uint because value is passed as reference to functions
+    const uint32_t SceneExporter::kVersion;
+
     bool SceneExporter::saveScene(const std::string& filename, const Scene::SharedPtr& pScene, uint32_t exportOptions)
     {
         SceneExporter exporter(filename, pScene);

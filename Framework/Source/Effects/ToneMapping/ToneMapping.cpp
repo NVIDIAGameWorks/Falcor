@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    static const char* kShaderFilename = "Effects\\ToneMapping.ps.slang";
+    static const char* kShaderFilename = "Effects/ToneMapping.ps.slang";
     const Gui::DropdownList kOperatorList = { 
     { (uint32_t)ToneMapping::Operator::Clamp, "Clamp to LDR" },
     { (uint32_t)ToneMapping::Operator::Linear, "Linear" }, 

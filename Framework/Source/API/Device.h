@@ -106,9 +106,9 @@ namespace Falcor
         Fbo::SharedPtr getSwapChainFbo() const;
 
         /** Get the default render-context.
-            The default render-context is managed completly by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
+            The default render-context is managed completely by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
         */
-        RenderContext::SharedPtr getRenderContext() const { return mpRenderContext; }
+        const RenderContext::SharedPtr& getRenderContext() const { return mpRenderContext; }
 
         /** Get the command queue handle
         */
@@ -139,10 +139,10 @@ namespace Falcor
         */
         Fbo::SharedPtr resizeSwapChain(uint32_t width, uint32_t height);
 
-        DescriptorPool::SharedPtr getCpuDescriptorPool() const { return mpCpuDescPool; }
-        DescriptorPool::SharedPtr getGpuDescriptorPool() const { return mpGpuDescPool; }
-        ResourceAllocator::SharedPtr getResourceAllocator() const { return mpResourceAllocator; }
-        QueryHeap::SharedPtr getTimestampQueryHeap() const { return mTimestampQueryHeap; }
+        const DescriptorPool::SharedPtr& getCpuDescriptorPool() const { return mpCpuDescPool; }
+        const DescriptorPool::SharedPtr& getGpuDescriptorPool() const { return mpGpuDescPool; }
+        const ResourceAllocator::SharedPtr& getResourceAllocator() const { return mpResourceAllocator; }
+        const QueryHeap::SharedPtr& getTimestampQueryHeap() const { return mTimestampQueryHeap; }
         void releaseResource(ApiObjectHandle pResource);
         double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
         bool isRgb32FloatSupported() const { return mRgb32FloatSupported; }
@@ -168,7 +168,8 @@ namespace Falcor
         std::queue<ResourceRelease> mDeferredReleases;
 
         uint32_t mCurrentBackBufferIndex;
-        Fbo::SharedPtr mpSwapChainFbos[kSwapChainBuffers];
+        std::vector<Fbo::SharedPtr> mpSwapChainFbos;
+        uint32_t mSwapChainBufferCount = kDefaultSwapChainBuffers;
 
         Device(Window::SharedPtr pWindow) : mpWindow(pWindow) {}
         bool init(const Desc& desc);

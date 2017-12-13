@@ -202,7 +202,7 @@ namespace Falcor
     {
         if (mDirty)
         {
-            auto& pVertexBuffer = mpVao->getVertexBuffer(0);
+            auto pVertexBuffer = mpVao->getVertexBuffer(0);
             pVertexBuffer->updateData(mVertexData.data(), 0, sizeof(LineVertex) * mVertexData.size());
             mDirty = false;
         }

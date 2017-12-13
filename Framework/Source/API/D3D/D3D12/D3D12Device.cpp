@@ -98,7 +98,7 @@ namespace Falcor
     IDXGISwapChain3Ptr createDxgiSwapChain(IDXGIFactory4* pFactory, const Window* pWindow, ID3D12CommandQueue* pCommandQueue, ResourceFormat colorFormat)
     {
         DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-        swapChainDesc.BufferCount = kSwapChainBuffers;
+        swapChainDesc.BufferCount = kDefaultSwapChainBuffers;
         swapChainDesc.Width = pWindow->getClientAreaWidth();
         swapChainDesc.Height = pWindow->getClientAreaHeight();
         // Flip mode doesn't support SRGB formats, so we strip them down when creating the resource. We will create the RTV as SRGB instead.
@@ -181,7 +181,7 @@ namespace Falcor
 
     bool Device::getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, std::vector<ResourceHandle>& apiHandles, uint32_t& currentBackBufferIndex)
     {
-        for (uint32_t i = 0; i < kSwapChainBuffers; i++)
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
         {
             HRESULT hr = mpApiData->pSwapChain->GetBuffer(i, IID_PPV_ARGS(&apiHandles[i]));
             if (FAILED(hr))
@@ -203,7 +203,7 @@ namespace Falcor
     void Device::apiPresent()
     {
         mpApiData->pSwapChain->Present(mVsyncOn ? 1 : 0, 0);
-        mCurrentBackBufferIndex = (mCurrentBackBufferIndex + 1) % kSwapChainBuffers;
+        mCurrentBackBufferIndex = (mCurrentBackBufferIndex + 1) % mSwapChainBufferCount;
     }
 
     bool Device::apiInit(const Desc& desc)
@@ -253,7 +253,8 @@ namespace Falcor
         d3d_call(getCommandQueueHandle(LowLevelContextData::CommandQueueType::Direct, 0)->GetTimestampFrequency(&freq));
         mGpuTimestampFrequency = 1000.0 / (double)freq;
 
-        return true;
+        mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+        return createSwapChain(desc.colorFormat);
     }
 
     bool Device::createSwapChain(ResourceFormat colorFormat)
@@ -263,6 +264,8 @@ namespace Falcor
         {
             return false;
         }
+
+        mpSwapChainFbos.resize(mSwapChainBufferCount);
         return true;
     }
 
@@ -270,7 +273,7 @@ namespace Falcor
     {
         DXGI_SWAP_CHAIN_DESC desc;
         d3d_call(mpApiData->pSwapChain->GetDesc(&desc));
-        d3d_call(mpApiData->pSwapChain->ResizeBuffers(kSwapChainBuffers, width, height, desc.BufferDesc.Format, desc.Flags));
+        d3d_call(mpApiData->pSwapChain->ResizeBuffers(mSwapChainBufferCount, width, height, desc.BufferDesc.Format, desc.Flags));
     }
 
     bool Device::isWindowOccluded() const

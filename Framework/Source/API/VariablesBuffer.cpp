@@ -33,11 +33,10 @@
 #include "Texture.h"
 #include "API/ProgramReflection.h"
 #include "API/Device.h"
+#include <cstring>
 
 namespace Falcor
 {
-    VariablesBuffer::~VariablesBuffer() = default;
-
     template<typename VarType>
     ProgramReflection::Variable::Type getReflectionTypeFromCType()
     {
@@ -80,43 +79,6 @@ namespace Falcor
         return ProgramReflection::Variable::Type::Unknown;
     }
 
-    VariablesBuffer::VariablesBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess) :
-        mpReflector(pReflector), Buffer(elementSize * elementCount, bindFlags, cpuAccess), mElementCount(elementCount), mElementSize(elementSize)
-    {
-        Buffer::apiInit(false);
-        mData.assign(mSize, 0);
-    }
-
-    size_t VariablesBuffer::getVariableOffset(const std::string& varName) const
-    {
-        size_t offset;
-        mpReflector->getVariableData(varName, offset);
-        return offset;
-    }
-
-    bool VariablesBuffer::uploadToGPU(size_t offset, size_t size)
-    {
-        if(mDirty == false)
-        {
-            return false;
-        }
-
-        if(size == -1)
-        {
-            size = mSize - offset;
-        }
-
-        if(size + offset > mSize)
-        {
-            logWarning("VariablesBuffer::uploadToGPU() - trying to upload more data than what the buffer contains. Call is ignored.");
-            return false;
-        }
-
-        updateData(mData.data(), offset, size);
-        mDirty = false;
-        return true;
-    }
-
     template<typename VarType>
     bool checkVariableType(ProgramReflection::Variable::Type shaderType, const std::string& name, const std::string& bufferName)
     {
@@ -140,9 +102,8 @@ namespace Falcor
     bool checkVariableByOffset(size_t offset, size_t count, const ProgramReflection::BufferReflection* pBufferDesc)
     {
 #if _LOG_ENABLED
-        ProgramReflection::Variable::Type callType = getReflectionTypeFromCType<VarType>();
         // Find the variable
-        for(auto& a = pBufferDesc->varBegin() ; a != pBufferDesc->varEnd() ; a++)
+        for(auto a = pBufferDesc->varBegin() ; a != pBufferDesc->varEnd() ; a++)
         {
             const auto& varDesc = a->second;
             const auto& varName = a->first;
@@ -191,6 +152,45 @@ namespace Falcor
 #else
         return true;
 #endif
+    }
+
+    VariablesBuffer::~VariablesBuffer() = default;
+
+    VariablesBuffer::VariablesBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess) :
+        mpReflector(pReflector), Buffer(elementSize * elementCount, bindFlags, cpuAccess), mElementCount(elementCount), mElementSize(elementSize)
+    {
+        Buffer::apiInit(false);
+        mData.assign(mSize, 0);
+    }
+
+    size_t VariablesBuffer::getVariableOffset(const std::string& varName) const
+    {
+        size_t offset;
+        mpReflector->getVariableData(varName, offset);
+        return offset;
+    }
+
+    bool VariablesBuffer::uploadToGPU(size_t offset, size_t size)
+    {
+        if(mDirty == false)
+        {
+            return false;
+        }
+
+        if(size == -1)
+        {
+            size = mSize - offset;
+        }
+
+        if(size + offset > mSize)
+        {
+            logWarning("VariablesBuffer::uploadToGPU() - trying to upload more data than what the buffer contains. Call is ignored.");
+            return false;
+        }
+
+        updateData(mData.data(), offset, size);
+        mDirty = false;
+        return true;
     }
 
 #define verify_element_index() if(elementIndex >= mElementCount) {logWarning(std::string(__FUNCTION__) + ": elementIndex is out-of-bound. Ignoring call."); return;}
@@ -249,7 +249,6 @@ namespace Falcor
     {
         size_t offset;
         const auto* pVar = mpReflector->getVariableData(name, offset);
-        bool valid = true;
         if((_LOG_ENABLED == 0) || (offset != ProgramReflection::kInvalidLocation && checkVariableType<VarType>(pVar->type, name, mpReflector->getName())))
         {
             setVariable<VarType>(offset, element, value);
@@ -357,7 +356,7 @@ namespace Falcor
             setVariableArray(offset, elementIndex, pValue, count);
         }
     }
-    
+
 #define set_constant_array_by_string(_t) template void VariablesBuffer::setVariableArray(const std::string& name, size_t elementIndex, const _t* pValue, size_t count)
 
     set_constant_array_by_string(bool);
@@ -405,7 +404,7 @@ namespace Falcor
             logError(Msg);
             return;
         }
-        memcpy(mData.data() + offset, pSrc, size);
+        std::memcpy(mData.data() + offset, pSrc, size);
         mDirty = true;
     }
 
@@ -514,7 +513,7 @@ namespace Falcor
         // Debug checks
         if(pTexture)
         {
-            for(auto& a = mpReflector->varBegin() ; a != mpReflector->varEnd() ; a++)
+            for(auto a = mpReflector->varBegin() ; a != mpReflector->varEnd() ; a++)
             {
                 const auto& varDesc = a->second;
                 const auto& varName = a->first;
@@ -569,14 +568,14 @@ namespace Falcor
     void VariablesBuffer::setTexture(const std::string& name, const Texture* pTexture, const Sampler* pSampler)
     {
         size_t offset;
-        const auto& pVarDesc = mpReflector->getVariableData(name, offset);
+        mpReflector->getVariableData(name, offset);
         if(offset != ProgramReflection::kInvalidLocation)
         {
             bool bOK = true;
 #if _LOG_ENABLED == 1
             if(pTexture != nullptr)
             {
-                const auto& pDesc = getResourceDesc(name, mpReflector.get());
+                const auto pDesc = getResourceDesc(name, mpReflector.get());
                 bOK = (pDesc != nullptr) && checkResourceDimension(pTexture, pDesc, name, mpReflector->getName());
             }
 #endif

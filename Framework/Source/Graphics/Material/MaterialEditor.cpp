@@ -28,11 +28,12 @@
 #include "Framework.h"
 #include "Graphics/Material/MaterialEditor.h"
 #include "Utils/Gui.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Graphics/TextureHelper.h"
 #include "API/Texture.h"
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/SceneExporter.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -178,7 +179,7 @@ namespace Falcor
     void MaterialEditor::setName(Gui* pGui)
     {
         char nameBuf[256];
-        strcpy_s(nameBuf, mpMaterial->getName().c_str());
+        std::strcpy(nameBuf, mpMaterial->getName().c_str());
 
         if (pGui->addTextBox("Name", nameBuf, arraysize(nameBuf)))
         {
@@ -298,7 +299,7 @@ namespace Falcor
     {
         const auto pTexture = mpMaterial->getLayer(layerID).pTexture;
 
-        auto& pNewTexture = changeTexture(pGui, "Texture##" + std::to_string(layerID), pTexture, true);
+        auto pNewTexture = changeTexture(pGui, "Texture##" + std::to_string(layerID), pTexture, true);
         if (pNewTexture != pTexture)
         {
             mpMaterial->setLayerTexture(layerID, pNewTexture);
@@ -349,7 +350,7 @@ namespace Falcor
     {
         const auto pTexture = mpMaterial->getNormalMap();
 
-        auto& pNewTexture = changeTexture(pGui, "Normal Map", pTexture, false);
+        auto pNewTexture = changeTexture(pGui, "Normal Map", pTexture, false);
         if (pNewTexture != pTexture)
         {
             mpMaterial->setNormalMap(pNewTexture);
@@ -360,7 +361,7 @@ namespace Falcor
     {
         const auto pTexture = mpMaterial->getAlphaMap();
 
-        auto& pNewTexture = changeTexture(pGui, "Alpha Map", pTexture, false);
+        auto pNewTexture = changeTexture(pGui, "Alpha Map", pTexture, false);
         if (pNewTexture != pTexture)
         {
             mpMaterial->setAlphaMap(pNewTexture);
@@ -371,7 +372,7 @@ namespace Falcor
     {
         const auto pTexture = mpMaterial->getHeightMap();
 
-        auto& pNewTexture = changeTexture(pGui, "Height Map", pTexture, false);
+        auto pNewTexture = changeTexture(pGui, "Height Map", pTexture, false);
         if (pNewTexture != pTexture)
         {
             mpMaterial->setHeightMap(pNewTexture);
@@ -382,7 +383,7 @@ namespace Falcor
     {
         const auto pTexture = mpMaterial->getAmbientOcclusionMap();
 
-        auto& pNewTexture = changeTexture(pGui, "AO Map", pTexture, true);
+        auto pNewTexture = changeTexture(pGui, "AO Map", pTexture, true);
         if (pNewTexture != pTexture)
         {
             mpMaterial->setAmbientOcclusionMap(pNewTexture);
@@ -394,7 +395,7 @@ namespace Falcor
         std::string texPath(pCurrentTexture ? pCurrentTexture->getSourceFilename() : "");
 
         char texPathBuff[1024];
-        strcpy_s(texPathBuff, texPath.c_str());
+        std::strcpy(texPathBuff, texPath.c_str());
 
         pGui->addTextBox(label.c_str(), texPathBuff, arraysize(texPathBuff));
 

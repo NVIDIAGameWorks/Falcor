@@ -31,17 +31,25 @@
 
 #ifdef _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
+#else
+    #define VK_USE_PLATFORM_XLIB_KHR
 #endif
 
-#include <Vulkan/vulkan.h>
+#include <vulkan/vulkan.h>
+
+// Remove defines from XLib.h (included by vulkan.h) that cause conflicts
+#ifndef _WIN32
+#undef None
+#undef Status
+#undef Bool
+#undef Always
+#endif
 
 #ifdef _WIN32
     #pragma comment(lib, "vulkan-1.lib")
 #endif
 
 #include "API/Vulkan/VKSmartHandle.h"
-
-__forceinline BOOL vkBool(bool b) { return b ? VK_TRUE : VK_FALSE; }
 
 namespace Falcor
 {
@@ -68,7 +76,11 @@ namespace Falcor
 #ifdef _WIN32
     using WindowHandle = HWND;
 #else
-    using WindowHandle = void*;
+    struct WindowHandle
+    {
+        Display* pDisplay;
+        Window window;
+    };
 #endif
 
     using DeviceHandle = VkDeviceData::SharedPtr;
@@ -109,7 +121,7 @@ namespace Falcor
     using RasterizerStateHandle = void*;
     using BlendStateHandle = void*;
 
-    static const uint32_t kSwapChainBuffers = 3;
+    static const uint32_t kDefaultSwapChainBuffers = 3;
 
     using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 

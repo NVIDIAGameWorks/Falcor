@@ -25,7 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "Framework.h"
 #include "SampleTest.h"
+#include <algorithm>
+#include <fstream>
 
 namespace Falcor
 {
@@ -487,9 +490,11 @@ namespace Falcor
     // Capture the Current Memory and write it to the provided memory check.
     void SampleTest::getMemoryStatistics(MemoryCheck & memoryCheck)
     {
+#ifdef _WIN32 // Not supported on Linux
         memoryCheck.totalVirtualMemory = getTotalVirtualMemory();
         memoryCheck.totalUsedVirtualMemory = getUsedVirtualMemory();
         memoryCheck.currentlyUsedVirtualMemory = getProcessUsedVirtualMemory();
+#endif
     }
 
     // Write the Memory Check Range, either in terms of Time or Frames to a file. Outputs Difference, Start and End Times and Memories.

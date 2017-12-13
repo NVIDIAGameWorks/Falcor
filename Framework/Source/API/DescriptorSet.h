@@ -85,7 +85,7 @@ namespace Falcor
             ShaderVisibility mVisibility;
         };
 
-        static SharedPtr create(DescriptorPool::SharedPtr pPool, const Layout& layout);
+        static SharedPtr create(const DescriptorPool::SharedPtr& pPool, const Layout& layout);
 
         size_t getRangeCount() const { return mLayout.getRangeCount(); }
         const Layout::Range& getRange(uint32_t range) const { return mLayout.getRange(range); }

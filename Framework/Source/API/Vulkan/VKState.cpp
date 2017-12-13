@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    forceinline VkBool32 vkBool(bool b)
+    {
+        return b ? VK_TRUE : VK_FALSE;
+    }
 
     VkShaderStageFlagBits getVkShaderStage(ShaderType type)
     {
@@ -349,8 +353,7 @@ namespace Falcor
                     // for the given element.
                     uint32_t shaderLocation = pVB->getElementShaderLocation(elemID);
 
-                    auto pAttribReflector = pReflector->getVertexAttributeBySemantic(
-                        pVB->getElementName(elemID));
+                    auto pAttribReflector = pReflector->getVertexAttributeBySemantic(pVB->getElementName(elemID));
                     if (pAttribReflector)
                     {
                         shaderLocation = (uint32_t) pAttribReflector->location;

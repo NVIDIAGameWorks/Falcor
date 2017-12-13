@@ -26,6 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Experiment.h"
+#include <fstream>
+#include <ctime>
 
 namespace Falcor
 {
@@ -126,11 +128,10 @@ namespace Falcor
         {
             // subject name.. later this should be received as an input
             // make a unique file name
-            time_t t = time(NULL);
-            struct tm tmbuf;
-            localtime_s(&tmbuf, &t);
+            time_t t = std::time(nullptr);
+            const std::tm* tmbuf = std::localtime(&t);
             char tmCharArray[17];
-            strftime(tmCharArray, sizeof tmCharArray, "%Y%m%d_%H%M%S", &tmbuf);
+            std::strftime(tmCharArray, sizeof(tmCharArray), "%Y%m%d_%H%M%S", tmbuf);
             std::string timeStr(tmCharArray);
             std::string fileNameStr = "UserStudy_" + prefix + "_" + timeStr + ".csv";
 

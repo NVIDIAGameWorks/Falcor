@@ -73,7 +73,7 @@ namespace Falcor
     private:
         GpuFence() : mCpuValue(0) {}
         uint64_t mCpuValue;
-        HANDLE mEvent = INVALID_HANDLE_VALUE;
+
         ApiHandle mApiHandle;
         FenceApiData* mpApiData = nullptr;
     };

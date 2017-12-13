@@ -14,7 +14,7 @@
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\OptiX\include;$(CUDA_PATH_V7_5)\include;$(FALCOR_CORE_DIRECTORY)\Externals\Cuda\include;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\FreeImage;$(FALCOR_CORE_DIRECTORY)\Externals\Assimp\lib\$(PlatformName)\;$(FALCOR_CORE_DIRECTORY)\Externals\FFMpeg\lib\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\openvr\lib\win64;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi\amd64;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Lib;$(FALCOR_CORE_DIRECTORY)\Externals\Slang\bin\windows-x64\release;$(FALCOR_CORE_DIRECTORY)\Externals\GLFW\lib</AdditionalLibraryDirectories>

@@ -29,7 +29,7 @@
 #include "SimpleModelImporter.h"
 #include "../Model.h"
 #include "../Mesh.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "API/VertexLayout.h"
 #include "Data/VertexAttrib.h"
 #include "API/Buffer.h"

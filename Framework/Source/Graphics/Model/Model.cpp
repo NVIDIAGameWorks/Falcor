@@ -30,8 +30,8 @@
 #include "Loaders/AssimpModelImporter.h"
 #include "Loaders/BinaryModelImporter.h"
 #include "Loaders/BinaryModelExporter.h"
-#include "Utils/OS.h"
-#include "mesh.h"
+#include "Utils/Platform/OS.h"
+#include "Mesh.h"
 #include "glm/geometric.hpp"
 #include "AnimationController.h"
 #include "Animation.h"
@@ -338,7 +338,7 @@ namespace Falcor
     void removeNullElements(std::vector<T>& Vec)
     {
         auto Pred = [](T& t) {return t == nullptr; };
-        auto& NewEnd = std::remove_if(Vec.begin(), Vec.end(), Pred);
+        auto NewEnd = std::remove_if(Vec.begin(), Vec.end(), Pred);
         Vec.erase(NewEnd, Vec.end());
     }
 
@@ -355,7 +355,7 @@ namespace Falcor
 
         // Remove culled instances
         auto instPred = [](MeshInstance::SharedPtr& instance) { return instance->getObject() == nullptr; };
-        auto& instEnd = std::remove_if(meshInstances.begin(), meshInstances.end(), instPred);
+        auto instEnd = std::remove_if(meshInstances.begin(), meshInstances.end(), instPred);
         meshInstances.erase(instEnd, meshInstances.end());
     }
 
@@ -385,7 +385,7 @@ namespace Falcor
 
         // Remove unused meshes from the vector
         auto pred = [](MeshInstanceList& meshInstances) { return meshInstances.size() == 0; };
-        auto& meshesEnd = std::remove_if(mMeshes.begin(), mMeshes.end(), pred);
+        auto meshesEnd = std::remove_if(mMeshes.begin(), mMeshes.end(), pred);
         mMeshes.erase(meshesEnd, mMeshes.end());
 
         calculateModelProperties();

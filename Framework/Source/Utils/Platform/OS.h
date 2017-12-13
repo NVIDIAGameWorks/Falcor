@@ -138,7 +138,7 @@ namespace Falcor
         \param[out] value On success, will hold the value of the environment variable.
         \return true if environment variable was found, otherwise false.
     */
-    bool getEnvironemntVariable(const std::string& varName, std::string& value);
+    bool getEnvironmentVariable(const std::string& varName, std::string& value);
 
     /** Get a list of all recorded data directories.
     */
@@ -249,6 +249,22 @@ namespace Falcor
     /** Get the Virtual Memory Used by this Process.
     */
     uint64_t  getProcessUsedVirtualMemory();
+
+    /** Returns index of most significant set bit, or 0 if no bits were set.
+    */
+    uint32_t bitScanReverse(uint32_t a);
+
+    /** Returns index of least significant set bit, or 0 if no bits were set.
+    */
+    uint32_t bitScanForward(uint32_t a);
+
+    /** Gets the closest power of two to a number, rounded down.
+    */
+    uint32_t getLowerPowerOf2(uint32_t a);
+
+    /** Gets the number of set bits.
+    */
+    uint32_t popcount(uint32_t a);
 
     /*! @} */
 };

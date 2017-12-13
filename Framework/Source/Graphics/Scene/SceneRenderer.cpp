@@ -32,7 +32,7 @@
 #include "API/ConstantBuffer.h"
 #include "API/RenderContext.h"
 #include "Scene.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "VR/OpenVR/VRSystem.h"
 #include "API/Device.h"
 #include "glm/matrix.hpp"
@@ -355,11 +355,6 @@ namespace Falcor
         currentData.pModel = nullptr;
         currentData.drawID = 0;
         renderScene(currentData);
-    }
-
-    static CameraController::SharedPtr createHmdCameraController()
-    {
-
     }
 
     void SceneRenderer::setCameraControllerType(CameraControllerType type)

@@ -37,7 +37,7 @@ namespace Falcor
     };
 
     template<typename ApiHandle>
-    class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkHandle<typename ApiHandle>>
+    class VkHandle : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkHandle<ApiHandle>>
     {
     public:
         class SharedPtr : public std::shared_ptr<VkHandle<ApiHandle>>
@@ -51,7 +51,12 @@ namespace Falcor
             VkHandle<ApiHandle>* get() const { return std::shared_ptr< VkHandle<ApiHandle>>::get(); }
         };
 
-        ~VkHandle() { static_assert(false, "VkHandle missing destructor specialization"); }
+        ~VkHandle()
+        {
+#ifdef _WIN32
+            static_assert(false, "VkHandle missing destructor specialization"); 
+#endif
+        }
     private:
         friend class SharedPtr;
         VkHandle(const ApiHandle& apiHandle) : mApiHandle(apiHandle) {}
@@ -101,7 +106,7 @@ namespace Falcor
             VkDeviceData* get() const { return std::shared_ptr<VkDeviceData>::get(); }
         };
 
-        ~VkDeviceData();        
+        ~VkDeviceData();
     private:
         friend SharedPtr;
         VkDeviceData(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface) :
@@ -121,7 +126,7 @@ namespace Falcor
     };
 
     template<typename ImageType, typename BufferType>
-    class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkResource<typename ImageType, typename BufferType>>
+    class VkResource : public VkBaseApiHandle, public inherit_shared_from_this<VkBaseApiHandle, VkResource<ImageType, BufferType>>
     {
     public:
         class SharedPtr : public std::shared_ptr<VkResource<ImageType, BufferType>>
@@ -140,7 +145,12 @@ namespace Falcor
             VkResource<ImageType, BufferType>* get() const { return std::shared_ptr<VkResource<ImageType, BufferType>>::get(); }
         };
 
-        ~VkResource() { static_assert(false, "VkResource missing destructor specialization"); }
+        ~VkResource()
+        {
+#ifdef _WIN32
+            static_assert(false, "VkResource missing destructor specialization"); 
+#endif
+        }
     private:
         friend SharedPtr;
         VkResource(ImageType image, VkDeviceMemory mem) : mType(VkResourceType::Image), mImage(image), mDeviceMem(mem) {}

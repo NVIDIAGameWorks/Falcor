@@ -25,8 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
 #include "Framework.h"
-#include "ProgressBar.h"
+#include "Utils/Platform/ProgressBar.h"
 #include <CommCtrl.h>
 #include <random>
 
@@ -104,10 +105,9 @@ namespace Falcor
         }
     }
 
-    ProgressBar::SharedPtr ProgressBar::create(const MessageList& list, uint32_t delayInMs)
+    void ProgressBar::platformInit(const MessageList& list, uint32_t delayInMs)
     {
-        SharedPtr pBar = SharedPtr(new ProgressBar());
-        pBar->mpData = new ProgressBarData;
+        mpData = new ProgressBarData;
 
         // Initialize the common controls
         INITCOMMONCONTROLSEX init;
@@ -116,18 +116,7 @@ namespace Falcor
         InitCommonControlsEx(&init);
 
         // Start the thread
-        pBar->mpData->thread = std::thread(progressBarThread, pBar->mpData, list, delayInMs);
+        mpData->thread = std::thread(progressBarThread, mpData, list, delayInMs);
 
-        return pBar;
-    }
-
-    ProgressBar::SharedPtr ProgressBar::create(const char* pMsg, uint32_t delayInMs)
-    {
-        MessageList list;
-        if (pMsg)
-        {
-            list.push_back(pMsg);
-        }
-        return create(list, delayInMs);
     }
 }

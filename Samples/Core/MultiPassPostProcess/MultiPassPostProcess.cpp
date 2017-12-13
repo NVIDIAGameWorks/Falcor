@@ -63,7 +63,7 @@ void MultiPassPostProcess::loadImageFromFile(std::string filename)
 {
     auto fboFormat = mpDefaultFBO->getColorTexture(0)->getFormat();
     mpImage = createTextureFromFile(filename, false, isSrgbFormat(fboFormat));
-    ResourceFormat imageFormat = mpImage->getFormat();
+
     Fbo::Desc fboDesc;
     fboDesc.setColorTarget(0, mpImage->getFormat());
     mpTempFB = FboHelper::create2D(mpImage->getWidth(), mpImage->getHeight(), fboDesc);
@@ -145,10 +145,19 @@ void MultiPassPostProcess::onInitializeTesting()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     MultiPassPostProcess multiPassPostProcess;
     SampleConfig config;
     config.windowDesc.title = "Multi-pass post-processing";
+#ifdef _WIN32
     multiPassPostProcess.run(config);
+#else
+    multiPassPostProcess.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

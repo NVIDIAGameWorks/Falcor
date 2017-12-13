@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Font.h"
-#include "OS.h"
+#include "Utils/Platform/OS.h"
 #include <fstream>
 #include "Graphics/TextureHelper.h"
 #include "API/Texture.h"
@@ -116,7 +116,6 @@ namespace Falcor
         {
             FontCharData CharData;
             Data.read((char*)&CharData, sizeof(FontCharData));
-            char Char = i + mFirstChar;
             if(CharData.Char != i + mFirstChar)
             {
                 Data.close();

@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "VideoEncoderUI.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Utils/Gui.h"
 
 namespace Falcor

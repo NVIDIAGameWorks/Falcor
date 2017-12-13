@@ -25,7 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
 #include "Framework.h"
 #include "API/GraphicsStateObject.h"
 #include "API/FBO.h"
@@ -42,11 +41,11 @@ namespace Falcor
         initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
 
         // Vertex Input State
-        VertexInputStateCreateInfo vertexInputInfo;
+        VertexInputStateCreateInfo vertexInputInfo = {};
         initVkVertexLayoutInfo(mDesc.getVertexLayout().get(), vertexInputInfo, mDesc.getProgramVersion()->getReflector().get());
 
         // Input Assembly State
-        VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
+        VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
         initVkInputAssemblyInfo(mDesc.getVao().get(), inputAssemblyInfo);
         
         // Viewport State
@@ -57,20 +56,20 @@ namespace Falcor
         viewportStateInfo.scissorCount = getMaxViewportCount();
 
         // Rasterizerization State
-        VkPipelineRasterizationStateCreateInfo rasterizerInfo;
+        VkPipelineRasterizationStateCreateInfo rasterizerInfo = {};
         initVkRasterizerInfo(mDesc.getRasterizerState().get(), rasterizerInfo);
 
         // Multisample State
-        VkPipelineMultisampleStateCreateInfo multisampleInfo;
+        VkPipelineMultisampleStateCreateInfo multisampleInfo = {};
         bool enableSampleFrequency = mDesc.getProgramVersion() ? mDesc.getProgramVersion()->getReflector()->isSampleFrequency() : false;
         initVkMultiSampleInfo(mDesc.getBlendState().get(), mDesc.getFboDesc(), mDesc.getSampleMask(), multisampleInfo, enableSampleFrequency);
 
         // Depth Stencil State
-        VkPipelineDepthStencilStateCreateInfo depthStencilInfo;
+        VkPipelineDepthStencilStateCreateInfo depthStencilInfo = {};
         initVkDepthStencilInfo(mDesc.getDepthStencilState().get(), depthStencilInfo);
 
         // Color Blend State
-        ColorBlendStateCreateInfo blendInfo;
+        ColorBlendStateCreateInfo blendInfo = {};
         initVkBlendInfo(mDesc.getBlendState().get(), blendInfo);
 
         // Dynamic State

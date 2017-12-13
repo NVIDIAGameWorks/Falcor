@@ -53,7 +53,7 @@ namespace Falcor
         public:
             SharedPtrT() : std::shared_ptr<T>() {}
             SharedPtrT(T* pProgVars) : std::shared_ptr<T>(pProgVars) {}
-            ConstantBuffer::SharedPtr operator[](const std::string& cbName) { return get()->getConstantBuffer(cbName); }
+            ConstantBuffer::SharedPtr operator[](const std::string& cbName) { return std::shared_ptr<T>::get()->getConstantBuffer(cbName); }
             ConstantBuffer::SharedPtr operator[](uint32_t index) = delete; // No set by index. This is here because if we didn't explicitly delete it, the compiler will try to convert to int into a string, resulting in runtime error
         };
 
@@ -206,23 +206,14 @@ namespace Falcor
             uint32_t rangeIndex = uint32_t(-1);
         };
 
-        template<typename ViewType>
+        template<typename ViewType, typename ResourceType = Resource>
         struct ResourceData
         {
             ResourceData(const RootData& data) : rootData(data) {}
             typename ViewType::SharedPtr pView = nullptr;
-            Resource::SharedPtr pResource = nullptr;
+            typename ResourceType::SharedPtr pResource = nullptr;
             RootData rootData;
         };
-
-        template<>
-        struct ResourceData<Sampler>
-        {
-            ResourceData(const RootData& data) : rootData(data) {}
-            Sampler::SharedPtr pSampler;
-            RootData rootData;
-        };
-
 
         struct RootSet
         {
@@ -245,15 +236,14 @@ namespace Falcor
             bool operator==(const BindLocation& other) const { return u64 == other.u64; }
         };
 
-        template<typename T>
-        using ResourceMap = std::unordered_map<BindLocation, std::vector<ResourceData<T>>, BindLocation>;
-        using SamplerMap = std::unordered_map<BindLocation, std::vector<Sampler::SharedConstPtr>, BindLocation>;
+        template<typename V, typename R = Resource>
+        using ResourceMap = std::unordered_map<BindLocation, std::vector<ResourceData<V, R>>, BindLocation>;
         using RootSetVec = std::vector<RootSet>;
 
         const ResourceMap<ConstantBuffer>& getAssignedCbs() const { return mAssignedCbs; }
         const ResourceMap<ShaderResourceView>& getAssignedSrvs() const { return mAssignedSrvs; }
         const ResourceMap<UnorderedAccessView>& getAssignedUavs() const { return mAssignedUavs; }
-        const ResourceMap<Sampler>& getAssignedSamplers() const { return mAssignedSamplers; }
+        const ResourceMap<Sampler, Sampler>& getAssignedSamplers() const { return mAssignedSamplers; }
         const RootSetVec getRootSets() const { return mRootSets; }
 
         // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
@@ -268,10 +258,10 @@ namespace Falcor
         RootSignature::SharedPtr mpRootSignature;
         ProgramReflection::SharedConstPtr mpReflector;
 
-        ResourceMap<ConstantBuffer> mAssignedCbs;        // HLSL 'b' registers
-        ResourceMap<ShaderResourceView> mAssignedSrvs;   // HLSL 't' registers
-        ResourceMap<UnorderedAccessView> mAssignedUavs;  // HLSL 'u' registers
-        ResourceMap<Sampler> mAssignedSamplers;    // HLSL 's' registers
+        ResourceMap<ConstantBuffer> mAssignedCbs;           // HLSL 'b' registers
+        ResourceMap<ShaderResourceView> mAssignedSrvs;      // HLSL 't' registers
+        ResourceMap<UnorderedAccessView> mAssignedUavs;     // HLSL 'u' registers
+        ResourceMap<Sampler, Sampler> mAssignedSamplers;    // HLSL 's' registers
 
         RootSetVec mRootSets;
     };

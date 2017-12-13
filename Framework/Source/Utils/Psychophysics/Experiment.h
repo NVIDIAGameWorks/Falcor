@@ -28,12 +28,7 @@
 #pragma once
 
 #include "SingleThresholdMeasurement.h"
-#include <vector>
 #include <map>
-#include <time.h>
-#include <fstream>
-#include <iostream>
-#include <stdint.h>
 
 namespace Falcor
 {
@@ -91,7 +86,7 @@ namespace Falcor
 
             /** Returns name of result file used
             */
-            std::string Experiment::generateResultFilename(std::string prefix);
+            std::string generateResultFilename(std::string prefix);
 
             /** Write the result into a result file with a unique name
             */

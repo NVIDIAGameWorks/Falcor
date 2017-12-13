@@ -25,9 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
 #include "Framework.h"
-#include "Utils/OS.h"
-#include <fstream>
+#include "Utils/Platform/OS.h"
 #include <vector>
 #include <stdint.h>
 #include "Utils/StringUtils.h"
@@ -135,7 +135,7 @@ namespace Falcor
         return filename;
     }
 
-    bool getEnvironemntVariable(const std::string& varName, std::string& value)
+    bool getEnvironmentVariable(const std::string& varName, std::string& value)
     {
         static char buff[4096];
         int numChar = GetEnvironmentVariableA(varName.c_str(), buff, arraysize(buff)); //what is the best way to deal with wchar ?
@@ -148,76 +148,8 @@ namespace Falcor
         return true;
     }
 
-    std::vector<std::string> gDataDirectories =
-    {
-        // Ordering matters here, we want that while developing, resources will be loaded from the development media directory
-        std::string(getWorkingDirectory()),
-        std::string(getWorkingDirectory() + "\\data"),
-        std::string(getExecutableDirectory()),
-        std::string(getExecutableDirectory() + "\\data"),
-
-        // The local solution media folder
-        std::string(getExecutableDirectory() + "\\..\\..\\..\\Media"),
-    };
-
-    const std::vector<std::string>& getDataDirectoriesList()
-    {
-        return gDataDirectories;
-    }
-
-    void addDataDirectory(const std::string& dataDir)
-    {
-        //Insert unique elements
-        if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dataDir) == gDataDirectories.end())
-        {
-            gDataDirectories.push_back(dataDir);
-        }
-    }
-
-    std::string canonicalizeFilename(const std::string& filename)
-    {
-        //  It might be tempting to try to figure out a nicer bound ourselves, but the documentation says "You must set the
-        //  size of this buffer to MAX_PATH to ensure that it is large enough to hold the returned string.".
-        char buffer[MAX_PATH];
-        PathCanonicalizeA(buffer, filename.c_str());
-        return replaceSubstring(buffer, "/", "\\");
-    }
-
-    bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)
-    {
-        static bool bInit = false;
-        if (bInit == false)
-        {
-            std::string dataDirs;
-            if (getEnvironemntVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
-            {
-                auto folders = splitString(dataDirs, ";");
-                gDataDirectories.insert(gDataDirectories.end(), folders.begin(), folders.end());
-            }
-            bInit = true;
-        }
-
-        // Check if this is an absolute path
-        if (doesFileExist(filename))
-        {
-            fullpath = canonicalizeFilename(filename);
-            return true;
-        }
-
-        for (const auto& Dir : gDataDirectories)
-        {
-            fullpath = canonicalizeFilename(Dir + '\\' + filename);
-            if (doesFileExist(fullpath))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     template<bool bOpen>
-    static bool fileDialogCommon(const char* pFilters, std::string& filename)
+    bool fileDialogCommon(const char* pFilters, std::string& filename)
     {
         OPENFILENAMEA ofn;
         CHAR chars[512] = "";
@@ -245,44 +177,8 @@ namespace Falcor
         return false;
     }
 
-
-    bool openFileDialog(const char* pFilters, std::string& filename)
-    {
-        return fileDialogCommon<true>(pFilters, filename);
-    }
-
-    bool saveFileDialog(const char* pFilters, std::string& filename)
-    {
-        return fileDialogCommon<false>(pFilters, filename);
-    }
-
-    bool readFileToString(const std::string& fullpath, std::string& str)
-    {
-        std::ifstream t(fullpath.c_str());
-        if ((t.rdstate() & std::ifstream::failbit) == 0)
-        {
-            str = std::string((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-            return true;
-        }
-        return false;
-    }
-
-    bool findAvailableFilename(const std::string& prefix, const std::string& directory, const std::string& extension, std::string& filename)
-    {
-        for (UINT32 i = 0; i < UINT32_MAX; i++)
-        {
-            std::string newPrefix = prefix + '.' + std::to_string(i);
-            filename = directory + '\\' + newPrefix + "." + extension;
-
-            if (doesFileExist(filename) == false)
-            {
-                return true;
-            }
-        }
-        should_not_get_here();
-        filename = "";
-        return false;
-    }
+    template bool fileDialogCommon<true>(const char* pFilters, std::string& filename);
+    template bool fileDialogCommon<false>(const char* pFilters, std::string& filename);
 
     void setWindowIcon(const std::string& iconFile, Window::ApiHandle windowHandle)
     {
@@ -328,28 +224,6 @@ namespace Falcor
         __debugbreak();
     }
 
-    std::string stripDataDirectories(const std::string& filename)
-    {
-        std::string stripped = filename;
-        std::string canonFile = canonicalizeFilename(filename);
-        for (const auto& dir : gDataDirectories)
-        {
-            std::string canonDir = canonicalizeFilename(dir);
-            if (hasPrefix(canonFile, canonDir, false))
-            {
-                // canonicalizeFilename adds trailing \\ to drive letters and removes them from paths containing folders
-                size_t len = canonDir.back() == '\\' ? canonDir.length() : canonDir.length() + 1;
-                std::string tmp = canonFile.erase(0, len);
-                if (tmp.length() < stripped.length())
-                {
-                    stripped = tmp;
-                }
-            }
-        }
-
-        return stripped;
-    }
-
     std::string getDirectoryFromFile(const std::string& filename)
     {
         char *cstr = new char[filename.length() + 1];
@@ -372,19 +246,6 @@ namespace Falcor
         std::string ret = std::string(cstr);
         delete[] cstr;
         return ret;
-    }
-
-    std::string swapFileExtension(const std::string& str, const std::string& currentExtension, const std::string& newExtension)
-    {
-        if (hasSuffix(str, currentExtension))
-        {
-            std::string ret = str;
-            return (ret.erase(ret.rfind(currentExtension)) + newExtension);
-        }
-        else
-        {
-            return str;
-        }
     }
 
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
@@ -496,5 +357,22 @@ namespace Falcor
         return virtualMemUsedByMe;
     }
 
+    uint32_t bitScanReverse(uint32_t a)
+    {
+        unsigned long index;
+        _BitScanReverse(&index, a);
+        return (uint32_t)index;
+    }
 
+    uint32_t bitScanForward(uint32_t a)
+    {
+        unsigned long index;
+        _BitScanForward(&index, a);
+        return (uint32_t)index;
+    }
+
+    uint32_t popcount(uint32_t a)
+    {
+        return __popcnt(a);
+    }
 }
