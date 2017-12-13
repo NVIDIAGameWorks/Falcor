@@ -70,7 +70,10 @@ namespace Falcor
         /** Bind a constant buffer object by index.
             If the no CB exists in the specified index or the CB size doesn't match the required size, the call will fail.
             If a buffer was previously bound it will be released.
-            \param[in] name The name of the constant buffer in the program
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
+            \param[in] regSpace The register space
+            \param[in] baseRegIndex The base register index
+            \param[in] arrayIndex The array index, or 0 for non-array variables
             \param[in] pCB The constant buffer object
             \return false is the call failed, otherwise true
         */
@@ -83,26 +86,32 @@ namespace Falcor
         ConstantBuffer::SharedPtr getConstantBuffer(const std::string& name) const;
 
         /** Get a constant buffer object.
-            \param[in] index The index of the buffer
-            \return If the index is valid, a shared pointer to the buffer. Otherwise returns nullptr
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
+            \param[in] regSpace The register space
+            \param[in] baseRegIndex The base register index
+            \param[in] arrayIndex The array index, or 0 for non-array variables
+            \return If the indices are valid, a shared pointer to the buffer. Otherwise returns nullptr
         */
         ConstantBuffer::SharedPtr getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Set a raw-buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
             \param[in] name The name of the buffer
             \param[in] pBuf The buffer object
+            \return false is the call failed, otherwise true
         */
         bool setRawBuffer(const std::string& name, Buffer::SharedPtr pBuf);
         
         /** Set a typed buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
             \param[in] name The name of the buffer
             \param[in] pBuf The buffer object
+            \return false is the call failed, otherwise true
         */
         bool setTypedBuffer(const std::string& name, TypedBufferBase::SharedPtr pBuf);
 
         /** Set a structured buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
             \param[in] name The name of the buffer
             \param[in] pBuf The buffer object
+            \return false is the call failed, otherwise true
         */
         bool setStructuredBuffer(const std::string& name, StructuredBuffer::SharedPtr pBuf);
 
@@ -127,6 +136,7 @@ namespace Falcor
         /** Bind a texture. Based on the shader reflection, it will be bound as either an SRV or a UAV
             \param[in] name The name of the texture object in the shader
             \param[in] pTexture The texture object to bind
+            \return false is the call failed, otherwise true
         */
         bool setTexture(const std::string& name, const Texture::SharedPtr& pTexture);
 
@@ -137,32 +147,40 @@ namespace Falcor
         Texture::SharedPtr getTexture(const std::string& name) const;
 
         /** Bind an SRV.
-            \param[in] regSpace Register space the SRV is located in
-            \param[in] baseRegIndex Register index the SRV is located at
-            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
+            \param[in] regSpace The register space
+            \param[in] baseRegIndex The base register index
+            \param[in] arrayIndex The array index, or 0 for non-array variables
+            \param[in] pSrv The shader-resource-view. If it's nullptr, will set a view to a default (black) texture.
+            \return false is the call failed, otherwise true
         */
         bool setSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv);
 
         /** Bind a UAV.
-            \param[in] regSpace Register space the UAV is located in
-            \param[in] baseRegIndex Register index the UAV is located at
-            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
+            \param[in] regSpace The register space
+            \param[in] baseRegIndex The base register index
+            \param[in] arrayIndex The array index, or 0 for non-array variables
+            \param[in] pUav The unordered-access-view. If it's nullptr, will set a view to a default (black) texture.
+            \return false is the call failed, otherwise true
         */
         bool setUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav);
 
         /** Get an SRV object.
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
             \param[in] regSpace Register space the SRV is located in
             \param[in] baseRegIndex Register index the SRV is located at
             \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
-            \return If the index is valid, a shared pointer to the SRV. Otherwise returns nullptr
+            \return If the indices are valid, a shared pointer to the SRV. Otherwise returns nullptr
         */
         ShaderResourceView::SharedPtr getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
         /** Get a UAV object
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
             \param[in] regSpace Register space the UAV is located in
             \param[in] baseRegIndex Register index the UAV is located at
             \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
-            \return If the index is valid, a shared pointer to the UAV. Otherwise returns nullptr
+            \return If the indices are valid, a shared pointer to the UAV. Otherwise returns nullptr
         */
         UnorderedAccessView::SharedPtr getUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
 
@@ -174,9 +192,11 @@ namespace Falcor
         bool setSampler(const std::string& name, const Sampler::SharedPtr& pSampler);
 
         /** Bind a sampler to the program in the global namespace.
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
             \param[in] regSpace Register space the sampler is located in
             \param[in] baseRegIndex Register index the sampler is located at
             \param[in] arrayIndex Index into sampler array, if applicable. Use 0 otherwise
+            \param[in] The sampler object
             \return false if the sampler was not found in the program, otherwise true
         */
         bool setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler);
@@ -187,6 +207,11 @@ namespace Falcor
         Sampler::SharedPtr getSampler(const std::string& name) const;
 
         /** Gets a sampler object.
+            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
+            \param[in] regSpace Register space the sampler is located in
+            \param[in] baseRegIndex Register index the sampler is located at
+            \param[in] arrayIndex Index into sampler array, if applicable. Use 0 otherwise
+            \param[in] The sampler object
             \return If the index is valid, a shared pointer to the sampler. Otherwise returns nullptr
         */
         Sampler::SharedPtr getSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
@@ -199,16 +224,32 @@ namespace Falcor
         */
         RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
 
+        /** Get the number of parameter-blocks
+        */
         uint32_t getParameterBlockCount() const { return (uint32_t)mParameterBlocks.size(); }
-
+        
+        /** Get a list of indices translating a parameter-block's set index to the root-signature entry index
+        */
         const std::vector<uint32_t>& getParameterBlockRootIndices(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].rootIndex; }
 
+        /** Get parameter-block by index. You can translate a name to an index using the ProgramReflection object
+        */
         const ParameterBlock::SharedConstPtr getParameterBlock(uint32_t blockIndex) const;
+
+        /** Get parameter-block by name
+        */
         const ParameterBlock::SharedConstPtr getParameterBlock(const std::string& name) const;
 
+        /** Set parameter-block by index. You can translate a name to an index using the ProgramReflection object
+        */
         void setParameterBlock(uint32_t blockIndex, const ParameterBlock::SharedConstPtr& pBlock);
+
+        /** Set parameter-block by name
+        */
         void setParameterBlock(const std::string& name, const ParameterBlock::SharedConstPtr& pBlock);
 
+        /** Get the default parameter-block
+        */
         ParameterBlock::SharedPtr getDefaultBlock() const { return mDefaultBlock.pBlock; }
 
         // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
