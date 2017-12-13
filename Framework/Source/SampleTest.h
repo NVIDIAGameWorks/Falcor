@@ -29,7 +29,8 @@
 #include "Externals/RapidJson/include/rapidjson/document.h"
 #include "Externals/RapidJson/include/rapidjson/stringbuffer.h"
 #include "Externals/RapidJson/include/rapidjson/prettywriter.h"
-#include "Falcor.h"
+//#include "Falcor.h"
+#include "Sample.h"
 
 namespace Falcor
 {
@@ -114,7 +115,7 @@ namespace Falcor
         {
         public:
             // Construct a new Task, with the appropriate Task Type and Trigger Type.
-            FrameTask(TaskType newTaskType, uint32_t newStartFrame, uint32_t newEndFrame) : mTaskType(newTaskType), mStartFrame(newStartFrame), mEndFrame(mEndFrame) {};
+            FrameTask(TaskType newTaskType, uint32_t newStartFrame, uint32_t newEndFrame) : mTaskType(newTaskType), mStartFrame(newStartFrame), mEndFrame(newEndFrame) {};
 
             bool operator<(const FrameTask & rhs) const
             {

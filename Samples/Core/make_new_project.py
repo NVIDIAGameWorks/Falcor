@@ -21,8 +21,8 @@ Files.append(".vcxproj.filters")
 
 for File in Files:
 	#rename the File
-	SrcFile = Src + '\\' + Src + File
-	DstFile = Dst + '\\' + Dst + File
+	SrcFile = Src + '/' + Src + File
+	DstFile = Dst + '/' + Dst + File
 
 	# replace all occurences
 	F = open(SrcFile)

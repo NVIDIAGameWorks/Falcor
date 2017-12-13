@@ -49,7 +49,7 @@ void EnvMap::onLoad()
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
 
-    mpSkybox = SkyBox::createFromTexture("Cubemaps\\Sorsele3\\Sorsele3.dds", true, mpTriLinearSampler);
+    mpSkybox = SkyBox::createFromTexture("Cubemaps/Sorsele3/Sorsele3.dds", true, mpTriLinearSampler);
 
     initializeTesting();
 }
@@ -87,24 +87,6 @@ bool EnvMap::onKeyEvent(const KeyboardEvent& keyEvent)
 bool EnvMap::onMouseEvent(const MouseEvent& mouseEvent)
 {
     return mpCameraController->onMouseEvent(mouseEvent);
-}
-
-void GUI_CALL EnvMap::getScaleCB(void* pData, void* pThis)
-{
-    EnvMap* pEnv = (EnvMap*)pThis;
-    if(pEnv->mpSkybox)
-    {
-        *(float*)pData = pEnv->mpSkybox->getScale();
-    }
-}
-
-void GUI_CALL EnvMap::setScaleCB(const void* pData, void* pThis)
-{
-    EnvMap* pEnv = (EnvMap*)pThis;
-    if(pEnv->mpSkybox)
-    {
-        pEnv->mpSkybox->setScale(*(float*)pData);
-    }
 }
 
 void EnvMap::onResizeSwapChain()
@@ -158,10 +140,19 @@ void EnvMap::onEndTestFrame()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     EnvMap sample;
     SampleConfig config;
     config.windowDesc.title = "Skybox Sample";
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

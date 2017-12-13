@@ -63,8 +63,6 @@ void StereoRendering::initVR()
 
     if (VRSystem::instance())
     {
-        VRDisplay* pDisplay = VRSystem::instance()->getHMD().get();
-
         // Create the FBOs
         Fbo::Desc vrFboDesc;
 
@@ -81,7 +79,7 @@ void StereoRendering::initVR()
         }
         else
         {
-            static bool first = displaySpsWarning();
+            displaySpsWarning();
         }
     }
     else
@@ -279,7 +277,11 @@ void StereoRendering::onResizeSwapChain()
     initVR();
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     StereoRendering sample;
     SampleConfig config;
@@ -291,5 +293,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 #ifdef FALCOR_VK
     config.deviceDesc.enableDebugLayer = false; // OpenVR requires an extension that the debug layer doesn't recognize. It causes the application to crash
 #endif
+
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

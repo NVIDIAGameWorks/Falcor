@@ -108,3 +108,4 @@ namespace Falcor
         size_t mElementSize;
     };
 }
+

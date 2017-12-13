@@ -84,10 +84,8 @@ namespace Falcor
     {
         ElementDesc desc;
 
-        int32_t bufferIndex = -1;
         for(uint32_t bufId = 0; bufId < getVertexBuffersCount(); ++bufId)
         {
-            const auto& buffer = mpVBs[bufId];
             const VertexBufferLayout* pVbLayout = mpVertexLayout->getBufferLayout(bufId).get();
             assert(pVbLayout);
 

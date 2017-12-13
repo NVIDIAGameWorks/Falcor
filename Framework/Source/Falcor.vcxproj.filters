@@ -34,9 +34,6 @@
     <ClCompile Include="Utils\TextRenderer.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\Windows.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\Profiler.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -196,107 +193,8 @@
     <ClCompile Include="API\LowLevel\RootSignature.cpp">
       <Filter>API\LowLevel</Filter>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3DFormats.cpp">
-      <Filter>API\D3D</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3DProgramVersion.cpp">
-      <Filter>API\D3D</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3DShader.cpp">
-      <Filter>API\D3D</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3DState.cpp">
-      <Filter>API\D3D</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11BlendState.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11Buffer.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11DepthStencilState.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11Fbo.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11GpuTimer.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11ProgramVersion.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11RasterizerState.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11RenderContext.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11Sampler.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11ScreenCapture.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11Shader.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11Texture.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11UniformBuffer.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11Vao.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D11\D3D11Window.cpp">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12RasterizerState.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12RenderContext.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12Sampler.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12Texture.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12UniformBuffer.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12Vao.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12Buffer.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12Device.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12Fbo.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12GpuTimer.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\LowLevel\D3D12DescriptorHeap.cpp">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\LowLevel\D3D12GpuFence.cpp">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\LowLevel\D3D12RootSignature.cpp">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
-    </ClCompile>
     <ClCompile Include="API\ConstantBuffer.cpp">
       <Filter>API</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\LowLevel\D3D12ResourceAllocator.cpp">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
     </ClCompile>
     <ClCompile Include="..\Externals\dear_imgui\imgui.cpp">
       <Filter>Externals\dear_imgui</Filter>
@@ -317,12 +215,6 @@
     <ClCompile Include="API\Resource.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12Resource.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12ResourceViews.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="API\TypedBuffer.cpp">
       <Filter>API</Filter>
     </ClCompile>
@@ -341,9 +233,6 @@
     <ClCompile Include="API\ComputeStateObject.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12ComputeStateObject.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\ComputeState.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -352,18 +241,6 @@
     </ClCompile>
     <ClCompile Include="API\GraphicsStateObject.cpp">
       <Filter>API</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12GraphicsStateObject.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12CopyContext.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12ComputeContext.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\LowLevel\D3D12LowLevelContextData.cpp">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Model\Loaders\ModelImporter.cpp">
       <Filter>Graphics\Model\Loaders</Filter>
@@ -393,9 +270,6 @@
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp">
       <Filter>Effects\AmbientOcclusion</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\ProgressBarWin.cpp">
-      <Filter>Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\PixelZoom.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -407,12 +281,6 @@
     </ClCompile>
     <ClCompile Include="API\LowLevel\DescriptorPool.cpp">
       <Filter>API\LowLevel</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\LowLevel\D3D12DescriptorPool.cpp">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\LowLevel\D3D12DescriptorSet.cpp">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
     </ClCompile>
     <ClCompile Include="API\vulkan\VKDevice.cpp">
       <Filter>API\Vulkan</Filter>
@@ -492,12 +360,6 @@
     <ClCompile Include="API\Vulkan\VkSmartHandle.cpp">
       <Filter>API\Vulkan</Filter>
     </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12QueryHeap.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
-    <ClCompile Include="API\D3D\D3D12\D3D12ProgramVars.cpp">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClCompile>
     <ClCompile Include="API\ComputeContext.cpp">
       <Filter>API</Filter>
     </ClCompile>
@@ -535,6 +397,114 @@
     <ClCompile Include="API\Window.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\Platform\Linux\Linux.cpp">
+      <Filter>Utils\Platform\Linux</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\Windows\Windows.cpp">
+      <Filter>Utils\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\Windows\ProgressBarWin.cpp">
+      <Filter>Utils\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\Linux\ProgressBarLinux.cpp">
+      <Filter>Utils\Platform\Linux</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\OS.cpp">
+      <Filter>Utils\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\DXHeader.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Platform\ProgressBar.cpp">
+      <Filter>Utils\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12Texture.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12UniformBuffer.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12Vao.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3DFormats.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3DProgramVersion.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3DShader.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12Buffer.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12ComputeContext.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12ComputeStateObject.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12CopyContext.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12Device.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12Fbo.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12GpuTimer.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12GraphicsStateObject.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12ProgramVars.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12QueryHeap.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12RasterizerState.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12RenderContext.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12Resource.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12ResourceViews.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12Sampler.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\LowLevel\D3D12DescriptorPool.cpp">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\LowLevel\D3D12DescriptorSet.cpp">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\LowLevel\D3D12GpuFence.cpp">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\LowLevel\D3D12LowLevelContextData.cpp">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\LowLevel\D3D12ResourceAllocator.cpp">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\LowLevel\D3D12RootSignature.cpp">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\LowLevel\D3D12DescriptorHeap.cpp">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClCompile>
+    <ClCompile Include="API\D3D12\D3D12State.cpp">
+      <Filter>API\D3D12</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -565,9 +535,6 @@
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Logger.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\OS.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\TextRenderer.h">
@@ -801,32 +768,11 @@
     <ClInclude Include="API\LowLevel\RootSignature.h">
       <Filter>API\LowLevel</Filter>
     </ClInclude>
-    <ClInclude Include="API\D3D\D3DState.h">
-      <Filter>API\D3D</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\D3DViews.h">
-      <Filter>API\D3D</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\FalcorD3D.h">
-      <Filter>API\D3D</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\D3D11\D3D11ShaderReflection.h">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\D3D11\FalcorD3D11.h">
-      <Filter>API\D3D\D3D11</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\D3D12\FalcorD3D12.h">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\DDSHeader.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="API\ConstantBuffer.h">
       <Filter>API</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\D3D12\D3D12ResourceAllocator.h">
-      <Filter>API\D3D\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="API\LowLevel\ResourceAllocator.h">
       <Filter>API\LowLevel</Filter>
@@ -1504,9 +1450,6 @@
     <ClInclude Include="API\Resource.h">
       <Filter>API</Filter>
     </ClInclude>
-    <ClInclude Include="API\D3D\D3D12\D3D12Resource.h">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="API\ResourceViews.h">
       <Filter>API</Filter>
     </ClInclude>
@@ -1580,12 +1523,6 @@
     <ClInclude Include="Effects\AmbientOcclusion\SSAO.h">
       <Filter>Effects\AmbientOcclusion</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\ProgressBar.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\D3D12\D3D12NvApiExDesc.h">
-      <Filter>API\D3D\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\PixelZoom.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -1603,9 +1540,6 @@
     </ClInclude>
     <ClInclude Include="API\LowLevel\DescriptorPool.h">
       <Filter>API\LowLevel</Filter>
-    </ClInclude>
-    <ClInclude Include="API\D3D\D3D12\LowLevel\D3D12DescriptorData.h">
-      <Filter>API\D3D\D3D12\LowLevel</Filter>
     </ClInclude>
     <ClInclude Include="API\Vulkan\LowLevel\VKDescriptorData.h">
       <Filter>API\Vulkan\LowLevel</Filter>
@@ -1653,8 +1587,38 @@
     <ClInclude Include="Utils\PythonEmbedding.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="API\D3D\D3D12\D3D12ApiData.h">
-      <Filter>API\D3D\D3D12</Filter>
+    <ClInclude Include="Utils\Platform\OS.h">
+      <Filter>Utils\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Platform\ProgressBar.h">
+      <Filter>Utils\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\DXHeader.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\D3DViews.h">
+      <Filter>API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\FalcorD3D12.h">
+      <Filter>API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\D3D12ApiData.h">
+      <Filter>API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\D3D12NvApiExDesc.h">
+      <Filter>API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\D3D12Resource.h">
+      <Filter>API\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\LowLevel\D3D12DescriptorData.h">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\LowLevel\D3D12DescriptorHeap.h">
+      <Filter>API\D3D12\LowLevel</Filter>
+    </ClInclude>
+    <ClInclude Include="API\D3D12\D3D12State.h">
+      <Filter>API\D3D12</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1781,18 +1745,6 @@
     <Filter Include="API\LowLevel">
       <UniqueIdentifier>{8bb5d38b-eb7d-40a8-a5aa-c934669015b5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="API\D3D">
-      <UniqueIdentifier>{60aa2a7f-98dc-4717-99f2-a4fd141ad6b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="API\D3D\D3D11">
-      <UniqueIdentifier>{e0f6e384-0d36-423a-9ca6-1ee4c871a306}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="API\D3D\D3D12">
-      <UniqueIdentifier>{b4658507-5d1b-40b8-98e4-a46e99ced4cd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="API\D3D\D3D12\LowLevel">
-      <UniqueIdentifier>{95cd469b-4af1-4e96-b133-8d553ad215a8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Externals\dear_imgui">
       <UniqueIdentifier>{fd48defe-6e2a-4ea0-a9e0-b7a8b7cbe222}</UniqueIdentifier>
     </Filter>
@@ -1828,6 +1780,21 @@
     </Filter>
     <Filter Include="Utils\Renderer">
       <UniqueIdentifier>{32802cf1-128c-4a2c-835a-17d0a3dd0976}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\Platform">
+      <UniqueIdentifier>{91140a89-0755-46ae-8bea-7af2e775afb4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\Platform\Linux">
+      <UniqueIdentifier>{594e507a-0be5-4e74-bda2-ddf7b429e957}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\Platform\Windows">
+      <UniqueIdentifier>{cfd2d470-4f60-4788-89e9-9aa4ee7032de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="API\D3D12">
+      <UniqueIdentifier>{00ac78d3-41db-4095-af85-65088c6b60bd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="API\D3D12\LowLevel">
+      <UniqueIdentifier>{eaf2bd94-5891-4207-b40a-3e2461da6295}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

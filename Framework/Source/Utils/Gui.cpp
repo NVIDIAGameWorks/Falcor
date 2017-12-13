@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "Gui.h"
 #include <sstream>
-#include "OS.h"
+#include "Utils/Platform/OS.h"
 #include "Utils/UserInput.h"
 #include "API/RenderContext.h"
 #include "Externals/dear_imgui/imgui.h"
@@ -265,7 +265,7 @@ namespace Falcor
     void Gui::addText(const char text[], bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
-        ImGui::Text(text);
+        ImGui::Text(text, "");
     }
 
     bool Gui::addButton(const char label[], bool sameLine)
@@ -523,7 +523,8 @@ namespace Falcor
         const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue;
 
         static const int maxSize = 2048;
-        char buf[maxSize]; strcpy_s(buf, text.c_str());
+        char buf[maxSize];
+        copyStringToBuffer(buf, maxSize, text);
 
         if (lineCount > 1)
         {

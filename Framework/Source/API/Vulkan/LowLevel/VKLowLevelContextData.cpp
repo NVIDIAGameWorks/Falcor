@@ -102,8 +102,6 @@ namespace Falcor
         vk_call(vkEndCommandBuffer(mpList));
         VkSubmitInfo submitInfo = {};
 
-        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &mpList;

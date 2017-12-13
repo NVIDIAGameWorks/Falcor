@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "postprocess.h"
+#include "PostProcess.h"
 
 using namespace Falcor;
 
@@ -47,7 +47,7 @@ void PostProcess::onLoad()
     mCameraController.setModelParams(mpTeapot->getCenter(), mpTeapot->getRadius(), 2.0f);    
     
     //Program
-    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("PostProcess.vs"), appendShaderExtension("Postprocess.ps"));
+    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("PostProcess.vs"), appendShaderExtension("PostProcess.ps"));
     mpProgramVars = GraphicsVars::create(mpMainProg->getActiveVersion()->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setFbo(mpDefaultFBO);
@@ -73,13 +73,13 @@ void PostProcess::loadImage()
     switch(mHdrImageIndex)
     {
     case HdrImage::AtTheWindow:
-        filename = "LightProbes\\20060807_wells6_hd.hdr";
+        filename = "LightProbes/20060807_wells6_hd.hdr";
         break;
     case HdrImage::EveningSun:
-        filename = "LightProbes\\hallstatt4_hd.hdr";
+        filename = "LightProbes/hallstatt4_hd.hdr";
         break;
     case HdrImage::OvercastDay:
-        filename = "LightProbes\\20050806-03_hd.hdr";
+        filename = "LightProbes/20050806-03_hd.hdr";
         break;
     }
 
@@ -214,10 +214,19 @@ void PostProcess::onEndTestFrame()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     PostProcess postProcessSample;
     SampleConfig config;
     config.windowDesc.title = "Post Processing";
+#ifdef _WIN32
     postProcessSample.run(config);
+#else
+    postProcessSample.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

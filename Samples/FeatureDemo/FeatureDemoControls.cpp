@@ -117,7 +117,7 @@ void FeatureDemo::applyAaMode()
 
 void FeatureDemo::onGuiRender()
 {
-    static const char* kImageFileString = "Image files\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga\0\0";
+    static const char* kImageFileString = "Image files\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga;*.hdr;*.exr\0\0";
     if (mpGui->addButton("Load Model"))
     {
         std::string filename;

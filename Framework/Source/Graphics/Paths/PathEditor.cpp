@@ -29,6 +29,8 @@
 #include "ObjectPath.h"
 #include "PathEditor.h"
 #include "Graphics/Camera/Camera.h"
+#include "Utils/StringUtils.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -112,11 +114,12 @@ namespace Falcor
 
     void PathEditor::editPathName(Gui* pGui)
     {
-        char name[1024];
-        strcpy_s(name, mpPath->getName().c_str());
-        if (pGui->addTextBox("Path Name", name, arraysize(name)))
+        char buffer[1024];
+        copyStringToBuffer(buffer, arraysize(buffer), mpPath->getName());
+
+        if (pGui->addTextBox("Path Name", buffer, arraysize(buffer)))
         {
-            mpPath->setName(name);
+            mpPath->setName(buffer);
         }
     }
 

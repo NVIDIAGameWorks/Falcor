@@ -27,7 +27,8 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Logger.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
+#include <cstdio>
 
 namespace Falcor
 {
@@ -54,7 +55,8 @@ namespace Falcor
         std::string logFile;
         if(findAvailableFilename(prefix, executableDir, "log", logFile))
         {
-            if(fopen_s(&pFile, logFile.c_str(), "w") == 0)
+            pFile = std::fopen(logFile.c_str(), "w");
+            if(pFile != nullptr)
             {
                 // Success
                 return pFile;
@@ -113,7 +115,7 @@ namespace Falcor
             if(L >= sVerbosity)
             {
                 std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
-                fprintf_s(sLogFile, "%s", s.c_str());
+                std::fprintf(sLogFile, "%s", s.c_str());
                 fflush(sLogFile);   // Slows down execution, but ensures that the message will be printed in case of a crash
                 if (isDebuggerPresent())
                 {

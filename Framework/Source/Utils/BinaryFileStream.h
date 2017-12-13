@@ -70,10 +70,10 @@ namespace Falcor
             \param[in] mode Mode to open file as
         */
         void open(const std::string& filename, Mode mode = Mode::ReadWrite)
-        { 
+        {
             std::ios::openmode iosMode = std::ios::binary;
-            iosMode |= ((mode == Mode::Read) || (mode == Mode::ReadWrite)) ? std::ios::in : 0;
-            iosMode |= ((mode == Mode::Write) || (mode == Mode::ReadWrite))? std::ios::out : 0;
+            iosMode |= ((mode == Mode::Read) || (mode == Mode::ReadWrite)) ? std::ios::in : (std::ios::openmode)0;
+            iosMode |= ((mode == Mode::Write) || (mode == Mode::ReadWrite))? std::ios::out : (std::ios::openmode)0;
             mStream.open(filename.c_str(), iosMode);
             mFilename = filename;
         }

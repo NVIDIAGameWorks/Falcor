@@ -31,9 +31,9 @@
 #include <string>
 #include <stdint.h>
 #include "API/Window.h"
-#include "utils/FrameRate.h"
-#include "utils/Gui.h"
-#include "utils/TextRenderer.h"
+#include "Utils/FrameRate.h"
+#include "Utils/Gui.h"
+#include "Utils/TextRenderer.h"
 #include "API/RenderContext.h"
 #include "Utils/Video/VideoEncoderUI.h"
 #include "API/Device.h"
@@ -83,9 +83,14 @@ namespace Falcor
         Sample& operator=(const Sample&) = delete;
 
         /** Entry-point to Sample. User should call this to start processing.
+            On Windows, command line args will be retrieved and parsed even if not passed through this function.
+            On Linux, this function is the only way to feed the sample command line args.
+
             \param[in] config Requested sample configuration
+            \param[in] argc Optional. Number of command line arguments
+            \param[in] argv Optional. Array of command line arguments
         */
-        virtual void run(const SampleConfig& config);
+        virtual void run(const SampleConfig& config, uint32_t argc = 0, char** argv = nullptr);
 
     protected:
         // Callbacks

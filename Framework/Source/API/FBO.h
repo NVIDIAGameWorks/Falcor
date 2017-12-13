@@ -156,7 +156,7 @@ namespace Falcor
 
         /** Get the attached depth-stencil texture, or nullptr if no texture is attached.
         */
-        Texture::SharedPtr getDepthStencilTexture() const;
+        const Texture::SharedPtr& getDepthStencilTexture() const;
 
         /** Validates that the framebuffer attachments are OK. This function causes the actual HW resources to be generated (RTV/DSV in DX, FBO attachment calls in GL).
         */

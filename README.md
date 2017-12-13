@@ -11,10 +11,12 @@ This is a beta version. The interfaces are not final yet and there might be some
 
 Prerequisites
 ------------------------
+- GPU that supports DirectX 12 or Vulkan
+- Windows 10 RS1 (1607 Anniversary Update) or newer, or Ubuntu 17.10
+
+On Windows:
 - Visual Studio 2015
 - [Microsoft Windows SDK ver 10.0.14393.795](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive)
-- Windows 10
-- GPU that supports DirectX 12 or Vulkan
 
 NVAPI Support
 --------------
@@ -28,6 +30,19 @@ If you want to use it:
 TensorFlow Support
 --------------
 Refer to the README located in the `Samples\Core\LearningWithEmbeddedPython` for instructions on how to set up your environment to use TensorFlow and Python with Falcor.
+
+Linux
+--------------
+Falcor is tested on Ubuntu 17.10, but may also work with other versions and distributions.
+
+To build and run Falcor on Linux:
+- Install the Vulkan SDK following the instructions [HERE](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html)
+- Install additional dependencies:
+    - `sudo apt-get install libwayland-dev libassimp-dev libgtk-3-dev libfreeimage-dev libavcodec-dev libavdevice-dev libavformat-dev libswscale-dev libavutil-dev`
+- Add `Path-to-Falcor/Framework/Externals/Slang/bin/linux-x86_64/release` to your `LD_LIBRARY_PATH`
+- Run the `Makefile`
+    - To only build the library, run `make Debug` or `make Release` depending on the desired configuration
+    - To build samples, run `make` using the target for the sample(s) you want to build. Config can be changed by setting `SAMPLE_CONFIG` to `Debug` or `Release`
 
 Building Falcor
 ---------------
@@ -96,11 +111,11 @@ Citation
 If you use Falcor in a research project leading to a publication, please cite the project.
 The BibTex entry is
 
-@Misc{Benty17,
-   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Anton S. Kaplanyan and Conor Lavelle and Chris Wyman and Ashwin Vijay},
-   title =       {The {Falcor} Rendering Framework},
-   year =        {2017},
-   month =       {07},
-   url =         {https://github.com/NVIDIAGameWorks/Falcor},
-   note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}
+@Misc{Benty17,  
+   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Anton S. Kaplanyan and Conor Lavelle and Chris Wyman and Ashwin Vijay},  
+   title =       {The {Falcor} Rendering Framework},  
+   year =        {2017},  
+   month =       {07},  
+   url =         {https://github.com/NVIDIAGameWorks/Falcor},  
+   note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}  
 }

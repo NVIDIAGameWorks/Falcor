@@ -189,11 +189,17 @@ namespace Falcor
 
         /** Get the number of bone matrices.
         */
-        uint32_t getBonesCount() const;
+        uint32_t getBoneCount() const;
 
-        /** Get a pointer to the array of bone matrices.
+        /** Get array of bone matrices.
+            \return If model has bones, return pointer to matrices in the current state of the animation. Otherwise nullptr.
         */
-        const glm::mat4* getBonesMatrices() const;
+        const mat4* getBoneMatrices() const;
+
+        /** Get array of bones' inverse transpose matrices.
+            \return If model has bones, return pointer to matrices in the current state of the animation. Otherwise nullptr.
+        */
+        const mat3x4* getBoneInvTransposeMatrices() const;
 
         /** Force all texture maps in all materials to use a specific texture sampler with one of their maps
             \param[in] Type The map Type to bind the sampler with

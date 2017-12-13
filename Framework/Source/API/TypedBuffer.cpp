@@ -25,9 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
 #include "Framework.h"
 #include "TypedBuffer.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -55,7 +55,7 @@ namespace Falcor
         if (mGpuDirty)
         {
             const uint8_t* pData = (uint8_t*)map(Buffer::MapType::Read);
-            memcpy(mData.data(), pData, mData.size());
+            std::memcpy(mData.data(), pData, mData.size());
             unmap();
             mGpuDirty = false;
         }

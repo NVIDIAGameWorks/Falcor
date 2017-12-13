@@ -30,10 +30,11 @@
 #include "API/ConstantBuffer.h"
 #include "API/Texture.h"
 #include "API/Buffer.h"
-#include "Utils/os.h"
+#include "Utils/Platform/OS.h"
 #include "Utils/Math/FalcorMath.h"
 #include "MaterialSystem.h"
 #include "API/ProgramVars.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -174,8 +175,8 @@ namespace Falcor
                 {
                     continue;
                 }
-                memmove(&mData.desc.layers[i], &mData.desc.layers[i+1], sizeof(mData.desc.layers[0]));
-                memmove(&mData.values.layers[i], &mData.values.layers[i + 1], sizeof(mData.values.layers[0]));
+                std::memmove(&mData.desc.layers[i], &mData.desc.layers[i+1], sizeof(mData.desc.layers[0]));
+                std::memmove(&mData.values.layers[i], &mData.values.layers[i + 1], sizeof(mData.values.layers[0]));
                 mData.desc.layers[i+1].type = MatNone;
                 mData.values.layers[i+1] = MaterialLayerValues();
             }
@@ -368,7 +369,7 @@ namespace Falcor
 
     bool Material::operator==(const Material& other) const
     {
-        return memcmp(&mData, &other.mData, sizeof(mData)) == 0 && mData.samplerState == other.mData.samplerState;
+        return std::memcmp(&mData, &other.mData, sizeof(mData)) == 0 && mData.samplerState == other.mData.samplerState;
     }
 
     void Material::setLayerTexture(uint32_t layerId, const Texture::SharedPtr& pTexture)
@@ -430,7 +431,7 @@ namespace Falcor
         mDescDirty = false;
         for(auto& a : sDescIdentifier)
         {
-            if(memcmp(&mData.desc, &a.desc, sizeof(mData.desc)) == 0)
+            if(std::memcmp(&mData.desc, &a.desc, sizeof(mData.desc)) == 0)
             {
                 mDescIdentifier = a.id;
                 a.refCount++;

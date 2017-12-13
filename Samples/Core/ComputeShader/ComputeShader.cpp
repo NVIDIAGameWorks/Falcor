@@ -38,7 +38,6 @@ void ComputeShader::onGuiRender()
 
 Texture::SharedPtr createTmpTex(const Fbo* pFbo)
 {
-    auto fboFormat = pFbo->getColorTexture(0)->getFormat();
     return Texture::create2D(pFbo->getWidth(), pFbo->getHeight(), ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
 }
 
@@ -122,12 +121,21 @@ void ComputeShader::onInitializeTesting()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     ComputeShader sample;
     SampleConfig config;
     config.windowDesc.title = "Falcor Project Template";
     config.windowDesc.resizableWindow = true;
     config.deviceDesc.depthFormat = ResourceFormat::Unknown;
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

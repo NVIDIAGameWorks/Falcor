@@ -32,7 +32,7 @@
 #include "API/ConstantBuffer.h"
 #include "API/RenderContext.h"
 #include "Scene.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "VR/OpenVR/VRSystem.h"
 #include "API/Device.h"
 #include "glm/matrix.hpp"
@@ -137,8 +137,10 @@ namespace Falcor
 
     bool SceneRenderer::setPerModelData(const CurrentWorkingData& currentData)
     {
+        const Model* pModel = currentData.pModel;
+
         // Set bones
-        if (currentData.pModel->hasBones())
+        if (pModel->hasBones())
         {
             ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kPerMeshCbName).get();
             if (pCB)
@@ -148,7 +150,8 @@ namespace Falcor
                     sBonesOffset = pCB->getVariableOffset("gWorldMat[0]");
                 }
 
-                pCB->setVariableArray(sBonesOffset, currentData.pModel->getBonesMatrices(), currentData.pModel->getBonesCount());
+                pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
+                pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
         }
         return true;
@@ -243,6 +246,12 @@ namespace Falcor
 
         if (setPerMeshData(currentData, pMesh))
         {
+            Program* pProgram = currentData.pState->getProgram().get();
+            if (pMesh->hasBones())
+            {
+                pProgram->addDefine("_VERTEX_BLENDING");
+            }
+
             // Bind VAO and set topology
             currentData.pState->setVao(pMesh->getVao());
 
@@ -278,37 +287,24 @@ namespace Falcor
             {
                 draw(currentData, pMesh, activeInstances);
             }
+
+            // Restore the program state
+            if (pMesh->hasBones())
+            {
+                pProgram->removeDefine("_VERTEX_BLENDING");
+            }
         }
     }
 
     void SceneRenderer::renderModelInstance(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance)
     {
-        const Model* pModel = pModelInstance->getObject().get();
+        mpLastMaterial = nullptr;
 
-        if (setPerModelData(currentData))
+        // Loop over the meshes
+        for (uint32_t meshID = 0; meshID < pModelInstance->getObject()->getMeshCount(); meshID++)
         {
-            Program* pProgram = currentData.pState->getProgram().get();
-            // Bind the program
-            if(pModel->hasBones())
-            {
-                pProgram->addDefine("_VERTEX_BLENDING");
-            }
-
-            mpLastMaterial = nullptr;
-
-            // Loop over the meshes
-            for (uint32_t meshID = 0; meshID < pModel->getMeshCount(); meshID++)
-            {
-                renderMeshInstances(currentData, pModelInstance, meshID);
-            }
-
-            // Restore the program state
-            if(pModel->hasBones())
-            {
-                pProgram->removeDefine("_VERTEX_BLENDING");
-            }
+            renderMeshInstances(currentData, pModelInstance, meshID);
         }
-
     }
 
     bool SceneRenderer::update(double currentTime)
@@ -329,14 +325,17 @@ namespace Falcor
         {
             currentData.pModel = mpScene->getModel(modelID).get();
 
-            for (uint32_t instanceID = 0; instanceID < mpScene->getModelInstanceCount(modelID); instanceID++)
+            if (setPerModelData(currentData))
             {
-                const auto pInstance = mpScene->getModelInstance(modelID, instanceID).get();
-                if (pInstance->isVisible())
+                for (uint32_t instanceID = 0; instanceID < mpScene->getModelInstanceCount(modelID); instanceID++)
                 {
-                    if (setPerModelInstanceData(currentData, pInstance, instanceID))
+                    const auto pInstance = mpScene->getModelInstance(modelID, instanceID).get();
+                    if (pInstance->isVisible())
                     {
-                        renderModelInstance(currentData, pInstance);
+                        if (setPerModelInstanceData(currentData, pInstance, instanceID))
+                        {
+                            renderModelInstance(currentData, pInstance);
+                        }
                     }
                 }
             }
@@ -356,11 +355,6 @@ namespace Falcor
         currentData.pModel = nullptr;
         currentData.drawID = 0;
         renderScene(currentData);
-    }
-
-    static CameraController::SharedPtr createHmdCameraController()
-    {
-
     }
 
     void SceneRenderer::setCameraControllerType(CameraControllerType type)

@@ -32,6 +32,7 @@
                     Common structures & routines
 *******************************************************************/
 
+#define MAX_INSTANCES_BONES 128 ///< Max supported instances per draw call, or bones per model.
 
 /*******************************************************************
                     Glue code for CPU/GPU compilation
@@ -39,8 +40,6 @@
 
 #if (defined(__STDC_HOSTED__) || defined(__cplusplus)) && !defined(__CUDACC__)    // we're in C-compliant compiler, probably host
 #    define HOST_CODE 1
-#elif defined(__CUDACC__)
-#   define CUDA_CODE
 #else
 #   define HLSL_CODE
 #define FALCOR_SHADER_CODE
@@ -60,40 +59,9 @@
 #define v3 vec3
 #define v4 vec4
 #define _fn
-#define DEFAULTS(x_) = ##x_
+#define DEFAULTS(x_) = x_
 #define SamplerState std::shared_ptr<Sampler>
 #define Texture2D std::shared_ptr<Texture>
-#elif defined(CUDA_CODE)
-/*******************************************************************
-                    CUDA declarations
-*******************************************************************/
-// Modifiers
-#define DEFAULTS(x_)
-#define in
-#define out &
-#define _ref(__x) __x&
-#define discard
-#define sampler2D int
-#define inline __forceinline
-#define _fn inline __device__
-// Types
-#define int32_t int
-#define uint unsigned int
-#define uint32_t uint
-// Vector math
-#define vec2 float2
-#define vec3 float3
-#define vec4 float4
-#ifndef mat4
-#define mat4 mat4_t
-#endif
-#ifndef mat3
-#define mat3 mat3_t
-#endif
-#define mul(mx, v) ((v) * (mx))
-#define v2 make_float2
-#define v3 make_float3
-#define v4 make_float4
 #else
 /*******************************************************************
                     HLSL declarations

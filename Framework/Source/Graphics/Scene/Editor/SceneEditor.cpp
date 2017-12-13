@@ -25,18 +25,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
 #include "Framework.h"
-#include "Graphics/Scene/scene.h"
+#include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
 #include "Utils/Gui.h"
 #include "glm/detail/func_trigonometric.hpp"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Graphics/Scene/SceneExporter.h"
 #include "Graphics/Model/AnimationController.h"
 #include "API/Device.h"
 #include "Graphics/Model/ModelRenderer.h"
 #include "Utils/Math/FalcorMath.h"
 #include "Data/HostDeviceData.h"
+#include "Utils/StringUtils.h"
 
 namespace Falcor
 {
@@ -110,7 +112,7 @@ namespace Falcor
     void SceneEditor::setModelName(Gui* pGui)
     {
         char modelName[1024];
-        strcpy_s(modelName, mpScene->getModel(mSelectedModel)->getName().c_str());
+        copyStringToBuffer(modelName, arraysize(modelName), mpScene->getModel(mSelectedModel)->getName());
         if (pGui->addTextBox(kModelNameStr, modelName, arraysize(modelName)))
         {
             mpScene->getModel(mSelectedModel)->setName(modelName);
@@ -212,8 +214,7 @@ namespace Falcor
     {
         char camName[1024];
         std::string oldName = mpScene->getActiveCamera()->getName();
-
-        strcpy_s(camName, oldName.c_str());
+        copyStringToBuffer(camName, arraysize(camName), oldName);
         if (pGui->addTextBox("Camera Name", camName, arraysize(camName)))
         {
             std::string newName(camName);
@@ -565,8 +566,6 @@ namespace Falcor
         for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
         {
             const auto& pLight = mpScene->getLight(i);
-            const auto& lightData = pLight->getData();
-
             if (pLight->getType() == LightPoint)
             {
                 mpEditorScene->addModelInstance(mpLightModel, "Point Light " + std::to_string(pointLightID++), glm::vec3(), glm::vec3(), glm::vec3(kLightModelScale));

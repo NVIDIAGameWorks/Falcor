@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "API/Buffer.h"
 #include "API/Device.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -62,7 +63,7 @@ namespace Falcor
         if (mCpuAccess == CpuAccess::Write)
         {
             uint8_t* pDst = (uint8_t*)map(MapType::WriteDiscard) + offset;
-            memcpy(pDst, pData, size);
+            std::memcpy(pDst, pData, size);
         }
         else
         {

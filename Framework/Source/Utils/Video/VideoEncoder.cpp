@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "VideoEncoder.h"
 #include "Utils/BinaryFileStream.h"
-#include <direct.h>
+
 extern "C"
 {
 #include "libavcodec/avcodec.h"

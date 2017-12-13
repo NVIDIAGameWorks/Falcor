@@ -207,7 +207,6 @@ float4 _fn sampleTexture(Texture2D t, SamplerState s, ShadingAttribs attr)
 #endif
 }
 
-#ifndef CUDA_CODE
 float4 _fn sampleTexture(Texture2DArray t, SamplerState s, ShadingAttribs attr, int arrayIndex)
 {
 #ifndef _MS_USER_DERIVATIVES
@@ -216,7 +215,6 @@ float4 _fn sampleTexture(Texture2DArray t, SamplerState s, ShadingAttribs attr, 
     return t.SampleGrad(s, float3(attr.UV, arrayIndex), attr.DPDX, attr.DPDY);
 #endif
 }
-#endif
 
 float4 _fn evalTex(in uint32_t hasTexture, Texture2D tex, SamplerState s, ShadingAttribs attr, in float4 defaultValue)
 {

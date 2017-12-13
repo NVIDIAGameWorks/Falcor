@@ -191,8 +191,9 @@ namespace Falcor
         float s = sqrt(1.0f - t * t);
         return vec3(s * cos(phi), s * sin(phi), t);
     }
+
 #ifndef GLM_CLIP_SPACE_Y_TOPDOWN
-#error GLM_CLIP_SPACE_Y_TOPDOWN is undefined. It means the custom fix we did in GLM to support Vulkan NDC space is missing. Look at GLM's `setup.hpp` and `glm\gtc\matrix_transform.inl`
+#error GLM_CLIP_SPACE_Y_TOPDOWN is undefined. It means the custom fix we did in GLM to support Vulkan NDC space is missing. Look at GLMs `setup.hpp` and `glm\gtc\matrix_transform.inl`
 #endif
 
 /*! @} */

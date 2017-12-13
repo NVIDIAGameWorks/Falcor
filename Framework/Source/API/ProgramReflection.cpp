@@ -25,7 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
 #include "Framework.h"
 #include "ProgramReflection.h"
 #include "Utils/StringUtils.h"
@@ -300,6 +299,9 @@ namespace Falcor
                 }
                 break;
             }
+        default:
+            should_not_get_here();
+            return ProgramReflection::Variable::Type::Unknown;
         }
 
         should_not_get_here();
@@ -471,26 +473,25 @@ namespace Falcor
         return offset;
     }
 
-	// Once we've found the path from the root down to a particular leaf
-	// variable, `getDescOffset` can be used to find the final summed-up descriptor offset of the element
-	uint32_t getDescOffset(ReflectionPath* path, uint32_t arraySize, SlangParameterCategory category)
-	{
+    // Once we've found the path from the root down to a particular leaf
+    // variable, `getDescOffset` can be used to find the final summed-up descriptor offset of the element
+    uint32_t getDescOffset(ReflectionPath* path, uint32_t arraySize, SlangParameterCategory category)
+    {
 #ifndef FALCOR_VK
-		return 0;
+        return 0;
 #else
-		uint32_t offset = 0;
-		bool first = true;
-		for (auto pp = path; pp; pp = pp->parent)
-		{
-			if ((pp->typeLayout) && (pp->typeLayout->getKind() == TypeReflection::Kind::Array))
-			{
-				offset += (uint32_t)pp->childIndex * arraySize;
-				arraySize *= (uint32_t)pp->typeLayout->getElementCount();
-			}
-		}
-		return offset;
+        uint32_t offset = 0;
+        for (auto pp = path; pp; pp = pp->parent)
+        {
+            if ((pp->typeLayout) && (pp->typeLayout->getKind() == TypeReflection::Kind::Array))
+            {
+                offset += (uint32_t)pp->childIndex * arraySize;
+                arraySize *= (uint32_t)pp->typeLayout->getElementCount();
+            }
+        }
+        return offset;
 #endif
-	}
+    }
 
     size_t getUniformOffset(ReflectionPath* path)
     {
@@ -692,7 +693,7 @@ namespace Falcor
         falcorDesc.regIndex = (uint32_t)getBindingIndex(path, pSlangType->getParameterCategory());
         falcorDesc.regSpace = (uint32_t)getBindingSpace(path, pSlangType->getParameterCategory());
         falcorDesc.arraySize = isArray ? (uint32_t)pSlangType->getTotalArrayElementCount() : 0;
-		falcorDesc.descOffset = (uint32_t)getDescOffset(path, max(1u, falcorDesc.arraySize), pSlangType->getParameterCategory());
+        falcorDesc.descOffset = (uint32_t)getDescOffset(path, max(1u, falcorDesc.arraySize), pSlangType->getParameterCategory());
 
         // If this already exists, definitions should match
         auto& resourceMap = *pContext->pResourceMap;
@@ -1078,7 +1079,7 @@ namespace Falcor
             match = false;
         }
 
-        for (auto& prevVar = pPrevDesc->varBegin(); prevVar != pPrevDesc->varEnd(); prevVar++)
+        for (auto prevVar = pPrevDesc->varBegin(); prevVar != pPrevDesc->varEnd(); prevVar++)
         {
             const std::string& name = prevVar->first;
             const auto& curVar = varMap.find(name);
@@ -1502,8 +1503,9 @@ namespace Falcor
                 mIsSampleFrequency = entryPoint->usesAnySampleRateInput();
 #else
                 mIsSampleFrequency = true; // #SLANG Slang reports false for DX shaders. There's an open issue, once it's fixed we should remove that
-#endif            default:
-                break;
+#endif
+            default:
+            break;
             }
         }
         return res;

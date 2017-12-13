@@ -28,6 +28,7 @@
 #pragma once
 #include <string>
 #include <algorithm>
+#include <locale>
 #include <codecvt>
 
 namespace Falcor
@@ -204,11 +205,20 @@ namespace Falcor
         return false;
     }
 
+    /** Copy text from a std::string to a char buffer, ensures null termination.
+    */
+    inline void copyStringToBuffer(char* buffer, uint32_t bufferSize, const std::string& s)
+    {
+        const uint32_t length = min(bufferSize - 1, (uint32_t)s.length());
+        s.copy(buffer, length);
+        buffer[length] = '\0';
+    }
+
     /** Convert an ASCII string to a UTF-8 wstring
     */
     inline std::wstring string_2_wstring(const std::string& s)
     {
-        std::wstring_convert<std::codecvt_utf8<WCHAR>> cvt;
+        std::wstring_convert<std::codecvt_utf8<wchar_t>> cvt;
         std::wstring ws = cvt.from_bytes(s);
         return ws;
     }
@@ -217,7 +227,7 @@ namespace Falcor
     */
     inline std::string wstring_2_string(const std::wstring& ws)
     {
-        std::wstring_convert<std::codecvt_utf8<WCHAR>> cvt;
+        std::wstring_convert<std::codecvt_utf8<wchar_t>> cvt;
         std::string s = cvt.to_bytes(ws);
         return s;
     }
@@ -226,8 +236,25 @@ namespace Falcor
     */
     inline std::string utf32ToUtf8(uint32_t codepoint)
     {
+#ifdef _WIN32
         std::wstring_convert<std::codecvt_utf8<uint32_t>, uint32_t> cvt;
+#else
+        std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> cvt;
+#endif
         return cvt.to_bytes(codepoint);
+    }
+
+    /** Combine command line args to a single string
+    */
+    inline std::string concatCommandLine(uint32_t argc, char** argv)
+    {
+        std::string s;
+        for (uint32_t i = 0; i < argc; i++)
+        {
+            s += std::string(argv[i]) + ((i < argc - 1) ? " " : "");
+        }
+
+        return s;
     }
 
     /*! @} */

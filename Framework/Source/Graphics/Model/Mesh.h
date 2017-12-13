@@ -32,7 +32,7 @@
 #include "glm/mat4x4.hpp"
 #include "API/VAO.h"
 #include "API/RenderContext.h"
-#include "utils/AABB.h"
+#include "Utils/AABB.h"
 #include "Graphics/Material/Material.h"
 #include "Graphics/Paths/MovableObject.h"
 

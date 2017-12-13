@@ -168,8 +168,8 @@ namespace Falcor
         // Mark the active descs (not empty, not CBs)
         for (size_t i = 0; i < mpRootSignature->getDescriptorSetCount(); i++)
         {
-            const auto& set = mpRootSignature->getDescriptorSet(i);
 #ifdef FALCOR_D3D12
+            const auto& set = mpRootSignature->getDescriptorSet(i);
             mRootSets[i].active = (set.getRangeCount() >= 1 && set.getRange(0).type != RootSignature::DescType::Cbv);
 #else
             mRootSets[i].active = true;
@@ -203,7 +203,7 @@ namespace Falcor
             }
         }
 
-        auto& pDesc = pReflector->getBufferDesc(name, bufferType);
+        auto pDesc = pReflector->getBufferDesc(name, bufferType);
         if (pDesc->getType() != bufferType)
         {
             logWarning("Buffer \"" + name + "\" is not a " + to_string(bufferType) + ". Type = " + to_string(pDesc->getType()));
@@ -226,7 +226,7 @@ namespace Falcor
 
     ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
     {
-        auto& it = mAssignedCbs.find({ regSpace, baseRegIndex });
+        auto it = mAssignedCbs.find({ regSpace, baseRegIndex });
         if (it == mAssignedCbs.end())
         {
             logWarning("Can't find constant buffer at index " + std::to_string(baseRegIndex) + ", space " + std::to_string(regSpace) + ". Ignoring getConstantBuffer() call.");
@@ -253,7 +253,7 @@ namespace Falcor
             logError("Can't attach the constant buffer. Size mismatch.");
             return false;
         }
-       mAssignedCbs[loc][arrayIndex].pResource = pCB;
+        mAssignedCbs[loc][arrayIndex].pResource = pCB;
         return true;
     }
 
@@ -315,7 +315,7 @@ namespace Falcor
 
     void setResourceSrvUavCommon(const ProgramReflection::Resource* pDesc, uint32_t arrayIndex, const Resource::SharedPtr& resource, ProgramVars::ResourceMap<ShaderResourceView>& assignedSrvs, ProgramVars::ResourceMap<UnorderedAccessView>& assignedUavs, std::vector<ProgramVars::RootSet>& rootSets)
     {
-		arrayIndex += pDesc->descOffset;
+        arrayIndex += pDesc->descOffset;
         setResourceSrvUavCommon({ pDesc->regSpace, pDesc->regIndex }, arrayIndex, pDesc->shaderAccess, resource, assignedSrvs, assignedUavs, rootSets);
     }
 
@@ -408,7 +408,7 @@ namespace Falcor
         if (pBufDesc == nullptr)
         {
             logWarning("Structured buffer \"" + name + "\" was not found. Ignoring " + callStr + "StructuredBuffer() call.");
-            return false;
+            return nullptr;
         }
         return pBufDesc;
     }
@@ -471,7 +471,7 @@ namespace Falcor
 
         if (verifyBufferResourceDesc(pDesc,arrayIndex,  name, ProgramReflection::Resource::ResourceType::RawBuffer, ProgramReflection::Resource::Dimensions::Buffer, "getRawBuffer()") == false)
         {
-            return false;
+            return nullptr;
         }
 
         return getResourceFromSrvUavCommon<Buffer>(pDesc, arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getRawBuffer()");
@@ -485,7 +485,7 @@ namespace Falcor
 
         if (verifyBufferResourceDesc(pDesc, arrayIndex, name, ProgramReflection::Resource::ResourceType::TypedBuffer, ProgramReflection::Resource::Dimensions::Buffer, "getTypedBuffer()") == false)
         {
-            return false;
+            return nullptr;
         }
 
         return getResourceFromSrvUavCommon<TypedBufferBase>(pDesc, arrayIndex, mAssignedSrvs, mAssignedUavs, name, "getTypedBuffer()");
@@ -531,9 +531,9 @@ namespace Falcor
     bool ProgramVars::setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
         auto& it = mAssignedSamplers.at({regSpace, baseRegIndex})[arrayIndex];
-        if (it.pSampler != pSampler)
+        if (it.pResource != pSampler)
         {
-            it.pSampler = pSampler;
+            it.pResource = pSampler;
             mRootSets[it.rootData.rootIndex].pDescSet = nullptr;
         }
         return true;
@@ -572,7 +572,7 @@ namespace Falcor
             return nullptr;
         }
 
-        return it->second[arrayIndex].pSampler;
+        return it->second[arrayIndex].pResource;
     }
 
     ShaderResourceView::SharedPtr ProgramVars::getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
@@ -684,7 +684,7 @@ namespace Falcor
         return true;
     }
 
-    void bindSamplers(const ProgramVars::ResourceMap<Sampler>& samplers, const ProgramVars::RootSetVec& rootSets)
+    void bindSamplers(const ProgramVars::ResourceMap<Sampler, Sampler>& samplers, const ProgramVars::RootSetVec& rootSets)
     {
         // Bind the samplers
         for (auto& samplerIt : samplers)
@@ -695,7 +695,7 @@ namespace Falcor
             {
                 for(uint32_t i = 0 ; i < samplerVec.size() ; i++)
                 {
-                    const Sampler* pSampler = samplerVec[i].pSampler.get();
+                    const Sampler* pSampler = samplerVec[i].pResource.get();
                     if (pSampler == nullptr)
                     {
                         pSampler = Sampler::getDefault().get();
@@ -723,7 +723,7 @@ namespace Falcor
                 {
                     auto& resDesc = resVec[i];
                     Resource* pResource = resDesc.pResource.get();
-                    ViewType::SharedPtr view = pResource ? resDesc.pView : ViewType::getNullView();
+                    typename ViewType::SharedPtr view = pResource ? resDesc.pView : ViewType::getNullView();
 
                     // Get the set and copy the GPU handle
                     const auto& pDescSet = rootSets[rootData.rootIndex].pDescSet;

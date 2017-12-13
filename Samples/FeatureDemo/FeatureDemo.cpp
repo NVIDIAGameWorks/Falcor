@@ -106,10 +106,10 @@ void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& f
     std::string folder = getDirectoryFromFile(filename);
 
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
-    if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '\\' + var.str);
+    if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '/' + var.str);
 
     var = pScene->getUserVariable("env_map");
-    if (var.type == Scene::UserVariable::Type::String) initEnvMap(folder + '\\' + var.str);
+    if (var.type == Scene::UserVariable::Type::String) initEnvMap(folder + '/' + var.str);
 
     var = pScene->getUserVariable("env_map_intensity_scale");
     if (var.type == Scene::UserVariable::Type::Double) mEnvMapFactorScale = (float)var.d64;
@@ -173,11 +173,13 @@ void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
+
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
         pBar = ProgressBar::create("Loading Model");
     }
+
     Model::SharedPtr pModel = Model::createFromFile(filename.c_str());
     if (!pModel) return;
     Scene::SharedPtr pScene = Scene::create();
@@ -190,11 +192,13 @@ void FeatureDemo::loadScene(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
+
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
     {
         pBar = ProgressBar::create("Loading Scene", 100);
     }
+
     Scene::SharedPtr pScene = Scene::loadFromFile(filename);
 
     if (pScene != nullptr)
@@ -479,13 +483,17 @@ void FeatureDemo::onFrameRender()
 void FeatureDemo::applyCameraPathState()
 {
     const Scene* pScene = mpSceneRenderer->getScene().get();
-    if (mUseCameraPath)
+    if(pScene->getPathCount())
     {
-        pScene->getPath(0)->attachObject(pScene->getActiveCamera());
-    }
-    else
-    {
-        pScene->getPath(0)->detachObject(pScene->getActiveCamera());
+        mUseCameraPath = mUseCameraPath;
+        if (mUseCameraPath)
+        {
+            pScene->getPath(0)->attachObject(pScene->getActiveCamera());
+        }
+        else
+        {
+            pScene->getPath(0)->detachObject(pScene->getActiveCamera());
+        }
     }
 }
 
@@ -568,11 +576,20 @@ void FeatureDemo::onInitializeTesting()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     FeatureDemo sample;
     SampleConfig config;
     config.windowDesc.title = "Falcor Feature Demo";
     config.windowDesc.resizableWindow = false;
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

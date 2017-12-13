@@ -70,7 +70,7 @@ void NormalMapFiltering::updateProgram()
 
 void NormalMapFiltering::onLoad()
 {
-    Scene::SharedPtr pScene = Scene::loadFromFile("scenes\\ogre.fscene");
+    Scene::SharedPtr pScene = Scene::loadFromFile("Scenes/ogre.fscene");
     if(pScene == nullptr)
     {
         exit(1);
@@ -98,7 +98,7 @@ void NormalMapFiltering::onFrameRender()
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
-    auto& pState = mpRenderContext->getGraphicsState();
+    auto pState = mpRenderContext->getGraphicsState();
     pState->setBlendState(nullptr);
     pState->setDepthStencilState(nullptr);
     pState->setProgram(mpProgram);
@@ -173,12 +173,21 @@ void NormalMapFiltering::onEndTestFrame()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     NormalMapFiltering sample;
     SampleConfig config;
     config.windowDesc.title = "Normal Map Filtering";
     config.windowDesc.width = 1350;
     config.windowDesc.height = 1080;
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }
