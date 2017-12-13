@@ -25,7 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
 #include "Framework.h"
 #include "API/FBO.h"
 #include "API/Texture.h"
@@ -289,7 +288,7 @@ namespace Falcor
         return mColorAttachments[index].pTexture;
     }
 
-    Texture::SharedPtr Fbo::getDepthStencilTexture() const
+    const Texture::SharedPtr& Fbo::getDepthStencilTexture() const
     {
         return mDepthStencil.pTexture;
     }

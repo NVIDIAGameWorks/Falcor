@@ -89,7 +89,7 @@ namespace Falcor
 
         /** Create an OpenVR system class and initialize the system.
             If using Vulkan, this function needs to be called before creating VkInstance, so that we can retrieve the required extensions.
-            For D3D11 and D3D12 this can be called after the device was created
+            For D3D12 this can be called after the device was created
         */
         static VRSystem* start( bool enableVSync = true );
         static VRSystem* instance() { checkInit(); return spVrSystem; }

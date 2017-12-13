@@ -30,7 +30,7 @@
 #include "BinaryModelSpec.h"
 #include "../Model.h"
 #include "../Mesh.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "API/VertexLayout.h"
 #include "Data/VertexAttrib.h"
 #include "API/Buffer.h"
@@ -41,6 +41,8 @@
 #include "Graphics/Material/Material.h"
 #include "glm/geometric.hpp"
 #include "API/Device.h"
+#include <numeric>
+#include <cstring>
 
 namespace Falcor
 {
@@ -90,7 +92,7 @@ namespace Falcor
         uint32_t texCrdCount,
         glm::vec3* bitangentData)
     {
-        ZeroMemory(bitangentData, vertexCount * sizeof(vec3));
+        std::memset(bitangentData, 0, vertexCount * sizeof(vec3));
 
         // calculate the tangent and bitangent for every face
         size_t primCount = indices.size() / 3;
@@ -110,7 +112,7 @@ namespace Falcor
                 uint32_t index = indices[primID * 3 + i];
                 V[i].position = vertexPosData[index];
                 V[i].normal = vertexNormalData[index];
-                V[i].uv = texCrdData ? V[i].uv = texCrdData[index * texCrdCount] : vec2(0);
+                V[i].uv = texCrdData ? texCrdData[index * texCrdCount] : vec2(0);
             }
 
             // Position delta
@@ -128,9 +130,9 @@ namespace Falcor
             // when t1, t2, t3 in same position in UV space, just use default UV direction.
             if((s == glm::vec2(0, 0)) || (t == glm::vec2(0, 0)))
             {
-				const glm::vec3 &normal = V[0].normal;
+                const glm::vec3 &normal = V[0].normal;
                 bitangent = projectNormalToBitangent(normal);
-				tangent = cross(bitangent, normal);
+                tangent = cross(bitangent, normal);
             }
             else
             {

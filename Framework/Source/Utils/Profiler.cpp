@@ -33,6 +33,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstdio>
 
 namespace Falcor
 {
@@ -62,7 +63,7 @@ namespace Falcor
 
     Profiler::EventData* Profiler::isEventRegistered(const HashedString& name)
 	{
-        auto& event = sProfilerEvents.find(name.hash);
+        auto event = sProfilerEvents.find(name.hash);
         if(event == sProfilerEvents.end())
 		{
 			return nullptr;
@@ -129,7 +130,7 @@ namespace Falcor
 			char event[1000];
 			uint32_t nameIndent = pData->level * 2 + 1;
 			uint32_t cpuIndent = 32 - (nameIndent + (uint32_t)pData->name.size());
-			sprintf_s(event, "%#*s%s %*.3f %36.3f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, pData->cpuTotal, gpuTime);
+			std::snprintf(event, 1000, "%*s%s %*.3f %36.3f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, pData->cpuTotal, gpuTime);
 #if _PROFILING_LOG == 1
 			pData->cpuMs[pData->stepNr] = pData->cpuTotal;
 			pData->gpuMs[pData->stepNr] = gpuTime;

@@ -1,11 +1,15 @@
 <project toolsVersion="5.0">
     <remote name="github-slang" type="https"
             packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
+    <remote name="github-slang-linux" type="https"
+            packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
     <dependency name="openvr" linkPath="Framework/Externals/OpenVR">
-        <package name="openvr" version="1.0.8" />
+        <package name="openvr" version="1.0.8" platforms="win"/>
+        <package name="openvr" version="1.0.8-linux" platforms="linux"/>
     </dependency>
     <dependency name="assimp" linkPath="Framework/Externals/ASSIMP">
-        <package name="assimp" version="4.0.1" />
+        <package name="assimp" version="4.0.1" platforms="win" />
+        <package name="assimp" version="4.0.1-linux" platforms="linux" />
     </dependency>
     <dependency name="dear_imgui" linkPath="Framework/Externals/dear_imgui">
         <package name="dear_imgui" version="1.50.wip" />
@@ -14,10 +18,10 @@
         <package name="glm" version="0.9.8.4" />
     </dependency>
     <dependency name="ffmpeg" linkPath="Framework/Externals/FFMPEG">
-        <package name="ffmpeg" version="3.1.4" />
+        <package name="ffmpeg" version="3.1.4" platforms="win" />
     </dependency>
     <dependency name="freeimage" linkPath="Framework/Externals/FreeImage">
-        <package name="freeimage" version="3.17.0" />
+        <package name="freeimage" version="3.17.0" platforms="win" />
     </dependency>
     <dependency name="vulkansdk" linkPath="Framework/Externals/VulkanSDK">
         <package name="vulkansdk" version="1.0.51.0" />
@@ -27,9 +31,10 @@
     </dependency>
     <dependency name="slang" linkPath="Framework/Externals/Slang">
         <package name="slang" version="0.9.0" remotes="github-slang" />
+        <package name="slang" version="0.9.0" remotes="github-slang-linux" platforms="linux" />
     </dependency>
     <dependency name="glfw" linkPath="Framework/Externals/GLFW">
-        <package name="glfw" version="3.2.1" />
+        <package name="glfw" version="3.2.1" platforms="win" />
     </dependency>
     <dependency name="falcor_media" linkPath="Media">
         <package name="falcor_media" version="1.0" />

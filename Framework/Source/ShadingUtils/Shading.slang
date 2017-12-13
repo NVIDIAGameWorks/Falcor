@@ -40,11 +40,11 @@ Documentation
 *******************************************************************/
 
 // Possible user-defined global macros to configure shading 
-//#define _MS_DISABLE_ALPHA_TEST	///< Disables alpha test (handy for early-z etc.)
-//#define _MS_DISABLE_TEXTURES		///< Disables material texture fetches, all materials are solid color
-//#define _MS_USER_DERIVATIVES		///< Use user-passed dx/dy derivatives for texture filtering during shading
-//#define _MS_USER_NORMAL_MAPPING	///< Use user-defined callback of a form void PerturbNormal(SMaterial mat, inout ShadingAttribs ShAttr) to perform normal mapping
-//#define _MS_NUM_LAYERS			///< Use a pre-specified number of layers to use in the material
+//#define _MS_DISABLE_ALPHA_TEST    ///< Disables alpha test (handy for early-z etc.)
+//#define _MS_DISABLE_TEXTURES      ///< Disables material texture fetches, all materials are solid color
+//#define _MS_USER_DERIVATIVES      ///< Use user-passed dx/dy derivatives for texture filtering during shading
+//#define _MS_USER_NORMAL_MAPPING   ///< Use user-defined callback of a form void PerturbNormal(SMaterial mat, inout ShadingAttribs ShAttr) to perform normal mapping
+//#define _MS_NUM_LAYERS            ///< Use a pre-specified number of layers to use in the material
 //#define _MS_IMPORTANCE_SAMPLING   ///< Use BSDF importance sampling for path tracer next event estimation
 
 /*******************************************************************
@@ -58,14 +58,14 @@ This result can be accumulated to a total shading result for all light sources.
 */
 struct PassOutput
 {
-    float3	value;					///< Outgoing radiance after evaluating the complete material for a single light
-    float3	diffuseAlbedo;			///< Total view-independent albedo color component of the material
-    float3	diffuseIllumination;	///< Total view-independent outgoing radiance from one light before multiplication by albedo
-    float3	specularAlbedo;			///< Total view-dependent albedo (specular) color component of the material
-    float3	specularIllumination;	///< Total view-dependent outgoing radiance from one light before multiplication by albedo
+    float3  value;                  ///< Outgoing radiance after evaluating the complete material for a single light
+    float3  diffuseAlbedo;          ///< Total view-independent albedo color component of the material
+    float3  diffuseIllumination;    ///< Total view-independent outgoing radiance from one light before multiplication by albedo
+    float3  specularAlbedo;         ///< Total view-dependent albedo (specular) color component of the material
+    float3  specularIllumination;   ///< Total view-dependent outgoing radiance from one light before multiplication by albedo
 
-    float2    roughness;              ///< Roughness from the last layer
-    float2    effectiveRoughness;     ///< Accumulated effective roughness
+    float2  roughness;              ///< Roughness from the last layer
+    float2  effectiveRoughness;     ///< Accumulated effective roughness
 };
 
 /**
@@ -74,32 +74,18 @@ of material evaluations with all light sources.
 */
 struct ShadingOutput
 {
-    float3	diffuseAlbedo;			///< Total view-independent albedo color component of the material
-    float3	diffuseIllumination;	///< Total view-independent outgoing radiance from all lights before multiplication by albedo
-    float3	specularAlbedo;			///< Total view-dependent albedo (specular) color component of the material
-    float3	specularIllumination;	///< Total view-dependent outgoing radiance from all light before multiplication by albedo
+    float3  diffuseAlbedo;          ///< Total view-independent albedo color component of the material
+    float3  diffuseIllumination;    ///< Total view-independent outgoing radiance from all lights before multiplication by albedo
+    float3  specularAlbedo;         ///< Total view-dependent albedo (specular) color component of the material
+    float3  specularIllumination;   ///< Total view-dependent outgoing radiance from all light before multiplication by albedo
 
-    float3	finalValue;				///< Outgoing radiance after evaluating the complete material for all lights
+    float3  finalValue;             ///< Outgoing radiance after evaluating the complete material for all lights
 
-	float3    wi;                     ///< Incident direction after importance sampling the BRDF
-	float   pdf;                    ///< Probability density function for choosing the incident direction
-	float3    thp;                    ///< Current path throughput
+    float3  wi;                     ///< Incident direction after importance sampling the BRDF
+    float   pdf;                    ///< Probability density function for choosing the incident direction
+    float3  thp;                    ///< Current path throughput
 
-	float2    effectiveRoughness;     ///< Sampled brdf roughness, or for evaluated material, an effective roughness
-
-#ifdef CUDA_CODE
-    _fn ShadingOutput()
-    {
-        diffuseAlbedo = float3(0.f);
-        diffuseIllumination = float3(0.f);
-        specularAlbedo = float3(0.f);
-        specularIllumination = float3(0.f);
-        finalValue = float3(0.f);
-        wi = float3(0.f);
-        pdf = 0.f;
-        thp = float3(0.f);
-    }
-#endif
+    float2  effectiveRoughness;     ///< Sampled brdf roughness, or for evaluated material, an effective roughness
 };
 
 /* Include all shading routines, including endpoints (camera and light) */
@@ -389,11 +375,11 @@ void _fn evalMaterialLayer(int iLayer, ShadingAttribs attr, LightAttribs lAttr,
         break;
     };
 
-	float3 oldValue = result.value;
+    float3 oldValue = result.value;
     result.value = blendLayer(values.albedo, value, desc.blending, result.value);
 
-	float delta = max(1e-3f, luminance(result.value - oldValue));
-	result.effectiveRoughness += result.roughness * delta;
+    float delta = max(1e-3f, luminance(result.value - oldValue));
+    result.effectiveRoughness += result.roughness * delta;
 }
 
 
@@ -633,100 +619,100 @@ float4 _fn getSpecularColor(ShadingAttribs shAttr)
     \param[out] result Gather incident direction, probability density function, and path throughput
 */
 void _fn sampleMaterial(
-	ShadingAttribs shAttr,
-	in float2 rSample,
-	_ref(ShadingOutput) result)
+    ShadingAttribs shAttr,
+    in float2 rSample,
+    _ref(ShadingOutput) result)
 {
-	bool sampleDiffuse = true;
+    bool sampleDiffuse = true;
 
-	// Set the initial path throughput
-	result.thp = 0;
+    // Set the initial path throughput
+    result.thp = 0;
     result.diffuseAlbedo = 0;
     result.specularAlbedo = 0;
 
-	// Sample specular layer if it exists
-	MaterialLayerValues specData;
+    // Sample specular layer if it exists
+    MaterialLayerValues specData;
     MaterialLayerDesc   specDesc;
     if(getLayerByType(shAttr.preparedMat, MatConductor, specData, specDesc))
-	{
-		// Randomly sample the specular component by using the probability mass function
-		if (rSample.x < specData.pmf)
-		{
+    {
+        // Randomly sample the specular component by using the probability mass function
+        if (rSample.x < specData.pmf)
+        {
             // Rescale random number value
             rSample.x /= specData.pmf;
 
-			sampleDiffuse = false;
+            sampleDiffuse = false;
 
-			float3 m;
-			float3 wo = toLocal(shAttr.E, shAttr.T, shAttr.B, shAttr.N);
-			float2 roughness = float2(specData.roughness.x, specData.roughness.y);
+            float3 m;
+            float3 wo = toLocal(shAttr.E, shAttr.T, shAttr.B, shAttr.N);
+            float2 roughness = float2(specData.roughness.x, specData.roughness.y);
 
-			// Set the specular reflectivity
-			result.specularAlbedo = specData.albedo.rgb;
+            // Set the specular reflectivity
+            result.specularAlbedo = specData.albedo.rgb;
             result.thp = result.specularAlbedo;
 
-			// Choose the appropriate normal distribution function
+            // Choose the appropriate normal distribution function
             switch(specDesc.ndf)
-			{
-			case NDFBeckmann: // Beckmann normal distribution function 
-			{
-				result.thp *= sampleBeckmannDistribution(wo, roughness, rSample, m, result.wi, result.pdf);
-			}
-			break;
+            {
+            case NDFBeckmann: // Beckmann normal distribution function 
+            {
+                result.thp *= sampleBeckmannDistribution(wo, roughness, rSample, m, result.wi, result.pdf);
+            }
+            break;
 
-			case NDFGGX: // GGX normal distribution function
-			{
-				result.thp *= sampleGGXDistribution(wo, roughness, rSample, m, result.wi, result.pdf);
-			}
-			break;
-			}
+            case NDFGGX: // GGX normal distribution function
+            {
+                result.thp *= sampleGGXDistribution(wo, roughness, rSample, m, result.wi, result.pdf);
+            }
+            break;
+            }
 
             // Convert direction vector from local to global frame
             // global space coordinates
             result.wi = fromLocal(result.wi, shAttr.T, shAttr.B, shAttr.N);
 
-			// Evaluate standard microfacet model terms
+            // Evaluate standard microfacet model terms
             result.thp *= evalMicrofacetTerms(shAttr.T, shAttr.B, shAttr.N, m, shAttr.E, result.wi, roughness, specDesc.ndf, (specDesc.type) == MatDielectric);
 
-			// Fresnel conductor/dielectric term
-			float HoE = dot(m, shAttr.E);
-			float IoR = specData.extraParam.x;
-			float kappa = specData.extraParam.y;
+            // Fresnel conductor/dielectric term
+            float HoE = dot(m, shAttr.E);
+            float IoR = specData.extraParam.x;
+            float kappa = specData.extraParam.y;
             float F_term = (specDesc.type == MatConductor) ? conductorFresnel(HoE, IoR, kappa) : 1.f - dielectricFresnel(HoE, IoR);
-			result.thp *= F_term;
+            result.thp *= F_term;
 
-			result.effectiveRoughness = roughness;
-		}
+            result.effectiveRoughness = roughness;
+        }
         else
         {
             // Rescale random number value
             rSample.x -= specData.pmf;
             rSample.x /= 1.f - specData.pmf;
         }
-	}
+    }
 
-	// Sample the diffuse component
-	if (sampleDiffuse)
-	{
-		// Cosine lobe sampling
+    // Sample the diffuse component
+    if (sampleDiffuse)
+    {
+        // Cosine lobe sampling
         result.wi = cosine_sample_hemisphere(rSample.x, rSample.y);
 
         // Convert direction vector from local to global frame
         // global space coordinates
         result.wi = fromLocal(result.wi, shAttr.T, shAttr.B, shAttr.N);
 
-		// Ideally thp = (\rho / \pi) * |\omega_i . n| / bsdfPdf
-		// By importance sampling the cosine lobe, we can set bsdfPdf = |\omega_i . n| / \pi
-		// Thus, we can simplify thp = \rho
+        // Ideally thp = (\rho / \pi) * |\omega_i . n| / bsdfPdf
+        // By importance sampling the cosine lobe, we can set bsdfPdf = |\omega_i . n| / \pi
+        // Thus, we can simplify thp = \rho
         result.thp = getDiffuseColor(shAttr).rgb;
         result.diffuseAlbedo = result.thp;
 
-		// Probability density function for perfect importance sampling of cosine lobe 
-		result.pdf = M_1_PIf;
+        // Probability density function for perfect importance sampling of cosine lobe 
+        result.pdf = M_1_PIf;
 
-		// Record roughness for diffuse brdf
+        // Record roughness for diffuse brdf
         result.effectiveRoughness = 1;
-	}
+    }
 }
 
 #endif	// _FALCOR_SHADING_H_

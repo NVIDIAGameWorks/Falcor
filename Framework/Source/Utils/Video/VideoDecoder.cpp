@@ -25,9 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#if 0
 #include "Framework.h"
 #include "VideoDecoder.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Utils/BinaryFileStream.h"
 extern "C"
 {
@@ -40,7 +41,6 @@ extern "C"
 
 namespace Falcor
 {
-#if 0
     float VideoDecoder::rationalToFloat(const AVRational& r)
     {
         return ((float)r.num / (float)r.den);
@@ -334,5 +334,5 @@ namespace Falcor
         if(mpFrameRGB)
             av_free(mpFrameRGB);
     }
-#endif
 }
+#endif

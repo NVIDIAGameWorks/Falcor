@@ -28,8 +28,9 @@
 #include "Framework.h"
 #include "Bitmap.h"
 #include "FreeImage.h"
-#include "OS.h"
+#include "Utils/Platform/OS.h"
 #include "API/Device.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -198,7 +199,7 @@ namespace Falcor
         }
 
         int flags = 0;
-        FIBITMAP* pImage;
+        FIBITMAP* pImage = nullptr;
         uint32_t bytesPerPixel = getFormatBytesPerBlock(resourceFormat);
 
         //TODO replace this code for swapping channels. Can't use freeimage masks b/c they only care about 16 bpp images
@@ -210,7 +211,7 @@ namespace Falcor
                 uint32_t* pPixel = (uint32_t*)pData;
                 pPixel += a;
                 uint8_t* ch = (uint8_t*)pPixel;
-                std::swap(ch[0], ch[2]);                
+                std::swap(ch[0], ch[2]);
                 ch[3] = 0xff;
             }
         }
@@ -272,7 +273,7 @@ namespace Falcor
                 float* dstBits = (float*)FreeImage_GetScanLine(pImage, y);
                 if(bytesPerPixel == 12)
                 {
-                    memcpy(dstBits, head, bytesPerPixel * width);
+                    std::memcpy(dstBits, head, bytesPerPixel * width);
                 }
                 else
                 {
@@ -309,7 +310,7 @@ namespace Falcor
 
                 if(hasAlpha)
                 {
-                    memcpy(dstBits, head, bytesPerPixel * width);
+                    std::memcpy(dstBits, head, bytesPerPixel * width);
                 }
                 else
                 {

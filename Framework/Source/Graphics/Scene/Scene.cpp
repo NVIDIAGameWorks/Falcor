@@ -44,7 +44,7 @@ namespace Falcor
         Scene::SharedPtr pScene = create();
         if (SceneImporter::loadScene(*pScene, filename, modelLoadFlags, sceneLoadFlags) == false)
         {
-            pScene = false;
+            pScene = nullptr;
         }
         return pScene;
     }
@@ -127,6 +127,11 @@ namespace Falcor
             {
                 changed = true;
             }
+        }
+
+        for (uint32_t i = 0; i < mModels.size(); i++)
+        {
+            mModels[i][0]->getObject()->animate(currentTime);
         }
 
         mExtentsDirty = mExtentsDirty || changed;

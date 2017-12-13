@@ -25,17 +25,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "glm/detail/func_trigonometric.hpp"
+#include "glm/gtx/euler_angles.hpp"
+
 #include "Framework.h"
 #include "SceneImporter.h"
+#include "rapidjson/error/en.h"
 #include "Scene.h"
-#include "Utils/OS.h"
-#include "Externals/RapidJson/include/rapidjson/error/en.h"
+#include "Utils/Platform/OS.h"
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 #include "Graphics/TextureHelper.h"
-#include "glm/detail/func_trigonometric.hpp"
+
+#define SCENE_IMPORTER
 #include "SceneExportImportCommon.h"
-#include "glm/gtx/euler_angles.hpp"
 
 namespace Falcor
 {
@@ -117,7 +121,7 @@ namespace Falcor
             glm::vec3 rotation(0, 0, 0);
             std::string name = "Instance " + std::to_string(i);
 
-            for(auto& m = instance.MemberBegin(); m < instance.MemberEnd(); m++)
+            for(auto m = instance.MemberBegin(); m < instance.MemberEnd(); m++)
             {
                 std::string key(m->name.GetString());
                 if(key == SceneKeys::kName)
@@ -186,7 +190,7 @@ namespace Falcor
         }
 
         // Load the model
-        std::string file =  mDirectory + '\\' + modelFile.GetString();
+        std::string file =  mDirectory + '/' + modelFile.GetString();
         if (doesFileExist(file) == false)
         {
             file = modelFile.GetString();
@@ -202,7 +206,7 @@ namespace Falcor
         bool instanceAdded = false;
 
         // Loop over the other members
-        for(auto& jval = jsonModel.MemberBegin(); jval != jsonModel.MemberEnd(); jval++)
+        for(auto jval = jsonModel.MemberBegin(); jval != jsonModel.MemberEnd(); jval++)
         {
             std::string keyName(jval->name.GetString());
             if(keyName == SceneKeys::kFilename)
@@ -282,7 +286,7 @@ namespace Falcor
             uint32_t materialID = (uint32_t)-1;
 
             // Read object
-            for (auto& it = meshOverride.MemberBegin(); it < meshOverride.MemberEnd(); it++)
+            for (auto it = meshOverride.MemberBegin(); it < meshOverride.MemberEnd(); it++)
             {
                 std::string key(it->name.GetString());
 
@@ -459,7 +463,7 @@ namespace Falcor
 
         std::string filename = jsonValue.GetString();
         // Check if the file exists relative to the scene file
-        std::string fullpath = mDirectory + "\\" + filename;
+        std::string fullpath = mDirectory + "/" + filename;
         if(doesFileExist(fullpath))
         {
             filename = fullpath;
@@ -482,7 +486,7 @@ namespace Falcor
         }
 
         bool bOK = true;
-        for(auto& it = jsonLayer.MemberBegin(); (it != jsonLayer.MemberEnd()) && bOK; it++)
+        for(auto it = jsonLayer.MemberBegin(); (it != jsonLayer.MemberEnd()) && bOK; it++)
         {
             std::string key(it->name.GetString());
             const auto& value = it->value;
@@ -561,7 +565,7 @@ namespace Falcor
         }
 
         auto pMaterial = Material::create("");
-        for(auto& it = jsonMaterial.MemberBegin(); it != jsonMaterial.MemberEnd(); it++)
+        for(auto it = jsonMaterial.MemberBegin(); it != jsonMaterial.MemberEnd(); it++)
         {
             std::string key(it->name.GetString());
             const auto& value = it->value;
@@ -677,7 +681,7 @@ namespace Falcor
     {
         auto pDirLight = DirectionalLight::create();
 
-        for(auto& it = jsonLight.MemberBegin(); it != jsonLight.MemberEnd(); it++)
+        for(auto it = jsonLight.MemberBegin(); it != jsonLight.MemberEnd(); it++)
         {
             std::string key(it->name.GetString());
             const auto& value = it->value;
@@ -729,7 +733,7 @@ namespace Falcor
     {
         auto pPointLight = PointLight::create();
 
-        for(auto& it = jsonLight.MemberBegin(); it != jsonLight.MemberEnd(); it++)
+        for(auto it = jsonLight.MemberBegin(); it != jsonLight.MemberEnd(); it++)
         {
             std::string key(it->name.GetString());
             const auto& value = it->value;
@@ -876,7 +880,7 @@ namespace Falcor
         {
             float time = 0;
             glm::vec3 pos, target, up;
-            for(auto& it = jsonFramesArray[i].MemberBegin(); it < jsonFramesArray[i].MemberEnd(); it++)
+            for(auto it = jsonFramesArray[i].MemberBegin(); it < jsonFramesArray[i].MemberEnd(); it++)
             {
                 std::string key(it->name.GetString());
                 auto& value = it->value;
@@ -918,7 +922,7 @@ namespace Falcor
     {
         auto pPath = ObjectPath::create();
 
-        for(auto& it = jsonPath.MemberBegin(); it != jsonPath.MemberEnd(); it++)
+        for(auto it = jsonPath.MemberBegin(); it != jsonPath.MemberEnd(); it++)
         {
             const std::string key(it->name.GetString());
             const auto& value = it->value;
@@ -949,7 +953,7 @@ namespace Falcor
             {
                 if(createPathFrames(pPath.get(), value) == false)
                 {
-                    return false;
+                    return nullptr;
                 }
             }
             else if (key == SceneKeys::kAttachedObjects)
@@ -1033,7 +1037,7 @@ namespace Falcor
         std::string activePath;
 
         // Go over all the keys
-        for(auto& it = jsonCamera.MemberBegin(); it != jsonCamera.MemberEnd(); it++)
+        for(auto it = jsonCamera.MemberBegin(); it != jsonCamera.MemberEnd(); it++)
         {
             std::string key(it->name.GetString());
             const auto& value = it->value;
@@ -1289,7 +1293,7 @@ namespace Falcor
             return error("User defined section should be a JSON object.");
         }
 
-        for(auto& it = jsonVal.MemberBegin(); it != jsonVal.MemberEnd(); it++)
+        for(auto it = jsonVal.MemberBegin(); it != jsonVal.MemberEnd(); it++)
         {
             bool b;
             Scene::UserVariable userVar;
@@ -1382,7 +1386,7 @@ namespace Falcor
     bool SceneImporter::loadIncludeFile(const std::string& include)
     {
         // Find the file
-        std::string fullpath = mDirectory + '\\' + include;
+        std::string fullpath = mDirectory + '/' + include;
         if(doesFileExist(fullpath) == false)
         {
             // Look in the data directories
@@ -1481,7 +1485,7 @@ namespace Falcor
     bool SceneImporter::validateSceneFile()
     {
         // Make sure the top-level is valid
-        for(auto& it = mJDoc.MemberBegin(); it != mJDoc.MemberEnd(); it++)
+        for(auto it = mJDoc.MemberBegin(); it != mJDoc.MemberEnd(); it++)
         {
             bool found = false;
             const std::string name(it->name.GetString());

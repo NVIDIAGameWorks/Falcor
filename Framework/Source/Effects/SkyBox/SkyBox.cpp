@@ -75,7 +75,7 @@ namespace Falcor
             defines.add("_SPHERICAL_MAP");
         }
 
-        mpProgram = GraphicsProgram::createFromFile("Effects\\SkyBox.vs.slang", "Effects\\Skybox.ps.slang", defines);
+        mpProgram = GraphicsProgram::createFromFile("Effects/SkyBox.vs.slang", "Effects/SkyBox.ps.slang", defines);
         mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
 
         const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getActiveVersion()->getReflector()->getDefaultParameterBlock().get();
@@ -84,7 +84,7 @@ namespace Falcor
         mBindLocations.sampler= pDefaultBlockReflection->getResourceBinding("gSampler");
 
         ParameterBlock* pDefaultBlock = mpVars->getDefaultBlock().get();
-        ConstantBuffer::SharedPtr& pCB = pDefaultBlock->getConstantBuffer(mBindLocations.perFrameCB, 0);
+        ConstantBuffer* pCB = pDefaultBlock->getConstantBuffer(mBindLocations.perFrameCB, 0).get();
         mScaleOffset = pCB->getVariableOffset("gScale");
         mMatOffset = pCB->getVariableOffset("gWorld");
 
@@ -142,7 +142,7 @@ namespace Falcor
     void SkyBox::render(RenderContext* pRenderCtx, Camera* pCamera)
     {
         glm::mat4 world = glm::translate(pCamera->getPosition());
-        ConstantBuffer::SharedPtr& pCB = mpVars->getDefaultBlock()->getConstantBuffer(mBindLocations.perFrameCB, 0);
+        ConstantBuffer* pCB = mpVars->getDefaultBlock()->getConstantBuffer(mBindLocations.perFrameCB, 0).get();
         pCB->setVariable(mMatOffset, world);
         pCB->setVariable(mScaleOffset, mScale);
 

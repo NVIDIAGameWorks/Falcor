@@ -28,12 +28,13 @@
 #include "Framework.h"
 #include "API/StructuredBuffer.h"
 #include "API/Buffer.h"
+#include <cstring>
 
 namespace Falcor
 {
-    template<typename VarType>
+    template<typename VarType> 
     bool checkVariableByOffset(size_t offset, size_t count, const ReflectionResourceType* pReflection);
-    template<typename VarType>
+    template<typename VarType> 
     bool checkVariableType(const ReflectionType* pShaderType, const std::string& name, const std::string& bufferName);
 
 #define verify_element_index() if(elementIndex >= mElementCount) {logWarning(std::string(__FUNCTION__) + ": elementIndex is out-of-bound. Ignoring call."); return;}
@@ -89,7 +90,7 @@ namespace Falcor
         {
             mGpuCopyDirty = false;
             const uint8_t* pData = (uint8_t*)map(Buffer::MapType::Read);
-            memcpy(mData.data(), pData, mData.size());
+            std::memcpy(mData.data(), pData, mData.size());
             unmap();
         }
     }
@@ -110,20 +111,21 @@ namespace Falcor
             return;
         }
         readFromGPU();
-        memcpy(pDest, mData.data() + offset, size);
+        std::memcpy(pDest, mData.data() + offset, size);
     }
 
     template<typename VarType> 
     void StructuredBuffer::getVariable(size_t offset, size_t elementIndex, VarType& value)
     {
         verify_element_index();
-        if(checkVariableByOffset<VarType>(offset, 0, mpReflector.get()))
+        if(_LOG_ENABLED == 0 || checkVariableByOffset<VarType>(offset, 0, mpReflector.get()))
         {
             readFromGPU();
             const uint8_t* pVar = mData.data() + offset + elementIndex * mElementSize;
             value = *(const VarType*)pVar;
         }
     }
+
 #define get_constant_offset(_t) template void StructuredBuffer::getVariable(size_t offset, size_t elementIndex, _t& value)
 
     get_constant_offset(bool);
@@ -215,7 +217,7 @@ namespace Falcor
     {
         verify_element_index();
 
-        if (checkVariableByOffset<VarType>(offset, count, mpReflector.get()))
+        if (_LOG_ENABLED == 0 || checkVariableByOffset<VarType>(offset, count, mpReflector.get()))
         {
             readFromGPU();
             const uint8_t* pVar = mData.data() + offset;

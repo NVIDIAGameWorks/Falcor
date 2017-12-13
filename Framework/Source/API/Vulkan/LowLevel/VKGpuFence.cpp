@@ -192,7 +192,6 @@ namespace Falcor
 
     void GpuFence::syncGpu(CommandQueueHandle pQueue)
     {
-        VkSemaphore sem = mpApiData->semaphoreQueue.front();
         VkSubmitInfo submit = {};
         submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit.waitSemaphoreCount = (uint32_t)mpApiData->semaphoreWaitList.size();
@@ -233,8 +232,6 @@ namespace Falcor
     uint64_t GpuFence::getGpuValue() const
     {
         auto& activeFences = mpApiData->fenceQueue.getActiveObjects();
-        uint64_t origGpuVal = mpApiData->gpuValue;
-
         while (activeFences.size())
         {
             VkFence fence = activeFences.front();

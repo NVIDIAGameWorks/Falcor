@@ -72,7 +72,7 @@ namespace Falcor
         glm::vec3 gizmoPos = mpAxesInstances[0]->getTranslation();
         glm::vec3 rayDir = mousePosToWorldRay(mouseEvent.pos, pCamera->getViewMatrix(), pCamera->getProjMatrix());
 
-        float intersectDist;
+        float intersectDist = 0.0f;
         bool succeeded = glm::intersectRayPlane(pCamera->getPosition(), rayDir, gizmoPos, mGizmoAxes[(uint32_t)mBestPlaneAxis], intersectDist);
 
         // If failed, try again with reversed normal

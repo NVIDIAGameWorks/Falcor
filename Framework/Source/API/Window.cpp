@@ -28,20 +28,31 @@
 #include "Framework.h"
 #include "API/Window.h"
 #include "Utils/UserInput.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include <algorithm>
-#include "API/texture.h"
+#include "API/Texture.h"
 #include "API/FBO.h"
 #include "Utils/StringUtils.h"
 
-#define GLFW_DLL
+// Don't include GL/GLES headers
+#define GLFW_INCLUDE_NONE
 
 #ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
-#endif
-
 #include "glfw3.h"
 #include "glfw3native.h"
+#else // LINUX
+
+// Replace the defines we undef'd in FalcorVK.h, because glfw will need them when it includes Xlib
+#define None 0L
+#define Bool int
+#define Status int
+#define Always 2
+
+#define GLFW_EXPOSE_NATIVE_X11
+#include "GLFW/glfw3.h"
+#include "GLFW/glfw3native.h"
+#endif
 
 namespace Falcor
 {
@@ -155,7 +166,7 @@ namespace Falcor
 
         static void errorCallback(int errorCode, const char* pDescription)
         {
-            std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription);
+            std::string errorMsg = std::to_string(errorCode) + " - " + std::string(pDescription) + "\n";
             logError(errorMsg.c_str());
         }
 
@@ -370,9 +381,12 @@ namespace Falcor
 
 #ifdef _WIN32
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
-#endif
-
         assert(pWindow->mApiHandle);
+#else
+        pWindow->mApiHandle.pDisplay = glfwGetX11Display();
+        pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
+        assert(pWindow->mApiHandle.pDisplay != nullptr);
+#endif
 
         glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
 

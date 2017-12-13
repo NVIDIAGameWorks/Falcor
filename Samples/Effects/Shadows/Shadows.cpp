@@ -109,7 +109,7 @@ void Shadows::createScene(const std::string& filename)
 
 void Shadows::onLoad()
 {
-    createScene("Scenes/dragonPlane.fscene");
+    createScene("Scenes/DragonPlane.fscene");
     createVisualizationProgram();
     initializeTesting();
 }
@@ -272,10 +272,19 @@ void Shadows:: onEndTestFrame()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
-    Shadows modelViewer;
+    Shadows shadows;
     SampleConfig config;
     config.windowDesc.title = "Shadows Sample";
-    modelViewer.run(config);
+#ifdef _WIN32
+    shadows.run(config);
+#else
+    shadows.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

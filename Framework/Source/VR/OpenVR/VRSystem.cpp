@@ -75,7 +75,7 @@ namespace Falcor
         return vr::TextureType_Vulkan;
     }
 #else
-#error VRSystem doesn't support the selected API backend
+#error VRSystem doesnt support the selected API backend
 #endif
 
 

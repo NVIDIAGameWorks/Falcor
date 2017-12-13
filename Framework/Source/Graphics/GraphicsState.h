@@ -121,7 +121,7 @@ namespace Falcor
 
         /** Set the stencil reference value.
         */
-        GraphicsState& setStencilRef(uint8_t refValue) { mStencilRef = refValue; }
+        GraphicsState& setStencilRef(uint8_t refValue) { mStencilRef = refValue; return *this; }
 
         /** Get the current stencil reference value.
         */

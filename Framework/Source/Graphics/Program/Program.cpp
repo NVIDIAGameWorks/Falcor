@@ -31,7 +31,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "Graphics/TextureHelper.h"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "API/Shader.h"
 #include "Graphics/Program/ProgramVersion.h"
 #include "API/Texture.h"
@@ -235,7 +235,7 @@ namespace Falcor
             {
                 if(link() == false)
                 {
-                    return false;
+                    return nullptr;
                 }
                 else
                 {
@@ -403,7 +403,7 @@ namespace Falcor
         // Each entry point references the index of the source
         // it uses, and luckily, the Slang API can use these
         // indices directly.
-        for(int i = 0; i < kShaderCount; ++i)
+        for(uint32_t i = 0; i < kShaderCount; ++i)
         {
             auto& entryPoint = mDesc.mEntryPoints[i];
 

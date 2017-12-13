@@ -31,7 +31,7 @@
 #include "glm/mat4x4.hpp"
 #include "Data/HostDeviceData.h"
 #include <vector>
-#include "graphics/Paths/MovableObject.h"
+#include "Graphics/Paths/MovableObject.h"
 
 namespace Falcor
 {

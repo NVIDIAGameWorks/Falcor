@@ -99,7 +99,8 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
         jsonfile = open(json_filepath)
         json_data = json.load(jsonfile)
     except (IOError, OSError, json.decoder.JSONDecodeError) as e:
-        tests_set_run_data['Error'] = e.args
+        tests_set_run_data['Success'] = False
+        tests_set_run_data['Error'] = "Error reading test set JSON: " + e.args[0]
         return tests_set_run_data
 
     # Try and parse the data from the json file.
@@ -127,21 +128,20 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
     for current_tests_group_name in tests_set_run_data['Tests Groups']:
         current_tests_group = tests_set_run_data['Tests Groups'][current_tests_group_name]
 
-        current_tests_group['Results'] = {}
-        current_tests_group['Results']['Errors'] = {}
-
-        # Get the executable directory.
-        executable_directory = absolutepath + '\\' + get_executable_directory(tests_set_run_data['Configuration Target'])
-        # Get the results directory.
-        current_results_directory = tests_set_run_data['Results Directory'] + '\\' + current_tests_group_name + '\\'
-
-        # Create the directory, or clean it.
-        if helpers.directory_clean_or_make(current_results_directory) is None:
-            current_tests_group['Results']['Errors']['Global'] = "Could not clean or make required results directory. Please try manually deleting : " + current_results_directory
-            break
-
         # Check if the test is enabled.
         if current_tests_group['Enabled'] == True:
+            current_tests_group['Results'] = {}
+            current_tests_group['Results']['Errors'] = {}
+
+            # Get the executable directory.
+            executable_directory = absolutepath + '\\' + get_executable_directory(tests_set_run_data['Configuration Target'])
+            # Get the results directory.
+            current_results_directory = tests_set_run_data['Results Directory'] + '\\' + current_tests_group_name + '\\'
+
+            # Create the directory, or clean it.
+            if helpers.directory_clean_or_make(current_results_directory) is None:
+                current_tests_group['Results']['Errors']['Global'] = "Could not clean or make required results directory. Please try manually deleting : " + current_results_directory
+                break
 
             # Initialize all the results.
             current_tests_group['Results']['Run Results'] = {}
@@ -320,6 +320,10 @@ def main():
 
     # Run the Test Set.
     tests_set_data = run_tests_set(args.main_directory, args.rebuild, args.tests_set, main_results_directory, main_reference_directory)
+
+    if tests_set_data['Success'] == False:
+        print(tests_set_data['Error'])
+        return
 
     # Build the Tests Results.
     get_tests_set_results(tests_set_data)

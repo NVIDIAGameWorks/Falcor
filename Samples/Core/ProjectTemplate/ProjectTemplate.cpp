@@ -77,4 +77,5 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     config.windowDesc.title = "Falcor Project Template";
     config.windowDesc.resizableWindow = true;
     sample.run(config);
+    return 0;
 }

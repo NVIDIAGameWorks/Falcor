@@ -101,3 +101,4 @@ namespace Falcor
         std::string mName;
     };
 }
+

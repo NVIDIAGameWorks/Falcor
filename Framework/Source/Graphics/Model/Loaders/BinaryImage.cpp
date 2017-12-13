@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "BinaryImage.hpp"
 //#include "gpu/CudaModule.hpp"
+#include <cstring>
 
 using namespace FW;
 
@@ -91,7 +92,7 @@ ImageFormat::ID ImageFormat::getID(void) const
         const StaticFormat& f = s_staticFormats[i];
         if (m_genericBPP == f.bpp &&
             m_genericChannels.size() == f.numChannels &&
-            memcmp(m_genericChannels.data(), f.channels, m_genericChannels.size()*sizeof(m_genericChannels[0])) == 0)
+            std::memcmp(m_genericChannels.data(), f.channels, m_genericChannels.size()*sizeof(m_genericChannels[0])) == 0)
         {
             m_id = (ID)i;
             return m_id;

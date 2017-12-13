@@ -25,21 +25,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "AssimpModelImporter.h"
-#include "Graphics/Model/Model.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
+#include "glm/matrix.hpp"
+#include "glm/common.hpp"
+#include "glm/geometric.hpp"
+
+#include "Framework.h"
+#include "AssimpModelImporter.h"
+#include "Graphics/Model/Model.h"
 #include "Graphics/Model/Animation.h"
 #include "Graphics/Model/Mesh.h"
 #include "Graphics/Model/AnimationController.h"
-#include "glm/common.hpp"
-#include "glm/geometric.hpp"
 #include "API/Texture.h"
 #include "API/Buffer.h"
-#include "glm/matrix.hpp"
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Graphics/TextureHelper.h"
 #include "API/VertexLayout.h"
 #include "Data/VertexAttrib.h"
@@ -296,7 +297,8 @@ namespace Falcor
                 else
                 {
                     // create a new texture
-                    std::string fullpath = folder + '\\' + s;
+                    std::string fullpath = folder + '/' + s;
+                    fullpath = replaceSubstring(fullpath, "\\", "/");
                     pTex = createTextureFromFile(fullpath, true, isSrgbRequired(aiType, useSrgb));
                     if (pTex)
                     {
@@ -323,11 +325,6 @@ namespace Falcor
 
     Material::SharedPtr AssimpModelImporter::createMaterial(const aiMaterial* pAiMaterial, const std::string& folder, bool isObjFile, bool useSrgb)
     {
-        aiString name;
-        pAiMaterial->Get(AI_MATKEY_NAME, name);
-        std::string nameStr = std::string(name.C_Str());
-        std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
-
         BasicMaterial basicMaterial;
         loadTextures(pAiMaterial, folder, &basicMaterial, isObjFile, useSrgb);
 
@@ -395,6 +392,15 @@ namespace Falcor
         if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)
         {
             pMaterial->setDoubleSided((isDoubleSided != 0));
+        }
+
+        // Material name
+        aiString name;
+        pAiMaterial->Get(AI_MATKEY_NAME, name);
+        std::string nameStr = std::string(name.C_Str());
+        if (nameStr.length() > 0)
+        {
+            pMaterial->setName(nameStr);
         }
 
         return pMaterial;
@@ -492,7 +498,7 @@ namespace Falcor
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
             logError(std::string("Can't find model file ") + filename, true);
-            return nullptr;
+            return false;
         }
 
         uint32_t AssimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
@@ -510,7 +516,7 @@ namespace Falcor
         // Avoid merging original meshes
         if(is_set(mFlags, Model::LoadFlags::DontMergeMeshes))
         {
-            AssimpFlags &= ~aiProcess_OptimizeGraph;
+            AssimpFlags &= ~aiProcess_OptimizeMeshes;
         }
 
         // Never use Assimp's tangent gen code
@@ -555,11 +561,21 @@ namespace Falcor
         return loader.initModel(filename);
     }
 
+    bool AssimpModelImporter::isUsedNode(const aiNode* pNode) const
+    {
+        return (mBoneNameToIdMap.count(pNode->mName.C_Str()) > 0) || (mAdditionalUsedNodes.count(pNode) > 0);
+    }
+
     uint32_t AssimpModelImporter::initBone(const aiNode* pCurNode, uint32_t parentID, uint32_t boneID)
     {
-        assert(mBoneNameToIdMap.find(pCurNode->mName.C_Str()) != mBoneNameToIdMap.end());
+        assert(isUsedNode(pCurNode));
         assert(pCurNode->mNumMeshes == 0);
-        mBoneNameToIdMap[pCurNode->mName.C_Str()] = boneID;
+
+        auto it = mBoneNameToIdMap.find(pCurNode->mName.C_Str());
+        if (it != mBoneNameToIdMap.end())
+        {
+            it->second = boneID;
+        }
 
         assert(boneID < mBones.size());
         Bone& bone = mBones[boneID];
@@ -580,9 +596,10 @@ namespace Falcor
         for (uint32_t i = 0; i < pCurNode->mNumChildren; i++)
         {
             // Check that the child is actually used
-            if (mBoneNameToIdMap.find(pCurNode->mChildren[i]->mName.C_Str()) != mBoneNameToIdMap.end())
+            const aiNode* pChild = pCurNode->mChildren[i];
+            if (isUsedNode(pChild))
             {
-                boneID = initBone(pCurNode->mChildren[i], bone.boneID, boneID);
+                boneID = initBone(pChild, bone.boneID, boneID);
             }
         }
         return boneID;
@@ -623,22 +640,25 @@ namespace Falcor
         if (mBoneNameToIdMap.size() != 0)
         {
             // For every bone used, all its ancestors are bones too. Mark them
-            auto it = mBoneNameToIdMap.begin();
-            while (it != mBoneNameToIdMap.end())
+            for (auto it = mBoneNameToIdMap.begin(); it != mBoneNameToIdMap.end(); it++)
             {
                 aiNode* pCurNode = pScene->mRootNode->FindNode(it->first.c_str());
                 while (pCurNode)
                 {
-                    mBoneNameToIdMap[pCurNode->mName.C_Str()] = AnimationController::kInvalidBoneID;
+                    // Used bones are already recorded, only record additional nodes
+                    if (mBoneNameToIdMap.count(pCurNode->mName.C_Str()) == 0)
+                    {
+                        mAdditionalUsedNodes.insert(pCurNode);
+                    }
                     pCurNode = pCurNode->mParent;
                 }
-                it++;
             }
 
             // Now create the hierarchy
-            mBones.resize(mBoneNameToIdMap.size());
-            uint32_t bonesCount = initBone(pScene->mRootNode, AnimationController::kInvalidBoneID, 0);
-            assert(mBoneNameToIdMap.size() == bonesCount);
+            size_t hierarchySize = mBoneNameToIdMap.size() + mAdditionalUsedNodes.size();
+            mBones.resize(hierarchySize);
+            uint32_t nodeBoneCount = initBone(pScene->mRootNode, AnimationController::kInvalidBoneID, 0);
+            assert(uint32_t(hierarchySize) == nodeBoneCount);
 
             initializeBonesOffsetMatrices(pScene);
         }
@@ -648,7 +668,9 @@ namespace Falcor
     {
         initializeBones(pScene);
 
-        if (pScene->HasAnimations())
+        // Create animation controller as long as there are bones.
+        // This will render bind pose if there are no animations.
+        if (mBones.empty() == false)
         {
             auto pAnimCtrl = AnimationController::create(mBones);
 
@@ -671,13 +693,18 @@ namespace Falcor
 
         std::vector<Animation::AnimationSet> animationSets;
         animationSets.resize(pAiAnim->mNumChannels);
+        for (auto& animSet : animationSets)
+        {
+            animSet.boneID = AnimationController::kInvalidBoneID;
+        }
 
         for (uint32_t i = 0; i < pAiAnim->mNumChannels; i++)
         {
             const aiNodeAnim* pAiNode = pAiAnim->mChannels[i];
+
             // If the bone is not used, skip it
             const auto& idIt = mBoneNameToIdMap.find(pAiNode->mNodeName.C_Str());
-            if (idIt == mBoneNameToIdMap.end()) continue;;
+            if (idIt == mBoneNameToIdMap.end()) continue;
 
             animationSets[i].boneID = idIt->second;
 
@@ -708,6 +735,15 @@ namespace Falcor
                 animationSets[i].rotation.keys.push_back(rotation);
             }
         }
+
+        // Erase empty animation sets
+        animationSets.erase(
+            std::remove_if(
+                animationSets.begin(),
+                animationSets.end(),
+                [](const Animation::AnimationSet& a) { return a.boneID == AnimationController::kInvalidBoneID; }),
+            animationSets.end()
+        );
 
         return Animation::create(std::string(pAiAnim->mName.C_Str()), animationSets, duration, ticksPerSecond);
     }
@@ -762,7 +798,7 @@ namespace Falcor
             pVBs[i] = createVertexBuffer(pAiMesh, pVbLayout, (uint8_t*)ids.data(), weights.data());
         }
 
-        Vao::Topology topology;
+        Vao::Topology topology = Vao::Topology::TriangleList;
         switch (pAiMesh->mFaces[0].mNumIndices)
         {
         case 1:

@@ -213,7 +213,7 @@ void SimpleDeferred::onLoad()
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
     // Load default model
-    loadModelFromFile("Ogre/bs_rest.obj");
+    loadModelFromFile("ogre/bs_rest.obj");
 
     initializeTesting();
 }
@@ -221,9 +221,6 @@ void SimpleDeferred::onLoad()
 void SimpleDeferred::onFrameRender()
 {
     beginTestFrame();
-
-    uint32_t width = mpDefaultFBO->getWidth();
-    uint32_t height = mpDefaultFBO->getHeight();
 
     GraphicsState* pState = mpRenderContext->getGraphicsState().get();
 
@@ -259,8 +256,8 @@ void SimpleDeferred::onFrameRender()
 
     // Lighting pass (fullscreen quad)
     {
-		pState->setFbo(mpDefaultFBO);
-		mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
+        pState->setFbo(mpDefaultFBO);
+        mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
 
         // Reset render state
         pState->setRasterizerState(mpCullRastState[0]);
@@ -382,7 +379,11 @@ void SimpleDeferred::onEndTestFrame()
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     SimpleDeferred sample;
     SampleConfig config;
@@ -390,5 +391,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     config.windowDesc.height = 720;
     config.windowDesc.resizableWindow = true;
     config.windowDesc.title = "Simple Deferred";
+#ifdef _WIN32
     sample.run(config);
+#else
+    sample.run(config, (uint32_t)argc, argv);
+#endif
+    return 0;
 }

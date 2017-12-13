@@ -33,6 +33,7 @@
 #include "Texture.h"
 #include "Graphics/Program/ProgramReflection.h"
 #include "API/Device.h"
+#include <cstring>
 
 namespace Falcor
 {
@@ -343,7 +344,7 @@ namespace Falcor
             setVariableArray(pVar->getOffset(), elementIndex, pValue, count);
         }
     }
-    
+
 #define set_constant_array_by_string(_t) template void VariablesBuffer::setVariableArray(const std::string& name, size_t elementIndex, const _t* pValue, size_t count)
 
     set_constant_array_by_string(bool);
@@ -391,7 +392,7 @@ namespace Falcor
             logError(Msg);
             return;
         }
-        memcpy(mData.data() + offset, pSrc, size);
+        std::memcpy(mData.data() + offset, pSrc, size);
         mDirty = true;
     }
 }

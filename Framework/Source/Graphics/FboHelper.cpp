@@ -100,7 +100,7 @@ namespace Falcor
             uint32_t sampleCount = fboDesc.getSampleCount();
             if(CheckParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false)
             {
-                return false;
+                return nullptr;
             }
 
             Fbo::SharedPtr pFbo = Fbo::create();

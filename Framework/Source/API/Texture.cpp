@@ -91,9 +91,7 @@ namespace Falcor
         if(mMipLevels == kMaxPossible)
         {
             uint32_t dims = width | height | depth;
-            unsigned long bits;
-            _BitScanReverse(&bits, dims);
-            mMipLevels = (uint32_t)bits + 1;
+            mMipLevels = bitScanReverse(dims) + 1;
         }
     }
 
@@ -102,7 +100,7 @@ namespace Falcor
         uint32_t subresource = getSubresourceIndex(arraySlice, mipLevel);
         std::vector<uint8> textureData = gpDevice->getRenderContext()->readTextureSubresource(this, subresource);
 
-        auto& func = [=]
+        auto func = [=]()
         {
             Bitmap::saveImage(filename, getWidth(mipLevel), getHeight(mipLevel), format, exportFlags, getFormat(), true, (void*)textureData.data());
         };

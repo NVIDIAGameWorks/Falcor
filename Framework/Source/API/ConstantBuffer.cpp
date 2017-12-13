@@ -36,6 +36,8 @@
 
 namespace Falcor
 {
+    ConstantBuffer::~ConstantBuffer() = default;
+
     ConstantBuffer::ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size) :
         VariablesBuffer(name, pReflectionType, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
     {

@@ -33,7 +33,7 @@
 #include "Graphics/Program//ProgramVars.h"
 #include "Graphics/Program//Program.h"
 #include "Graphics/GraphicsState.h"
-#define GUI_CALL _cdecl
+
 namespace Falcor
 {
     class RenderContext;

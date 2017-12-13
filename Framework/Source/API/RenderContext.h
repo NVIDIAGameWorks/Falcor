@@ -138,7 +138,7 @@ namespace Falcor
         
         /** Get the bound graphics program variables object
         */
-        GraphicsVars::SharedPtr getGraphicsVars() const { return mpGraphicsVars; }
+        const GraphicsVars::SharedPtr& getGraphicsVars() const { return mpGraphicsVars; }
 
         /** Push the current graphics vars and sets a new one
         */

@@ -25,6 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+
 #include "Framework.h"
 #include "ObjectPath.h"
 #include "MovableObject.h"
@@ -90,7 +91,7 @@ namespace Falcor
         {
             return false;
         }
-        bool shouldInterpolate = true;
+
         double animTime = currentTime;
         const auto& firstFrame = mKeyFrames[0];
         const auto& lastFrame = mKeyFrames[mKeyFrames.size() - 1];
@@ -232,7 +233,7 @@ namespace Falcor
 
     void ObjectPath::detachObject(const IMovableObject::SharedPtr& pObject)
     {
-        auto& it = std::find(mpObjects.begin(), mpObjects.end(), pObject);
+        auto it = std::find(mpObjects.begin(), mpObjects.end(), pObject);
         if(it != mpObjects.end())
         {
             mpObjects.erase(it);

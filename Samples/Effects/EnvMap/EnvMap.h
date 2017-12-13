@@ -43,9 +43,7 @@ public:
 
 private:
     void loadTexture();
-    static void GUI_CALL getScaleCB(void* pData, void* pThis);
-    static void GUI_CALL setScaleCB(const void* pData, void* pThis);
-
+    
     Camera::SharedPtr mpCamera;
     SixDoFCameraController::SharedPtr mpCameraController;
     SkyBox::UniquePtr mpSkybox;  

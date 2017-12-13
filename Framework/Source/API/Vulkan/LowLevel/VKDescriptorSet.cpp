@@ -68,7 +68,7 @@ namespace Falcor
         VkWriteDescriptorSet write = {};
         VkDescriptorImageInfo image;
         VkDescriptorBufferInfo buffer;
-        ViewType::ApiHandle handle = pView->getApiHandle();
+        typename ViewType::ApiHandle handle = pView->getApiHandle();
         VkBufferView texelBufferView = {};
 
         if (handle.getType() == VkResourceType::Buffer)

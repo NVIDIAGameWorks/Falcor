@@ -32,44 +32,49 @@
 namespace Falcor
 {
     template<typename ObjectType>
-	class FencedPool : public std::enable_shared_from_this<FencedPool<ObjectType>>
-	{
-	public:
-		using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
-		using SharedConstPtr = std::shared_ptr<const FencedPool<ObjectType>>;
+    class FencedPool : public std::enable_shared_from_this<FencedPool<ObjectType>>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<FencedPool<ObjectType>>;
+        using SharedConstPtr = std::shared_ptr<const FencedPool<ObjectType>>;
         using NewObjectFuncType = ObjectType(*)(void*);
 
-		static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr) { return SharedPtr(new FencedPool(pFence, newFunc, pUserData)); }
-		ObjectType newObject()
-		{
-			// The queue is sorted based on time. Check if the first object is free
-			Data data = mQueue.front();
-			if (data.timestamp <= mpFence->getGpuValue())
-			{
-				mQueue.pop();
-			}
-			else
-			{
-				data.alloc = mNewObjFunc(mpUserData);
-			}
+        static SharedPtr create(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData = nullptr) { return SharedPtr(new FencedPool(pFence, newFunc, pUserData)); }
+        ObjectType newObject()
+        {
+            // Retire the active object
+            Data data;
+            data.alloc = mActiveObject;
+            data.timestamp = mpFence->getCpuValue();
+            mQueue.push(data);
 
-			data.timestamp = mpFence->getCpuValue();
-			mQueue.push(data);
-			return data.alloc;
-		}
+            // The queue is sorted based on time. Check if the first object is free
+            data = mQueue.front();
+            if (data.timestamp <= mpFence->getGpuValue())
+            {
+                mQueue.pop();
+            }
+            else
+            {
+                data.alloc = mNewObjFunc(mpUserData);
+            }
 
-	private:
-		FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData) : mpUserData(pUserData), mpFence(pFence), mNewObjFunc(newFunc) { mQueue.push({ mNewObjFunc(pUserData), mpFence->getCpuValue()}); }
-		GpuFence::SharedConstPtr mpFence;
+            mActiveObject = data.alloc;
+            return mActiveObject;
+        }
+
+    private:
+        FencedPool(GpuFence::SharedConstPtr pFence, NewObjectFuncType newFunc, void* pUserData) : mpUserData(pUserData), mpFence(pFence), mNewObjFunc(newFunc) { mActiveObject = mNewObjFunc(pUserData); }
+        GpuFence::SharedConstPtr mpFence;
         void* mpUserData;
 
-		struct Data
-		{
-			ObjectType alloc;
-			uint64_t timestamp;
-		};
-
+        struct Data
+        {
+            ObjectType alloc;
+            uint64_t timestamp;
+        };
+        ObjectType mActiveObject;
         NewObjectFuncType mNewObjFunc = nullptr;
-		std::queue<Data> mQueue;
-	};
+        std::queue<Data> mQueue;
+    };
 }

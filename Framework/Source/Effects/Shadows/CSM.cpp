@@ -476,7 +476,7 @@ namespace Falcor
         }
     }
 
-    __forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const glm::vec2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
+    forceinline float calcPssmPartitionEnd(float nearPlane, float camDepthRange, const glm::vec2& distanceRange, float linearBlend, uint32_t cascade, uint32_t cascadeCount)
     {
         // Convert to camera space
         float minDepth = nearPlane + distanceRange.x * camDepthRange;
@@ -609,7 +609,7 @@ namespace Falcor
 
     void CascadedShadowMaps::renderScene(RenderContext* pCtx)
     {
-        auto& pCB = mShadowPass.pGraphicsVars->getDefaultBlock()->getConstantBuffer(mPerLightCbLoc, 0);
+        ConstantBuffer* pCB = mShadowPass.pGraphicsVars->getDefaultBlock()->getConstantBuffer(mPerLightCbLoc, 0).get();
         check_offset(globalMat);
         check_offset(cascadeScale[0]);
         check_offset(cascadeOffset[0]);

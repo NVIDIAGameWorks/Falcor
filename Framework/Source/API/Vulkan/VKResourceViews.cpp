@@ -28,7 +28,6 @@
 #include "Framework.h"
 #include "API/ResourceViews.h"
 #include "API/Resource.h"
-#include "API/D3D/D3DViews.h"
 #include "API/Device.h"
 
 namespace Falcor

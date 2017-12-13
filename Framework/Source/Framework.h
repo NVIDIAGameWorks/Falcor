@@ -54,15 +54,22 @@ using namespace glm;
     }
 
 #define should_not_get_here() assert(false);
-#else
+
+#else // _DEBUG
+
 #ifdef _AUTOTESTING
 #define assert(a) if (!(a)) throw std::exception("Assertion Failure");
-#else
-#define assert(a)
-#endif
+#else // _AUTOTESTING
+#define assert(a) ((void)(a))
+#endif // _AUTOTESTING
 
+#ifdef _MSC_VER
 #define should_not_get_here() __assume(0)
-#endif
+#else // _MSC_VER
+#define should_not_get_here() __builtin_unreachable()
+#endif // _MSC_VER
+
+#endif // _DEBUG
 
 #define safe_delete(_a) {delete _a; _a = nullptr;}
 #define safe_delete_array(_a) {delete[] _a; _a = nullptr;}
@@ -70,9 +77,11 @@ using namespace glm;
 
 #if defined(_MSC_VER)
 #define FALCOR_DEPRECATED(MESSAGE) __declspec(deprecated(MESSAGE))
+#define forceinline __forceinline
 #else
 // TODO: add cases for clang/gcc when/if needed
 #define FALCOR_DEPRECATED(MESSAGE) /* emtpy */
+#define forceinline __attribute__((always_inline))
 #endif
 
 namespace Falcor
@@ -152,16 +161,6 @@ namespace Falcor
         return (t & (t - 1)) == 0;
     }
 
-    /** Gets the closest power of two to a number, rounded down.
-    */
-    inline uint32_t getLowerPowerOf2(uint32_t a)
-    {
-        assert(a != 0);
-        unsigned long index;
-        _BitScanReverse(&index, a);
-        return 1 << index;
-    }
-
     /*! @} */
 
 
@@ -187,8 +186,8 @@ namespace Falcor
     };
 }
 
-#if defined(FALCOR_D3D11) || defined(FALCOR_D3D12)
-#include "API/D3D/FalcorD3D.h"
+#if defined(FALCOR_D3D12)
+#include "API/D3D12/FalcorD3D12.h"
 #elif defined(FALCOR_VK)
 #include "API/Vulkan/FalcorVK.h"
 #else
@@ -228,7 +227,7 @@ namespace Falcor
     }
 }
 
-#include "Utils/OS.h"
+#include "Utils/Platform/OS.h"
 #include "Utils/Profiler.h"
 
 #if (_ENABLE_NVAPI == true)

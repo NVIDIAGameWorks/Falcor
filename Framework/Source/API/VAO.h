@@ -82,11 +82,11 @@ namespace Falcor
 
         /** Get a vertex buffer
         */
-        Buffer::SharedPtr getVertexBuffer(uint32_t index) const { return mpVBs[index]; }
+        const Buffer::SharedPtr& getVertexBuffer(uint32_t index) const { assert(index < (uint32_t)mpVBs.size()); return mpVBs[index]; }
 
         /** Get a vertex buffer layout
         */
-        VertexLayout::SharedConstPtr getVertexLayout() const { return mpVertexLayout; }
+        const VertexLayout::SharedPtr& getVertexLayout() const { return mpVertexLayout; }
 
         /** Return the vertex buffer index and the element index by its location.
             If the element is not found, returns the default ElementDesc
@@ -107,9 +107,7 @@ namespace Falcor
 
     protected:
         friend class RenderContext;
-#ifdef FALCOR_D3D11
-        ID3D11InputLayoutPtr getInputLayout(ID3DBlob* pVsBlob) const;
-#endif
+
     private:
         Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology primTopology);
         bool initialize();

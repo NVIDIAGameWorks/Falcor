@@ -72,7 +72,7 @@ namespace Falcor
 
         struct  
         {
-            VkFence f[kSwapChainBuffers];
+            std::vector<VkFence> f;
             uint32_t cur = 0;
         } presentFences;
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
@@ -84,23 +84,23 @@ namespace Falcor
     {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-		uint32_t bits = 0;
+        uint32_t bits = 0;
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
         {
             if ((memProperties.memoryTypes[i].propertyFlags & memFlagBits) == memFlagBits)
             {
-				bits |= (1 << i);
+                bits |= (1 << i);
             }
         }
-		return bits;
+        return bits;
     }
 
-    static uint32_t getCurrentBackBufferIndex(VkDevice device, DeviceApiData* pApiData)
+    static uint32_t getCurrentBackBufferIndex(VkDevice device, uint32_t backBufferCount, DeviceApiData* pApiData)
     {
         VkFence fence = pApiData->presentFences.f[pApiData->presentFences.cur];
         vk_call(vkWaitForFences(device, 1, &fence, false, -1));
 
-        pApiData->presentFences.cur = (pApiData->presentFences.cur + 1) % kSwapChainBuffers;
+        pApiData->presentFences.cur = (pApiData->presentFences.cur + 1) % backBufferCount;
         fence = pApiData->presentFences.f[pApiData->presentFences.cur];
         vkResetFences(device, 1, &fence);
         uint32_t newIndex;
@@ -141,7 +141,7 @@ namespace Falcor
         }
 
         // Get the back-buffer
-        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mpApiData);
+        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mSwapChainBufferCount, mpApiData);
         return true;
     }
 
@@ -221,8 +221,9 @@ namespace Falcor
 #ifdef VK_REPORT_PERF_WARNINGS
         callbackCreateInfo.flags |= VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
 #endif
+#ifdef DEFAULT_ENABLE_DEBUG_LAYER
         callbackCreateInfo.pfnCallback = &debugReportCallback;
-        callbackCreateInfo.pUserData = nullptr;
+#endif
 
         // Function to create a debug callback has to be dynamically queried from the instance...
         PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback = VK_NULL_HANDLE;
@@ -275,7 +276,15 @@ namespace Falcor
         std::vector<VkExtensionProperties> supportedExtensions = enumarateInstanceExtensions();
 
         // Extensions to use when creating instance
-        std::vector<const char*> requiredExtensions = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+        std::vector<const char*> requiredExtensions = { 
+            "VK_KHR_surface",
+#ifdef _WIN32
+            "VK_KHR_win32_surface"
+#else
+            "VK_KHR_xlib_surface"
+#endif
+        };
+
         if (desc.enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
 
         // Get the VR extensions
@@ -501,13 +510,25 @@ namespace Falcor
 
     VkSurfaceKHR createSurface(VkInstance instance, VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Window* pWindow)
     {
+        VkSurfaceKHR surface;
+
+#ifdef _WIN32
         VkWin32SurfaceCreateInfoKHR createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
         createInfo.hwnd = pWindow->getApiHandle();
         createInfo.hinstance = GetModuleHandle(nullptr);
 
-        VkSurfaceKHR surface;
-        if (VK_FAILED(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface)))
+        VkResult result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface);
+#else
+        VkXlibSurfaceCreateInfoKHR createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+        createInfo.dpy = pWindow->getApiHandle().pDisplay;
+        createInfo.window = pWindow->getApiHandle().window;
+
+        VkResult result = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &surface);
+#endif
+
+        if (VK_FAILED(result))
         {
             logError("Could not create Vulkan surface.");
             return nullptr;
@@ -599,7 +620,7 @@ namespace Falcor
         info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         info.surface = mApiHandle;
         uint32 maxImageCount = surfaceCapabilities.maxImageCount ? surfaceCapabilities.maxImageCount : UINT32_MAX; // 0 means no limit on the number of images
-        info.minImageCount = clamp(kSwapChainBuffers, surfaceCapabilities.minImageCount, maxImageCount);
+        info.minImageCount = clamp(kDefaultSwapChainBuffers, surfaceCapabilities.minImageCount, maxImageCount);
         info.imageFormat = requestedFormat;
         info.imageColorSpace = requestedColorSpace;
         info.imageExtent = { swapchainExtent.width, swapchainExtent.height };
@@ -620,6 +641,8 @@ namespace Falcor
             return false;
         }
 
+        vkGetSwapchainImagesKHR(mApiHandle, mpApiData->swapchain, &mSwapChainBufferCount, nullptr);
+
         return true;
     }
 
@@ -630,12 +653,12 @@ namespace Falcor
         info.pSwapchains = &mpApiData->swapchain;
         info.pImageIndices = &mCurrentBackBufferIndex;
         vk_call(vkQueuePresentKHR(mpRenderContext->getLowLevelData()->getCommandQueue(), &info));
-        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mpApiData);
+        mCurrentBackBufferIndex = getCurrentBackBufferIndex(mApiHandle, mSwapChainBufferCount, mpApiData);
     }
 
     bool Device::apiInit(const Desc& desc)
     {
-		mRgb32FloatSupported = false;
+        mRgb32FloatSupported = false;
 
         mpApiData = new DeviceApiData;
         VkInstance instance = createInstance(mpApiData, desc);
@@ -651,12 +674,21 @@ namespace Falcor
         mApiHandle = DeviceHandle::create(instance, physicalDevice, device, surface);
         mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
 
+        if (createSwapChain(desc.colorFormat) == false)
+        {
+            return false;
+        }
+
+        mpApiData->presentFences.f.resize(mSwapChainBufferCount);
         for (auto& f : mpApiData->presentFences.f)
         {
             VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
             info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
             vk_call(vkCreateFence(device, &info, nullptr, &f));
         }
+
+        mpRenderContext = RenderContext::create(mCmdQueues[(uint32_t)LowLevelContextData::CommandQueueType::Direct][0]);
+
         return true;
     }
 
@@ -684,11 +716,9 @@ namespace Falcor
 
     uint32_t Device::getVkMemoryType(MemoryType falcorType, uint32_t memoryTypeBits) const
     {
-		uint32_t mask = mpApiData->vkMemoryTypeBits[(uint32_t)falcorType] & memoryTypeBits;
-		assert(mask != 0);
-		unsigned long index;
-		BitScanForward(&index, mask);
-		return index;
+        uint32_t mask = mpApiData->vkMemoryTypeBits[(uint32_t)falcorType] & memoryTypeBits;
+        assert(mask != 0);
+        return bitScanForward(mask);
     }
 
     const VkPhysicalDeviceLimits& Device::getPhysicalDeviceLimits() const
