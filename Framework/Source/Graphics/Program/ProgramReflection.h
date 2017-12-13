@@ -40,6 +40,8 @@ namespace Falcor
     class ReflectionStructType;
     class ReflectionArrayType;
 
+    /** Base class for reflection types
+    */
     class ReflectionType : public std::enable_shared_from_this<ReflectionType>
     {
     public:
@@ -47,37 +49,79 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ReflectionType>;
         static const uint32_t kInvalidOffset = -1;
         virtual ~ReflectionType() = default;
+
+        /** Get a variable by name. The name can contain array indices and struct members
+        */
         virtual std::shared_ptr<const ReflectionVar> findMember(const std::string& name) const;
 
+        /** Dynamic-cast the current object to ReflectionResourceType
+        */
         const ReflectionResourceType* asResourceType() const;
+
+        /** Dynamic-cast the current object to ReflectionBasicType
+        */
         const ReflectionBasicType* asBasicType() const;
+
+        /** Dynamic-cast the current object to ReflectionStructType
+        */
         const ReflectionStructType* asStructType() const;
+
+        /** Dynamic-cast the current object to ReflectionArrayType
+        */
         const ReflectionArrayType* asArrayType() const;
+
+        /** For ReflectionArrayType, recursively look for an underlying type which is not an array
+        */
         const ReflectionType* unwrapArray() const;
+
+        /** Get the total number of array elements. These accounts for all array-types until the ReflectionType returned by unwrapArray()
+        */
         uint32_t getTotalArraySize() const;
+
+        /** Get the size of the current object
+        */
+        virtual size_t getSize() const = 0;
+
+        // Helper functions
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const = 0;
 
         virtual bool operator==(const ReflectionType& other) const = 0;
         virtual bool operator!=(const ReflectionType& other) const { return !(*this == other); }
-        virtual size_t getSize() const = 0;
     protected:
         ReflectionType(size_t offset) : mOffset(offset) {}
         size_t mOffset;
     };
 
+    /** Reflection object for array-types
+    */
     class ReflectionArrayType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionArrayType>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionArrayType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionArrayType>;
+
+        /** Create a new object
+        */
         static SharedPtr create(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType);
 
+        /** Get the number of array-elements
+        */
         uint32_t getArraySize() const { return mArraySize; }
+
+        /** Get the size of each array-element
+        */
         uint32_t getArrayStride() const { return mArrayStride; }
+
+        /** Get the underlying reflection type
+        */
         const ReflectionType::SharedConstPtr& getType() const { return mpType; }
+
+        /** Get the size the array
+        */
+        virtual size_t getSize() const override { return mArrayStride * mArrayStride; }
+
         bool operator==(const ReflectionArrayType& other) const;
         bool operator==(const ReflectionType& other) const override;
-        virtual size_t getSize() const override { return mArrayStride * mArrayStride; }
     private:
         ReflectionArrayType(size_t offset, uint32_t arraySize, uint32_t arrayStride, const ReflectionType::SharedConstPtr& pType);
         uint32_t mArraySize = 0;
@@ -87,28 +131,56 @@ namespace Falcor
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
 
+    /** Reflection object for structs
+    */
     class ReflectionStructType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionStructType>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionStructType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionStructType>;
 
-        static SharedPtr create(size_t offset, size_t size, const std::string& name = "");
+        /** Create a new object
+            \param[in] offset The base offset of the object relative to the parent
+            \param[in] size The size of the struct
+            \param[in] name The name of the struct
+        */
+        static SharedPtr create(size_t offset, size_t size, const std::string& name = ""); // #PARAMBLOCK offset shouldn't be part of the type
 
+        /** Add a new member
+        */
         void addMember(const std::shared_ptr<const ReflectionVar>& pVar);
-        const std::shared_ptr<const ReflectionVar>& getMember(const std::string& name);
-        const std::shared_ptr<const ReflectionVar>& getMember(uint32_t index);
-        uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
 
+        /** Get the index of a member
+        */
         size_t getMemberIndex(const std::string& name) const;
+
+        /** Get member by name
+        */
+        const std::shared_ptr<const ReflectionVar>& getMember(const std::string& name) const { return getMember(getMemberIndex(name)); }
+
+        /** Get member by index
+        */
         const std::shared_ptr<const ReflectionVar>& getMember(size_t index) const { return mMembers[index]; }
 
+        /** Get the total number members
+        */
+        uint32_t getMemberCount() const { return (uint32_t)mMembers.size(); }
+
+        /** Get an iterator to beginning of the members vector
+        */
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator begin() const { return mMembers.begin(); }
+
+        /** Get an iterator to the end of the members vector
+        */
         std::vector<std::shared_ptr<const ReflectionVar>>::const_iterator end() const { return mMembers.end(); }
 
+        /** Get the size of the struct
+        */
         virtual size_t getSize() const override { return mSize; }
+
+        /** Get the name of the struct
+        */
         const std::string& getName() const { return mName; }
-        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
 
         bool operator==(const ReflectionStructType& other) const;
         bool operator==(const ReflectionType& other) const override;
@@ -118,14 +190,19 @@ namespace Falcor
         std::unordered_map<std::string, size_t> mNameToIndex; // Translates from a name to an index in mMembers
         size_t mSize;
         std::string mName;
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
 
+    /** Reflection object for scalars, vectors and matrices
+    */
     class ReflectionBasicType : public ReflectionType, inherit_shared_from_this<ReflectionType, ReflectionBasicType>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionBasicType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionBasicType>;
 
+        /** The type of the object
+        */
         enum class Type
         {
             Bool,
@@ -165,9 +242,24 @@ namespace Falcor
             Unknown = -1
         };
 
-        static SharedPtr create(size_t offset, Type type, bool isRowMajor, size_t size);
+        /** Create a new object
+            \param[in] offset The offset of the variable relative to the parent variable
+            \param[in] type The type of the object
+            \param[in] isRowMajor For matrices, true means row-major, otherwise it's column-major
+            \param[in] size The size of the object
+        */
+        static SharedPtr create(size_t offset, Type type, bool isRowMajor, size_t size); // #PARAMBLOCK offset shouldn't be part of the type
+
+        /** Get the object's type
+        */
         Type getType() const { return mType; }
+
+        /** Check if this is a row-major matrix or not. The result is only valid for matrices
+        */
         bool isRowMajor() const { return mIsRowMajor; }
+
+        /** Get the size of the object
+        */
         virtual size_t getSize() const override { return mSize; }
 
         bool operator==(const ReflectionBasicType& other) const;
@@ -180,11 +272,18 @@ namespace Falcor
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
 
+    /** Reflection object for resources
+    */
     class ReflectionResourceType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionResourceType>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionResourceType>;
         using SharedConstPtr = std::shared_ptr<const ReflectionResourceType>;
+
+        /** Offset descriptor. Helper struct for constant- and structured-buffers.
+            For valid offsets (which have matching fields in the buffer), the struct will contain the basic type and the number of elements (or 0 in case it's not an array)
+            For invalid offsets, type will be Unknown
+        */
         struct OffsetDesc
         {
             ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown;
@@ -192,6 +291,8 @@ namespace Falcor
         };
         using OffsetDescMap = std::unordered_map<size_t, OffsetDesc>; // For constant- and structured-buffers
 
+        /** Describes how the shader will access the resource
+        */
         enum class ShaderAccess
         {
             Undefined,
@@ -199,6 +300,8 @@ namespace Falcor
             ReadWrite
         };
 
+        /** The expected return type
+        */
         enum class ReturnType
         {
             Unknown,
@@ -208,6 +311,8 @@ namespace Falcor
             Uint
         };
 
+        /** The resource dimension
+        */
         enum class Dimensions
         {
             Unknown,
@@ -223,6 +328,8 @@ namespace Falcor
             Buffer,
         };
 
+        /** For structured-buffers, describes the type of the buffer
+        */
         enum class StructuredType
         {
             Invalid,    ///< Not a structured buffer
@@ -232,6 +339,8 @@ namespace Falcor
             Consume     ///< ConsumeStructuredBuffer
         };
 
+        /** The type of the resource
+        */
         enum class Type
         {
             Texture,
@@ -242,16 +351,45 @@ namespace Falcor
             ConstantBuffer
         };
         
+        /** Create a new object
+        */
         static SharedPtr create(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
+
+        /** For structured- and constant-buffers, set a reflection-type describing the buffer's layout
+        */
         void setStructType(const ReflectionType::SharedConstPtr& pType);
 
+        /** Get the struct-type
+        */
         const ReflectionType::SharedConstPtr& getStructType() const { return mpStructType; }
+
+        /** Get the dimensions
+        */
         Dimensions getDimensions() const { return mDimensions; }
+
+        /** Get the structured-buffer type
+        */
         StructuredType getStructuredBufferType() const { return mStructuredType; }
+
+        /** Get the resource return type
+        */
         ReturnType getReturnType() const { return mReturnType; }
+
+        /** Get the required shader access
+        */
         ShaderAccess getShaderAccess() const { return mShaderAccess; }
+
+        /** Get the resource type
+        */
         Type getType() const { return mType; }
+
+        /** For structured- and constant-buffers, return the underlying type size, otherwise returns 0
+        */
         size_t getSize() const { return mpStructType ? mpStructType->getSize() : 0; }
+
+        /** For structured- and constant-buffers, get an offset descriptor.
+            This function is useful in cases we want to make sure that (a) a specific offset has an associated field in the buffer; and (b) the type of the field matches the user's expectations
+        */
         const OffsetDesc& getOffsetDesc(size_t offset) const;
 
         bool operator==(const ReflectionResourceType& other) const;
@@ -269,6 +407,8 @@ namespace Falcor
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
     };
 
+    /** An object describing a variable
+    */
     class ReflectionVar
     {
     public:
@@ -276,13 +416,37 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ReflectionVar>;
         static const uint32_t kInvalidOffset = ReflectionType::kInvalidOffset;
 
+        /** Create a new object
+            \param[in] name The name of the variable
+            \param[in] pType The type of the variable
+            \param[in] offset The offset of the variable relative to the parent object
+            \param[in] descOffset In case of a resource, the offset in descriptors relative to the base descriptor-set
+            \param[in] regSpace In case of a resource, the register space
+        */
         static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset = 0, uint32_t regSpace = kInvalidOffset);
 
+        /** Get the variable name
+        */
         const std::string& getName() const { return mName; }
+
+        /** Get the variable type
+        */
         const ReflectionType::SharedConstPtr getType() const { return mpType; }
+
+        /** Get the variable offset
+        */
         size_t getOffset() const { return mOffset; }
+
+        /** Get the register space
+        */
         uint32_t getRegisterSpace() const { return mRegSpace; }
+
+        /** Get the register index
+        */
         uint32_t getRegisterIndex() const { return (uint32_t)getOffset(); }
+
+        /** Get the descriptor-offset
+        */
         uint32_t getDescOffset() const { return mDescOffset; }
 
         bool operator==(const ReflectionVar& other) const;
@@ -299,42 +463,68 @@ namespace Falcor
 
     class ProgramReflection;
 
+    /** A reflection object describing a parameter-bloc
+    */
     class ParameterBlockReflection
     {
     public:
         using SharedPtr = std::shared_ptr<ParameterBlockReflection>;
         using SharedConstPtr = std::shared_ptr<const ParameterBlockReflection>;
 
+        /** Data structure describing a resource
+        */
         struct ResourceDesc
         {
             using Type = DescriptorSet::Type;
-            uint32_t descOffset = 0;
-            uint32_t descCount = 0;
-            uint32_t regIndex = 0;
-            uint32_t regSpace = 0;
-            Type setType;
-            std::string name;
-            ReflectionResourceType::SharedConstPtr pType;
+            uint32_t descOffset = 0;        ///> The offset in descriptros relative to the base descriptor-set
+            uint32_t descCount = 0;         ///> The number of descriptors (can be more than 1 in case of an array)
+            uint32_t regIndex = 0;          ///> The register index
+            uint32_t regSpace = 0;          ///> The register space
+            Type setType;                   ///> The required descriptor-set type
+            std::string name;               ///> The name of the variable
+            ReflectionResourceType::SharedConstPtr pType;   ///> The resource-type
         };
 
+        /** Data structure describing a resource's bind-location. Not to be confused with register-space and register-index which are global indices, bind-location is relative to the ParameterBlock.
+        */
         struct BindLocation
         {
             BindLocation() = default;
             BindLocation(uint32_t set, uint32_t range) : setIndex(set), rangeIndex(range){}
-            static const uint32_t kInvalidLocation = -1;
-            uint32_t setIndex = kInvalidLocation;
-            uint32_t rangeIndex = kInvalidLocation;
+            static const uint32_t kInvalidLocation = -1;        ///> Invalid index
+            uint32_t setIndex = kInvalidLocation;               ///> The set-index in the parameter-block
+            uint32_t rangeIndex = kInvalidLocation;             ///> The range-index in the selected set
         };
 
         using ResourceVec = std::vector<ResourceDesc>;
         using SetLayoutVec = std::vector<DescriptorSet::Layout>;
+
+        /** Create a new object
+        */
         static SharedPtr create(const std::string& name);
+
+        /** Get the name of the parameter block
+        */
         const std::string& getName() const { return mName; }
+
+        /** Check if the block contains any resources
+        */
         bool isEmpty() const;
 
+        /** Get the variable for a resource in the block
+        */
         const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
+
+        /** Get the bind-location for a resource in the block
+        */
         BindLocation getResourceBinding(const std::string& name) const;
+
+        /** Get a vector with all the resources in the block
+        */
         const ResourceVec& getResourceVec() const { return mResources; }
+
+        /** Get a vector with the required descriptor-set layouts for the block. Useful when creating root-signatures
+        */
         const SetLayoutVec& getDescriptorSetLayouts() const { return mSetLayouts; }
     private:
         friend class ProgramReflection;
@@ -349,45 +539,86 @@ namespace Falcor
         SetLayoutVec mSetLayouts;
     };
 
+    /** Reflection object for an entire program. Essentialy, it's a collection of ParameterBlocks
+    */
     class ProgramReflection
     {
     public:
         using SharedPtr = std::shared_ptr<ProgramReflection>;
         using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
         static const uint32_t kInvalidLocation = -1;
+
+        /** Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs
+        */
         struct ShaderVariable
         {
-            uint32_t bindLocation = 0;
-            std::string semanticName;
-            ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown;                                    
+            uint32_t bindLocation = 0;      ///> The bind-location of the variable
+            std::string semanticName;       ///> The semantic name of the variable
+            ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown; ///> The type of the variable
         };
         using VariableMap = std::unordered_map<std::string, ShaderVariable>;
         using BindLocation = ParameterBlockReflection::BindLocation;
 
+        /** Create a new object for a Slang reflector object
+        */
         static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
 
+        /** Get the index of a parameter block
+        */
         uint32_t getParameterBlockIndex(const std::string& name) const;
+
+        /** Get parameter block by name
+        */
         const ParameterBlockReflection::SharedConstPtr& getParameterBlock(const std::string& name) const;
+
+        /** Get parameter block by index
+        */
         const ParameterBlockReflection::SharedConstPtr& getParameterBlock(uint32_t index) const;
 
+        /** Get the number of parameter blocks
+        */
         size_t getParameterBlockCount() const { return mpParameterBlocks.size(); }
+        
+        /** Get the default (unnamed) parameter block. This function is an alias to getParameterBlock("");
+        */
         const ParameterBlockReflection::SharedConstPtr& getDefaultParameterBlock() const { return mpDefaultBlock; }
 
+        /** For compute-shaders, return the required thread-group size
+        */
         uvec3 getThreadGroupSize() const { return mThreadGroupSize; }
+
+        /** For pixel-shaders, check if we need to run the shader at sample frequency
+        */
         bool isSampleFrequency() const { return mIsSampleFrequency; }
 
+        /** Get a resource from the default parameter block
+        */
         const ReflectionVar::SharedConstPtr getResource(const std::string& name) const;
+
+        /** Search for a vertex attribute by its semantic name
+        */
         const ShaderVariable* getVertexAttributeBySemantic(const std::string& semantic) const;
+
+        /** Search for a vertex attribute by the variable name
+        */
         const ShaderVariable* getVertexAttribute(const std::string& name) const;
+
+        /** Get a pixel shader output variable
+        */
         const ShaderVariable* getPixelShaderOutput(const std::string& name) const;
 
+        /** Resource bind type
+        */
         enum class BindType
         {
-            Cbv,
-            Srv,
-            Uav,
-            Sampler,
+            Cbv,        ///> Constant-buffer view
+            Srv,        ///> Shader-resource view
+            Uav,        ///> Unordered-access view
+            Sampler,    ///> Sampler
         };
+
+        /** Translate a global register location (space, index, type) to a relative bind-location in the default parameter block
+        */
         const ParameterBlockReflection::BindLocation translateRegisterIndicesToBindLocation(uint32_t regSpace, uint32_t baseRegIndex, BindType type) const { return mResourceBindMap.at({regSpace, baseRegIndex, type}); }
 
     private:
