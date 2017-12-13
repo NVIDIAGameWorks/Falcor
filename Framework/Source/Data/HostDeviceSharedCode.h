@@ -49,41 +49,6 @@ namespace Falcor {
     class Sampler;
     class Texture;
 
-
-#elif defined(CUDA_CODE)
-/*******************************************************************
-                    CUDA declarations
-*******************************************************************/
-typedef float float4x4_t[16];
-typedef float mat3_t [12];
-_fn float clamp(float t, float mn, float mx) { return fminf(mx, fmaxf(mn, t)); }
-_fn float2 clamp(float2 t, float2 mn, float2 mx) { return fminf(mx, fmaxf(mn, t)); }
-_fn float dot(const float2& a, const float2& b) { return a.x*b.x + a.y*b.y; }
-_fn float dot(const float3& a, const float3& b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
-_fn float dot(const float4& a, const float4& b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
-_fn float3 cross(const float3& x, const float3& y) {
-    return float3(
-        x.y * y.z - y.y * x.z,
-        x.z * y.x - y.z * x.x,
-        x.x * y.y - y.x * x.y);
-}
-_fn float length(const float3& a) { return sqrt(dot(a, a)); }
-_fn float length(const float2& a) { return sqrt(dot(a, a)); }
-_fn float3 normalize(const float3& a) { return a / length(a); }
-_fn float3 mix(const float3& a, const float3& b, const float w) { return a + w * (b - a); }
-_fn float2 sqrt(const float2& a) { return float2(sqrt(a.x), sqrt(a.y)); }
-// Texture access
-_fn bool isSamplerBound(sampler2D sampler) { return sampler > 0; }
-_fn float4 texture2D(sampler2D sampler, float2 uv) { return tex2D<float4>(sampler, uv.x, uv.y); }
-_fn float4 textureLod(sampler2D sampler, float2 uv, float lod) { return tex2DLod<float4>(sampler, uv.x, uv.y, lod); }
-_fn float4 textureGrad(sampler2D sampler, float2 uv, float2 dPdx, float2 dPdy) { return tex2DGrad<float4>(sampler, uv.x, uv.y, dPdx, dPdy); }
-_fn float4 textureBias(sampler2D sampler, float2 uv, float bias) { return texture2D(sampler, uv); }
-struct TexPtr
-{
-    int            ptr;
-    uint        pad[7];
-};
-typedef TexPtr BufPtr;
 #else
 /*******************************************************************
                     HLSL declarations

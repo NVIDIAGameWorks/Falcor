@@ -495,15 +495,7 @@ namespace Falcor
 
     const ProgramReflection::Resource* getResourceDesc(const std::string& name, const ProgramReflection::BufferReflection* pReflector)
     {
-        auto pResource = pReflector->getResourceData(name);
-#ifdef FALCOR_D3D11
-        // If it's not found and this is DX, search for out internal struct
-        if(pResource = nullptr)
-        {
-            pResource = pReflector->getResourceData(name + ".t");
-        }
-#endif
-        return pResource;
+        return pReflector->getResourceData(name);
     }
 
     void VariablesBuffer::setTexture(size_t offset, const Texture* pTexture, const Sampler* pSampler)

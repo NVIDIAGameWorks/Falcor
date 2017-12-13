@@ -36,7 +36,7 @@ __import Helpers;
 #include "HostDeviceData.h"
 
 /*******************************************************************
-					Lights
+                    Lights
 *******************************************************************/
 
 /**
@@ -52,13 +52,13 @@ struct LightAttribs
 
     float3    P;              ///< Sampled point on the light source
     float3    N;              ///< Normal of the sampled point on the light source
-	float   pdf;            ///< Probability density function of sampling the light source
+    float   pdf;            ///< Probability density function of sampling the light source
 
     float3    points[4];
 };
 
 /**
-	This routine computes the position of the the light based on the point 'shadingPosition'.
+    This routine computes the position of the the light based on the point 'shadingPosition'.
 */
 inline float3 _fn getLightPos(LightData Light, float3 shadingPosition)
 {
@@ -76,7 +76,7 @@ inline float3 _fn getLightPos(LightData Light, float3 shadingPosition)
 }
 
 /**
-	This routine computes the radiance from the light at the point 'shadingPosition'.
+    This routine computes the radiance from the light at the point 'shadingPosition'.
 */
 inline float3 _fn getLightRadiance(LightData Light, float3 shadingPosition)
 {
@@ -92,13 +92,13 @@ inline float3 _fn getLightRadiance(LightData Light, float3 shadingPosition)
 }
 
 /**
-	This routine prepares attributes for shading a point with a particular light source.
-	The outputs are an incident radiance towards the shading point 
-	and the direction from the shading point towards the light source.
+    This routine prepares attributes for shading a point with a particular light source.
+    The outputs are an incident radiance towards the shading point 
+    and the direction from the shading point towards the light source.
 */
 inline void _fn prepareLightAttribs(LightData Light, ShadingAttribs ShAttr, float shadowFactor, _ref(LightAttribs) LightAttr)
 {
-	/* Evaluate direction to the light */
+    /* Evaluate direction to the light */
     LightAttr.P = getLightPos(Light, ShAttr.P);
     LightAttr.pdf = 0;
     LightAttr.N = 0;
@@ -112,64 +112,59 @@ inline void _fn prepareLightAttribs(LightData Light, ShadingAttribs ShAttr, floa
     float3 PosToLight = LightAttr.P - ShAttr.P;
     if(dot(PosToLight, PosToLight) > 1e-3f)
     {
-	    LightAttr.L = normalize(PosToLight);
+        LightAttr.L = normalize(PosToLight);
     }
     else
     {
         LightAttr.L = 0;
     }
-	LightAttr.lightIntensity = Light.intensity;
+    LightAttr.lightIntensity = Light.intensity;
     if(Light.type == LightDirectional)
     {
-		LightAttr.L = -Light.worldDir;
+        LightAttr.L = -Light.worldDir;
     }
     else if(Light.type == LightArea || Light.type == LightPoint)
-	{
-		/* Evaluate various attenuation factors: cosine, 1/r^2, etc. */
-		float Atten = 1.f;
+    {
+        /* Evaluate various attenuation factors: cosine, 1/r^2, etc. */
+        float Atten = 1.f;
 
-		float cosTheta = -dot(LightAttr.L, Light.worldDir);	// cos of angle of light orientation with outgoing direction
+        float cosTheta = -dot(LightAttr.L, Light.worldDir);	// cos of angle of light orientation with outgoing direction
         if(Light.type == LightArea)			// Cosine attenuation
         {
-			Atten = max(0.f, cosTheta) * Light.surfaceArea;
+            Atten = max(0.f, cosTheta) * Light.surfaceArea;
         }
         else if(Light.type == LightPoint)
-		{
-			// Spot light cone angle
-			if(cosTheta < Light.cosOpeningAngle)
-				Atten = 0.f;
-			if(Light.penumbraAngle > 0.f)	// Compute cone attenuation of a spot light
-			{
-				float deltaAngle = Light.openingAngle - acos(cosTheta);
-				Atten *= clamp((deltaAngle - Light.penumbraAngle) / Light.penumbraAngle, 0.f, 1.f);
-			}
-		}
+        {
+            // Spot light cone angle
+            if(cosTheta < Light.cosOpeningAngle)
+                Atten = 0.f;
+            if(Light.penumbraAngle > 0.f)	// Compute cone attenuation of a spot light
+            {
+                float deltaAngle = Light.openingAngle - acos(cosTheta);
+                Atten *= clamp((deltaAngle - Light.penumbraAngle) / Light.penumbraAngle, 0.f, 1.f);
+            }
+        }
 
-		// Quadratic attenuation
+        // Quadratic attenuation
         Atten /= max(1e-3f, dot(PosToLight, PosToLight));
 
-		LightAttr.lightIntensity *= Atten;
-	}
+        LightAttr.lightIntensity *= Atten;
+    }
     // DISABLED_FOR_D3D12
 #if 0
-	if (Light.type == LightArea)
-	{
-		for (int index = 0; index < 4; index++)
-		{
-			// Access the geometry buffers
-#ifdef CUDA_CODE
-			optix::bufferId<float3, 1> vertices(Light.vertexPtr.ptr);
-			// Get vertices pointed by the corresponding index
-			float3 p0 = vertices[index];
-#else
-			float* vertices = (float*)(Light.vertexPtr.ptr);
-			// Get vertices pointed by the corresponding index
-			float3 p0 = float3(vertices[index * 3 + 0], vertices[index * 3 + 1], vertices[index * 3 + 2]);
-#endif
-			// Apply model instance transformation matrix
-			LightAttr.points[index] = float3(mul(float4(p0, 1.0), Light.transMat));
-		}
-	}
+    if (Light.type == LightArea)
+    {
+        for (int index = 0; index < 4; index++)
+        {
+            // Access the geometry buffers
+            float* vertices = (float*)(Light.vertexPtr.ptr);
+            // Get vertices pointed by the corresponding index
+            float3 p0 = float3(vertices[index * 3 + 0], vertices[index * 3 + 1], vertices[index * 3 + 2]);
+
+            // Apply model instance transformation matrix
+            LightAttr.points[index] = float3(mul(float4(p0, 1.0), Light.transMat));
+        }
+    }
 #endif
 }
 
@@ -178,104 +173,42 @@ inline void _fn prepareLightAttribs(LightData Light, ShadingAttribs ShAttr, floa
 */
 void _fn sampleLight(float3 shadingHitPos, LightData lData, float3 rSample, _ref(LightAttribs) lAttr)
 {
-	// Sample the light based on its type: point, directional, or area
-	switch (lData.type)
-	{
-	    case LightPoint:
-	    {
-			// Get the position
+    // Sample the light based on its type: point, directional, or area
+    switch (lData.type)
+    {
+        case LightPoint:
+        {
+            // Get the position
             lAttr.P = getLightPos(lData, shadingHitPos);
 
-			float3 PosToLight = lAttr.P - shadingHitPos;
+            float3 PosToLight = lAttr.P - shadingHitPos;
             float lDist = length(PosToLight);
             lAttr.L = PosToLight / max(1e-3f, lDist);
 
-			// For point light, its normal is always along the L direction
-			lAttr.N = lAttr.L;
+            // For point light, its normal is always along the L direction
+            lAttr.N = lAttr.L;
 
-			// Compute the intensity and the PDF
-			lAttr.lightIntensity = getLightRadiance(lData, shadingHitPos);
-			lAttr.pdf = 1.f;
-		}
-	    break;
+            // Compute the intensity and the PDF
+            lAttr.lightIntensity = getLightRadiance(lData, shadingHitPos);
+            lAttr.pdf = 1.f;
+        }
+        break;
 
-		case LightDirectional:
-		{
-			// Get the position
-			lAttr.P = getLightPos(lData, shadingHitPos);
-			lAttr.L = -lData.worldDir;
+        case LightDirectional:
+        {
+            // Get the position
+            lAttr.P = getLightPos(lData, shadingHitPos);
+            lAttr.L = -lData.worldDir;
 
-			// For directional light, its normal is always along the L direction
-			lAttr.N = lAttr.L;
-			
-			// Compute the intensity and the PDF
-			lAttr.lightIntensity = lData.intensity;
-			lAttr.pdf = 1.f;
-		}
-		break;
-
-#if defined(CUDA_CODE)
-		case LightArea:
-		{
-			if (lData.numIndices != 0)
-			{
-				// Randomly pick a triangle on the mesh
-				// TODO: Pick a triangle mesh based on probability distributions
-				int index = min((int)(rSample.z * lData.numIndices), (int)(lData.numIndices - 1));
-
-				// Access the geometry buffers
-#ifdef CUDA_CODE
-				optix::bufferId<int3, 1> indices(lData.indexPtr.ptr);
-				optix::bufferId<float3, 1> vertices(lData.vertexPtr.ptr);
-				// Retrieve indices
-				int3 pId = indices[index];
-				// Get vertices pointed by the corresponding index
-				float3 p0 = vertices[pId.x];
-				float3 p1 = vertices[pId.y];
-				float3 p2 = vertices[pId.z];
-#else
-				int* indices = (int*)(lData.indexPtr.ptr);
-				float* vertices = (float*)(lData.vertexPtr.ptr);
-				// Retrieve indices
-				int3 pId = int3(indices[index * 3 + 0], indices[index * 3 + 1], indices[index * 3 + 2]);
-				// Get vertices pointed by the corresponding index
-				float3 p0 = float3(vertices[pId.x * 3 + 0], vertices[pId.x * 3 + 1], vertices[pId.x * 3 + 2]);
-				float3 p1 = float3(vertices[pId.y * 3 + 0], vertices[pId.y * 3 + 1], vertices[pId.y * 3 + 2]);
-				float3 p2 = float3(vertices[pId.z * 3 + 0], vertices[pId.z * 3 + 1], vertices[pId.z * 3 + 2]);
-#endif
-
-				// Apply model instance transformation matrix
-				p0 = float3(mul(float4(p0, 1.0), lData.transMat));
-				p1 = float3(mul(float4(p1, 1.0), lData.transMat));
-				p2 = float3(mul(float4(p2, 1.0), lData.transMat));
-
-				// Sample a point on the triangle mesh using barycentric coordinates
-				float a = sqrt(rSample.x);
-				float2 bary = float2(1.f - a, a * rSample.y);
-
-				lAttr.P = p0 * bary.x + p1 * bary.y + p2 * (1.f - bary.x - bary.y);
-
-				lAttr.N = normalize(cross(p1 - p0, p2 - p0));
-			}
-
-			float3 PosToLight = lAttr.P - shadingHitPos;
-            float lDist = length(PosToLight);
-            lAttr.L = PosToLight / max(1e-3f, lDist);
-
-			lAttr.lightIntensity = lData.intensity;
-
-			// Compute the PDF
-			lAttr.pdf = lDist * lDist / (abs(dot(lAttr.N, lAttr.L)) * lData.surfaceArea);
-
-			// Set light's contribution
-			if (lAttr.pdf > 0.f && dot(lAttr.N, lAttr.L) < 0.f)
-				lAttr.lightIntensity /= lAttr.pdf;
-			else
-				lAttr.lightIntensity = float3(0.f);
-		}
-		break;
-#endif
-	}
+            // For directional light, its normal is always along the L direction
+            lAttr.N = lAttr.L;
+            
+            // Compute the intensity and the PDF
+            lAttr.lightIntensity = lData.intensity;
+            lAttr.pdf = 1.f;
+        }
+        break;
+    }
 }
 
 /**
@@ -283,36 +216,36 @@ This routine samples a rectangular area light source in a stratified way.
 */
 void _fn stratifiedSampleRectangularAreaLight(float3 shadingHitPos, LightData lData, float2 rSample, int x, int y, int numStrataX, int numStrataY, _ref(LightAttribs) lAttr)
 {
-	if (lData.type != LightArea)
-		return;
+    if (lData.type != LightArea)
+        return;
 
-	// Transform light position and light normal
-	float3 lightPos = mul(float4(lData.worldPos, 1.0f), lData.transMat).rgb;
-	lAttr.N = mul(float4(lData.worldDir, 0.0f), lData.transMat).rgb;
+    // Transform light position and light normal
+    float3 lightPos = mul(float4(lData.worldPos, 1.0f), lData.transMat).rgb;
+    lAttr.N = mul(float4(lData.worldDir, 0.0f), lData.transMat).rgb;
 
-	// Transform tangent frame
-	float3 transformedTangent = mul(float4(lData.tangent, 0.0f), lData.transMat).rgb;
-	float3 transformedBitangent = mul(float4(lData.bitangent, 0.0f), lData.transMat).rgb;
+    // Transform tangent frame
+    float3 transformedTangent = mul(float4(lData.tangent, 0.0f), lData.transMat).rgb;
+    float3 transformedBitangent = mul(float4(lData.bitangent, 0.0f), lData.transMat).rgb;
 
-	float lightSizeY1 = length(transformedTangent);
-	float lightSizeY2 = length(transformedBitangent);
+    float lightSizeY1 = length(transformedTangent);
+    float lightSizeY2 = length(transformedBitangent);
 
-	// Generate stratified samples
-	float y1 = ((x + rSample.x) / float(numStrataX) - 0.5f) * lightSizeY1;
-	float y2 = ((y + rSample.y) / float(numStrataY) - 0.5f) * lightSizeY2;
+    // Generate stratified samples
+    float y1 = ((x + rSample.x) / float(numStrataX) - 0.5f) * lightSizeY1;
+    float y2 = ((y + rSample.y) / float(numStrataY) - 0.5f) * lightSizeY2;
 
-	lAttr.P = lightPos + y1 * normalize(transformedTangent) + y2 * normalize(transformedBitangent);
+    lAttr.P = lightPos + y1 * normalize(transformedTangent) + y2 * normalize(transformedBitangent);
 
-	float3 PosToLight = lAttr.P - shadingHitPos;
-	float lDist = length(PosToLight);
-	lAttr.L = PosToLight / max(1e-3f, lDist);
+    float3 PosToLight = lAttr.P - shadingHitPos;
+    float lDist = length(PosToLight);
+    lAttr.L = PosToLight / max(1e-3f, lDist);
 
-	lAttr.lightIntensity = lData.intensity;
+    lAttr.lightIntensity = lData.intensity;
 
-	// Compute the PDF
-	lAttr.pdf = lDist * lDist / (abs(dot(lAttr.N, lAttr.L)) * lData.surfaceArea);
+    // Compute the PDF
+    lAttr.pdf = lDist * lDist / (abs(dot(lAttr.N, lAttr.L)) * lData.surfaceArea);
 
-	// Set light's contribution
+    // Set light's contribution
     if (lAttr.pdf > 0.f && dot(lAttr.N, lAttr.L) < 0.f)
         lAttr.lightIntensity /= lAttr.pdf;
     else

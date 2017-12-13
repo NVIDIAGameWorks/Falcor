@@ -107,9 +107,7 @@ namespace Falcor
 
     protected:
         friend class RenderContext;
-#ifdef FALCOR_D3D11
-        ID3D11InputLayoutPtr getInputLayout(ID3DBlob* pVsBlob) const;
-#endif
+
     private:
         Vao(const BufferVec& pVBs, const VertexLayout::SharedPtr& pLayout, const Buffer::SharedPtr& pIB, ResourceFormat ibFormat, Topology primTopology);
         bool initialize();

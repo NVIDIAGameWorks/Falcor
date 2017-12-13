@@ -186,8 +186,8 @@ namespace Falcor
     };
 }
 
-#if defined(FALCOR_D3D11) || defined(FALCOR_D3D12)
-#include "API/D3D/FalcorD3D.h"
+#if defined(FALCOR_D3D12)
+#include "API/D3D12/FalcorD3D12.h"
 #elif defined(FALCOR_VK)
 #include "API/Vulkan/FalcorVK.h"
 #else

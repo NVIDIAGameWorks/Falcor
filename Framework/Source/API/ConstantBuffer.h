@@ -173,12 +173,5 @@ namespace Falcor
     protected:
         ConstantBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;
-#ifdef FALCOR_D3D11
-        friend class RenderContext;
-        std::map<uint32_t, ID3D11ShaderResourceViewPtr>* mAssignedResourcesMap;
-        std::map<uint32_t, ID3D11SamplerStatePtr>* mAssignedSamplersMap;
-        const std::map<uint32_t, ID3D11ShaderResourceViewPtr>& getAssignedResourcesMap() const { return *mAssignedResourcesMap; }
-        const std::map<uint32_t, ID3D11SamplerStatePtr>& getAssignedSamplersMap() const { return *mAssignedSamplersMap; }
-#endif
     };
 }
