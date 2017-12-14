@@ -255,36 +255,51 @@ namespace Falcor
                 return;
             }
         }
-        else if (fileFormat == Bitmap::FileFormat::PfmFile)
+        else if (fileFormat == Bitmap::FileFormat::PfmFile || fileFormat == Bitmap::FileFormat::ExrFile)
         {
             if(bytesPerPixel != 16 && bytesPerPixel != 12)
             {
-                logError("Bitmap::saveImage supports only 32-bit/channel RGB/RGBA images as HDR source.");
+                logError("Bitmap::saveImage supports only 32-bit/channel RGB/RGBA images as PFM/EXR files.");
                 return;
             }
-            if(is_set(exportFlags, ExportFlags::Lossy))
+
+            const bool exportAlpha = is_set(exportFlags, ExportFlags::ExportAlpha);
+
+            if(fileFormat == Bitmap::FileFormat::PfmFile)
             {
-                logError("Bitmap::saveImage: PFM does not support lossy compression mode.");
-                return;
+                if (is_set(exportFlags, ExportFlags::Lossy))
+                {
+                    logError("Bitmap::saveImage: PFM does not support lossy compression mode.");
+                    return;
+                }
+                if (exportAlpha)
+                {
+                    logError("Bitmap::saveImage: PFM does not support alpha channel.");
+                    return;
+                }
             }
-            if(is_set(exportFlags, ExportFlags::ExportAlpha))
+
+            if (exportAlpha && bytesPerPixel != 16)
             {
-                logError("Bitmap::saveImage: PFM does not support alpha channel.");
+                logError("Bitmap::saveImage requesting to export alpha-channel to EXR file, but the resource doesn't have an alpha-channel");
                 return;
             }
 
             // Upload the image manually and flip it vertically
-            pImage = FreeImage_AllocateT(FIT_RGBF, width, height);
+            bool scanlineCopy = exportAlpha ? bytesPerPixel == 16 : bytesPerPixel == 12;
+
+            pImage = FreeImage_AllocateT(exportAlpha ? FIT_RGBAF : FIT_RGBF, width, height);
             BYTE* head = (BYTE*)pData;
             for(unsigned y = 0; y < height; y++) 
             {
                 float* dstBits = (float*)FreeImage_GetScanLine(pImage, height - y - 1);
-                if(bytesPerPixel == 12)
+                if(scanlineCopy)
                 {
                     std::memcpy(dstBits, head, bytesPerPixel * width);
                 }
                 else
                 {
+                    assert(exportAlpha == false);
                     for(unsigned x = 0; x < width; x++) 
                     {
                         dstBits[x*3 + 0] = (((float*)head)[x*4 + 0]);
@@ -294,54 +309,18 @@ namespace Falcor
                 }
                 head += bytesPerPixel * width;
             }
-        }
-        else if (fileFormat == Bitmap::FileFormat::ExrFile)
-        {
-            if(bytesPerPixel != 16 && bytesPerPixel != 12)
+
+            if(fileFormat == Bitmap::FileFormat::ExrFile)
             {
-                logError("Bitmap::saveImage supports only 32-bit/channel RGB/RGBA for EXR");
-                return;
-            }
-
-            const bool hasAlpha = is_set(exportFlags, ExportFlags::ExportAlpha);
-
-            if(hasAlpha && bytesPerPixel != 16)
-            {
-                logError("Bitmap::saveImage 32-bit/channel format has no alpha channel for EXR");
-                return;
-            }
-
-            // Upload the image manually
-            pImage = FreeImage_AllocateT(hasAlpha ? FIT_RGBAF : FIT_RGBF, width, height);
-            BYTE* head = (BYTE*)pData;
-            for(unsigned y = 0; y < height; y++) 
-            {
-                float* dstBits = (float*)FreeImage_GetScanLine(pImage, y);
-
-                if(hasAlpha)
+                flags = 0;
+                if (is_set(exportFlags, ExportFlags::Uncompressed))
                 {
-                    std::memcpy(dstBits, head, bytesPerPixel * width);
+                    flags |= EXR_NONE | EXR_FLOAT;
                 }
-                else
+                else if (is_set(exportFlags, ExportFlags::Lossy))
                 {
-                    for(unsigned x = 0; x < width; x++) 
-                    {
-                        dstBits[x * 3 + 0] = (((float*)head)[x * 4 + 0]);
-                        dstBits[x * 3 + 1] = (((float*)head)[x * 4 + 1]);
-                        dstBits[x * 3 + 2] = (((float*)head)[x * 4 + 2]);
-                    }
+                    flags |= EXR_B44 | EXR_ZIP;
                 }
-                head += bytesPerPixel * width;
-            }
-
-            flags = 0;
-            if(is_set(exportFlags, ExportFlags::Uncompressed))
-            {
-                flags |= EXR_NONE | EXR_FLOAT;
-            }
-            else if(is_set(exportFlags, ExportFlags::Lossy))
-            {
-                flags |= EXR_B44 | EXR_ZIP;
             }
         }
 
