@@ -46,7 +46,9 @@ namespace Falcor
             const auto& rangeB = b.getRange(i);
             if (rangeA.baseRegIndex != rangeB.baseRegIndex) return false;
             if (rangeA.descCount != rangeB.descCount) return false;
+#ifdef FALCOR_D3D12
             if (rangeA.regSpace != rangeB.regSpace) return false;
+#endif
             if (rangeA.type != rangeB.type) return false;
         }
         return true;
@@ -59,7 +61,11 @@ namespace Falcor
             const auto& rootSet = pRootSig->getDescriptorSet(i);
             if (compareRootSets(rootSet, blockSet))
             {
+#ifdef FALCOR_D3D12
                 return i;
+#else
+                return rootSet.getRange(0).regSpace;
+#endif
             }
         }
         should_not_get_here();

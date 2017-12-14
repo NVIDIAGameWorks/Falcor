@@ -166,11 +166,11 @@ namespace Falcor
 
     void DescriptorSet::bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
     {
-        bindCommon<true>(mApiHandle, pCtx, pRootSig, mLayout.getRange(0).regSpace);
+        bindCommon<true>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 
     void DescriptorSet::bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
     {
-        bindCommon<false>(mApiHandle, pCtx, pRootSig, mLayout.getRange(0).regSpace);
+        bindCommon<false>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 }
