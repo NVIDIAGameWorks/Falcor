@@ -176,7 +176,6 @@ namespace Falcor
     };
 
     enum_class_operators(Resource::BindFlags);
-    enum_class_operators(Resource::State);
 
     const std::string to_string(Resource::Type);
     const std::string to_string(Resource::BindFlags);
