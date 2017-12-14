@@ -41,6 +41,7 @@
 namespace Falcor
 {
     size_t SceneRenderer::sBonesOffset = ConstantBuffer::kInvalidOffset;
+    size_t SceneRenderer::sBonesInvTransposeOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sCameraDataOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sWorldMatArraySize = 0;
     size_t SceneRenderer::sWorldMatOffset = ConstantBuffer::kInvalidOffset;
@@ -55,6 +56,7 @@ namespace Falcor
     const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
+    const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
 
     SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
     {
@@ -142,14 +144,16 @@ namespace Falcor
         // Set bones
         if (pModel->hasBones())
         {
-            ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kPerMeshCbName).get();
-            if (pCB)
+            ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kBoneCbName).get();
+            if (pCB != nullptr)
             {
-                if (sBonesOffset == ConstantBuffer::kInvalidOffset)
+                if (sBonesOffset == ConstantBuffer::kInvalidOffset || sBonesInvTransposeOffset == ConstantBuffer::kInvalidOffset)
                 {
-                    sBonesOffset = pCB->getVariableOffset("gWorldMat[0]");
+                    sBonesOffset = pCB->getVariableOffset("gBoneMat[0]");
+                    sBonesInvTransposeOffset = pCB->getVariableOffset("gInvTransposeBoneMat[0]");
                 }
 
+                assert(pModel->getBoneCount() <= MAX_BONES);
                 pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
                 pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
@@ -174,18 +178,23 @@ namespace Falcor
         {
             const Mesh* pMesh = pMeshInstance->getObject().get();
 
-            assert(drawInstanceID == 0 || !pMesh->hasBones()); // The same array is reused for bone and instance matrices, both cannot be active
+            assert(drawInstanceID == 0); // We don't support instanced skinned models
+
+            glm::mat4 worldMat = pModelInstance->getTransformMatrix();
+            glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix();
+
             if (pMesh->hasBones() == false)
             {
-                glm::mat4 worldMat = pModelInstance->getTransformMatrix() * pMeshInstance->getTransformMatrix();
-                glm::mat3x4 worldInvTransposeMat = transpose(inverse(glm::mat3(worldMat)));
-                glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix() * pMeshInstance->getPrevTransformMatrix();
-
-                assert(drawInstanceID < sWorldMatArraySize);
-                pCB->setBlob(&worldMat, sWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
-                pCB->setBlob(&worldInvTransposeMat, sWorldInvTransposeMatOffset + drawInstanceID * sizeof(glm::mat3x4), sizeof(glm::mat3x4)); // HLSL uses column-major and packing rules require 16B alignment, hence use glm:mat3x4
-                pCB->setBlob(&prevWorldMat, sPrevWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
+                worldMat = worldMat * pMeshInstance->getTransformMatrix();
+                prevWorldMat = prevWorldMat * pMeshInstance->getPrevTransformMatrix();
             }
+
+            glm::mat3x4 worldInvTransposeMat = transpose(inverse(glm::mat3(worldMat)));
+
+            assert(drawInstanceID < sWorldMatArraySize);
+            pCB->setBlob(&worldMat, sWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
+            pCB->setBlob(&worldInvTransposeMat, sWorldInvTransposeMatOffset + drawInstanceID * sizeof(glm::mat3x4), sizeof(glm::mat3x4)); // HLSL uses column-major and packing rules require 16B alignment, hence use glm:mat3x4
+            pCB->setBlob(&prevWorldMat, sPrevWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
 
             // Set mesh id
             pCB->setVariable(sMeshIdOffset, pMesh->getId());

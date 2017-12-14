@@ -90,7 +90,7 @@ namespace Falcor
 
     bool SceneEditorRenderer::setPerModelInstanceData(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t instanceID)
     {
-        const Gizmo::Type gizmoType = Gizmo::getGizmoType(mGizmos, pModelInstance);
+        const Gizmo::Type gizmoType = Gizmo::getGizmoType(mGizmos, currentData.pModel);
 
         if (gizmoType != Gizmo::Type::Invalid)
         {

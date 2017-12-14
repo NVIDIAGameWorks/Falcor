@@ -77,21 +77,23 @@ struct VS_OUT
 
 float4x4 getWorldMat(VS_IN vIn)
 {
-#ifdef _VERTEX_BLENDING
-    float4x4 worldMat = getBlendedWorldMat(vIn.boneWeights, vIn.boneIds);
-#else
     float4x4 worldMat = gWorldMat[vIn.instanceID];
+
+#ifdef _VERTEX_BLENDING
+    worldMat = mul(getBlendedBoneMat(vIn.boneWeights, vIn.boneIds), worldMat);
 #endif
+
     return worldMat;
 }
 
 float3x3 getWorldInvTransposeMat(VS_IN vIn)
 {
-#ifdef _VERTEX_BLENDING
-    float3x3 worldInvTransposeMat = getBlendedInvTransposeWorldMat(vIn.boneWeights, vIn.boneIds);
-#else
     float3x3 worldInvTransposeMat = (float3x3)gWorldInvTransposeMat[vIn.instanceID];
+
+#ifdef _VERTEX_BLENDING
+    worldInvTransposeMat = mul(getBlendedInvTransposeBoneMat(vIn.boneWeights, vIn.boneIds), worldInvTransposeMat);
 #endif
+
     return worldInvTransposeMat;
 }
 

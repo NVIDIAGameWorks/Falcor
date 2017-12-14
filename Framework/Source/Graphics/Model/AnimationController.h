@@ -68,7 +68,7 @@ namespace Falcor
         uint32_t getActiveAnimation() const {return mActiveAnimation;}
 
         const std::vector<mat4>& getBoneMatrices() const { return mBoneTransforms; }
-        const std::vector<mat3x4>& getBoneInvTransposeMatrices() const { return mBoneInvTransposeTransforms; }
+        const std::vector<mat4>& getBoneInvTransposeMatrices() const { return mBoneInvTransposeTransforms; }
         uint32_t getBoneCount() const { return uint32_t(mBones.size()); }
 
         uint32_t getBoneIdFromName(const std::string& name) const;
@@ -79,7 +79,7 @@ namespace Falcor
 
         std::vector<Bone> mBones;
         std::vector<glm::mat4> mBoneTransforms;
-        std::vector<glm::mat3x4> mBoneInvTransposeTransforms;
+        std::vector<glm::mat4> mBoneInvTransposeTransforms;
         std::vector<Animation::UniquePtr> mAnimations;
 
         uint32_t mActiveAnimation = kBindPoseAnimationId;
