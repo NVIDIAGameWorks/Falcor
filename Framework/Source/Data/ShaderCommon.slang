@@ -35,7 +35,7 @@
 
 #include "HostDeviceData.h"
 
-cbuffer InternalPerFrameCB
+cbuffer InternalPerFrameCB : register(b10)
 {
     CameraData gCam;
     float3 gAmbientLighting;
