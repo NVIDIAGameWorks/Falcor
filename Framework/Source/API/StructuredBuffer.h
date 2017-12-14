@@ -80,12 +80,12 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const StructuredBuffer>;
 
         /** Create a structured buffer.
-            \param[in] pReflector A buffer-reflection object describing the buffer layout
+            \param[in] pReflectionType A reflection type object containing the buffer layout
             \param[in] elementCount - the number of struct elements in the buffer
             \param[in] bindFlags The bind flags for the resource
             \return A new buffer object if the operation was successful, otherwise nullptr
         */
-        static SharedPtr create(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementCount = 1, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        static SharedPtr create(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t elementCount = 1, Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
         
         /** Create a structured buffer. Fetches the requested buffer reflector from the active program version and create the buffer from it
             \param[in] pProgram A program object which defines the buffer
@@ -159,7 +159,7 @@ namespace Falcor
         const Buffer::SharedPtr& getUAVCounter() const { return mpUAVCounter; }
 
     private:
-        StructuredBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementCount, Resource::BindFlags bindFlags);
+        StructuredBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t elementCount, Resource::BindFlags bindFlags);
         mutable bool mGpuCopyDirty = false;
 
         Buffer::SharedPtr mpUAVCounter;

@@ -36,14 +36,15 @@ namespace Falcor
         mpCB = mpProgVars->getConstantBuffer("PerFrameCB");
 
         // Initialize the CB offsets
-        mVarOffsets.alpha = mpCB->getVariableOffset("gAlpha");
-        mVarOffsets.colorBoxSigma = mpCB->getVariableOffset("gColorBoxSigma");
+        mVarLocations.alpha = mpCB->getVariableOffset("gAlpha");
+        mVarLocations.colorBoxSigma = mpCB->getVariableOffset("gColorBoxSigma");
 
         // Get the textures data
-        mVarOffsets.colorTex = pReflector->getResourceDesc("gTexColor")->regIndex;
-        mVarOffsets.prevColorTex = pReflector->getResourceDesc("gTexPrevColor")->regIndex;
-        mVarOffsets.motionVecTex = pReflector->getResourceDesc("gTexMotionVec")->regIndex;
-        mVarOffsets.sampler = pReflector->getResourceDesc("gSampler")->regIndex;
+        const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
+        mVarLocations.colorTex = pDefaultBlock->getResourceBinding("gTexColor");
+        mVarLocations.prevColorTex = pDefaultBlock->getResourceBinding("gTexPrevColor");
+        mVarLocations.motionVecTex = pDefaultBlock->getResourceBinding("gTexMotionVec");
+        mVarLocations.sampler = pDefaultBlock->getResourceBinding("gSampler");
     }
 
     void TemporalAA::setVarsData(const Texture::SharedPtr & pCurColor, const Texture::SharedPtr & pPrevColor, const Texture::SharedPtr & pMotionVec)
@@ -53,13 +54,14 @@ namespace Falcor
         assert((pCurColor->getHeight() == pPrevColor->getHeight()) && (pCurColor->getHeight() == pMotionVec->getHeight()));
         assert(pCurColor->getSampleCount() == 1 && pPrevColor->getSampleCount() == 1 && pMotionVec->getSampleCount() == 1);
 
-        mpCB[mVarOffsets.alpha] = mControls.alpha;
-        mpCB[mVarOffsets.colorBoxSigma] = mControls.colorBoxSigma;
+        mpCB[mVarLocations.alpha] = mControls.alpha;
+        mpCB[mVarLocations.colorBoxSigma] = mControls.colorBoxSigma;
 
-        mpProgVars->setTexture("gTexColor", pCurColor);
-        mpProgVars->setTexture("gTexPrevColor", pPrevColor);
-        mpProgVars->setTexture("gTexMotionVec", pMotionVec);
-        mpProgVars->setSampler("gSampler", mpLinearSampler);
+        ParameterBlock* pDefaultBlock = mpProgVars->getDefaultBlock().get();
+        pDefaultBlock->setSrv(mVarLocations.colorTex, 0, pCurColor->getSRV());
+        pDefaultBlock->setSrv(mVarLocations.prevColorTex, 0, pPrevColor->getSRV());
+        pDefaultBlock->setSrv(mVarLocations.motionVecTex, 0, pMotionVec->getSRV());
+        pDefaultBlock->setSampler(mVarLocations.sampler, 0, mpLinearSampler);
     }
 
     void TemporalAA::execute(RenderContext* pRenderContext, const Texture::SharedPtr & pCurColor, const Texture::SharedPtr & pPrevColor, const Texture::SharedPtr & pMotionVec)

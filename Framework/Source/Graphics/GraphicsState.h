@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "API/GraphicsStateObject.h"
-#include "Graphics/GraphicsProgram.h"
+#include "Graphics/Program/GraphicsProgram.h"
 #include "API/VAO.h"
 #include "API/FBO.h"
 #include "API/RasterizerState.h"

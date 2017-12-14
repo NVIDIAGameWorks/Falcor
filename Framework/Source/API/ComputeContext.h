@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "CopyContext.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 #include "Graphics/ComputeState.h"
 
 namespace Falcor

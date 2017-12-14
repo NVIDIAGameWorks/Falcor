@@ -61,10 +61,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\D3D12\D3D12ProgramVars.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="API\D3D12\D3D12QueryHeap.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
@@ -89,11 +85,11 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\D3D12\D3D12Texture.cpp">
+    <ClCompile Include="API\D3D12\D3D12State.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\D3D12\D3D12UniformBuffer.cpp">
+    <ClCompile Include="API\D3D12\D3D12Texture.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -110,10 +106,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="API\D3D12\D3DShader.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="API\D3D12\D3D12State.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -155,9 +147,6 @@
     <ClCompile Include="API\LowLevel\ResourceAllocator.cpp" />
     <ClCompile Include="API\LowLevel\RootSignature.cpp" />
     <ClCompile Include="API\GraphicsStateObject.cpp" />
-    <ClCompile Include="API\ProgramReflection.cpp" />
-    <ClCompile Include="API\ProgramVars.cpp" />
-    <ClCompile Include="API\ProgramVersion.cpp" />
     <ClCompile Include="API\RenderContext.cpp" />
     <ClCompile Include="API\Resource.cpp" />
     <ClCompile Include="API\ResourceViews.cpp" />
@@ -256,10 +245,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\Vulkan\VkProgramVars.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="API\Vulkan\VKProgramVersion.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
@@ -318,12 +303,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="API\Vulkan\VKUniformBuffer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="API\Vulkan\VKVao.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
@@ -342,11 +321,9 @@
     <ClCompile Include="Effects\Utils\GaussianBlur.cpp" />
     <ClCompile Include="Graphics\Camera\Camera.cpp" />
     <ClCompile Include="Graphics\Camera\CameraController.cpp" />
-    <ClCompile Include="Graphics\ComputeProgram.cpp" />
     <ClCompile Include="Graphics\ComputeState.cpp" />
     <ClCompile Include="Graphics\FboHelper.cpp" />
     <ClCompile Include="Graphics\FullScreenPass.cpp" />
-    <ClCompile Include="Graphics\GraphicsProgram.cpp" />
     <ClCompile Include="Graphics\Light.cpp" />
     <ClCompile Include="Graphics\Material\BasicMaterial.cpp" />
     <ClCompile Include="Graphics\Material\Material.cpp" />
@@ -366,8 +343,14 @@
     <ClCompile Include="Graphics\Model\ModelRenderer.cpp" />
     <ClCompile Include="Graphics\Paths\ObjectPath.cpp" />
     <ClCompile Include="Graphics\Paths\PathEditor.cpp" />
-    <ClCompile Include="Graphics\Program.cpp" />
     <ClCompile Include="Graphics\GraphicsState.cpp" />
+    <ClCompile Include="Graphics\Program\ComputeProgram.cpp" />
+    <ClCompile Include="Graphics\Program\GraphicsProgram.cpp" />
+    <ClCompile Include="Graphics\Program\ParameterBlock.cpp" />
+    <ClCompile Include="Graphics\Program\Program.cpp" />
+    <ClCompile Include="Graphics\Program\ProgramReflection.cpp" />
+    <ClCompile Include="Graphics\Program\ProgramVars.cpp" />
+    <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
@@ -729,9 +712,6 @@
     <ClInclude Include="API\LowLevel\ResourceAllocator.h" />
     <ClInclude Include="API\LowLevel\RootSignature.h" />
     <ClInclude Include="API\GraphicsStateObject.h" />
-    <ClInclude Include="API\ProgramReflection.h" />
-    <ClInclude Include="API\ProgramVars.h" />
-    <ClInclude Include="API\ProgramVersion.h" />
     <ClInclude Include="API\QueryHeap.h" />
     <ClInclude Include="API\RasterizerState.h" />
     <ClInclude Include="API\RenderContext.h" />
@@ -795,11 +775,9 @@
     <ClInclude Include="Framework.h" />
     <ClInclude Include="Graphics\Camera\Camera.h" />
     <ClInclude Include="Graphics\Camera\CameraController.h" />
-    <ClInclude Include="Graphics\ComputeProgram.h" />
     <ClInclude Include="Graphics\ComputeState.h" />
     <ClInclude Include="Graphics\FboHelper.h" />
     <ClInclude Include="Graphics\FullScreenPass.h" />
-    <ClInclude Include="Graphics\GraphicsProgram.h" />
     <ClInclude Include="Graphics\Light.h" />
     <ClInclude Include="Graphics\Material\BasicMaterial.h" />
     <ClInclude Include="Graphics\Material\Material.h" />
@@ -822,8 +800,14 @@
     <ClInclude Include="Graphics\Paths\MovableObject.h" />
     <ClInclude Include="Graphics\Paths\ObjectPath.h" />
     <ClInclude Include="Graphics\Paths\PathEditor.h" />
-    <ClInclude Include="Graphics\Program.h" />
     <ClInclude Include="Graphics\GraphicsState.h" />
+    <ClInclude Include="Graphics\Program\ComputeProgram.h" />
+    <ClInclude Include="Graphics\Program\GraphicsProgram.h" />
+    <ClInclude Include="Graphics\Program\ParameterBlock.h" />
+    <ClInclude Include="Graphics\Program\Program.h" />
+    <ClInclude Include="Graphics\Program\ProgramReflection.h" />
+    <ClInclude Include="Graphics\Program\ProgramVars.h" />
+    <ClInclude Include="Graphics\Program\ProgramVersion.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
@@ -1048,6 +1032,7 @@
     <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang" />
     <None Include="Data\Framework\Shaders\Gui.ps.slang" />
     <None Include="Data\Framework\Shaders\Gui.vs.slang" />
+    <None Include="Data\Framework\Shaders\MaterialBlock.slang" />
     <None Include="Data\Framework\Shaders\ParallelReduction.ps.slang" />
     <None Include="Data\Framework\Shaders\SceneEditorPS.slang" />
     <None Include="Data\Framework\Shaders\SceneEditorVS.slang" />
@@ -1141,7 +1126,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\Include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -1174,7 +1159,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\Include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -1211,7 +1196,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\Include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -1248,7 +1233,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\Include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>

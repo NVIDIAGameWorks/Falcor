@@ -356,7 +356,7 @@ namespace Falcor
                     auto pAttribReflector = pReflector->getVertexAttributeBySemantic(pVB->getElementName(elemID));
                     if (pAttribReflector)
                     {
-                        shaderLocation = (uint32_t) pAttribReflector->location;
+                        shaderLocation = (uint32_t)pAttribReflector->bindLocation;
                     }
 
                     // Per shader location specified

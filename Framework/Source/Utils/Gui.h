@@ -30,8 +30,8 @@
 #include <unordered_map>
 #include "glm/vec3.hpp"
 #include "UserInput.h"
-#include "API/ProgramVars.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program//ProgramVars.h"
+#include "Graphics/Program//Program.h"
 #include "Graphics/GraphicsState.h"
 
 namespace Falcor

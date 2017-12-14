@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "API/ProgramVersion.h"
+#include "Graphics/Program/ProgramVersion.h"
 
 namespace Falcor
 {

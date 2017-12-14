@@ -31,7 +31,7 @@
 #include <map>
 #include <vector>
 #include "API/Shader.h"
-#include "API/ProgramReflection.h"
+#include "Graphics/Program//ProgramReflection.h"
 
 namespace Falcor
 {
@@ -80,10 +80,6 @@ namespace Falcor
 
         virtual ~ProgramVersion();
 
-        /** Get the API handle.
-        */
-        ProgramHandle getApiHandle() const;
-
         /** Get an attached shader object, or nullptr if no shader is attached to the slot.
         */
         const Shader* getShader(ShaderType Type) const { return mpShaders[(uint32_t)Type].get(); }
@@ -91,8 +87,6 @@ namespace Falcor
         /** Get the program name
         */
         const std::string& getName() const {return mName;}
-
-        void dumpProgramBinaryToFile(const std::string& filename) const;
 
         /** Get the reflection object
         */

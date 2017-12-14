@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "MaterialSystem.h"
 #include "Material.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 #include <map>
 
 namespace Falcor

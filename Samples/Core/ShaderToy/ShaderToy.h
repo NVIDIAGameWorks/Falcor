@@ -50,6 +50,6 @@ private:
     BlendState::SharedPtr           mpOpaqueBS;
     FullScreenPass::UniquePtr       mpMainPass;
     GraphicsVars::SharedPtr         mpToyVars;
-    uint32_t                        mToyCBBinding;
+    ProgramReflection::BindLocation mToyCBBinding;
 
 };

@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "API/ComputeStateObject.h"
-#include "Graphics/ComputeProgram.h"
+#include "Graphics/Program/ComputeProgram.h"
 #include <stack>
 #include "Utils/Graph.h"
 

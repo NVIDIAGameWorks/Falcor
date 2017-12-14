@@ -27,10 +27,10 @@
 ***************************************************************************/
 #pragma once
 #include <string>
-#include "ProgramReflection.h"
+#include "Graphics/Program/ProgramReflection.h"
 #include "Texture.h"
 #include "Buffer.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program//Program.h"
 
 namespace Falcor
 {
@@ -47,9 +47,9 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<VariablesBuffer>;
         using SharedConstPtr = std::shared_ptr<const VariablesBuffer>;
 
-        static const size_t kInvalidOffset = ProgramReflection::kInvalidLocation;
+        static const size_t kInvalidOffset = -1;// ProgramReflection::kInvalidLocation;
 
-        VariablesBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess);
+        VariablesBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t elementSize, size_t elementCount, BindFlags bindFlags, CpuAccess cpuAccess);
 
         virtual ~VariablesBuffer() = 0;
 
@@ -62,7 +62,7 @@ namespace Falcor
 
         /** Get the reflection object describing the CB
         */
-        ProgramReflection::BufferReflection::SharedConstPtr getBufferReflector() const { return mpReflector; }
+        ReflectionType::SharedConstPtr getBufferReflector() const { return mpReflector; }
 
         /** Set a block of data into the constant buffer.\n
             If Offset + Size will result in buffer overflow, the call will be ignored and log an error.
@@ -93,19 +93,12 @@ namespace Falcor
         template<typename T>
         void setVariableArray(const std::string& name, size_t elementIndex, const T* pValue, size_t count);
 
-        void setTexture(const std::string& name, const Texture* pTexture, const Sampler* pSampler);
-
-        void setTextureArray(const std::string& name, const Texture* pTexture[], const Sampler* pSampler, size_t count);
-
-        void setTexture(size_t Offset, const Texture* pTexture, const Sampler* pSampler);
-
-        void setTextureInternal(size_t offset, const Texture* pTexture, const Sampler* pSampler);
-
-        ProgramReflection::BufferReflection::SharedConstPtr mpReflector;
+        ReflectionResourceType::SharedConstPtr mpReflector;
         std::vector<uint8_t> mData;
         mutable bool mDirty = true;
         size_t mElementCount;
         size_t mElementSize;
+        std::string mName;
     };
 }
 

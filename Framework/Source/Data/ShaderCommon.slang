@@ -35,7 +35,7 @@
 
 #include "HostDeviceData.h"
 
-cbuffer InternalPerFrameCB
+cbuffer InternalPerFrameCB : register(b10)
 {
     CameraData gCam;
     float3 gAmbientLighting;
@@ -80,9 +80,9 @@ float3x3 getBlendedInvTransposeBoneMat(float4 weights, uint4 ids)
 }
 #endif
 
+ParameterBlock<MaterialData> gMaterial;
 cbuffer InternalPerMaterialCB
 {
-    MaterialData gMaterial;
     MaterialData gTemporalMaterial;
     float gTemporalLODThreshold;
     bool gEnableTemporalNormalMaps;

@@ -37,6 +37,7 @@ namespace Falcor
 
     struct DescriptorSetApiData
     {
-        std::vector<D3D12DescriptorHeap::Allocation::SharedPtr> allocations;
+        D3D12DescriptorHeap::Allocation::SharedPtr pAllocation; // The heap-allocation. We always allocate a single contiguous block, even if there are multiple ranges.
+        std::vector<uint32_t> rangeBaseOffset;                  // For each range, we store the base offset into the allocation. We need it because many set calls accpet a range index.
     };
 }

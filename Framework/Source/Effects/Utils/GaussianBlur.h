@@ -29,7 +29,7 @@
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
 #include "API/Sampler.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 #include <memory>
 
 namespace Falcor
@@ -104,8 +104,8 @@ namespace Falcor
 
         struct
         {
-            ProgramVars::BindLocation sampler;
-            ProgramVars::BindLocation srcTexture;
+            ParameterBlockReflection::BindLocation sampler;
+            ParameterBlockReflection::BindLocation srcTexture;
         } mBindLocations;
     };
 }

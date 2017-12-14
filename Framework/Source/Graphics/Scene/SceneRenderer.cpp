@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "SceneRenderer.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 #include "Utils/Gui.h"
 #include "API/ConstantBuffer.h"
 #include "API/RenderContext.h"
@@ -70,38 +70,44 @@ namespace Falcor
 
     void SceneRenderer::updateVariableOffsets(const ProgramReflection* pReflector)
     {
+        const ParameterBlockReflection* pBlock = pReflector->getDefaultParameterBlock().get();
         if (sWorldMatOffset == ConstantBuffer::kInvalidOffset)
         {
-            const auto pPerMeshCbData = pReflector->getBufferDesc(kPerMeshCbName, ProgramReflection::BufferReflection::Type::Constant);
+            const ReflectionVar* pVar = pBlock->getResource(kPerMeshCbName).get();
+            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
-            if (pPerMeshCbData != nullptr)
+            if (pVar != nullptr)
             {
-                assert(pPerMeshCbData->getVariableData("gWorldMat[0]")->isRowMajor == false); // We copy into CBs as column-major
-                assert(pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->isRowMajor == false);
-                assert(pPerMeshCbData->getVariableData("gWorldMat")->arraySize == pPerMeshCbData->getVariableData("gWorldInvTransposeMat")->arraySize);
+                const ReflectionType* pType = pVar->getType().get();
 
-                sWorldMatArraySize = pPerMeshCbData->getVariableData("gWorldMat")->arraySize;
-                sWorldMatOffset = pPerMeshCbData->getVariableData("gWorldMat[0]")->location;
-                sWorldInvTransposeMatOffset = pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->location;
-                sMeshIdOffset = pPerMeshCbData->getVariableData("gMeshId")->location;
-                sDrawIDOffset = pPerMeshCbData->getVariableData("gDrawId[0]")->location;
-                sPrevWorldMatOffset = pPerMeshCbData->getVariableData("gPrevWorldMat[0]")->location;
+                assert(pType->findMember("gWorldMat[0]")->getType()->asBasicType()->isRowMajor() == false); // We copy into CBs as column-major
+                assert(pType->findMember("gWorldInvTransposeMat[0]")->getType()->asBasicType()->isRowMajor() == false);
+                assert(pType->findMember("gWorldMat")->getType()->getTotalArraySize() == pType->findMember("gWorldInvTransposeMat")->getType()->getTotalArraySize());
+
+                sWorldMatArraySize = pType->findMember("gWorldMat")->getType()->getTotalArraySize();
+                sWorldMatOffset = pType->findMember("gWorldMat[0]")->getOffset();
+                sWorldInvTransposeMatOffset = pType->findMember("gWorldInvTransposeMat[0]")->getOffset();
+                sMeshIdOffset = pType->findMember("gMeshId")->getOffset();
+                sDrawIDOffset = pType->findMember("gDrawId[0]")->getOffset();
+                sPrevWorldMatOffset = pType->findMember("gPrevWorldMat[0]")->getOffset();
             }
         }
 
         if (sCameraDataOffset == ConstantBuffer::kInvalidOffset)
         {
-            const auto pPerFrameCbData = pReflector->getBufferDesc(kPerFrameCbName, ProgramReflection::BufferReflection::Type::Constant);
+            const ReflectionVar* pVar = pBlock->getResource(kPerFrameCbName).get();
+            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
-            if (pPerFrameCbData != nullptr)
+            if (pVar != nullptr)
             {
-                sCameraDataOffset = pPerFrameCbData->getVariableData("gCam.viewMat")->location;
-                const auto& pCountOffset = pPerFrameCbData->getVariableData("gLightsCount");
-                sLightCountOffset = pCountOffset ? pCountOffset->location : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pPerFrameCbData->getVariableData("gLights[0].worldPos");
-                sLightArrayOffset = pLightOffset ? pLightOffset->location : ConstantBuffer::kInvalidOffset;
-                const auto& pAmbientOffset = pPerFrameCbData->getVariableData("gAmbientLighting");
-                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->location : ConstantBuffer::kInvalidOffset;
+                const ReflectionType* pType = pVar->getType().get();
+                sCameraDataOffset = pType->findMember("gCam.viewMat")->getOffset();
+                const auto& pCountOffset = pType->findMember("gLightsCount");
+                sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
+                sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
+                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }
@@ -205,12 +211,7 @@ namespace Falcor
 
     bool SceneRenderer::setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial)
     {
-        ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kPerMaterialCbName).get();
-        if (pCB)
-        {
-            pMaterial->setIntoProgramVars(currentData.pVars, pCB, "gMaterial");
-        }
-
+        currentData.pVars->setParameterBlock("gMaterial", pMaterial->getParameterBlock());
         return true;
     }
 

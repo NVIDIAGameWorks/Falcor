@@ -35,7 +35,7 @@
 #include "API/Texture.h"
 #include "Framework.h"
 #include "API/GraphicsStateObject.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
 #include "Graphics/GraphicsState.h"
 #include "API/ComputeContext.h"
 #include "Graphics/FullScreenPass.h"
