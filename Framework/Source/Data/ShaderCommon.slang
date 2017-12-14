@@ -35,7 +35,7 @@
 
 #include "HostDeviceData.h"
 
-cbuffer InternalPerFrameCB : register(b10)
+cbuffer InternalPerFrameCB
 {
     CameraData gCam;
     float3 gAmbientLighting;
@@ -43,42 +43,46 @@ cbuffer InternalPerFrameCB : register(b10)
     LightData gLights[MAX_LIGHT_SOURCES];
 };
 
-cbuffer InternalPerMeshCB : register(b11)
+cbuffer InternalPerMeshCB
 {
-    float4x4 gWorldMat[MAX_INSTANCES_BONES];                // If the mesh has bones, these are the bones matrices
-    float4x4 gPrevWorldMat[MAX_INSTANCES_BONES];            // previous world mat
-    float3x4 gWorldInvTransposeMat[MAX_INSTANCES_BONES];    // Per-instance matrices for transforming normals
-    uint32_t gDrawId[MAX_INSTANCES_BONES];                  // Zero-based order/ID of Mesh Instances drawn per SceneRenderer::renderScene call.
+    float4x4 gWorldMat[MAX_INSTANCES];              // Per-instance world transforms
+    float4x4 gPrevWorldMat[MAX_INSTANCES];          // Previous frame world transforms
+    float3x4 gWorldInvTransposeMat[MAX_INSTANCES];  // Per-instance matrices for transforming normals
+    uint32_t gDrawId[MAX_INSTANCES];                // Zero-based order/ID of Mesh Instances drawn per SceneRenderer::renderScene call.
     uint32_t gMeshId;
 };
 
-#ifdef _VERTEX_BLENDING
-float4x4 getBlendedWorldMat(float4 weights, uint4 ids)
+cbuffer InternalBoneCB
 {
-    float4x4 worldMat = gWorldMat[ids.x] * weights.x;
-    worldMat += gWorldMat[ids.y] * weights.y;
-    worldMat += gWorldMat[ids.z] * weights.z;
-    worldMat += gWorldMat[ids.w] * weights.w;
+    float4x4 gBoneMat[MAX_BONES];               // Per-model bone matrices
+    float4x4 gInvTransposeBoneMat[MAX_BONES];   // Per-model bone inverse transpose matrices
+};
 
-    return worldMat;
+#ifdef _VERTEX_BLENDING
+float4x4 getBlendedBoneMat(float4 weights, uint4 ids)
+{
+    float4x4 boneMat = gBoneMat[ids.x] * weights.x;
+    boneMat += gBoneMat[ids.y] * weights.y;
+    boneMat += gBoneMat[ids.z] * weights.z;
+    boneMat += gBoneMat[ids.w] * weights.w;
+
+    return boneMat;
 }
 
-float3x3 getBlendedInvTransposeWorldMat(float4 weights, uint4 ids)
+float3x3 getBlendedInvTransposeBoneMat(float4 weights, uint4 ids)
 {
-    float3x3 mat = ((float3x3)gWorldInvTransposeMat[ids.x]) * weights.x;
-    mat += ((float3x3)gWorldInvTransposeMat[ids.y]) * weights.y;
-    mat += ((float3x3)gWorldInvTransposeMat[ids.z]) * weights.z;
-    mat += ((float3x3)gWorldInvTransposeMat[ids.w]) * weights.w;
+    float3x3 mat = (float3x3)gInvTransposeBoneMat[ids.x] * weights.x;
+    mat += (float3x3)gInvTransposeBoneMat[ids.y] * weights.y;
+    mat += (float3x3)gInvTransposeBoneMat[ids.z] * weights.z;
+    mat += (float3x3)gInvTransposeBoneMat[ids.w] * weights.w;
 
     return mat;
 }
-
 #endif
 
 ParameterBlock<MaterialData> gMaterial;
-cbuffer InternalPerMaterialCB : register(b12)
+cbuffer InternalPerMaterialCB
 {
-//    MaterialData gMaterial;
     MaterialData gTemporalMaterial;
     float gTemporalLODThreshold;
     bool gEnableTemporalNormalMaps;

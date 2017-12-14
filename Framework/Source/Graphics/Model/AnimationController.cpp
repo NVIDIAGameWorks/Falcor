@@ -107,7 +107,7 @@ namespace Falcor
                 mBones[i].globalTransform = mBones[mBones[i].parentID].globalTransform * mBones[i].localTransform;
             }
             mBoneTransforms[i] = mBones[i].globalTransform * mBones[i].offset;
-            mBoneInvTransposeTransforms[i] = mat3x4(transpose(inverse(mat3(mBoneTransforms[i]))));
+            mBoneInvTransposeTransforms[i] = transpose(inverse(mBoneTransforms[i]));
         }
     }
 

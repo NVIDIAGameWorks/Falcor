@@ -201,6 +201,7 @@ namespace Falcor
     void Device::flushAndSync()
     {
         mpRenderContext->flush(true);
+        mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
         executeDeferredReleases();
     }
 

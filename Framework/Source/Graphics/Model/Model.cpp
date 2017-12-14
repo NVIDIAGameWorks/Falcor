@@ -280,7 +280,7 @@ namespace Falcor
         return mpAnimationController != nullptr ? mpAnimationController->getBoneMatrices().data() : nullptr;
     }
 
-    const mat3x4* Model::getBoneInvTransposeMatrices() const
+    const mat4* Model::getBoneInvTransposeMatrices() const
     {
         return mpAnimationController != nullptr ? mpAnimationController->getBoneInvTransposeMatrices().data() : nullptr;
     }
