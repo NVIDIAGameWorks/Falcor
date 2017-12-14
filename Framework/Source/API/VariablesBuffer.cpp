@@ -89,7 +89,6 @@ namespace Falcor
 
     size_t VariablesBuffer::getVariableOffset(const std::string& varName) const
     {
-        size_t offset = 0;
         const auto& pVar = mpReflector->findMember(varName);
         return pVar ? pVar->getOffset() : kInvalidOffset;
     }
@@ -223,7 +222,6 @@ namespace Falcor
     void VariablesBuffer::setVariable(const std::string& name, size_t element, const VarType& value)
     {
         const auto& pVar = mpReflector->findMember(name);
-        bool valid = true;
         if((_LOG_ENABLED == 0) || (pVar && checkVariableType<VarType>(pVar->getType().get(), name, mName)))
         {
             setVariable<VarType>(pVar->getOffset(), element, value);

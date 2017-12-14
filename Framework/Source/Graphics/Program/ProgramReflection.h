@@ -29,7 +29,7 @@
 #include "Framework.h"
 #include <unordered_map>
 #include <unordered_set>
-#include "Externals/slang/slang.h"
+#include "Externals/Slang/slang.h"
 #include "API/DescriptorSet.h"
 
 namespace Falcor

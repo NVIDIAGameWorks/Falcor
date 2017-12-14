@@ -250,7 +250,7 @@ namespace Falcor
 
         /** Get the default parameter-block
         */
-        ParameterBlock::SharedPtr getDefaultBlock() const { return mDefaultBlock.pBlock; }
+        const ParameterBlock::SharedPtr& getDefaultBlock() const { return mDefaultBlock.pBlock; }
 
         // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
         Sampler::SharedPtr getSampler(uint32_t) const = delete;
