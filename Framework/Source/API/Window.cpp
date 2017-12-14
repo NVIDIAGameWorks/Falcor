@@ -368,7 +368,8 @@ namespace Falcor
 
         // Create the window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        GLFWwindow* pGLFWWindow = glfwCreateWindow(desc.width, desc.height, desc.title.c_str(), nullptr, nullptr);
+        GLFWmonitor* mon = desc.fullScreen ? glfwGetPrimaryMonitor() :nullptr;
+        GLFWwindow* pGLFWWindow = glfwCreateWindow(desc.width, desc.height, desc.title.c_str(), mon, nullptr);
 
         if (pGLFWWindow == nullptr)
         {
@@ -378,7 +379,6 @@ namespace Falcor
 
         // Init handles
         pWindow->mpGLFWWindow = pGLFWWindow;
-
 #ifdef _WIN32
         pWindow->mApiHandle = glfwGetWin32Window(pGLFWWindow);
         assert(pWindow->mApiHandle);
