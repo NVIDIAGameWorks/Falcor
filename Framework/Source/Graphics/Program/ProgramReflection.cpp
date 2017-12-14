@@ -374,7 +374,36 @@ namespace Falcor
 
     static uint32_t getRegisterSpaceFromPath(const ReflectionPath* pPath, SlangParameterCategory category)
     {
-        return (uint32_t)pPath->pVar->getBindingSpace(category);
+        uint32_t offset = 0;
+        for (auto pp = pPath; pp; pp = pp->pParent)
+        {
+            if (pp->pVar)
+            {
+                const auto& h = pp->pVar->getName();
+                offset += (uint32_t)pp->pVar->getBindingSpace(category);
+                continue;
+            }
+            else if (pp->pTypeLayout)
+            {
+                switch (pp->pTypeLayout->getKind())
+                {
+                case TypeReflection::Kind::Array:
+                    offset += (uint32_t)pp->pTypeLayout->getElementStride(SLANG_PARAMETER_CATEGORY_REGISTER_SPACE) * pp->childIndex;
+                    continue;
+
+                case TypeReflection::Kind::Struct:
+                    offset += (uint32_t)pp->pTypeLayout->getFieldByIndex(int(pp->childIndex))->getBindingSpace(category);
+                    continue;
+
+                default:
+                    break;
+                }
+            }
+
+            logError("internal error: invalid reflection path");
+            return 0;
+        }
+        return offset;
     }
 
     ReflectionType::SharedPtr reflectResourceType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath)
