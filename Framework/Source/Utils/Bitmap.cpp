@@ -191,11 +191,13 @@ namespace Falcor
         if(pData == nullptr)
         {
             logError("Bitmap::saveImage provided no data to save.");
+            return;
         }
         
         if(is_set(exportFlags, ExportFlags::Uncompressed) && is_set(exportFlags, ExportFlags::Lossy))
         {
             logError("Bitmap::saveImage incompatible flags: lossy cannot be combined with uncompressed.");
+            return;
         }
 
         int flags = 0;
@@ -234,6 +236,7 @@ namespace Falcor
             if(is_set(exportFlags, ExportFlags::Lossy))
             {
                 logError("Bitmap::saveImage: PNG does not support lossy compression mode.");
+                return;
             }
         }
         else if (fileFormat == Bitmap::FileFormat::JpegFile)
@@ -249,6 +252,7 @@ namespace Falcor
             if(is_set(exportFlags, ExportFlags::ExportAlpha))
             {
                 logError("Bitmap::saveImage: JPEG does not support alpha channel.");
+                return;
             }
         }
         else if (fileFormat == Bitmap::FileFormat::PfmFile)
@@ -256,21 +260,25 @@ namespace Falcor
             if(bytesPerPixel != 16 && bytesPerPixel != 12)
             {
                 logError("Bitmap::saveImage supports only 32-bit/channel RGB/RGBA images as HDR source.");
+                return;
             }
             if(is_set(exportFlags, ExportFlags::Lossy))
             {
                 logError("Bitmap::saveImage: PFM does not support lossy compression mode.");
+                return;
             }
             if(is_set(exportFlags, ExportFlags::ExportAlpha))
             {
                 logError("Bitmap::saveImage: PFM does not support alpha channel.");
+                return;
             }
-            // Upload the image manually
+
+            // Upload the image manually and flip it vertically
             pImage = FreeImage_AllocateT(FIT_RGBF, width, height);
             BYTE* head = (BYTE*)pData;
             for(unsigned y = 0; y < height; y++) 
             {
-                float* dstBits = (float*)FreeImage_GetScanLine(pImage, y);
+                float* dstBits = (float*)FreeImage_GetScanLine(pImage, height - y - 1);
                 if(bytesPerPixel == 12)
                 {
                     std::memcpy(dstBits, head, bytesPerPixel * width);
@@ -292,6 +300,7 @@ namespace Falcor
             if(bytesPerPixel != 16 && bytesPerPixel != 12)
             {
                 logError("Bitmap::saveImage supports only 32-bit/channel RGB/RGBA for EXR");
+                return;
             }
 
             const bool hasAlpha = is_set(exportFlags, ExportFlags::ExportAlpha);
@@ -299,6 +308,7 @@ namespace Falcor
             if(hasAlpha && bytesPerPixel != 16)
             {
                 logError("Bitmap::saveImage 32-bit/channel format has no alpha channel for EXR");
+                return;
             }
 
             // Upload the image manually
