@@ -334,7 +334,7 @@ namespace Falcor
         }
         mRootSets[bindLoc.setIndex].pSet = nullptr;
     }
-    
+
     template<typename ResourceType>
     typename ResourceType::SharedPtr ParameterBlock::getResourceSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const std::string& funcName) const
     {
@@ -389,15 +389,6 @@ namespace Falcor
         return true;
     }
 
-    template<typename ResourceType>
-    typename ResourceType::SharedPtr ParameterBlock::getResourceFromSrvUavCommon(const std::string& name, uint32_t descOffset, DescriptorSet::Type type, const std::string& funcName)
-    {
-        ParameterBlockReflection::BindLocation bind = mpReflector->getResourceBinding(name);
-        if (checkResourceIndices(bind.setIndex, bind.rangeIndex, descOffset, type, funcName) == false) return nullptr;
-        Resource::SharedPtr pResource = mAssignedResources[bind.setIndex][bind.rangeIndex][descOffset];
-        return std::dynamic_pointer_cast<ResourceType::SharedPtr>(pResource);
-    }
-    
     Buffer::SharedPtr ParameterBlock::getRawBuffer(const std::string& name) const
     {
         // Find the buffer
@@ -405,7 +396,7 @@ namespace Falcor
 #if _LOG_ENABLED
         if (verifyResourceVar(pVar.get(), ReflectionResourceType::Type::RawBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getRawBuffer()") == false)
         {
-            return false;
+            return nullptr;
         }
 #endif
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TextureSrv, DescriptorSet::Type::TextureUav);
@@ -419,7 +410,7 @@ namespace Falcor
 #if _LOG_ENABLED
         if (verifyResourceVar(pVar.get(), ReflectionResourceType::Type::TypedBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getTypedBuffer()") == false)
         {
-            return false;
+            return nullptr;
         }
 #endif
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::TypedBufferSrv, DescriptorSet::Type::TypedBufferUav);
@@ -433,7 +424,7 @@ namespace Falcor
 #if _LOG_ENABLED
         if (verifyResourceVar(pVar.get(), ReflectionResourceType::Type::StructuredBuffer, ReflectionResourceType::ShaderAccess::Undefined, true, name, "getStructuredBuffer()") == false)
         {
-            return false;
+            return nullptr;
         }
 #endif   
         DescriptorSet::Type type = getSetTypeFromVar(pVar, DescriptorSet::Type::StructuredBufferSrv, DescriptorSet::Type::StructuredBufferUav);

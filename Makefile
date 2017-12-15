@@ -99,7 +99,7 @@ COMMON_FLAGS=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"
 RELEASE_DEFINES:=
-COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE" -D "_PROJECT_DIR_=\"Framework/Source\""
 
 # Base source directory
 SOURCE_DIR:=Framework/Source/
@@ -108,7 +108,7 @@ SOURCE_DIR:=Framework/Source/
 RELATIVE_DIRS:=/ \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
-Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
+Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
 Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ \
 VR/ VR/OpenVR/ \
 ../Externals/dear_imgui/
