@@ -878,7 +878,8 @@ namespace Falcor
         mpResourceVars->addMember(pVar);
 
         // If this is a constant-buffer, it might contain resources. Extract them.
-        const ReflectionStructType* pStruct = pResourceType->getStructType().get()->asStructType();
+        const ReflectionType* pType = pResourceType->getStructType().get();
+        const ReflectionStructType* pStruct = (pType != nullptr) ? pType->asStructType() : nullptr;
         if (pStruct)
         {
             for (const auto& pMember : *pStruct)
