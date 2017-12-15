@@ -25,7 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
 #include "Framework.h"
 #include "ProgramReflection.h"
 #include "Utils/StringUtils.h"
@@ -320,7 +319,6 @@ namespace Falcor
         return 0;
 #else
         uint32_t offset = 0;
-        bool first = true;
         for (auto pp = pPath; pp; pp = pp->pParent)
         {
             if ((pp->pTypeLayout) && (pp->pTypeLayout->getKind() == TypeReflection::Kind::Array))
@@ -340,7 +338,6 @@ namespace Falcor
         {
             if (pp->pVar)
             {
-                const auto& h = pp->pVar->getName();
                 offset += (uint32_t)pp->pVar->getOffset(category);
                 continue;
             }
@@ -379,7 +376,6 @@ namespace Falcor
         {
             if (pp->pVar)
             {
-                const auto& h = pp->pVar->getName();
                 offset += (uint32_t)pp->pVar->getBindingSpace(category);
                 continue;
             }
@@ -419,7 +415,7 @@ namespace Falcor
         if (type == ReflectionResourceType::Type::ConstantBuffer || type == ReflectionResourceType::Type::StructuredBuffer)
         {
             const auto& pElementLayout = pSlangType->getElementTypeLayout();
-            auto& pBufferType = reflectType(pElementLayout, pPath);
+            auto pBufferType = reflectType(pElementLayout, pPath);
             pType->setStructType(pBufferType);
         }
 
@@ -700,7 +696,8 @@ namespace Falcor
                 mIsSampleFrequency = pEntryPoint->usesAnySampleRateInput();
 #else
                 mIsSampleFrequency = true; // #SLANG Slang reports false for DX shaders. There's an open issue, once it's fixed we should remove that
-#endif            default:
+#endif
+            default:
                 break;
             }
         }
@@ -881,7 +878,8 @@ namespace Falcor
         mpResourceVars->addMember(pVar);
 
         // If this is a constant-buffer, it might contain resources. Extract them.
-        const ReflectionStructType* pStruct = pResourceType->getStructType().get()->asStructType();
+        const ReflectionType* pType = pResourceType->getStructType().get();
+        const ReflectionStructType* pStruct = (pType != nullptr) ? pType->asStructType() : nullptr;
         if (pStruct)
         {
             for (const auto& pMember : *pStruct)
@@ -1114,7 +1112,7 @@ namespace Falcor
 
     size_t ReflectionStructType::getMemberIndex(const std::string& name) const
     {
-        auto& it = mNameToIndex.find(name);
+        auto it = mNameToIndex.find(name);
         if (it == mNameToIndex.end()) return kInvalidOffset;
         return it->second;
     }

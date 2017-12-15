@@ -9,7 +9,6 @@
     </dependency>
     <dependency name="assimp" linkPath="Framework/Externals/ASSIMP">
         <package name="assimp" version="4.0.1" platforms="win" />
-        <package name="assimp" version="4.0.1-linux" platforms="linux" />
     </dependency>
     <dependency name="dear_imgui" linkPath="Framework/Externals/dear_imgui">
         <package name="dear_imgui" version="1.50.wip" />
@@ -24,7 +23,7 @@
         <package name="freeimage" version="3.17.0" platforms="win" />
     </dependency>
     <dependency name="vulkansdk" linkPath="Framework/Externals/VulkanSDK">
-        <package name="vulkansdk" version="1.0.51.0" />
+        <package name="vulkansdk" version="1.0.51.0" platforms="win"/>
     </dependency>
     <dependency name="rapidjson" linkPath="Framework/Externals/RapidJson">
         <package name="rapidjson" version="0.1" />

@@ -1,5 +1,5 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
-SAMPLE_CONFIG:=Debug
+SAMPLE_CONFIG:=Release
 
 All : FeatureDemo AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
@@ -12,7 +12,7 @@ FeatureDemo : $(SAMPLE_CONFIG)
 	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemo.cpp -o $(DIR)FeatureDemo.o
 	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemoControls.cpp -o $(DIR)FeatureDemoControls.o
 	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemoSceneRenderer.cpp -o $(DIR)FeatureDemoSceneRenderer.o
-	@$(CC) -o $(OUT_DIR)FeatureDemo $(DIR)FeatureDemo.o $(DIR)FeatureDemoControls.o $(DIR)FeatureDemoSceneRenderer.o $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@$(CC) -o $(OUT_DIR)FeatureDemo $(DIR)FeatureDemo.o $(DIR)FeatureDemoControls.o $(DIR)FeatureDemoSceneRenderer.o $(ADDITIONAL_LIB_DIRS) $(LIBS) $(RELATIVE_RPATH)
 	$(call MoveFalcorData,$(OUT_DIR))
 	$(call MoveProjectData,$(DIR), $(OUT_DIR))
 	@echo Built $@
@@ -84,10 +84,9 @@ ADDITIONAL_LIB_DIRS = -L "Bin/" \
 
 LIBS = -lfalcor \
 -lfreeimage -lslang -lslang-glslang -lopenvr_api \
-$(shell pkg-config --libs assimp gtk+-3.0 glfw3) \
-$(shell pkg-config --static --libs x11) \
+$(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11) \
 $(shell pkg-config --libs libavcodec libavdevice libavformat libswscale libavutil) \
--lvulkan -lstdc++fs -lrt -lm -ldl -lz
+-lvulkan -lstdc++fs -lpthread -lrt -lm -ldl -lz
 
 # Compiler Flags
 DEBUG_FLAGS:=-O0 -g -Wno-unused-variable
@@ -100,7 +99,7 @@ COMMON_FLAGS=-c -Wall -Werror -std=c++17 -m64 $(DISABLED_WARNINGS)
 # Defines
 DEBUG_DEFINES:=-D "_DEBUG"
 RELEASE_DEFINES:=
-COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+COMMON_DEFINES:=-D "FALCOR_VK" -D "GLM_FORCE_DEPTH_ZERO_TO_ONE" -D "_PROJECT_DIR_=\"Framework/Source\""
 
 # Base source directory
 SOURCE_DIR:=Framework/Source/
@@ -109,7 +108,7 @@ SOURCE_DIR:=Framework/Source/
 RELATIVE_DIRS:=/ \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
-Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Scene/  Graphics/Scene/Editor/ \
+Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
 Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ \
 VR/ VR/OpenVR/ \
 ../Externals/dear_imgui/
@@ -127,23 +126,26 @@ ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
 
 OUT_DIR:=Bin/
 
+RELATIVE_RPATH:="-Wl,-rpath,"'$$'"ORIGIN/"
+
 # Args: (1) Relative Directory, (2) Cpp filename, (3) Executable name
 define CompileSample
 	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
 	@echo $(2)
 	@$(CC) $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE)
 	@echo Linking $(3)
-	@$(CC) -o $(OUT_DIR)$(3) $(1)$(O_FILE) $(ADDITIONAL_LIB_DIRS) $(LIBS)
+	@$(CC) -o $(OUT_DIR)$(3) $(1)$(O_FILE) $(ADDITIONAL_LIB_DIRS) $(LIBS) $(RELATIVE_RPATH)
 	$(call MoveFalcorData,$(OUT_DIR))
 	$(call MoveProjectData,$(1), $(OUT_DIR))
 	@echo Built $(3)
 endef
 
-# Moves Falcor Data folder and ShadingUtils files to target directory. Contents of ShadingUtils will be placed inside a Data folder at destination
+# Moves Falcor Data folder, ShadingUtils and Slang files to target directory. Contents of ShadingUtils will be placed inside a Data folder at destination
 # Args: (1) Destination directory
 define MoveFalcorData
 	$(call MoveProjectData,Framework/Source/,$(1))
 	@cp -r Framework/Source/ShadingUtils/* $(1)/Data/
+	@cp Framework/Externals/Slang/bin/linux-x86_64/release/*.so $(1)
 endef
 
 # Copies the "Data" folder inside the directory specified by Source path to the Destination path

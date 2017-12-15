@@ -287,7 +287,7 @@ namespace Falcor
         struct OffsetDesc
         {
             ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown;
-            uint32_t count;
+            uint32_t count = 0;
         };
         using OffsetDescMap = std::unordered_map<size_t, OffsetDesc>; // For constant- and structured-buffers
 
