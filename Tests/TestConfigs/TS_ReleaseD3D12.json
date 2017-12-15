@@ -35,7 +35,7 @@
             "Project Name" : "FeatureDemo",
             "Project Tests Args" :
             [
-                "-test -fixedtimedelta 0.03333 -loadscene Cerberus\\Compressed\\Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
+                "-test -fixedtimedelta 0.03333 -loadscene Cerberus\\Standard\\Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
             ]
         },
 
