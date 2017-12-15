@@ -47,9 +47,6 @@
 #include "API/Formats.h"
 #include "API/GpuTimer.h"
 #include "API/GraphicsStateObject.h"
-#include "API/ProgramReflection.h"
-#include "API/ProgramVars.h"
-#include "API/ProgramVersion.h"
 #include "API/RasterizerState.h"
 #include "API/RenderContext.h"
 #include "API/Sampler.h"
@@ -80,11 +77,17 @@
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/TextureHelper.h"
 #include "Graphics/Light.h"
-#include "Graphics/Program.h"
-#include "Graphics/GraphicsProgram.h"
 #include "Graphics/FboHelper.h"
-#include "Graphics/ComputeProgram.h"
 #include "Graphics/ComputeState.h"
+
+// Program
+#include "Graphics/Program/ProgramReflection.h"
+#include "Graphics/Program/ProgramVars.h"
+#include "Graphics/Program/ProgramVersion.h"
+#include "Graphics/Program/Program.h"
+#include "Graphics/Program/GraphicsProgram.h"
+#include "Graphics/Program/ComputeProgram.h"
+#include "Graphics/Program/ParameterBlock.h"
 
 // Material
 #include "Graphics/Material/Material.h"
@@ -144,6 +147,6 @@
 
 #define FALCOR_MAJOR_VERSION 2
 #define FALCOR_MINOR_VERSION 0
-#define FALCOR_DEV_STAGE "beta"
-#define FALCOR_DEV_REVISION 9
-#define FALCOR_VERSION_STRING "2.0b9"
+#define FALCOR_DEV_STAGE "rel"
+#define FALCOR_DEV_REVISION 1
+#define FALCOR_VERSION_STRING "2.0.1"

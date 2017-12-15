@@ -58,6 +58,7 @@ namespace Falcor
         // Ordering matters here, we want that while developing, resources will be loaded from the development media directory
         std::string(getWorkingDirectory()),
         std::string(getWorkingDirectory() + "/Data"),
+        std::string(_PROJECT_DIR_) + "/ShadingUtils",
         std::string(getExecutableDirectory()),
         std::string(getExecutableDirectory() + "/Data"),
 
@@ -187,5 +188,14 @@ namespace Falcor
         return false;
     }
     
+    std::string getDirectoryFromFile(const std::string& filename)
+    {
+        fs::path path = filename;
+        return path.has_filename() ? path.parent_path().string() : filename;
+    }
 
+    std::string getFilenameFromPath(const std::string& filename)
+    {
+        return fs::path(filename).filename().string();
+    }
 }

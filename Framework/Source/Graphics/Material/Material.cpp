@@ -33,18 +33,22 @@
 #include "Utils/Platform/OS.h"
 #include "Utils/Math/FalcorMath.h"
 #include "MaterialSystem.h"
-#include "API/ProgramVars.h"
+#include "Graphics/Program/ProgramVars.h"
+#include "Graphics/Program/GraphicsProgram.h"
 #include <cstring>
 
 namespace Falcor
 {
+    static const char* kMaterialVarName = "materialBlock";
     uint32_t Material::sMaterialCounter = 0;
     std::vector<Material::DescId> Material::sDescIdentifier;
+    ParameterBlockReflection::SharedConstPtr Material::spBlockReflection;
 
     Material::Material(const std::string& name) : mName(name)
     {
         mData.values.id = sMaterialCounter;
         sMaterialCounter++;
+        createParameterBlock();
     }
 
     Material::SharedPtr Material::create(const std::string& name)
@@ -298,73 +302,70 @@ namespace Falcor
     }
 
 #if _LOG_ENABLED
-#define check_offset(_a) assert(pCB->getVariableOffset(std::string(varName) + "." + #_a) == (offsetof(MaterialData, _a) + offset))
+#define check_offset(_a) assert(pCB->getVariableOffset(std::string(varName) + #_a) == (offsetof(MaterialData, _a) + offset))
 #else
 #define check_offset(_a)
 #endif
 
-    void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCB, const char varName[]) const
+    static void setMaterialIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, size_t offset, const std::string& varName, const MaterialData& data)
     {
-        // OPTME:
-        // We can specialize this function based on the API we are using. This might be worth the extra maintenance cost:
-        // - DX12 - we could create a descriptor-table with all of the SRVs. This will reduce the API overhead to a single call. Pitfall - the textures might be dirty, so we will need to verify it
-        // - Bindless GL - just copy a blob with the GPU pointers. This is actually similar to DX12, but instead of SRVs we store uint64_t
-        // - DX11 - Single call at a time.
-        // Actually, looks like if we will be smart in the way we design ProgramVars::setTextureArray(), we could get away with a unified code
-
         // First set the desc and the values
-        finalize();
         static const size_t dataSize = sizeof(MaterialDesc) + sizeof(MaterialValues);
         static_assert(dataSize % sizeof(glm::vec4) == 0, "Material::MaterialData size should be a multiple of 16");
-
-        size_t offset = pCB->getVariableOffset(std::string(varName) + ".desc.layers[0].type");
-
-        if(offset == ConstantBuffer::kInvalidOffset)
-        {
-            logError(std::string("Material::setIntoConstantBuffer() - variable \"") + varName + "\"not found in constant buffer\n");
-            return;
-        }
 
         check_offset(values.layers[0].albedo);
         check_offset(values.id);
         assert(offset + dataSize <= pCB->getSize());
 
-        pCB->setBlob(&mData, offset, dataSize);
+        pCB->setBlob(&data, offset, dataSize);
 
         // Now set the textures
-        std::string resourceName = std::string(varName) + ".textures.layers";
-        const auto pResourceDesc = pVars->getReflection()->getResourceDesc(resourceName);
-        if (pResourceDesc == nullptr)
+        std::string resourceName = varName + "textures.layers";
+        const auto binding = pBlock->getReflection()->getResourceBinding(resourceName);
+        if (binding.setIndex == ParameterBlockReflection::BindLocation::kInvalidLocation)
         {
-            logWarning(std::string("Material::setIntoConstantBuffer() - can't find the first texture object"));
+            logWarning(std::string("setMaterialIntoBlockCommon() - can't find the first texture object"));
             return;
         }
 
         // Bind the layers (they are an array)
-        auto pTextures = (Texture::SharedPtr*)&mData.textures;
         for (uint32_t i = 0; i < MatMaxLayers; i++)
         {
-            if (pTextures[i] != nullptr)
-            {
-                pVars->setSrv(pResourceDesc->regSpace, pResourceDesc->regIndex, i, pTextures[i]->getSRV());
-            }
+            const auto& pSrv = (data.textures.layers[i] != nullptr) ? data.textures.layers[i]->getSRV() : nullptr;
+            pBlock->setSrv(binding, i, pSrv);
         }
 
-        // Bind the rest
-        for (uint32_t i = MatMaxLayers; i < kTexCount; i++)
+        pBlock->setTexture(varName + "textures.normalMap", data.textures.normalMap);
+        pBlock->setTexture(varName + "textures.ambientMap", data.textures.ambientMap);
+        pBlock->setTexture(varName + "textures.alphaMap", data.textures.alphaMap);
+        pBlock->setTexture(varName + "textures.heightMap", data.textures.heightMap);
+        pBlock->setSampler(varName + "samplerState", data.samplerState);
+    }
+
+    void Material::setIntoParameterBlock(ParameterBlock* pBlock) const
+    {
+        finalize();
+        ConstantBuffer* pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
+        setMaterialIntoBlockCommon(pBlock, pCB, 0, "", mData);
+    }
+
+    void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const
+    {
+        finalize();
+        size_t offset = pCb->getVariableOffset(varName);
+
+        if (offset == ConstantBuffer::kInvalidOffset)
         {
-            if (pTextures[i] != nullptr)
-            {
-#ifdef FALCOR_VK
-                uint32_t bindIndex = pResourceDesc->regIndex + 1 + i - MatMaxLayers;
-#else
-                uint32_t bindIndex = pResourceDesc->regIndex + i;
-#endif
-                pVars->setSrv(pResourceDesc->regSpace, bindIndex, 0, pTextures[i]->getSRV());
-            }
+            logError(std::string("Material::setIntoProgramVars() - variable \"") + varName + "\" not found in constant buffer\n");
+            return;
         }
+        setMaterialIntoBlockCommon(pVars->getDefaultBlock().get(), pCb, offset, std::string(varName) + '.', mData);
+    }
 
-        pVars->setSampler("gMaterial.samplerState", mData.samplerState);
+    void Material::setSampler(const Sampler::SharedPtr& pSampler)
+    {
+        mData.samplerState = pSampler;
+        mpParamBlock->setSampler("samplerState", pSampler);
     }
 
     bool Material::operator==(const Material& other) const
@@ -459,7 +460,8 @@ namespace Falcor
             normalize();
             updateTextureCount();
             updateDescString();
-            mDescDirty = false;
+            mDescDirty = false; // setIntoParameterBlock() calls finalize(), need to clear the flag
+            setIntoParameterBlock(mpParamBlock.get());
         }
     }
 
@@ -542,4 +544,21 @@ namespace Falcor
         mDescString += "}}";
     }
 
+    ParameterBlock::SharedConstPtr Material::getParameterBlock() const
+    {
+        finalize();
+        return ParameterBlock::SharedConstPtr(mpParamBlock);
+    }
+
+    void Material::createParameterBlock()
+    {
+        if (spBlockReflection == nullptr)
+        {
+            GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
+            ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
+            spBlockReflection = pReflection->getParameterBlock(kMaterialVarName);
+            assert(spBlockReflection);
+        }
+        mpParamBlock = ParameterBlock::create(spBlockReflection, true);
+    }
 }

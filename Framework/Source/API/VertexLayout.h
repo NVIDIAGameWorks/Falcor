@@ -29,7 +29,7 @@
 #include <vector>
 #include "Formats.h"
 #include "Data/VertexAttrib.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 
 namespace Falcor
 {

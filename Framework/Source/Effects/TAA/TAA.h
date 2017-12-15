@@ -84,13 +84,13 @@ namespace Falcor
 
         struct
         {
-            uint32_t colorTex;
-            uint32_t prevColorTex;
-            uint32_t motionVecTex;
-            uint32_t sampler;
+            ParameterBlock::BindLocation colorTex;
+            ParameterBlock::BindLocation prevColorTex;
+            ParameterBlock::BindLocation motionVecTex;
+            ParameterBlock::BindLocation sampler;
             size_t alpha;
             size_t colorBoxSigma;
-        } mVarOffsets;
+        } mVarLocations;
 
         struct Controls
         {

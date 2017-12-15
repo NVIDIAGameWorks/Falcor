@@ -27,39 +27,44 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "ConstantBuffer.h"
-#include "ProgramVersion.h"
+#include "Graphics/Program/ProgramVersion.h"
 #include "Buffer.h"
 #include "glm/glm.hpp"
 #include "Texture.h"
-#include "API/ProgramReflection.h"
+#include "Graphics/Program/ProgramReflection.h"
 #include "API/Device.h"
 
 namespace Falcor
 {
-    ConstantBuffer::ConstantBuffer(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t size) :
-        VariablesBuffer(pReflector, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
+    ConstantBuffer::~ConstantBuffer() = default;
+
+    ConstantBuffer::ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size) :
+        VariablesBuffer(name, pReflectionType, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
     {
     }
 
-    ConstantBuffer::SharedPtr ConstantBuffer::create(const ProgramReflection::BufferReflection::SharedConstPtr& pReflector, size_t overrideSize)
+    ConstantBuffer::SharedPtr ConstantBuffer::create(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t overrideSize)
     {
-        size_t size = (overrideSize == 0) ? pReflector->getRequiredSize() : overrideSize;        
-        SharedPtr pBuffer = SharedPtr(new ConstantBuffer(pReflector, size));
+        size_t size = (overrideSize == 0) ? pReflectionType->getSize() : overrideSize;
+        SharedPtr pBuffer = SharedPtr(new ConstantBuffer(name, pReflectionType, size));
         return pBuffer;
     }
 
     ConstantBuffer::SharedPtr ConstantBuffer::create(Program::SharedPtr& pProgram, const std::string& name, size_t overrideSize)
     {
         const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
-        const auto& pBufferReflector = pProgReflector->getBufferDesc(name, ProgramReflection::BufferReflection::Type::Constant);
+        const auto& pParamBlockReflection = pProgReflector->getDefaultParameterBlock();
+        ReflectionVar::SharedConstPtr pBufferReflector = pParamBlockReflection ? pParamBlockReflection->getResource(name) : nullptr;
+
         if (pBufferReflector)
         {
-            return create(pBufferReflector, overrideSize);
+            ReflectionResourceType::SharedConstPtr pResType = pBufferReflector->getType()->asResourceType()->inherit_shared_from_this::shared_from_this();
+            if(pResType && pResType->getType() == ReflectionResourceType::Type::ConstantBuffer)
+            {
+                return create(name, pResType, overrideSize);
+            }
         }
-        else
-        {
-            logError("Can't find a constant buffer named \"" + name + "\" in the program");
-        }
+        logError("Can't find a constant buffer named \"" + name + "\" in the program");
         return nullptr;
     }
 
@@ -69,7 +74,7 @@ namespace Falcor
         return VariablesBuffer::uploadToGPU(offset, size);
     }
 
-    ConstantBufferView::SharedPtr ConstantBuffer::getCbv()
+    ConstantBufferView::SharedPtr ConstantBuffer::getCbv() const
     {
         if (mpCbv == nullptr)
         {

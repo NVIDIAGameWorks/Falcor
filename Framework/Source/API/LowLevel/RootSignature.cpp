@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "API/LowLevel/RootSignature.h"
-#include "API/ProgramReflection.h"
+#include "Graphics/Program/ProgramReflection.h"
 
 namespace Falcor
 {
@@ -66,6 +66,8 @@ namespace Falcor
 
     RootSignature::SharedPtr RootSignature::create(const Desc& desc)
     {
+        if (desc.mSets.size() == 0) return getEmpty();
+
         SharedPtr pSig = SharedPtr(new RootSignature(desc));
         if (pSig->apiInit() == false)
         {
@@ -74,23 +76,48 @@ namespace Falcor
         return pSig;
     }
 
-    ProgramReflection::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type)
+    ReflectionResourceType::ShaderAccess getRequiredShaderAccess(RootSignature::DescType type)
     {
         switch (type)
         {
-        case Falcor::RootSignature::DescType::TextureSrv:
-        case Falcor::RootSignature::DescType::TypedBufferSrv:
-        case Falcor::RootSignature::DescType::StructuredBufferSrv:
-        case Falcor::RootSignature::DescType::Cbv:
-        case Falcor::RootSignature::DescType::Sampler:
-            return ProgramReflection::ShaderAccess::Read;
-        case Falcor::RootSignature::DescType::TextureUav:
-        case Falcor::RootSignature::DescType::StructuredBufferUav:
-        case Falcor::RootSignature::DescType::TypedBufferUav:
-            return ProgramReflection::ShaderAccess::ReadWrite;
+        case RootSignature::DescType::TextureSrv:
+        case RootSignature::DescType::TypedBufferSrv:
+        case RootSignature::DescType::StructuredBufferSrv:
+        case RootSignature::DescType::Cbv:
+        case RootSignature::DescType::Sampler:
+            return ReflectionResourceType::ShaderAccess::Read;
+        case RootSignature::DescType::TextureUav:
+        case RootSignature::DescType::StructuredBufferUav:
+        case RootSignature::DescType::TypedBufferUav:
+            return ReflectionResourceType::ShaderAccess::ReadWrite;
         default:
             should_not_get_here();
-            return ProgramReflection::ShaderAccess(-1);
+            return ReflectionResourceType::ShaderAccess(-1);
         }
+    }
+
+    static void addParamBlockSets(const ParameterBlockReflection* pBlock, RootSignature::Desc& d)
+    {
+        const auto& setLayouts = pBlock->getDescriptorSetLayouts();
+        for (const auto& s : setLayouts)
+        {
+            d.addDescriptorSet(s);
+        }
+    }
+
+    RootSignature::Desc getRootDescFromReflector(const ProgramReflection* pReflector)
+    {
+        RootSignature::Desc d;
+        for (uint32_t i = 0; i < pReflector->getParameterBlockCount(); i++)
+        {
+            addParamBlockSets(pReflector->getParameterBlock(i).get(), d);
+        }
+        return d;
+    }
+
+    RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector)
+    {
+        RootSignature::Desc d = getRootDescFromReflector(pReflector);
+        return RootSignature::create(d);
     }
 }

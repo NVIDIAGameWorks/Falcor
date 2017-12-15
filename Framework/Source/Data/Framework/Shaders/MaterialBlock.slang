@@ -25,10 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "API/ConstantBuffer.h"
+__import ShaderCommon;
+ParameterBlock<MaterialData> materialBlock;
 
-namespace Falcor
+float4 main() : SV_TARGET
 {
-    ConstantBuffer::~ConstantBuffer() = default;
+    return 0;
 }

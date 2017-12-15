@@ -210,18 +210,19 @@ namespace Falcor
     {
         DeviceApiData* pData = new DeviceApiData;
         mpApiData = pData;
-
+        UINT dxgiFlags = 0;
         if (desc.enableDebugLayer)
         {
-            ID3D12DebugPtr pDebug;
-            if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDebug))))
+            ID3D12DebugPtr pDx12Debug;
+            if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDx12Debug))))
             {
-                pDebug->EnableDebugLayer();
+                pDx12Debug->EnableDebugLayer();
             }
+            dxgiFlags |= DXGI_CREATE_FACTORY_DEBUG;
         }
 
         // Create the DXGI factory
-        d3d_call(CreateDXGIFactory1(IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
+        d3d_call(CreateDXGIFactory2(dxgiFlags, IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
 
         mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(desc.apiMajorVersion, desc.apiMinorVersion), desc.createDeviceFunc, mRgb32FloatSupported);
         if (mApiHandle == nullptr)

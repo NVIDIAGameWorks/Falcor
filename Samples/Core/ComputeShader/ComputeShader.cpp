@@ -129,7 +129,7 @@ int main(int argc, char** argv)
 {
     ComputeShader sample;
     SampleConfig config;
-    config.windowDesc.title = "Falcor Project Template";
+    config.windowDesc.title = "Compute Shader";
     config.windowDesc.resizableWindow = true;
     config.deviceDesc.depthFormat = ResourceFormat::Unknown;
 #ifdef _WIN32

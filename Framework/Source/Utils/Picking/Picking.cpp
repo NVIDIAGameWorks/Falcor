@@ -152,9 +152,9 @@ namespace Falcor
         }
     }
 
-    bool Picking::setPerModelInstanceData(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t instanceID)
+    bool Picking::setPerModelData(const CurrentWorkingData& currentData)
     {
-        const Gizmo::Type gizmoType = Gizmo::getGizmoType(mSceneGizmos, pModelInstance);
+        const Gizmo::Type gizmoType = Gizmo::getGizmoType(mSceneGizmos, currentData.pModel);
 
         // If rendering a gizmo
         if (gizmoType != Gizmo::Type::Invalid)
@@ -165,7 +165,7 @@ namespace Falcor
             if (gizmoType == Gizmo::Type::Rotate)
             {
                 mpGraphicsState->setProgram(gizmoType == Gizmo::Type::Rotate ? mpRotGizmoProgram : mpProgram);
-                return true;
+                return SceneRenderer::setPerModelData(currentData);
             }
         }
         else
@@ -176,7 +176,7 @@ namespace Falcor
         mpGraphicsState->setProgram(mpProgram);
         currentData.pContext->setGraphicsVars(mpProgramVars);
 
-        return true;
+        return SceneRenderer::setPerModelData(currentData);
     }
 
     bool Picking::setPerMeshInstanceData(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, const Model::MeshInstance* pMeshInstance, uint32_t drawInstanceID)

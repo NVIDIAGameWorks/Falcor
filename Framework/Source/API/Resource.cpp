@@ -59,7 +59,7 @@ namespace Falcor
             return "None";
         }
 
-#define flag_to_str(f_) if (is_set(flags, Resource::BindFlags::f_)) (s += s.size() ? " | " : "") + #f_
+#define flag_to_str(f_) if (is_set(flags, Resource::BindFlags::f_)) (s += (s.size() ? " | " : "") + std::string(#f_))
 
         flag_to_str(Vertex);
         flag_to_str(Index);
@@ -81,8 +81,9 @@ namespace Falcor
             return "Common";
         }
         std::string s;
-#define state_to_str(f_) if (is_set(state, Resource::State::f_)) (s += s.size() ? " | " : "") + #f_
+#define state_to_str(f_) if (state == Resource::State::f_) {return #f_; }
 
+        state_to_str(Common);
         state_to_str(VertexBuffer);
         state_to_str(ConstantBuffer);
         state_to_str(IndexBuffer);

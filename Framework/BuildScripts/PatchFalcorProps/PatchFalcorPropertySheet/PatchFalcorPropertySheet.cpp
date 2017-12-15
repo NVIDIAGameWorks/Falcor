@@ -54,7 +54,7 @@ bool PatchGroup(std::string& PropSheet, const std::string& Group, const std::str
 int main(int argc, char* argv[])
 {
     std::string newline = "\n";
-
+    
 
 
     if(argc != 4)
@@ -86,8 +86,8 @@ int main(int argc, char* argv[])
     if (PatchGroup(PropsSheet, "FALCOR_CORE_DIRECTORY", SolutionDirectoryToFalcorCoreDirectory) == false)
     {
         return -1;
-    }
-
+    } 
+    
     //  Assume that there's already a FALCOR_BACKEND property value. If not, display an error.
     if (PatchGroup(PropsSheet, "FALCOR_BACKEND", FB) == false)
     {

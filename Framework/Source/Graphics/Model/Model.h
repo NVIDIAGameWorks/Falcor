@@ -199,7 +199,7 @@ namespace Falcor
         /** Get array of bones' inverse transpose matrices.
             \return If model has bones, return pointer to matrices in the current state of the animation. Otherwise nullptr.
         */
-        const mat3x4* getBoneInvTransposeMatrices() const;
+        const mat4* getBoneInvTransposeMatrices() const;
 
         /** Force all texture maps in all materials to use a specific texture sampler with one of their maps
             \param[in] Type The map Type to bind the sampler with

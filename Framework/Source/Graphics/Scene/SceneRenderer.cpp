@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "SceneRenderer.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 #include "Utils/Gui.h"
 #include "API/ConstantBuffer.h"
 #include "API/RenderContext.h"
@@ -41,6 +41,7 @@
 namespace Falcor
 {
     size_t SceneRenderer::sBonesOffset = ConstantBuffer::kInvalidOffset;
+    size_t SceneRenderer::sBonesInvTransposeOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sCameraDataOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sWorldMatArraySize = 0;
     size_t SceneRenderer::sWorldMatOffset = ConstantBuffer::kInvalidOffset;
@@ -55,6 +56,7 @@ namespace Falcor
     const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
+    const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
 
     SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
     {
@@ -68,38 +70,44 @@ namespace Falcor
 
     void SceneRenderer::updateVariableOffsets(const ProgramReflection* pReflector)
     {
+        const ParameterBlockReflection* pBlock = pReflector->getDefaultParameterBlock().get();
         if (sWorldMatOffset == ConstantBuffer::kInvalidOffset)
         {
-            const auto pPerMeshCbData = pReflector->getBufferDesc(kPerMeshCbName, ProgramReflection::BufferReflection::Type::Constant);
+            const ReflectionVar* pVar = pBlock->getResource(kPerMeshCbName).get();
+            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
-            if (pPerMeshCbData != nullptr)
+            if (pVar != nullptr)
             {
-                assert(pPerMeshCbData->getVariableData("gWorldMat[0]")->isRowMajor == false); // We copy into CBs as column-major
-                assert(pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->isRowMajor == false);
-                assert(pPerMeshCbData->getVariableData("gWorldMat")->arraySize == pPerMeshCbData->getVariableData("gWorldInvTransposeMat")->arraySize);
+                const ReflectionType* pType = pVar->getType().get();
 
-                sWorldMatArraySize = pPerMeshCbData->getVariableData("gWorldMat")->arraySize;
-                sWorldMatOffset = pPerMeshCbData->getVariableData("gWorldMat[0]")->location;
-                sWorldInvTransposeMatOffset = pPerMeshCbData->getVariableData("gWorldInvTransposeMat[0]")->location;
-                sMeshIdOffset = pPerMeshCbData->getVariableData("gMeshId")->location;
-                sDrawIDOffset = pPerMeshCbData->getVariableData("gDrawId[0]")->location;
-                sPrevWorldMatOffset = pPerMeshCbData->getVariableData("gPrevWorldMat[0]")->location;
+                assert(pType->findMember("gWorldMat[0]")->getType()->asBasicType()->isRowMajor() == false); // We copy into CBs as column-major
+                assert(pType->findMember("gWorldInvTransposeMat[0]")->getType()->asBasicType()->isRowMajor() == false);
+                assert(pType->findMember("gWorldMat")->getType()->getTotalArraySize() == pType->findMember("gWorldInvTransposeMat")->getType()->getTotalArraySize());
+
+                sWorldMatArraySize = pType->findMember("gWorldMat")->getType()->getTotalArraySize();
+                sWorldMatOffset = pType->findMember("gWorldMat[0]")->getOffset();
+                sWorldInvTransposeMatOffset = pType->findMember("gWorldInvTransposeMat[0]")->getOffset();
+                sMeshIdOffset = pType->findMember("gMeshId")->getOffset();
+                sDrawIDOffset = pType->findMember("gDrawId[0]")->getOffset();
+                sPrevWorldMatOffset = pType->findMember("gPrevWorldMat[0]")->getOffset();
             }
         }
 
         if (sCameraDataOffset == ConstantBuffer::kInvalidOffset)
         {
-            const auto pPerFrameCbData = pReflector->getBufferDesc(kPerFrameCbName, ProgramReflection::BufferReflection::Type::Constant);
+            const ReflectionVar* pVar = pBlock->getResource(kPerFrameCbName).get();
+            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
-            if (pPerFrameCbData != nullptr)
+            if (pVar != nullptr)
             {
-                sCameraDataOffset = pPerFrameCbData->getVariableData("gCam.viewMat")->location;
-                const auto& pCountOffset = pPerFrameCbData->getVariableData("gLightsCount");
-                sLightCountOffset = pCountOffset ? pCountOffset->location : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pPerFrameCbData->getVariableData("gLights[0].worldPos");
-                sLightArrayOffset = pLightOffset ? pLightOffset->location : ConstantBuffer::kInvalidOffset;
-                const auto& pAmbientOffset = pPerFrameCbData->getVariableData("gAmbientLighting");
-                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->location : ConstantBuffer::kInvalidOffset;
+                const ReflectionType* pType = pVar->getType().get();
+                sCameraDataOffset = pType->findMember("gCam.viewMat")->getOffset();
+                const auto& pCountOffset = pType->findMember("gLightsCount");
+                sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
+                sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
+                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }
@@ -142,14 +150,16 @@ namespace Falcor
         // Set bones
         if (pModel->hasBones())
         {
-            ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kPerMeshCbName).get();
-            if (pCB)
+            ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kBoneCbName).get();
+            if (pCB != nullptr)
             {
-                if (sBonesOffset == ConstantBuffer::kInvalidOffset)
+                if (sBonesOffset == ConstantBuffer::kInvalidOffset || sBonesInvTransposeOffset == ConstantBuffer::kInvalidOffset)
                 {
-                    sBonesOffset = pCB->getVariableOffset("gWorldMat[0]");
+                    sBonesOffset = pCB->getVariableOffset("gBoneMat[0]");
+                    sBonesInvTransposeOffset = pCB->getVariableOffset("gInvTransposeBoneMat[0]");
                 }
 
+                assert(pModel->getBoneCount() <= MAX_BONES);
                 pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
                 pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
@@ -174,18 +184,23 @@ namespace Falcor
         {
             const Mesh* pMesh = pMeshInstance->getObject().get();
 
-            assert(drawInstanceID == 0 || !pMesh->hasBones()); // The same array is reused for bone and instance matrices, both cannot be active
+            assert(drawInstanceID == 0); // We don't support instanced skinned models
+
+            glm::mat4 worldMat = pModelInstance->getTransformMatrix();
+            glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix();
+
             if (pMesh->hasBones() == false)
             {
-                glm::mat4 worldMat = pModelInstance->getTransformMatrix() * pMeshInstance->getTransformMatrix();
-                glm::mat3x4 worldInvTransposeMat = transpose(inverse(glm::mat3(worldMat)));
-                glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix() * pMeshInstance->getPrevTransformMatrix();
-
-                assert(drawInstanceID < sWorldMatArraySize);
-                pCB->setBlob(&worldMat, sWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
-                pCB->setBlob(&worldInvTransposeMat, sWorldInvTransposeMatOffset + drawInstanceID * sizeof(glm::mat3x4), sizeof(glm::mat3x4)); // HLSL uses column-major and packing rules require 16B alignment, hence use glm:mat3x4
-                pCB->setBlob(&prevWorldMat, sPrevWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
+                worldMat = worldMat * pMeshInstance->getTransformMatrix();
+                prevWorldMat = prevWorldMat * pMeshInstance->getPrevTransformMatrix();
             }
+
+            glm::mat3x4 worldInvTransposeMat = transpose(inverse(glm::mat3(worldMat)));
+
+            assert(drawInstanceID < sWorldMatArraySize);
+            pCB->setBlob(&worldMat, sWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
+            pCB->setBlob(&worldInvTransposeMat, sWorldInvTransposeMatOffset + drawInstanceID * sizeof(glm::mat3x4), sizeof(glm::mat3x4)); // HLSL uses column-major and packing rules require 16B alignment, hence use glm:mat3x4
+            pCB->setBlob(&prevWorldMat, sPrevWorldMatOffset + drawInstanceID * sizeof(glm::mat4), sizeof(glm::mat4));
 
             // Set mesh id
             pCB->setVariable(sMeshIdOffset, pMesh->getId());
@@ -196,12 +211,7 @@ namespace Falcor
 
     bool SceneRenderer::setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial)
     {
-        ConstantBuffer* pCB = currentData.pVars->getConstantBuffer(kPerMaterialCbName).get();
-        if (pCB)
-        {
-            pMaterial->setIntoProgramVars(currentData.pVars, pCB, "gMaterial");
-        }
-
+        currentData.pVars->setParameterBlock("gMaterial", pMaterial->getParameterBlock());
         return true;
     }
 

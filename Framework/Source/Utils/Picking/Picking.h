@@ -85,7 +85,7 @@ namespace Falcor
         void readPickResults(RenderContext* pContext);
 
         virtual void setPerFrameData(const CurrentWorkingData& currentData) override;
-        virtual bool setPerModelInstanceData(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t instanceID) override;
+        virtual bool setPerModelData(const CurrentWorkingData& currentData) override;
         virtual bool setPerMeshInstanceData(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, const Model::MeshInstance* pMeshInstance, uint32_t drawInstanceID) override;
         virtual bool setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial) override;
 

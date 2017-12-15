@@ -110,13 +110,13 @@ namespace Falcor
     }
 
     // static
-    Gizmo::Type Gizmo::getGizmoType(const Gizmos& gizmos, const Scene::ModelInstance* pInstance)
+    Gizmo::Type Gizmo::getGizmoType(const Gizmos& gizmos, const Model* pModel)
     {
         for (uint32_t i = 0; i < 3; i++)
         {
             if (gizmos[i] != nullptr)
             {
-                if (gizmos[i]->isPartOfGizmo(pInstance))
+                if(gizmos[i]->getModel().get() == pModel)
                 {
                     return (Gizmo::Type)i;
                 }

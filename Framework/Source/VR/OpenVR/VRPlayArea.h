@@ -41,7 +41,7 @@
 #include "glm/vec3.hpp"
 #include "API/FBO.h"
 #include "API/RenderContext.h"
-#include "Graphics/Program.h"
+#include "Graphics/Program/Program.h"
 #include "API/Texture.h"
 #include "Graphics/Model/Model.h"
 

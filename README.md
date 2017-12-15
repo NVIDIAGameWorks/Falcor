@@ -38,8 +38,7 @@ Falcor is tested on Ubuntu 17.10, but may also work with other versions and dist
 To build and run Falcor on Linux:
 - Install the Vulkan SDK following the instructions [HERE](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html)
 - Install additional dependencies:
-    - `sudo apt-get install libwayland-dev libassimp-dev libgtk-3-dev libfreeimage-dev libavcodec-dev libavdevice-dev libavformat-dev libswscale-dev libavutil-dev`
-- Add `Path-to-Falcor/Framework/Externals/Slang/bin/linux-x86_64/release` to your `LD_LIBRARY_PATH`
+    - `sudo apt-get install python libassimp-dev libglfw3-dev libgtk-3-dev libfreeimage-dev libavcodec-dev libavdevice-dev libavformat-dev libswscale-dev libavutil-dev`
 - Run the `Makefile`
     - To only build the library, run `make Debug` or `make Release` depending on the desired configuration
     - To build samples, run `make` using the target for the sample(s) you want to build. Config can be changed by setting `SAMPLE_CONFIG` to `Debug` or `Release`

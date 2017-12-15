@@ -35,10 +35,12 @@
 #include "glm/mat4x4.hpp"
 #include "API/Sampler.h"
 #include "Data/HostDeviceData.h"
+#include "Graphics/Program/ParameterBlock.h"
 
 namespace Falcor
 {
     class Texture;
+    class ParameterBlock;
     class ProgramVars;
     class ConstantBuffer;
 
@@ -288,11 +290,16 @@ namespace Falcor
             \param[in] pCB The constant buffer to set the parameters into.
             \param[in] varName The name of the MaterialData member in the buffer.
         */
-        void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCB, const char varName[]) const;
+        void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const;
+
+        /** Set the material parameters into a ParameterBlock. To use this you need to include/import 'ShaderCommon' inside your shader and use Slang's `ParameterBlock<MaterialData>`
+            \param[in] pBlock A parameter block which layout matches `MaterialData`
+        */
+        void setIntoParameterBlock(ParameterBlock* pBlock) const;
 
         /** Set the sampler used when rendering this material.
         */
-        void setSampler(const Sampler::SharedPtr& pSampler) { mData.samplerState = pSampler; }
+        void setSampler(const Sampler::SharedPtr& pSampler);
 
         /** Get this material's sampler.
         */
@@ -310,6 +317,9 @@ namespace Falcor
         */
         uint64_t getDescIdentifier() const;
 
+        /** Get the ParameterBlock object for the material. Each material is created with a parameter-block. Using it is more efficient than assigning data to a custom constant-buffer.
+        */
+        ParameterBlock::SharedConstPtr getParameterBlock() const;
     private:
         void finalize() const;
         void normalize() const;
@@ -340,5 +350,9 @@ namespace Falcor
         void updateDescString() const;
         static uint32_t sMaterialCounter;
         static std::vector<DescId> sDescIdentifier; // vector is slower then map, but map requires 'less' operator. This vector is only being used when the material is dirty, which shouldn't happen often
+
+        ParameterBlock::SharedPtr mpParamBlock;
+        static ParameterBlockReflection::SharedConstPtr spBlockReflection;
+        void createParameterBlock();
     };
 }

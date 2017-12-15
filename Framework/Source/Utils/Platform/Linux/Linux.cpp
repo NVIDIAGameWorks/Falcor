@@ -41,7 +41,6 @@
 #include <errno.h>
 #include <algorithm>
 #include <experimental/filesystem>
-
 namespace fs = std::experimental::filesystem;
 
 namespace Falcor
@@ -277,20 +276,6 @@ namespace Falcor
     void printToDebugWindow(const std::string& s)
     {
         std::cerr << s;
-    }
-
-    std::string getDirectoryFromFile(const std::string& filename)
-    {
-        char* path = const_cast<char*>(filename.c_str());
-        path = dirname(path);
-        return std::string(path);
-    }
-
-    std::string getFilenameFromPath(const std::string& filename)
-    {
-        char* path = const_cast<char*>(filename.c_str());
-        path = basename(path);
-        return std::string(path);
     }
 
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
