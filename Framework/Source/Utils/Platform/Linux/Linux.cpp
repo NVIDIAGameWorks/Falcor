@@ -281,16 +281,13 @@ namespace Falcor
 
     std::string getDirectoryFromFile(const std::string& filename)
     {
-        char* path = const_cast<char*>(filename.c_str());
-        path = dirname(path);
-        return std::string(path);
+        fs::path path = filename;
+        return path.has_filename() ? path.parent_path() : path;
     }
 
     std::string getFilenameFromPath(const std::string& filename)
     {
-        char* path = const_cast<char*>(filename.c_str());
-        path = basename(path);
-        return std::string(path);
+        return fs::path(filename).filename();
     }
 
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
