@@ -188,5 +188,14 @@ namespace Falcor
         return false;
     }
     
+    std::string getDirectoryFromFile(const std::string& filename)
+    {
+        fs::path path = filename;
+        return path.has_filename() ? path.parent_path().string() : filename;
+    }
 
+    std::string getFilenameFromPath(const std::string& filename)
+    {
+        return fs::path(filename).filename().string();
+    }
 }

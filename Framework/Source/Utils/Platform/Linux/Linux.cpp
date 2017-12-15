@@ -40,9 +40,6 @@
 #include <libgen.h>
 #include <errno.h>
 #include <algorithm>
-#include <experimental/filesystem>
-
-namespace fs = std::experimental::filesystem;
 
 namespace Falcor
 {
@@ -277,17 +274,6 @@ namespace Falcor
     void printToDebugWindow(const std::string& s)
     {
         std::cerr << s;
-    }
-
-    std::string getDirectoryFromFile(const std::string& filename)
-    {
-        fs::path path = filename;
-        return path.has_filename() ? path.parent_path() : path;
-    }
-
-    std::string getFilenameFromPath(const std::string& filename)
-    {
-        return fs::path(filename).filename();
     }
 
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)

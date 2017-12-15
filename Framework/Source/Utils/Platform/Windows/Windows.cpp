@@ -224,30 +224,6 @@ namespace Falcor
         __debugbreak();
     }
 
-    std::string getDirectoryFromFile(const std::string& filename)
-    {
-        char *cstr = new char[filename.length() + 1];
-        strcpy_s(cstr, filename.length() + 1, filename.c_str());
-
-        PathRemoveFileSpecA(cstr);
-
-        std::string ret = std::string(cstr);
-        delete[] cstr;
-        return ret;
-    }
-
-    std::string getFilenameFromPath(const std::string& filename)
-    {
-        char *cstr = new char[filename.length() + 1];
-        strcpy_s(cstr, filename.length() + 1, filename.c_str());
-
-        PathStripPathA(cstr);
-
-        std::string ret = std::string(cstr);
-        delete[] cstr;
-        return ret;
-    }
-
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
     {
         WIN32_FIND_DATAA ffd;
