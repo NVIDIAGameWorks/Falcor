@@ -258,6 +258,9 @@ namespace Falcor
         bool setConstantBuffer(uint32_t, const ConstantBuffer::SharedPtr&) = delete;
         ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
 
+        template<bool forGraphics>
+        bool applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig);
+
     protected:
         ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
         
@@ -273,9 +276,6 @@ namespace Falcor
         BlockData mDefaultBlock;
         std::vector<BlockData> mParameterBlocks; // First element is the global block
         ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers);
-
-        template<bool forGraphics>
-        bool applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig);
     };
 
     class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>
