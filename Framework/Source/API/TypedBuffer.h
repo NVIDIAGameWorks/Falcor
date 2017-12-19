@@ -132,12 +132,12 @@ namespace Falcor
             t2f(uint32_t,   R32Uint);
             t2f(uvec2,      RG32Uint);
             t2f(uvec3,      RGB32Uint);
-            t2f(uvec3,      RGBA32Uint);
+            t2f(uvec4,      RGBA32Uint);
 
             t2f(int32_t,    R32Int);
             t2f(ivec2,      RG32Int);
             t2f(ivec3,      RGB32Int);
-            t2f(ivec3,      RGBA32Int);
+            t2f(ivec4,      RGBA32Int);
 
             should_not_get_here();
             return ResourceFormat::Unknown;
