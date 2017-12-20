@@ -54,13 +54,10 @@ namespace Falcor
         return SharedPtr(new Scene());
     }
 
-    Scene::Scene()
-        : mId(sSceneCounter++)
+    Scene::Scene() : mId(sSceneCounter++)
     {
         // Reset all global id counters recursively
         Model::resetGlobalIdCounter();
-
-        mpMaterialHistory = MaterialHistory::create();
     }
 
     Scene::~Scene() = default;
@@ -149,14 +146,8 @@ namespace Falcor
 
     void Scene::deleteModel(uint32_t modelID)
     {
-        if (mpMaterialHistory != nullptr)
-        {
-            mpMaterialHistory->onModelRemoved(getModel(modelID).get());
-        }
-
         // Delete entire vector of instances
         mModels.erase(mModels.begin() + modelID);
-
         mExtentsDirty = true;
     }
 
@@ -263,21 +254,6 @@ namespace Falcor
         mExtentsDirty = true;
     }
 
-    void Scene::deleteMaterial(uint32_t materialID)
-    {
-        if (mpMaterialHistory != nullptr)
-        {
-            mpMaterialHistory->onMaterialRemoved(getMaterial(materialID).get());
-        }
-
-        mpMaterials.erase(mpMaterials.begin() + materialID);
-    }
-
-    void Scene::deleteMaterialHistory()
-    {
-        mpMaterialHistory = nullptr;
-    }
-
     uint32_t Scene::addPath(const ObjectPath::SharedPtr& pPath)
     {
         mpPaths.push_back(pPath);
@@ -317,7 +293,6 @@ namespace Falcor
         merge(mModels);
         merge(mpLights);
         merge(mpPaths);
-        merge(mpMaterials);
         merge(mCameras);
 #undef merge
         mUserVars.insert(pFrom->mUserVars.begin(), pFrom->mUserVars.end());
@@ -363,15 +338,7 @@ namespace Falcor
         }
     }
 
-    void Scene::bindSamplerToMaterials(Sampler::SharedPtr pSampler)
-    {
-        for (auto& pMat : mpMaterials)
-        {
-            pMat->setSampler(pSampler);
-        }
-    }
-
-    void Scene::bindSamplerToModels(Sampler::SharedPtr pSampler)
+    void Scene::bindSampler(Sampler::SharedPtr pSampler)
     {
         for (auto& model : mModels)
         {

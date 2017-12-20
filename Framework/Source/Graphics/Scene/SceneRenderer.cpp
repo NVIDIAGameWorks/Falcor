@@ -104,7 +104,7 @@ namespace Falcor
                 sCameraDataOffset = pType->findMember("gCam.viewMat")->getOffset();
                 const auto& pCountOffset = pType->findMember("gLightsCount");
                 sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
+                const auto& pLightOffset = pType->findMember("gLights");
                 sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
                 const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
                 sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;

@@ -39,27 +39,18 @@
                     Glue code for CPU/GPU compilation
 *******************************************************************/
 
-#if (defined(__STDC_HOSTED__) || defined(__cplusplus)) && !defined(__CUDACC__)    // we're in C-compliant compiler, probably host
-#    define HOST_CODE 1
+#if (defined(__STDC_HOSTED__) || defined(__cplusplus))   // we're in C-compliant compiler, probably host
+#define HOST_CODE 1
 #else
-#   define HLSL_CODE
 #define FALCOR_SHADER_CODE
 #endif
 
-#ifdef HLSL_CODE
-//#extension GL_NV_shader_buffer_load : enable
-#endif
 
 #ifdef HOST_CODE
 
 /*******************************************************************
                     CPU declarations
 *******************************************************************/
-#define loop_unroll
-#define v2 vec2
-#define v3 vec3
-#define v4 vec4
-#define _fn
 #define DEFAULTS(x_) = x_
 #define SamplerState std::shared_ptr<Sampler>
 #define Texture2D std::shared_ptr<Texture>
@@ -67,13 +58,93 @@
 /*******************************************************************
                     HLSL declarations
 *******************************************************************/
-#define loop_unroll [unroll]
-#define _fn 
-#define __device__ 
 #define inline 
-#define _ref(__x) inout __x
 #define DEFAULTS(x_)
 #endif
+
+/*******************************************************************
+    Materials
+*******************************************************************/
+
+// Shading model
+#define ShadingModelSpecGloss 0
+
+// Channel type
+#define ChannelTypeUnused    0
+#define ChannelTypeConst     1
+#define ChannelTypeTexture   2
+
+// Normal map type
+#define NormalMapUnused     0
+#define NormalMapRGB        1
+#define NormalMapRG         2
+
+// Alpha mode
+#define AlphaModeOpaque      0
+#define AlphaModeTransparent 1
+#define AlphaModeMask        2
+
+// NDF type
+#define NdfGGX      0
+#define NdfBeckmann 1
+
+// Bit count
+#define SHADING_MODEL_BITS   (3)
+#define DIFFUSE_TYPE_BITS    (3)
+#define SPECULAR_TYPE_BITS   (3)
+#define EMISSIVE_TYPE_BITS   (3)
+#define NORMAL_MAP_BITS      (2)
+#define OCCLUSION_MAP_BITS   (1)
+#define REFLECTION_MAP_BITS  (1)
+#define LIGHT_MAP_BITS       (1)
+#define HEIGHT_MAP_BITS      (1)
+#define ALPHA_MODE_BITS      (2)
+#define DOUBLE_SIDED_BITS    (1)
+#define NDF_BITS             (3)
+
+// Offsets
+#define SHADING_MODEL_OFFSET (0)
+#define DIFFUSE_TYPE_OFFSET  (SHADING_MODEL_OFFSET + SHADING_MODEL_BITS)
+#define SPECULAR_TYPE_OFFSET (DIFFUSE_TYPE_OFFSET  + DIFFUSE_TYPE_BITS)
+#define EMISSIVE_TYPE_OFFSET (SPECULAR_TYPE_OFFSET + SPECULAR_TYPE_BITS)
+#define NORMAL_MAP_OFFSET    (EMISSIVE_TYPE_OFFSET + EMISSIVE_TYPE_BITS)
+#define OCCLUSION_MAP_OFFSET (NORMAL_MAP_OFFSET    + NORMAL_MAP_BITS)
+#define REFLECTION_MAP_OFFSET (OCCLUSION_MAP_OFFSET+ OCCLUSION_MAP_BITS)
+#define LIGHT_MAP_OFFSET     (REFLECTION_MAP_OFFSET+ REFLECTION_MAP_BITS)
+#define HEIGHT_MAP_OFFSET    (LIGHT_MAP_OFFSET     + LIGHT_MAP_BITS)
+#define ALPHA_MODE_OFFSET    (HEIGHT_MAP_OFFSET    + HEIGHT_MAP_BITS)
+#define DOUBLE_SIDED_OFFSET  (ALPHA_MODE_OFFSET    + ALPHA_MODE_BITS)
+#define NDF_OFFSET           (DOUBLE_SIDED_OFFSET  + DOUBLE_SIDED_BITS)
+
+// Extract bits
+#define EXTRACT_BITS(bits, offset, value) ((value >> offset) & ((1 << bits) - 1))
+#define EXTRACT_SHADING_MODEL(value)    EXTRACT_BITS(SHADING_MODEL_BITS,    SHADING_MODEL_OFFSET,   value)
+#define EXTRACT_DIFFUSE_TYPE(value)     EXTRACT_BITS(DIFFUSE_TYPE_BITS,     DIFFUSE_TYPE_OFFSET,    value)
+#define EXTRACT_SPECULAR_TYPE(value)    EXTRACT_BITS(SPECULAR_TYPE_BITS,    SPECULAR_TYPE_OFFSET,   value)
+#define EXTRACT_EMISSIVE_TYPE(value)    EXTRACT_BITS(EMISSIVE_TYPE_BITS,    EMISSIVE_TYPE_OFFSET,   value)
+#define EXTRACT_NORMAL_MAP_TYPE(value)  EXTRACT_BITS(NORMAL_MAP_BITS,       NORMAL_MAP_OFFSET,      value)
+#define EXTRACT_OCCLUSION_MAP(value)    EXTRACT_BITS(OCCLUSION_MAP_BITS,    OCCLUSION_MAP_OFFSET,   value)
+#define EXTRACT_REFLECTION_MAP(value)   EXTRACT_BITS(REFLECTION_MAP_BITS,   REFLECTION_MAP_OFFSET,  value)
+#define EXTRACT_LIGHT_MAP(value)        EXTRACT_BITS(LIGHT_MAP_BITS,        LIGHT_MAP_OFFSET,       value)  
+#define EXTRACT_HEIGHT_MAP(value)       EXTRACT_BITS(HEIGHT_MAP_BITS,       HEIGHT_MAP_OFFSET,      value)
+#define EXTRACT_ALPHA_MODE(value)       EXTRACT_BITS(ALPHA_MODE_BITS,       ALPHA_MODE_OFFSET,      value)
+#define EXTRACT_DOUBLE_SIDED(value)     EXTRACT_BITS(DOUBLE_SIDED_BITS,     DOUBLE_SIDED_OFFSET,    value)
+#define EXTRACT_NDF_TYPE(value)         EXTRACT_BITS(NDF_BITS,              NDF_OFFSET,             value)
+
+// Pack bits
+#define PACK_BITS(bits, offset, flags, value) (((value & ((1 << bits) - 1)) << offset) | (flags & (~(((1 << bits) - 1) << offset))))
+#define PACK_SHADING_MODEL(flags, value)    PACK_BITS(SHADING_MODEL_BITS,    SHADING_MODEL_OFFSET,   flags, value)
+#define PACK_DIFFUSE_TYPE(flags, value)     PACK_BITS(DIFFUSE_TYPE_BITS,     DIFFUSE_TYPE_OFFSET,    flags, value)
+#define PACK_SPECULAR_TYPE(flags, value)    PACK_BITS(SPECULAR_TYPE_BITS,    SPECULAR_TYPE_OFFSET,   flags, value)
+#define PACK_EMISSIVE_TYPE(flags, value)    PACK_BITS(EMISSIVE_TYPE_BITS,    EMISSIVE_TYPE_OFFSET,   flags, value)
+#define PACK_NORMAL_MAP_TYPE(flags, value)  PACK_BITS(NORMAL_MAP_BITS,       NORMAL_MAP_OFFSET,      flags, value)
+#define PACK_OCCLUSION_MAP(flags, value)    PACK_BITS(OCCLUSION_MAP_BITS,    OCCLUSION_MAP_OFFSET,   flags, value)
+#define PACK_REFLECTION_MAP(flags, value)   PACK_BITS(REFLECTION_MAP_BITS,   REFLECTION_MAP_OFFSET,  flags, value)
+#define PACK_LIGHT_MAP(flags, value)        PACK_BITS(LIGHT_MAP_BITS,        LIGHT_MAP_OFFSET,       flags, value)
+#define PACK_HEIGHT_MAP(flags, value)       PACK_BITS(HEIGHT_MAP_BITS,       HEIGHT_MAP_OFFSET,      flags, value)
+#define PACK_ALPHA_MODE(flags, value)       PACK_BITS(ALPHA_MODE_BITS,       ALPHA_MODE_OFFSET,      flags, value)
+#define PACK_DOUBLE_SIDED(flags, value)     PACK_BITS(DOUBLE_SIDED_BITS,     DOUBLE_SIDED_OFFSET,    flags, value)
+#define PACK_NDF_TYPE(flags, value)         PACK_BITS(NDF_BITS,              NDF_OFFSET,             flags, value)
 
 /*******************************************************************
                     Lights
@@ -90,42 +161,11 @@
 #define MAX_LIGHT_SOURCES 16
 
 /*******************************************************************
-                    Material
+                Math
 *******************************************************************/
-
-/** Type of the material layer:
-    Diffuse (Lambert model, can be Oren-Nayar if roughness is not 1),
-    Reflective material (conductor),
-    Refractive material (dielectric)
-*/
-#define     MatNone            0            ///< A "null" material. Used to end the list of layers
-#define     MatLambert         1            ///< A simple diffuse Lambertian BRDF layer
-#define     MatConductor       2            ///< A conductor material, metallic reflection, no refraction nor subscattering
-#define     MatDielectric      3            ///< A refractive dielectric material, if applied on top of others acts like a coating
-#define     MatEmissive        4            ///< An emissive material. Can be assigned to a geometry to create geometric a light source (will be supported only with ray tracing)
-#define     MatUser            5            ///< User-defined material, should be parsed and processed by user
-#define     MatNumTypes        (MatUser+1)  ///< Number of material types
-
-/** Type of used Normal Distribution Function (NDF). Options so far
-    Beckmann distribution (original Blinn-Phong)
-    GGX distribution (smoother highlight, better fit for some materials, default)
-*/
-#define     NDFBeckmann        0    ///< Beckmann distribution for NDF
-#define     NDFGGX             1    ///< GGX distribution for NDF
-#define     NDFUser            2    ///< User-defined distribution for NDF, should be processed by user
-
-#define     BlendFresnel       0    ///< Material layer is blended according to Fresnel
-#define     BlendConstant      1    ///< Material layer is blended according to a constant factor stored in w component of constant color
-#define     BlendAdd           2    ///< Material layer is added to the previous layers
-
-/**
-    This number specifies a maximum possible number of layers in a material.
-    There seems to be a good trade-off between performance and flexibility.
-    With three layers, we can represent e.g. a base conductor material with diffuse component, coated with a dielectric.
-    If this number is changed, the scene serializer should make sure the new number of layers is saved/loaded correctly.
-*/
-#define     MatMaxLayers    3
-
-#define ROUGHNESS_CHANNEL_BIT 2
+#ifndef M_PI
+#define M_PI       3.14159265358979323846
+#endif
 
 #endif //_HOST_DEVICE_SHARED_MACROS_H
+

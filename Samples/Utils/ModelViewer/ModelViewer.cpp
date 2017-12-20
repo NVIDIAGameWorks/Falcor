@@ -98,6 +98,8 @@ void ModelViewer::loadModelFromFile(const std::string& filename)
 
     mActiveAnimationID = kBindPoseAnimationID;
     setModelString(false, timer.getElapsedTime());
+
+    mpModel->bindSamplerToMaterials(mUseTriLinearFiltering ? mpLinearSampler : mpPointSampler);
 }
 
 void ModelViewer::loadModel()
@@ -147,7 +149,10 @@ void ModelViewer::onGuiRender()
 
     mpGui->addSeparator();
     mpGui->addCheckBox("Wireframe", mDrawWireframe);
-    mpGui->addCheckBox("TriLinear Filtering", mUseTriLinearFiltering);
+    if (mpGui->addCheckBox("TriLinear Filtering", mUseTriLinearFiltering))
+    {
+        mpModel->bindSamplerToMaterials(mUseTriLinearFiltering ? mpLinearSampler : mpPointSampler);
+    }
 
     Gui::DropdownList cullList;
     cullList.push_back({ 0, "No Culling" });
@@ -301,15 +306,6 @@ void ModelViewer::onFrameRender()
 
             mpDirLight->setIntoConstantBuffer(mpProgramVars["PerFrameCB"].get(), "gDirLight");
             mpPointLight->setIntoConstantBuffer(mpProgramVars["PerFrameCB"].get(), "gPointLight");
-        }
-
-        if(mUseTriLinearFiltering)
-        {
-            mpModel->bindSamplerToMaterials(mpLinearSampler);
-        }
-        else
-        {
-            mpModel->bindSamplerToMaterials(mpPointSampler);
         }
 
         mpProgramVars["PerFrameCB"]["gAmbient"] = mAmbientIntensity;

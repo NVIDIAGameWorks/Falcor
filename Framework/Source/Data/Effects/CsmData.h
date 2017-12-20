@@ -57,7 +57,7 @@ struct CsmData
     float3 lightDir;
     float lightBleedingReduction DEFAULTS(0);
 
-    float2 evsmExponents DEFAULTS(v2(40.0f, 5.0f)); // posExp, negExp
+    float2 evsmExponents DEFAULTS(float2(40.0f, 5.0f)); // posExp, negExp
     float cascadeBlendThreshold DEFAULTS(0.2f);
     uint32_t padding;
 

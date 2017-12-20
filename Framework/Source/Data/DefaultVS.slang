@@ -26,10 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "VertexAttrib.h"
-
 __import ShaderCommon;
 
-struct VS_IN
+struct VertexIn
 {
     float4 pos         : POSITION;
 #ifdef HAS_NORMAL
@@ -58,7 +57,7 @@ struct VS_IN
 #define INTERPOLATION_MODE linear
 #endif
 
-struct VS_OUT
+struct VertexOut
 {
     INTERPOLATION_MODE float3 normalW    : NORMAL;
     INTERPOLATION_MODE float3 bitangentW : BITANGENT;
@@ -75,7 +74,7 @@ struct VS_OUT
 #endif
 };
 
-float4x4 getWorldMat(VS_IN vIn)
+float4x4 getWorldMat(VertexIn vIn)
 {
     float4x4 worldMat = gWorldMat[vIn.instanceID];
 
@@ -86,7 +85,7 @@ float4x4 getWorldMat(VS_IN vIn)
     return worldMat;
 }
 
-float3x3 getWorldInvTransposeMat(VS_IN vIn)
+float3x3 getWorldInvTransposeMat(VertexIn vIn)
 {
     float3x3 worldInvTransposeMat = (float3x3)gWorldInvTransposeMat[vIn.instanceID];
 
@@ -97,9 +96,9 @@ float3x3 getWorldInvTransposeMat(VS_IN vIn)
     return worldInvTransposeMat;
 }
 
-VS_OUT defaultVS(VS_IN vIn)
+VertexOut defaultVS(VertexIn vIn)
 {
-    VS_OUT vOut;
+    VertexOut vOut;
     float4x4 worldMat = getWorldMat(vIn);
     float4 posW = mul(vIn.pos, worldMat);
     vOut.posW = posW.xyz;

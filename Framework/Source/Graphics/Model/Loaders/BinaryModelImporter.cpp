@@ -68,11 +68,11 @@ namespace Falcor
         vec3 bitangent;
         if (abs(normal.x) > abs(normal.y))
         {
-            bitangent = v3(normal.z, 0.f, -normal.x) / length(v2(normal.x, normal.z));
+            bitangent = vec3(normal.z, 0.f, -normal.x) / length(vec2(normal.x, normal.z));
         }
         else
         {
-            bitangent = v3(0.f, normal.z, -normal.y) / length(v2(normal.y, normal.z));
+            bitangent = vec3(0.f, normal.z, -normal.y) / length(vec2(normal.y, normal.z));
         }
         return normalize(bitangent);
     }
@@ -174,23 +174,29 @@ namespace Falcor
         }
     }
 
-    static BasicMaterial::MapType getFalcorMapType(TextureType map)
+    static void setTexture(Material* pMaterial, Texture::SharedPtr pTexture, TextureType texType, const std::string& modelName)
     {
-        switch(map)
+        switch(texType)
         {
         case TextureType_Diffuse:
-            return BasicMaterial::MapType::DiffuseMap;
-        case TextureType_Alpha:
-            return BasicMaterial::MapType::AlphaMap;
+            pMaterial->setDiffuseTexture(pTexture);
+            break;
         case TextureType_Normal:
-            return BasicMaterial::MapType::NormalMap;
+            pMaterial->setNormalMap(pTexture);
+            break;
         case TextureType_Specular:
-            return BasicMaterial::MapType::SpecularMap;
+            pMaterial->setSpecularTexture(pTexture);
+            break;
         case TextureType_Displacement:
-            return BasicMaterial::MapType::HeightMap;
+            pMaterial->setHeightMap(pTexture);
+            break;
+        case TextureType_Environment:
+            pMaterial->setReflectionMap(pTexture);
+            break;
         default:
-            return BasicMaterial::MapType::Count;
+            logWarning("Texture of Type " + std::to_string(texType) + " is not supported by the material system (model " + modelName + ")");
         }
+
     }
 
     static const std::string getSemanticName(AttribType type)
@@ -535,25 +541,20 @@ namespace Falcor
         return true;
     }
     
-    ResourceFormat getFormatFromMapType(bool requestSrgb, ResourceFormat originalFormat, BasicMaterial::MapType mapType)
+    ResourceFormat getFormatFromMapType(bool requestSrgb, ResourceFormat originalFormat, TextureType texType)
     {
         if(requestSrgb == false)
         {
             return originalFormat;
         }
 
-        switch(mapType)
+        switch(texType)
         {
-        case Falcor::BasicMaterial::DiffuseMap:
-        case Falcor::BasicMaterial::SpecularMap:
-        case Falcor::BasicMaterial::EmissiveMap:
+        case TextureType_Diffuse:
+        case TextureType_Specular:
+        case TextureType_Environment:
             return srgbToLinearFormat(originalFormat);
-        case Falcor::BasicMaterial::NormalMap:
-        case Falcor::BasicMaterial::AlphaMap:
-        case Falcor::BasicMaterial::HeightMap:
-            return originalFormat;
         default:
-            should_not_get_here();
             return originalFormat;
         }
     }
@@ -815,7 +816,7 @@ namespace Falcor
             for(int submesh = 0; submesh < numSubmeshes; submesh++)
             {
                 // create the material
-                BasicMaterial basicMaterial;
+                Material::SharedPtr pMaterial = Material::create("");
 
                 glm::vec3 ambient;
                 glm::vec4 diffuse;
@@ -823,18 +824,16 @@ namespace Falcor
                 float glossiness;
 
                 mStream >> ambient >> diffuse >> specular >> glossiness;
-                basicMaterial.diffuseColor = glm::vec3(diffuse);
-                basicMaterial.opacity = 1 - diffuse.w;
-                basicMaterial.specularColor = specular;
-                basicMaterial.shininess = glossiness;
+                diffuse.w = 1 - diffuse.w;
+                pMaterial->setDiffuseColor(diffuse);
+                pMaterial->setSpecularColor(vec4(specular, glossiness));
 
                 if(version >= 3)
                 {
                     float displacementCoeff;
                     float displacementBias;
                     mStream >> displacementCoeff >> displacementBias;
-                    basicMaterial.bumpScale = displacementCoeff;
-                    basicMaterial.bumpOffset = displacementBias;
+                    pMaterial->setHeightScaleOffset(displacementCoeff, displacementBias);
                 }
 
                 for(int i = 0; i < numTextureSlots; i++)
@@ -849,35 +848,28 @@ namespace Falcor
                     }
                     else if(texID != -1)
                     {
-                        BasicMaterial::MapType falcorType = getFalcorMapType(TextureType(i));
-                        if(BasicMaterial::MapType::Count == falcorType)
-                        {
-                            logWarning("Texture of Type " + std::to_string(i) + " is not supported by the material system (model " + mModelName + ")");
-                            continue;
-                        }
-
                         // Load the texture
                         TexSignature texSig;
-                        texSig.format = getFormatFromMapType(loadTexAsSrgb, texData[texID].format, falcorType);
+                        texSig.format = getFormatFromMapType(loadTexAsSrgb, texData[texID].format, TextureType(i));
                         texSig.pData = texData[texID].data.data();
                         // Check if we already created a matching texture
                         auto existingTex = textures.find(texSig);
                         if(existingTex != textures.end())
                         {
-                            basicMaterial.pTextures[falcorType] = existingTex->second;
+                            setTexture(pMaterial.get(), existingTex->second, TextureType(i), mModelName);
                         }
                         else
                         {
                             auto pTexture = Texture::create2D(texData[texID].width, texData[texID].height, texSig.format, 1, Texture::kMaxPossible, texSig.pData);
                             pTexture->setSourceFilename(texData[texID].name);
                             textures[texSig] = pTexture;
-                            basicMaterial.pTextures[falcorType] = pTexture;
+                            setTexture(pMaterial.get(), pTexture, TextureType(i), mModelName);
                         }
                     }
                 }
 
                 // Create material and check if it already exists
-                auto pMaterial = checkForExistingMaterial(basicMaterial.convertToMaterial());
+                pMaterial = checkForExistingMaterial(pMaterial);
 
                 int32_t numTriangles;
                 mStream >> numTriangles;

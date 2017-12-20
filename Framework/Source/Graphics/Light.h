@@ -162,7 +162,7 @@ namespace Falcor
 
         /** Get the light's world-space direction.
         */
-        const glm::vec3& getWorldDirection() const { return mData.worldDir; }
+        const glm::vec3& getWorldDirection() const { return mData.dirW; }
 
         /** Get the light intensity.
         */
@@ -215,11 +215,11 @@ namespace Falcor
 
         /** Set the light's world-space position
         */
-        void setWorldPosition(const glm::vec3& pos) { mData.worldPos = pos; }
+        void setWorldPosition(const glm::vec3& pos) { mData.posW = pos; }
 
         /** Set the light's world-space position
         */
-        void setWorldDirection(const glm::vec3& dir) { mData.worldDir = dir; }
+        void setWorldDirection(const glm::vec3& dir) { mData.dirW = dir; }
 
         /** Set the light intensity.
         */
@@ -232,11 +232,11 @@ namespace Falcor
 
         /** Get the light's world-space position
         */
-        const glm::vec3& getWorldPosition() const { return mData.worldPos; }
+        const glm::vec3& getWorldPosition() const { return mData.posW; }
 
         /** Get the light's world-space direction
         */
-        const glm::vec3& getWorldDirection() const { return mData.worldDir; }
+        const glm::vec3& getWorldDirection() const { return mData.dirW; }
 
         /** Get the light intensity.
         */

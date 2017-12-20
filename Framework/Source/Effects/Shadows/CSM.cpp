@@ -122,7 +122,7 @@ namespace Falcor
 
         RasterizerState::SharedPtr getRasterizerState(const Material* pMaterial)
         {
-            if (pMaterial->getAlphaMap())
+            if (pMaterial->getAlphaMode() == AlphaModeMask)
             {
                 return mDepthClamp ? mpDepthClampNoCullRS : mpNoCullRS;
             }
@@ -135,12 +135,19 @@ namespace Falcor
         bool setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial) override
         {
             mMaterialChanged = true;
-            if (currentData.pMaterial->getAlphaMap())
+            if (currentData.pMaterial->getAlphaMode() == AlphaModeMask)
             {
                 float alphaThreshold = currentData.pMaterial->getAlphaThreshold();
                 auto& pDefaultBlock = currentData.pContext->getGraphicsVars()->getDefaultBlock();
                 pDefaultBlock->getConstantBuffer(mBindLocations.alphaCB, 0)->setBlob(&alphaThreshold, 0u, sizeof(float));
-                pDefaultBlock->setSrv(mBindLocations.alphaMap, 0, currentData.pMaterial->getAlphaMap()->getSRV());
+                if(currentData.pMaterial->getDiffuseTexture())
+                {
+                    pDefaultBlock->setSrv(mBindLocations.alphaMap, 0, currentData.pMaterial->getDiffuseTexture()->getSRV());
+                }
+                else
+                {
+                    pDefaultBlock->setSrv(mBindLocations.alphaMap, 0, nullptr);
+                }
                 pDefaultBlock->setSampler(mBindLocations.alphaMapSampler, 0, mpAlphaSampler);
                 currentData.pContext->getGraphicsState()->getProgram()->addDefine("TEST_ALPHA");
             }

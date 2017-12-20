@@ -84,40 +84,8 @@ namespace Falcor
         static const char* kLight = "light";
         static const char* kCamera = "camera";
 
-        static const char* kMaterialOverrides = "material_overrides";
         static const char* kMeshID = "mesh_id";
-        static const char* kMaterialID = "material_id";
 
         static const char* kUserDefined = "user_defined";
-
-        static const char* kMaterials = "materials";
-        static const char* kID = "id";
-        static const char* kMaterialDoubleSided = "double_sided";
-        static const char* kMaterialAlpha = "alpha";
-        static const char* kMaterialNormal = "normal";
-        static const char* kMaterialHeight = "height";
-        static const char* kMaterialAO = "ao";
-        static const char* kMaterialTexture = "texture";
-        static const char* kMaterialLayers = "layers";
-
-        static const char* kMaterialLayerType = "type";
-        static const char* kMaterialLambert = "lambert";
-        static const char* kMaterialDielectric = "dielectric";
-        static const char* kMaterialConductor = "conductor";
-        static const char* kMaterialEmissive = "emissive";
-        static const char* kMaterialUser = "user";
-
-        static const char* kMaterialAlbedo = "albedo";
-        static const char* kMaterialRoughness = "roughness";
-        static const char* kMaterialExtraParam = "extra_param";
-
-        static const char* kMaterialNDF = "ndf";
-        static const char* kMaterialBeckmann = "beckmann";
-        static const char* kMaterialGGX = "ggx";
-
-        static const char* kMaterialBlend = "blend";
-        static const char* kMaterialBlendAdd = "add";
-        static const char* kMaterialBlendFresnel = "fresnel";
-        static const char* kMaterialBlendConstant = "const";
     };
 }

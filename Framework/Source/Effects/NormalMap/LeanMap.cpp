@@ -69,15 +69,15 @@ namespace Falcor
                 } break;
                 case ResourceFormat::RGBA8UnormSrgb:
                 {
-                    tn.x = clamp(SRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 0])), 0.0f, 1.0f);
-                    tn.y = clamp(SRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 1])), 0.0f, 1.0f);
-                    tn.z = clamp(SRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 2])), 0.0f, 1.0f);
+                    tn.x = clamp(sRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 0])), 0.0f, 1.0f);
+                    tn.y = clamp(sRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 1])), 0.0f, 1.0f);
+                    tn.z = clamp(sRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 2])), 0.0f, 1.0f);
                 } break;
                 case ResourceFormat::BGRA8UnormSrgb:
                 {
-                    tn.z = clamp(SRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 0])), 0.0f, 1.0f);
-                    tn.y = clamp(SRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 1])), 0.0f, 1.0f);
-                    tn.x = clamp(SRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 2])), 0.0f, 1.0f);
+                    tn.z = clamp(sRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 0])), 0.0f, 1.0f);
+                    tn.y = clamp(sRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 1])), 0.0f, 1.0f);
+                    tn.x = clamp(sRGBToLinear(oneBy255 * (float)(normalMapData[texIdx * 4 + 2])), 0.0f, 1.0f);
                 } break;
                 default: 
                     logError("Can't generate LEAN map. Unsupported normal map format.");
@@ -124,16 +124,6 @@ namespace Falcor
     LeanMap::UniquePtr LeanMap::create(const Scene* pScene)
     {
         UniquePtr pLeanMaps = UniquePtr(new LeanMap);
-
-        // Initialize scene materials
-        for(uint32_t i = 0; i < pScene->getMaterialCount(); i++)
-        {
-            const Material* pMaterial = pScene->getMaterial(i).get();
-            if(pLeanMaps->createLeanMap(pMaterial) == false)
-            {
-                return nullptr;
-            }
-        }
 
         // Initialize model materials
         for(uint32_t model = 0; model < pScene->getModelCount(); model++)

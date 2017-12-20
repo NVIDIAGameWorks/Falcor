@@ -36,7 +36,7 @@ namespace Falcor
     namespace MaterialSystem
     {
         using ProgramVersionMap = std::map<const ProgramVersion*, ProgramVersion::SharedConstPtr>;
-        using MaterialProgramMap = std::map<uint64_t, ProgramVersionMap>;
+        using MaterialProgramMap = std::map<uint32_t, ProgramVersionMap>;
 
         static MaterialProgramMap gMaterialProgramMap;
 
@@ -45,9 +45,9 @@ namespace Falcor
             gMaterialProgramMap.clear();
         }
 
-        void removeMaterial(uint64_t descIdentifier)
+        void removeMaterial(uint32_t flags)
         {
-            gMaterialProgramMap.erase(descIdentifier);
+            gMaterialProgramMap.erase(flags);
         }
 
         void removeProgramVersion(const ProgramVersion* pProgramVersion)
@@ -63,20 +63,20 @@ namespace Falcor
 
         static ProgramVersion::SharedConstPtr findProgramInMap(ProgramVersionMap& programMap, const ProgramVersion* pVersion)
         {
-            auto it = programMap.find(pVersion);
+            auto& it = programMap.find(pVersion);
             return (it == programMap.end()) ? nullptr : it->second;
         }
 
         static ProgramVersionMap& getMaterialProgramMap(const Material* pMaterial)
         {
-            uint64_t descId = pMaterial->getDescIdentifier();
-            auto it = gMaterialProgramMap.find(descId);
+            uint32_t flags = pMaterial->getFlags();
+            auto& it = gMaterialProgramMap.find(flags);
             if(it == gMaterialProgramMap.end())
             {
-                gMaterialProgramMap[descId] = ProgramVersionMap();
+                gMaterialProgramMap[flags] = ProgramVersionMap();
             }
 
-            return gMaterialProgramMap[descId];
+            return gMaterialProgramMap[flags];
         }
 
         void patchProgram(Program* pProgram, const Material* pMaterial)
@@ -92,7 +92,7 @@ namespace Falcor
 //            if(pMaterialProg == nullptr)
             {
                 // Add the material desc
-                pProgram->addDefine("_MS_STATIC_MATERIAL_DESC", pMaterial->getMaterialDescStr());
+//                pProgram->addDefine("_MS_STATIC_MATERIAL_DESC", std::to_string(pMaterial->getFlags()));
 
                
                 // Get the program version and set it into the map

@@ -86,22 +86,22 @@ namespace Falcor
         }
     }
 
-    static BasicMaterial::MapType getFalcorMapType(TextureType map)
+    static Texture::SharedPtr getTexture(Material::SharedPtr pMaterial, TextureType map)
     {
         switch(map)
         {
         case TextureType_Diffuse:
-            return BasicMaterial::MapType::DiffuseMap;
-        case TextureType_Alpha:
-            return BasicMaterial::MapType::AlphaMap;
+            return pMaterial->getDiffuseTexture();
         case TextureType_Normal:
-            return BasicMaterial::MapType::NormalMap;
+            return pMaterial->getNormalMap();
         case TextureType_Specular:
-            return BasicMaterial::MapType::SpecularMap;
+            return pMaterial->getSpecularTexture();
         case TextureType_Displacement:
-            return BasicMaterial::MapType::HeightMap;
+            return pMaterial->getHeightMap();
+        case TextureType_Environment:
+            return pMaterial->getReflectionnMap();
         default:
-            return BasicMaterial::MapType::Count;
+            return nullptr;
         }
     }
 
@@ -237,14 +237,13 @@ namespace Falcor
 
             // Write all material textures
             const auto& pMaterial = mpModel->getMesh(meshID)->getMaterial();
-            for (uint32_t i = 0; i < pMaterial->getNumLayers(); i++)
-            {
-                succeeded &= writeMaterialTexture(texID, pMaterial->getLayer(i).pTexture);
-            }
-
+            succeeded &= writeMaterialTexture(texID, pMaterial->getDiffuseTexture());
+            succeeded &= writeMaterialTexture(texID, pMaterial->getSpecularTexture());
+            succeeded &= writeMaterialTexture(texID, pMaterial->getEmissiveTexture());
             succeeded &= writeMaterialTexture(texID, pMaterial->getNormalMap());
-            succeeded &= writeMaterialTexture(texID, pMaterial->getAlphaMap());
-            succeeded &= writeMaterialTexture(texID, pMaterial->getAmbientOcclusionMap());
+            succeeded &= writeMaterialTexture(texID, pMaterial->getOcclusionMap());
+            succeeded &= writeMaterialTexture(texID, pMaterial->getReflectionnMap());
+            succeeded &= writeMaterialTexture(texID, pMaterial->getLightMap());
             succeeded &= writeMaterialTexture(texID, pMaterial->getHeightMap());
 
             if (succeeded == false)
@@ -319,28 +318,25 @@ namespace Falcor
     {
         const auto pMaterial = pMesh->getMaterial();
 
-        BasicMaterial basicMaterial;
-        basicMaterial.initializeFromMaterial(pMaterial.get());
-
         glm::vec3 ambient(0,0,0);
-        glm::vec4 diffuse = glm::vec4(basicMaterial.diffuseColor, basicMaterial.opacity);
-        glm::vec3 specular = basicMaterial.specularColor;
-        float glossiness = basicMaterial.shininess;
+        glm::vec4 diffuse = pMaterial->getDiffuseColor();
+        glm::vec3 specular = vec3(pMaterial->getSpecularColor());
+        float glossiness = pMaterial->getSpecularColor().a;
 
         mStream << ambient << diffuse << specular << glossiness;
 
-        float displacementCoeff = basicMaterial.bumpScale;
-        float displacementBias = basicMaterial.bumpOffset;
+        float displacementCoeff = pMaterial->getHeightScale();
+        float displacementBias = pMaterial->getHeightOffset();
 
         mStream << displacementCoeff << displacementBias;
         
         for(uint32_t i = 0; i < TextureType_Max; i++)
         {
-            BasicMaterial::MapType falcorType = getFalcorMapType(TextureType(i));
-            int32_t index = -1;
-            if(BasicMaterial::MapType::Count != falcorType)
+            Texture::SharedPtr pTexture = getTexture(pMaterial, TextureType(i));
+            uint32_t index = -1;
+            if(pTexture)
             {
-                index = mTextureHash[basicMaterial.pTextures[falcorType].get()];
+                index = mTextureHash[pTexture.get()];
             }
 
             mStream << index;

@@ -75,14 +75,14 @@ namespace Falcor
 
     void Light::setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName)
     {
-        size_t offset = pBuffer->getVariableOffset(varName + ".worldPos");
+        size_t offset = pBuffer->getVariableOffset(varName + ".posW");
         if (offset == ConstantBuffer::kInvalidOffset)
         {
             logWarning("AreaLight::setIntoConstantBuffer() - variable \"" + varName + "\"not found in constant buffer\n");
             return;
         }
 
-        check_offset(worldDir);
+        check_offset(dirW);
         check_offset(intensity);
         check_offset(aabbMin);
         check_offset(aabbMax);
@@ -117,7 +117,7 @@ namespace Falcor
         // Update material
         if (light.type == LightArea)
         {
-            for (int i = 0; i < MatMaxLayers; ++i)
+//            for (int i = 0; i < MatMaxLayers; ++i)
             {
                 /*TODO(tfoley) HACK:SPIRE
                 if (light.material.desc.layers[i].type == MatEmissive)
@@ -202,9 +202,9 @@ namespace Falcor
     {
         if(!group || pGui->beginGroup(group))
         {
-            if (pGui->addDirectionWidget("Direction", mData.worldDir))
+            if (pGui->addDirectionWidget("Direction", mData.dirW))
             {
-                setWorldDirection(mData.worldDir);
+                setWorldDirection(mData.dirW);
             }
             Light::renderUI(pGui);
             if (group)
@@ -216,15 +216,15 @@ namespace Falcor
 
     void DirectionalLight::setWorldDirection(const glm::vec3& dir)
     {
-        mData.worldDir = normalize(dir);
-        mData.worldPos = mCenter - mData.worldDir * mDistance; // Move light's position sufficiently far away
+        mData.dirW = normalize(dir);
+        mData.posW = mCenter - mData.dirW * mDistance; // Move light's position sufficiently far away
     }
 
     void DirectionalLight::setWorldParams(const glm::vec3& center, float radius)
     {
         mDistance = radius;
         mCenter = center;
-        mData.worldPos = mCenter - mData.worldDir * mDistance; // Move light's position sufficiently far away
+        mData.posW = mCenter - mData.dirW * mDistance; // Move light's position sufficiently far away
     }
 
     void DirectionalLight::prepareGPUData()
@@ -268,8 +268,8 @@ namespace Falcor
     {
         if(!group || pGui->beginGroup(group))
         {
-            pGui->addFloat3Var("World Position", mData.worldPos, -FLT_MAX, FLT_MAX);
-            pGui->addDirectionWidget("Direction", mData.worldDir);
+            pGui->addFloat3Var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
+            pGui->addDirectionWidget("Direction", mData.dirW);
 
             if (pGui->addFloatVar("Opening Angle", mData.openingAngle, 0.f, (float)M_PI))
             {
@@ -306,8 +306,8 @@ namespace Falcor
 
     void PointLight::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
     {
-        mData.worldPos = position;
-        mData.worldDir = target - position;
+        mData.posW = position;
+        mData.dirW = target - position;
     }
 
     AreaLight::SharedPtr AreaLight::create()
@@ -428,15 +428,7 @@ namespace Falcor
             const Material::SharedPtr& pMaterial = pMesh->getMaterial();
             if (pMaterial)
             {
-                for (uint32_t layerId = 0; layerId < pMaterial->getNumLayers(); ++layerId)
-                {
-                    const Material::Layer l = pMaterial->getLayer(layerId);
-                    if (l.type == Material::Layer::Type::Emissive)
-                    {
-                        mData.intensity = vec3(l.albedo);
-                        break;
-                    }
-                }
+                mData.intensity = pMaterial->getSEmissiveColor();
             }
         }
     }
@@ -506,7 +498,7 @@ namespace Falcor
                     boxMax = glm::max(boxMax, vertices[id]);
                 }
 
-                mData.worldPos = BoundingBox::fromMinMax(boxMin, boxMax).center;
+                mData.posW = BoundingBox::fromMinMax(boxMin, boxMax).center;
 
                 // This holds only for planar light sources
                 const glm::vec3& p0 = vertices[indices[0].x];
@@ -514,7 +506,7 @@ namespace Falcor
                 const glm::vec3& p2 = vertices[indices[0].z];
 
                 // Take the normal of the first triangle as a light normal
-                mData.worldDir = normalize(cross(p1 - p0, p2 - p0));
+                mData.dirW = normalize(cross(p1 - p0, p2 - p0));
 
                 // Save the axis-aligned bounding box
                 mData.aabbMin = boxMin;
@@ -551,21 +543,13 @@ namespace Falcor
             // Obtain mesh instances for this mesh
             for (uint32_t instanceId = 0; instanceId < pModel->getMeshInstanceCount(meshId); ++instanceId)
             {
-                // Check if this mesh has a material
+                // Check if this mesh has an emissive material
                 const Material::SharedPtr& pMaterial = pMesh->getMaterial();
                 if (pMaterial)
                 {
-                    // Check for emissive layers
-                    const uint32_t numLayers = pMaterial->getNumLayers();
-                    for (uint32_t layerId = 0; layerId < numLayers; ++layerId)
+                    if (luminance(pMaterial->getSEmissiveColor()))
                     {
-                        const Material::Layer l = pMaterial->getLayer(layerId);
-                        if (l.type == Material::Layer::Type::Emissive)
-                        {
-                            // Create an area light for an emissive material
-                            areaLights.push_back(createAreaLight(pModel->getMeshInstance(meshId, instanceId)));
-                            break;
-                        }
+                        areaLights.push_back(createAreaLight(pModel->getMeshInstance(meshId, instanceId)));
                     }
                 }
             }

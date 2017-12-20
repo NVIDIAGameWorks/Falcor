@@ -29,7 +29,7 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-in VS_OUT vOut;
+in VertexOut vOut;
 
 layout(set = 0, binding = 0) uniform PerFrameCB
 {

@@ -123,7 +123,7 @@ void LiveTrainRenderer::doPythonTrain( Texture::SharedPtr fromTex )
 
     // Get our scene's light direction
     Light* pLight = mpScene->getScene()->getLight(0).get();
-    float dirData[3] = { pLight->getData().worldDir.x, pLight->getData().worldDir.y, pLight->getData().worldDir.z };
+    float dirData[3] = { pLight->getData().dirW.x, pLight->getData().dirW.y, pLight->getData().dirW.z };
 
     // Actually pass our light direction to Python (used as the input for this training run on the network)
     mGlobals["lightData"] = py::array_t<float>({ 3 }, { 4 }, dirData);  // data shape, data stride, raw data ptr (1D array of floats)
@@ -149,7 +149,7 @@ void LiveTrainRenderer::doPythonInference()
 {
     // Send our light direction to Python
     DirectionalLight *dirLight = (DirectionalLight *)(mpScene->getScene()->getLight(0).get());
-    float dirData[3] = { dirLight->getData().worldDir.x, dirLight->getData().worldDir.y, dirLight->getData().worldDir.z };
+    float dirData[3] = { dirLight->getData().dirW.x, dirLight->getData().dirW.y, dirLight->getData().dirW.z };
     mGlobals["inferLight"] = py::array_t<float>( { 3 }, { 4 }, dirData );
     
     // Predict the image given the above light direction
@@ -243,7 +243,7 @@ void LiveTrainRenderer::onGuiRender()
     {
         // Allow the user to update the current light position
         DirectionalLight *dirLight = (DirectionalLight *)(mpScene->getScene()->getLight(0).get());
-        vec3 tmp = dirLight->getData().worldDir;
+        vec3 tmp = dirLight->getData().dirW;
         if (mpGui->addDirectionWidget("Direction", tmp))
         {
             dirLight->setWorldDirection(tmp);
