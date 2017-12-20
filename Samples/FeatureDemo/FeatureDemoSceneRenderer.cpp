@@ -29,14 +29,7 @@
 
 static bool isMaterialTransparent(const Material* pMaterial)
 {
-    if (pMaterial->getAlphaMap()) return true;
-
-    for (uint32_t i = 0; i < pMaterial->getNumLayers(); i++)
-    {
-        const auto& layer = pMaterial->getLayer(i);
-        if (layer.type == Material::Layer::Type::Lambert && layer.albedo.a < 1.0f) return true;
-    }
-    return false;
+    return pMaterial->getAlphaMode() == AlphaModeTransparent;
 }
 
 FeatureDemoSceneRenderer::FeatureDemoSceneRenderer(const Scene::SharedPtr& pScene) : SceneRenderer(pScene)

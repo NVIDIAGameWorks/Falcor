@@ -2218,8 +2218,11 @@
     <None Include="ShadingUtils\BRDF.slang">
       <Filter>ShadingUtils</Filter>
     </None>
-        <None Include="Data\Framework\Shaders\MaterialBlock.slang">
+    <None Include="Data\Framework\Shaders\MaterialBlock.slang">
       <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="ShadingUtils\Helpers.slang">
+      <Filter>ShadingUtils</Filter>
     </None>
   </ItemGroup>
 </Project>

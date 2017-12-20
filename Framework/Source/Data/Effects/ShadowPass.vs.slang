@@ -38,7 +38,7 @@ struct ShadowPassVSOut
 #endif
 };
 
-ShadowPassVSOut main(VS_IN vIn)
+ShadowPassVSOut main(VertexIn vIn)
 {
     ShadowPassVSOut vOut; 
     float4x4 worldMat = getWorldMat(vIn);

@@ -26,7 +26,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\DepthPass.ps.slang" />
-    <None Include="Data\DepthPass.vs.slang" />
     <None Include="Data\FeatureDemo.ps.slang">
       <FileType>Document</FileType>
     </None>

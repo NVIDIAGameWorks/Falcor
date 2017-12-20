@@ -25,12 +25,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import DefaultVS;
+#ifndef _FALCOR_HELPERS_SLANG_
+#define _FALCOR_HELPERS_SLANG_
 
-void main(VS_IN vIn, out float2 texC : TEXCRD, out float3 posW : POSITION, out float4 posH : SV_POSITION)
+/*******************************************************************
+    Spherical map sampling
+*******************************************************************/
+float2 dirToSphericalCrd(float3 direction)
 {
-    VS_OUT vOut = defaultVS(vIn);
-	posH = vOut.posH;
-    texC = vOut.texC;
-    posW = vOut.posW;
+    static const float PI = 3.14159265f;
+    float3 p = normalize(direction);
+    float2 uv;
+    uv.x = (1 + atan2(-p.z, p.x) / PI) * 0.5;
+    uv.y = 1 - (-acos(p.y) / PI);
+    return uv;
 }
+
+#endif //_FALCOR_HELPERS_SLANG_

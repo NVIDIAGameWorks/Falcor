@@ -27,9 +27,9 @@
 ***************************************************************************/
 #include "FeatureDemoCommon.hlsli"
 
-__import BSDFs;
 __import Shading;
 __import Helpers;
+__import BRDF;
 
 layout(set = 1, binding = 0) Texture2D gEnvMap;
 layout(set = 1, binding = 1) SamplerState gSampler;
@@ -47,12 +47,9 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vOut.vsData.posW, gCam.position, vOut.vsData.normalW, vOut.vsData.bitangentW, vOut.vsData.texC, shAttr);
+    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.position);
 
-    ShadingOutput result;
-    result.finalValue = 0;
-    float4 finalColor = 0;
+    float4 finalColor = float4(0, 0, 0, 1);
     float envMapFactor = 1;
     float opacity = 1;
 #ifdef _ENABLE_TRANSPARENCY
@@ -66,36 +63,35 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #ifdef _ENABLE_SHADOWS
         if (l == 0)
         {
-            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, shAttr.P, vOut.vsData.posH.xy / vOut.vsData.posH.w);
+            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, hitPt.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
             shadowFactor *= opacity;
             envMapFactor -= 1 - shadowFactor;
         }
 #endif
-        evalMaterial(shAttr, gLights[l], shadowFactor, result, l == 0);
+        finalColor.rgb += evalMaterial(hitPt, gMaterial, gLights[l], shadowFactor).color;
     }
 
-    finalColor = float4(result.finalValue, 1.f);
 #ifdef _ENABLE_TRANSPARENCY
     finalColor.a = opacity * gOpacityScale;
 #endif
 
 #ifdef _ENABLE_REFLECTIONS
     // Calculate the view vector
-    float3 view = reflect(-shAttr.E, shAttr.N);
+    float3 view = reflect(-hitPt.V, hitPt.N);
     float2 texC = dirToSphericalCrd(view);
-    float rough = shAttr.preparedMat.values.layers[1].albedo.a;
+    float rough = hitPt.roughness;
     uint h,w, mipCount;
     gEnvMap.GetDimensions(0, h, w, mipCount);
     float lod = rough * mipCount;
     float3 envMapVal = gEnvMap.SampleLevel(gSampler, texC, lod).rgb;
 
-    envMapFactor = envMapFactor * evalGGXDistribution(float3(0, 0, 1), rough.rr);
+    envMapFactor = envMapFactor * evalGGX(rough, 1);
     envMapFactor = saturate(envMapFactor) * gEnvMapFactorScale;
-    finalColor.rgb += (result.specularAlbedo) * envMapVal * envMapFactor;
+    finalColor.rgb += (hitPt.specular) * envMapVal * envMapFactor;
 #endif
 
     // add ambient
-    finalColor.rgb += gAmbientLighting * getDiffuseColor(shAttr).rgb;
+    finalColor.rgb += gAmbientLighting * hitPt.diffuse;
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);

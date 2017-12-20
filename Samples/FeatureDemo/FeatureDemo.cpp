@@ -49,7 +49,7 @@ static const float kDX11SamplePattern[8][2] = { { 1.0f / 16.0f, -3.0f / 16.0f },
 
 void FeatureDemo::initDepthPass()
 {
-    mDepthPass.pProgram = GraphicsProgram::createFromFile("DepthPass.vs.slang", "DepthPass.ps.slang");
+    mDepthPass.pProgram = GraphicsProgram::createFromFile("", "DepthPass.ps.slang");
     mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getActiveVersion()->getReflector());
 }
 
@@ -97,8 +97,7 @@ void FeatureDemo::setSceneSampler(uint32_t maxAniso)
     Sampler::Desc samplerDesc;
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
-    pScene->bindSamplerToMaterials(mpSceneSampler);
-    pScene->bindSamplerToModels(mpSceneSampler);
+    pScene->bindSampler(mpSceneSampler);
 }
 
 void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& filename)

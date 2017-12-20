@@ -27,9 +27,6 @@
     <None Include="Data\ApplyAO.ps.slang">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\DepthPass.vs.slang">
-      <Filter>Data</Filter>
-    </None>
     <None Include="Data\DepthPass.ps.slang">
       <Filter>Data</Filter>
     </None>

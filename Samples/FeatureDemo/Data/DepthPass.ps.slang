@@ -28,12 +28,9 @@
 __import DefaultVS;
 __import ShaderCommon;
 __import Shading;
-__import Helpers;
 
-void main(float2 texC : TEXCRD, float3 posW : POSITION)
+void main(VertexOut vOut)
 {
-    ShadingAttribs attr;
-    attr.lodBias = 0;
-    attr.UV = texC;
-    applyAlphaTest(gMaterial, attr, posW);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.position);
+    applyAlphaTest(gMaterial, hitPt.opacity);
 }

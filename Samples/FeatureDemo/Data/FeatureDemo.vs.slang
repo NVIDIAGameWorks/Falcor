@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "FeatureDemoCommon.hlsli"
 
-MainVsOut main(VS_IN vIn)
+MainVsOut main(VertexIn vIn)
 {
     MainVsOut vsOut;
     vsOut.vsData = defaultVS(vIn);

@@ -164,6 +164,8 @@ ShadingResult evalMaterial(HitPoint hitPt, MaterialData mat, LightData light, fl
 
     sr.specularIllumination = evalSpecular(hitPt, mat, ls);
     sr.color += sr.specularIllumination;
+    sr.color *= shadowFactor;
+
     return sr;
 };
 

@@ -42,6 +42,6 @@ layout(binding = 0) cbuffer PerFrameCB : register(b0)
 
 struct MainVsOut
 {
-    VS_OUT vsData;
+    VertexOut vsData;
     float shadowsDepthC : DEPTH;
 };

@@ -40,34 +40,32 @@ cbuffer PerFrameCB : register(b0)
 
 struct ShadowsVSOut
 {
-    VS_OUT vsData;
+    VertexOut vsData;
     float shadowsDepthC : DEPTH;
 };
 
 float4 main(ShadowsVSOut pIn) : SV_TARGET0
 {
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, pIn.vsData.posW, gCam.position, pIn.vsData.normalW, pIn.vsData.bitangentW, pIn.vsData.texC, 0, shAttr);
-    ShadingOutput result;
-    float4 fragColor = float4(0,0,0,1);
+    HitPoint hitPoint = prepareHitPoint(pIn.vsData, gMaterial, gCam.position);
+    float4 color = float4(0,0,0,1);
     
     [unroll]
     for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
     {
-        float shadowFactor = calcShadowFactor(gCsmData[l], pIn.shadowsDepthC, shAttr.P, pIn.vsData.posH.xy/pIn.vsData.posH.w);
-        evalMaterial(shAttr, gLights[l], result, l == 0);
-        fragColor.rgb += result.diffuseAlbedo * result.diffuseIllumination * shadowFactor;
-        fragColor.rgb += result.specularAlbedo * result.specularIllumination * (0.01f + shadowFactor * 0.99f);
+        float shadowFactor = calcShadowFactor(gCsmData[l], pIn.shadowsDepthC, hitPoint.posW, pIn.vsData.posH.xy/pIn.vsData.posH.w);
+        ShadingResult shRes = evalMaterial(hitPoint, gMaterial, gLights[l], 1);
+        color.rgb += hitPoint.diffuse * shRes.diffuseIllumination * shadowFactor;
+        color.rgb += hitPoint.specular * shRes.specularIllumination * (0.01f + shadowFactor * 0.99f);
     }
 
-    fragColor.rgb += gAmbient * result.diffuseAlbedo * 0.1;
+    color.rgb += gAmbient * hitPoint.diffuse * 0.1;
     if(visualizeCascades)
     {
         //Ideally this would be light index so you can visualize the cascades of the 
         //currently selected light. However, because csmData contains Textures, it doesn't
         //like getting them with a non literal index.
-        fragColor.rgb *= getBlendedCascadeColor(gCsmData[_LIGHT_INDEX], pIn.shadowsDepthC);
+        color.rgb *= getBlendedCascadeColor(gCsmData[_LIGHT_INDEX], pIn.shadowsDepthC);
     }
 
-    return fragColor;
+    return color;
 }
