@@ -206,7 +206,7 @@ namespace Falcor
 
         //TODO replace this code for swapping channels. Can't use freeimage masks b/c they only care about 16 bpp images
         //issue #74 in gitlab
-        if (resourceFormat == ResourceFormat::RGBA8Uint || resourceFormat == ResourceFormat::RGBA8Snorm || resourceFormat == ResourceFormat::RGBA8UnormSrgb)
+        if (resourceFormat == ResourceFormat::RGBA8Unorm || resourceFormat == ResourceFormat::RGBA8Snorm || resourceFormat == ResourceFormat::RGBA8UnormSrgb)
         {
             for (uint32_t a = 0; a < width*height; a++)
             {
@@ -214,9 +214,13 @@ namespace Falcor
                 pPixel += a;
                 uint8_t* ch = (uint8_t*)pPixel;
                 std::swap(ch[0], ch[2]);
-                ch[3] = 0xff;
+                if (is_set(exportFlags, ExportFlags::ExportAlpha) == false)
+                {
+                    ch[3] = 0xff;
+                }
             }
         }
+
         if (fileFormat == Bitmap::FileFormat::PngFile)
         {
             pImage = FreeImage_ConvertFromRawBits((BYTE*)pData, width, height, bytesPerPixel * width, bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
