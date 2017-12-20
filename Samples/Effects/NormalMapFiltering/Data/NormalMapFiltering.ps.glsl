@@ -25,8 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#import "ShaderCommon.slang"
-#import "Shading.slang"
+__import ShaderCommon;
+__import Shading;
 __import DefaultVS;
 
 layout(set = 0, binding = 0) uniform PerFrameCB
