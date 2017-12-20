@@ -41,4 +41,9 @@ float2 dirToSphericalCrd(float3 direction)
     return uv;
 }
 
+float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, float2 texC)
+{
+    float aoFactor = aoTex.SampleLevel(s, texC, 0).r;
+    return float4(color.rgb * aoFactor, color.a);
+}
 #endif //_FALCOR_HELPERS_SLANG_
