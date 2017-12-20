@@ -119,6 +119,7 @@ struct HitPoint
     float4 reflection;
     float4 lightMap;
     float2 height;
+    float IoR;
 };
 
 #endif  // _FALCOR_SHADER_COMMON_H_
