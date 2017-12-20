@@ -110,6 +110,7 @@ Citation
 If you use Falcor in a research project leading to a publication, please cite the project.
 The BibTex entry is
 
+```bibtex
 @Misc{Benty17,  
    author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Anton S. Kaplanyan and Conor Lavelle and Chris Wyman and Ashwin Vijay},  
    title =       {The {Falcor} Rendering Framework},  
@@ -118,3 +119,5 @@ The BibTex entry is
    url =         {https://github.com/NVIDIAGameWorks/Falcor},  
    note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}  
 }
+```
+
