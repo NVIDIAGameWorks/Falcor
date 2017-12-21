@@ -46,4 +46,17 @@ float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, floa
     float aoFactor = aoTex.SampleLevel(s, texC, 0).r;
     return float4(color.rgb * aoFactor, color.a);
 }
+
+float getMetallic(float diffuse, float spec)
+{
+    // This is based on the way that UE4 and Substance Painter 2 converts base+metallness+specular level to diffuse/spec colors
+    // We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
+    float a = 0.04;
+    float b = spec + diffuse - 0.08;
+    float c = 0.04 - spec;
+    float root = sqrt(b*b - 0.16*c);
+    float m = (root - b) * 12.5;
+    return m;
+}
+
 #endif //_FALCOR_HELPERS_SLANG_
