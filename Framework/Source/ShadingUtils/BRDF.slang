@@ -54,26 +54,25 @@ float3 evalDiffuseLambert(HitPoint hitPt, MaterialData mat, LightSample ls)
 */
 float3 evalDiffuseDisney(HitPoint hitPt, MaterialData mat, LightSample ls)
 {
-    float fd90 = 0.5 + 2 * ls.LdotH * ls.LdotH * hitPt.roughness;
+    float fd90 = 0.5 + 2 * ls.LdotH * ls.LdotH * hitPt.linearRoughness;
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, hitPt.NdotV).r;
     return ls.intensity * (viewScatter * lightScatter);
 }
 
-/** Frostbites's diffuse term. Based on https://cdn2.unrealengine.com/Resources/files/2013SiggraphPresentationsNotes-26915738.pdf
+/** Frostbites's diffuse term. Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 */
 float3 evalDiffuseFrostbite(HitPoint hitPt, MaterialData mat, LightSample ls)
 {
-    float energyBias = lerp(0, 0.5, hitPt.roughness);
-    float energyFactor = lerp(1, 1.0 / 1.51, hitPt.roughness);
-    float fd90 = energyBias + 2 * ls.LdotH * ls.LdotH * hitPt.roughness;
+    float energyBias = lerp(0, 0.5, hitPt.linearRoughness);
+    float energyFactor = lerp(1, 1.0 / 1.51, hitPt.linearRoughness);
+    float fd90 = energyBias + 2 * ls.LdotH * ls.LdotH * hitPt.linearRoughness;
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, hitPt.NdotV).r;
     return ls.intensity * (viewScatter * lightScatter * energyFactor);
 }
-
 
 float3 evalDiffuse(HitPoint hitPt, MaterialData mat, LightSample ls)
 {
@@ -93,11 +92,13 @@ float evalGGX(float roughness, float NdotH)
     return a2 / (d * d);
 }
 
-float evalSmithGgxCorrelated(float NdotL, float NdotV, float roughness)
+float evalSmithGGX(float NdotL, float NdotV, float roughness)
 {
+    // Optimized version of SMITH, already taking into account the division by (4 * NdotV)
     float a2 = roughness * roughness;
-    float ggxv = NdotL * sqrt((-NdotV * a2 + NdotV) * NdotV + a2);
-    float ggxl = NdotV * sqrt((-NdotL * a2 + NdotL) * NdotL + a2);
+    // `NdotV *` and `NdotL *` are inversed. It's not a mistake.
+    float ggxv = NdotV * sqrt((-NdotV * a2 + NdotV) * NdotV + a2);
+    float ggxl = NdotL * sqrt((-NdotL * a2 + NdotL) * NdotL + a2);
     return 0.5f / (ggxv + ggxl);
 
 }
@@ -109,8 +110,8 @@ float3 evalSpecular(HitPoint hitPt, MaterialData mat, LightSample ls)
         return 0;
     }
     float D = evalGGX(hitPt.roughness, ls.NdotH);
-    float G = evalSmithGgxCorrelated(ls.NdotL, max(0, hitPt.NdotV), hitPt.roughness);
+    float G = evalSmithGGX(ls.NdotL, hitPt.NdotV, hitPt.roughness);
     float3 F = fresnelSchlick(hitPt.specular, 1, max(0, ls.LdotH));
-    return D * G * F * ls.intensity / M_PI;//(4 * max(1e-3, hitPt.NdotV));
+    return D * G * F * ls.intensity / M_PI;
 }
 #endif	// _FALCOR_BRDF_SLANG_

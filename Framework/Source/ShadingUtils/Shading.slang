@@ -129,9 +129,8 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     // Sample the rest of the texture
     float4 spec = sampleTexture(m.textures.specular, m.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags));
     hitPt.specular = spec.rgb;
-    hitPt.roughness = (1 - spec.a);
-    hitPt.roughness = max(0.08, hitPt.roughness); // Clamp the roughness so that the BRDF won't explode
-    hitPt.roughness *= hitPt.roughness;
+    hitPt.linearRoughness = max(0.08, 1 - spec.a); // Clamp the roughness so that the BRDF won't explode
+    hitPt.roughness = hitPt.linearRoughness * hitPt.linearRoughness;
     hitPt.emissive = sampleTexture(m.textures.emissive, m.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
     hitPt.IoR = m.IoR;
 

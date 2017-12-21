@@ -113,7 +113,8 @@ struct HitPoint
     float3 diffuse;
     float  opacity;
     float3 specular;
-    float  roughness;
+    float  linearRoughness; // This it the original roughness, before re-mapping. It is required for the Disney diffuse term
+    float  roughness;       // This is the re-mapped roughness value, which should be used for GGX computations
     float3 emissive;
     float4 occlusion;
     float4 reflection;
