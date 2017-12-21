@@ -41,6 +41,7 @@ public:
     bool onKeyEvent(const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
     void onGuiRender() override;
+    void onDroppedFile(const std::string& filename) override;
 
 private:
     Fbo::SharedPtr mpMainFbo;

@@ -137,6 +137,11 @@ namespace Falcor
         onKeyEvent(keyEvent);
     }
 
+    void Sample::handleDroppedFile(const std::string& filename)
+    {
+        onDroppedFile(filename);
+    }
+
     void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
     {
         if(gpDevice)

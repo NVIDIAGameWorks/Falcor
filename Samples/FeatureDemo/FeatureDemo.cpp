@@ -516,6 +516,16 @@ bool FeatureDemo::onKeyEvent(const KeyboardEvent& keyEvent)
     return mpSceneRenderer ? mpSceneRenderer->onKeyEvent(keyEvent) : false;
 }
 
+void FeatureDemo::onDroppedFile(const std::string& filename)
+{
+    if (hasSuffix(filename, ".fscene", false) == false)
+    {
+        msgBox("You can only drop a scene file into the window");
+        return;
+    }
+    loadScene(filename, true);
+}
+
 bool FeatureDemo::onMouseEvent(const MouseEvent& mouseEvent)
 {
     return mpSceneRenderer ? mpSceneRenderer->onMouseEvent(mouseEvent) : true;

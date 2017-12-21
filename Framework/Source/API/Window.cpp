@@ -170,6 +170,18 @@ namespace Falcor
             logError(errorMsg.c_str());
         }
 
+        static void droppedFileCallback(GLFWwindow* pGlfwWindow, int count, const char** paths)
+        {
+            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    std::string filename(paths[i]);
+                    pWindow->mpCallbacks->handleDroppedFile(filename);
+                }
+            }
+        }
     private:
 
         static inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
@@ -397,6 +409,7 @@ namespace Falcor
         glfwSetCursorPosCallback(pGLFWWindow, ApiCallbacks::mouseMoveCallback);
         glfwSetScrollCallback(pGLFWWindow, ApiCallbacks::mouseWheelCallback);
         glfwSetCharCallback(pGLFWWindow, ApiCallbacks::charInputCallback);
+        glfwSetDropCallback(pGLFWWindow, ApiCallbacks::droppedFileCallback);
 
         return pWindow;
     }
