@@ -45,14 +45,14 @@ float3 fresnelSchlick(float3 f0, float3 f90, float u)
 
 /** Lambertian diffuse
 */
-float3 evalDiffuseLambert(HitPoint hitPt, MaterialData mat, LightSample ls)
+float3 evalDiffuseLambert(HitPoint hitPt, LightSample ls)
 {
     return ls.NdotL * ls.intensity;
 }
 
 /** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
 */
-float3 evalDiffuseDisney(HitPoint hitPt, MaterialData mat, LightSample ls)
+float3 evalDiffuseDisney(HitPoint hitPt, LightSample ls)
 {
     float fd90 = 0.5 + 2 * ls.LdotH * ls.LdotH * hitPt.linearRoughness;
     float fd0 = 1;
@@ -63,7 +63,7 @@ float3 evalDiffuseDisney(HitPoint hitPt, MaterialData mat, LightSample ls)
 
 /** Frostbites's diffuse term. Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 */
-float3 evalDiffuseFrostbite(HitPoint hitPt, MaterialData mat, LightSample ls)
+float3 evalDiffuseFrostbite(HitPoint hitPt, LightSample ls)
 {
     float energyBias = lerp(0, 0.5, hitPt.linearRoughness);
     float energyFactor = lerp(1, 1.0 / 1.51, hitPt.linearRoughness);
@@ -74,14 +74,14 @@ float3 evalDiffuseFrostbite(HitPoint hitPt, MaterialData mat, LightSample ls)
     return ls.intensity * (viewScatter * lightScatter * energyFactor);
 }
 
-float3 evalDiffuse(HitPoint hitPt, MaterialData mat, LightSample ls)
+float3 evalDiffuse(HitPoint hitPt, LightSample ls)
 {
 #if DiffuseBrdf == DiffuseBrdfLambert
-    return evalDiffuseLambert(hitPt, mat, ls);
+    return evalDiffuseLambert(hitPt, ls);
 #elif DiffuseBrdf == DiffuseBrdfDisney
-    return evalDiffuseDisney(hitPt, mat, ls);
+    return evalDiffuseDisney(hitPt, ls);
 #elif DiffuseBrdf == DiffuseBrdfFrostbite
-    return evalDiffuseFrostbite(hitPt, mat, ls);
+    return evalDiffuseFrostbite(hitPt, ls);
 #endif
 }
 
@@ -103,7 +103,7 @@ float evalSmithGGX(float NdotL, float NdotV, float roughness)
 
 }
 
-float3 evalSpecular(HitPoint hitPt, MaterialData mat, LightSample ls)
+float3 evalSpecular(HitPoint hitPt, LightSample ls)
 {
     if (ls.NdotL * hitPt.NdotV <= 0.f)
     {

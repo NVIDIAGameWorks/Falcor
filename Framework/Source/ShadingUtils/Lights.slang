@@ -40,12 +40,12 @@ struct LightSample
     float LdotH;
 };
 
-void calcCommonLightProperties(HitPoint hitPt, inout LightSample ls, bool doubleSided)
+void calcCommonLightProperties(HitPoint hitPt, inout LightSample ls)
 {
     float3 H = normalize(hitPt.V + ls.L);
     ls.NdotH = saturate(dot(hitPt.N, H));
     ls.NdotL = saturate(dot(hitPt.N, ls.L));
-    ls.NdotL = doubleSided ? abs(ls.NdotL) : saturate(ls.NdotL);
+    ls.NdotL = hitPt.doubleSidedMaterial ? abs(ls.NdotL) : saturate(ls.NdotL);
     ls.LdotH = saturate(dot(ls.L, H));
 };
 
@@ -116,13 +116,13 @@ LightSample evalAreaLight(in LightData light, in float3 hitPosW)
 
 /** Evaluate a light source intensity/direction at a shading point
 */
-LightSample evalLight(LightData light, HitPoint hitPt, bool doubleSided)
+LightSample evalLight(LightData light, HitPoint hitPt)
 {
     LightSample ls;
     if(light.type == LightDirectional) ls = evalDirectionalLight(light, hitPt.posW);
     else if(light.type == LightPoint)  ls = evalPointLight(light, hitPt.posW);
     else ls = evalAreaLight(light, hitPt.posW);
-    calcCommonLightProperties(hitPt, ls, doubleSided);
+    calcCommonLightProperties(hitPt, ls);
     return ls;
 };
 

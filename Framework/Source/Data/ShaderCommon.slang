@@ -121,6 +121,7 @@ struct HitPoint
     float4 lightMap;
     float2 height;
     float IoR;
+    bool doubleSidedMaterial;
 };
 
 #endif  // _FALCOR_SHADER_COMMON_H_

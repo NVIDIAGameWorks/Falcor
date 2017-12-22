@@ -68,7 +68,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
             envMapFactor -= 1 - shadowFactor;
         }
 #endif
-        finalColor.rgb += evalMaterial(hitPt, gMaterial, gLights[l], shadowFactor).color;
+        finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color;
     }
 
 #ifdef _ENABLE_TRANSPARENCY
@@ -79,13 +79,12 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     // Calculate the view vector
     float3 view = reflect(-hitPt.V, hitPt.N);
     float2 texC = dirToSphericalCrd(view);
-    float rough = hitPt.roughness;
     uint h,w, mipCount;
     gEnvMap.GetDimensions(0, h, w, mipCount);
-    float lod = rough * mipCount;
+    float lod = sqrt(hitPt.linearRoughness) * mipCount;
     float3 envMapVal = gEnvMap.SampleLevel(gSampler, texC, lod).rgb;
 
-    envMapFactor = envMapFactor * evalGGX(rough, 1);
+    envMapFactor = envMapFactor * evalGGX(hitPt.roughness, 1);
     envMapFactor = saturate(envMapFactor) * gEnvMapFactorScale;
     finalColor.rgb += (hitPt.specular) * envMapVal * envMapFactor;
 #endif

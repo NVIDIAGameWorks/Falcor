@@ -133,6 +133,7 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     hitPt.roughness = hitPt.linearRoughness * hitPt.linearRoughness;
     hitPt.emissive = sampleTexture(m.textures.emissive, m.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
     hitPt.IoR = m.IoR;
+    hitPt.doubleSidedMaterial = EXTRACT_DOUBLE_SIDED(m.flags);
 
 #define channel_type(extract) (extract(m.flags) ? ChannelTypeTexture : ChannelTypeUnused)
     hitPt.occlusion = sampleTexture(m.textures.occlusionMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_OCCLUSION_MAP));
@@ -149,19 +150,19 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     return hitPt;
 }
 
-ShadingResult evalMaterial(HitPoint hitPt, MaterialData mat, LightData light, float shadowFactor)
+ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
 {
-    LightSample ls = evalLight(light, hitPt, EXTRACT_DOUBLE_SIDED(mat.flags));
+    LightSample ls = evalLight(light, hitPt);
 
     ShadingResult sr;
     sr.diffuseIllumination = 0;
     sr.color = 0;
     sr.specularIllumination = 0;
     
-    sr.diffuseIllumination = evalDiffuse(hitPt, mat, ls);
+    sr.diffuseIllumination = evalDiffuse(hitPt, ls);
     sr.color = hitPt.diffuse.rgb * sr.diffuseIllumination * (1 / M_PI);
 
-    sr.specularIllumination = evalSpecular(hitPt, mat, ls);
+    sr.specularIllumination = evalSpecular(hitPt, ls);
     sr.color += sr.specularIllumination;
     sr.color *= shadowFactor;
 
