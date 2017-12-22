@@ -747,7 +747,7 @@ namespace Falcor
         if(mCsmData.filterMode == CsmFilterVsm || mCsmData.filterMode == CsmFilterEvsm2 || mCsmData.filterMode == CsmFilterEvsm4)
         {
             mpGaussianBlur->execute(pRenderCtx, mShadowPass.pFbo->getColorTexture(0), mShadowPass.pFbo);
-            mShadowPass.pFbo->getColorTexture(0)->generateMips();
+            mShadowPass.pFbo->getColorTexture(0)->generateMips(pRenderCtx);
         }
 
         pRenderCtx->popGraphicsState();

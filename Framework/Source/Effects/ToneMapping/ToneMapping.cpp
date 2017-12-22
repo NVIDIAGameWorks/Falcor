@@ -104,7 +104,7 @@ namespace Falcor
         pRenderContext->setGraphicsVars(mpLuminanceVars);
         pState->setFbo(mpLuminanceFbo);
         mpLuminancePass->execute(pRenderContext);
-        mpLuminanceFbo->getColorTexture(0)->generateMips();
+        mpLuminanceFbo->getColorTexture(0)->generateMips(pRenderContext);
 
         //Set Tone map vars
         if (mOperator != Operator::Clamp)

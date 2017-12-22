@@ -220,12 +220,15 @@ void FeatureDemo::initSkyBox(const std::string& name)
 
 void FeatureDemo::initEnvMap(const std::string& name)
 {
-    mpEnvMap = createTextureFromFile(name, false, isSrgbFormat(mpDefaultFBO->getColorTexture(0)->getFormat()));
-    if (mpEnvMap && mpEnvMap->getType() != Texture::Type::Texture2D)
+    auto pTexture = createTextureFromFile(name, false, isSrgbFormat(mpDefaultFBO->getColorTexture(0)->getFormat()));
+    if (pTexture && pTexture->getType() != Texture::Type::Texture2D)
     {
         logError("Environment map must be a 2D texture");
-        mpEnvMap = nullptr;
+        return;
     }
+    mpEnvMap = Texture::create2D(512, 512, ResourceFormat::RGBA16Float, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+    mpRenderContext->blit(pTexture->getSRV(), mpEnvMap->getRTV());
+    mpEnvMap->generateMips(mpRenderContext.get());
 }
 
 void FeatureDemo::initTAA()

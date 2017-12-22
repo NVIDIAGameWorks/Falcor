@@ -132,19 +132,17 @@ namespace Falcor
 
         if (autoGenMips)
         {
-            generateMips();
+            generateMips(gpDevice->getRenderContext().get());
             invalidateViews();
         }
     }
 
-    void Texture::generateMips()
+    void Texture::generateMips(RenderContext* pContext)
     {
         if (mType != Type::Texture2D)
         {
             logWarning("Texture::generateMips() was only tested with Texture2Ds");
         }
-
-        RenderContext* pContext = gpDevice->getRenderContext().get();
 
         for (uint32_t i = 0; i < mMipLevels - 1; i++)
         {
