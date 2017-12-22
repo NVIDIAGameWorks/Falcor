@@ -46,7 +46,8 @@ namespace Falcor
         std::string fullpath;
         if(findFileInDataDirectories(filename, fullpath) == false)
         {
-            return UniqueConstPtr(genError("Can't find the file", filename));
+            msgBox("Error when loading image file " + filename + "\n. Can't find the file");
+            return nullptr;
         }
 
         FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;

@@ -221,7 +221,7 @@ void FeatureDemo::initSkyBox(const std::string& name)
 void FeatureDemo::initEnvMap(const std::string& name)
 {
     mpEnvMap = createTextureFromFile(name, false, isSrgbFormat(mpDefaultFBO->getColorTexture(0)->getFormat()));
-    if (mpEnvMap->getType() != Texture::Type::Texture2D)
+    if (mpEnvMap && mpEnvMap->getType() != Texture::Type::Texture2D)
     {
         logError("Environment map must be a 2D texture");
         mpEnvMap = nullptr;
