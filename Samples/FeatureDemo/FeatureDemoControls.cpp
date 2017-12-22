@@ -51,7 +51,7 @@ void FeatureDemo::initControls()
     mControls[ControlID::EnableReflections] = { true, false, "_ENABLE_REFLECTIONS" };
     mControls[ControlID::EnableHashedAlpha] = { true, true, "_DEFAULT_ALPHA_TEST" };
     mControls[ControlID::EnableTransparency] = { false, false, "_ENABLE_TRANSPARENCY" };
-    mControls[ControlID::EnableSSAO] = { false, false, "" };
+    mControls[ControlID::EnableSSAO] = { true, false, "" };
     mControls[ControlID::VisualizeCascades] = { false, false, "_VISUALIZE_CASCADES" };
 
     for (uint32_t i = 0 ; i < ControlID::Count ; i++)
