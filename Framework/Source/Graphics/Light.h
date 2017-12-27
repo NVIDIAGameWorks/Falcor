@@ -76,7 +76,7 @@ namespace Falcor
 
         /** Get total light power
         */
-        virtual float getPower() = 0;
+        virtual float getPower() const = 0;
 
         /** Get the light type
         */
@@ -162,7 +162,7 @@ namespace Falcor
 
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** IMovableObject interface
         */
@@ -199,7 +199,7 @@ namespace Falcor
         
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** Set the light's world-space position
         */
@@ -269,7 +269,7 @@ namespace Falcor
         
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
             \param[in] pBuffer The constant buffer to set the parameters into.
@@ -380,6 +380,9 @@ namespace Falcor
     class LightProbe : public Light, public std::enable_shared_from_this<LightProbe>
     {
     public:
+        using SharedPtr = std::shared_ptr<LightProbe>;
+        using SharedConstPtr = std::shared_ptr<const LightProbe>;
+
         enum class MipFilter
         {
             None,                   ///< No filtering. The light probe will have a single mip-level
@@ -387,7 +390,7 @@ namespace Falcor
             PreIntegration,         ///< Generate mip-chain using the technique described in https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
         };
 
-        static SharedPtr create(const std::string& filename, uint32_t size, MipFilter mipFilter = MipFilter::PreIntegration);
+        static SharedPtr create(const std::string& filename, uint32_t size, bool createSrgb, MipFilter mipFilter = MipFilter::PreIntegration);
         static SharedPtr create(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter = MipFilter::PreIntegration);
 
         void setPosW(const vec3& posW) { mData.posW = posW; }
@@ -395,6 +398,12 @@ namespace Falcor
 
         void setIntensity(const vec3& intensity) { mData.intensity = intensity; }
         const vec3& getIntensity() const { return mData.intensity; }
+
+        void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
+        void prepareGPUData() override;
+        float getPower() const override;
+
+        void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName);
     private:
         LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter);
         Texture::SharedPtr mpDiffuseTex;

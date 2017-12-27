@@ -159,8 +159,8 @@ private:
     void setActiveCameraAspectRatio();
     void setSceneSampler(uint32_t maxAniso);
 
-    Texture::SharedPtr mpEnvMap;
     Sampler::SharedPtr mpSceneSampler;
+    LightProbe::SharedPtr mpLightProbe;
 
     struct ProgramControl
     {

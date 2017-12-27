@@ -165,7 +165,7 @@ void FeatureDemo::resetScene()
 {
     mpSceneRenderer = nullptr;
     mSkyBox.pEffect = nullptr;
-    mpEnvMap = nullptr;
+    mpLightProbe = nullptr;
 }
 
 void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
@@ -220,15 +220,7 @@ void FeatureDemo::initSkyBox(const std::string& name)
 
 void FeatureDemo::initEnvMap(const std::string& name)
 {
-    auto pTexture = createTextureFromFile(name, false, isSrgbFormat(mpDefaultFBO->getColorTexture(0)->getFormat()));
-    if (pTexture && pTexture->getType() != Texture::Type::Texture2D)
-    {
-        logError("Environment map must be a 2D texture");
-        return;
-    }
-    mpEnvMap = Texture::create2D(512, 512, ResourceFormat::RGBA16Float, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
-    mpRenderContext->blit(pTexture->getSRV(), mpEnvMap->getRTV());
-    mpEnvMap->generateMips(mpRenderContext.get());
+    mpLightProbe = LightProbe::create(name, 512, true, LightProbe::MipFilter::Linear);
 }
 
 void FeatureDemo::initTAA()
@@ -326,8 +318,8 @@ void FeatureDemo::lightingPass()
     }
 
     if (mControls[EnableReflections].enabled)
-    {
-        mLightingPass.pVars->setTexture("gEnvMap", mpEnvMap);
+   {
+        mpLightProbe->setIntoProgramVars(mLightingPass.pVars.get(), mLightingPass.pVars->getConstantBuffer("PerFrameCB").get(), "gLightProbe");
         mLightingPass.pVars->setSampler("gSampler", mpSceneSampler);
     }
 

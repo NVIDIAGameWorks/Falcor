@@ -35,7 +35,8 @@
 #include <math.h>
 #include "Data/VertexAttrib.h"
 #include "Graphics/Model/Model.h"
-
+#include "Graphics/TextureHelper.h"
+#include "API/Device.h"
 
 namespace Falcor
 {
@@ -231,7 +232,7 @@ namespace Falcor
     {
     }
 
-    float DirectionalLight::getPower()
+    float DirectionalLight::getPower() const
     {
         const float surfaceArea = (float)M_PI * mDistance * mDistance;
         return luminance(mData.intensity) * surfaceArea;
@@ -255,7 +256,7 @@ namespace Falcor
 
     PointLight::~PointLight() = default;
 
-    float PointLight::getPower()
+    float PointLight::getPower() const
     {
         return luminance(mData.intensity) * 4.f * (float)M_PI;
     }
@@ -315,7 +316,7 @@ namespace Falcor
 
     AreaLight::~AreaLight() = default;
 
-    float AreaLight::getPower()
+    float AreaLight::getPower() const
     {
         return luminance(mData.intensity) * (float)M_PI * mSurfaceArea;
     }
@@ -544,5 +545,69 @@ namespace Falcor
         vec3 stillTarget = position + vec3(0, 0, 1);
         vec3 stillUp = vec3(0, 1, 0);
         mpMeshInstance->move(position, stillTarget, stillUp);
+    }
+
+    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter)
+    {
+        mData.type = LightProbeT;
+
+        // Create the texture
+        assert(pTexture->getType() == Texture::Type::Texture2D);
+        uint32_t mipLevels = (mipFilter == MipFilter::None) ? 1 : Texture::kMaxPossible;
+        Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource;
+        if(mipFilter != MipFilter::None)
+        {
+            bindFlags |= Texture::BindFlags::RenderTarget;
+        }
+        mpDiffuseTex = Texture::create2D(size, size, ResourceFormat::RGBA16Float, 1, mipLevels, nullptr, bindFlags);
+        if (mipFilter == MipFilter::PreIntegration)
+        {
+            mpSpecularTex = Texture::create2D(size, size, ResourceFormat::RGBA16Float, 1, mipLevels, nullptr, bindFlags);
+        }
+        else
+        {
+            mpSpecularTex = mpDiffuseTex;
+        }
+
+        RenderContext* pContext = gpDevice->getRenderContext().get();
+        pContext->blit(pTexture->getSRV(), mpDiffuseTex->getRTV());
+        // Filter
+        if (mipFilter == MipFilter::Linear)
+        {
+            mpDiffuseTex->generateMips(pContext);
+        }
+    }
+
+    LightProbe::SharedPtr LightProbe::create(const std::string& filename, uint32_t size, bool createSrgb, MipFilter mipFilter)
+    {
+        Texture::SharedPtr pTexture = createTextureFromFile(filename, false, createSrgb);
+        return create(pTexture, size, mipFilter);
+    }
+
+    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter)
+    {
+        return SharedPtr(new LightProbe(pTexture, size, mipFilter));
+    }
+
+    float LightProbe::getPower() const
+    {
+        return luminance(mData.intensity) * (float)M_PI * 4;
+    }
+
+    void LightProbe::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
+    {
+        logWarning("Light probes don't support paths. Expect absolutely nothing to happen");
+    }
+
+    void LightProbe::prepareGPUData()
+    {
+
+    }
+
+    void LightProbe::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName)
+    {
+        setIntoConstantBuffer(pBuffer, varName);
+        pVars->setTexture("gDiffuseProbe", mpDiffuseTex);
+        pVars->setTexture("gSpecularProbe", mpSpecularTex);
     }
 }

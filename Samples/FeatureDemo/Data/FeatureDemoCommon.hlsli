@@ -38,6 +38,8 @@ layout(binding = 0) cbuffer PerFrameCB : register(b0)
     float4x4 camVpAtLastCsmUpdate;
     float2 gRenderTargetDim;
     float gOpacityScale;
+
+    LightData gLightProbe;
 };
 
 struct MainVsOut

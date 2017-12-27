@@ -31,7 +31,6 @@ __import Shading;
 __import Helpers;
 __import BRDF;
 
-layout(set = 1, binding = 0) Texture2D gEnvMap;
 layout(set = 1, binding = 1) SamplerState gSampler;
 
 struct PsOut
@@ -80,9 +79,9 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     float3 view = reflect(-hitPt.V, hitPt.N);
     float2 texC = dirToSphericalCrd(view);
     uint h,w, mipCount;
-    gEnvMap.GetDimensions(0, h, w, mipCount);
+    gDiffuseProbe.GetDimensions(0, h, w, mipCount);
     float lod = sqrt(hitPt.linearRoughness) * mipCount;
-    float3 envMapVal = gEnvMap.SampleLevel(gSampler, texC, lod).rgb;
+    float3 envMapVal = gDiffuseProbe.SampleLevel(gSampler, texC, lod).rgb;
 
     envMapFactor = envMapFactor * evalGGX(hitPt.roughness, 1);
     envMapFactor = saturate(envMapFactor) * gEnvMapFactorScale;
