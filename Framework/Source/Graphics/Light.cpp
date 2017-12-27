@@ -547,7 +547,7 @@ namespace Falcor
         mpMeshInstance->move(position, stillTarget, stillUp);
     }
 
-    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter)
+    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter)
     {
         mData.type = LightProbeT;
 
@@ -559,10 +559,10 @@ namespace Falcor
         {
             bindFlags |= Texture::BindFlags::RenderTarget;
         }
-        mpDiffuseTex = Texture::create2D(size, size, ResourceFormat::RGBA16Float, 1, mipLevels, nullptr, bindFlags);
+        mpDiffuseTex = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
         if (mipFilter == MipFilter::PreIntegration)
         {
-            mpSpecularTex = Texture::create2D(size, size, ResourceFormat::RGBA16Float, 1, mipLevels, nullptr, bindFlags);
+            mpSpecularTex = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
         }
         else
         {
@@ -578,15 +578,15 @@ namespace Falcor
         }
     }
 
-    LightProbe::SharedPtr LightProbe::create(const std::string& filename, uint32_t size, bool createSrgb, MipFilter mipFilter)
+    LightProbe::SharedPtr LightProbe::create(const std::string& filename, uint32_t size, bool loadAsSrgb, ResourceFormat format, MipFilter mipFilter)
     {
-        Texture::SharedPtr pTexture = createTextureFromFile(filename, false, createSrgb);
-        return create(pTexture, size, mipFilter);
+        Texture::SharedPtr pTexture = createTextureFromFile(filename, false, loadAsSrgb);
+        return create(pTexture, size, format, mipFilter);
     }
 
-    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter)
+    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter)
     {
-        return SharedPtr(new LightProbe(pTexture, size, mipFilter));
+        return SharedPtr(new LightProbe(pTexture, size, format, mipFilter));
     }
 
     float LightProbe::getPower() const

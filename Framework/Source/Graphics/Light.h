@@ -390,8 +390,8 @@ namespace Falcor
             PreIntegration,         ///< Generate mip-chain using the technique described in https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
         };
 
-        static SharedPtr create(const std::string& filename, uint32_t size, bool createSrgb, MipFilter mipFilter = MipFilter::PreIntegration);
-        static SharedPtr create(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter = MipFilter::PreIntegration);
+        static SharedPtr create(const std::string& filename, uint32_t size, bool loadAsSrgb, ResourceFormat format = ResourceFormat::RGBA16Float, MipFilter mipFilter = MipFilter::PreIntegration);
+        static SharedPtr create(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format = ResourceFormat::RGBA16Float, MipFilter mipFilter = MipFilter::PreIntegration);
 
         void setPosW(const vec3& posW) { mData.posW = posW; }
         const vec3& getPosW() const { return mData.posW; }
@@ -405,7 +405,7 @@ namespace Falcor
 
         void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName);
     private:
-        LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter);
+        LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter);
         Texture::SharedPtr mpDiffuseTex;
         Texture::SharedPtr mpSpecularTex;
     };

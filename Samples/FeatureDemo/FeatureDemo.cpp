@@ -220,7 +220,7 @@ void FeatureDemo::initSkyBox(const std::string& name)
 
 void FeatureDemo::initEnvMap(const std::string& name)
 {
-    mpLightProbe = LightProbe::create(name, 512, true, LightProbe::MipFilter::Linear);
+    mpLightProbe = LightProbe::create(name, 512, true, ResourceFormat::RGBA16Float, LightProbe::MipFilter::Linear);
 }
 
 void FeatureDemo::initTAA()
