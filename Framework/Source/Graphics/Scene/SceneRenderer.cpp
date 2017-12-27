@@ -161,7 +161,7 @@ namespace Falcor
 
                 assert(pModel->getBoneCount() <= MAX_BONES);
                 pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
-                pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
+                pCB->setVariableArray(sBonesInvTransposeOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
         }
         return true;

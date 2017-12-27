@@ -74,10 +74,6 @@ namespace Falcor
         */
         virtual void prepareGPUData() = 0;
 
-        /** Unload GPU data
-        */
-        virtual void unloadGPUData() = 0;
-
         /** Get total light power
         */
         virtual float getPower() = 0;
@@ -143,10 +139,6 @@ namespace Falcor
         */
         void prepareGPUData() override;
 
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
-
         /** Set the light's world-space direction.
         */
         void setWorldDirection(const glm::vec3& dir);
@@ -204,10 +196,6 @@ namespace Falcor
         /** Prepare GPU data
         */
         void prepareGPUData() override;
-
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
         
         /** Get total light power (needed for light picking)
         */
@@ -299,10 +287,6 @@ namespace Falcor
         */
         void prepareGPUData() override;
 
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
-
         /** Set the geometry mesh for this light
             \param[in] pModel Model that contains the geometry mesh for this light
             \param[in] meshId Geometry mesh id within the model
@@ -391,5 +375,29 @@ namespace Falcor
         vec3 mTangent;               ///< Unnormalized tangent vector of the light
         vec3 mBitangent;             ///< Unnormalized bitangent vector of the light
         std::vector<float> mMeshCDF; ///< CDF function for importance sampling a triangle mesh
+    };
+
+    class LightProbe : public Light, public std::enable_shared_from_this<LightProbe>
+    {
+    public:
+        enum class MipFilter
+        {
+            None,                   ///< No filtering. The light probe will have a single mip-level
+            Linear,                 ///< Generate mip-chain using bilinear filtering
+            PreIntegration,         ///< Generate mip-chain using the technique described in https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
+        };
+
+        static SharedPtr create(const std::string& filename, uint32_t size, MipFilter mipFilter = MipFilter::PreIntegration);
+        static SharedPtr create(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter = MipFilter::PreIntegration);
+
+        void setPosW(const vec3& posW) { mData.posW = posW; }
+        const vec3& getPosW() const { return mData.posW; }
+
+        void setIntensity(const vec3& intensity) { mData.intensity = intensity; }
+        const vec3& getIntensity() const { return mData.intensity; }
+    private:
+        LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, MipFilter mipFilter);
+        Texture::SharedPtr mpDiffuseTex;
+        Texture::SharedPtr mpSpecularTex;
     };
 }

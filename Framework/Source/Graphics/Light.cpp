@@ -231,10 +231,6 @@ namespace Falcor
     {
     }
 
-    void DirectionalLight::unloadGPUData()
-    {
-    }
-
     float DirectionalLight::getPower()
     {
         const float surfaceArea = (float)M_PI * mDistance * mDistance;
@@ -297,10 +293,6 @@ namespace Falcor
     }
 
     void PointLight::prepareGPUData()
-    {
-    }
-
-    void PointLight::unloadGPUData()
     {
     }
 
@@ -384,16 +376,6 @@ namespace Falcor
 // 		const Material::SharedPtr& pMaterial = mMeshData.pMesh->getMaterial();
 // 		if (pMaterial)
 // 			memcpy(&mData.material, &pMaterial->getData(), sizeof(MaterialData));
-    }
-
-    void AreaLight::unloadGPUData()
-    {
-        // Unload GPU data by calling evict()
-        mIndexBuf->evict();
-        mVertexBuf->evict();
-        if (mTexCoordBuf)
-            mTexCoordBuf->evict();
-        mMeshCDFBuf->evict();
     }
 
     void AreaLight::setMeshData(const Model::MeshInstance::SharedPtr& pMeshInstance)
