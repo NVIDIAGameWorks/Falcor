@@ -255,22 +255,25 @@ void FeatureDemo::onGuiRender()
 
         if (mpGui->beginGroup("Reflections"))
         {
-            if (mpGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
+            if (mpGui->addButton("Load Reflection Texture"))
             {
-                applyLightingProgramControl(ControlID::EnableReflections);
+                std::string filename;
+                if (openFileDialog(kImageFileString, filename))
+                {
+                    initEnvMap(filename);
+                }
             }
 
-            if(mControls[ControlID::EnableReflections].enabled)
+            if(mpLightProbe)
             {
-                mpGui->addFloatVar("Intensity", mEnvMapFactorScale, 0);
-
-                if (mpGui->addButton("Load Reflection Texture"))
+                if (mpGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
-                    std::string filename;
-                    if (openFileDialog(kImageFileString, filename))
-                    {
-                        initEnvMap(filename);
-                    }
+                    applyLightingProgramControl(ControlID::EnableReflections);
+                }
+
+                if (mControls[ControlID::EnableReflections].enabled)
+                {
+                    mpGui->addFloatVar("Intensity", mEnvMapFactorScale, 0);
                 }
             }
             mpGui->endGroup();

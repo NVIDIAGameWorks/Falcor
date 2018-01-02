@@ -115,6 +115,9 @@ void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& f
 
     var = pScene->getUserVariable("opacity_scale");
     if (var.type == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.d64;
+
+    mControls[EnableReflections].enabled = mpLightProbe != nullptr;
+    applyLightingProgramControl(ControlID::EnableReflections);
 }
 
 void FeatureDemo::initScene(Scene::SharedPtr pScene)
