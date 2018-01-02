@@ -47,7 +47,7 @@ float3 fresnelSchlick(float3 f0, float3 f90, float u)
 */
 float3 evalDiffuseLambert(HitPoint hitPt, LightSample ls)
 {
-    return ls.NdotL * ls.intensity;
+    return ls.NdotL * ls.diffuse;
 }
 
 /** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
@@ -58,7 +58,7 @@ float3 evalDiffuseDisney(HitPoint hitPt, LightSample ls)
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, hitPt.NdotV).r;
-    return ls.intensity * (viewScatter * lightScatter);
+    return ls.diffuse * (viewScatter * lightScatter);
 }
 
 /** Frostbites's diffuse term. Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
@@ -71,7 +71,7 @@ float3 evalDiffuseFrostbite(HitPoint hitPt, LightSample ls)
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, hitPt.NdotV).r;
-    return ls.intensity * (viewScatter * lightScatter * energyFactor);
+    return ls.diffuse * (viewScatter * lightScatter * energyFactor);
 }
 
 float3 evalDiffuse(HitPoint hitPt, LightSample ls)
@@ -112,6 +112,6 @@ float3 evalSpecular(HitPoint hitPt, LightSample ls)
     float D = evalGGX(hitPt.roughness, ls.NdotH);
     float G = evalSmithGGX(ls.NdotL, hitPt.NdotV, hitPt.roughness);
     float3 F = fresnelSchlick(hitPt.specular, 1, max(0, ls.LdotH));
-    return D * G * F * ls.intensity / M_PI;
+    return D * G * F * ls.specular / M_PI;
 }
 #endif	// _FALCOR_BRDF_SLANG_

@@ -48,7 +48,7 @@ void FeatureDemo::initControls()
     mControls[ControlID::SuperSampling] = { false, false, "INTERPOLATION_MODE", "sample" };
     mControls[ControlID::EnableSpecAA] = { true, true, "_MS_DISABLE_ROUGHNESS_FILTERING" };
     mControls[ControlID::EnableShadows] = { true, false, "_ENABLE_SHADOWS" };
-    mControls[ControlID::EnableReflections] = { true, false, "_ENABLE_REFLECTIONS" };
+    mControls[ControlID::EnableReflections] = { false, false, "_ENABLE_REFLECTIONS" };
     mControls[ControlID::EnableHashedAlpha] = { true, true, "_DEFAULT_ALPHA_TEST" };
     mControls[ControlID::EnableTransparency] = { false, false, "_ENABLE_TRANSPARENCY" };
     mControls[ControlID::EnableSSAO] = { true, false, "" };
@@ -260,7 +260,7 @@ void FeatureDemo::onGuiRender()
                 std::string filename;
                 if (openFileDialog(kImageFileString, filename))
                 {
-                    initEnvMap(filename);
+                    initLightProbe(filename);
                 }
             }
 
@@ -273,7 +273,7 @@ void FeatureDemo::onGuiRender()
 
                 if (mControls[ControlID::EnableReflections].enabled)
                 {
-                    mpGui->addFloatVar("Intensity", mEnvMapFactorScale, 0);
+                    mpGui->addFloatVar("Intensity", mReflectionScale, 0);
                 }
             }
             mpGui->endGroup();

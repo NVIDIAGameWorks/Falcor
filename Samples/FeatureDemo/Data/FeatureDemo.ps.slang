@@ -49,7 +49,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.position);
 
     float4 finalColor = float4(0, 0, 0, 1);
-    float envMapFactor = 1;
+    float reflectionFactor = 1;
     float opacity = 1;
 #ifdef _ENABLE_TRANSPARENCY
     opacity = getDiffuseColor(shAttr).a;
@@ -64,7 +64,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
         {
             shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, hitPt.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
             shadowFactor *= opacity;
-            envMapFactor -= 1 - shadowFactor;
+            reflectionFactor -= 1 - shadowFactor;
         }
 #endif
         finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color;
@@ -81,11 +81,11 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     uint h,w, mipCount;
     gDiffuseProbe.GetDimensions(0, h, w, mipCount);
     float lod = sqrt(hitPt.linearRoughness) * mipCount;
-    float3 envMapVal = gDiffuseProbe.SampleLevel(gSampler, texC, lod).rgb;
+    float3 probeVal = gDiffuseProbe.SampleLevel(gSampler, texC, lod).rgb;
 
-    envMapFactor = envMapFactor * evalGGX(hitPt.roughness, 1);
-    envMapFactor = saturate(envMapFactor) * gEnvMapFactorScale;
-    finalColor.rgb += (hitPt.specular) * envMapVal * envMapFactor;
+    reflectionFactor = reflectionFactor * evalGGX(hitPt.roughness, 1);
+    reflectionFactor = saturate(reflectionFactor) * gReflectionScale;
+    finalColor.rgb += (hitPt.specular) * probeVal * reflectionFactor;
 #endif
 
     // add ambient

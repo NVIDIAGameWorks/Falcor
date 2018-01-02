@@ -108,16 +108,13 @@ void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& f
     if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '/' + var.str);
 
     var = pScene->getUserVariable("env_map");
-    if (var.type == Scene::UserVariable::Type::String) initEnvMap(folder + '/' + var.str);
+    if (var.type == Scene::UserVariable::Type::String) initLightProbe(folder + '/' + var.str);
 
     var = pScene->getUserVariable("env_map_intensity_scale");
-    if (var.type == Scene::UserVariable::Type::Double) mEnvMapFactorScale = (float)var.d64;
+    if (var.type == Scene::UserVariable::Type::Double) mReflectionScale = (float)var.d64;
 
     var = pScene->getUserVariable("opacity_scale");
     if (var.type == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.d64;
-
-    mControls[EnableReflections].enabled = mpLightProbe != nullptr;
-    applyLightingProgramControl(ControlID::EnableReflections);
 }
 
 void FeatureDemo::initScene(Scene::SharedPtr pScene)
@@ -221,9 +218,12 @@ void FeatureDemo::initSkyBox(const std::string& name)
     mSkyBox.pDS = DepthStencilState::create(dsDesc);
 }
 
-void FeatureDemo::initEnvMap(const std::string& name)
+void FeatureDemo::initLightProbe(const std::string& name)
 {
     mpLightProbe = LightProbe::create(name, 512, true, ResourceFormat::RGBA16Float, LightProbe::MipFilter::Linear);
+    mControls[EnableReflections].enabled = true;
+    applyLightingProgramControl(ControlID::EnableReflections);
+
 }
 
 void FeatureDemo::initTAA()
@@ -311,7 +311,7 @@ void FeatureDemo::lightingPass()
     mpState->setDepthStencilState(mEnableDepthPass ? mLightingPass.pDsState : nullptr);
     mpRenderContext->setGraphicsVars(mLightingPass.pVars);
     ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
-    pCB["gEnvMapFactorScale"] = mEnvMapFactorScale;
+    pCB["gReflectionScale"] = mReflectionScale;
     pCB["gOpacityScale"] = mOpacityScale;
 
     if (mControls[ControlID::EnableShadows].enabled)

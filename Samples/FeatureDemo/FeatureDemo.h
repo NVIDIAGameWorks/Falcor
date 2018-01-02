@@ -143,7 +143,7 @@ private:
     void initDepthPass();
     void initShadowPass();
     void initSSAO();
-    void initEnvMap(const std::string& name);
+    void initLightProbe(const std::string& name);
     void initTAA();
 
     void initControls();
@@ -196,7 +196,7 @@ private:
         TAA
     };
 
-    float mEnvMapFactorScale = 0.25f;
+    float mReflectionScale = 0.25f;
     float mOpacityScale = 0.5f;
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;

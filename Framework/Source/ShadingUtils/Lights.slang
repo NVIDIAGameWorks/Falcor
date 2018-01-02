@@ -32,7 +32,8 @@ __import ShaderCommon;
 
 struct LightSample
 {
-    float3 intensity;   // The light intensity at the hit point
+    float3 diffuse;   // The light intensity at the hit point used for the diffuse term
+    float3 specular;  // The light intensity at the hit point used for the specular term. For light probes, the diffuse and specular components are different
     float3 L;           // The direction from the surface to the light source
     float3 posW;        // The world-space position of the light 
     float NdotH;
@@ -60,7 +61,8 @@ float getDistanceFalloff(float distSquared)
 LightSample evalDirectionalLight(in LightData light, in float3 hitPosW)
 {
     LightSample ls;
-    ls.intensity = light.intensity;
+    ls.diffuse = light.intensity;
+    ls.specular = light.intensity;
     ls.L = -normalize(light.dirW);
     float dist = length(hitPosW - light.posW);
     ls.posW = hitPosW - light.dirW * dist;
@@ -92,7 +94,8 @@ LightSample evalPointLight(in LightData light, in float3 hitPosW)
         float deltaAngle = light.openingAngle - acos(cosTheta);
         falloff *= saturate((deltaAngle - light.penumbraAngle) / light.penumbraAngle);
     }
-    ls.intensity = light.intensity * falloff;
+    ls.diffuse = light.intensity * falloff;
+    ls.specular = ls.diffuse;
     return ls;
 }
 
@@ -110,7 +113,8 @@ LightSample evalAreaLight(in LightData light, in float3 hitPosW)
     float cosTheta = -dot(ls.L, light.dirW); // cos of angle of light orientation 
     float falloff = max(0.f, cosTheta) * light.surfaceArea;
     falloff *= getDistanceFalloff(distSquared);
-    ls.intensity = falloff * light.intensity;
+    ls.diffuse = falloff * light.intensity;
+    ls.specular = ls.diffuse;
     return ls;
 }
 
