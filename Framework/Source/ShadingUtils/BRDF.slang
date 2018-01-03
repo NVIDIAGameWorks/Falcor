@@ -103,33 +103,6 @@ float evalSmithGGX(float NdotL, float NdotV, float roughness)
 
 }
 
-
-/** Implementation of NDF filtering code from the HPG'16 submission - //research/graphics/projects/halfvectorSpace/SAA/paper/specaa-sub.pdf
-*/
-float filterRoughness(HitPoint hitPt, LightSample ls)
-{
-    // Compute half-vector derivatives
-    float3 H = normalize(hitPt.V + ls.L);
-    float2 hpp = float2(dot(H, hitPt.T), dot(H, hitPt.B));
-    float2 hppDx = ddx_fine(hpp);
-    float2 hppDy = ddy_fine(hpp);
-
-    // Compute filtering region
-    float2 rectFp = (abs(hppDx) + abs(hppDy)) * 0.5f;
-    float fp = min(rectFp.x, rectFp.y);
-
-    // For grazing angles where the first-order footprint goes to very high values
-    // Usually you don’t need such high values and the maximum value of 1.0 or even 0.1 is enough for filtering.
-    fp = min(0.7f, fp);
-
-    // Covariance matrix of pixel filter's Gaussian (remapped in roughness units)
-    float covMx = fp * fp * 2.f;   // Need to x2 because roughness = sqrt(2) * pixel_sigma_hpp
-
-    float roughness = hitPt.roughness;
-    roughness = sqrt(roughness*roughness + covMx); // Beckmann proxy convolution for GGX
-    return roughness;
-}
-
 float3 evalSpecular(HitPoint hitPt, LightSample ls)
 {
     if (ls.NdotL * hitPt.NdotV <= 0.f)
@@ -137,9 +110,6 @@ float3 evalSpecular(HitPoint hitPt, LightSample ls)
         return 0;
     }
     float roughness = hitPt.roughness;
-#ifdef _MS_DISABLE_SPECULAR_AA
-    roughness = filterRoughness(hitPt, ls);
-#endif
 
     float D = evalGGX(roughness, ls.NdotH);
     float G = evalSmithGGX(ls.NdotL, hitPt.NdotV, roughness);
