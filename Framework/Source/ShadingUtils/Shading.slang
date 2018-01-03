@@ -149,21 +149,35 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     return hitPt;
 }
 
-ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
+ShadingResult initShadingResult()
 {
-    LightSample ls = evalLight(light, hitPt);
-
     ShadingResult sr;
     sr.diffuseIllumination = 0;
     sr.color = 0;
     sr.specularIllumination = 0;
-    
+    return sr;
+}
+
+ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
+{
+    ShadingResult sr = initShadingResult();
+    LightSample ls = evalLight(light, hitPt);
+
+    if(light.type == LightProbeLinear2D)
+    {
+        sr.diffuseIllumination = ls.diffuse;
+        sr.color = hitPt.diffuse.rgb * sr.diffuseIllumination;
+        sr.specularIllumination = saturate(evalGGX(hitPt.roughness, ls.NdotH)) * ls.specular * hitPt.specular;
+        sr.color += sr.specularIllumination;
+        return sr;
+    }
+          
+    // Calculate the diffuse term
     sr.diffuseIllumination = evalDiffuse(hitPt, ls);
     sr.color = hitPt.diffuse.rgb * sr.diffuseIllumination * (1 / M_PI);
 
-    {
-        sr.specularIllumination = evalSpecular(hitPt, ls);
-    }
+    // Calculate the specular term
+    sr.specularIllumination = evalSpecular(hitPt, ls);
     sr.color += sr.specularIllumination;
     sr.color *= shadowFactor;
 
