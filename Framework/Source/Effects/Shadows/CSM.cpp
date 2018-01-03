@@ -303,22 +303,19 @@ namespace Falcor
             colorFormat = ResourceFormat::RGBA32Float;
             progDef.add("_EVSM4");
             break;
-        default:            
-        {
-            Fbo::Desc fboDesc;
-            fboDesc.setDepthStencilTarget(depthFormat);
-            mShadowPass.pFbo = FboHelper::create2D(mapWidth, mapHeight, fboDesc, mCsmData.cascadeCount);
-            mDepthPass.pState->setFbo(FboHelper::create2D(mapWidth, mapHeight, fboDesc, mCsmData.cascadeCount));
         }
-        }
+
+        Fbo::Desc fboDesc;
+        fboDesc.setDepthStencilTarget(depthFormat);
+        uint32_t mipLevels = 1;
 
         if(colorFormat != ResourceFormat::Unknown)
         {
-            Fbo::Desc fboDesc;
-            fboDesc.setDepthStencilTarget(depthFormat).setColorTarget(0, colorFormat);
-            mShadowPass.pFbo = FboHelper::create2D(mapWidth, mapHeight, fboDesc, mCsmData.cascadeCount);
-            mDepthPass.pState->setFbo(FboHelper::create2D(mapWidth, mapHeight, fboDesc, mCsmData.cascadeCount));
+            fboDesc.setColorTarget(0, colorFormat);
+            mipLevels = Texture::kMaxPossible;
         }
+        mShadowPass.pFbo = FboHelper::create2D(mapWidth, mapHeight, fboDesc, mCsmData.cascadeCount, mipLevels);
+        mDepthPass.pState->setFbo(FboHelper::create2D(mapWidth, mapHeight, fboDesc, mCsmData.cascadeCount));
 
         mShadowPass.fboAspectRatio = (float)mapWidth / (float)mapHeight;
 
