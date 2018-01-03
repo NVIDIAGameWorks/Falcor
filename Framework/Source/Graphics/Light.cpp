@@ -567,7 +567,7 @@ namespace Falcor
         }
         else
         {
-            mData.textures.specularProbe2D = mData.textures.diffuseProbe2D;
+//            mData.textures.specularProbe2D = mData.textures.diffuseProbe2D;
         }
 
         RenderContext* pContext = gpDevice->getRenderContext().get();
@@ -608,13 +608,8 @@ namespace Falcor
     void LightProbe::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName)
     {
         setIntoConstantBuffer(pBuffer, varName);
-        pVars->setTexture("gDiffuseProbe", mData.textures.diffuseProbe2D);
-        pVars->setTexture("gSpecularProbe", mData.textures.specularProbe2D);
-        pVars->setSampler("gLightSampler", mData.textures.samplerState);
-#if 0
         pVars->setTexture(varName + ".textures.diffuseProbe2D", mData.textures.diffuseProbe2D);
-        pVars->setTexture(varName + ".textures.specularProbe2D", mData.textures.specularProbe2D);
+//        pVars->setTexture(varName + ".textures.specularProbe2D", mData.textures.specularProbe2D);
         pVars->setSampler(varName + ".textures.samplerState", mData.textures.samplerState);
-#endif
     }
 }

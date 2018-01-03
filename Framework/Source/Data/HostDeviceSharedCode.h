@@ -137,7 +137,7 @@ struct LightTextures
 {
     // Textures for light-probes. #OPTME If the textures was filtered using linear-filtering then the spec and diffuse term is the same texture and we can save a fetch. The default is pre-integration, so that probably doesn't matter much
     Texture2D diffuseProbe2D;
-    Texture2D specularProbe2D;
+//    Texture2D specularProbe2D;
     SamplerState samplerState;
 };
 
@@ -159,9 +159,7 @@ struct LightData
 	float    pad;
     float4x4 transMat           DEFAULTS(float4x4());       ///< Transformation matrix of the model instance for area lights
 
-#ifdef HOST_CODE
     LightTextures textures;
-#endif
     // For area light
 // 	BufPtr          indexPtr;                                     ///< Buffer id for indices
 // 	BufPtr          vertexPtr;                                    ///< Buffer id for vertices
@@ -173,13 +171,6 @@ struct LightData
     MaterialData    material;                                     ///< Emissive material of the geometry mesh
     */
 };
-
-#ifndef HOST_CODE
-// Textures for light-probes. #OPTME If the texure was filtered using linear-filtering then the spec and diffuse term is the same texture and we can save a fetch. The default is pre-integration, so that probably doesn't matter much
-Texture2D gDiffuseProbe;        // The diffuse term of the probe (LD). For pre-integrated probes this texture is different then the spec component
-Texture2D gSpecularProbe;       // The specular term of the probe (DFG). For pre-integrated probes this texture is different then the spec component
-SamplerState gLightSampler;
-#endif
 
 /*******************************************************************
                     Shared material routines

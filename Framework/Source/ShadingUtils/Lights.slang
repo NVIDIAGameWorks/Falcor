@@ -137,14 +137,14 @@ LightSample evalLightProbeLinear2D(LightData light, HitPoint hitPt)
 
     // Get the mip-level count
     uint h, w, mipCount;
-    gDiffuseProbe.GetDimensions(0, h, w, mipCount);
+    light.textures.diffuseProbe2D.GetDimensions(0, h, w, mipCount);
 
     // For the diffuse component, we use the last mip-level
-    ls.diffuse = gDiffuseProbe.SampleLevel(gLightSampler, texC, mipCount - 1).rgb;
+    ls.diffuse = light.textures.diffuseProbe2D.SampleLevel(light.textures.samplerState, texC, mipCount - 1).rgb;
 
     // Get the specular component
     float lod = linearRoughnessToLod(hitPt.linearRoughness, mipCount);
-    ls.specular = gSpecularProbe.SampleLevel(gLightSampler, texC, lod).rgb;
+    ls.specular = light.textures.diffuseProbe2D.SampleLevel(light.textures.samplerState, texC, lod).rgb;
     
     ls.diffuse *= light.intensity;
     ls.specular *= light.intensity;
