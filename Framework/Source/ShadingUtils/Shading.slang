@@ -32,6 +32,7 @@ __import DefaultVS;
 __exported __import ShaderCommon;
 __import Lights;
 __import BRDF;
+__import Helpers;
 
 /** Load data from a texture
 */
@@ -117,7 +118,7 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     float4 diffuse = sampleTexture(m.textures.diffuse, m.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
     hitPt.diffuse = diffuse.rgb;
     hitPt.opacity = diffuse.a;
-    applyAlphaTest(m, diffuse.a);
+    alphaTest(m.flags, diffuse.a, m.alphaThreshold, v.posW);
 
     hitPt.posW = v.posW;
     hitPt.uv = v.texC;
