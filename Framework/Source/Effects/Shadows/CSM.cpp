@@ -376,9 +376,14 @@ namespace Falcor
             if (pGui->beginGroup(sdsmGroup))
             {
                 pGui->addCheckBox("Enable", mControls.useMinMaxSdsm);
-                if (pGui->addIntVar("Readback Latency", mSdsmData.readbackLatency))
+                if(mControls.useMinMaxSdsm)
                 {
-                    setSdsmReadbackLatency(mSdsmData.readbackLatency);
+                    if (pGui->addIntVar("Readback Latency", mSdsmData.readbackLatency))
+                    {
+                        setSdsmReadbackLatency(mSdsmData.readbackLatency);
+                    }
+                    std::string range = "SDSM Range=[" + std::to_string(mSdsmData.sdsmResult.x) + ", " + std::to_string(mSdsmData.sdsmResult.y) + ']';
+                    pGui->addText(range.c_str());
                 }
                 pGui->endGroup();
             }
@@ -387,12 +392,14 @@ namespace Falcor
             const char* manualSettingsGroup = "Manual Settings";
             if (pGui->beginGroup(manualSettingsGroup))
             {
-                pGui->addFloatVar("Min Distance", mControls.distanceRange.x, 0, 1);
-                pGui->addFloatVar("Max Distance", mControls.distanceRange.y, 0, 1);
+                if(mControls.useMinMaxSdsm == false)
+                {
+                    pGui->addFloatVar("Min Distance", mControls.distanceRange.x, 0, 1);
+                    pGui->addFloatVar("Max Distance", mControls.distanceRange.y, 0, 1);
+                }
                 pGui->addFloatVar("Depth Bias", mCsmData.depthBias, 0, FLT_MAX, 0.0001f);
                 pGui->addCheckBox("Depth Clamp", mControls.depthClamp);
-                pGui->addCheckBox("Stabilize Cascades", mControls.stabilizeCascades);
-                pGui->addCheckBox("Concentric Cascades", mControls.concentricCascades);
+//                pGui->addCheckBox("Stabilize Cascades", mControls.stabilizeCascades);
                 pGui->addFloatVar("Cascade Blend Threshold", mCsmData.cascadeBlendThreshold, 0, 1.0f);
                 pGui->endGroup();
             }
@@ -421,12 +428,16 @@ namespace Falcor
                     }
 
                     pGui->addFloatVar("Light Bleed Reduction", mCsmData.lightBleedingReduction, 0, 1.0f, 0.01f);
-                    const char* evsmExpGroup = "EVSM Exp";
-                    if (pGui->beginGroup(evsmExpGroup))
+
+                    if(mCsmData.filterMode == CsmFilterEvsm2 || mCsmData.filterMode == CsmFilterEvsm4)
                     {
-                        pGui->addFloatVar("Positive", mCsmData.evsmExponents.x, 0.0f, 42.0f, 0.01f);
-                        pGui->addFloatVar("Negative", mCsmData.evsmExponents.y, 0.0f, 42.0f, 0.01f);
-                        pGui->endGroup();
+                        const char* evsmExpGroup = "EVSM Exp";
+                        if (pGui->beginGroup(evsmExpGroup))
+                        {
+                            pGui->addFloatVar("Positive", mCsmData.evsmExponents.x, 0.0f, 42.0f, 0.01f);
+                            pGui->addFloatVar("Negative", mCsmData.evsmExponents.y, 0.0f, 42.0f, 0.01f);
+                            pGui->endGroup();
+                        }
                     }
 
                     mpGaussianBlur->renderUI(pGui, "Blur");
@@ -670,7 +681,7 @@ namespace Falcor
         mShadowPass.pVSMTrilinearSampler = Sampler::create(samplerDesc);
     }
 
-    void CascadedShadowMaps::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer, glm::vec2& distanceRange)
+    void CascadedShadowMaps::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
     {
         if(pDepthBuffer == nullptr)
         {
@@ -680,7 +691,7 @@ namespace Falcor
         }
 
         createSdsmData(pDepthBuffer);
-        distanceRange = glm::vec2(mSdsmData.minMaxReduction->reduce(pRenderCtx, pDepthBuffer));
+        vec2 distanceRange = glm::vec2(mSdsmData.minMaxReduction->reduce(pRenderCtx, pDepthBuffer));
 
         // Convert to linear
         glm::mat4 camProj = pCamera->getProjMatrix();
@@ -688,6 +699,7 @@ namespace Falcor
         distanceRange = camProj[3][2] / distanceRange;
         distanceRange = (distanceRange - pCamera->getNearPlane()) / (pCamera->getNearPlane() - pCamera->getFarPlane());
         distanceRange = glm::clamp(distanceRange, glm::vec2(0), glm::vec2(1));
+        mSdsmData.sdsmResult = distanceRange;
 
         //if (mControls.stabilizeCascades)
         //{
@@ -697,16 +709,17 @@ namespace Falcor
         //}
     }
 
-    void CascadedShadowMaps::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer, glm::vec2& distanceRange)
+    vec2 CascadedShadowMaps::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
     {
         if(mControls.useMinMaxSdsm)
         {
-            reduceDepthSdsmMinMax(pRenderCtx, pCamera, pDepthBuffer, distanceRange);
-            distanceRange.x *= 0.9f;
+            reduceDepthSdsmMinMax(pRenderCtx, pCamera, pDepthBuffer);
+            mSdsmData.sdsmResult.x *= 0.9f;
+            return mSdsmData.sdsmResult;
         }
         else
         {
-            distanceRange = mControls.distanceRange;
+            return mControls.distanceRange;
         }
     }
 
@@ -716,8 +729,7 @@ namespace Falcor
         pRenderCtx->clearFbo(mShadowPass.pFbo.get(), clearColor, 1, 0, FboAttachmentType::All);
 
         // Calc the bounds
-        glm::vec2 distanceRange(0, 0);
-        calcDistanceRange(pRenderCtx, pCamera, pDepthBuffer, distanceRange);
+        glm::vec2 distanceRange = calcDistanceRange(pRenderCtx, pCamera, pDepthBuffer);
 
         GraphicsState::Viewport VP;
         VP.originX = 0;
