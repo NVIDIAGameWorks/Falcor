@@ -172,6 +172,7 @@ namespace Falcor
         mTimeScale = config.timeScale;
         mFixedTimeDelta = config.fixedTimeDelta;
         mFreezeTime = config.freezeTimeOnStartup;
+        mVsyncOn = config.deviceDesc.enableVsync;
 
         // Start the logger
         Logger::init();
