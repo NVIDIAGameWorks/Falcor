@@ -795,4 +795,10 @@ namespace Falcor
         mCsmData.filterMode = newFilterMode;
         createShadowPassResources(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
     }
+
+    void CascadedShadowMaps::setEvsmBlur(uint32_t kernelWidth, float sigma)
+    {
+        mpGaussianBlur->setKernelWidth(kernelWidth);
+        mpGaussianBlur->setSigma(sigma);
+    }
 }

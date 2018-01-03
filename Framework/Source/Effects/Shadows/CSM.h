@@ -125,6 +125,7 @@ namespace Falcor
 
         void setSdsmReadbackLatency(uint32_t latency);
 
+        void setEvsmBlur(uint32_t kernelWidth, float sigma);
     private:
         CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
         Light::SharedConstPtr mpLight;
