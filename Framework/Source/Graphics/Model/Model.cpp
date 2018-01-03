@@ -175,7 +175,6 @@ namespace Falcor
             uniqueTextures.insert(pMaterial->getEmissiveTexture().get());
             uniqueTextures.insert(pMaterial->getNormalMap().get());
             uniqueTextures.insert(pMaterial->getOcclusionMap().get());
-            uniqueTextures.insert(pMaterial->getReflectionnMap().get());
             uniqueTextures.insert(pMaterial->getLightMap().get());
             uniqueTextures.insert(pMaterial->getHeightMap().get());
 

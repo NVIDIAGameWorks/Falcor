@@ -124,14 +124,6 @@ namespace Falcor
         */
         Texture::SharedPtr getOcclusionMap() const { return mData.textures.occlusionMap; }
 
-        /** Set the reflection map
-        */
-        void setReflectionMap(Texture::SharedPtr pReflectionMap);
-
-        /** Get the occlusion map
-        */
-        Texture::SharedPtr getReflectionnMap() const { return mData.textures.reflectionMap; }
-
         /** Set the light map
         */
         void setLightMap(Texture::SharedPtr pLightMap);
@@ -195,14 +187,6 @@ namespace Falcor
         /** Get the alpha threshold
         */
         float getAlphaThreshold() const { return mData.alphaThreshold; }
-
-        /** Set the NDF type
-        */
-        void setNdfType(uint32_t ndfType);
-
-        /** Get the NDF type
-        */
-        uint32_t getNdfType() const { return EXTRACT_NDF_TYPE(mData.flags); }
 
         /** Get the flags
         */

@@ -75,6 +75,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #endif
 
 #ifdef _ENABLE_REFLECTIONS
+#if 1
     // Calculate the view vector
     float3 view = reflect(-hitPt.V, hitPt.N);
     float2 texC = dirToSphericalCrd(view);
@@ -86,6 +87,9 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     reflectionFactor = reflectionFactor * evalGGX(hitPt.roughness, 1);
     reflectionFactor = saturate(reflectionFactor) * gReflectionScale;
     finalColor.rgb += (hitPt.specular) * probeVal * reflectionFactor;
+#else
+    finalColor.rgb += evalMaterial(hitPt, gLightProbe, 1).color;
+#endif
 #endif
 
     // add ambient

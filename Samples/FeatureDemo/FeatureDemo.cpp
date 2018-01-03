@@ -98,6 +98,10 @@ void FeatureDemo::setSceneSampler(uint32_t maxAniso)
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
     pScene->bindSampler(mpSceneSampler);
+    if (mpLightProbe)
+    {
+        mpLightProbe->setSampler(mpSceneSampler);
+    }
 }
 
 void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& filename)
@@ -223,7 +227,7 @@ void FeatureDemo::initLightProbe(const std::string& name)
     mpLightProbe = LightProbe::create(name, 512, true, ResourceFormat::RGBA16Float, LightProbe::MipFilter::Linear);
     mControls[EnableReflections].enabled = true;
     applyLightingProgramControl(ControlID::EnableReflections);
-
+    mpLightProbe->setSampler(mpSceneSampler);
 }
 
 void FeatureDemo::initTAA()

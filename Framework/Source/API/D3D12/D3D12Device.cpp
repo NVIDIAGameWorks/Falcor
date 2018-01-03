@@ -65,9 +65,9 @@ namespace Falcor
             switch (minorVersion)
             {
             case 0:
-                return D3D_FEATURE_LEVEL_11_1;
-            case 1:
                 return D3D_FEATURE_LEVEL_11_0;
+            case 1:
+                return D3D_FEATURE_LEVEL_11_1;
             }
         }
         else if (majorVersion == 10)
@@ -126,6 +126,7 @@ namespace Falcor
 
     ID3D12DevicePtr createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, Device::Desc::CreateDeviceFunc createFunc, bool& rgb32FSupported)
     {
+        featureLevel = D3D_FEATURE_LEVEL_11_0;
         // Find the HW adapter
         IDXGIAdapter1Ptr pAdapter;
         ID3D12DevicePtr pDevice;

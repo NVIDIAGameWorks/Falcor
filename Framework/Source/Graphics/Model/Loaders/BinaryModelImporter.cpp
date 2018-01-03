@@ -190,9 +190,6 @@ namespace Falcor
         case TextureType_Displacement:
             pMaterial->setHeightMap(pTexture);
             break;
-        case TextureType_Environment:
-            pMaterial->setReflectionMap(pTexture);
-            break;
         default:
             logWarning("Texture of Type " + std::to_string(texType) + " is not supported by the material system (model " + modelName + ")");
         }

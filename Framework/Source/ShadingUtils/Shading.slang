@@ -137,7 +137,6 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
 
 #define channel_type(extract) (extract(m.flags) ? ChannelTypeTexture : ChannelTypeUnused)
     hitPt.occlusion = sampleTexture(m.textures.occlusionMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_OCCLUSION_MAP));
-    hitPt.reflection = sampleTexture(m.textures.reflectionMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_REFLECTION_MAP));
     hitPt.lightMap = sampleTexture(m.textures.lightMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_LIGHT_MAP));
     hitPt.height = sampleTexture(m.textures.heightMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
     hitPt.height = hitPt.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
@@ -162,7 +161,9 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
     sr.diffuseIllumination = evalDiffuse(hitPt, ls);
     sr.color = hitPt.diffuse.rgb * sr.diffuseIllumination * (1 / M_PI);
 
-    sr.specularIllumination = evalSpecular(hitPt, ls);
+    {
+        sr.specularIllumination = evalSpecular(hitPt, ls);
+    }
     sr.color += sr.specularIllumination;
     sr.color *= shadowFactor;
 

@@ -549,7 +549,7 @@ namespace Falcor
 
     LightProbe::LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter)
     {
-        mData.type = LightProbeT;
+        mData.type = LightProbeLinear2D;
 
         // Create the texture
         assert(pTexture->getType() == Texture::Type::Texture2D);
@@ -559,22 +559,23 @@ namespace Falcor
         {
             bindFlags |= Texture::BindFlags::RenderTarget;
         }
-        mpDiffuseTex = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
+        mData.textures.diffuseProbe2D = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
         if (mipFilter == MipFilter::PreIntegration)
         {
-            mpSpecularTex = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
+            should_not_get_here();
+//            mpSpecularTex = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
         }
         else
         {
-            mpSpecularTex = mpDiffuseTex;
+            mData.textures.specularProbe2D = mData.textures.diffuseProbe2D;
         }
 
         RenderContext* pContext = gpDevice->getRenderContext().get();
-        pContext->blit(pTexture->getSRV(), mpDiffuseTex->getRTV());
+        pContext->blit(pTexture->getSRV(), mData.textures.diffuseProbe2D->getRTV());
         // Filter
         if (mipFilter == MipFilter::Linear)
         {
-            mpDiffuseTex->generateMips(pContext);
+            mData.textures.diffuseProbe2D->generateMips(pContext);
         }
     }
 
@@ -607,7 +608,13 @@ namespace Falcor
     void LightProbe::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName)
     {
         setIntoConstantBuffer(pBuffer, varName);
-        pVars->setTexture("gDiffuseProbe", mpDiffuseTex);
-        pVars->setTexture("gSpecularProbe", mpSpecularTex);
+        pVars->setTexture("gDiffuseProbe", mData.textures.diffuseProbe2D);
+        pVars->setTexture("gSpecularProbe", mData.textures.specularProbe2D);
+        pVars->setSampler("gLightSampler", mData.textures.samplerState);
+#if 0
+        pVars->setTexture(varName + ".textures.diffuseProbe2D", mData.textures.diffuseProbe2D);
+        pVars->setTexture(varName + ".textures.specularProbe2D", mData.textures.specularProbe2D);
+        pVars->setSampler(varName + ".textures.samplerState", mData.textures.samplerState);
+#endif
     }
 }

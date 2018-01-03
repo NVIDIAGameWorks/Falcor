@@ -190,7 +190,7 @@ namespace Falcor
     /*! @} */
 }
 
-#define DEFAULT_API_MAJOR_VERSION 11
-#define DEFAULT_API_MINOR_VERSION 1
+#define DEFAULT_API_MAJOR_VERSION 12
+#define DEFAULT_API_MINOR_VERSION 0
 
 #define UNSUPPORTED_IN_D3D12(msg_) {Falcor::logWarning(msg_ + std::string(" is not supported in D3D12. Ignoring call."));}

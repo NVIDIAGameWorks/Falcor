@@ -117,7 +117,6 @@ struct HitPoint
     float  roughness;       // This is the re-mapped roughness value, which should be used for GGX computations
     float3 emissive;
     float4 occlusion;
-    float4 reflection;
     float4 lightMap;
     float2 height;
     float IoR;

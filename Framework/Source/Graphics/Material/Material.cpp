@@ -98,13 +98,7 @@ namespace Falcor
         mParamBlockDirty = mParamBlockDirty || (mData.alphaThreshold != alpha);
         mData.alphaThreshold = alpha; 
     }
-
-    void Material::setNdfType(uint32_t ndfType)
-    {
-        mParamBlockDirty = mParamBlockDirty || (EXTRACT_NDF_TYPE(mData.flags) != ndfType);
-        mData.flags = PACK_NDF_TYPE(mData.flags, ndfType);
-    }
-
+    
     void Material::setHeightScaleOffset(float scale, float offset) 
     { 
         mParamBlockDirty = mParamBlockDirty || (mData.heightScaleOffset.x != scale) || (mData.heightScaleOffset.y != offset);
@@ -217,14 +211,6 @@ namespace Falcor
         mParamBlockDirty = mParamBlockDirty || (mData.textures.occlusionMap != pOcclusionMap);
         mData.textures.occlusionMap = pOcclusionMap;
         mData.flags = PACK_OCCLUSION_MAP(mData.flags, pOcclusionMap ? 1 : 0);
-        mParamBlockDirty = true;
-    }
-
-    void Material::setReflectionMap(Texture::SharedPtr pReflectionMap)
-    {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.reflectionMap != pReflectionMap);
-        mData.textures.reflectionMap = pReflectionMap;
-        mData.flags = PACK_REFLECTION_MAP(mData.flags, pReflectionMap ? 1 : 0);
         mParamBlockDirty = true;
     }
 

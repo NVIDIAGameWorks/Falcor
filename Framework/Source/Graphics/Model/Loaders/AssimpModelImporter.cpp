@@ -236,9 +236,6 @@ namespace Falcor
         case aiTextureType_LIGHTMAP:
             pMaterial->setLightMap(pTexture);
             break;
-        case aiTextureType_REFLECTION:
-            pMaterial->setReflectionMap(pTexture);
-            break;
         default:
             logWarning("Unsupported Assimp texture type " + std::to_string(type));
         }

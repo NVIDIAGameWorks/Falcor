@@ -84,10 +84,6 @@
 #define AlphaModeTransparent 1
 #define AlphaModeMask        2
 
-// NDF type
-#define NdfGGX      0
-#define NdfBeckmann 1
-
 // Bit count
 #define SHADING_MODEL_BITS   (3)
 #define DIFFUSE_TYPE_BITS    (3)
@@ -95,12 +91,10 @@
 #define EMISSIVE_TYPE_BITS   (3)
 #define NORMAL_MAP_BITS      (2)
 #define OCCLUSION_MAP_BITS   (1)
-#define REFLECTION_MAP_BITS  (1)
 #define LIGHT_MAP_BITS       (1)
 #define HEIGHT_MAP_BITS      (1)
 #define ALPHA_MODE_BITS      (2)
 #define DOUBLE_SIDED_BITS    (1)
-#define NDF_BITS             (3)
 
 // Offsets
 #define SHADING_MODEL_OFFSET (0)
@@ -109,12 +103,10 @@
 #define EMISSIVE_TYPE_OFFSET (SPECULAR_TYPE_OFFSET + SPECULAR_TYPE_BITS)
 #define NORMAL_MAP_OFFSET    (EMISSIVE_TYPE_OFFSET + EMISSIVE_TYPE_BITS)
 #define OCCLUSION_MAP_OFFSET (NORMAL_MAP_OFFSET    + NORMAL_MAP_BITS)
-#define REFLECTION_MAP_OFFSET (OCCLUSION_MAP_OFFSET+ OCCLUSION_MAP_BITS)
-#define LIGHT_MAP_OFFSET     (REFLECTION_MAP_OFFSET+ REFLECTION_MAP_BITS)
+#define LIGHT_MAP_OFFSET     (OCCLUSION_MAP_OFFSET + OCCLUSION_MAP_BITS)
 #define HEIGHT_MAP_OFFSET    (LIGHT_MAP_OFFSET     + LIGHT_MAP_BITS)
 #define ALPHA_MODE_OFFSET    (HEIGHT_MAP_OFFSET    + HEIGHT_MAP_BITS)
 #define DOUBLE_SIDED_OFFSET  (ALPHA_MODE_OFFSET    + ALPHA_MODE_BITS)
-#define NDF_OFFSET           (DOUBLE_SIDED_OFFSET  + DOUBLE_SIDED_BITS)
 
 // Extract bits
 #define EXTRACT_BITS(bits, offset, value) ((value >> offset) & ((1 << bits) - 1))
@@ -124,12 +116,10 @@
 #define EXTRACT_EMISSIVE_TYPE(value)    EXTRACT_BITS(EMISSIVE_TYPE_BITS,    EMISSIVE_TYPE_OFFSET,   value)
 #define EXTRACT_NORMAL_MAP_TYPE(value)  EXTRACT_BITS(NORMAL_MAP_BITS,       NORMAL_MAP_OFFSET,      value)
 #define EXTRACT_OCCLUSION_MAP(value)    EXTRACT_BITS(OCCLUSION_MAP_BITS,    OCCLUSION_MAP_OFFSET,   value)
-#define EXTRACT_REFLECTION_MAP(value)   EXTRACT_BITS(REFLECTION_MAP_BITS,   REFLECTION_MAP_OFFSET,  value)
 #define EXTRACT_LIGHT_MAP(value)        EXTRACT_BITS(LIGHT_MAP_BITS,        LIGHT_MAP_OFFSET,       value)  
 #define EXTRACT_HEIGHT_MAP(value)       EXTRACT_BITS(HEIGHT_MAP_BITS,       HEIGHT_MAP_OFFSET,      value)
 #define EXTRACT_ALPHA_MODE(value)       EXTRACT_BITS(ALPHA_MODE_BITS,       ALPHA_MODE_OFFSET,      value)
 #define EXTRACT_DOUBLE_SIDED(value)     EXTRACT_BITS(DOUBLE_SIDED_BITS,     DOUBLE_SIDED_OFFSET,    value)
-#define EXTRACT_NDF_TYPE(value)         EXTRACT_BITS(NDF_BITS,              NDF_OFFSET,             value)
 
 // Pack bits
 #define PACK_BITS(bits, offset, flags, value) (((value & ((1 << bits) - 1)) << offset) | (flags & (~(((1 << bits) - 1) << offset))))
@@ -139,12 +129,10 @@
 #define PACK_EMISSIVE_TYPE(flags, value)    PACK_BITS(EMISSIVE_TYPE_BITS,    EMISSIVE_TYPE_OFFSET,   flags, value)
 #define PACK_NORMAL_MAP_TYPE(flags, value)  PACK_BITS(NORMAL_MAP_BITS,       NORMAL_MAP_OFFSET,      flags, value)
 #define PACK_OCCLUSION_MAP(flags, value)    PACK_BITS(OCCLUSION_MAP_BITS,    OCCLUSION_MAP_OFFSET,   flags, value)
-#define PACK_REFLECTION_MAP(flags, value)   PACK_BITS(REFLECTION_MAP_BITS,   REFLECTION_MAP_OFFSET,  flags, value)
 #define PACK_LIGHT_MAP(flags, value)        PACK_BITS(LIGHT_MAP_BITS,        LIGHT_MAP_OFFSET,       flags, value)
 #define PACK_HEIGHT_MAP(flags, value)       PACK_BITS(HEIGHT_MAP_BITS,       HEIGHT_MAP_OFFSET,      flags, value)
 #define PACK_ALPHA_MODE(flags, value)       PACK_BITS(ALPHA_MODE_BITS,       ALPHA_MODE_OFFSET,      flags, value)
 #define PACK_DOUBLE_SIDED(flags, value)     PACK_BITS(DOUBLE_SIDED_BITS,     DOUBLE_SIDED_OFFSET,    flags, value)
-#define PACK_NDF_TYPE(flags, value)         PACK_BITS(NDF_BITS,              NDF_OFFSET,             flags, value)
 
 /*******************************************************************
                     Lights
@@ -153,10 +141,13 @@
 /**
     Types of light sources. Used in LightData structure.
 */
-#define LightPoint           0    ///< Point light source, can be a spot light if its opening angle is < 2pi
-#define LightDirectional     1    ///< Directional light source
-#define LightArea            2    ///< Area light source, potentially with arbitrary geometry
-#define LightProbeT          3    ///< Light probe
+#define LightPoint                  0    ///< Point light source, can be a spot light if its opening angle is < 2pi
+#define LightDirectional            1    ///< Directional light source
+#define LightArea                   2    ///< Area light source, potentially with arbitrary geometry
+#define LightProbeLinear2D          3    ///< Light probe filtered with linear-filtering, 2D texture
+#define LightProbePreIntegrated2D   4    ///< Pre-integrated light probe, 2D texture
+#define LightProbeLinearCube        5    ///< Light probe filtered with linear-filtering, texture-cube
+#define LightProbePreIntegratedCube 6    ///< Pre-integrated light probe, texture-cube
 
 #define MAX_LIGHT_SOURCES 16
 

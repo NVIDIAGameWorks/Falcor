@@ -98,8 +98,6 @@ namespace Falcor
             return pMaterial->getSpecularTexture();
         case TextureType_Displacement:
             return pMaterial->getHeightMap();
-        case TextureType_Environment:
-            return pMaterial->getReflectionnMap();
         default:
             return nullptr;
         }
@@ -242,7 +240,6 @@ namespace Falcor
             succeeded &= writeMaterialTexture(texID, pMaterial->getEmissiveTexture());
             succeeded &= writeMaterialTexture(texID, pMaterial->getNormalMap());
             succeeded &= writeMaterialTexture(texID, pMaterial->getOcclusionMap());
-            succeeded &= writeMaterialTexture(texID, pMaterial->getReflectionnMap());
             succeeded &= writeMaterialTexture(texID, pMaterial->getLightMap());
             succeeded &= writeMaterialTexture(texID, pMaterial->getHeightMap());
 

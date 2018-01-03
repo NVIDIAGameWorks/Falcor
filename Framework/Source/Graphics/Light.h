@@ -100,7 +100,7 @@ namespace Falcor
 
     protected:
 
-        static const size_t kDataSize = sizeof(LightData); //TODO(tfoley) HACK:SPIRE - sizeof(MaterialData);
+        static const size_t kDataSize = sizeof(LightData) - sizeof(LightTextures);
 
         /* UI callbacks for keeping the intensity in-sync */
         glm::vec3 getColorForUI();
@@ -404,9 +404,9 @@ namespace Falcor
         float getPower() const override;
 
         void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName);
+
+        void setSampler(const Sampler::SharedPtr& pSampler) { mData.textures.samplerState = pSampler; }
     private:
         LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter);
-        Texture::SharedPtr mpDiffuseTex;
-        Texture::SharedPtr mpSpecularTex;
     };
 }
