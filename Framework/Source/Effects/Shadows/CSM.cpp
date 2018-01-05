@@ -222,7 +222,7 @@ namespace Falcor
         mpLightCamera = Camera::create();
 
         Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Border, Sampler::AddressMode::Border, Sampler::AddressMode::Border).setBorderColor(glm::vec4(0.0f));
+        samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Border, Sampler::AddressMode::Border, Sampler::AddressMode::Border).setBorderColor(glm::vec4(1.0f));
         samplerDesc.setLodParams(0.f, 0.f, 0.f);
         samplerDesc.setComparisonMode(Sampler::ComparisonMode::LessEqual);
         mShadowPass.pPointCmpSampler = Sampler::create(samplerDesc);
