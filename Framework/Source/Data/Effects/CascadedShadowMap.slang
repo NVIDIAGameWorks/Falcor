@@ -266,6 +266,7 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
 
     // Calculate the texC
     shadowPos.z -= csmData.depthBias;
+    shadowPos.z = saturate(shadowPos.z);
 
     switch(getFilterMode(csmData))
     {
