@@ -64,7 +64,7 @@ void main(ShadowPassPSIn pIn)
     }
 #endif
 
-    float2 depth = pIn.pos.zz;
+    float2 depth = saturate(pIn.pos.zz);
 
 #if defined(_EVSM2) || defined(_EVSM4)
     depth = applyEvsmExponents(depth.x, gCsmData.evsmExponents);
