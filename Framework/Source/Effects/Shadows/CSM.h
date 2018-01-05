@@ -122,7 +122,6 @@ namespace Falcor
         void setDepthBias(float depthBias) { mCsmData.depthBias = depthBias; }
 
         void setSdsmReadbackLatency(uint32_t latency);
-
     private:
         CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
         Light::SharedConstPtr mpLight;
