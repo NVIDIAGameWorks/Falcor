@@ -587,9 +587,10 @@ namespace Falcor
             float cascadeEnd = nextCascadeStart + blendCorrection;
             nextCascadeStart -= blendCorrection;
 
-            // Calculate the cascade distance in camera-clip space
-            mCsmData.cascadeRange[c].x = depthRange * cascadeStart + nearPlane;
-            mCsmData.cascadeRange[c].y = (depthRange * cascadeEnd + nearPlane) - mCsmData.cascadeRange[c].x;
+            // Calculate the cascade distance in camera-clip space(Where the clip-space range is [0, farPlane])
+            mCsmData.cascadeRange[c].x = farPlane * cascadeStart;
+            mCsmData.cascadeRange[c].y = (farPlane * cascadeEnd) - mCsmData.cascadeRange[c].x;
+
             // Calculate the cascade frustum
             glm::vec3 cascadeFrust[8];
             for(uint32_t i = 0; i < 4; i++)
