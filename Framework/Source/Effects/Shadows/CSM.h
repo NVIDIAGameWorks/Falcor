@@ -115,8 +115,6 @@ namespace Falcor
 
         void setPcfKernelWidth(uint32_t width) { mCsmData.pcfKernelWidth = width | 1; }
 
-        void setConcentricCascades(bool enabled) { mControls.concentricCascades = enabled; }
-
         void setVsmMaxAnisotropy(uint32_t maxAniso) { createVsmSampleState(maxAniso); }
 
         void setVsmLightBleedReduction(float reduction) { mCsmData.lightBleedingReduction = reduction; }
@@ -124,7 +122,6 @@ namespace Falcor
         void setDepthBias(float depthBias) { mCsmData.depthBias = depthBias; }
 
         void setSdsmReadbackLatency(uint32_t latency);
-
         void setEvsmBlur(uint32_t kernelWidth, float sigma);
     private:
         CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
@@ -134,7 +131,7 @@ namespace Falcor
         std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;
         std::shared_ptr<SceneRenderer> mpSceneRenderer;
 
-        void calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer, glm::vec2& distanceRange);
+        vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer);
         void createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight);
         void partitionCascades(const Camera* pCamera, const glm::vec2& distanceRange);
         void renderScene(RenderContext* pCtx);
@@ -156,13 +153,14 @@ namespace Falcor
         struct SdsmData
         {
             ParallelReduction::UniquePtr minMaxReduction;
+            vec2 sdsmResult;   // Used for displaying the range in the UI
             uint32_t width = 0;
             uint32_t height = 0;
             int32_t readbackLatency = 1;
         };
         SdsmData mSdsmData;
         void createSdsmData(Texture::SharedPtr pTexture);
-        void reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer, glm::vec2& distanceRange);
+        void reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer);
         void createVsmSampleState(uint32_t maxAnisotropy);
 
         GaussianBlur::UniquePtr mpGaussianBlur;
@@ -183,7 +181,6 @@ namespace Falcor
             float pssmLambda = 0.5f;
             PartitionMode partitionMode = PartitionMode::Logarithmic;
             bool stabilizeCascades = false;
-            bool concentricCascades = false;
         };
 
         int32_t renderCascade = 0;

@@ -184,8 +184,6 @@ namespace Falcor
         {
             const Mesh* pMesh = pMeshInstance->getObject().get();
 
-            assert(drawInstanceID == 0); // We don't support instanced skinned models
-
             glm::mat4 worldMat = pModelInstance->getTransformMatrix();
             glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix();
 
