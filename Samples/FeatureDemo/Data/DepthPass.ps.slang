@@ -31,6 +31,5 @@ __import Shading;
 
 void main(VertexOut vOut)
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.position);
-    applyAlphaTest(gMaterial, hitPt.opacity);
+    prepareHitPoint(vOut, gMaterial, gCam.position);
 }

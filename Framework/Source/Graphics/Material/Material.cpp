@@ -122,6 +122,8 @@ namespace Falcor
         mParamBlockDirty = mParamBlockDirty || (mData.textures.diffuse != pDiffuse);
         mData.textures.diffuse = pDiffuse;
         updateDiffuseType();
+        bool hasAlpha = pDiffuse && getFormatChannelCount(pDiffuse->getFormat()) == 4;
+        setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
     }
 
     void Material::setSpecularTexture(Texture::SharedPtr pSpecular)

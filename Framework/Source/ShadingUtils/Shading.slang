@@ -50,7 +50,7 @@ struct ShadingResult
 {
     float3 diffuseIllumination;
     float3 specularIllumination;
-    float3 color;
+    float4 color;
 };
 
 /** Convert RGB to normal
@@ -117,7 +117,7 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     // Sample the diffuse texture and apply the alpha test
     float4 diffuse = sampleTexture(m.textures.diffuse, m.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
     hitPt.diffuse = diffuse.rgb;
-    hitPt.opacity = diffuse.a;
+    hitPt.opacity = m.diffuse.a;
     alphaTest(m.flags, diffuse.a, m.alphaThreshold, v.posW);
 
     hitPt.posW = v.posW;
@@ -154,7 +154,8 @@ ShadingResult initShadingResult()
 {
     ShadingResult sr;
     sr.diffuseIllumination = 0;
-    sr.color = 0;
+    sr.color.rgb = 0;
+    sr.color.a = 1;
     sr.specularIllumination = 0;
     return sr;
 }
@@ -167,20 +168,21 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
     if(light.type == LightProbeLinear2D)
     {
         sr.diffuseIllumination = ls.diffuse;
-        sr.color = hitPt.diffuse.rgb * sr.diffuseIllumination;
+        sr.color.rgb = hitPt.diffuse.rgb * sr.diffuseIllumination;
         sr.specularIllumination = saturate(evalGGX(hitPt.roughness, ls.NdotH)) * ls.specular * hitPt.specular;
-        sr.color += sr.specularIllumination;
+        sr.color.rgb += sr.specularIllumination;
         return sr;
     }
-          
+
     // Calculate the diffuse term
     sr.diffuseIllumination = evalDiffuse(hitPt, ls);
-    sr.color = hitPt.diffuse.rgb * sr.diffuseIllumination * (1 / M_PI);
+    sr.color.rgb = hitPt.diffuse.rgb * sr.diffuseIllumination * (1 / M_PI);
+    sr.color.a = hitPt.opacity;
 
     // Calculate the specular term
     sr.specularIllumination = evalSpecular(hitPt, ls);
-    sr.color += sr.specularIllumination;
-    sr.color *= shadowFactor;
+    sr.color.rgb += sr.specularIllumination;
+    sr.color.rgb *= shadowFactor;
 
     return sr;
 };

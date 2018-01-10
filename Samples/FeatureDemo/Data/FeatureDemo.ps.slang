@@ -67,7 +67,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
             reflectionFactor -= 1 - shadowFactor;
         }
 #endif
-        finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color;
+        finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color.rgb;
     }
 
 #ifdef _ENABLE_TRANSPARENCY
@@ -75,7 +75,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #endif
 
 #ifdef _ENABLE_REFLECTIONS
-    finalColor.rgb += evalMaterial(hitPt, gLightProbe, 1).color;
+    finalColor.rgb += evalMaterial(hitPt, gLightProbe, 1).color.rgb;
 #endif
 
     // add ambient

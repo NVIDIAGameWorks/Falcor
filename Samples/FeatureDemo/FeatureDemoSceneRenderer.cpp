@@ -29,7 +29,7 @@
 
 static bool isMaterialTransparent(const Material* pMaterial)
 {
-    return pMaterial->getAlphaMode() == AlphaModeTransparent;
+    return pMaterial->getDiffuseColor().a < 1.0f;
 }
 
 FeatureDemoSceneRenderer::FeatureDemoSceneRenderer(const Scene::SharedPtr& pScene) : SceneRenderer(pScene)
@@ -54,6 +54,7 @@ FeatureDemoSceneRenderer::SharedPtr FeatureDemoSceneRenderer::create(const Scene
 {
     return SharedPtr(new FeatureDemoSceneRenderer(pScene));
 }
+
 bool FeatureDemoSceneRenderer::setPerMeshData(const CurrentWorkingData& currentData, const Mesh* pMesh)
 {
     switch (mRenderMode)

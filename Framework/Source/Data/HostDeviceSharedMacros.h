@@ -81,8 +81,7 @@
 
 // Alpha mode
 #define AlphaModeOpaque      0
-#define AlphaModeTransparent 1
-#define AlphaModeMask        2
+#define AlphaModeMask        1
 
 // Bit count
 #define SHADING_MODEL_BITS   (3)
