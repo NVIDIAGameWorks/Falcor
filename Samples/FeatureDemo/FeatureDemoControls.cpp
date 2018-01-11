@@ -46,7 +46,6 @@ void FeatureDemo::initControls()
 {
     mControls.resize(ControlID::Count);
     mControls[ControlID::SuperSampling] = { false, false, "INTERPOLATION_MODE", "sample" };
-    mControls[ControlID::EnableSpecAA] = { true, true, "_MS_DISABLE_ROUGHNESS_FILTERING" };
     mControls[ControlID::EnableShadows] = { true, false, "_ENABLE_SHADOWS" };
     mControls[ControlID::EnableReflections] = { false, false, "_ENABLE_REFLECTIONS" };
     mControls[ControlID::EnableHashedAlpha] = { true, true, "_DEFAULT_ALPHA_TEST" };
@@ -246,10 +245,6 @@ void FeatureDemo::onGuiRender()
 
             if (reapply) applyAaMode();
 
-            if (mpGui->addCheckBox("Specular AA", mControls[ControlID::EnableSpecAA].enabled))
-            {
-                applyLightingProgramControl(ControlID::EnableSpecAA);
-            }
             mpGui->endGroup();
         }
 

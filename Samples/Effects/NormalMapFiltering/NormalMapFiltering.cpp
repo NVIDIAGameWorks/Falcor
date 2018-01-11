@@ -40,7 +40,7 @@ void NormalMapFiltering::onGuiRender()
         }
     }
 
-    if (mpGui->addCheckBox("Lean Map", mUseLeanMap) || mpGui->addCheckBox("Specular AA", mUseSpecAA))
+    if (mpGui->addCheckBox("Lean Map", mUseLeanMap))
     {
         updateProgram();
     }
@@ -55,10 +55,6 @@ void NormalMapFiltering::updateProgram()
     {
         mpProgram->addDefine("_MS_LEAN_MAPPING");
         mpProgram->addDefine("_LEAN_MAP_COUNT", std::to_string(mpLeanMap->getRequiredLeanMapShaderArraySize()));
-    }
-    if (mUseSpecAA == false)
-    {
-        mpProgram->addDefine("_MS_DISABLE_ROUGHNESS_FILTERING");
     }
 
     mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
@@ -145,7 +141,6 @@ void NormalMapFiltering::onInitializeTesting()
 
     mChangeModeIt = mChangeModeFrames.begin();
     mUseLeanMap = false;
-    mUseSpecAA = false;
     updateProgram();
 }
 
@@ -153,7 +148,6 @@ void NormalMapFiltering::onEndTestFrame()
 {
     static const uint32_t numCombos = 4;
     static const bool useLeanMap[numCombos] = {false, false, true, true };
-    static const bool useSpecAA[numCombos] = {false, true, false, true };
     static uint32_t index = 0;
 
     uint32_t frameId = frameRate().getFrameCount();
@@ -168,7 +162,6 @@ void NormalMapFiltering::onEndTestFrame()
         }
 
         mUseLeanMap = useLeanMap[index];
-        mUseSpecAA = useSpecAA[index];
         updateProgram();
     }
 }

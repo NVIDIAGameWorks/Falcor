@@ -173,7 +173,6 @@ private:
     enum ControlID
     {
         SuperSampling,
-        EnableSpecAA,
         EnableShadows,
         EnableReflections,
         EnableSSAO,

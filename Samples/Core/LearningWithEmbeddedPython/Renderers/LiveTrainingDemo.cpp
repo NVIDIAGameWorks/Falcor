@@ -477,7 +477,6 @@ void LiveTrainRenderer::initControls(void)
 {
     mControls.resize(ControlID::Count);
     mControls[ControlID::SuperSampling] = { false, "INTERPOLATION_MODE", "sample" };
-    mControls[ControlID::DisableSpecAA] = { false, "_MS_DISABLE_ROUGHNESS_FILTERING" };
     mControls[ControlID::EnableShadows] = { false, "_ENABLE_SHADOWS" };
     mControls[ControlID::EnableReflections] = { false, "_ENABLE_REFLECTIONS" };
     mControls[ControlID::EnableSSAO] = { false, "" };

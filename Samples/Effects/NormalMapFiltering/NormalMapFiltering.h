@@ -50,7 +50,6 @@ private:
     ModelViewCameraController mCameraController;
     LeanMap::UniquePtr mpLeanMap;
     bool mUseLeanMap = true;
-    bool mUseSpecAA = true;
     Sampler::SharedPtr mpLinearSampler;
 
     //Testing
