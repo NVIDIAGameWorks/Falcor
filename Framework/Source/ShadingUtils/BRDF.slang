@@ -45,25 +45,25 @@ float3 fresnelSchlick(float3 f0, float3 f90, float u)
 
 /** Lambertian diffuse
 */
-float3 evalDiffuseLambert(HitPoint hitPt, LightSample ls)
+float3 evalDiffuseLambertBrdf(HitPoint hitPt, LightSample ls)
 {
-    return ls.NdotL * ls.diffuse;
+    return hitPt.diffuse.rgb * (1 / M_PI);
 }
 
 /** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
 */
-float3 evalDiffuseDisney(HitPoint hitPt, LightSample ls)
+float3 evalDiffuseDisneyBrdf(HitPoint hitPt, LightSample ls)
 {
     float fd90 = 0.5 + 2 * ls.LdotH * ls.LdotH * hitPt.linearRoughness;
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, hitPt.NdotV).r;
-    return ls.diffuse * (viewScatter * lightScatter);
+    return (viewScatter * lightScatter) * (1 / M_PI) * hitPt.diffuse.rgb;
 }
 
 /** Frostbites's diffuse term. Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 */
-float3 evalDiffuseFrostbite(HitPoint hitPt, LightSample ls)
+float3 evalDiffuseFrostbiteBrdf(HitPoint hitPt, LightSample ls)
 {
     float energyBias = lerp(0, 0.5, hitPt.linearRoughness);
     float energyFactor = lerp(1, 1.0 / 1.51, hitPt.linearRoughness);
@@ -71,17 +71,17 @@ float3 evalDiffuseFrostbite(HitPoint hitPt, LightSample ls)
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, hitPt.NdotV).r;
-    return ls.diffuse * (viewScatter * lightScatter * energyFactor);
+    return (viewScatter * lightScatter * energyFactor * (1 / M_PI)) * hitPt.diffuse.rgb;
 }
 
-float3 evalDiffuse(HitPoint hitPt, LightSample ls)
+float3 evalDiffuseBrdf(HitPoint hitPt, LightSample ls)
 {
 #if DiffuseBrdf == DiffuseBrdfLambert
-    return evalDiffuseLambert(hitPt, ls);
+    return evalDiffuseLambertBrdf(hitPt, ls);
 #elif DiffuseBrdf == DiffuseBrdfDisney
-    return evalDiffuseDisney(hitPt, ls);
+    return evalDiffuseDisneyBrdf(hitPt, ls);
 #elif DiffuseBrdf == DiffuseBrdfFrostbite
-    return evalDiffuseFrostbite(hitPt, ls);
+    return evalDiffuseFrostbiteBrdf(hitPt, ls);
 #endif
 }
 
@@ -94,16 +94,16 @@ float evalGGX(float roughness, float NdotH)
 
 float evalSmithGGX(float NdotL, float NdotV, float roughness)
 {
-    // Optimized version of SMITH, already taking into account the division by (4 * NdotV)
+    // Optimized version of Smith, already taking into account the division by (4 * NdotV)
     float a2 = roughness * roughness;
     // `NdotV *` and `NdotL *` are inversed. It's not a mistake.
-    float ggxv = NdotV * sqrt((-NdotV * a2 + NdotV) * NdotV + a2);
-    float ggxl = NdotL * sqrt((-NdotL * a2 + NdotL) * NdotL + a2);
+    float ggxv = NdotL * sqrt((-NdotV * a2 + NdotV) * NdotV + a2);
+    float ggxl = NdotV * sqrt((-NdotL * a2 + NdotL) * NdotL + a2);
     return 0.5f / (ggxv + ggxl);
 
 }
 
-float3 evalSpecular(HitPoint hitPt, LightSample ls)
+float3 evalSpecularBrdf(HitPoint hitPt, LightSample ls)
 {
     if (ls.NdotL * hitPt.NdotV <= 0.f)
     {
@@ -114,6 +114,6 @@ float3 evalSpecular(HitPoint hitPt, LightSample ls)
     float D = evalGGX(roughness, ls.NdotH);
     float G = evalSmithGGX(ls.NdotL, hitPt.NdotV, roughness);
     float3 F = fresnelSchlick(hitPt.specular, 1, max(0, ls.LdotH));
-    return D * G * F * ls.specular / M_PI;
+    return D * G * F * (1 / M_PI);
 }
 #endif	// _FALCOR_BRDF_SLANG_

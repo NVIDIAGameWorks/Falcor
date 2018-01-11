@@ -48,9 +48,11 @@ float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint
 */
 struct ShadingResult
 {
-    float3 diffuseIllumination;
-    float3 specularIllumination;
-    float4 color;
+    float3 diffuseBrdf;             // The result of the diffuse BRDF
+    float3 specularBrdf;            // The result of the specular BRDF
+    float3 diffuseIllumination;     // The diffuse component of the result
+    float3 specularIllumination;    // The specular component of the result
+    float4 color;                   // The final color. Alpha holds the opacity valua
 };
 
 /** Convert RGB to normal
@@ -157,6 +159,8 @@ ShadingResult initShadingResult()
     sr.color.rgb = 0;
     sr.color.a = 1;
     sr.specularIllumination = 0;
+    sr.diffuseBrdf = 0;
+    sr.specularBrdf = 0;
     return sr;
 }
 
@@ -175,13 +179,17 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
     }
 
     // Calculate the diffuse term
-    sr.diffuseIllumination = evalDiffuse(hitPt, ls);
-    sr.color.rgb = hitPt.diffuse.rgb * sr.diffuseIllumination * (1 / M_PI);
+    sr.diffuseBrdf = evalDiffuseBrdf(hitPt, ls);
+    sr.diffuseIllumination = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
+    sr.color.rgb = sr.diffuseIllumination;
     sr.color.a = hitPt.opacity;
 
     // Calculate the specular term
-    sr.specularIllumination = evalSpecular(hitPt, ls);
+    sr.specularBrdf = evalSpecularBrdf(hitPt, ls);
+    sr.specularIllumination = ls.specular * sr.specularBrdf * ls.NdotL;
     sr.color.rgb += sr.specularIllumination;
+
+    // Apply the shadow factor
     sr.color.rgb *= shadowFactor;
 
     return sr;
