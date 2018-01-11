@@ -241,6 +241,8 @@ namespace Falcor
 
         createVsmSampleState(1);
         mpGaussianBlur = GaussianBlur::create();
+        mpGaussianBlur->setSigma(2.5f);
+        mpGaussianBlur->setKernelWidth(5);
     }
 
     CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
@@ -370,35 +372,28 @@ namespace Falcor
             }
 
             //partition mode
-            const char* partitionGroup = "Partitioning";
-            if (pGui->beginGroup(partitionGroup))
+            uint32_t newPartitionMode = static_cast<uint32_t>(mControls.partitionMode);
+            if (pGui->addDropdown("Partition Mode", kPartitionList, newPartitionMode))
             {
-                uint32_t newPartitionMode = static_cast<uint32_t>(mControls.partitionMode);
-                if (pGui->addDropdown("Partition Mode", kPartitionList, newPartitionMode))
-                {
-                    mControls.partitionMode = static_cast<PartitionMode>(newPartitionMode);
-                }
-
-                if(mControls.partitionMode == PartitionMode::PSSM)
-                {
-                    pGui->addFloatVar("PSSM Lambda", mControls.pssmLambda, 0, 1.0f);
-                }
-
-                if (mControls.useMinMaxSdsm == false)
-                {
-                    pGui->addFloatVar("Min Distance", mControls.distanceRange.x, 0, 1);
-                    pGui->addFloatVar("Max Distance", mControls.distanceRange.y, 0, 1);
-                }
-
-                pGui->addFloatVar("Cascade Blend Threshold", mCsmData.cascadeBlendThreshold, 0, 1.0f);
-                pGui->addCheckBox("Depth Clamp", mControls.depthClamp);
-
-                pGui->endGroup();
+                mControls.partitionMode = static_cast<PartitionMode>(newPartitionMode);
             }
 
+            if (mControls.partitionMode == PartitionMode::PSSM)
+            {
+                pGui->addFloatVar("PSSM Lambda", mControls.pssmLambda, 0, 1.0f);
+            }
+
+            if (mControls.useMinMaxSdsm == false)
+            {
+                pGui->addFloatVar("Min Distance", mControls.distanceRange.x, 0, 1);
+                pGui->addFloatVar("Max Distance", mControls.distanceRange.y, 0, 1);
+            }
+
+            pGui->addFloatVar("Cascade Blend Threshold", mCsmData.cascadeBlendThreshold, 0, 1.0f);
+            pGui->addCheckBox("Depth Clamp", mControls.depthClamp);
 
             pGui->addFloatVar("Depth Bias", mCsmData.depthBias, 0, FLT_MAX, 0.0001f);
-//                pGui->addCheckBox("Stabilize Cascades", mControls.stabilizeCascades);
+            pGui->addCheckBox("Stabilize Cascades", mControls.stabilizeCascades);
 
             // SDSM data
             const char* sdsmGroup = "SDSM MinMax";
@@ -715,12 +710,12 @@ namespace Falcor
         distanceRange = glm::clamp(distanceRange, glm::vec2(0), glm::vec2(1));
         mSdsmData.sdsmResult = distanceRange;
 
-        //if (mControls.stabilizeCascades)
-        //{
-        //    // Ignore minor changes that can result in swimming
-        //    distanceRange = round(distanceRange * 16.0f) / 16.0f;
-        //    distanceRange.y = max(distanceRange.y, 0.005f);
-        //}
+        if (mControls.stabilizeCascades)
+        {
+            // Ignore minor changes that can result in swimming
+            distanceRange = round(distanceRange * 16.0f) / 16.0f;
+            distanceRange.y = max(distanceRange.y, 0.005f);
+        }
     }
 
     vec2 CascadedShadowMaps::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
