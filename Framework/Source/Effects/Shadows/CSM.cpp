@@ -365,32 +365,25 @@ namespace Falcor
             }
 
             //partition mode
-            const char* partitionGroup = "Partitioning";
-            if (pGui->beginGroup(partitionGroup))
+            uint32_t newPartitionMode = static_cast<uint32_t>(mControls.partitionMode);
+            if (pGui->addDropdown("Partition Mode", kPartitionList, newPartitionMode))
             {
-                uint32_t newPartitionMode = static_cast<uint32_t>(mControls.partitionMode);
-                if (pGui->addDropdown("Partition Mode", kPartitionList, newPartitionMode))
-                {
-                    mControls.partitionMode = static_cast<PartitionMode>(newPartitionMode);
-                }
-
-                if(mControls.partitionMode == PartitionMode::PSSM)
-                {
-                    pGui->addFloatVar("PSSM Lambda", mControls.pssmLambda, 0, 1.0f);
-                }
-
-                if (mControls.useMinMaxSdsm == false)
-                {
-                    pGui->addFloatVar("Min Distance", mControls.distanceRange.x, 0, 1);
-                    pGui->addFloatVar("Max Distance", mControls.distanceRange.y, 0, 1);
-                }
-
-                pGui->addFloatVar("Cascade Blend Threshold", mCsmData.cascadeBlendThreshold, 0, 1.0f);
-                pGui->addCheckBox("Depth Clamp", mControls.depthClamp);
-
-                pGui->endGroup();
+                mControls.partitionMode = static_cast<PartitionMode>(newPartitionMode);
             }
 
+            if (mControls.partitionMode == PartitionMode::PSSM)
+            {
+                pGui->addFloatVar("PSSM Lambda", mControls.pssmLambda, 0, 1.0f);
+            }
+
+            if (mControls.useMinMaxSdsm == false)
+            {
+                pGui->addFloatVar("Min Distance", mControls.distanceRange.x, 0, 1);
+                pGui->addFloatVar("Max Distance", mControls.distanceRange.y, 0, 1);
+            }
+
+            pGui->addFloatVar("Cascade Blend Threshold", mCsmData.cascadeBlendThreshold, 0, 1.0f);
+            pGui->addCheckBox("Depth Clamp", mControls.depthClamp);
 
             pGui->addFloatVar("Depth Bias", mCsmData.depthBias, 0, FLT_MAX, 0.0001f);
             pGui->addCheckBox("Stabilize Cascades", mControls.stabilizeCascades);
