@@ -65,8 +65,6 @@ namespace Falcor
         poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
         mpCpuDescPool = DescriptorPool::create(poolDesc, mpRenderContext->getLowLevelData()->getFence());
 
-        if(mpRenderContext) mpRenderContext->reset();
-
         mVsyncOn = desc.enableVsync;
 
         // Create the swap-chain
@@ -194,7 +192,6 @@ namespace Falcor
         apiPresent();
         mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
         executeDeferredReleases();
-        mpRenderContext->reset();
         mFrameID++;
     }
 

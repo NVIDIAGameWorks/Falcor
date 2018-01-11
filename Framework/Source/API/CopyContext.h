@@ -50,10 +50,6 @@ namespace Falcor
         void updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData);
         std::vector<uint8> readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
 
-        /** Reset
-        */
-        virtual void reset();
-
         /** Flush the command list. This doesn't reset the command allocator, just submits the commands
             \param[in] wait If true, will block execution until the GPU finished processing the commands
         */

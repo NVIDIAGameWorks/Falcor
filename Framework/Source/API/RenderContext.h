@@ -164,10 +164,6 @@ namespace Falcor
         */
         void popGraphicsState();
         
-        /** Reset the context
-        */
-        void reset() override;
-
         /** Submit the command list
         */
         void flush(bool wait = false) override;

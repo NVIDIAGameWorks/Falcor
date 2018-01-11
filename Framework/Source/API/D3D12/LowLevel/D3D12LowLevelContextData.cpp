@@ -84,21 +84,14 @@ namespace Falcor
         safe_delete(mpApiData);
     }
 
-    void LowLevelContextData::reset()
-    {
-        mpFence->gpuSignal(mpQueue);
-        mpAllocator = mpApiData->pAllocatorPool->newObject();
-        d3d_call(mpList->Close());
-        d3d_call(mpAllocator->Reset());
-        d3d_call(mpList->Reset(mpAllocator, nullptr));
-    }
-
     void LowLevelContextData::flush()
     {
         d3d_call(mpList->Close());
         ID3D12CommandList* pList = mpList.GetInterfacePtr();
         mpQueue->ExecuteCommandLists(1, &pList);
         mpFence->gpuSignal(mpQueue);
-        mpList->Reset(mpAllocator, nullptr);
+        mpAllocator = mpApiData->pAllocatorPool->newObject();
+        d3d_call(mpAllocator->Reset());
+        d3d_call(mpList->Reset(mpAllocator, nullptr));
     }
 }
