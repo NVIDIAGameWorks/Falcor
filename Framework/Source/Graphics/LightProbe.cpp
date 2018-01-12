@@ -32,47 +32,33 @@
 
 namespace Falcor
 {
-    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter)
+    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat format)
     {
+        assert(filter == PreFilterMode::None);
         mData.type = LightProbeLinear2D;
+        mData.resources.origTexture = pTexture;
+    }
 
-        // Create the texture
-        assert(pTexture->getType() == Texture::Type::Texture2D);
-        uint32_t mipLevels = (mipFilter == MipFilter::None) ? 1 : Texture::kMaxPossible;
-        Texture::BindFlags bindFlags = Texture::BindFlags::ShaderResource;
-        if (mipFilter != MipFilter::None)
+    LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat format)
+    {
+        Texture::SharedPtr pTexture;
+        if (overrideFormat != ResourceFormat::Unknown)
         {
-            bindFlags |= Texture::BindFlags::RenderTarget;
-        }
-        mData.resources.diffuseProbe2D = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
-        if (mipFilter == MipFilter::PreIntegration)
-        {
-            should_not_get_here();
-            //            mpSpecularTex = Texture::create2D(size, size, format, 1, mipLevels, nullptr, bindFlags);
+            Texture::SharedPtr pOrigTex = createTextureFromFile(filename, false, loadAsSrgb);
+            pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, generateMips ? Texture::kMaxPossible : 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+            gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
+            pTexture->generateMips(gpDevice->getRenderContext().get());
         }
         else
         {
-            mData.resources.specularProbe2D = mData.resources.diffuseProbe2D;
+           pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
         }
-
-        RenderContext* pContext = gpDevice->getRenderContext().get();
-        pContext->blit(pTexture->getSRV(), mData.resources.diffuseProbe2D->getRTV());
-        // Filter
-        if (mipFilter == MipFilter::Linear)
-        {
-            mData.resources.diffuseProbe2D->generateMips(pContext);
-        }
+        return create(pTexture, filter, size, format);
     }
 
-    LightProbe::SharedPtr LightProbe::create(const std::string& filename, uint32_t size, bool loadAsSrgb, ResourceFormat format, MipFilter mipFilter)
+    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat format)
     {
-        Texture::SharedPtr pTexture = createTextureFromFile(filename, false, loadAsSrgb);
-        return create(pTexture, size, format, mipFilter);
-    }
-
-    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter)
-    {
-        return SharedPtr(new LightProbe(pTexture, size, format, mipFilter));
+        return SharedPtr(new LightProbe(pTexture, filter, size, format));
     }
 
     void LightProbe::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
@@ -118,8 +104,7 @@ namespace Falcor
         pBuffer->setBlob(&mData, offset, kDataSize);
 
         // Bind the textures
-        pVars->setTexture(varName + ".resources.diffuseProbe2D", mData.resources.diffuseProbe2D);
-        pVars->setTexture(varName + ".resources.specularProbe2D", mData.resources.specularProbe2D);
+        pVars->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
         pVars->setSampler(varName + ".resources.samplerState", mData.resources.samplerState);
     }
 }

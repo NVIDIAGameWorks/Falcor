@@ -46,29 +46,30 @@ namespace Falcor
 
         /** The type of the filtering that will be applied to the source texture
         */
-        enum class MipFilter
+        enum class PreFilterMode
         {
             None,                   ///< No filtering. The light probe will have a single mip-level
-            Linear,                 ///< Generate mip-chain using bilinear filtering
             PreIntegration,         ///< Pre-filter the textures and generate mip-chain using the technique described in https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
         };
 
         /** Create a light-probe from a file
             \param[in] filename Texture filename
-            \param[in] size The width and height of the destination texture. We always create a square texture
             \param[in] loadAsSrgb Indicates whether the source texture is in sRGB or linear color space
-            \param[in] format The format of the light-probe texture
-            \param[in] mipFilter The filter to use when creating the light-probe
-        */
-        static SharedPtr create(const std::string& filename, uint32_t size, bool loadAsSrgb, ResourceFormat format = ResourceFormat::RGBA16Float, MipFilter mipFilter = MipFilter::Linear);
+            \param[in] generateMips Generate mip-chain for the unfiltered texture
+            \param[in] overrideFormat Override the format of the original texture. ResourceFormat::Unknown means keep the original format. Useful in cases where generateMips is true, but the original format doesn't support automatic mip generation
+            \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
+            \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
+            \param[in] preFilteredFormat The format of the pre-filtered texture
+            */
+        static SharedPtr create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat = ResourceFormat::Unknown, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
         /** Create a light-probe from a texture
         \param[in] pTexture The source texture
-        \param[in] size The width and height of the destination texture. We always create a square texture
-        \param[in] format The format of the light-probe texture
-        \param[in] mipFilter The filter to use when creating the light-probe
+        \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
+        \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
+        \param[in] format The format of the pre-filtered texture
         */
-        static SharedPtr create(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format = ResourceFormat::RGBA16Float, MipFilter mipFilter = MipFilter::Linear);
+        static SharedPtr create(const Texture::SharedPtr& pTexture, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat format = ResourceFormat::RGBA16Float);
 
         /** Set the light-probe's world-space position
         */
@@ -100,7 +101,7 @@ namespace Falcor
 
     private:
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
-        LightProbe(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, MipFilter mipFilter);
+        LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat format);
         LightProbeData mData;
     };
 }

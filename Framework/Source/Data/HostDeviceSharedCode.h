@@ -135,8 +135,7 @@ struct MaterialData
 
 struct LightProbeResources
 {
-    Texture2D diffuseProbe2D;
-    Texture2D specularProbe2D;
+    Texture2D origTexture;          //<<< The original texture
     SamplerState samplerState;
 };
 

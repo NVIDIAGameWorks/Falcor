@@ -226,7 +226,7 @@ void FeatureDemo::initSkyBox(const std::string& name)
 
 void FeatureDemo::initLightProbe(const std::string& name)
 {
-    mpLightProbe = LightProbe::create(name, 512, true, ResourceFormat::RGBA16Float, LightProbe::MipFilter::Linear);
+    mpLightProbe = LightProbe::create(name, true, true, ResourceFormat::RGBA16Float);
     mControls[EnableReflections].enabled = true;
     applyLightingProgramControl(ControlID::EnableReflections);
     mpLightProbe->setSampler(mpSceneSampler);
