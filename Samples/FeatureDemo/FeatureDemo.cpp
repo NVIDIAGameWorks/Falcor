@@ -76,7 +76,7 @@ void FeatureDemo::initLightingPass()
 void FeatureDemo::initShadowPass()
 {
     mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
-    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm4);
+    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm2);
     mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
     mShadowPass.pCsm->setVsmMaxAnisotropy(4);
     mShadowPass.pCsm->setEvsmBlur(7, 3);

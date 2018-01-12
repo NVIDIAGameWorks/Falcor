@@ -122,7 +122,7 @@ namespace Falcor
         mParamBlockDirty = mParamBlockDirty || (mData.textures.diffuse != pDiffuse);
         mData.textures.diffuse = pDiffuse;
         updateDiffuseType();
-        bool hasAlpha = pDiffuse && getFormatChannelCount(pDiffuse->getFormat()) == 4;
+        bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
         setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
     }
 

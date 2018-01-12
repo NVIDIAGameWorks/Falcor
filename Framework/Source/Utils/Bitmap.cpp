@@ -105,8 +105,10 @@ namespace Falcor
             pBmp->mFormat = ResourceFormat::RGB16Float;  // 3xfloat16 HDR format
             break;
         case 32:
-        case 24:
             pBmp->mFormat = ResourceFormat::BGRA8Unorm;
+            break;
+        case 24:
+            pBmp->mFormat = ResourceFormat::BGRX8Unorm;
             break;
         case 16:
             pBmp->mFormat = ResourceFormat::RG8Unorm;
