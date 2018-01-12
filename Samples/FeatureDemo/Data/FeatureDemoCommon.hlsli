@@ -39,7 +39,7 @@ layout(binding = 0) cbuffer PerFrameCB : register(b0)
     float2 gRenderTargetDim;
     float gOpacityScale;
 
-    LightData gLightProbe;
+    LightProbeData gLightProbe;
 };
 
 struct MainVsOut

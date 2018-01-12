@@ -49,12 +49,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.position);
 
     float4 finalColor = float4(0, 0, 0, 1);
-    float reflectionFactor = 1;
-    float opacity = 1;
-#ifdef _ENABLE_TRANSPARENCY
-    opacity = getDiffuseColor(shAttr).a;
-#endif
-
+    
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
@@ -63,19 +58,18 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
         if (l == 0)
         {
             shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, hitPt.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
-            shadowFactor *= opacity;
-            reflectionFactor -= 1 - shadowFactor;
+            shadowFactor *= hitPt.opacity;
         }
 #endif
         finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color.rgb;
     }
 
 #ifdef _ENABLE_TRANSPARENCY
-    finalColor.a = opacity * gOpacityScale;
+    finalColor.a = hitPt.opacity * gOpacityScale;
 #endif
 
 #ifdef _ENABLE_REFLECTIONS
-    finalColor.rgb += evalMaterial(hitPt, gLightProbe, 1).color.rgb;
+    finalColor.rgb += evalMaterial(hitPt, gLightProbe).color.rgb;
 #endif
 
     // add ambient

@@ -77,6 +77,7 @@
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/TextureHelper.h"
 #include "Graphics/Light.h"
+#include "Graphics/LightProbe.h"
 #include "Graphics/FboHelper.h"
 #include "Graphics/ComputeState.h"
 

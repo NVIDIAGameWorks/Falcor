@@ -169,15 +169,6 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
     ShadingResult sr = initShadingResult();
     LightSample ls = evalLight(light, hitPt);
 
-    if(light.type == LightProbeLinear2D)
-    {
-        sr.diffuseIllumination = ls.diffuse;
-        sr.color.rgb = hitPt.diffuse.rgb * sr.diffuseIllumination;
-        sr.specularIllumination = saturate(evalGGX(hitPt.roughness, ls.NdotH)) * ls.specular * hitPt.specular;
-        sr.color.rgb += sr.specularIllumination;
-        return sr;
-    }
-
     // Calculate the diffuse term
     sr.diffuseBrdf = evalDiffuseBrdf(hitPt, ls);
     sr.diffuseIllumination = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
@@ -194,5 +185,17 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
 
     return sr;
 };
+
+ShadingResult evalMaterial(HitPoint hitPt, LightProbeData probe)
+{
+    ShadingResult sr = initShadingResult();
+    LightSample ls = evalLightProbe(probe, hitPt);
+
+    sr.diffuseIllumination = ls.diffuse;
+    sr.color.rgb = hitPt.diffuse.rgb * sr.diffuseIllumination;
+    sr.specularIllumination = saturate(evalGGX(hitPt.roughness, ls.NdotH)) * ls.specular * hitPt.specular;
+    sr.color.rgb += sr.specularIllumination;
+    return sr;
+}
 
 #endif	// _FALCOR_SHADING_SLANG_

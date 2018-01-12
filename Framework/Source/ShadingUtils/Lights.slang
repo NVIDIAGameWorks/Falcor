@@ -125,9 +125,22 @@ float linearRoughnessToLod(float linearRoughness, float mipCount)
     return sqrt(linearRoughness) * (mipCount - 1);
 }
 
+
+/** Evaluate a light source intensity/direction at a shading point
+*/
+LightSample evalLight(LightData light, HitPoint hitPt)
+{
+    LightSample ls;
+    if(light.type == LightDirectional) ls = evalDirectionalLight(light, hitPt.posW);
+    else if(light.type == LightPoint)  ls = evalPointLight(light, hitPt.posW);
+    else ls = evalAreaLight(light, hitPt.posW);
+    calcCommonLightProperties(hitPt, ls);
+    return ls;
+};
+
 /** Evaluate a 2D light-probe filtered using linear-filtering
 */
-LightSample evalLightProbeLinear2D(LightData light, HitPoint hitPt)
+LightSample evalLightProbeLinear2D(LightProbeData probe, HitPoint hitPt)
 {
     LightSample ls;
 
@@ -137,31 +150,29 @@ LightSample evalLightProbeLinear2D(LightData light, HitPoint hitPt)
 
     // Get the mip-level count
     uint h, w, mipCount;
-    light.textures.diffuseProbe2D.GetDimensions(0, h, w, mipCount);
+    probe.resources.diffuseProbe2D.GetDimensions(0, h, w, mipCount);
 
     // For the diffuse component, we use the last mip-level
-    ls.diffuse = light.textures.diffuseProbe2D.SampleLevel(light.textures.samplerState, texC, mipCount - 1).rgb;
+    ls.diffuse = probe.resources.diffuseProbe2D.SampleLevel(probe.resources.samplerState, texC, mipCount - 1).rgb;
 
     // Get the specular component
     float lod = linearRoughnessToLod(hitPt.linearRoughness, mipCount);
-    ls.specular = light.textures.diffuseProbe2D.SampleLevel(light.textures.samplerState, texC, lod).rgb;
+    ls.specular = probe.resources.specularProbe2D.SampleLevel(probe.resources.samplerState, texC, lod).rgb;
     
-    ls.diffuse *= light.intensity;
-    ls.specular *= light.intensity;
+    ls.diffuse *= probe.intensity;
+    ls.specular *= probe.intensity;
+    ls.posW = probe.posW;
+
+    calcCommonLightProperties(hitPt, ls);
+
     return ls;
 }
 
-/** Evaluate a light source intensity/direction at a shading point
+/** Evaluate the properties of a light-probe
 */
-LightSample evalLight(LightData light, HitPoint hitPt)
+LightSample evalLightProbe(LightProbeData probe, HitPoint hitPt)
 {
-    LightSample ls;
-    if(light.type == LightDirectional) ls = evalDirectionalLight(light, hitPt.posW);
-    else if(light.type == LightPoint)  ls = evalPointLight(light, hitPt.posW);
-    else if (light.type == LightProbeLinear2D) ls = evalLightProbeLinear2D(light, hitPt);
-    else ls = evalAreaLight(light, hitPt.posW);
-    calcCommonLightProperties(hitPt, ls);
-    return ls;
-};
+    return evalLightProbeLinear2D(probe, hitPt);
+}
 
 #endif	// _FALCOR_LIGHTS_SLANG_

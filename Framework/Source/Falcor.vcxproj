@@ -325,6 +325,7 @@
     <ClCompile Include="Graphics\FboHelper.cpp" />
     <ClCompile Include="Graphics\FullScreenPass.cpp" />
     <ClCompile Include="Graphics\Light.cpp" />
+    <ClCompile Include="Graphics\LightProbe.cpp" />
     <ClCompile Include="Graphics\Material\Material.cpp" />
     <ClCompile Include="Graphics\Material\MaterialSystem.cpp" />
     <ClCompile Include="Graphics\Model\Animation.cpp" />
@@ -776,6 +777,7 @@
     <ClInclude Include="Graphics\FboHelper.h" />
     <ClInclude Include="Graphics\FullScreenPass.h" />
     <ClInclude Include="Graphics\Light.h" />
+    <ClInclude Include="Graphics\LightProbe.h" />
     <ClInclude Include="Graphics\Material\Material.h" />
     <ClInclude Include="Graphics\Material\MaterialSystem.h" />
     <ClInclude Include="Graphics\Model\Animation.h" />

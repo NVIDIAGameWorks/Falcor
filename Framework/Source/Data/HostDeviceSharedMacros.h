@@ -143,12 +143,15 @@
 #define LightPoint                  0    ///< Point light source, can be a spot light if its opening angle is < 2pi
 #define LightDirectional            1    ///< Directional light source
 #define LightArea                   2    ///< Area light source, potentially with arbitrary geometry
-#define LightProbeLinear2D          3    ///< Light probe filtered with linear-filtering, 2D texture
-#define LightProbePreIntegrated2D   4    ///< Pre-integrated light probe, 2D texture
-#define LightProbeLinearCube        5    ///< Light probe filtered with linear-filtering, texture-cube
-#define LightProbePreIntegratedCube 6    ///< Pre-integrated light probe, texture-cube
 
 #define MAX_LIGHT_SOURCES 16
+
+/** Light probe types
+*/
+#define LightProbeLinear2D          0    ///< Light probe filtered with linear-filtering, 2D texture
+#define LightProbePreIntegrated2D   1    ///< Pre-integrated light probe, 2D texture
+#define LightProbeLinearCube        2    ///< Light probe filtered with linear-filtering, texture-cube
+#define LightProbePreIntegratedCube 3    ///< Pre-integrated light probe, texture-cube
 
 /*******************************************************************
                 Math

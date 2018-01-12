@@ -133,12 +133,20 @@ struct MaterialData
     This is a general host/device structure that describe a light source.
 */
 
-struct LightTextures
+struct LightProbeResources
 {
-    // Textures for light-probes. #OPTME If the textures was filtered using linear-filtering then the spec and diffuse term is the same texture and we can save a fetch. The default is pre-integration, so that probably doesn't matter much
     Texture2D diffuseProbe2D;
-//    Texture2D specularProbe2D;
+    Texture2D specularProbe2D;
     SamplerState samplerState;
+};
+
+struct LightProbeData
+{
+    float3 posW         DEFAULTS(float3(0));
+    uint32_t type       DEFAULTS(LightProbeLinear2D);
+    float3 intensity    DEFAULTS(float3(1.0f));
+
+    LightProbeResources resources;
 };
 
 struct LightData
@@ -159,7 +167,6 @@ struct LightData
 	float    pad;
     float4x4 transMat           DEFAULTS(float4x4());       ///< Transformation matrix of the model instance for area lights
 
-    LightTextures textures;
     // For area light
 // 	BufPtr          indexPtr;                                     ///< Buffer id for indices
 // 	BufPtr          vertexPtr;                                    ///< Buffer id for vertices
