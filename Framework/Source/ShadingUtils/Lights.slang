@@ -138,26 +138,43 @@ LightSample evalLight(LightData light, HitPoint hitPt)
     return ls;
 };
 
+float3 getDiffuseDominantDir(float3 N, float3 V, float roughness)
+{
+    float a = 1.02341 * roughness - 1.51174;
+    float b = -0.511705 * roughness + 0.755868;
+    float factor = saturate((saturate(dot(N, V)) * a + b) * roughness);
+    return normalize(lerp(N, V, factor));
+}
+
+float3 getSpecularDominantDir(float3 N, float3 V, float roughness)
+{
+    float3 R = reflect(-V, N);
+    float smoothness = 1 - roughness;
+    float factor = smoothness * (sqrt(smoothness) + roughness);
+    return normalize(lerp(N, R, factor));
+}
+
 /** Evaluate a 2D light-probe filtered using linear-filtering
 */
 LightSample evalLightProbeLinear2D(LightProbeData probe, HitPoint hitPt)
 {
     LightSample ls;
 
-    // Calculate the view vector
+    // Calculate the reflection vector
     ls.L = reflect(-hitPt.V, hitPt.N);
-    float2 texC = dirToSphericalCrd(ls.L);
 
     // Get the mip-level count
     uint h, w, mipCount;
     probe.resources.origTexture.GetDimensions(0, h, w, mipCount);
 
     // For the diffuse component, we use the last mip-level
-    ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, texC, mipCount - 1).rgb;
+    ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, 0, mipCount - 2).rgb;
 
     // Get the specular component
+    float3 specDir = getSpecularDominantDir(hitPt.N, hitPt.V, hitPt.roughness);
+    float2 specCrd = dirToSphericalCrd(specDir);
     float lod = linearRoughnessToLod(hitPt.linearRoughness, mipCount);
-    ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, texC, lod).rgb;
+    ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, specCrd, lod).rgb;
     
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;

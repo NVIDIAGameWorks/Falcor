@@ -177,4 +177,5 @@ void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
     hashedAlphaTest(alpha, threshold, hashedThreshold);
 #endif
 }
+
 #endif //_FALCOR_HELPERS_SLANG_
