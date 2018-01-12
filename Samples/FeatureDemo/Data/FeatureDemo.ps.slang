@@ -64,6 +64,9 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
         finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color.rgb;
     }
 
+    // Add the emissive component
+    finalColor.rgb += hitPt.emissive;
+
 #ifdef _ENABLE_TRANSPARENCY
     finalColor.a = hitPt.opacity * gOpacityScale;
 #endif
