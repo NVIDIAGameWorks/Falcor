@@ -8,11 +8,10 @@
 @if not defined PM_MODULE goto :MODULE_ENV_ERROR
 
 :: Generate temporary path for variable file
-:TEMP_VAR_PATH_LOOP
-@set "PM_VAR_PATH=%tmp%\tmp.%RANDOM%.pmvars"
-@if exist "%PM_VAR_PATH%" goto :TEMP_VAR_PATH_LOOP
+@for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile ^
+-File "%~dp0win-bootstrap\generate_temp_file_name.ps1"') do @set PM_VAR_PATH=%%a
 
-@"%PM_PYTHON%" "%PM_MODULE%" %* --var-path="%PM_VAR_PATH%"
+@"%PM_PYTHON%" -u "%PM_MODULE%" %* --var-path="%PM_VAR_PATH%"
 @if errorlevel 1 goto :eof
 
 :: Marshall environment variables into the current environment if they have been generated and remove temporary file
