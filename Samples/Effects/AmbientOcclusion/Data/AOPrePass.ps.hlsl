@@ -35,7 +35,7 @@ struct PSOut
     float4 normal: SV_TARGET1;
 };
 
-PSOut main(VS_OUT vsOut)
+PSOut main(VertexOut vsOut)
 {
     PSOut psOut;
 

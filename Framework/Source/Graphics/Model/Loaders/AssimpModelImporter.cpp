@@ -225,7 +225,7 @@ namespace Falcor
         case aiTextureType_HEIGHT:
         case aiTextureType_DISPLACEMENT:
             // OBJ doesn't support normal maps, so they are usually placed in the height map slot. For consistency with other formats, we move them to the normal map slot.
-            isObjFile ? pMaterial->setHeightMap(pTexture) : pMaterial->setNormalMap(pTexture);
+            isObjFile ? pMaterial->setNormalMap(pTexture) : pMaterial->setHeightMap(pTexture);
             break;
         case aiTextureType_NORMALS:
             pMaterial->setNormalMap(pTexture);

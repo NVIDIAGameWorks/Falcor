@@ -34,19 +34,18 @@ cbuffer PerFrameCB : register(b0)
     float3 gAmbient;
 };
 
-float4 main(VS_OUT vOut) : SV_TARGET
+float4 main(VertexOut vOut) : SV_TARGET
 {
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, shAttr);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.position);
 
-    ShadingOutput result;
+    float3 result = 0;
 
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
-        evalMaterial(shAttr, gLights[l], result, l == 0);
+        result += evalMaterial(hitPt, gLights[l], 1).color;
     }
 
-    float4 finalColor = float4(result.finalValue + gAmbient * result.diffuseAlbedo, 1.f);
-    return finalColor;
+    result += gAmbient * hitPt.diffuse;
+    return float4(result, 1);
 }
