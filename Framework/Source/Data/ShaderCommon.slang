@@ -107,7 +107,7 @@ struct HitPoint
     float3    T;            ///< Shading tangent at shading hit
     float3    B;            ///< Shading bitangent at shading hit
     float2    uv;           ///< Texture mapping coordinates
-    float     NdotV;
+    float     NdotV;        // Unclamped, can be negative
 
     // Pre-loaded texture data
     float3 diffuse;

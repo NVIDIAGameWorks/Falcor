@@ -60,7 +60,7 @@ struct ShadingResult
 float3 RgbToNormal(float3 rgb)
 {
     float3 n = rgb * 2 - 1;
-    return normalize(n);
+    return n;
 }
 
 /** Convert RG to normal
@@ -93,8 +93,8 @@ void applyNormalMap(MaterialData m, inout HitPoint hitPt)
     default:
         return;
     }
-    
     mapN = normalize(mapN);
+
     // Apply the transformation. Everything is normalized already
     hitPt.N = hitPt.T * mapN.x + hitPt.B * mapN.y + hitPt.N * mapN.z;
     hitPt.B = normalize(hitPt.B - hitPt.N * dot(hitPt.B, hitPt.N));
@@ -116,6 +116,7 @@ void applyAlphaTest(MaterialData m, float alpha)
 HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
 {
     HitPoint hitPt;
+
     // Sample the diffuse texture and apply the alpha test
     float4 diffuse = sampleTexture(m.textures.diffuse, m.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
     hitPt.diffuse = diffuse.rgb;
@@ -126,6 +127,7 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     hitPt.uv = v.texC;
     hitPt.V = normalize(camPosW - v.posW);
     hitPt.N = normalize(v.normalW);
+
     hitPt.B = normalize(v.bitangentW - hitPt.N * (dot(v.bitangentW, hitPt.N)));
     hitPt.T = normalize(cross(hitPt.B, hitPt.N));
 
@@ -144,10 +146,17 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     hitPt.height = sampleTexture(m.textures.heightMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
     hitPt.height = hitPt.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
 #undef channel_type
-
+    
     hitPt.NdotV = 0; // Need to initialize it otherwise the compiler complains about uninitialized variable when calling applyNormalMap()
     applyNormalMap(m, hitPt);
-    hitPt.NdotV = abs(dot(hitPt.N, hitPt.V)) + 1e-5f;
+    hitPt.NdotV = dot(hitPt.N, hitPt.V);
+
+    // Flip the normal if it's backfacing
+    if(hitPt.NdotV <= 0 && hitPt.doubleSidedMaterial)
+    {
+        hitPt.N = -hitPt.N;
+        hitPt.NdotV = -hitPt.NdotV;
+    }
 
     return hitPt;
 }
@@ -168,6 +177,9 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
 {
     ShadingResult sr = initShadingResult();
     LightSample ls = evalLight(light, hitPt);
+
+    // If the light doesn't hit the surface or we are viewing the surface from the back, return
+    if(ls.NdotL <= 0 || hitPt.NdotV <= 0) return sr;
 
     // Calculate the diffuse term
     sr.diffuseBrdf = evalDiffuseBrdf(hitPt, ls);

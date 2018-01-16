@@ -37,18 +37,17 @@ struct LightSample
     float3 specular;  // The light intensity at the hit point used for the specular term. For light probes, the diffuse and specular components are different
     float3 L;         // The direction from the surface to the light source
     float3 posW;      // The world-space position of the light 
-    float NdotH;
-    float NdotL;
-    float LdotH;
+    float NdotH;      // Unclamped, can be negative
+    float NdotL;      // Unclamped, can be negative
+    float LdotH;      // Unclamped, can be negative
 };
 
 void calcCommonLightProperties(HitPoint hitPt, inout LightSample ls)
 {
     float3 H = normalize(hitPt.V + ls.L);
-    ls.NdotH = saturate(dot(hitPt.N, H));
-    ls.NdotL = saturate(dot(hitPt.N, ls.L));
-    ls.NdotL = hitPt.doubleSidedMaterial ? abs(ls.NdotL) : saturate(ls.NdotL);
-    ls.LdotH = saturate(dot(ls.L, H));
+    ls.NdotH = dot(hitPt.N, H);
+    ls.NdotL = dot(hitPt.N, ls.L);
+    ls.LdotH = dot(ls.L, H);
 };
 
 float getDistanceFalloff(float distSquared)

@@ -105,12 +105,8 @@ float evalSmithGGX(float NdotL, float NdotV, float roughness)
 
 float3 evalSpecularBrdf(HitPoint hitPt, LightSample ls)
 {
-    if (ls.NdotL * hitPt.NdotV <= 0.f)
-    {
-        return 0;
-    }
     float roughness = hitPt.roughness;
-
+    
     float D = evalGGX(roughness, ls.NdotH);
     float G = evalSmithGGX(ls.NdotL, hitPt.NdotV, roughness);
     float3 F = fresnelSchlick(hitPt.specular, 1, max(0, ls.LdotH));
