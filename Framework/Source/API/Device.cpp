@@ -65,6 +65,8 @@ namespace Falcor
         poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
         mpCpuDescPool = DescriptorPool::create(poolDesc, mpRenderContext->getLowLevelData()->getFence());
 
+        if (mpRenderContext) mpRenderContext->flush();  // This will bind the descriptor heaps
+
         mVsyncOn = desc.enableVsync;
 
         // Create the swap-chain
@@ -80,7 +82,7 @@ namespace Falcor
 
         if (desc.enableVR && VRSystem::instance()) VRSystem::instance()->initDisplayAndController(mpRenderContext);
         gpDevice->mTimestampQueryHeap = QueryHeap::create(QueryHeap::Type::Timestamp, 128 * 1024 * 1024);
-
+        
         return true;
     }
 

@@ -48,8 +48,8 @@ namespace Falcor
         {
             mpLowLevelData->flush();
             mCommandsPending = false;
-            bindDescriptorHeaps();
         }
+        bindDescriptorHeaps();
 
         if (wait)
         {
