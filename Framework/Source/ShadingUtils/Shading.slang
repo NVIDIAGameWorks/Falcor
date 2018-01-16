@@ -50,8 +50,8 @@ struct ShadingResult
 {
     float3 diffuseBrdf;             // The result of the diffuse BRDF
     float3 specularBrdf;            // The result of the specular BRDF
-    float3 diffuseIllumination;     // The diffuse component of the result
-    float3 specularIllumination;    // The specular component of the result
+    float3 diffuse;                 // The diffuse component of the result
+    float3 specular;                // The specular component of the result
     float4 color;                   // The final color. Alpha holds the opacity valua
 };
 
@@ -111,11 +111,36 @@ void applyAlphaTest(MaterialData m, float alpha)
     }
 }
 
+HitPoint initHitPoint()
+{
+    HitPoint hitPt;
+    hitPt.posW = 0;
+    hitPt.V = 0;
+    hitPt.N = 0;
+    hitPt.T = 0;
+    hitPt.B = 0;
+    hitPt.uv = 0;
+    hitPt.NdotV = 0;
+    hitPt.diffuse = 0;
+    hitPt.opacity = 1;
+    hitPt.specular = 0;
+    hitPt.linearRoughness = 0;
+    hitPt.roughness = 0;
+    hitPt.emissive = 0;
+    hitPt.occlusion = 0;
+    hitPt.lightMap = 0;
+    hitPt.height = 0;
+    hitPt.IoR = 0;
+    hitPt.doubleSidedMaterial = false;
+
+    return hitPt;
+}
+
 /** Prepare the hit-point data
 */
 HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
 {
-    HitPoint hitPt;
+    HitPoint hitPt = initHitPoint();
 
     // Sample the diffuse texture and apply the alpha test
     float4 diffuse = sampleTexture(m.textures.diffuse, m.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
@@ -147,7 +172,6 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     hitPt.height = hitPt.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
 #undef channel_type
     
-    hitPt.NdotV = 0; // Need to initialize it otherwise the compiler complains about uninitialized variable when calling applyNormalMap()
     applyNormalMap(m, hitPt);
     hitPt.NdotV = dot(hitPt.N, hitPt.V);
 
@@ -164,10 +188,10 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
 ShadingResult initShadingResult()
 {
     ShadingResult sr;
-    sr.diffuseIllumination = 0;
+    sr.diffuse = 0;
     sr.color.rgb = 0;
     sr.color.a = 1;
-    sr.specularIllumination = 0;
+    sr.specular = 0;
     sr.diffuseBrdf = 0;
     sr.specularBrdf = 0;
     return sr;
@@ -183,14 +207,14 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
 
     // Calculate the diffuse term
     sr.diffuseBrdf = evalDiffuseBrdf(hitPt, ls);
-    sr.diffuseIllumination = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
-    sr.color.rgb = sr.diffuseIllumination;
+    sr.diffuse = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
+    sr.color.rgb = sr.diffuse;
     sr.color.a = hitPt.opacity;
 
     // Calculate the specular term
     sr.specularBrdf = evalSpecularBrdf(hitPt, ls);
-    sr.specularIllumination = ls.specular * sr.specularBrdf * ls.NdotL;
-    sr.color.rgb += sr.specularIllumination;
+    sr.specular = ls.specular * sr.specularBrdf * ls.NdotL;
+    sr.color.rgb += sr.specular;
 
     // Apply the shadow factor
     sr.color.rgb *= shadowFactor;
@@ -203,10 +227,10 @@ ShadingResult evalMaterial(HitPoint hitPt, LightProbeData probe)
     ShadingResult sr = initShadingResult();
     LightSample ls = evalLightProbe(probe, hitPt);
 
-    sr.diffuseIllumination = ls.diffuse;
-    sr.color.rgb = hitPt.diffuse.rgb * sr.diffuseIllumination;
-    sr.specularIllumination = saturate(evalGGX(hitPt.roughness, ls.NdotH)) * ls.specular * hitPt.specular;
-    sr.color.rgb += sr.specularIllumination;
+    sr.diffuse = hitPt.diffuse.rgb * ls.diffuse;
+    sr.color.rgb = sr.diffuse;
+    sr.specular = saturate(evalGGX(hitPt.roughness, ls.NdotH)) * ls.specular * hitPt.specular;
+    sr.color.rgb += sr.specular;
     return sr;
 }
 
