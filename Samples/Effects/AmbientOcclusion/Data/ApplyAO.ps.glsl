@@ -35,7 +35,7 @@ layout(location = 0) in vec2 texC;
 layout(location = 0) out vec4 color;
 
 void main()
-{   
+{
     color = textureLod(sampler2D(gColor, gSampler), texC, 0);
     color = applyAmbientOcclusion(color, gAOMap, gSampler, texC);
 }

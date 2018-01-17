@@ -32,11 +32,11 @@ cbuffer PerImageCB
 {
     // G-Buffer
     // Lighting params
-	LightData gDirLight;
-	LightData gPointLight;
-	float3 gAmbient;
+    LightData gDirLight;
+    LightData gPointLight;
+    float3 gAmbient;
     // Debug mode
-	uint gDebugMode;
+    uint gDebugMode;
 };
 
 #include "LightingPassCommon.h"
@@ -56,5 +56,5 @@ float4 main(float2 texC : TEXCOORD, float4 pos : SV_POSITION) : SV_TARGET
 
     float3 color = shade(posW, normalW, linearRoughness, albedo);
 
-	return float4(color, 1);
+    return float4(color, 1);
 }

@@ -32,7 +32,7 @@ __import Effects.CascadedShadowMap;
 
 cbuffer PerFrameCB : register(b0)
 {
-	float3 gAmbient;
+    float3 gAmbient;
     CsmData gCsmData[_LIGHT_COUNT];
     bool visualizeCascades;
     float4x4 camVpAtLastCsmUpdate;

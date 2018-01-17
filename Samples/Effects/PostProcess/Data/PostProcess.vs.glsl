@@ -46,5 +46,5 @@ void main()
 {
     gl_Position = gWvpMat * posL;
     posW = (gWvpMat * posL).xyz;
-	normalW = (gWorldMat * vec4(normalL, 0)).xyz;
+    normalW = (gWorldMat * vec4(normalL, 0)).xyz;
 }

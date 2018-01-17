@@ -34,7 +34,7 @@ struct PsOut
 {
     float4 fragColor0 : SV_TARGET0;
     float4 fragColor1 : SV_TARGET1;
-    float4 fragColor2 : SV_TARGET2;    
+    float4 fragColor2 : SV_TARGET2;
 };
 
 

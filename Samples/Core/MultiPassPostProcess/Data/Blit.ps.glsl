@@ -31,9 +31,9 @@ layout(set = 0, binding = 0) uniform texture2D gTexture;
 layout(set = 0, binding = 1) uniform sampler gSampler;
 
 layout(location = 0) in vec2 texC;
-layout(location =0) out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-	fragColor = texture(sampler2D(gTexture, gSampler), texC);
+    fragColor = texture(sampler2D(gTexture, gSampler), texC);
 }

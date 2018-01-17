@@ -30,12 +30,11 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-in VS_OUT vOut;
+in VertexOut vOut;
 layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, 0.0f, shAttr);
-    fragColor = shAttr.preparedMat.values.layers[0].albedo;
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.position);
+    fragColor = vec4(hitPt.diffuse, 1);
 }
