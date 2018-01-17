@@ -40,6 +40,7 @@ struct LightSample
     float NdotH;      // Unclamped, can be negative
     float NdotL;      // Unclamped, can be negative
     float LdotH;      // Unclamped, can be negative
+    float distance;  // Distance from the light-source to the surface
 };
 
 void calcCommonLightProperties(HitPoint hitPt, inout LightSample ls)
@@ -78,6 +79,7 @@ LightSample evalPointLight(in LightData light, in float3 hitPosW)
     ls.L = light.posW - hitPosW;
     // Avoid NaN
     float distSquared = dot(ls.L, ls.L);
+    ls.distance = (distSquared > 1e-5f) ? length(ls.L) : 0;
     ls.L = (distSquared > 1e-5f) ? normalize(ls.L) : 0;
 
     // Calculate the falloff
@@ -107,6 +109,7 @@ LightSample evalAreaLight(in LightData light, in float3 hitPosW)
     ls.posW = mul(float4(light.posW, 1.0), light.transMat).xyz;
     ls.L = light.posW - hitPosW;
     float distSquared = dot(ls.L, ls.L);
+    ls.distance = (distSquared > 1e-5f) ? length(ls.L) : 0;
     ls.L = (distSquared > 1e-5f) ? normalize(ls.L) : 0;
 
     // Calculate the falloff
@@ -177,7 +180,7 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, HitPoint hitPt)
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
     ls.posW = probe.posW;
-
+    ls.distance = length(probe.posW - hitPt.posW);
     calcCommonLightProperties(hitPt, ls);
 
     return ls;
