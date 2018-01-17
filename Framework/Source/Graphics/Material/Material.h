@@ -162,7 +162,7 @@ namespace Falcor
 
         /** Get the emissive color
         */
-        const vec3& getSEmissiveColor() const { return mData.emissive; }
+        const vec3& getEmissiveColor() const { return mData.emissive; }
 
         /** Set the alpha mode
         */

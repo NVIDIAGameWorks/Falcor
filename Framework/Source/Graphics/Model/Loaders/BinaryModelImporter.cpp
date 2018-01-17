@@ -794,11 +794,17 @@ namespace Falcor
                 }
             }
 
+            Buffer::BindFlags vbBindFlags = Buffer::BindFlags::Vertex;
+            if (is_set(flags, Model::LoadFlags::BuffersAsShaderResource))
+            {
+                vbBindFlags |= Buffer::BindFlags::ShaderResource;
+            }
+
             for (int32_t i = 0; i < numAttribs; ++i)
             {
                 if(buffers[i].shouldSkip == false)
                 {
-                    pVBs[i] = Buffer::create(buffers[i].vec.size(), Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, buffers[i].vec.data());
+                    pVBs[i] = Buffer::create(buffers[i].vec.size(), vbBindFlags, Buffer::CpuAccess::None, buffers[i].vec.data());
                 }
             }
 
@@ -883,7 +889,13 @@ namespace Falcor
                 uint32_t ibSize = 3 * numTriangles * sizeof(uint32_t);
                 mStream.read(&indices[0], ibSize);
 
-                auto pIB = Buffer::create(ibSize, Buffer::BindFlags::Index, Buffer::CpuAccess::None, indices.data());
+
+                Buffer::BindFlags ibBindFlags = Buffer::BindFlags::Index;
+                if (is_set(flags, Model::LoadFlags::BuffersAsShaderResource))
+                {
+                    ibBindFlags |= Buffer::BindFlags::ShaderResource;
+                }
+                auto pIB = Buffer::create(ibSize, ibBindFlags, Buffer::CpuAccess::None, indices.data());
 
                 // Generate tangent space data if needed
                 if(genTangentForMesh)

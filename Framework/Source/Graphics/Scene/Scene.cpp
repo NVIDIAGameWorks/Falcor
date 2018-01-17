@@ -313,8 +313,7 @@ namespace Falcor
                 // Retrieve model instances for this model
                 for (uint32_t modelInstanceId = 0; modelInstanceId < getModelInstanceCount(modelId); ++modelInstanceId)
                 {
-                    // #TODO This should probably create per model instance
-                    AreaLight::createAreaLightsForModel(pModel, mpLights);
+
                 }
             }
         }

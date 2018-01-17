@@ -33,8 +33,8 @@
 #include "glm/mat4x4.hpp"
 #include "Data/HostDeviceData.h"
 #include "Utils/Gui.h"
-#include "Graphics/Model/Model.h"
 #include "Graphics/Paths/MovableObject.h"
+#include "Graphics/Model/Model.h"
 
 namespace Falcor
 {
@@ -352,19 +352,7 @@ namespace Falcor
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
 
-        /** Creates area lights automatically from meshes with emissive materials in a model.
-            \param[in] pModel Model
-            \param[out] areaLights Array of area lights created from the model
-        */
-        static void createAreaLightsForModel(const Model::SharedPtr& pModel, std::vector<Light::SharedPtr>& areaLights);
-
     private:
-
-        /** This is a utility function that creates an area light for the geometry mesh.
-            \param[in] pMeshInstance Instance of geometry mesh
-        */
-        static Light::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance);
-
         Model::MeshInstance::SharedPtr mpMeshInstance; ///< Geometry mesh data
         Buffer::SharedPtr mIndexBuf;    ///< Buffer id for indices
         Buffer::SharedPtr mVertexBuf;   ///< Buffer id for vertices
@@ -375,5 +363,9 @@ namespace Falcor
         vec3 mTangent;               ///< Unnormalized tangent vector of the light
         vec3 mBitangent;             ///< Unnormalized bitangent vector of the light
         std::vector<float> mMeshCDF; ///< CDF function for importance sampling a triangle mesh
-    };   
+    };
+
+
+    AreaLight::SharedPtr createAreaLightFromMesh(const Model::MeshInstance::SharedPtr& pMeshInstance);
+    std::vector<AreaLight::SharedPtr> createAreaLightsForModel(const Model* pModel);
 }

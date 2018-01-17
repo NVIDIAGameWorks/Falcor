@@ -776,6 +776,11 @@ namespace Falcor
         mModelLoadFlags = modelLoadFlags;
         mSceneLoadFlags = sceneLoadFlags;
 
+        if (is_set(mSceneLoadFlags, Scene::LoadFlags::GenerateAreaLights))
+        {
+            mModelLoadFlags |= Model::LoadFlags::BuffersAsShaderResource;
+        }
+
         if(findFileInDataDirectories(filename, fullpath))
         {
             // Load the file

@@ -327,8 +327,11 @@ namespace Falcor
         {
             if (mpMeshInstance)
             {
-                mat4& mx = (mat4&)mpMeshInstance->getTransformMatrix();
-                pGui->addFloat3Var("World Position", (vec3&)mx[3], -FLT_MAX, FLT_MAX);
+                vec3 posW = mpMeshInstance->getTransformMatrix()[3];
+                if (pGui->addFloat3Var("World Position", posW, -FLT_MAX, FLT_MAX))
+                {
+                    mpMeshInstance->setTranslation(posW, true);
+                }
             }
 
             Light::renderUI(pGui);
@@ -411,7 +414,7 @@ namespace Falcor
             const Material::SharedPtr& pMaterial = pMesh->getMaterial();
             if (pMaterial)
             {
-                mData.intensity = pMaterial->getSEmissiveColor();
+                mData.intensity = pMaterial->getEmissiveColor();
             }
         }
     }
@@ -501,7 +504,15 @@ namespace Falcor
         }
     }
 
-    Light::SharedPtr AreaLight::createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance)
+    void AreaLight::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
+    {
+        // Override target and up
+        vec3 stillTarget = position + vec3(0, 0, 1);
+        vec3 stillUp = vec3(0, 1, 0);
+        mpMeshInstance->move(position, stillTarget, stillUp);
+    }
+
+    AreaLight::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance)
     {
         // Create an area light
         AreaLight::SharedPtr pAreaLight = AreaLight::create();
@@ -514,9 +525,10 @@ namespace Falcor
         return pAreaLight;
     }
 
-    void AreaLight::createAreaLightsForModel(const Model::SharedPtr& pModel, std::vector<Light::SharedPtr>& areaLights)
+    std::vector<AreaLight::SharedPtr> createAreaLightsForModel(const Model* pModel)
     {
         assert(pModel);
+        std::vector<AreaLight::SharedPtr> areaLights;
 
         // Get meshes for this model
         for (uint32_t meshId = 0; meshId < pModel->getMeshCount(); ++meshId)
@@ -530,20 +542,14 @@ namespace Falcor
                 const Material::SharedPtr& pMaterial = pMesh->getMaterial();
                 if (pMaterial)
                 {
-                    if (luminance(pMaterial->getSEmissiveColor()))
+                    if(EXTRACT_EMISSIVE_TYPE(pMaterial->getFlags()) != ChannelTypeUnused)
                     {
                         areaLights.push_back(createAreaLight(pModel->getMeshInstance(meshId, instanceId)));
                     }
                 }
             }
         }
+        return areaLights;
     }
 
-    void AreaLight::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
-    {
-        // Override target and up
-        vec3 stillTarget = position + vec3(0, 0, 1);
-        vec3 stillUp = vec3(0, 1, 0);
-        mpMeshInstance->move(position, stillTarget, stillUp);
-    }
 }
