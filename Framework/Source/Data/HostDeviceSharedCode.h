@@ -100,10 +100,11 @@ struct MaterialResources
     Texture2D specular;         // RGB - specular color, A - roughness
     Texture2D emissive;         // RGB - emissive color, A - unused
     Texture2D normalMap;        // 2 or 3 channel normal map, depending on the type
+
+    // The following maps are not yet used by the material system
     Texture2D occlusionMap;     // Ambient occlusion map
-    Texture2D reflectionMap;    // Reflection map
     Texture2D lightMap;         // Light map
-    Texture2D heightMap;        // Height map. Not used by the default material system
+    Texture2D heightMap;        // Height map
     SamplerState samplerState;
 };
 

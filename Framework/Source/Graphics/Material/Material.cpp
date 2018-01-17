@@ -250,7 +250,6 @@ namespace Falcor
         compare_texture(emissive);
         compare_texture(normalMap);
         compare_texture(occlusionMap);
-        compare_texture(reflectionMap);
         compare_texture(lightMap);
         compare_texture(heightMap);
 #undef compare_texture
@@ -284,7 +283,6 @@ namespace Falcor
         set_texture(emissive);
         set_texture(normalMap);
         set_texture(occlusionMap);
-        set_texture(reflectionMap);
         set_texture(lightMap);
         set_texture(heightMap);
 #undef set_texture
