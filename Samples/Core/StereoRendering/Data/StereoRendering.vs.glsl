@@ -28,8 +28,8 @@
 __import DefaultVS;
 __import ShaderCommon;
 
-in VS_IN vIn;
-out VS_OUT vOut;
+in VertexIn vIn;
+out VertexOut vOut;
 
 void main()
 {
@@ -48,6 +48,21 @@ void main()
     vOut.colorV = vec3(0.0f);
 #endif
 
+#ifdef HAS_NORMAL
     vOut.normalW = (getWorldInvTransposeMat(vIn) * vIn.normal).xyz;
+#else
+    vOut.normalW = vec3(0.0f);
+#endif
+
+#ifdef HAS_BITANGENT
     vOut.bitangentW = (mat3x3(worldMat) * vIn.bitangent).xyz;
+#else
+    vOut.bitangentW = vec3(0.0f);
+#endif
+
+#ifdef HAS_LIGHTMAP_UV
+    vOut.lightmapC = vIn.lightmapC;
+#else
+    vOut.lightmapC = vec2(0.0f);
+#endif
 }

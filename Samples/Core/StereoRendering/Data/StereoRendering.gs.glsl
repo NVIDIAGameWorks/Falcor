@@ -31,8 +31,8 @@ __import ShaderCommon;
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 6) out;
 
-in VS_OUT vsOut[];
-out VS_OUT gsOut;
+in VertexOut vsOut[];
+out VertexOut gsOut;
 
 void main()
 {
