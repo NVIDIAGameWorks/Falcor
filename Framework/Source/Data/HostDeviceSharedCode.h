@@ -94,7 +94,7 @@ struct CameraData
 /*******************************************************************
                     Material
 *******************************************************************/
-struct MaterialTextures
+struct MaterialResources
 {
     Texture2D diffuse;          // RGB - diffuse color, A - transparency
     Texture2D specular;         // RGB - specular color, A - roughness
@@ -104,6 +104,7 @@ struct MaterialTextures
     Texture2D reflectionMap;    // Reflection map
     Texture2D lightMap;         // Light map
     Texture2D heightMap;        // Height map. Not used by the default material system
+    SamplerState samplerState;
 };
 
 struct MaterialData
@@ -121,8 +122,7 @@ struct MaterialData
     float2 heightScaleOffset  DEFAULTS(float2(1, 0));
     float2 pad                DEFAULTS(float2(0));
 
-    MaterialTextures textures;
-    SamplerState samplerState;
+    MaterialResources resources;
 };
 
 /*******************************************************************

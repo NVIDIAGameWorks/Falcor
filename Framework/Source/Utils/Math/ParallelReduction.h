@@ -52,7 +52,7 @@ namespace Falcor
         ParallelReduction(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height);
         FullScreenPass::UniquePtr mpFirstIterProg;
         FullScreenPass::UniquePtr mpRestIterProg;
-        GraphicsVars::SharedPtr pVars;
+        GraphicsVars::SharedPtr mpVars;
         std::vector<Fbo::SharedPtr> mpResultFbo;
         uint32_t mCurFbo = 0;
         Type mReductionType;

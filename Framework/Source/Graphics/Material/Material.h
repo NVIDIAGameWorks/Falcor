@@ -82,7 +82,7 @@ namespace Falcor
 
         /** Get the diffuse texture
         */
-        Texture::SharedPtr getDiffuseTexture() const { return mData.textures.diffuse; }
+        Texture::SharedPtr getDiffuseTexture() const { return mData.resources.diffuse; }
 
         /** Set the specular texture
         */
@@ -90,7 +90,7 @@ namespace Falcor
 
         /** Get the specular texture
         */
-        Texture::SharedPtr getSpecularTexture() const { return mData.textures.specular; }
+        Texture::SharedPtr getSpecularTexture() const { return mData.resources.specular; }
 
         /** Set the emissive texture
         */
@@ -98,7 +98,7 @@ namespace Falcor
 
         /** Get the emissive texture
         */
-        Texture::SharedPtr getEmissiveTexture() const { return mData.textures.emissive; }
+        Texture::SharedPtr getEmissiveTexture() const { return mData.resources.emissive; }
 
         /** Set the shading model
         */
@@ -114,7 +114,7 @@ namespace Falcor
 
         /** Get the normal map
         */
-        Texture::SharedPtr getNormalMap() const { return mData.textures.normalMap; }
+        Texture::SharedPtr getNormalMap() const { return mData.resources.normalMap; }
 
         /** Set the occlusion map
         */
@@ -122,7 +122,7 @@ namespace Falcor
 
         /** Get the occlusion map
         */
-        Texture::SharedPtr getOcclusionMap() const { return mData.textures.occlusionMap; }
+        Texture::SharedPtr getOcclusionMap() const { return mData.resources.occlusionMap; }
 
         /** Set the light map
         */
@@ -130,7 +130,7 @@ namespace Falcor
 
         /** Get the light map
         */
-        Texture::SharedPtr getLightMap() const { return mData.textures.lightMap; }
+        Texture::SharedPtr getLightMap() const { return mData.resources.lightMap; }
 
         /** Set the height map
         */
@@ -138,7 +138,7 @@ namespace Falcor
 
         /** Get the height map
         */
-        Texture::SharedPtr getHeightMap() const { return mData.textures.heightMap; }
+        Texture::SharedPtr getHeightMap() const { return mData.resources.heightMap; }
 
         /** Set the diffuse color
         */
@@ -222,7 +222,7 @@ namespace Falcor
 
         /** Get the sampler attached to the material
         */
-        Sampler::SharedPtr getSampler() const { return mData.samplerState; }
+        Sampler::SharedPtr getSampler() const { return mData.resources.samplerState; }
 
         /** Bind the material to a program variables object
         */

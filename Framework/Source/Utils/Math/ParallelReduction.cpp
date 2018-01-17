@@ -72,7 +72,7 @@ namespace Falcor
         mpFirstIterProg = FullScreenPass::create(fsFilename, defines);
         mpFirstIterProg->getProgram()->addDefine("_FIRST_ITERATION");
         mpRestIterProg = FullScreenPass::create(fsFilename, defines);
-        pVars = GraphicsVars::create(mpFirstIterProg->getProgram()->getActiveVersion()->getReflector());
+        mpVars = GraphicsVars::create(mpFirstIterProg->getProgram()->getActiveVersion()->getReflector());
 
         // Calculate the number of reduction passes
         if(width > kTileSize || height > kTileSize)
@@ -129,12 +129,12 @@ namespace Falcor
 
         for(size_t i = 0; i < mpTmpResultFbo.size(); i++)
         {
-            runProgram(pRenderCtx, pInput, pProgram, mpTmpResultFbo[i], pVars, mpPointSampler);
+            runProgram(pRenderCtx, pInput, pProgram, mpTmpResultFbo[i], mpVars, mpPointSampler);
             pProgram = mpRestIterProg.get();
             pInput = mpTmpResultFbo[i]->getColorTexture(0);
         }
 
-        runProgram(pRenderCtx, pInput, pProgram, mpResultFbo[mCurFbo], pVars, mpPointSampler);
+        runProgram(pRenderCtx, pInput, pProgram, mpResultFbo[mCurFbo], mpVars, mpPointSampler);
 
         // Read back the results
         mCurFbo = (mCurFbo + 1) % mpResultFbo.size();

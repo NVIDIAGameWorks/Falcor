@@ -81,7 +81,7 @@ void applyNormalMap(MaterialData m, inout HitPoint hitPt)
     uint mapType = EXTRACT_NORMAL_MAP_TYPE(m.flags);
     if(mapType == NormalMapUnused) return;
 
-    float3 mapN = m.textures.normalMap.Sample(m.samplerState, hitPt.uv).rgb;
+    float3 mapN = m.resources.normalMap.Sample(m.resources.samplerState, hitPt.uv).rgb;
     switch(mapType)
     {
     case NormalMapRGB:
@@ -143,7 +143,7 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     HitPoint hitPt = initHitPoint();
 
     // Sample the diffuse texture and apply the alpha test
-    float4 diffuse = sampleTexture(m.textures.diffuse, m.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
+    float4 diffuse = sampleTexture(m.resources.diffuse, m.resources.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
     hitPt.diffuse = diffuse.rgb;
     hitPt.opacity = m.diffuse.a;
     alphaTest(m.flags, diffuse.a, m.alphaThreshold, v.posW);
@@ -157,18 +157,18 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
     hitPt.T = normalize(cross(hitPt.B, hitPt.N));
 
     // Sample the rest of the texture
-    float4 spec = sampleTexture(m.textures.specular, m.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags));
+    float4 spec = sampleTexture(m.resources.specular, m.resources.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags));
     hitPt.specular = spec.rgb;
     hitPt.linearRoughness = max(0.08, 1 - spec.a); // Clamp the roughness so that the BRDF won't explode
     hitPt.roughness = hitPt.linearRoughness * hitPt.linearRoughness;
-    hitPt.emissive = sampleTexture(m.textures.emissive, m.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
+    hitPt.emissive = sampleTexture(m.resources.emissive, m.resources.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
     hitPt.IoR = m.IoR;
     hitPt.doubleSidedMaterial = EXTRACT_DOUBLE_SIDED(m.flags);
 
 #define channel_type(extract) (extract(m.flags) ? ChannelTypeTexture : ChannelTypeUnused)
-    hitPt.occlusion = sampleTexture(m.textures.occlusionMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_OCCLUSION_MAP));
-    hitPt.lightMap = sampleTexture(m.textures.lightMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_LIGHT_MAP));
-    hitPt.height = sampleTexture(m.textures.heightMap, m.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
+    hitPt.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_OCCLUSION_MAP));
+    hitPt.lightMap = sampleTexture(m.resources.lightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_LIGHT_MAP));
+    hitPt.height = sampleTexture(m.resources.heightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
     hitPt.height = hitPt.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
 #undef channel_type
     

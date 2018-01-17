@@ -113,14 +113,14 @@ namespace Falcor
 
     void Material::setSampler(Sampler::SharedPtr pSampler)
     {
-        mParamBlockDirty = mParamBlockDirty || (pSampler != mData.samplerState);
-        mData.samplerState = pSampler;
+        mParamBlockDirty = mParamBlockDirty || (pSampler != mData.resources.samplerState);
+        mData.resources.samplerState = pSampler;
     }
 
     void Material::setDiffuseTexture(Texture::SharedPtr& pDiffuse)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.diffuse != pDiffuse);
-        mData.textures.diffuse = pDiffuse;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.diffuse != pDiffuse);
+        mData.resources.diffuse = pDiffuse;
         updateDiffuseType();
         bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
         setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
@@ -128,15 +128,15 @@ namespace Falcor
 
     void Material::setSpecularTexture(Texture::SharedPtr pSpecular)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.specular != pSpecular);
-        mData.textures.specular = pSpecular;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.specular != pSpecular);
+        mData.resources.specular = pSpecular;
         updateSpecularType();
     }
 
     void Material::setEmissiveTexture(Texture::SharedPtr& pEmissive)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.emissive != pEmissive);
-        mData.textures.emissive = pEmissive;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.emissive != pEmissive);
+        mData.resources.emissive = pEmissive;
         updateEmissiveType();
     }
 
@@ -171,23 +171,23 @@ namespace Falcor
 
     void Material::updateDiffuseType()
     {
-        mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.textures.diffuse != nullptr, mData.diffuse));
+        mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.resources.diffuse != nullptr, mData.diffuse));
     }
 
     void Material::updateSpecularType()
     {
-        mData.flags = PACK_SPECULAR_TYPE(mData.flags, getChannelMode(mData.textures.specular != nullptr, mData.specular));
+        mData.flags = PACK_SPECULAR_TYPE(mData.flags, getChannelMode(mData.resources.specular != nullptr, mData.specular));
     }
 
     void Material::updateEmissiveType()
     {
-        mData.flags = PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mData.textures.emissive != nullptr, mData.emissive));
+        mData.flags = PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mData.resources.emissive != nullptr, mData.emissive));
     }
 
     void Material::setNormalMap(Texture::SharedPtr pNormalMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.normalMap != pNormalMap);
-        mData.textures.normalMap = pNormalMap;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.normalMap != pNormalMap);
+        mData.resources.normalMap = pNormalMap;
         uint32_t normalMode = NormalMapUnused;
         if (pNormalMap)
         {
@@ -210,24 +210,24 @@ namespace Falcor
 
     void Material::setOcclusionMap(Texture::SharedPtr pOcclusionMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.occlusionMap != pOcclusionMap);
-        mData.textures.occlusionMap = pOcclusionMap;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.occlusionMap != pOcclusionMap);
+        mData.resources.occlusionMap = pOcclusionMap;
         mData.flags = PACK_OCCLUSION_MAP(mData.flags, pOcclusionMap ? 1 : 0);
         mParamBlockDirty = true;
     }
 
     void Material::setLightMap(Texture::SharedPtr pLightMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.lightMap != pLightMap);
-        mData.textures.lightMap = pLightMap;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.lightMap != pLightMap);
+        mData.resources.lightMap = pLightMap;
         mData.flags = PACK_LIGHT_MAP(mData.flags, pLightMap ? 1 : 0);
         mParamBlockDirty = true;
     }
 
     void Material::setHeightMap(Texture::SharedPtr pHeightMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.textures.heightMap != pHeightMap);
-        mData.textures.heightMap = pHeightMap;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.heightMap != pHeightMap);
+        mData.resources.heightMap = pHeightMap;
         mData.flags = PACK_HEIGHT_MAP(mData.flags, pHeightMap ? 1 : 0);
         mParamBlockDirty = true;
     }
@@ -244,7 +244,7 @@ namespace Falcor
         compare_field(heightScaleOffset);
 #undef compare_field
 
-#define compare_texture(_a) if (mData.textures._a != other.mData.textures._a) return false
+#define compare_texture(_a) if (mData.resources._a != other.mData.resources._a) return false
         compare_texture(diffuse);
         compare_texture(specular);
         compare_texture(emissive);
@@ -254,7 +254,7 @@ namespace Falcor
         compare_texture(lightMap);
         compare_texture(heightMap);
 #undef compare_texture
-        if (mData.samplerState != other.mData.samplerState) return false;
+        if (mData.resources.samplerState != other.mData.resources.samplerState) return false;
         return true;
     }
     
@@ -268,7 +268,7 @@ namespace Falcor
     {
         // OPTME:
         // First set the desc and the values
-        static const size_t dataSize = sizeof(MaterialData);
+        static const size_t dataSize = sizeof(MaterialData) - sizeof(MaterialResources);
         static_assert(dataSize % sizeof(glm::vec4) == 0, "Material::MaterialData size should be a multiple of 16");
 
         check_offset(emissive);
@@ -278,7 +278,7 @@ namespace Falcor
         pCB->setBlob(&data, offset, dataSize);
 
         // Now set the textures
-#define set_texture(texName) pBlock->setTexture(varName + "textures." #texName, data.textures.texName)
+#define set_texture(texName) pBlock->setTexture(varName + "resources." #texName, data.resources.texName)
         set_texture(diffuse);
         set_texture(specular);
         set_texture(emissive);
@@ -288,7 +288,7 @@ namespace Falcor
         set_texture(lightMap);
         set_texture(heightMap);
 #undef set_texture
-        pBlock->setSampler(varName + "samplerState", data.samplerState);
+        pBlock->setSampler(varName + "resources.samplerState", data.resources.samplerState);
     }
 
     void Material::setIntoParameterBlock(ParameterBlock* pBlock) const

@@ -88,7 +88,7 @@ namespace Falcor
         }
 
         uint32_t bpp = FreeImage_GetBPP(pDib);
-		bool rgb32FloatSupported = gpDevice->isRgb32FloatSupported();
+        bool rgb32FloatSupported = gpDevice->isRgb32FloatSupported();
 
         switch(bpp)
         {
@@ -124,7 +124,7 @@ namespace Falcor
         // Convert the image to RGBX image
         if(bpp == 24)
         {
-			logWarning("Converting 24-bit texture to 32-bit");
+            logWarning("Converting 24-bit texture to 32-bit");
             bpp = 32;
             auto pNew = FreeImage_ConvertTo32Bits(pDib);
             FreeImage_Unload(pDib);
@@ -133,8 +133,8 @@ namespace Falcor
 
         if (!rgb32FloatSupported && bpp == 96)
         {
-			logWarning("Converting 96-bit texture to 128-bit");
-			bpp = 128;
+            logWarning("Converting 96-bit texture to 128-bit");
+            bpp = 128;
             auto pNew = FreeImage_ConvertToRGBAF(pDib);
             FreeImage_Unload(pDib);
             pDib = pNew;
@@ -165,8 +165,8 @@ namespace Falcor
             return FIF_JPEG;
         case Bitmap::FileFormat::PfmFile:
             return FIF_PFM;
-		case Bitmap::FileFormat::ExrFile:
-			return FIF_EXR;
+        case Bitmap::FileFormat::ExrFile:
+            return FIF_EXR;
         default:
             should_not_get_here();
         }
