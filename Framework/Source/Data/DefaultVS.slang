@@ -123,7 +123,7 @@ VertexOut defaultVS(VertexIn vIn)
 #endif
 
 #ifdef HAS_BITANGENT
-    vOut.bitangentW = mul(vIn.bitangent, getWorldInvTransposeMat(vIn)).xyz;
+    vOut.bitangentW = mul(vIn.bitangent, getWorldMat(vIn)).xyz;
 #else
     vOut.bitangentW = 0;
 #endif
