@@ -49,7 +49,7 @@ void main()
     }
     else
     {
-        HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.position);
+        HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
 
         fragColor.rgb = evalMaterial(hitPt, gDirLight, 1).color.rgb;
         fragColor.rgb += evalMaterial(hitPt, gPointLight, 1).color.rgb;

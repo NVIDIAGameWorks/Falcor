@@ -46,7 +46,7 @@ struct ShadowsVSOut
 
 float4 main(ShadowsVSOut pIn) : SV_TARGET0
 {
-    HitPoint hitPoint = prepareHitPoint(pIn.vsData, gMaterial, gCam.position);
+    HitPoint hitPoint = prepareHitPoint(pIn.vsData, gMaterial, gCam.posW);
     float4 color = float4(0,0,0,1);
     
     [unroll]

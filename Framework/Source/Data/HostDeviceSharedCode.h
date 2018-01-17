@@ -72,7 +72,7 @@ struct CameraData
     float4x4 invViewProj;           ///< Camera inverse view-projection matrix.
     float4x4 prevViewProjMat;       ///< Camera view-projection matrix associated to previous frame.
 
-    float3   position;                                           ///< Camera world-space position.
+    float3   posW;                                              ///< Camera world-space position.
     float    focalLength            DEFAULTS(21.0f);            ///< Camera focal length in mm. Default is 59 degree vertical, 90 horizontal FOV at 16:9 aspect ratio.
     float3   up                     DEFAULTS(float3(0, 1, 0));  ///< Camera world-space up vector.
     float    aspectRatio            DEFAULTS(1.7777f);          ///< 16:9 aspect-ratio

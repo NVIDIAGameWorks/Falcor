@@ -46,7 +46,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.position);
+    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
     

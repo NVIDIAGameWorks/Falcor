@@ -31,5 +31,5 @@ __import Shading;
 
 void main(VertexOut vOut)
 {
-    prepareHitPoint(vOut, gMaterial, gCam.position);
+    prepareHitPoint(vOut, gMaterial, gCam.posW);
 }

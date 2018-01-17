@@ -45,7 +45,7 @@ layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-    HitPoint hitPt = prepareHitPoint(vsData, gMaterial, gCam.position);
+    HitPoint hitPt = prepareHitPoint(vsData, gMaterial, gCam.posW);
     fragColor = vec4(0,0,0,1);
 
     [unroll]

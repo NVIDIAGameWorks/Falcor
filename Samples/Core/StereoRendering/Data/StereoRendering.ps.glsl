@@ -36,7 +36,7 @@ layout(location = 0) out vec4 fragColor;
 void main()
 {
     ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vsOut.posW, gCam.position, vsOut.normalW, vsOut.bitangentW, vsOut.texC, shAttr);
+    prepareShadingAttribs(gMaterial, vsOut.posW, gCam.posW, vsOut.normalW, vsOut.bitangentW, vsOut.texC, shAttr);
 
     ShadingOutput result;
 

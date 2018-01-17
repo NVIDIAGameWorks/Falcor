@@ -32,7 +32,7 @@ __import DefaultVS;
 float4 main(VS_OUT vOut) : SV_TARGET
 {
     ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, shAttr);
+    prepareShadingAttribs(gMaterial, vOut.posW, gCam.posW, vOut.normalW, vOut.bitangentW, vOut.texC, shAttr);
 
     ShadingOutput result;
 
