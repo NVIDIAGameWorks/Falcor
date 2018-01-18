@@ -78,9 +78,17 @@ float _fn dielectricFresnel(in float NdE, float IoR)
         return 1.f;
     float NdL = sqrt(NdL2);
     NdE = abs(NdE);		// Wrap the incident direction
-    float Rp = (IoR * NdL - NdE) / (IoR * NdL + NdE);	// Reflected-to-incident wave ratio, parallel component
-    float Rs = (NdE - IoR * NdL) / (NdE + IoR * NdL);	// Reflected-to-incident wave ratio, parallel component
-    return (Rp * Rp + Rs * Rs) * .5f;						// Total amplitude of the reflected wave
+
+    // Reflected-to-incident wave ratio, perpendicular component
+    float Rs = (NdE - IoR * NdL)
+             / (NdE + IoR * NdL);
+
+    // Reflected-to-incident wave ratio, parallel component
+    float Rp = (IoR * NdE - NdL)
+             / (IoR * NdE + NdL);
+
+    // Total amplitude of the reflected wave
+    return (Rp * Rp + Rs * Rs) * .5f;
 }
 
 /**
@@ -89,14 +97,30 @@ between a dielectric (usually air) and a conductive media
 */
 float _fn conductorFresnel(in float NdE, float IoR, float Kappa)
 {
-    float Kappa2 = Kappa * Kappa;
-    float TotalIoR2 = IoR * IoR + Kappa2;	// Total magnitude of IoR: Real plus complex parts of IoR
-    NdE = saturate(NdE);			// No refraction allowed
-    float NdE2 = NdE * NdE;
-    float ReducedNdE2 = TotalIoR2 * NdE2;
-    float Rp2 = (ReducedNdE2 - IoR * NdE * 2.f + 1.f) / (ReducedNdE2 + IoR * NdE * 2.f + 1.f);	// Reflected-to-incident wave ratio, perpendicular component
-    float Rs2 = (TotalIoR2 - IoR * NdE * 2.f + NdE2) / (TotalIoR2 + IoR * NdE * 2.f + NdE2);		// Reflected-to-incident wave ratio, parallel component
-    return (Rp2 + Rs2) * .5f;					// Total amplitude of the reflected wave
+    float cosThetaI = NdE;
+    float eta = IoR;
+    float k = Kappa;
+
+    // Copy from Mitsuba(https://github.com/mitsuba-renderer/mitsuba) fresnelConductorExact
+    float cosThetaI2 = cosThetaI*cosThetaI,
+          sinThetaI2 = 1-cosThetaI2,
+          sinThetaI4 = sinThetaI2*sinThetaI2;
+
+    float temp1 = eta*eta - k*k - float(sinThetaI2),
+          a2pb2 = sqrt(temp1*temp1 + k*k*eta*eta*4),
+          a     = sqrt((a2pb2 + temp1) * 0.5f);
+
+    float term1 = a2pb2 + float(cosThetaI2),
+          term2 = a*(2*cosThetaI);
+
+    float Rs2 = (term1 - term2) / (term1 + term2);
+
+    float term3 = a2pb2*cosThetaI2 + float(sinThetaI4),
+          term4 = term2*sinThetaI2;
+
+    float Rp2 = Rs2 * (term3 - term4) / (term3 + term4);
+
+    return 0.5f * (Rp2 + Rs2);
 }
 
 /**********************************************************************************
