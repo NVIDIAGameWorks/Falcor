@@ -84,8 +84,6 @@ namespace Falcor
         static const char* kLight = "light";
         static const char* kCamera = "camera";
 
-        static const char* kMeshID = "mesh_id";
-
         static const char* kUserDefined = "user_defined";
     };
 }

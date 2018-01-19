@@ -133,7 +133,7 @@ namespace Falcor
         updateSpecularType();
     }
 
-    void Material::setEmissiveTexture(Texture::SharedPtr& pEmissive)
+    void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive)
     {
         mParamBlockDirty = mParamBlockDirty || (mData.resources.emissive != pEmissive);
         mData.resources.emissive = pEmissive;
