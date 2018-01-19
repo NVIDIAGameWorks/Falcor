@@ -63,14 +63,14 @@ namespace Falcor
 
         static ProgramVersion::SharedConstPtr findProgramInMap(ProgramVersionMap& programMap, const ProgramVersion* pVersion)
         {
-            auto& it = programMap.find(pVersion);
+            const auto& it = programMap.find(pVersion);
             return (it == programMap.end()) ? nullptr : it->second;
         }
 
         static ProgramVersionMap& getMaterialProgramMap(const Material* pMaterial)
         {
             uint32_t flags = pMaterial->getFlags();
-            auto& it = gMaterialProgramMap.find(flags);
+            const auto& it = gMaterialProgramMap.find(flags);
             if(it == gMaterialProgramMap.end())
             {
                 gMaterialProgramMap[flags] = ProgramVersionMap();

@@ -94,7 +94,7 @@ namespace Falcor
 
         /** Set the emissive texture
         */
-        void setEmissiveTexture(Texture::SharedPtr& pEmissive);
+        void setEmissiveTexture(const Texture::SharedPtr& pEmissive);
 
         /** Get the emissive texture
         */
