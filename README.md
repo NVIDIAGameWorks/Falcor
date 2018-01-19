@@ -1,4 +1,4 @@
-Falcor 2.0
+Falcor 2.5 beta
 =================
 
 Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.
@@ -112,7 +112,7 @@ The BibTex entry is
 
 ```bibtex
 @Misc{Benty17,  
-   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Anton S. Kaplanyan and Conor Lavelle and Chris Wyman and Ashwin Vijay},  
+   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Conor Lavelle and Chris Wyman},  
    title =       {The {Falcor} Rendering Framework},  
    year =        {2017},  
    month =       {07},  
