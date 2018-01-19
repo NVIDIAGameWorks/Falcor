@@ -472,6 +472,62 @@ namespace Falcor
         return true;
     }
 
+    bool SceneImporter::parseLightProbes(const rapidjson::Value& jsonVal)
+    {
+        if (jsonVal.IsArray() == false)
+        {
+            return error("Light probes should be an array of objects.");
+        }
+
+        for (uint32_t i = 0; i < jsonVal.Size(); i++)
+        {
+            const auto& lightProbe = jsonVal[i];
+
+            if (lightProbe.HasMember(SceneKeys::kFilename) == false)
+            {
+                return error("An image file must be specified for a light probe.");
+            }
+
+            // Check if path is relative, if not, assume full path
+            std::string imagePath = lightProbe[SceneKeys::kFilename].GetString();
+            std::string actualPath = mDirectory + '/' + imagePath;
+            if (doesFileExist(actualPath) == false)
+            {
+                actualPath = imagePath;
+            }
+
+            vec3 position;
+            glm::vec3 intensity(1.0f);
+
+            for (auto m = lightProbe.MemberBegin(); m < lightProbe.MemberEnd(); m++)
+            {
+                std::string key = m->name.GetString();
+                const auto& value = m->value;
+                if (key == SceneKeys::kLightIntensity)
+                {
+                    if (getFloatVec<3>(value, "Light probe intensity", &intensity[0]) == false)
+                    {
+                        return false;
+                    }
+                }
+                else if (key == SceneKeys::kLightPos)
+                {
+                    if (getFloatVec<3>(value, "Light probe world position", &position[0]) == false)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            LightProbe::SharedPtr pLightProbe = LightProbe::create(actualPath, true, true, ResourceFormat::RGBA16Float);
+            pLightProbe->setPosW(position);
+            pLightProbe->setIntensity(intensity);
+            mScene.addLightProbe(pLightProbe);
+        }
+
+        return true;
+    }
+
     bool SceneImporter::createPathFrames(ObjectPath* pPath, const rapidjson::Value& jsonFramesArray)
     {
         // an array of key frames
@@ -1076,6 +1132,7 @@ namespace Falcor
 
         {SceneKeys::kModels, &SceneImporter::parseModels},
         {SceneKeys::kLights, &SceneImporter::parseLights},
+        {SceneKeys::kLightProbes, &SceneImporter::parseLightProbes},
         {SceneKeys::kCameras, &SceneImporter::parseCameras},
         {SceneKeys::kActiveCamera, &SceneImporter::parseActiveCamera},  // Should come after ParseCameras
         {SceneKeys::kUserDefined, &SceneImporter::parseUserDefinedSection},

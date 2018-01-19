@@ -254,6 +254,17 @@ namespace Falcor
         mExtentsDirty = true;
     }
 
+    uint32_t Scene::addLightProbe(const LightProbe::SharedPtr& pLightProbe)
+    {
+        mpLightProbes.push_back(pLightProbe);
+        return (uint32_t)mpLightProbes.size() - 1;
+    }
+
+    void Scene::deleteLightProbe(uint32_t lightID)
+    {
+        mpLightProbes.erase(mpLightProbes.begin() + lightID);
+    }
+
     uint32_t Scene::addPath(const ObjectPath::SharedPtr& pPath)
     {
         mpPaths.push_back(pPath);
@@ -342,6 +353,11 @@ namespace Falcor
         for (auto& model : mModels)
         {
             model[0]->getObject()->bindSamplerToMaterials(pSampler);
+        }
+
+        for (auto& probe : mpLightProbes)
+        {
+            probe->setSampler(pSampler);
         }
     }
 }

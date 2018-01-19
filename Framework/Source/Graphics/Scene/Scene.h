@@ -31,6 +31,7 @@
 #include <map>
 #include "Graphics/Model/Model.h"
 #include "Graphics/Light.h"
+#include "Graphics/LightProbe.h"
 #include "Graphics/Camera/Camera.h"
 #include "Graphics/Camera/CameraController.h"
 #include "Graphics/Paths/ObjectPath.h"
@@ -93,10 +94,10 @@ namespace Falcor
         /**
             Enum to generate light source(s)
         */
-		enum class LoadFlags
+        enum class LoadFlags
         {
-			None                =   0x0,
-			GenerateAreaLights  =   0x1,    ///< Create area light(s) for meshes that have emissive material
+            None                =   0x0,
+            GenerateAreaLights  =   0x1,    ///< Create area light(s) for meshes that have emissive material
         };
 
         static Scene::SharedPtr loadFromFile(const std::string& filename, Model::LoadFlags modelLoadFlags = Model::LoadFlags::None, Scene::LoadFlags sceneLoadFlags = LoadFlags::None);
@@ -124,6 +125,13 @@ namespace Falcor
         uint32_t getLightCount() const { return (uint32_t)mpLights.size(); }
         const Light::SharedPtr& getLight(uint32_t index) const { return mpLights[index]; }
         const std::vector<Light::SharedPtr>& getLights() const { return mpLights; }
+
+        // Light Probes
+        uint32_t addLightProbe(const LightProbe::SharedPtr& pLightProbe);
+        void deleteLightProbe(uint32_t lightID);
+        uint32_t getLightProbeCount() const { return (uint32_t)mpLightProbes.size(); }
+        const LightProbe::SharedPtr& getLightProbe(uint32_t index) const { return mpLightProbes[index]; }
+        const std::vector<LightProbe::SharedPtr>& getLightProbes() const { return mpLightProbes; }
 
         void setAmbientIntensity(const glm::vec3& ambientIntensity) { mAmbientIntensity = ambientIntensity; }
         const glm::vec3& getAmbientIntensity() const { return mAmbientIntensity; };
@@ -190,6 +198,7 @@ namespace Falcor
         /** Bind a sampler to all the materials in the scene
         */
         void bindSampler(Sampler::SharedPtr pSampler);
+
     protected:
 
         Scene();
@@ -206,6 +215,7 @@ namespace Falcor
         std::vector<Light::SharedPtr> mpLights;
         std::vector<Camera::SharedPtr> mCameras;
         std::vector<ObjectPath::SharedPtr> mpPaths;
+        std::vector<LightProbe::SharedPtr> mpLightProbes;
 
         vec3 mAmbientIntensity;
         uint32_t mActiveCameraID = 0;

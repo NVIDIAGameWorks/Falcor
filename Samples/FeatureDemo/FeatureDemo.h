@@ -160,7 +160,6 @@ private:
     void setSceneSampler(uint32_t maxAniso);
 
     Sampler::SharedPtr mpSceneSampler;
-    LightProbe::SharedPtr mpLightProbe;
 
     struct ProgramControl
     {

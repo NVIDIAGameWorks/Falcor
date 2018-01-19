@@ -100,10 +100,6 @@ void FeatureDemo::setSceneSampler(uint32_t maxAniso)
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
     pScene->bindSampler(mpSceneSampler);
-    if (mpLightProbe)
-    {
-        mpLightProbe->setSampler(mpSceneSampler);
-    }
 }
 
 void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& filename)
@@ -112,12 +108,6 @@ void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& f
 
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
     if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '/' + var.str);
-
-    var = pScene->getUserVariable("env_map");
-    if (var.type == Scene::UserVariable::Type::String) initLightProbe(folder + '/' + var.str);
-
-    var = pScene->getUserVariable("env_map_intensity_scale");
-    if (var.type == Scene::UserVariable::Type::Double) mReflectionScale = (float)var.d64;
 
     var = pScene->getUserVariable("opacity_scale");
     if (var.type == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.d64;
@@ -164,6 +154,10 @@ void FeatureDemo::initScene(Scene::SharedPtr pScene)
     initShadowPass();
     initSSAO();
     initTAA();
+
+    mControls[EnableReflections].enabled = pScene->getLightProbeCount() > 0;
+    applyLightingProgramControl(ControlID::EnableReflections);
+    
     mCurrentTime = 0;
 }
 
@@ -171,7 +165,6 @@ void FeatureDemo::resetScene()
 {
     mpSceneRenderer = nullptr;
     mSkyBox.pEffect = nullptr;
-    mpLightProbe = nullptr;
 }
 
 void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
@@ -226,10 +219,21 @@ void FeatureDemo::initSkyBox(const std::string& name)
 
 void FeatureDemo::initLightProbe(const std::string& name)
 {
-    mpLightProbe = LightProbe::create(name, true, true, ResourceFormat::RGBA16Float);
+    Scene::SharedPtr pScene = mpSceneRenderer->getScene();
+
+    // Remove existing light probes
+    while (pScene->getLightProbeCount() > 0)
+    {
+        pScene->deleteLightProbe(0);
+    }
+
+    // Create new light probe from file
+    LightProbe::SharedPtr pLightProbe = LightProbe::create(name, true, true, ResourceFormat::RGBA16Float);
+    pLightProbe->setSampler(mpSceneSampler);
+    pScene->addLightProbe(pLightProbe);
+
     mControls[EnableReflections].enabled = true;
     applyLightingProgramControl(ControlID::EnableReflections);
-    mpLightProbe->setSampler(mpSceneSampler);
 }
 
 void FeatureDemo::initTAA()
@@ -324,12 +328,6 @@ void FeatureDemo::lightingPass()
     {
         pCB["camVpAtLastCsmUpdate"] = mShadowPass.camVpAtLastCsmUpdate;
         mShadowPass.pCsm->setDataIntoGraphicsVars(mLightingPass.pVars, "gCsmData");
-    }
-
-    if (mControls[EnableReflections].enabled)
-   {
-        mpLightProbe->setIntoProgramVars(mLightingPass.pVars.get(), mLightingPass.pVars->getConstantBuffer("PerFrameCB").get(), "gLightProbe");
-        mLightingPass.pVars->setSampler("gSampler", mpSceneSampler);
     }
 
     if (mAAMode == AAMode::TAA)

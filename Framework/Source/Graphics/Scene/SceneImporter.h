@@ -49,6 +49,7 @@ namespace Falcor
         bool parseVersion(const rapidjson::Value& jsonVal);
         bool parseModels(const rapidjson::Value& jsonVal);
         bool parseLights(const rapidjson::Value& jsonVal);
+        bool parseLightProbes(const rapidjson::Value& jsonVal);
         bool parseCameras(const rapidjson::Value& jsonVal);
         bool parseAmbientIntensity(const rapidjson::Value& jsonVal);
         bool parseActiveCamera(const rapidjson::Value& jsonVal);

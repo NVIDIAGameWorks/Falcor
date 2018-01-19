@@ -67,7 +67,7 @@ void FeatureDemo::applyLightingProgramControl(ControlID controlId)
         bool add = control.unsetOnEnabled ? !control.enabled : control.enabled;
         if (add)
         {
-            mLightingPass.pProgram->addDefine(control.define, control.value);            
+            mLightingPass.pProgram->addDefine(control.define, control.value);
             if (controlId == ControlID::EnableHashedAlpha) mDepthPass.pProgram->addDefine(control.define, control.value);
         }
         else
@@ -110,8 +110,8 @@ void FeatureDemo::applyAaMode()
     }
 
     mpMainFbo = FboHelper::create2D(w, h, fboDesc);
-	mpDepthPassFbo = Fbo::create();
-	mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
+    mpDepthPassFbo = Fbo::create();
+    mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
 }
 
 void FeatureDemo::onGuiRender()
@@ -188,25 +188,25 @@ void FeatureDemo::onGuiRender()
             mpGui->endGroup();
         }
 
-		if(mpGui->beginGroup("Renderer Settings"))
-		{
-			mpGui->addCheckBox("Depth Pass", mEnableDepthPass);
-			mpGui->addTooltip("Run a depth-pass at the beginning of the frame");
+        if(mpGui->beginGroup("Renderer Settings"))
+        {
+            mpGui->addCheckBox("Depth Pass", mEnableDepthPass);
+            mpGui->addTooltip("Run a depth-pass at the beginning of the frame");
 
-			if (mpGui->addCheckBox("Per-Material Shaders", mPerMaterialShader))
-			{
-				mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
-			}
-			mpGui->addTooltip("Create a specialized version of the lighting program for each material in the scene");
+            if (mpGui->addCheckBox("Per-Material Shaders", mPerMaterialShader))
+            {
+                mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
+            }
+            mpGui->addTooltip("Create a specialized version of the lighting program for each material in the scene");
 
-			uint32_t maxAniso = mpSceneSampler->getMaxAnisotropy();
-			if (mpGui->addIntVar("Max Anisotropy", (int&)maxAniso, 1, 16))
-			{
-				setSceneSampler(maxAniso);
-			}
+            uint32_t maxAniso = mpSceneSampler->getMaxAnisotropy();
+            if (mpGui->addIntVar("Max Anisotropy", (int&)maxAniso, 1, 16))
+            {
+                setSceneSampler(maxAniso);
+            }
 
-			mpGui->endGroup();
-		}
+            mpGui->endGroup();
+        }
 
         //  Anti-Aliasing Controls.
         if (mpGui->beginGroup("Anti-Aliasing"))
@@ -259,7 +259,7 @@ void FeatureDemo::onGuiRender()
                 }
             }
 
-            if(mpLightProbe)
+            if(mpSceneRenderer->getScene()->getLightProbeCount() > 0)
             {
                 if (mpGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {

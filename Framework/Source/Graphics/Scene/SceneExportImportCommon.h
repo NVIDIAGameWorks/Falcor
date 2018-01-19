@@ -36,6 +36,9 @@ namespace Falcor
 #ifdef SCENE_IMPORTER
         static const char* kInclude = "include";
 
+        // Not supported in exporter yet
+        static const char* kLightProbes = "light_probes";
+
         // Keys for values in older scene versions that are not exported anymore
         static const char* kCamFovY = "fovY";
         static const char* kActivePath = "active_path";

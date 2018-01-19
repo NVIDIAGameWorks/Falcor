@@ -58,6 +58,8 @@ namespace Falcor
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
 
+    const char* SceneRenderer::kLightProbeVarName = "gLightProbe";
+
     SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
     {
         return SharedPtr(new SceneRenderer(pScene));
@@ -139,6 +141,11 @@ namespace Falcor
             if (sAmbientLightOffset != ConstantBuffer::kInvalidOffset)
             {
                 pCB->setVariable(sAmbientLightOffset, mpScene->getAmbientIntensity());
+            }
+            if (mpScene->getLightProbeCount() > 0)
+            {
+                // #TODO Support multiple light probes
+                mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kLightProbeVarName);
             }
         }
     }
