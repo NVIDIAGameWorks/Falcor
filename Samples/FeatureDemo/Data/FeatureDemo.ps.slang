@@ -78,8 +78,12 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     // add ambient
     finalColor.rgb += gAmbientLighting * hitPt.diffuse;
 
+    // Add light-map
+    finalColor.rgb += hitPt.diffuse * hitPt.lightMap.rgb;
+
     psOut.color = finalColor;
     psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
+
 
 #ifdef _OUTPUT_MOTION_VECTORS
     psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);

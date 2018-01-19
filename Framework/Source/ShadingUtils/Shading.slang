@@ -167,7 +167,7 @@ HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
 
 #define channel_type(extract) (extract(m.flags) ? ChannelTypeTexture : ChannelTypeUnused)
     hitPt.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_OCCLUSION_MAP));
-    hitPt.lightMap = sampleTexture(m.resources.lightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_LIGHT_MAP));
+    hitPt.lightMap = sampleTexture(m.resources.lightMap, m.resources.samplerState, v.lightmapC, 1, channel_type(EXTRACT_LIGHT_MAP)).rgb;
     hitPt.height = sampleTexture(m.resources.heightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
     hitPt.height = hitPt.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
 #undef channel_type
