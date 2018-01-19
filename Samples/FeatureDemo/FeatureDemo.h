@@ -194,7 +194,6 @@ private:
         TAA
     };
 
-    float mReflectionScale = 0.25f;
     float mOpacityScale = 0.5f;
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;

@@ -321,7 +321,6 @@ void FeatureDemo::lightingPass()
     mpState->setDepthStencilState(mEnableDepthPass ? mLightingPass.pDsState : nullptr);
     mpRenderContext->setGraphicsVars(mLightingPass.pVars);
     ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
-    pCB["gReflectionScale"] = mReflectionScale;
     pCB["gOpacityScale"] = mOpacityScale;
 
     if (mControls[ControlID::EnableShadows].enabled)

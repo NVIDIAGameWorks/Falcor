@@ -268,7 +268,12 @@ void FeatureDemo::onGuiRender()
 
                 if (mControls[ControlID::EnableReflections].enabled)
                 {
-                    mpGui->addFloatVar("Intensity", mReflectionScale, 0);
+                    const LightProbe::SharedPtr& pLightProbe = mpSceneRenderer->getScene()->getLightProbe(0);
+                    float intensity = pLightProbe->getIntensity().r;
+                    if (mpGui->addFloatVar("Intensity", intensity, 0))
+                    {
+                        pLightProbe->setIntensity(vec3(intensity));
+                    }
                 }
             }
             mpGui->endGroup();
