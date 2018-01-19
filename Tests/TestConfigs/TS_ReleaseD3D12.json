@@ -58,7 +58,7 @@
                 "-test -fixedtimedelta 0.03333 -loadscene SunTemple/SunTemple.fscene -sstimes 10 27 50 -shutdowntime 51",
                 "-test -fixedtimedelta 0.03333 -loadscene Bistro/Compressed/Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 19",
                 "-test -fixedtimedelta 0.03333 -loadscene Bistro/Compressed/Bistro_Exterior.fscene -sstimes 3 28 36 65 -shutdowntime 66",
-                "-test -fixedtimedelta 0.03333 -loadscene EmeraldSquare/Compressed/EmeraldSquare_Blocks_2x2_End_Caps.fscene -sstimes 7 22 35 43 47 -shutdowntime 48"
+                "-test -fixedtimedelta 0.03333 -loadscene EmeraldSquare/EmeraldSquare_Blocks_2x2_End_Caps.fscene -sstimes 7 22 35 43 47 -shutdowntime 48"
             ]
         },
 
