@@ -1,5 +1,5 @@
 {
-    "Tests Collections Name" : "CoreTestsVK_Linux",
+    "Tests Collections Name" : "CoreTestsVK_Quick",
 
     "Tests Collections" : 
     {
@@ -9,18 +9,12 @@
             "Destination Target" : "/home/nvrgfxtest/Desktop/FalcorGitHub/",
             "Source Branch Target" : "master",
             "Compare Branch Target" : "master",
-            "Compare Reference Target" : "/media/netapp/Falcor/GitHub/References/",
-            "Generate Reference Target" : "/media/netapp/Falcor/GitHub/References/",
             "Tests Configs Target" : "TestConfigs/",
             
             "Tests":
             [
                 {
-                    "Tests Set" : "TS_ReleaseVK.json"
-                },
-        
-                {
-                    "Tests Set" : "TS_DebugVK.json"
+                    "Tests Set" : "TS_ReleaseVK_Quick.json"
                 }
             ]
         }

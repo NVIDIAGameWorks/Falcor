@@ -161,7 +161,7 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
 
                 # Try running the test.
                 try:
-                    executable_file = executable_directory + current_tests_group['Project Name']                    
+                    executable_file = os.path.join(executable_directory, current_tests_group['Project Name'])                    
                     if os.name == 'nt':
                         executable_file += '.exe'
                     current_test_run_result = run_test_run(executable_file, current_test_args, current_tests_group_name + str(index), current_results_directory)
@@ -261,13 +261,13 @@ def analyze_screen_captures(tolerance, result_json_data, current_test_result_dir
         for index, frame_screen_captures in enumerate(result_json_data[key]):
 
             # Get the test result image.
-            test_result_image_filename = str(current_test_result_directory + frame_screen_captures['Filename'])
+            test_result_image_filename = os.path.join(current_test_result_directory, str(frame_screen_captures['Filename']))
 
             # Get the reference image.
-            test_reference_image_filename = str(current_test_reference_directory + frame_screen_captures['Filename'])
+            test_reference_image_filename = os.path.join(current_test_reference_directory, str(frame_screen_captures['Filename']))
 
             # Create the test compare image.
-            test_compare_image_filepath = str(current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png')
+            test_compare_image_filepath = os.path.join(current_test_result_directory, os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png')
 
             # Run ImageMagick
             image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_compare_image_filepath]

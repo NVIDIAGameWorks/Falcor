@@ -47,7 +47,7 @@ def main():
 
     if verify_result['Success'] is True :
         for current_test_collections in json_data['Tests Collections']:
-            destination_reference_directory = os.path.join(json_data['Tests Collections'][current_test_collections]['Generate Reference Target'], machine_configs.machine_name)
+            destination_reference_directory = os.path.join(machine_configs.machine_reference_directory, machine_configs.machine_name)
             destination_reference_directory = os.path.join(destination_reference_directory, json_data['Tests Collections'][current_test_collections]['Source Branch Target'])
             destination_reference_directory = os.path.join(destination_reference_directory, current_test_collections)
             helpers.directory_clean_or_make(destination_reference_directory)

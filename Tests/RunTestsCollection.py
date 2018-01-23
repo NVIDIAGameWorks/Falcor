@@ -14,6 +14,7 @@ import WriteTestResultsToHTML as write_test_results_to_html
 import MachineConfigs as machine_configs
 import RunTestsSet as rTS
 
+
 class TestsCollectionError(Exception):
     pass
 
@@ -63,14 +64,6 @@ def verify_tests_collection(tests_name, tests_data):
     if 'Destination Target' not in tests_data:
         raise TestsCollectionError('Error - "Destination Target" is not defined in ' + tests_name)
 
-    # Check for a Repository Target.
-    if 'Compare Reference Target' not in tests_data:
-        raise TestsCollectionError('Error - "Compare Reference Target" is not defined in ' + tests_name)
-
-    # Check for a Repository Target.
-    if 'Generate Reference Target' not in tests_data:
-        raise TestsCollectionError('Error - "Compare Reference Target" is not defined in ' + tests_name)
-
     # Check for a Tests Array.
     if 'Tests' not in tests_data:
         raise TestsCollectionError('Error - "Tests" is not defined in ' + tests_name)
@@ -88,7 +81,6 @@ def verify_tests_collection(tests_name, tests_data):
 
 
 def verify_all_tests_collection_ran_successfully(tests_collections_results):
-
     verify_tests_collections = {}
     verify_tests_collections['Success'] = True
     verify_tests_collections['Error Messages'] = {}
@@ -102,11 +94,8 @@ def verify_all_tests_collection_ran_successfully(tests_collections_results):
 
 # Run all of the Tests Collections.
 def run_tests_collections(json_data):
-
     tests_collection_results = {}
     tests_collection_results = json_data['Tests Collections']
-
-    print(tests_collection_results)
 
     # Run each test collection.
     for name in tests_collection_results:
@@ -138,7 +127,7 @@ def run_tests_collections(json_data):
             # Get the Results and Reference Directory.
             common_directory_path = os.path.join(tests_collection_results[name]['Source Branch Target'], name)
             results_directory = os.path.join('TestsResults', common_directory_path)
-            reference_directory = os.path.join(tests_collection_results[name]['Compare Reference Target'], machine_configs.machine_name, tests_collection_results[name]['Compare Branch Target'], name)
+            reference_directory = os.path.join(machine_configs.machine_reference_directory, machine_configs.machine_name, tests_collection_results[name]['Compare Branch Target'], name)
 
             # Run the Tests Set.
             test_results = rTS.run_tests_set(clone_directory, False, tests_collection_results[name]['Tests Configs Target'] + current_tests_set['Tests Set'], results_directory, reference_directory)
@@ -149,7 +138,6 @@ def run_tests_collections(json_data):
 
 
 def check_tests_collections_results(tests_collection_results):
-
     for name in tests_collection_results:
         for result in tests_collection_results[name]['Tests Sets Results']:
             # Get the Tests Set Result.
