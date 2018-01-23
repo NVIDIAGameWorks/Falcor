@@ -18,40 +18,46 @@ import WriteTestResultsToHTML as write_test_results_to_html
 class TestsSetError(Exception):
     pass
 
-# Get the Executable Directory.
-def get_executable_directory(configuration):
-    if configuration.lower() == 'released3d12' or configuration.lower() == 'releasevk' :
-        return "Bin\\x64\\Release\\"
-    else:
-        return "Bin\\x64\\Debug\\"
-
-
-# Build the Solution.
-def build_solution(relative_solution_filepath, configuration, rebuild):
-
-    try:
-        # Build the Batch Args.
-        buildType = "build"
-        if rebuild:
-            buildType = "rebuild"
-        batch_args = [machine_configs.machine_build_script, buildType, relative_solution_filepath, configuration.lower()]
-
-        # Build Solution.
-        if subprocess.call(batch_args) == 0:
-            return 0
-
+def get_executable_directory(configuration, test_set):
+    if os.name == 'nt':
+        if configuration.lower() == 'released3d12' or configuration.lower() == 'releasevk' :
+            return "Bin\\x64\\Release\\"
         else:
+            return "Bin\\x64\\Debug\\"
+    else: 
+        return test_set + '/Bin/'
+
+def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuild):
+    if os.name == 'nt':
+        windows_build_script = "BuildSolution.bat"
+        try:
+            # Build the Batch Args.
+            buildType = "build"
+            if rebuild:
+                buildType = "rebuild"
+            batch_args = [windows_build_script, buildType, relative_solution_filepath, configuration.lower()]
+
+            # Build Solution.
+            if subprocess.call(batch_args) == 0:
+                return 0
+            else:
+                raise TestsSetError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+
+        except subprocess.CalledProcessError as subprocess_error:
             raise TestsSetError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
-
-    except subprocess.CalledProcessError as subprocess_error:
-        raise TestsSetError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
-
+    else:
+        prevDir = os.getcwd()
+        #Call Makefile
+        os.chdir(cloned_dir)
+        subprocess.call(['make', 'PreBuild', '-j8'])
+        subprocess.call(['make', 'All', '-j8'])
+        os.chdir(prevDir)
 
 def run_test_run(executable_filepath, current_arguments, output_file_base_name, output_directory):
-
     try:
         # Start the process and record the time.
-        process = subprocess.Popen(executable_filepath  + ' ' + current_arguments + ' -outputfilename ' + output_file_base_name + ' -outputdir ' + output_directory)
+        cmd_line = executable_filepath  + ' ' + current_arguments + ' -outputfilename ' + output_file_base_name + ' -outputdir ' + output_directory
+        process = subprocess.Popen(cmd_line.split())
         start_time = time.time()
 
         run_results = (True, "")
@@ -74,13 +80,11 @@ def run_test_run(executable_filepath, current_arguments, output_file_base_name, 
                 process.kill()
                 run_results = (False, "Process ran for too long, had to kill it. Please verify that the program finishes within its hang time, and that it does not crash")
                 break
-
         return run_results
 
     except (NameError, IOError, OSError) as e:
         print(e.args)
         raise TestsSetError('Error when trying to run ' + executable_filepath + ' ' + current_arguments + ' ' + 'with outputfilename ' + output_file_base_name + ' and outputdir ' + output_directory)
-
 
 # Run the tests set..
 def run_tests_set(main_directory, rebuild, json_filepath, results_directory, reference_directory):
@@ -98,9 +102,9 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
     try:
         jsonfile = open(json_filepath)
         json_data = json.load(jsonfile)
-    except (IOError, OSError, json.decoder.JSONDecodeError) as e:
+    except (IOError, OSError, ValueError, json.decoder.JSONDecodeError) as e:
         tests_set_run_data['Success'] = False
-        tests_set_run_data['Error'] = "Error reading test set JSON: " + e.args[0]
+        tests_set_run_data['Error'] = "Error reading test set JSON: " + str(e.args[0])
         return tests_set_run_data
 
     # Try and parse the data from the json file.
@@ -109,13 +113,14 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
     tests_set_run_data['Tests Groups'] = json_data['Tests Groups']
     tests_set_run_data['Solution Target'] = json_data['Solution Target']
     tests_set_run_data['Configuration Target'] = json_data['Configuration Target']
-    tests_set_run_data['Results Directory'] = results_directory + '\\' + tests_set_run_data['Name'] + '\\'
-    tests_set_run_data['Reference Directory'] = reference_directory + '\\' + tests_set_run_data['Name'] + '\\'
+    tests_set_run_data['Reference Directory'] = os.path.join(reference_directory, tests_set_run_data['Name'])
+    tests_set_run_data['Results Directory'] = os.path.join(results_directory, tests_set_run_data['Name'])
 
     # Build solution unless disabled by command line argument
     try:
         # Try and Build the Solution.
-        build_solution(main_directory + tests_set_run_data['Solution Target'], tests_set_run_data['Configuration Target'], rebuild)
+        solution_path = main_directory + tests_set_run_data['Solution Target']
+        build_solution(main_directory, solution_path, tests_set_run_data['Configuration Target'], rebuild)
 
     except TestsSetError as tests_set_error:
         tests_set_run_data['Error'] = tests_set_error.args
@@ -134,9 +139,9 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
             current_tests_group['Results']['Errors'] = {}
 
             # Get the executable directory.
-            executable_directory = absolutepath + '\\' + get_executable_directory(tests_set_run_data['Configuration Target'])
+            executable_directory = os.path.join(absolutepath, get_executable_directory(tests_set_run_data['Configuration Target'], tests_set_run_data['Name']))
             # Get the results directory.
-            current_results_directory = tests_set_run_data['Results Directory'] + '\\' + current_tests_group_name + '\\'
+            current_results_directory = os.path.join(tests_set_run_data['Results Directory'], current_tests_group_name)
 
             # Create the directory, or clean it.
             if helpers.directory_clean_or_make(current_results_directory) is None:
@@ -156,7 +161,9 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
 
                 # Try running the test.
                 try:
-                    executable_file = executable_directory + current_tests_group['Project Name'] + '.exe'
+                    executable_file = executable_directory + current_tests_group['Project Name']                    
+                    if os.name == 'nt':
+                        executable_file += '.exe'
                     current_test_run_result = run_test_run(executable_file, current_test_args, current_tests_group_name + str(index), current_results_directory)
                     current_tests_group['Results']['Run Results'][index] = current_test_run_result
 
@@ -200,15 +207,15 @@ def analyze_tests_group(tests_set_data, current_test_group_name):
             screen_capture_checks['Frame Screen Captures'] = []
             screen_capture_checks['Time Screen Captures'] = []
         else:
-            current_test_reference_directory = tests_set_data['Reference Directory'] + '\\' + current_test_group_name + '\\'
-            current_test_result_directory = current_test_group['Results']['Directory']
-            result_json_filepath = current_test_result_directory + current_test_group['Results']['Filename'][index]
+            current_test_reference_directory = os.path.join(tests_set_data['Reference Directory'], current_test_group_name)
+            current_test_result_directory = str(current_test_group['Results']['Directory'])
+            result_json_filepath = str(current_test_result_directory + current_test_group['Results']['Filename'][index])
 
             # Try and parse the data from the json file.
             try:
                 result_json_file = open(result_json_filepath)
                 result_json_data = json.load(result_json_file)
-            except (IOError, OSError, json.decoder.JSONDecodeError) as e:
+            except (IOError, OSError, ValueError, json.decoder.JSONDecodeError) as e:
                 current_test_group['Results']['Errors'][index] = e.args
                 continue
 
@@ -254,17 +261,23 @@ def analyze_screen_captures(tolerance, result_json_data, current_test_result_dir
         for index, frame_screen_captures in enumerate(result_json_data[key]):
 
             # Get the test result image.
-            test_result_image_filename = current_test_result_directory + frame_screen_captures['Filename']
+            test_result_image_filename = str(current_test_result_directory + frame_screen_captures['Filename'])
 
             # Get the reference image.
-            test_reference_image_filename = current_test_reference_directory + frame_screen_captures['Filename']
+            test_reference_image_filename = str(current_test_reference_directory + frame_screen_captures['Filename'])
 
             # Create the test compare image.
-            test_compare_image_filepath = current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png'
+            test_compare_image_filepath = str(current_test_result_directory + os.path.splitext(frame_screen_captures['Filename'])[0] + '_Compare.png')
 
             # Run ImageMagick
             image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', test_result_image_filename, test_reference_image_filename, test_compare_image_filepath]
-            image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+
+            if os.name == 'nt':
+                image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            else:
+                #don't need "magick" first  or shell=True if on linux
+                image_compare_command.pop(0)            
+                image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
             image_compare_result = image_compare_process.communicate()[0]
 
@@ -334,7 +347,7 @@ def main():
     # Output the file to disk.
 
     # Build path and filename
-    html_file_path = machine_configs.machine_relative_checkin_local_results_directory + '\\' + helpers.build_html_filename(tests_set_data)
+    html_file_path = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, helpers.build_html_filename(tests_set_data))
     html_file = open(html_file_path, 'w')
     html_file.write(html_file_content)
     html_file.close()

@@ -12,11 +12,7 @@ import CloneRepo as cloneRepo
 import Helpers as helpers
 import WriteTestResultsToHTML as write_test_results_to_html
 import MachineConfigs as machine_configs
-
-if os.name == "nt":
-    import RunTestsSet as rTS
-else:
-    import RunTestsSetLinux as rTS
+import RunTestsSet as rTS
 
 class TestsCollectionError(Exception):
     pass
