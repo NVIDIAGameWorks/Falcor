@@ -8,12 +8,15 @@ import sys
 import json
 import pprint
 
-import RunTestsSet as rTS
 import CloneRepo as cloneRepo
 import Helpers as helpers
 import WriteTestResultsToHTML as write_test_results_to_html
 import MachineConfigs as machine_configs
 
+if os.name == "nt":
+    import RunTestsSet as rTS
+else:
+    import RunTestsSetLinux as rTS
 
 class TestsCollectionError(Exception):
     pass
@@ -118,13 +121,12 @@ def run_tests_collections(json_data):
 
         # Run each Test Set.
         for index, current_tests_set in enumerate(tests_collection_results[name]['Tests']):
-
             # The Clone Directory is the Destination Target + The Branch Target + the Test Collection Name + the Build Configuration Name.
             # For the momemnt, do not add multiple solutions to the same Test Collection, because that will create overlapping clone targets.
             clone_directory = tests_collection_results[name]['Destination Target']
             clone_directory = clone_directory +  tests_collection_results[name]['Source Branch Target']
-            clone_directory = clone_directory + '\\' +  name + '\\'
-            clone_directory = clone_directory + '\\' + os.path.splitext(os.path.basename(current_tests_set['Tests Set']))[0] + '\\'
+            clone_directory = os.path.join(clone_directory, name)
+            clone_directory = os.path.join(clone_directory, os.path.splitext(os.path.basename(current_tests_set['Tests Set']))[0])
 
             # Clear the directory.
             if helpers.directory_clean_or_make(clone_directory) == None:
@@ -138,9 +140,9 @@ def run_tests_collections(json_data):
                 tests_collection_results[name]['Error'] = "Could not clone the repository. Please try manually removing the directory it is to be cloned into, and verifying the target and branch. " + clone_directory
 
             # Get the Results and Reference Directory.
-            common_directory_path = tests_collection_results[name]['Source Branch Target'] + "\\" + name + '\\'
-            results_directory = 'TestsResults' + '\\' + common_directory_path
-            reference_directory = tests_collection_results[name]['Compare Reference Target'] + '\\'  + machine_configs.machine_name + '\\' + tests_collection_results[name]['Compare Branch Target'] + '\\' + name
+            common_directory_path = os.path.join(tests_collection_results[name]['Source Branch Target'], name)
+            results_directory = os.path.join('TestsResults', common_directory_path)
+            reference_directory = os.path.join(tests_collection_results[name]['Compare Reference Target'], machine_configs.machine_name, tests_collection_results[name]['Compare Branch Target'], name)
 
             # Run the Tests Set.
             test_results = rTS.run_tests_set(clone_directory, False, tests_collection_results[name]['Tests Configs Target'] + current_tests_set['Tests Set'], results_directory, reference_directory)
@@ -166,7 +168,7 @@ def write_tests_collection_html(tests_collection_results):
             tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(current_test_set_result)
 
             # Output the file to disk.
-            html_output_file_path = current_test_set_result['Results Directory'] + '\\' + helpers.build_html_filename(current_test_set_result)
+            html_output_file_path = os.path.join(current_test_set_result['Results Directory'], helpers.build_html_filename(current_test_set_result))
             html_file = open(html_output_file_path, 'w')
             html_file.write(tests_set_html_result)
             html_file.close()

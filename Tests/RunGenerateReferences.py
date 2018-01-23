@@ -47,9 +47,14 @@ def main():
 
     if verify_result['Success'] is True :
         for current_test_collections in json_data['Tests Collections']:
-            destination_reference_directory = json_data['Tests Collections'][current_test_collections]['Generate Reference Target'] + '\\' + machine_configs.machine_name + '\\' + json_data['Tests Collections'][current_test_collections]['Source Branch Target'] + '\\' + current_test_collections + '\\'
+            destination_reference_directory = os.path.join(json_data['Tests Collections'][current_test_collections]['Generate Reference Target'], machine_configs.machine_name)
+            destination_reference_directory = os.path.join(destination_reference_directory, json_data['Tests Collections'][current_test_collections]['Source Branch Target'])
+            destination_reference_directory = os.path.join(destination_reference_directory, current_test_collections)
             helpers.directory_clean_or_make(destination_reference_directory)
-            helpers.directory_copy('TestsResults\\' + json_data['Tests Collections'][current_test_collections]['Source Branch Target'] + '\\' + current_test_collections + '\\', destination_reference_directory)
+            fullDir = os.path.join(os.getcwd(), 'TestsResults', json_data['Tests Collections'][current_test_collections]['Source Branch Target'], current_test_collections)
+            print(fullDir)
+            print(destination_reference_directory)
+            helpers.directory_copy(fullDir, destination_reference_directory)
 
     else:
         print("All tests did not run successfully. No references were generated.")
