@@ -1,0 +1,14 @@
+{
+    "Windows" :
+    {
+        "Destination Target" : "C:\\Falcor\\GitHub\\",
+        "Reference Target" : "\\netapp-wa02\\public\\Falcor\\Github\\References\\",
+        "Email List" : "\\netapp-wa02\\public\\Falcor\\email.txt"
+    },
+    "Linux" :
+    {
+        "Destination Target" : "/home/nvrgfxtest/Desktop/FalcorGitHub/",
+        "Reference Target" : "/media/netapp/Falcor/Github/References/",
+        "Email List" : "/media/netapp/Falcor/email.txt"
+    }
+}

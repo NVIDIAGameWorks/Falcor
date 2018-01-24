@@ -6,7 +6,6 @@
         "CoreTestsD3D12" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Destination Target" : "C:\\Falcor\\GitHub\\",
             "Source Branch Target" : "master",
             "Compare Branch Target" : "master",
             "Tests Configs Target" : "TestConfigsDev\\",

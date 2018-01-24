@@ -60,10 +60,6 @@ def verify_tests_collection(tests_name, tests_data):
     if 'Compare Branch Target' not in tests_data:
         raise TestsCollectionError('Error - "Branch Target" is not defined in ' + tests_name)
 
-    # Check for a Repository Target.
-    if 'Destination Target' not in tests_data:
-        raise TestsCollectionError('Error - "Destination Target" is not defined in ' + tests_name)
-
     # Check for a Tests Array.
     if 'Tests' not in tests_data:
         raise TestsCollectionError('Error - "Tests" is not defined in ' + tests_name)
@@ -108,7 +104,7 @@ def run_tests_collections(json_data):
         for index, current_tests_set in enumerate(tests_collection_results[name]['Tests']):
             # The Clone Directory is the Destination Target + The Branch Target + the Test Collection Name + the Build Configuration Name.
             # For the momemnt, do not add multiple solutions to the same Test Collection, because that will create overlapping clone targets.
-            clone_directory = tests_collection_results[name]['Destination Target']
+            clone_directory = machine_configs.destination_target
             clone_directory = clone_directory +  tests_collection_results[name]['Source Branch Target']
             clone_directory = os.path.join(clone_directory, name)
             clone_directory = os.path.join(clone_directory, os.path.splitext(os.path.basename(current_tests_set['Tests Set']))[0])
