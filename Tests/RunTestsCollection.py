@@ -175,12 +175,19 @@ def dispatch_email(success, html_outputs):
     subject += 'Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
     dispatcher = 'NvrGfxTest@nvidia.com'
     recipients = str(open(machine_configs.machine_email_recipients, 'r').read())
-    subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
-    command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
-    for html_output in html_outputs:
-        command.append('-attach')
-        command.append(html_output['HTML File'])
-    subprocess.call(command)
+
+    if os.name == 'nt':
+        subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
+        command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   ", '-attach']
+        for html_output in html_outputs:
+            command.append('-attach')
+            command.append(html_output['HTML File'])
+    else:
+        command = ['sendEmail', '-s', 'mail.nvidia.com', '-f', 'nvrgfxtest@nvidia.com', '-t', recipients, '-u', subject, '-m', '    ', '-o', 'tls=no' ]
+        command.append('-a')
+        for html_output in html_outputs:
+            command.append(html_output['HTML File'])
+    subprocess.call(command)    
 
 
 def all_tests_succeeded(tests_collection_results):
