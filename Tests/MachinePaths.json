@@ -3,7 +3,7 @@
     {
         "Destination Target" : "C:\\Falcor\\GitHub\\",
         "Reference Target" : "\\netapp-wa02\\public\\Falcor\\Github\\References\\",
-        "Email List" : "\\netapp-wa02\\public\\Falcor\\email.txt"
+        "Email List" : "\\\\netapp-wa02\\public\\Falcor\\email.txt"
     },
     "Linux" :
     {

@@ -40,5 +40,3 @@ machine_name = machine_name.lower()
 machine_reference_directory = platform_data['Reference Target']
 destination_target = platform_data['Destination Target']
 machine_email_recipients = platform_data['Email List']
-
-
