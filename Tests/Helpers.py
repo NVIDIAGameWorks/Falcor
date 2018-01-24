@@ -20,12 +20,22 @@ def directory_clean_or_make(destination):
 
     else:
         try:
-            # Clean the Directory.
-            shutil.rmtree(destination)
-            os.makedirs(destination)
-            # Return 0 to indicate didn't except 
-            return 0 
+            remove_directory_return_code = 0
+            if os.name == 'nt':
+                # Create the arguments.
+                batch_args = ["RemoveDirectoryTree.bat ", destination]
+                # Clean the Directory.
+                remove_directory_return_code = subprocess.call(batch_args)
 
+                # Check if it was success.
+                if remove_directory_return_code != 0:
+                    print("Error trying to clean Directory : " + destination)
+            else:
+                # Clean the Directory.
+                shutil.rmtree(destination)
+            os.makedirs(destination)
+            return remove_directory_return_code
+            
         # Exception Handling.
         except subprocess.CalledProcessError:
             print("Error trying to clean Directory : " + destination)

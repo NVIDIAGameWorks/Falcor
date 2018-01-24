@@ -20,10 +20,11 @@ class TestsSetError(Exception):
 
 def get_executable_directory(configuration, test_set):
     if os.name == 'nt':
+        exe_dir = test_set + '\\Bin\\x64\\'
         if configuration.lower() == 'released3d12' or configuration.lower() == 'releasevk' :
-            return "Bin\\x64\\Release\\"
+            return exe_dir + 'Release\\'
         else:
-            return "Bin\\x64\\Debug\\"
+            return exe_dir + 'Debug\\'
     else: 
         return test_set + '/Bin/'
 
@@ -119,7 +120,7 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
     # Build solution unless disabled by command line argument
     try:
         # Try and Build the Solution.
-        solution_path = main_directory + tests_set_run_data['Solution Target']
+        solution_path = os.path.join(main_directory, tests_set_run_data['Solution Target'])
         build_solution(main_directory, solution_path, tests_set_run_data['Configuration Target'], rebuild)
 
     except TestsSetError as tests_set_error:
