@@ -178,7 +178,7 @@ def dispatch_email(success, html_outputs):
 
     if os.name == 'nt':
         subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
-        command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   ", '-attach']
+        command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
         for html_output in html_outputs:
             command.append('-attach')
             command.append(html_output['HTML File'])
