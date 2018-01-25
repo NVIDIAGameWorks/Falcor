@@ -7,13 +7,15 @@ default_json_data = {
     {   
         'Destination Target' : 'C:\\Falcor\\GitHub\\',
         'Reference Target ' : '\\netapp-wa02\\public\\Falcor\\Github\\References\\',
-        'Email List' : '\\netapp-wa02\\public\\Falcor\\email.txt' 
+        'Email List' : '\\netapp-wa02\\public\\Falcor\\email.txt',
+        'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\Results\\'
     },
     'Linux':
     {   
         'Destination Target' : '/home/nvrgfxtest/Desktop/FalcorGitHub/',
         'Reference Target' : 'media/netapp/Falcor/Github/References/',
-        'Email List' : '/media/netapp/Falcor/email.txt'
+        'Email List' : '/media/netapp/Falcor/email.txt',
+        'Results Summary Target' : '/media/netapp/Falcor/Github/Results/'
     }
 }
 
@@ -40,3 +42,4 @@ machine_name = machine_name.lower()
 machine_reference_directory = platform_data['Reference Target']
 destination_target = platform_data['Destination Target']
 machine_email_recipients = platform_data['Email List']
+machine_results_summary_target = platform_data['Results Summary Target']

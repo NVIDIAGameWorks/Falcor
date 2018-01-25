@@ -198,6 +198,26 @@ def all_tests_succeeded(tests_collection_results):
 
     return success
 
+def copy_results_to_target(html_outputs):
+    target_base = machine_configs.machine_results_summary_target
+    dateStr = date.today().strftime("%m-%d-%y")
+    today_dir = os.path.join(target_base, dateStr)    
+
+    #If there isn't already a folder for today's results, make one 
+    if not os.path.isdir(today_dir):
+        os.mkdir(today_dir)
+    
+    #copy and rename any output html files    
+    for output in html_outputs:
+        out_path = output['HTML File']
+        out_file = os.path.basename(out_path)
+        shutil.copy(out_path, today_dir)
+        print('Copied ' + out_path + ' to ' + today_dir)
+        copied_path = os.path.join(today_dir, out_file)
+        new_name = output['Machine'] + '_' + out_file
+        new_path = os.path.join(today_dir, new_name)
+        shutil.move(copied_path, new_path)
+        print('Renamed ' + copied_path + ' to ' + new_path)
 
 def main():
 
@@ -226,7 +246,8 @@ def main():
 
     if not args.no_email:
         dispatch_email(all_tests_succeeded(tests_collection_results), html_outputs)
-
+    
+    copy_results_to_target(html_outputs)
 
 if __name__ == '__main__':
     main()
