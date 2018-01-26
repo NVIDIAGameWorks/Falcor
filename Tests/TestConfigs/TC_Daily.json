@@ -6,8 +6,8 @@
         "GitHub_DailyTests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Source Branch Target" : "master",
-            "Compare Branch Target" : "master",
+            "Source Branch Target" : "ShadingSystem",
+            "Compare Branch Target" : "ShadingSystem",
             "Tests Configs Target" : "TestConfigs\\",
 
             "Tests":
