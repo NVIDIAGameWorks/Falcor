@@ -4,6 +4,7 @@ import shutil
 import stat
 import pprint
 from distutils.dir_util import copy_tree
+import MachineConfigs as machine_configs
 
 # CLean the directory if it exists, or make it if it does not.
 def directory_clean_or_make(destination):
@@ -42,6 +43,23 @@ def directory_clean_or_make(destination):
             # Return failure.
             return None
 
+def dispatch_email(subject, attachments):
+    dispatcher = 'NvrGfxTest@nvidia.com'
+    recipients = str(open(machine_configs.machine_email_recipients, 'r').read())
+
+    if os.name == 'nt':
+        subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
+        command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
+        for attachment in attachments:
+            command.append('-attach')
+            command.append(attachment)
+    else:
+        command = ['sendEmail', '-s', 'mail.nvidia.com', '-f', 'nvrgfxtest@nvidia.com', '-t', recipients, '-u', subject, '-m', '    ', '-o', 'tls=no' ]
+        command.append('-a')
+        for attachment in attachments:
+            command.append(attachment)
+    subprocess.call(command)    
+            
 def directory_copy(fromDirectory, toDirectory):
     copy_tree(fromDirectory, toDirectory)
 

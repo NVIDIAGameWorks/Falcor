@@ -164,7 +164,7 @@ def write_tests_collection_html(tests_collection_results):
     return html_outputs
 
 
-def dispatch_email(success, html_outputs):
+def prepare_and_dispatch_email(success, html_outputs):
     date_and_time = date.today().strftime("%m-%d-%y")
 
     if success:
@@ -173,22 +173,9 @@ def dispatch_email(success, html_outputs):
         subject = "[FAILED] "
 
     subject += 'Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
-    dispatcher = 'NvrGfxTest@nvidia.com'
-    recipients = str(open(machine_configs.machine_email_recipients, 'r').read())
-
-    if os.name == 'nt':
-        subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
-        command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
-        for html_output in html_outputs:
-            command.append('-attach')
-            command.append(html_output['HTML File'])
-    else:
-        command = ['sendEmail', '-s', 'mail.nvidia.com', '-f', 'nvrgfxtest@nvidia.com', '-t', recipients, '-u', subject, '-m', '    ', '-o', 'tls=no' ]
-        command.append('-a')
-        for html_output in html_outputs:
-            command.append(html_output['HTML File'])
-    subprocess.call(command)    
-
+    attachments = [x['HTML File'] for x in html_outputs]
+    
+    helpers.dispatch_email(subject, attachments) 
 
 def all_tests_succeeded(tests_collection_results):
     success = True
@@ -245,7 +232,7 @@ def main():
     html_outputs = write_tests_collection_html(tests_collection_results)
 
     if not args.no_email:
-        dispatch_email(all_tests_succeeded(tests_collection_results), html_outputs)
+        prepare_and_dispatch_email(all_tests_succeeded(tests_collection_results), html_outputs)
     
     copy_results_to_target(html_outputs)
 
