@@ -14,9 +14,6 @@
             [
                 {
                     "Tests Set" : "TS_ReleaseD3D12.json"
-                },
-                {
-                    "Tests Set" : "TS_ReleaseVK.json"
                 }
             ]
         }
