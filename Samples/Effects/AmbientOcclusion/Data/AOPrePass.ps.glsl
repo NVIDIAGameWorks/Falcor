@@ -29,12 +29,12 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-layout(location = 1) in vec3 normalW;
+in VertexOut vsOut;
 layout(location = 0) out vec4 color;
 layout(location = 1) out vec4 normal;
 
 void main()
 {
-    color = 1.0.xxxx;
-    normal = vec4(normalW * 0.5f + 0.5f, 1.0f);
+    color = 1.0.rrrr;
+    normal = vec4(vsOut.normalW * 0.5f + 0.5f, 1.0f);
 }

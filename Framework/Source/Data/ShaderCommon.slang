@@ -25,11 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
-/*******************************************************************
-                    Common OGL bindings
-*******************************************************************/
-
 #ifndef _FALCOR_SHADER_COMMON_H_
 #define _FALCOR_SHADER_COMMON_H_
 
@@ -41,6 +36,7 @@ cbuffer InternalPerFrameCB : register(b10)
     float3 gAmbientLighting;
     uint32_t gLightsCount;
     LightData gLights[MAX_LIGHT_SOURCES];
+    LightProbeData gLightProbe;
 };
 
 cbuffer InternalPerMeshCB
@@ -102,23 +98,30 @@ float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim
     return prevCrd - normalizedCrd;
 }
 
-/*******************************************************************
-                    GLSL Evaluation routines
-*******************************************************************/
-#if 0
-bool isSamplerBound(in sampler2D sampler)
+/** This struct describes the geometric data for a specific hit point used for lighting calculations 
+*/
+struct HitPoint
 {
-    return any(ufloat2(sampler) != 0);
-}
+    float3    posW;         ///< Shading hit position in world space
+    float3    V;            ///< Direction to the eye at shading hit
+    float3    N;            ///< Shading normal at shading hit
+    float3    T;            ///< Shading tangent at shading hit
+    float3    B;            ///< Shading bitangent at shading hit
+    float2    uv;           ///< Texture mapping coordinates
+    float     NdotV;        // Unclamped, can be negative
 
-float4 fetchTextureIfFound(in sampler2D sampler, in float2 uv, in float2 duvdx, in float2 duvdy)
-{
-    float4 ret = float4(1.0f);
-    if(isSamplerBound(sampler)) 
-    {
-        ret = textureGrad(sampler, uv, duvdx, duvdy);
-    }
-    return ret;
-}
-#endif // defined(FALCOR_GLSL)
+    // Pre-loaded texture data
+    float3 diffuse;
+    float  opacity;
+    float3 specular;
+    float  linearRoughness; // This it the original roughness, before re-mapping. It is required for the Disney diffuse term
+    float  roughness;       // This is the re-mapped roughness value, which should be used for GGX computations
+    float3 emissive;
+    float4 occlusion;
+    float3 lightMap;
+    float2 height;
+    float IoR;
+    bool doubleSidedMaterial;
+};
+
 #endif  // _FALCOR_SHADER_COMMON_H_

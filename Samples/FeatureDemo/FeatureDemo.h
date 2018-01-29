@@ -41,6 +41,7 @@ public:
     bool onKeyEvent(const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
     void onGuiRender() override;
+    void onDroppedFile(const std::string& filename) override;
 
 private:
     Fbo::SharedPtr mpMainFbo;
@@ -142,7 +143,7 @@ private:
     void initDepthPass();
     void initShadowPass();
     void initSSAO();
-    void initEnvMap(const std::string& name);
+    void initLightProbe(const std::string& name);
     void initTAA();
 
     void initControls();
@@ -158,7 +159,6 @@ private:
     void setActiveCameraAspectRatio();
     void setSceneSampler(uint32_t maxAniso);
 
-    Texture::SharedPtr mpEnvMap;
     Sampler::SharedPtr mpSceneSampler;
 
     struct ProgramControl
@@ -172,7 +172,6 @@ private:
     enum ControlID
     {
         SuperSampling,
-        EnableSpecAA,
         EnableShadows,
         EnableReflections,
         EnableSSAO,
@@ -195,7 +194,6 @@ private:
         TAA
     };
 
-    float mEnvMapFactorScale = 0.25f;
     float mOpacityScale = 0.5f;
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;

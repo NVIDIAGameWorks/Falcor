@@ -30,7 +30,6 @@
 #include <map>
 #include "glm/mat4x4.hpp"
 #include "glm/vec3.hpp"
-#include "Graphics/Material/BasicMaterial.h"
 #include "Graphics/Model/Mesh.h"
 #include "Graphics/Model/ObjectInstance.h"
 #include "API/Sampler.h"

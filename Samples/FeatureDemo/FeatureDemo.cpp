@@ -49,7 +49,7 @@ static const float kDX11SamplePattern[8][2] = { { 1.0f / 16.0f, -3.0f / 16.0f },
 
 void FeatureDemo::initDepthPass()
 {
-    mDepthPass.pProgram = GraphicsProgram::createFromFile("DepthPass.vs.slang", "DepthPass.ps.slang");
+    mDepthPass.pProgram = GraphicsProgram::createFromFile("", "DepthPass.ps.slang");
     mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getActiveVersion()->getReflector());
 }
 
@@ -78,6 +78,8 @@ void FeatureDemo::initShadowPass()
     mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
     mShadowPass.pCsm->setFilterMode(CsmFilterEvsm2);
     mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
+    mShadowPass.pCsm->setVsmMaxAnisotropy(4);
+    mShadowPass.pCsm->setEvsmBlur(7, 3);
 }
 
 void FeatureDemo::initSSAO()
@@ -97,8 +99,7 @@ void FeatureDemo::setSceneSampler(uint32_t maxAniso)
     Sampler::Desc samplerDesc;
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
-    pScene->bindSamplerToMaterials(mpSceneSampler);
-    pScene->bindSamplerToModels(mpSceneSampler);
+    pScene->bindSampler(mpSceneSampler);
 }
 
 void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& filename)
@@ -107,12 +108,6 @@ void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& f
 
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
     if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '/' + var.str);
-
-    var = pScene->getUserVariable("env_map");
-    if (var.type == Scene::UserVariable::Type::String) initEnvMap(folder + '/' + var.str);
-
-    var = pScene->getUserVariable("env_map_intensity_scale");
-    if (var.type == Scene::UserVariable::Type::Double) mEnvMapFactorScale = (float)var.d64;
 
     var = pScene->getUserVariable("opacity_scale");
     if (var.type == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.d64;
@@ -159,6 +154,10 @@ void FeatureDemo::initScene(Scene::SharedPtr pScene)
     initShadowPass();
     initSSAO();
     initTAA();
+
+    mControls[EnableReflections].enabled = pScene->getLightProbeCount() > 0;
+    applyLightingProgramControl(ControlID::EnableReflections);
+    
     mCurrentTime = 0;
 }
 
@@ -166,7 +165,6 @@ void FeatureDemo::resetScene()
 {
     mpSceneRenderer = nullptr;
     mSkyBox.pEffect = nullptr;
-    mpEnvMap = nullptr;
 }
 
 void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
@@ -219,14 +217,23 @@ void FeatureDemo::initSkyBox(const std::string& name)
     mSkyBox.pDS = DepthStencilState::create(dsDesc);
 }
 
-void FeatureDemo::initEnvMap(const std::string& name)
+void FeatureDemo::initLightProbe(const std::string& name)
 {
-    mpEnvMap = createTextureFromFile(name, false, isSrgbFormat(mpDefaultFBO->getColorTexture(0)->getFormat()));
-    if (mpEnvMap->getType() != Texture::Type::Texture2D)
+    Scene::SharedPtr pScene = mpSceneRenderer->getScene();
+
+    // Remove existing light probes
+    while (pScene->getLightProbeCount() > 0)
     {
-        logError("Environment map must be a 2D texture");
-        mpEnvMap = nullptr;
+        pScene->deleteLightProbe(0);
     }
+
+    // Create new light probe from file
+    LightProbe::SharedPtr pLightProbe = LightProbe::create(name, true, true, ResourceFormat::RGBA16Float);
+    pLightProbe->setSampler(mpSceneSampler);
+    pScene->addLightProbe(pLightProbe);
+
+    mControls[EnableReflections].enabled = true;
+    applyLightingProgramControl(ControlID::EnableReflections);
 }
 
 void FeatureDemo::initTAA()
@@ -314,19 +321,12 @@ void FeatureDemo::lightingPass()
     mpState->setDepthStencilState(mEnableDepthPass ? mLightingPass.pDsState : nullptr);
     mpRenderContext->setGraphicsVars(mLightingPass.pVars);
     ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
-    pCB["gEnvMapFactorScale"] = mEnvMapFactorScale;
     pCB["gOpacityScale"] = mOpacityScale;
 
     if (mControls[ControlID::EnableShadows].enabled)
     {
         pCB["camVpAtLastCsmUpdate"] = mShadowPass.camVpAtLastCsmUpdate;
         mShadowPass.pCsm->setDataIntoGraphicsVars(mLightingPass.pVars, "gCsmData");
-    }
-
-    if (mControls[EnableReflections].enabled)
-    {
-        mLightingPass.pVars->setTexture("gEnvMap", mpEnvMap);
-        mLightingPass.pVars->setSampler("gSampler", mpSceneSampler);
     }
 
     if (mAAMode == AAMode::TAA)
@@ -515,6 +515,16 @@ bool FeatureDemo::onKeyEvent(const KeyboardEvent& keyEvent)
     }
 
     return mpSceneRenderer ? mpSceneRenderer->onKeyEvent(keyEvent) : false;
+}
+
+void FeatureDemo::onDroppedFile(const std::string& filename)
+{
+    if (hasSuffix(filename, ".fscene", false) == false)
+    {
+        msgBox("You can only drop a scene file into the window");
+        return;
+    }
+    loadScene(filename, true);
 }
 
 bool FeatureDemo::onMouseEvent(const MouseEvent& mouseEvent)

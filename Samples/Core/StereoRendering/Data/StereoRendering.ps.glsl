@@ -29,21 +29,18 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-in VS_OUT vsOut;
+in VertexOut vsOut;
 
 layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vsOut.posW, gCam.position, vsOut.normalW, vsOut.bitangentW, vsOut.texC, shAttr);
+    HitPoint hitPt = prepareHitPoint(vsOut, gMaterial, gCam.posW);
 
-    ShadingOutput result;
+    fragColor = vec4(0, 0, 0, 1);
 
     for (uint l = 0; l < gLightsCount; l++)
     {
-        evalMaterial(shAttr, gLights[l], result, l == 0);
+        fragColor.rgb += evalMaterial(hitPt, gLights[l], 1).color.rgb;
     }
-
-    fragColor = vec4(result.finalValue, 1.f);
 }

@@ -31,22 +31,19 @@ __import Effects.CascadedShadowMap;
 
 layout(set = 0, binding = 0) uniform PerFrameCB
 {
-	vec3 gAmbient;
+    vec3 gAmbient;
     CsmData gCsmData[_LIGHT_COUNT];
     bool visualizeCascades;
     mat4 camVpAtLastCsmUpdate;
 };
 
-in VS_IN vIn;
+in VertexIn vIn;
 
-out VS_OUT vOut;
-
+out VertexOut vOut;
 out float shadowsDepthC;
 
 void main()
 {
-    VS_OUT defaultOut = defaultVS(vIn);
-
-    vOut = defaultOut;
-    shadowsDepthC = (camVpAtLastCsmUpdate * vec4(defaultOut.posW, 1)).z;
+    vOut = defaultVS(vIn);
+    shadowsDepthC = (camVpAtLastCsmUpdate * vec4(vOut.posW, 1)).z;
 }

@@ -25,13 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "VertexAttrib.h"
 __import ShaderCommon;
 __import DefaultVS;
 
-VS_OUT main(VS_IN vIn)
+VertexOut main(VertexIn vIn)
 {
-    VS_OUT vOut;
+    VertexOut vOut;
 
     // Filled out in geometry shader
     vOut.posH = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -53,8 +52,23 @@ VS_OUT main(VS_IN vIn)
     vOut.colorV = 0;
 #endif
 
+#ifdef HAS_NORMAL
     vOut.normalW = mul(vIn.normal, getWorldInvTransposeMat(vIn)).xyz;
-    vOut.bitangentW = mul(vIn.bitangent, (float3x3)worldMat).xyz;
+#else
+    vOut.normalW = 0;
+#endif
+
+#ifdef HAS_BITANGENT
+    vOut.bitangentW = mul(vIn.bitangent, (float3x3)getWorldMat(vIn)).xyz;
+#else
+    vOut.bitangentW = 0;
+#endif
+
+#ifdef HAS_LIGHTMAP_UV
+    vOut.lightmapC = vIn.lightmapC;
+#else
+    vOut.lightmapC = 0;
+#endif
 
     return vOut;
 }

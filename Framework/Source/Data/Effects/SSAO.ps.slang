@@ -66,7 +66,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 
     float3 normal = normalize(gNormalTex.Sample(gTextureSampler, texC).xyz * 2.0f - 1.0f);
 
-    float originDist = length(posW - gCam.position);
+    float originDist = length(posW - gCam.posW);
 
     float3 randDir = gNoiseTex.Sample(gNoiseSampler, texC * gData.noiseScale).xyz * 2.0f - 1.0f;
 
@@ -82,7 +82,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 
         // Calculate sample world space pos
         float3 samplePosW = posW + (kernelPos * gData.radius);
-        float sampleDepth = length(samplePosW - gCam.position);
+        float sampleDepth = length(samplePosW - gCam.posW);
 
         // Get screen space pos of sample
         float4 samplePosProj = mul(float4(samplePosW, 1.0f), gCam.viewProjMat);
@@ -90,7 +90,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 
         // Sample depth buffer at the same place as sample
         float2 sampleUV = clamp(float2(samplePosProj.x, -samplePosProj.y) * 0.5f + 0.5f, 0.0f, 1.0f);
-        float sceneDepth = length(getPosition(sampleUV).xyz - gCam.position);
+        float sceneDepth = length(getPosition(sampleUV).xyz - gCam.posW);
 
         float rangeCheck = step(abs(sampleDepth - sceneDepth), gData.radius);
         occlusion += step(sceneDepth, sampleDepth) * rangeCheck;

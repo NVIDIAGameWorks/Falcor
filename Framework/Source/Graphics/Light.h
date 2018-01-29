@@ -33,8 +33,8 @@
 #include "glm/mat4x4.hpp"
 #include "Data/HostDeviceData.h"
 #include "Utils/Gui.h"
-#include "Graphics/Model/Model.h"
 #include "Graphics/Paths/MovableObject.h"
+#include "Graphics/Model/Model.h"
 
 namespace Falcor
 {
@@ -74,13 +74,9 @@ namespace Falcor
         */
         virtual void prepareGPUData() = 0;
 
-        /** Unload GPU data
-        */
-        virtual void unloadGPUData() = 0;
-
         /** Get total light power
         */
-        virtual float getPower() = 0;
+        virtual float getPower() const = 0;
 
         /** Get the light type
         */
@@ -104,7 +100,7 @@ namespace Falcor
 
     protected:
 
-        static const size_t kDataSize = sizeof(LightData); //TODO(tfoley) HACK:SPIRE - sizeof(MaterialData);
+        static const size_t kDataSize = sizeof(LightData);
 
         /* UI callbacks for keeping the intensity in-sync */
         glm::vec3 getColorForUI();
@@ -143,10 +139,6 @@ namespace Falcor
         */
         void prepareGPUData() override;
 
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
-
         /** Set the light's world-space direction.
         */
         void setWorldDirection(const glm::vec3& dir);
@@ -162,7 +154,7 @@ namespace Falcor
 
         /** Get the light's world-space direction.
         */
-        const glm::vec3& getWorldDirection() const { return mData.worldDir; }
+        const glm::vec3& getWorldDirection() const { return mData.dirW; }
 
         /** Get the light intensity.
         */
@@ -170,7 +162,7 @@ namespace Falcor
 
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** IMovableObject interface
         */
@@ -204,22 +196,18 @@ namespace Falcor
         /** Prepare GPU data
         */
         void prepareGPUData() override;
-
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
         
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** Set the light's world-space position
         */
-        void setWorldPosition(const glm::vec3& pos) { mData.worldPos = pos; }
+        void setWorldPosition(const glm::vec3& pos) { mData.posW = pos; }
 
         /** Set the light's world-space position
         */
-        void setWorldDirection(const glm::vec3& dir) { mData.worldDir = dir; }
+        void setWorldDirection(const glm::vec3& dir) { mData.dirW = dir; }
 
         /** Set the light intensity.
         */
@@ -232,11 +220,11 @@ namespace Falcor
 
         /** Get the light's world-space position
         */
-        const glm::vec3& getWorldPosition() const { return mData.worldPos; }
+        const glm::vec3& getWorldPosition() const { return mData.posW; }
 
         /** Get the light's world-space direction
         */
-        const glm::vec3& getWorldDirection() const { return mData.worldDir; }
+        const glm::vec3& getWorldDirection() const { return mData.dirW; }
 
         /** Get the light intensity.
         */
@@ -281,7 +269,7 @@ namespace Falcor
         
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
             \param[in] pBuffer The constant buffer to set the parameters into.
@@ -298,10 +286,6 @@ namespace Falcor
         /** Prepare GPU data
         */
         void prepareGPUData() override;
-
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
 
         /** Set the geometry mesh for this light
             \param[in] pModel Model that contains the geometry mesh for this light
@@ -368,19 +352,7 @@ namespace Falcor
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
 
-        /** Creates area lights automatically from meshes with emissive materials in a model.
-            \param[in] pModel Model
-            \param[out] areaLights Array of area lights created from the model
-        */
-        static void createAreaLightsForModel(const Model::SharedPtr& pModel, std::vector<Light::SharedPtr>& areaLights);
-
     private:
-
-        /** This is a utility function that creates an area light for the geometry mesh.
-            \param[in] pMeshInstance Instance of geometry mesh
-        */
-        static Light::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance);
-
         Model::MeshInstance::SharedPtr mpMeshInstance; ///< Geometry mesh data
         Buffer::SharedPtr mIndexBuf;    ///< Buffer id for indices
         Buffer::SharedPtr mVertexBuf;   ///< Buffer id for vertices
@@ -392,4 +364,8 @@ namespace Falcor
         vec3 mBitangent;             ///< Unnormalized bitangent vector of the light
         std::vector<float> mMeshCDF; ///< CDF function for importance sampling a triangle mesh
     };
+
+
+    AreaLight::SharedPtr createAreaLightFromMesh(const Model::MeshInstance::SharedPtr& pMeshInstance);
+    std::vector<AreaLight::SharedPtr> createAreaLightsForModel(const Model* pModel);
 }

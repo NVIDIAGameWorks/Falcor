@@ -80,7 +80,7 @@ namespace Falcor
 
         /** Get the camera's world space position.
         */
-        const glm::vec3& getPosition() const { return mData.position; }
+        const glm::vec3& getPosition() const { return mData.posW; }
 
         /** Get the camera's world space up vector.
         */
@@ -92,7 +92,7 @@ namespace Falcor
 
         /** Set the camera's world space position.
         */
-        void setPosition(const glm::vec3& pos) { mData.position = pos; mDirty = true; }
+        void setPosition(const glm::vec3& posW) { mData.posW = posW; mDirty = true; }
 
         /** Set the camera's world space up vector.
         */

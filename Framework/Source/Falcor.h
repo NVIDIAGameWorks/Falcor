@@ -77,6 +77,7 @@
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/TextureHelper.h"
 #include "Graphics/Light.h"
+#include "Graphics/LightProbe.h"
 #include "Graphics/FboHelper.h"
 #include "Graphics/ComputeState.h"
 
@@ -91,9 +92,7 @@
 
 // Material
 #include "Graphics/Material/Material.h"
-#include "Graphics/Material/BasicMaterial.h"
 #include "Graphics/Material/MaterialSystem.h"
-#include "Graphics/Material/MaterialEditor.h"
 
 // Model
 #include "Graphics/Model/Mesh.h"
@@ -146,7 +145,7 @@
 #include "Effects/TAA/TAA.h"
 
 #define FALCOR_MAJOR_VERSION 2
-#define FALCOR_MINOR_VERSION 0
-#define FALCOR_DEV_STAGE "rel"
-#define FALCOR_DEV_REVISION 2
-#define FALCOR_VERSION_STRING "2.0.2"
+#define FALCOR_MINOR_VERSION 5
+#define FALCOR_DEV_STAGE "beta"
+#define FALCOR_DEV_REVISION 0
+#define FALCOR_VERSION_STRING "2.5b0"

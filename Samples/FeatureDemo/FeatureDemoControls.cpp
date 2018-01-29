@@ -46,12 +46,11 @@ void FeatureDemo::initControls()
 {
     mControls.resize(ControlID::Count);
     mControls[ControlID::SuperSampling] = { false, false, "INTERPOLATION_MODE", "sample" };
-    mControls[ControlID::EnableSpecAA] = { true, true, "_MS_DISABLE_ROUGHNESS_FILTERING" };
     mControls[ControlID::EnableShadows] = { true, false, "_ENABLE_SHADOWS" };
-    mControls[ControlID::EnableReflections] = { true, false, "_ENABLE_REFLECTIONS" };
+    mControls[ControlID::EnableReflections] = { false, false, "_ENABLE_REFLECTIONS" };
     mControls[ControlID::EnableHashedAlpha] = { true, true, "_DEFAULT_ALPHA_TEST" };
     mControls[ControlID::EnableTransparency] = { false, false, "_ENABLE_TRANSPARENCY" };
-    mControls[ControlID::EnableSSAO] = { false, false, "" };
+    mControls[ControlID::EnableSSAO] = { true, false, "" };
     mControls[ControlID::VisualizeCascades] = { false, false, "_VISUALIZE_CASCADES" };
 
     for (uint32_t i = 0 ; i < ControlID::Count ; i++)
@@ -68,7 +67,7 @@ void FeatureDemo::applyLightingProgramControl(ControlID controlId)
         bool add = control.unsetOnEnabled ? !control.enabled : control.enabled;
         if (add)
         {
-            mLightingPass.pProgram->addDefine(control.define, control.value);            
+            mLightingPass.pProgram->addDefine(control.define, control.value);
             if (controlId == ControlID::EnableHashedAlpha) mDepthPass.pProgram->addDefine(control.define, control.value);
         }
         else
@@ -111,8 +110,8 @@ void FeatureDemo::applyAaMode()
     }
 
     mpMainFbo = FboHelper::create2D(w, h, fboDesc);
-	mpDepthPassFbo = Fbo::create();
-	mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
+    mpDepthPassFbo = Fbo::create();
+    mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
 }
 
 void FeatureDemo::onGuiRender()
@@ -189,25 +188,25 @@ void FeatureDemo::onGuiRender()
             mpGui->endGroup();
         }
 
-		if(mpGui->beginGroup("Renderer Settings"))
-		{
-			mpGui->addCheckBox("Depth Pass", mEnableDepthPass);
-			mpGui->addTooltip("Run a depth-pass at the beginning of the frame");
+        if(mpGui->beginGroup("Renderer Settings"))
+        {
+            mpGui->addCheckBox("Depth Pass", mEnableDepthPass);
+            mpGui->addTooltip("Run a depth-pass at the beginning of the frame");
 
-			if (mpGui->addCheckBox("Per-Material Shaders", mPerMaterialShader))
-			{
-				mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
-			}
-			mpGui->addTooltip("Create a specialized version of the lighting program for each material in the scene");
+            if (mpGui->addCheckBox("Per-Material Shaders", mPerMaterialShader))
+            {
+                mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
+            }
+            mpGui->addTooltip("Create a specialized version of the lighting program for each material in the scene");
 
-			uint32_t maxAniso = mpSceneSampler->getMaxAnisotropy();
-			if (mpGui->addIntVar("Max Anisotropy", (int&)maxAniso, 1, 16))
-			{
-				setSceneSampler(maxAniso);
-			}
+            uint32_t maxAniso = mpSceneSampler->getMaxAnisotropy();
+            if (mpGui->addIntVar("Max Anisotropy", (int&)maxAniso, 1, 16))
+            {
+                setSceneSampler(maxAniso);
+            }
 
-			mpGui->endGroup();
-		}
+            mpGui->endGroup();
+        }
 
         //  Anti-Aliasing Controls.
         if (mpGui->beginGroup("Anti-Aliasing"))
@@ -246,30 +245,34 @@ void FeatureDemo::onGuiRender()
 
             if (reapply) applyAaMode();
 
-            if (mpGui->addCheckBox("Specular AA", mControls[ControlID::EnableSpecAA].enabled))
-            {
-                applyLightingProgramControl(ControlID::EnableSpecAA);
-            }
             mpGui->endGroup();
         }
 
         if (mpGui->beginGroup("Reflections"))
         {
-            if (mpGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
+            if (mpGui->addButton("Load Reflection Texture"))
             {
-                applyLightingProgramControl(ControlID::EnableReflections);
+                std::string filename;
+                if (openFileDialog(kImageFileString, filename))
+                {
+                    initLightProbe(filename);
+                }
             }
 
-            if(mControls[ControlID::EnableReflections].enabled)
+            if(mpSceneRenderer->getScene()->getLightProbeCount() > 0)
             {
-                mpGui->addFloatVar("Intensity", mEnvMapFactorScale, 0);
-
-                if (mpGui->addButton("Load Reflection Texture"))
+                if (mpGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
-                    std::string filename;
-                    if (openFileDialog(kImageFileString, filename))
+                    applyLightingProgramControl(ControlID::EnableReflections);
+                }
+
+                if (mControls[ControlID::EnableReflections].enabled)
+                {
+                    const LightProbe::SharedPtr& pLightProbe = mpSceneRenderer->getScene()->getLightProbe(0);
+                    float intensity = pLightProbe->getIntensity().r;
+                    if (mpGui->addFloatVar("Intensity", intensity, 0))
                     {
-                        initEnvMap(filename);
+                        pLightProbe->setIntensity(vec3(intensity));
                     }
                 }
             }

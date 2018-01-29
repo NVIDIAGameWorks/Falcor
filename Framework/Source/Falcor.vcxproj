@@ -325,10 +325,8 @@
     <ClCompile Include="Graphics\FboHelper.cpp" />
     <ClCompile Include="Graphics\FullScreenPass.cpp" />
     <ClCompile Include="Graphics\Light.cpp" />
-    <ClCompile Include="Graphics\Material\BasicMaterial.cpp" />
+    <ClCompile Include="Graphics\LightProbe.cpp" />
     <ClCompile Include="Graphics\Material\Material.cpp" />
-    <ClCompile Include="Graphics\Material\MaterialEditor.cpp" />
-    <ClCompile Include="Graphics\Material\MaterialHistory.cpp" />
     <ClCompile Include="Graphics\Material\MaterialSystem.cpp" />
     <ClCompile Include="Graphics\Model\Animation.cpp" />
     <ClCompile Include="Graphics\Model\AnimationController.cpp" />
@@ -779,10 +777,8 @@
     <ClInclude Include="Graphics\FboHelper.h" />
     <ClInclude Include="Graphics\FullScreenPass.h" />
     <ClInclude Include="Graphics\Light.h" />
-    <ClInclude Include="Graphics\Material\BasicMaterial.h" />
+    <ClInclude Include="Graphics\LightProbe.h" />
     <ClInclude Include="Graphics\Material\Material.h" />
-    <ClInclude Include="Graphics\Material\MaterialEditor.h" />
-    <ClInclude Include="Graphics\Material\MaterialHistory.h" />
     <ClInclude Include="Graphics\Material\MaterialSystem.h" />
     <ClInclude Include="Graphics\Model\Animation.h" />
     <ClInclude Include="Graphics\Model\AnimationController.h" />
@@ -1040,8 +1036,7 @@
     <None Include="Data\Framework\Shaders\TextRenderer.vs.slang" />
     <None Include="Data\HostDeviceData.slang" />
     <None Include="Data\ShaderCommon.slang" />
-    <None Include="ShadingUtils\BSDFs.slang" />
-    <None Include="ShadingUtils\Cameras.slang" />
+    <None Include="ShadingUtils\BRDF.slang" />
     <None Include="ShadingUtils\Helpers.slang" />
     <None Include="ShadingUtils\Lights.slang" />
     <None Include="ShadingUtils\Shading.slang" />

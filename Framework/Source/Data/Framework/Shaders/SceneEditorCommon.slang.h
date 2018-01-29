@@ -30,7 +30,7 @@ __import DefaultVS;
 
 struct EditorVSOut
 {
-    VS_OUT vOut;
+    VertexOut vOut;
 
 #ifdef PICKING
     uint drawID : DRAW_ID;

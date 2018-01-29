@@ -29,11 +29,8 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-float4 main(VS_OUT vOut) : SV_TARGET0
+float4 main(VertexOut vOut) : SV_TARGET0
 {
-    ShadingAttribs shAttr;
-
-    prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, 0.0f, shAttr);
-
-    return shAttr.preparedMat.values.layers[0].albedo;
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    return float4(hitPt.diffuse, 1);
 }

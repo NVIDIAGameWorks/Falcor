@@ -48,7 +48,6 @@ namespace Falcor
         ~LowLevelContextData();
 
         static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
-        void reset();
         virtual void flush();
 
         CommandListHandle getCommandList() const { return mpList; }

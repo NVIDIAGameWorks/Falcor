@@ -25,9 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
 __import Shading;
-__import DefaultVS;
 
 cbuffer PerFrameCB : register(b0)
 {
@@ -37,7 +35,7 @@ cbuffer PerFrameCB : register(b0)
     float3 gAmbient;
 };
 
-float4 main(VS_OUT vOut) : SV_TARGET
+float4 main(VertexOut vOut) : SV_TARGET
 {
     if(gConstColor)
     {
@@ -45,18 +43,11 @@ float4 main(VS_OUT vOut) : SV_TARGET
     }
     else
     {
-        ShadingAttribs shAttr;
-        prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, shAttr);
-
-        ShadingOutput result;
-
-        // Directional light
-        evalMaterial(shAttr, gDirLight, result, true);
-
-        // Point light
-        evalMaterial(shAttr, gPointLight, result, false);
-
-        float4 finalColor = float4(result.finalValue + gAmbient * result.diffuseAlbedo, 1.f);
+        HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+        float4 finalColor;
+        finalColor.a = 1;
+        finalColor.rgb = evalMaterial(hitPt, gDirLight, 1).color.rgb;
+        finalColor.rgb += evalMaterial(hitPt, gPointLight, 1).color.rgb;
         return finalColor;
     }
 }

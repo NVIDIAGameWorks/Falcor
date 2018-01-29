@@ -80,21 +80,7 @@ namespace Falcor
     {
         safe_delete(mpApiData);
     }
-
-    void LowLevelContextData::reset()
-    {
-        if(mpApiData->recordingCmds == false)
-        {
-            VkCommandBufferBeginInfo beginInfo = {};
-            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-            beginInfo.pInheritanceInfo = nullptr;
-            mpList = mpApiData->pCmdBufferAllocator->newObject();
-            vk_call(vkBeginCommandBuffer(mpList, &beginInfo));
-            mpApiData->recordingCmds = true;
-        }
-    }
-
+    
     // Submit the recorded command buffers here. 
     void LowLevelContextData::flush()
     {
@@ -109,6 +95,14 @@ namespace Falcor
         submitInfo.pSignalSemaphores = nullptr;
         vk_call(vkQueueSubmit(mpQueue, 1, &submitInfo, nullptr));
         mpFence->gpuSignal(mpQueue);
-        reset();    // Need to call vkBeginCommandBuffer()
+
+        // Reset the command list
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        beginInfo.pInheritanceInfo = nullptr;
+        mpList = mpApiData->pCmdBufferAllocator->newObject();
+        vk_call(vkBeginCommandBuffer(mpList, &beginInfo));
+        mpApiData->recordingCmds = true;
     }
 }

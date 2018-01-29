@@ -34,11 +34,11 @@ layout(set = 0, binding = 0) uniform PerImageCB
 {
     // G-Buffer
     // Lighting params
-	LightData gDirLight;
-	LightData gPointLight;
-	vec3 gAmbient;
+    LightData gDirLight;
+    LightData gPointLight;
+    vec3 gAmbient;
     // Debug mode
-	uint gDebugMode;
+    uint gDebugMode;
 };
 
 #include "LightingPassCommon.h"
@@ -56,9 +56,11 @@ void main()
     ivec2 crd = ivec2(gl_FragCoord.xy);
     // Fetch a G-Buffer
     vec3 posW    = texelFetch(sampler2D(gGBuf0, gSampler), crd, 0).rgb;
-    vec3 normalW = texelFetch(sampler2D(gGBuf1, gSampler), crd, 0).rgb;
+    vec4 buf1Val = texelFetch(sampler2D(gGBuf1, gSampler), crd, 0);
+    vec3 normalW = buf1Val.rgb;
+    float linearRoughness = buf1Val.a;
     vec4 albedo  = texelFetch(sampler2D(gGBuf2, gSampler), crd, 0);
 
-    fragColor.rgb = shade(posW, normalW, albedo);
+    fragColor.rgb = shade(posW, normalW, linearRoughness, albedo);
     fragColor.a = 1;
 }

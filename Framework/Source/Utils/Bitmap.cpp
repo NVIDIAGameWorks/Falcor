@@ -46,7 +46,8 @@ namespace Falcor
         std::string fullpath;
         if(findFileInDataDirectories(filename, fullpath) == false)
         {
-            return UniqueConstPtr(genError("Can't find the file", filename));
+            msgBox("Error when loading image file " + filename + "\n. Can't find the file");
+            return nullptr;
         }
 
         FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
@@ -87,7 +88,7 @@ namespace Falcor
         }
 
         uint32_t bpp = FreeImage_GetBPP(pDib);
-		bool rgb32FloatSupported = gpDevice->isRgb32FloatSupported();
+        bool rgb32FloatSupported = gpDevice->isRgb32FloatSupported();
 
         switch(bpp)
         {
@@ -104,8 +105,10 @@ namespace Falcor
             pBmp->mFormat = ResourceFormat::RGB16Float;  // 3xfloat16 HDR format
             break;
         case 32:
-        case 24:
             pBmp->mFormat = ResourceFormat::BGRA8Unorm;
+            break;
+        case 24:
+            pBmp->mFormat = ResourceFormat::BGRX8Unorm;
             break;
         case 16:
             pBmp->mFormat = ResourceFormat::RG8Unorm;
@@ -121,7 +124,7 @@ namespace Falcor
         // Convert the image to RGBX image
         if(bpp == 24)
         {
-			logWarning("Converting 24-bit texture to 32-bit");
+            logWarning("Converting 24-bit texture to 32-bit");
             bpp = 32;
             auto pNew = FreeImage_ConvertTo32Bits(pDib);
             FreeImage_Unload(pDib);
@@ -130,8 +133,8 @@ namespace Falcor
 
         if (!rgb32FloatSupported && bpp == 96)
         {
-			logWarning("Converting 96-bit texture to 128-bit");
-			bpp = 128;
+            logWarning("Converting 96-bit texture to 128-bit");
+            bpp = 128;
             auto pNew = FreeImage_ConvertToRGBAF(pDib);
             FreeImage_Unload(pDib);
             pDib = pNew;
@@ -162,8 +165,8 @@ namespace Falcor
             return FIF_JPEG;
         case Bitmap::FileFormat::PfmFile:
             return FIF_PFM;
-		case Bitmap::FileFormat::ExrFile:
-			return FIF_EXR;
+        case Bitmap::FileFormat::ExrFile:
+            return FIF_EXR;
         default:
             should_not_get_here();
         }
@@ -206,7 +209,7 @@ namespace Falcor
 
         //TODO replace this code for swapping channels. Can't use freeimage masks b/c they only care about 16 bpp images
         //issue #74 in gitlab
-        if (resourceFormat == ResourceFormat::RGBA8Uint || resourceFormat == ResourceFormat::RGBA8Snorm || resourceFormat == ResourceFormat::RGBA8UnormSrgb)
+        if (resourceFormat == ResourceFormat::RGBA8Unorm || resourceFormat == ResourceFormat::RGBA8Snorm || resourceFormat == ResourceFormat::RGBA8UnormSrgb)
         {
             for (uint32_t a = 0; a < width*height; a++)
             {
@@ -214,9 +217,13 @@ namespace Falcor
                 pPixel += a;
                 uint8_t* ch = (uint8_t*)pPixel;
                 std::swap(ch[0], ch[2]);
-                ch[3] = 0xff;
+                if (is_set(exportFlags, ExportFlags::ExportAlpha) == false)
+                {
+                    ch[3] = 0xff;
+                }
             }
         }
+
         if (fileFormat == Bitmap::FileFormat::PngFile)
         {
             pImage = FreeImage_ConvertFromRawBits((BYTE*)pData, width, height, bytesPerPixel * width, bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);

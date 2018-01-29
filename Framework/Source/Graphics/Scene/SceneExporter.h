@@ -50,7 +50,6 @@ namespace Falcor
             ExportCameras        = 0x8,
             ExportPaths          = 0x10,
             ExportUserDefined    = 0x20,
-            ExportMaterials      = 0x40,
             ExportAll = 0xFFFFFFFF
         };
 
@@ -71,7 +70,6 @@ namespace Falcor
         void writeGlobalSettings(bool writeActivePath);
         void writePaths();
         void writeUserDefinedSection();
-        void writeMaterials();
 
         rapidjson::Document mJDoc;
         Scene::SharedPtr mpScene = nullptr;

@@ -35,6 +35,7 @@ namespace Falcor
 {
     class Sampler;
     class Device;
+    class RenderContext;
 
     /** Abstracts the API texture objects
     */
@@ -160,7 +161,7 @@ namespace Falcor
 
         /** Generates mipmaps for a specified texture object.
         */
-        void generateMips();
+        void generateMips(RenderContext* pContext);
 
         /** Name the texture
         */

@@ -29,23 +29,17 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-float4 main(VS_OUT vOut) : SV_TARGET
+float4 main(VertexOut vOut) : SV_TARGET
 {
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, shAttr);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
 
-    ShadingOutput result;
-    result.finalValue = 0;
-    float4 finalColor = 0;
+    float3 color = 0;
 
     for (uint l = 0; l < gLightsCount; l++)
     {
-        evalMaterial(shAttr, gLights[l], result, l == 0);
+        color += evalMaterial(hitPt, gLights[l], 1).color.rgb;
     }
 
-    finalColor = float4(result.finalValue, 1.f);
-
-    // add ambient
-    finalColor.rgb += gAmbientLighting * getDiffuseColor(shAttr).rgb;
-    return finalColor;
+    color += gAmbientLighting * hitPt.diffuse;
+    return float4(color, 1.f);
 }

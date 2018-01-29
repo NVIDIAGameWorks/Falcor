@@ -31,7 +31,7 @@ __import Effects.CascadedShadowMap;
 
 cbuffer PerFrameCB : register(b0)
 {
-	float3 gAmbient;
+    float3 gAmbient;
     CsmData gCsmData[_LIGHT_COUNT];
     bool visualizeCascades;
     float4x4 camVpAtLastCsmUpdate;
@@ -39,13 +39,13 @@ cbuffer PerFrameCB : register(b0)
 
 struct ShadowsVSOut
 {
-    VS_OUT vsData;
+    VertexOut vsData;
     float shadowsDepthC : DEPTH;
 };
 
-ShadowsVSOut main(VS_IN vIn)
+ShadowsVSOut main(VertexIn vIn)
 {
-    VS_OUT defaultOut = defaultVS(vIn);
+    VertexOut defaultOut = defaultVS(vIn);
     ShadowsVSOut output;
     output.vsData = defaultOut;
 

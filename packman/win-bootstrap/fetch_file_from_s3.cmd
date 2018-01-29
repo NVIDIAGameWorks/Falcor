@@ -3,7 +3,7 @@
 @set PACKAGE_NAME=%1
 @set TARGET_PATH=%2
 
-@echo Fetching %PACKAGE_NAME% from s3 ...
+@echo Fetching %PACKAGE_NAME% from S3 ...
 
 @powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0fetch_file_from_s3.ps1" -sourceName %PACKAGE_NAME% ^
     -output %TARGET_PATH%
@@ -16,7 +16,7 @@
 @exit /b 0
 
 :ERROR_DOWNLOAD_FAILED
-@echo Failed to download file from %1
-@echo Most likely because endpoint cannot be reached (VPN connection down?)
+@echo Failed to download file from S3
+@echo Most likely because endpoint cannot be reached or file %PACKAGE_NAME% doesn't exist
 @endlocal
 @exit /b 1

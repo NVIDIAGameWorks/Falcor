@@ -65,7 +65,7 @@ namespace Falcor
             }
             else
             {
-                mData.viewMat = glm::lookAt(mData.position, mData.target, mData.up);
+                mData.viewMat = glm::lookAt(mData.posW, mData.target, mData.up);
             }
 
             // if camera projection is set to be persistent, don't override it.
@@ -82,7 +82,7 @@ namespace Falcor
                 else
                 {
                     // Take the length of look-at vector as half a viewport size
-                    const float halfLookAtLength = length(mData.position - mData.target) * 0.5f;
+                    const float halfLookAtLength = length(mData.posW - mData.target) * 0.5f;
                     mData.projMat = glm::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
                 }
             }
@@ -118,7 +118,7 @@ namespace Falcor
             }
 
             // Ray tracing related vectors
-            mData.cameraW = mData.target - mData.position;
+            mData.cameraW = mData.target - mData.posW;
             const float lookdir_len = length(mData.cameraW);
             mData.cameraU = glm::normalize(glm::cross(mData.cameraW, mData.up));
             mData.cameraV = glm::normalize(glm::cross(mData.cameraU, mData.cameraW));

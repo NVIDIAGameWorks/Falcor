@@ -30,12 +30,12 @@ layout(set = 0, binding = 0) uniform texture2D gTexture;
 layout(set = 0, binding = 1) uniform sampler gSampler;
 
 layout(location = 0) in vec2 texC;
-layout(location =0) out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 const float3 gLuminance = float3(0.2126, 0.7152, 0.0722);
 
 void main()
 {
-	fragColor = texture(sampler2D(gTexture, gSampler), texC);
-	fragColor.rgb = (dot(fragColor.rgb, gLuminance)).xxx;
+    fragColor = texture(sampler2D(gTexture, gSampler), texC);
+    fragColor.rgb = (dot(fragColor.rgb, gLuminance)).xxx;
 }

@@ -29,7 +29,7 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-in VS_OUT vOut;
+in VertexOut vOut;
 
 layout(set = 0, binding = 0) uniform PerFrameCB
 {
@@ -49,17 +49,10 @@ void main()
     }
     else
     {
-        ShadingAttribs shAttr;
-        prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, shAttr);
+        HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
 
-        ShadingOutput result;
-
-        // Directional light
-        evalMaterial(shAttr, gDirLight, result, true);
-
-        // Point light
-        evalMaterial(shAttr, gPointLight, result, false);
-
-        fragColor = vec4(result.finalValue + gAmbient * result.diffuseAlbedo, 1.f);
+        fragColor.rgb = evalMaterial(hitPt, gDirLight, 1).color.rgb;
+        fragColor.rgb += evalMaterial(hitPt, gPointLight, 1).color.rgb;
+        fragColor.a = 1;
     }
 }

@@ -169,15 +169,13 @@ namespace Falcor
             // Track material
             uniqueMaterials.insert(pMaterial);
 
-            // Track all of the material's textures
-            for (uint32_t i = 0; i < pMaterial->getNumLayers(); i++)
-            {
-                uniqueTextures.insert(pMaterial->getLayer(i).pTexture.get());
-            }
-
+            // Track all of the material's textures            
+            uniqueTextures.insert(pMaterial->getDiffuseTexture().get());
+            uniqueTextures.insert(pMaterial->getSpecularTexture().get());
+            uniqueTextures.insert(pMaterial->getEmissiveTexture().get());
             uniqueTextures.insert(pMaterial->getNormalMap().get());
-            uniqueTextures.insert(pMaterial->getAlphaMap().get());
-            uniqueTextures.insert(pMaterial->getAmbientOcclusionMap().get());
+            uniqueTextures.insert(pMaterial->getOcclusionMap().get());
+            uniqueTextures.insert(pMaterial->getLightMap().get());
             uniqueTextures.insert(pMaterial->getHeightMap().get());
 
             // Track the material's buffers

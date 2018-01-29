@@ -3,4 +3,5 @@
 			<credentials id="AKIAJHPSPBMWMTZS6TJA" key="vK3d0lHiQjEW9krFfvKA4OLpuHGxi2L4/Q4r4IuT"
 				errorUrl="https://gtl-gitlab.nvidia.com/halldor/packman/wikis/credentials/failure-using-s3-packman-read-access"/>
 	</remote>
+	<remote name="cloudfront" type="https" packageLocation="d2bmww5yym6ce8.cloudfront.net/${name}@${version}" />
 </config>

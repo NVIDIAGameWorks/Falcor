@@ -79,9 +79,6 @@
     <ClCompile Include="Graphics\Material\Material.cpp">
       <Filter>Graphics\Material</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\Material\MaterialEditor.cpp">
-      <Filter>Graphics\Material</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\Video\VideoDecoder.cpp">
       <Filter>Utils\Video</Filter>
     </ClCompile>
@@ -126,9 +123,6 @@
     </ClCompile>
     <ClCompile Include="Utils\MonitorInfo.cpp">
       <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\Material\BasicMaterial.cpp">
-      <Filter>Graphics\Material</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Material\MaterialSystem.cpp">
       <Filter>Graphics\Material</Filter>
@@ -245,9 +239,6 @@
     </ClCompile>
     <ClCompile Include="Utils\DebugDrawer.cpp">
       <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\Material\MaterialHistory.cpp">
-      <Filter>Graphics\Material</Filter>
     </ClCompile>
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp">
       <Filter>Effects\AmbientOcclusion</Filter>
@@ -496,6 +487,7 @@
     <ClCompile Include="API\D3D12\LowLevel\D3D12DescriptorPool.cpp">
       <Filter>API\D3D12\LowLevel</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\LightProbe.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -618,9 +610,6 @@
     <ClInclude Include="Graphics\Material\Material.h">
       <Filter>Graphics\Material</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\Material\MaterialEditor.h">
-      <Filter>Graphics\Material</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Video\VideoDecoder.h">
       <Filter>Utils\Video</Filter>
     </ClInclude>
@@ -665,9 +654,6 @@
     </ClInclude>
     <ClInclude Include="Utils\MonitorInfo.h">
       <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\Material\BasicMaterial.h">
-      <Filter>Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Material\MaterialSystem.h">
       <Filter>Graphics\Material</Filter>
@@ -1490,9 +1476,6 @@
     <ClInclude Include="Utils\DebugDrawer.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\Material\MaterialHistory.h">
-      <Filter>Graphics\Material</Filter>
-    </ClInclude>
     <ClInclude Include="Effects\AmbientOcclusion\SSAO.h">
       <Filter>Effects\AmbientOcclusion</Filter>
     </ClInclude>
@@ -1614,6 +1597,7 @@
     <ClInclude Include="API\D3D12\LowLevel\D3D12DescriptorHeap.h">
       <Filter>API\D3D12\LowLevel</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\LightProbe.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -2200,18 +2184,6 @@
     <None Include="Data\DefaultVS.slang">
       <Filter>Data</Filter>
     </None>
-    <None Include="ShadingUtils\BSDFs.slang">
-      <Filter>ShadingUtils</Filter>
-    </None>
-    <None Include="ShadingUtils\Cameras.slang">
-      <Filter>ShadingUtils</Filter>
-    </None>
-    <None Include="ShadingUtils\Helpers.slang">
-      <Filter>ShadingUtils</Filter>
-    </None>
-    <None Include="ShadingUtils\Lights.slang">
-      <Filter>ShadingUtils</Filter>
-    </None>
     <None Include="ShadingUtils\Shading.slang">
       <Filter>ShadingUtils</Filter>
     </None>
@@ -2242,8 +2214,17 @@
     <None Include="Data\Framework\Shaders\TextRenderer.ps.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
+    <None Include="ShadingUtils\Lights.slang">
+      <Filter>ShadingUtils</Filter>
+    </None>
+    <None Include="ShadingUtils\BRDF.slang">
+      <Filter>ShadingUtils</Filter>
+    </None>
     <None Include="Data\Framework\Shaders\MaterialBlock.slang">
       <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="ShadingUtils\Helpers.slang">
+      <Filter>ShadingUtils</Filter>
     </None>
   </ItemGroup>
 </Project>

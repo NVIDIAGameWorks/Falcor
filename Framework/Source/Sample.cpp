@@ -137,6 +137,11 @@ namespace Falcor
         onKeyEvent(keyEvent);
     }
 
+    void Sample::handleDroppedFile(const std::string& filename)
+    {
+        onDroppedFile(filename);
+    }
+
     void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
     {
         if(gpDevice)
@@ -172,6 +177,7 @@ namespace Falcor
         mTimeScale = config.timeScale;
         mFixedTimeDelta = config.fixedTimeDelta;
         mFreezeTime = config.freezeTimeOnStartup;
+        mVsyncOn = config.deviceDesc.enableVsync;
 
         // Start the logger
         Logger::init();

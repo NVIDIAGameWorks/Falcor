@@ -25,8 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#import "ShaderCommon.slang"
-#import "Shading.slang"
+__import ShaderCommon;
+__import Shading;
 __import DefaultVS;
 
 layout(set = 0, binding = 0) uniform PerFrameCB
@@ -34,25 +34,18 @@ layout(set = 0, binding = 0) uniform PerFrameCB
     vec3 gAmbient;
 };
 
+in VertexOut vOut;
+layout(location = 0) out vec4 fragColor;
 
-layout(location = 1) in vec3 normal;
-layout(location = 2) in vec3 bitangent;
-layout(location = 3) in vec2 texC;
-
-layout(location = 2) out vec4 finalColor;
-
-float4 main(VS_OUT vOut) : SV_TARGET
+void main()
 {
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, posW, gCam.position, normalW, bitangentW, texC, shAttr);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
 
-    ShadingOutput result;
+    fragColor = vec4(gAmbient * hitPt.diffuse, 1);
 
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
-        evalMaterial(shAttr, gLights[l], result, l == 0);
+        fragColor.rgb += evalMaterial(hitPt, gLights[l], 1).color.rgb;
     }
-
-    finalColor = float4(result.finalValue + gAmbient * result.diffuseAlbedo, 1.f);
 }

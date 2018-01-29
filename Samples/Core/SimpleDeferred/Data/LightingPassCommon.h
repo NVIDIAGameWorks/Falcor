@@ -38,7 +38,7 @@
 #define vec4 float4
 #endif
 
-vec3 shade(vec3 posW, vec3 normalW, vec4 albedo)
+vec3 shade(vec3 posW, vec3 normalW, float linearRoughness, vec4 albedo)
 {
     // Discard empty pixels
     if (albedo.a <= 0)
@@ -46,38 +46,34 @@ vec3 shade(vec3 posW, vec3 normalW, vec4 albedo)
         discard;
     }
 
-    /* Reconstruct shading attributes */
-    ShadingAttribs shAttr;
-    shAttr.P = posW;
-    shAttr.E = normalize(gCam.position - posW);
-    shAttr.N = normalW;
+    /* Reconstruct the hit-point */
+    HitPoint hitPt = initHitPoint();
+    hitPt.posW = posW;
+    hitPt.V = normalize(gCam.posW - posW);
+    hitPt.N = normalW;
+    hitPt.NdotV = abs(dot(hitPt.V, hitPt.N));
+    hitPt.linearRoughness = linearRoughness;
 
     /* Reconstruct layers (one diffuse layer) */
-    initDiffuseLayer(shAttr.preparedMat.desc.layers[0], shAttr.preparedMat.values.layers[0], albedo.rgb);
-    initNullLayer(shAttr.preparedMat.desc.layers[1]);
+    hitPt.diffuse = albedo.rgb;
+    hitPt.opacity = 0;
 
     /* Do lighting */
-    ShadingOutput result;
-    // Directional light
-    evalMaterial(shAttr, gDirLight, result, true);
-    // Point light
-    evalMaterial(shAttr, gPointLight, result, false);
-    // Add ambient term
-    result.finalValue += gAmbient * result.diffuseAlbedo;
-    result.diffuseIllumination += gAmbient;
+    ShadingResult dirResult = evalMaterial(hitPt, gDirLight, 1);
+    ShadingResult pointResult = evalMaterial(hitPt, gPointLight, 1);
 
+    float3 result;
     // Debug vis
-    if (gDebugMode != 0)
-    {
-        if (gDebugMode == ShowPos)
-            result.finalValue = posW;
-        else if (gDebugMode == ShowNormals)
-            result.finalValue = 0.5 * normalW + 0.5f;
-        else if (gDebugMode == ShowAlbedo)
-            result.finalValue = albedo.rgb;
-        else
-            result.finalValue = result.diffuseIllumination;
-    }
+    if (gDebugMode == ShowPos)
+        result = posW;
+    else if (gDebugMode == ShowNormals)
+        result = 0.5 * normalW + 0.5f;
+    else if (gDebugMode == ShowAlbedo)
+        result = albedo.rgb;
+    else if (gDebugMode == ShowLighting)
+        result = (dirResult.diffuseBrdf + pointResult.diffuseBrdf) / hitPt.diffuse.rgb;
+    else
+        result = dirResult.diffuse + pointResult.diffuse;
 
-    return result.finalValue;
+    return result;
 }

@@ -58,6 +58,8 @@ namespace Falcor
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
 
+    const char* SceneRenderer::kLightProbeVarName = "gLightProbe";
+
     SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
     {
         return SharedPtr(new SceneRenderer(pScene));
@@ -104,7 +106,7 @@ namespace Falcor
                 sCameraDataOffset = pType->findMember("gCam.viewMat")->getOffset();
                 const auto& pCountOffset = pType->findMember("gLightsCount");
                 sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
+                const auto& pLightOffset = pType->findMember("gLights");
                 sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
                 const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
                 sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
@@ -140,6 +142,11 @@ namespace Falcor
             {
                 pCB->setVariable(sAmbientLightOffset, mpScene->getAmbientIntensity());
             }
+            if (mpScene->getLightProbeCount() > 0)
+            {
+                // #TODO Support multiple light probes
+                mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kLightProbeVarName);
+            }
         }
     }
 
@@ -161,7 +168,7 @@ namespace Falcor
 
                 assert(pModel->getBoneCount() <= MAX_BONES);
                 pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
-                pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
+                pCB->setVariableArray(sBonesInvTransposeOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
         }
         return true;
@@ -183,8 +190,6 @@ namespace Falcor
         if (pCB)
         {
             const Mesh* pMesh = pMeshInstance->getObject().get();
-
-            assert(drawInstanceID == 0); // We don't support instanced skinned models
 
             glm::mat4 worldMat = pModelInstance->getTransformMatrix();
             glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix();

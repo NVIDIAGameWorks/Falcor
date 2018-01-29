@@ -1,4 +1,4 @@
-@set PM_PACKMAN_VERSION=5.0.1
+@set PM_PACKMAN_VERSION=5.1
 
 :: Specify where packman command is rooted
 @set PM_INSTALL_PATH=%~dp0..
@@ -91,7 +91,7 @@
 @set PM_7Za_PATH=%PM_PACKAGES_ROOT%\chk\7za\%PM_7ZA_VERSION%
 @if exist "%PM_7Za_PATH%" goto END
 
-@"%PM_PYTHON%" "%PM_MODULE%" install 7za %PM_7za_VERSION% -r packman:s3
+@"%PM_PYTHON%" "%PM_MODULE%" install 7za %PM_7za_VERSION% -r packman:cloudfront
 @if errorlevel 1 goto ERROR
 
 @goto END

@@ -42,7 +42,7 @@ DebugDrawVSOut main(DebugDrawVSIn vIn)
 
 #else //////////////////////////////////////////////////////////////////////////////////////
 
-EditorVSOut main(VS_IN vIn)
+EditorVSOut main(VertexIn vIn)
 {
     EditorVSOut vOut;
     vOut.vOut = defaultVS(vIn);

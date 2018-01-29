@@ -28,16 +28,16 @@
 __import ShaderCommon;
 __import DefaultVS;
 
-struct GS_OUT
+struct GeometryOut
 {
-    VS_OUT vsOut;
+    VertexOut vsOut;
     uint rtIndex : SV_RenderTargetArrayIndex;
 };
 
 [maxvertexcount(6)]
-void main(triangle VS_OUT input[3], inout TriangleStream<GS_OUT> outStream)
+void main(triangle VertexOut input[3], inout TriangleStream<GeometryOut> outStream)
 {
-    GS_OUT gsOut;
+    GeometryOut gsOut;
 
     // Left Eye
     for (int i = 0; i < 3; i++)

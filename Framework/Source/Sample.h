@@ -133,6 +133,10 @@ namespace Falcor
         */
         virtual void onGuiRender() {};
 
+        /** Called when a file is dropped into the window
+        */
+        virtual void onDroppedFile(const std::string& filename) {}
+
         /** Resize the swap-chain buffers
             \param[in] width Requested width
             \param[in] height Requested height
@@ -194,6 +198,8 @@ namespace Falcor
         void handleWindowSizeChange() override;
         void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
         void handleMouseEvent(const MouseEvent& mouseEvent) override;
+        void handleDroppedFile(const std::string& filename) override;
+
         virtual float getTimeScale() final { return mTimeScale; }
         float getFixedTimeDelta() { return mFixedTimeDelta; }
         void setFixedTimeDelta(float newFixedTimeDelta) { mFixedTimeDelta = newFixedTimeDelta; }

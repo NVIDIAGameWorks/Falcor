@@ -41,22 +41,15 @@ namespace Falcor
         pCtx->mpLowLevelData = LowLevelContextData::create(LowLevelContextData::CommandQueueType::Copy, queue);
         return pCtx->mpLowLevelData ? pCtx : nullptr;
     }
-
-    void CopyContext::reset()
-    {
-        flush();
-        mpLowLevelData->reset();
-        bindDescriptorHeaps();
-    }
-
+    
     void CopyContext::flush(bool wait)
     {
         if (mCommandsPending)
         {
             mpLowLevelData->flush();
             mCommandsPending = false;
-            bindDescriptorHeaps();
         }
+        bindDescriptorHeaps();
 
         if (wait)
         {

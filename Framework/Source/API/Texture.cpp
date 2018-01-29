@@ -132,25 +132,26 @@ namespace Falcor
 
         if (autoGenMips)
         {
-            generateMips();
+            generateMips(gpDevice->getRenderContext().get());
             invalidateViews();
         }
     }
 
-    void Texture::generateMips()
+    void Texture::generateMips(RenderContext* pContext)
     {
         if (mType != Type::Texture2D)
         {
             logWarning("Texture::generateMips() was only tested with Texture2Ds");
         }
-
-        RenderContext* pContext = gpDevice->getRenderContext().get();
-
-        for (uint32_t i = 0; i < mMipLevels - 1; i++)
+        // #OPTME: should blit support arrays?
+        for (uint32_t m = 0; m < mMipLevels - 1; m++)
         {
-            auto srv = getSRV(i, 1, 0, mArraySize);
-            auto rtv = getRTV(i + 1, 0, mArraySize);
-            pContext->blit(srv, rtv);
+            for(uint32_t a = 0 ; a < mArraySize ; a++)
+            {
+                auto srv = getSRV(m, 1, a, 1);
+                auto rtv = getRTV(m + 1, a, 1);
+                pContext->blit(srv, rtv);
+            }
         }
 
 		if(mReleaseRtvsAfterGenMips)

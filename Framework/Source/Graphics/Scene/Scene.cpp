@@ -54,13 +54,10 @@ namespace Falcor
         return SharedPtr(new Scene());
     }
 
-    Scene::Scene()
-        : mId(sSceneCounter++)
+    Scene::Scene() : mId(sSceneCounter++)
     {
         // Reset all global id counters recursively
         Model::resetGlobalIdCounter();
-
-        mpMaterialHistory = MaterialHistory::create();
     }
 
     Scene::~Scene() = default;
@@ -149,14 +146,8 @@ namespace Falcor
 
     void Scene::deleteModel(uint32_t modelID)
     {
-        if (mpMaterialHistory != nullptr)
-        {
-            mpMaterialHistory->onModelRemoved(getModel(modelID).get());
-        }
-
         // Delete entire vector of instances
         mModels.erase(mModels.begin() + modelID);
-
         mExtentsDirty = true;
     }
 
@@ -263,19 +254,15 @@ namespace Falcor
         mExtentsDirty = true;
     }
 
-    void Scene::deleteMaterial(uint32_t materialID)
+    uint32_t Scene::addLightProbe(const LightProbe::SharedPtr& pLightProbe)
     {
-        if (mpMaterialHistory != nullptr)
-        {
-            mpMaterialHistory->onMaterialRemoved(getMaterial(materialID).get());
-        }
-
-        mpMaterials.erase(mpMaterials.begin() + materialID);
+        mpLightProbes.push_back(pLightProbe);
+        return (uint32_t)mpLightProbes.size() - 1;
     }
 
-    void Scene::deleteMaterialHistory()
+    void Scene::deleteLightProbe(uint32_t lightID)
     {
-        mpMaterialHistory = nullptr;
+        mpLightProbes.erase(mpLightProbes.begin() + lightID);
     }
 
     uint32_t Scene::addPath(const ObjectPath::SharedPtr& pPath)
@@ -317,7 +304,6 @@ namespace Falcor
         merge(mModels);
         merge(mpLights);
         merge(mpPaths);
-        merge(mpMaterials);
         merge(mCameras);
 #undef merge
         mUserVars.insert(pFrom->mUserVars.begin(), pFrom->mUserVars.end());
@@ -338,8 +324,7 @@ namespace Falcor
                 // Retrieve model instances for this model
                 for (uint32_t modelInstanceId = 0; modelInstanceId < getModelInstanceCount(modelId); ++modelInstanceId)
                 {
-                    // #TODO This should probably create per model instance
-                    AreaLight::createAreaLightsForModel(pModel, mpLights);
+
                 }
             }
         }
@@ -363,19 +348,16 @@ namespace Falcor
         }
     }
 
-    void Scene::bindSamplerToMaterials(Sampler::SharedPtr pSampler)
-    {
-        for (auto& pMat : mpMaterials)
-        {
-            pMat->setSampler(pSampler);
-        }
-    }
-
-    void Scene::bindSamplerToModels(Sampler::SharedPtr pSampler)
+    void Scene::bindSampler(Sampler::SharedPtr pSampler)
     {
         for (auto& model : mModels)
         {
             model[0]->getObject()->bindSamplerToMaterials(pSampler);
+        }
+
+        for (auto& probe : mpLightProbes)
+        {
+            probe->setSampler(pSampler);
         }
     }
 }
