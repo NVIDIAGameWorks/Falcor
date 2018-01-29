@@ -6,8 +6,8 @@ default_json_data = {
     'Windows':
     {   
         'Destination Target' : 'C:\\Falcor\\GitHub\\',
-        'Reference Target ' : '\\netapp-wa02\\public\\Falcor\\Github\\References\\',
-        'Email List' : '\\netapp-wa02\\public\\Falcor\\email.txt',
+        'Reference Target ' : '\\\\netapp-wa02\\public\\Falcor\\Github\\References\\',
+        'Email List' : '\\\\netapp-wa02\\public\\Falcor\\email.txt',
         'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\Results\\'
     },
     'Linux':
