@@ -243,7 +243,7 @@ void FeatureDemo::initTAA()
 
 void FeatureDemo::initPostProcess()
 {
-    mpToneMapper = ToneMapping::create(ToneMapping::Operator::HableUc2);
+    mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
 }
 
 void FeatureDemo::onLoad()
