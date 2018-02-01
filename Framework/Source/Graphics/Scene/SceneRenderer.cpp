@@ -131,7 +131,7 @@ namespace Falcor
                 assert(mpScene->getLightCount() <= MAX_LIGHT_SOURCES);  // Max array size in the shader
                 for (uint_t i = 0; i < mpScene->getLightCount(); i++)
                 {
-                    mpScene->getLight(i)->setIntoConstantBuffer(pCB, i * Light::getShaderStructSize() + sLightArrayOffset);
+                    mpScene->getLight(i)->setIntoProgramVars(currentData.pVars, pCB, sLightArrayOffset + (i * Light::getShaderStructSize()));
                 }
             }
             if (sLightCountOffset != ConstantBuffer::kInvalidOffset)

@@ -304,8 +304,9 @@ void ModelViewer::onFrameRender()
             mpGraphicsState->setDepthStencilState(mpDepthTestDS);
             mpProgramVars["PerFrameCB"]["gConstColor"] = false;
 
-            mpDirLight->setIntoConstantBuffer(mpProgramVars["PerFrameCB"].get(), "gDirLight");
-            mpPointLight->setIntoConstantBuffer(mpProgramVars["PerFrameCB"].get(), "gPointLight");
+            ConstantBuffer* pCB = mpProgramVars["PerFrameCB"].get();
+            mpDirLight->setIntoProgramVars(mpProgramVars.get(), pCB, "gDirLight");
+            mpPointLight->setIntoProgramVars(mpProgramVars.get(), pCB, "gPointLight");
         }
 
         mpProgramVars["PerFrameCB"]["gAmbient"] = mAmbientIntensity;

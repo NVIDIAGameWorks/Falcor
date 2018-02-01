@@ -267,8 +267,8 @@ void SimpleDeferred::onFrameRender()
         // Set lighting params
         ConstantBuffer::SharedPtr pLightCB = mpLightingVars["PerImageCB"];
         pLightCB["gAmbient"] = mAmbientIntensity;
-        mpDirLight->setIntoConstantBuffer(pLightCB.get(), "gDirLight");
-        mpPointLight->setIntoConstantBuffer(pLightCB.get(), "gPointLight");
+        mpDirLight->setIntoProgramVars(mpLightingVars.get(), pLightCB.get(), "gDirLight");
+        mpPointLight->setIntoProgramVars(mpLightingVars.get(), pLightCB.get(), "gPointLight");
         // Debug mode
         pLightCB->setVariable("gDebugMode", (uint32_t)mDebugMode);
 

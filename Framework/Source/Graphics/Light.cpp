@@ -51,37 +51,14 @@ namespace Falcor
     }
 
 #if _LOG_ENABLED
-#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset(pBuffer->getVariableOffset(varName + "." + #_a) - offset, offsetof(LightData, _a), #_a));} b = false;}
+#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset(pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(LightData, _a), #_a));} b = false;}
 #else
 #define check_offset(_a)
 #endif
 
-    void Light::setIntoConstantBuffer(ConstantBuffer* pBuffer, size_t offset)
+    void Light::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName)
     {
-        static_assert(kDataSize % sizeof(float) * 4 == 0, "LightData size should be a multiple of 16");
-        /*TODO(tfoley) HACK: SPIRE can't handle it
-        static_assert(kDataSize == offsetof(LightData, material), "'material' must be the last field in LightData");
-        */
-
-        assert(offset + kDataSize <= pBuffer->getSize());
-
-        // Set everything except for the material
-        pBuffer->setBlob(&mData, offset, kDataSize);
-        if (mData.type == LightArea)
-        {
-            //assert(0);
-        }
-    }
-
-
-    void Light::setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName)
-    {
-        size_t offset = pBuffer->getVariableOffset(varName + ".posW");
-        if (offset == ConstantBuffer::kInvalidOffset)
-        {
-            logWarning("AreaLight::setIntoConstantBuffer() - variable \"" + varName + "\"not found in constant buffer\n");
-            return;
-        }
+        size_t offset = pCb->getVariableOffset(varName);
 
         check_offset(dirW);
         check_offset(intensity);
@@ -90,7 +67,16 @@ namespace Falcor
         check_offset(transMat);
         check_offset(numIndices);
 
-        setIntoConstantBuffer(pBuffer, offset);
+        setIntoProgramVars(pVars, pCb, offset);
+    }
+
+    void Light::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset)
+    {
+        static_assert(kDataSize % sizeof(float) * 4 == 0, "LightData size should be a multiple of 16");
+        assert(offset + kDataSize <= pCb->getSize());
+
+        // Set everything except for the material
+        pCb->setBlob(&mData, offset, kDataSize);
     }
 
     glm::vec3 Light::getColorForUI()
@@ -186,7 +172,7 @@ namespace Falcor
         }
     }
 
-	DirectionalLight::DirectionalLight() : mDistance(-1.0f)
+    DirectionalLight::DirectionalLight() : mDistance(-1.0f)
     {
         mData.type = LightDirectional;
     }
@@ -321,6 +307,20 @@ namespace Falcor
         return luminance(mData.intensity) * (float)M_PI * mSurfaceArea;
     }
 
+    void AreaLight::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName)
+    {
+        // Upload data to GPU
+        prepareGPUData();
+
+        // Call base class method;
+        Light::setIntoProgramVars(pVars, pCb, varName);
+    }
+
+    void AreaLight::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset)
+    {
+
+    }
+
     void AreaLight::renderUI(Gui* pGui, const char* group)
     {
         if(!group || pGui->beginGroup(group))
@@ -343,15 +343,6 @@ namespace Falcor
         }
     }
 
-    void AreaLight::setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName)
-    {
-        // Upload data to GPU
-        prepareGPUData();
-
-        // Call base class method;
-        Light::setIntoConstantBuffer(pBuffer, varName);
-    }
-
     void AreaLight::prepareGPUData()
     {
         // DISABLED_FOR_D3D12
@@ -365,16 +356,16 @@ namespace Falcor
 // 			// Store the mesh CDF buffer id
 // 			mData.meshCDFPtr.ptr = mMeshCDFBuf->makeResident();
 // 		}
- 		mData.numIndices = uint32_t(mIndexBuf->getSize() / sizeof(glm::ivec3));
+        mData.numIndices = uint32_t(mIndexBuf->getSize() / sizeof(glm::ivec3));
  
- 		// Get the surface area of the geometry mesh
- 		mData.surfaceArea = mSurfaceArea;
+        // Get the surface area of the geometry mesh
+        mData.surfaceArea = mSurfaceArea;
  
-		mData.tangent = mTangent;
-		mData.bitangent = mBitangent;
+        mData.tangent = mTangent;
+        mData.bitangent = mBitangent;
 
- 		// Fetch the mesh instance transformation
- 		mData.transMat = mpMeshInstance->getTransformMatrix();
+        // Fetch the mesh instance transformation
+        mData.transMat = mpMeshInstance->getTransformMatrix();
 
 // 		// Copy the material data
 // 		const Material::SharedPtr& pMaterial = mMeshData.pMesh->getMaterial();
@@ -383,8 +374,8 @@ namespace Falcor
     }
 
     void AreaLight::setMeshData(const Model::MeshInstance::SharedPtr& pMeshInstance)
-{
-		if (pMeshInstance && pMeshInstance != mpMeshInstance)
+    {
+        if (pMeshInstance && pMeshInstance != mpMeshInstance)
         {
             const auto& pMesh = pMeshInstance->getObject();
             assert(pMesh != nullptr);
@@ -426,7 +417,7 @@ namespace Falcor
             const auto& pMesh = mpMeshInstance->getObject();
             assert(pMesh != nullptr);
 
-			if (mpMeshInstance->getObject()->getPrimitiveCount() != 2 || mpMeshInstance->getObject()->getVertexCount() != 4)
+            if (mpMeshInstance->getObject()->getPrimitiveCount() != 2 || mpMeshInstance->getObject()->getVertexCount() != 4)
             {
                 logWarning("Only support sampling of rectangular light sources made of 2 triangles.");
                 return;
@@ -462,12 +453,12 @@ namespace Falcor
                 mMeshCDF[mMeshCDF.size() - 1] = 1.f;
             }
 
-			// Calculate basis tangent vectors and their lengths
-			ivec3 pId = indices[0];
-			const vec3 p0(vertices[pId.x]), p1(vertices[pId.y]), p2(vertices[pId.z]);
+            // Calculate basis tangent vectors and their lengths
+            ivec3 pId = indices[0];
+            const vec3 p0(vertices[pId.x]), p1(vertices[pId.y]), p2(vertices[pId.z]);
 
-			mTangent = p0 - p1;
-			mBitangent = p2 - p1;
+            mTangent = p0 - p1;
+            mBitangent = p2 - p1;
 
             // Create a CDF buffer
             mMeshCDFBuf.reset();

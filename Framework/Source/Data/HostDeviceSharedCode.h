@@ -161,10 +161,10 @@ struct LightData
     float    penumbraAngle      DEFAULTS(0.f);              ///< For point (spot) light: Opening angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
     float3   aabbMax            DEFAULTS(float3(-1e20f));   ///< For area light: maximum corner of the AABB
     float    surfaceArea        DEFAULTS(0.f);              ///< Surface area of the geometry mesh
-	float3   tangent            DEFAULTS(float3());         ///< Tangent vector of the geometry mesh
-	uint32_t numIndices         DEFAULTS(0);                ///< Number of triangle indices in a polygonal area light
-	float3   bitangent          DEFAULTS(float3());         ///< BiTangent vector of the geometry mesh
-	float    pad;
+    float3   tangent            DEFAULTS(float3());         ///< Tangent vector of the geometry mesh
+    uint32_t numIndices         DEFAULTS(0);                ///< Number of triangle indices in a polygonal area light
+    float3   bitangent          DEFAULTS(float3());         ///< BiTangent vector of the geometry mesh
+    float    pad;
     float4x4 transMat           DEFAULTS(float4x4());       ///< Transformation matrix of the model instance for area lights
 
     // For area light

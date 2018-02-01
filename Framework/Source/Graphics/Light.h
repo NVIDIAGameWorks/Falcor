@@ -53,16 +53,18 @@ namespace Falcor
         virtual ~Light() = default;
 
         /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
+            \param[in] pVars The program vars to set the parameters into.
             \param[in] pBuffer The constant buffer to set the parameters into.
             \param[in] varName The name of the light variable in the program.
         */
-        virtual void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName);
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName);
 
         /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
+            \param[in] pVars The program vars to set the parameters into.
             \param[in] pBuffer The constant buffer to set the parameters into.
             \param[in] offset Byte offset into the constant buffer to set data to.
         */
-        virtual void setIntoConstantBuffer(ConstantBuffer* pBuffer, size_t offset);
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
 
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
@@ -275,7 +277,11 @@ namespace Falcor
             \param[in] pBuffer The constant buffer to set the parameters into.
             \param[in] varName The name of the light variable in the program.
         */
-        void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName) override;
+        //void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName) override;
+
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName);
+
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
 
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
