@@ -124,7 +124,6 @@ namespace Falcor
         static size_t sCameraDataOffset;
         static size_t sLightCountOffset;
         static size_t sLightArrayOffset;
-        static size_t sAmbientLightOffset;
         static size_t sWorldMatArraySize;
         static size_t sWorldMatOffset;
         static size_t sPrevWorldMatOffset;

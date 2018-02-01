@@ -42,12 +42,12 @@ namespace Falcor
         // Keys for values in older scene versions that are not exported anymore
         static const char* kCamFovY = "fovY";
         static const char* kActivePath = "active_path";
+        static const char* kAmbientIntensity = "ambient_intensity";
 #endif
 
         static const char* kVersion = "version";
         static const char* kCameraSpeed = "camera_speed";
         static const char* kActiveCamera = "active_camera";
-        static const char* kAmbientIntensity = "ambient_intensity";
         static const char* kLightingScale = "lighting_scale";
 
         static const char* kName = "name";

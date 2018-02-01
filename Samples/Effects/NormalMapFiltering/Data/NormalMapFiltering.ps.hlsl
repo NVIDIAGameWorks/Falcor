@@ -36,7 +36,7 @@ cbuffer PerFrameCB : register(b0)
 
 float4 main(VertexOut vOut) : SV_TARGET
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
 
     float3 result = 0;
 

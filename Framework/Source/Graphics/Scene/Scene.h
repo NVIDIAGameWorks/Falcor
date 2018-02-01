@@ -133,9 +133,6 @@ namespace Falcor
         const LightProbe::SharedPtr& getLightProbe(uint32_t index) const { return mpLightProbes[index]; }
         const std::vector<LightProbe::SharedPtr>& getLightProbes() const { return mpLightProbes; }
 
-        void setAmbientIntensity(const glm::vec3& ambientIntensity) { mAmbientIntensity = ambientIntensity; }
-        const glm::vec3& getAmbientIntensity() const { return mAmbientIntensity; };
-
         float getLightingScale() const { return mLightingScale; }
         void setLightingScale(float lightingScale) { mLightingScale = lightingScale; }
 
@@ -217,7 +214,6 @@ namespace Falcor
         std::vector<ObjectPath::SharedPtr> mpPaths;
         std::vector<LightProbe::SharedPtr> mpLightProbes;
 
-        vec3 mAmbientIntensity;
         uint32_t mActiveCameraID = 0;
         float mCameraSpeed = 1;
         float mLightingScale = 1.0f;

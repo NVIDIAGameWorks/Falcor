@@ -880,13 +880,8 @@ namespace Falcor
 
     bool SceneImporter::parseAmbientIntensity(const rapidjson::Value& jsonVal)
     {
-        glm::vec3 ambient;
-        if(getFloatVec<3>(jsonVal, SceneKeys::kAmbientIntensity, &ambient[0]))
-        {
-            mScene.setAmbientIntensity(ambient);
-            return true;
-        }
-        return false;
+        logWarning("SceneImporter: Global ambient term is no longer supported. Ignoring value.");
+        return true;
     }
 
     bool SceneImporter::parseLightingScale(const rapidjson::Value& jsonVal)

@@ -102,7 +102,7 @@ VertexOut defaultVS(VertexIn vIn)
     float4x4 worldMat = getWorldMat(vIn);
     float4 posW = mul(vIn.pos, worldMat);
     vOut.posW = posW.xyz;
-    vOut.posH = mul(posW, gCam.viewProjMat);
+    vOut.posH = mul(posW, gCamera.viewProjMat);
 
 #ifdef HAS_TEXCRD
     vOut.texC = vIn.texC;
@@ -133,10 +133,10 @@ VertexOut defaultVS(VertexIn vIn)
 #else
     vOut.lightmapC = 0;
 #endif
-    vOut.prevPosH = mul(posW, gCam.prevViewProjMat);
+    vOut.prevPosH = mul(posW, gCamera.prevViewProjMat);
 
 #ifdef _SINGLE_PASS_STEREO
-    vOut.rightEyePosS = mul(posW, gCam.rightEyeViewProjMat).x;
+    vOut.rightEyePosS = mul(posW, gCamera.rightEyeViewProjMat).x;
     vOut.viewportMask = 0x00000001;
     vOut.renderTargetIndex = 0;
 #endif

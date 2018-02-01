@@ -34,7 +34,7 @@ DebugDrawVSOut main(DebugDrawVSIn vIn)
 {
     DebugDrawVSOut vOut;
 
-    vOut.position =  mul(float4(vIn.position, 1), gCam.viewProjMat);
+    vOut.position =  mul(float4(vIn.position, 1), gCamera.viewProjMat);
     vOut.color = vIn.color;
 
     return vOut;

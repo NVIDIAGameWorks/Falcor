@@ -46,7 +46,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.posW);
+    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
     
@@ -74,9 +74,6 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #ifdef _ENABLE_REFLECTIONS
     finalColor.rgb += evalMaterial(hitPt, gLightProbe).color.rgb;
 #endif
-
-    // add ambient
-    finalColor.rgb += gAmbientLighting * hitPt.diffuse;
 
     // Add light-map
     finalColor.rgb += hitPt.diffuse * hitPt.lightMap.rgb;

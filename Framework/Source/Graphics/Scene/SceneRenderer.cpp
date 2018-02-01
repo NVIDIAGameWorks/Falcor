@@ -51,7 +51,6 @@ namespace Falcor
     size_t SceneRenderer::sDrawIDOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sLightCountOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sLightArrayOffset = ConstantBuffer::kInvalidOffset;
-    size_t SceneRenderer::sAmbientLightOffset = ConstantBuffer::kInvalidOffset;
 
     const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
@@ -103,13 +102,11 @@ namespace Falcor
             if (pVar != nullptr)
             {
                 const ReflectionType* pType = pVar->getType().get();
-                sCameraDataOffset = pType->findMember("gCam.viewMat")->getOffset();
+                sCameraDataOffset = pType->findMember("gCamera.viewMat")->getOffset();
                 const auto& pCountOffset = pType->findMember("gLightsCount");
                 sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
                 const auto& pLightOffset = pType->findMember("gLights");
                 sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
-                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }
@@ -137,10 +134,6 @@ namespace Falcor
             if (sLightCountOffset != ConstantBuffer::kInvalidOffset)
             {
                 pCB->setVariable(sLightCountOffset, mpScene->getLightCount());
-            }
-            if (sAmbientLightOffset != ConstantBuffer::kInvalidOffset)
-            {
-                pCB->setVariable(sAmbientLightOffset, mpScene->getAmbientIntensity());
             }
             if (mpScene->getLightProbeCount() > 0)
             {

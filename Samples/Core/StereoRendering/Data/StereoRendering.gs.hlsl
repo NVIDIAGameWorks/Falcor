@@ -46,8 +46,8 @@ void main(triangle VertexOut input[3], inout TriangleStream<GeometryOut> outStre
         gsOut.vsOut = input[i];
 
         float4 posW = float4(input[i].posW, 1.0f);
-        gsOut.vsOut.posH = mul(posW, gCam.viewProjMat);
-        gsOut.vsOut.prevPosH = mul(posW, gCam.prevViewProjMat);
+        gsOut.vsOut.posH = mul(posW, gCamera.viewProjMat);
+        gsOut.vsOut.prevPosH = mul(posW, gCamera.prevViewProjMat);
 
         outStream.Append(gsOut);
     }
@@ -60,8 +60,8 @@ void main(triangle VertexOut input[3], inout TriangleStream<GeometryOut> outStre
         gsOut.vsOut = input[i];
 
         float4 posW = float4(input[i].posW, 1.0f);
-        gsOut.vsOut.posH = mul(posW, gCam.rightEyeViewProjMat);
-        gsOut.vsOut.prevPosH = mul(posW, gCam.rightEyePrevViewProjMat);
+        gsOut.vsOut.posH = mul(posW, gCamera.rightEyeViewProjMat);
+        gsOut.vsOut.prevPosH = mul(posW, gCamera.rightEyePrevViewProjMat);
 
         outStream.Append(gsOut);
     }

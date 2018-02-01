@@ -31,7 +31,7 @@ __import DefaultVS;
 
 float4 main(VertexOut vOut) : SV_TARGET
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
 

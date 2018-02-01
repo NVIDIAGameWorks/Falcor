@@ -40,7 +40,7 @@ struct PsOut
 
 PsOut main(VertexOut vOut)
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
 
     PsOut psOut;
     psOut.fragColor0 = float4(hitPt.posW, 1);

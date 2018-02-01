@@ -137,7 +137,6 @@ void FeatureDemo::onGuiRender()
 
     if (mpSceneRenderer)
     {
-
         if (mpGui->addButton("Load SkyBox Texture"))
         {
             std::string filename;
@@ -154,12 +153,6 @@ void FeatureDemo::onGuiRender()
             if (mpGui->addFloatVar("Camera Speed", camSpeed))
             {
                 pScene->setCameraSpeed(camSpeed);
-            }
-
-            vec3 ambient = pScene->getAmbientIntensity();
-            if (mpGui->addRgbColor("Ambient Intensity", ambient))
-            {
-                pScene->setAmbientIntensity(ambient);
             }
 
             vec2 depthRange(pScene->getActiveCamera()->getNearPlane(), pScene->getActiveCamera()->getFarPlane());

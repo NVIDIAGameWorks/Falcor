@@ -49,7 +49,7 @@ vec3 shade(vec3 posW, vec3 normalW, float linearRoughness, vec4 albedo)
     /* Reconstruct the hit-point */
     HitPoint hitPt = initHitPoint();
     hitPt.posW = posW;
-    hitPt.V = normalize(gCam.posW - posW);
+    hitPt.V = normalize(gCamera.posW - posW);
     hitPt.N = normalW;
     hitPt.NdotV = abs(dot(hitPt.V, hitPt.N));
     hitPt.linearRoughness = linearRoughness;

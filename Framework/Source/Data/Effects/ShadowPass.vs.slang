@@ -44,7 +44,7 @@ ShadowPassVSOut main(VertexIn vIn)
     float4x4 worldMat = getWorldMat(vIn);
     vOut.pos = mul(vIn.pos, worldMat);
 #ifdef _APPLY_PROJECTION
-    vOut.pos = mul(vOut.pos, gCam.viewProjMat);
+    vOut.pos = mul(vOut.pos, gCamera.viewProjMat);
 #endif
 
 #ifdef HAS_TEXCRD
