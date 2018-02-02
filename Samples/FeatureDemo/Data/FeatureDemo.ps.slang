@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "FeatureDemoCommon.hlsli"
+#include "HostDeviceSharedMacros.h"
 
 __import Shading;
 __import Helpers;
@@ -42,16 +43,18 @@ struct PsOut
 #endif
 };
 
+AREA_LIGHTS(1)
+
 PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCamera.posW);
+    HitPoint hitPt = prepareHitPoint(vOut.vsData, gAreaLights[0].resources.material, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
     
     [unroll]
-    for (uint l = 0; l < _LIGHT_COUNT; l++)
+    for (uint l = 0; l < 1; l++)
     {
         float shadowFactor = 1;
 #ifdef _ENABLE_SHADOWS
@@ -67,6 +70,15 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     // Add the emissive component
     finalColor.rgb += hitPt.emissive;
 
+    float value0 = float(gAreaLights[0].resources.indexBuffer.Load(0));
+    float value1 = float(gAreaLights[0].resources.vertexBuffer.Load(0));
+    float value2 = float(gAreaLights[0].resources.texCoordBuffer.Load(0));
+    float value3 = float(gAreaLights[0].resources.meshCDFBuffer.Load(0));
+    finalColor.a += saturate(value0);
+    finalColor.a += saturate(value1);
+    finalColor.a += saturate(value2);
+    finalColor.a += saturate(value3);
+
 #ifdef _ENABLE_TRANSPARENCY
     finalColor.a = hitPt.opacity * gOpacityScale;
 #endif
@@ -80,7 +92,6 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
-
 
 #ifdef _OUTPUT_MOTION_VECTORS
     psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);

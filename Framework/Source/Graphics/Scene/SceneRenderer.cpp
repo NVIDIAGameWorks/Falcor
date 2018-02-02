@@ -56,8 +56,9 @@ namespace Falcor
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
-
     const char* SceneRenderer::kLightProbeVarName = "gLightProbe";
+    const char* SceneRenderer::kAreaLightCbName = "InternalAreaLightCB";
+
 
     SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
     {
@@ -139,6 +140,26 @@ namespace Falcor
             {
                 // #TODO Support multiple light probes
                 mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kLightProbeVarName);
+            }
+        }
+
+        if (mpScene->getAreaLightCount() > 0)
+        {
+            const ParameterBlockReflection* pBlock = currentData.pVars->getReflection()->getDefaultParameterBlock().get();
+
+            // If area lights have been declared
+            const ReflectionVar* pVar = pBlock->getResource(kAreaLightCbName).get();
+            if (pVar != nullptr)
+            {
+                const ReflectionVar* pAreaLightVar = pVar->getType()->findMember("gAreaLights").get();
+                assert(pAreaLightVar != nullptr);
+
+                uint32_t areaLightArraySize = pAreaLightVar->getType()->asArrayType()->getArraySize();
+                for (uint32_t i = 0; i < min(areaLightArraySize, mpScene->getAreaLightCount()); i++)
+                {
+                    std::string varName = "gAreaLights[" + std::to_string(i) + "]";
+                    mpScene->getAreaLight(i)->setIntoProgramVars(currentData.pVars, currentData.pVars->getConstantBuffer(kAreaLightCbName).get(), varName.c_str());
+                }
             }
         }
     }

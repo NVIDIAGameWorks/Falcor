@@ -40,32 +40,27 @@
 
 namespace Falcor
 {
-    bool checkOffset(size_t cbOffset, size_t cppOffset, const char* field)
+    bool checkOffset(const std::string& structName, size_t cbOffset, size_t cppOffset, const char* field)
     {
         if (cbOffset != cppOffset)
         {
-            logError("Light::LightData::" + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset) + ", C++ data offset is " + std::to_string(cppOffset));
+            logError("Light::" + std::string(structName) + ":: " + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset) + ", C++ data offset is " + std::to_string(cppOffset));
             return false;
         }
         return true;
     }
 
-#if _LOG_ENABLED
-#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset(pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(LightData, _a), #_a));} b = false;}
-#else
-#define check_offset(_a)
-#endif
-
     void Light::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName)
     {
         size_t offset = pCb->getVariableOffset(varName);
 
+#if _LOG_ENABLED
+#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(LightData, _a), #_a));} b = false;}
         check_offset(dirW);
         check_offset(intensity);
-        check_offset(aabbMin);
-        check_offset(aabbMax);
-        check_offset(transMat);
-        check_offset(numIndices);
+        check_offset(penumbraAngle);
+#undef check_offset
+#endif
 
         setIntoProgramVars(pVars, pCb, offset);
     }
@@ -297,14 +292,13 @@ namespace Falcor
 
     AreaLight::AreaLight()
     {
-        mData.type = LightArea;
     }
 
     AreaLight::~AreaLight() = default;
 
     float AreaLight::getPower() const
     {
-        return luminance(mData.intensity) * (float)M_PI * mSurfaceArea;
+        return luminance(mAreaLightData.intensity) * (float)M_PI * mSurfaceArea;
     }
 
     void AreaLight::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName)
@@ -312,13 +306,37 @@ namespace Falcor
         // Upload data to GPU
         prepareGPUData();
 
-        // Call base class method;
-        Light::setIntoProgramVars(pVars, pCb, varName);
+        // Set data except for material and mesh buffers
+        size_t offset = pCb->getVariableOffset(varName);
+        static_assert(kDataSize % sizeof(float) * 4 == 0, "AreaLightData size should be a multiple of 16");
+        assert(offset + kAreaLightDataSize <= pCb->getSize());
+        pCb->setBlob(&mData, offset, kAreaLightDataSize);
+
+#if _LOG_ENABLED
+#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("AreaLightData", pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(AreaLightData, _a), #_a));} b = false;}
+        check_offset(dirW);
+        check_offset(intensity);
+        check_offset(tangent);
+        check_offset(bitangent);
+        check_offset(aabbMin);
+        check_offset(aabbMax);
+#undef check_offset
+#endif
+
+        // Set buffers and material
+        const ParameterBlock::SharedPtr& pBlock = pVars->getDefaultBlock();
+        pBlock->setRawBuffer(varName + ".resources.indexBuffer", mpIndexBuffer);
+        pBlock->setRawBuffer(varName + ".resources.vertexBuffer", mpVertexBuffer);
+        pBlock->setRawBuffer(varName + ".resources.texCoordBuffer", mpTexCoordBuffer);
+        pBlock->setRawBuffer(varName + ".resources.meshCDFBuffer", mpMeshCDFBuffer);
+
+        std::string matVarName = varName + ".resources.material";
+        mpMeshInstance->getObject()->getMaterial()->setIntoProgramVars(pVars, pCb, matVarName.c_str());
     }
 
     void AreaLight::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset)
     {
-
+        logWarning("AreaLight::setIntoProgramVars() - Area light data contains resources that cannot be bound by offset. Ignoring call.");
     }
 
     void AreaLight::renderUI(Gui* pGui, const char* group)
@@ -334,7 +352,7 @@ namespace Falcor
                 }
             }
 
-            Light::renderUI(pGui);
+            // #TODO other vars
 
             if (group)
             {
@@ -345,32 +363,16 @@ namespace Falcor
 
     void AreaLight::prepareGPUData()
     {
-        // DISABLED_FOR_D3D12
-        // Set OGL buffer pointers for indices, vertices, and texcoord
-// 		if (mData.indexPtr.ptr == 0ull)
-// 		{
-// 			mData.indexPtr.ptr = mIndexBuf->makeResident();
-// 			mData.vertexPtr.ptr = mVertexBuf->makeResident();
-// 			if (mTexCoordBuf)
-// 				mData.texCoordPtr.ptr = mTexCoordBuf->makeResident();
-// 			// Store the mesh CDF buffer id
-// 			mData.meshCDFPtr.ptr = mMeshCDFBuf->makeResident();
-// 		}
-        mData.numIndices = uint32_t(mIndexBuf->getSize() / sizeof(glm::ivec3));
+        mAreaLightData.numIndices = uint32_t(mpIndexBuffer->getSize() / sizeof(glm::ivec3));
  
         // Get the surface area of the geometry mesh
-        mData.surfaceArea = mSurfaceArea;
+        mAreaLightData.surfaceArea = mSurfaceArea;
  
-        mData.tangent = mTangent;
-        mData.bitangent = mBitangent;
+        mAreaLightData.tangent = mTangent;
+        mAreaLightData.bitangent = mBitangent;
 
         // Fetch the mesh instance transformation
-        mData.transMat = mpMeshInstance->getTransformMatrix();
-
-// 		// Copy the material data
-// 		const Material::SharedPtr& pMaterial = mMeshData.pMesh->getMaterial();
-// 		if (pMaterial)
-// 			memcpy(&mData.material, &pMaterial->getData(), sizeof(MaterialData));
+        mAreaLightData.transMat = mpMeshInstance->getTransformMatrix();
     }
 
     void AreaLight::setMeshData(const Model::MeshInstance::SharedPtr& pMeshInstance)
@@ -405,14 +407,14 @@ namespace Falcor
             const Material::SharedPtr& pMaterial = pMesh->getMaterial();
             if (pMaterial)
             {
-                mData.intensity = pMaterial->getEmissiveColor();
+                mAreaLightData.intensity = pMaterial->getEmissiveColor();
             }
         }
     }
 
     void AreaLight::computeSurfaceArea()
     {
-        if (mpMeshInstance && mVertexBuf && mIndexBuf)
+        if (mpMeshInstance && mpVertexBuffer && mpIndexBuffer)
         {
             const auto& pMesh = mpMeshInstance->getObject();
             assert(pMesh != nullptr);
@@ -424,16 +426,16 @@ namespace Falcor
             }
 
             // Read data from the buffers
-            const glm::ivec3* indices = (const glm::ivec3*)mIndexBuf->map(Buffer::MapType::Read);
-            const glm::vec3* vertices = (const glm::vec3*)mVertexBuf->map(Buffer::MapType::Read);
+            const glm::ivec3* pIndices = (const glm::ivec3*)mpIndexBuffer->map(Buffer::MapType::Read);
+            const glm::vec3* pVertices = (const glm::vec3*)mpVertexBuffer->map(Buffer::MapType::Read);
 
             // Calculate surface area of the mesh
             mSurfaceArea = 0.f;
             mMeshCDF.push_back(0.f);
             for (uint32_t i = 0; i < pMesh->getPrimitiveCount(); ++i)
             {
-                glm::ivec3 pId = indices[i];
-                const vec3 p0(vertices[pId.x]), p1(vertices[pId.y]), p2(vertices[pId.z]);
+                glm::ivec3 pId = pIndices[i];
+                const vec3 p0(pVertices[pId.x]), p1(pVertices[pId.y]), p2(pVertices[pId.z]);
 
                 mSurfaceArea += 0.5f * glm::length(glm::cross(p1 - p0, p2 - p0));
 
@@ -454,44 +456,44 @@ namespace Falcor
             }
 
             // Calculate basis tangent vectors and their lengths
-            ivec3 pId = indices[0];
-            const vec3 p0(vertices[pId.x]), p1(vertices[pId.y]), p2(vertices[pId.z]);
+            ivec3 pId = pIndices[0];
+            const vec3 p0(pVertices[pId.x]), p1(pVertices[pId.y]), p2(pVertices[pId.z]);
 
             mTangent = p0 - p1;
             mBitangent = p2 - p1;
 
             // Create a CDF buffer
-            mMeshCDFBuf.reset();
-            mMeshCDFBuf = Buffer::create(sizeof(mMeshCDF[0])*mMeshCDF.size(), Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, mMeshCDF.data());
+            mpMeshCDFBuffer.reset();
+            mpMeshCDFBuffer = Buffer::create(sizeof(mMeshCDF[0])*mMeshCDF.size(), Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, mMeshCDF.data());
 
             // Set the world position and world direction of this light
-            if (mIndexBuf->getSize() != 0 && mVertexBuf->getSize() != 0)
+            if (mpIndexBuffer->getSize() != 0 && mpVertexBuffer->getSize() != 0)
             {
-                glm::vec3 boxMin = vertices[0];
-                glm::vec3 boxMax = vertices[0];
+                glm::vec3 boxMin = pVertices[0];
+                glm::vec3 boxMax = pVertices[0];
                 for (uint32_t id = 1; id < mpMeshInstance->getObject()->getVertexCount(); ++id)
                 {
-                    boxMin = glm::min(boxMin, vertices[id]);
-                    boxMax = glm::max(boxMax, vertices[id]);
+                    boxMin = glm::min(boxMin, pVertices[id]);
+                    boxMax = glm::max(boxMax, pVertices[id]);
                 }
 
-                mData.posW = BoundingBox::fromMinMax(boxMin, boxMax).center;
+                mAreaLightData.posW = BoundingBox::fromMinMax(boxMin, boxMax).center;
 
                 // This holds only for planar light sources
-                const glm::vec3& p0 = vertices[indices[0].x];
-                const glm::vec3& p1 = vertices[indices[0].y];
-                const glm::vec3& p2 = vertices[indices[0].z];
+                const glm::vec3& p0 = pVertices[pIndices[0].x];
+                const glm::vec3& p1 = pVertices[pIndices[0].y];
+                const glm::vec3& p2 = pVertices[pIndices[0].z];
 
                 // Take the normal of the first triangle as a light normal
-                mData.dirW = normalize(cross(p1 - p0, p2 - p0));
+                mAreaLightData.dirW = normalize(cross(p1 - p0, p2 - p0));
 
                 // Save the axis-aligned bounding box
-                mData.aabbMin = boxMin;
-                mData.aabbMax = boxMax;
+                mAreaLightData.aabbMin = boxMin;
+                mAreaLightData.aabbMax = boxMax;
             }
 
-            mIndexBuf->unmap();
-            mVertexBuf->unmap();
+            mpIndexBuffer->unmap();
+            mpVertexBuffer->unmap();
         }
     }
 

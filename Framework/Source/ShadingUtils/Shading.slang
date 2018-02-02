@@ -27,7 +27,7 @@
 ***************************************************************************/
 #ifndef _FALCOR_SHADING_SLANG_
 #define _FALCOR_SHADING_SLANG_
-#import "HostDeviceData.h"
+#include "HostDeviceData.h"
 __import DefaultVS;
 __exported __import ShaderCommon;
 __import Lights;

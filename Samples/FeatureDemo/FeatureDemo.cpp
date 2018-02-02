@@ -183,6 +183,12 @@ void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
     pScene->addModelInstance(pModel, "instance");
 
     initScene(pScene);
+
+    auto areaLights = createAreaLightsForModel(pModel.get());
+    for (auto& pLight : areaLights)
+    {
+        pScene->addAreaLight(pLight);
+    }
 }
 
 void FeatureDemo::loadScene(const std::string& filename, bool showProgressBar)

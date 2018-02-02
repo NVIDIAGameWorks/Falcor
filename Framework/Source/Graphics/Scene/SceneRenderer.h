@@ -118,6 +118,7 @@ namespace Falcor
         static const char* kPerMeshCbName;
         static const char* kBoneCbName;
         static const char* kLightProbeVarName;
+        static const char* kAreaLightCbName;
 
         static size_t sBonesOffset;
         static size_t sBonesInvTransposeOffset;

@@ -111,7 +111,7 @@ namespace Falcor
         void deleteModel(uint32_t modelID);
         void deleteAllModels();
 
-        // Model instances
+        // Model Instances
         virtual void addModelInstance(const ModelInstance::SharedPtr& pInstance);
         void addModelInstance(const Model::SharedPtr& pModel, const std::string& instanceName, const glm::vec3& translation = glm::vec3(), const glm::vec3& yawPitchRoll = glm::vec3(), const glm::vec3& scaling = glm::vec3(1));
         // Adds a model instance and shares ownership of it
@@ -119,7 +119,7 @@ namespace Falcor
         const ModelInstance::SharedPtr& getModelInstance(uint32_t modelID, uint32_t instanceID) const { return mModels[modelID][instanceID]; };
         void deleteModelInstance(uint32_t modelID, uint32_t instanceID);
 
-        // Light sources
+        // Light Sources
         uint32_t addLight(const Light::SharedPtr& pLight);
         void deleteLight(uint32_t lightID);
         uint32_t getLightCount() const { return (uint32_t)mpLights.size(); }
@@ -133,10 +133,17 @@ namespace Falcor
         const LightProbe::SharedPtr& getLightProbe(uint32_t index) const { return mpLightProbes[index]; }
         const std::vector<LightProbe::SharedPtr>& getLightProbes() const { return mpLightProbes; }
 
+        // Area Lights
+        uint32_t addAreaLight(const AreaLight::SharedPtr& pAreaLight);
+        void deleteAreaLight(uint32_t lightID);
+        uint32_t getAreaLightCount() const { return (uint32_t)mpAreaLights.size(); }
+        const AreaLight::SharedPtr& getAreaLight(uint32_t index) const { return mpAreaLights[index]; }
+        const std::vector<AreaLight::SharedPtr>& getAreaLights() const { return mpAreaLights; }
+
         float getLightingScale() const { return mLightingScale; }
         void setLightingScale(float lightingScale) { mLightingScale = lightingScale; }
 
-        // Object paths
+        // Object Paths
         uint32_t addPath(const ObjectPath::SharedPtr& pPath);
         void deletePath(uint32_t pathID);
         
@@ -187,11 +194,6 @@ namespace Falcor
         */
         void createAreaLights();
 
-        /**
-            This routine deletes area light(s) from the scene.
-        */
-        void deleteAreaLights();
-
         /** Bind a sampler to all the materials in the scene
         */
         void bindSampler(Sampler::SharedPtr pSampler);
@@ -213,6 +215,7 @@ namespace Falcor
         std::vector<Camera::SharedPtr> mCameras;
         std::vector<ObjectPath::SharedPtr> mpPaths;
         std::vector<LightProbe::SharedPtr> mpLightProbes;
+        std::vector<AreaLight::SharedPtr> mpAreaLights;
 
         uint32_t mActiveCameraID = 0;
         float mCameraSpeed = 1;

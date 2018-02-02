@@ -273,14 +273,9 @@ namespace Falcor
         */
         float getPower() const override;
 
-        /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
-            \param[in] pBuffer The constant buffer to set the parameters into.
-            \param[in] varName The name of the light variable in the program.
-        */
-        //void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName) override;
 
+        // #TODO Document
         virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName);
-
         virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
 
         /** Render UI elements for this light.
@@ -320,50 +315,57 @@ namespace Falcor
         /** Set the index buffer
             \param[in] indexBuf Buffer containing mesh indices
         */
-        void setIndexBuffer(const Buffer::SharedPtr& indexBuf) { mIndexBuf = indexBuf; }
+        void setIndexBuffer(const Buffer::SharedPtr& indexBuf) { mpIndexBuffer = indexBuf; }
 
         /** Get the index buffer.
         */
-        const Buffer::SharedPtr& getIndexBuffer() const { return mIndexBuf; }
+        const Buffer::SharedPtr& getIndexBuffer() const { return mpIndexBuffer; }
 
         /** Set the vertex buffer.
             \param[in] vertexBuf Buffer containing mesh vertices
         */
-        void setPositionsBuffer(const Buffer::SharedPtr& vertexBuf) { mVertexBuf = vertexBuf; }
+        void setPositionsBuffer(const Buffer::SharedPtr& vertexBuf) { mpVertexBuffer = vertexBuf; }
 
         /** Get the vertex buffer.
         */
-        const Buffer::SharedPtr& getPositionsBuffer() const { return mVertexBuf; }
+        const Buffer::SharedPtr& getPositionsBuffer() const { return mpVertexBuffer; }
 
         /** Set the texture coordinate/UV buffer.
             \param[in] texCoordBuf Buffer containing texture coordinates
         */
-        void setTexCoordBuffer(const Buffer::SharedPtr& texCoordBuf) { mTexCoordBuf = texCoordBuf; }
+        void setTexCoordBuffer(const Buffer::SharedPtr& texCoordBuf) { mpTexCoordBuffer = texCoordBuf; }
 
         /** Get texture coordinate buffer.
         */
-        const Buffer::SharedPtr& getTexCoordBuffer() const { return mTexCoordBuf; }
+        const Buffer::SharedPtr& getTexCoordBuffer() const { return mpTexCoordBuffer; }
 
         /** Set the mesh CDF buffer.
             \param[in] meshCDF Buffer containing mesh CDF data
         */
-        void setMeshCDFBuffer(const Buffer::SharedPtr& meshCDFBuf) { mMeshCDFBuf = meshCDFBuf; }
+        void setMeshCDFBuffer(const Buffer::SharedPtr& meshCDFBuf) { mpMeshCDFBuffer = meshCDFBuf; }
 
         /** Get the mesh CDF buffer
         */
-        const Buffer::SharedPtr& getMeshCDFBuffer() const { return mMeshCDFBuf; }
+        const Buffer::SharedPtr& getMeshCDFBuffer() const { return mpMeshCDFBuffer; }
 
-        /**
-            IMovableObject interface
+        /** IMovableObject interface
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
 
+        /** Gets the size of a single light data struct in bytes
+        */
+        static uint32_t getShaderStructSize() { return kAreaLightDataSize; }
+
     private:
+
+        static const size_t kAreaLightDataSize = sizeof(AreaLightData) - sizeof(AreaLightResources);
+        AreaLightData mAreaLightData;
+
         Model::MeshInstance::SharedPtr mpMeshInstance; ///< Geometry mesh data
-        Buffer::SharedPtr mIndexBuf;    ///< Buffer id for indices
-        Buffer::SharedPtr mVertexBuf;   ///< Buffer id for vertices
-        Buffer::SharedPtr mTexCoordBuf; ///< Buffer id for texcoord
-        Buffer::SharedPtr mMeshCDFBuf;  ///< Buffer id for mesh Cumulative distribution function (CDF)
+        Buffer::SharedPtr mpIndexBuffer;    ///< Buffer for indices
+        Buffer::SharedPtr mpVertexBuffer;   ///< Buffer for vertices
+        Buffer::SharedPtr mpTexCoordBuffer; ///< Buffer for texcoord
+        Buffer::SharedPtr mpMeshCDFBuffer;  ///< Buffer for mesh Cumulative distribution function (CDF)
 
         float mSurfaceArea;          ///< Surface area of the mesh
         vec3 mTangent;               ///< Unnormalized tangent vector of the light
@@ -371,7 +373,6 @@ namespace Falcor
         std::vector<float> mMeshCDF; ///< CDF function for importance sampling a triangle mesh
     };
 
-
-    AreaLight::SharedPtr createAreaLightFromMesh(const Model::MeshInstance::SharedPtr& pMeshInstance);
+    AreaLight::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance);
     std::vector<AreaLight::SharedPtr> createAreaLightsForModel(const Model* pModel);
 }
