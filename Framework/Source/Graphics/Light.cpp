@@ -352,7 +352,11 @@ namespace Falcor
                 }
             }
 
-            // #TODO other vars
+            float intensity = mAreaLightData.intensity.r;
+            if (pGui->addFloatVar("Intensity", intensity, 0.0f))
+            {
+                mAreaLightData.intensity = vec3(intensity);
+            }
 
             if (group)
             {
@@ -363,16 +367,6 @@ namespace Falcor
 
     void AreaLight::prepareGPUData()
     {
-        mAreaLightData.numIndices = uint32_t(mpIndexBuffer->getSize() / sizeof(glm::ivec3));
- 
-        // Get the surface area of the geometry mesh
-        mAreaLightData.surfaceArea = mSurfaceArea;
- 
-        mAreaLightData.tangent = mTangent;
-        mAreaLightData.bitangent = mBitangent;
-
-        // Fetch the mesh instance transformation
-        mAreaLightData.transMat = mpMeshInstance->getTransformMatrix();
     }
 
     void AreaLight::setMeshData(const Model::MeshInstance::SharedPtr& pMeshInstance)
@@ -384,9 +378,12 @@ namespace Falcor
 
             mpMeshInstance = pMeshInstance;
 
-            const auto& vao = pMesh->getVao();
+            // Fetch the mesh instance transformation
+            mAreaLightData.transMat = mpMeshInstance->getTransformMatrix();
 
+            const auto& vao = pMesh->getVao();
             setIndexBuffer(vao->getIndexBuffer());
+            mAreaLightData.numIndices = uint32_t(mpIndexBuffer->getSize() / sizeof(glm::ivec3));
 
             int32_t posIdx = vao->getElementIndexByLocation(VERTEX_POSITION_LOC).vbIndex;
             assert(posIdx != Vao::ElementDesc::kInvalidIndex);
@@ -430,23 +427,23 @@ namespace Falcor
             const glm::vec3* pVertices = (const glm::vec3*)mpVertexBuffer->map(Buffer::MapType::Read);
 
             // Calculate surface area of the mesh
-            mSurfaceArea = 0.f;
+            mAreaLightData.surfaceArea = 0.f;
             mMeshCDF.push_back(0.f);
             for (uint32_t i = 0; i < pMesh->getPrimitiveCount(); ++i)
             {
                 glm::ivec3 pId = pIndices[i];
                 const vec3 p0(pVertices[pId.x]), p1(pVertices[pId.y]), p2(pVertices[pId.z]);
 
-                mSurfaceArea += 0.5f * glm::length(glm::cross(p1 - p0, p2 - p0));
+                mAreaLightData.surfaceArea += 0.5f * glm::length(glm::cross(p1 - p0, p2 - p0));
 
                 // Add an entry using surface area measure as the discrete probability
-                mMeshCDF.push_back(mMeshCDF[mMeshCDF.size() - 1] + mSurfaceArea);
+                mMeshCDF.push_back(mMeshCDF[mMeshCDF.size() - 1] + mAreaLightData.surfaceArea);
             }
 
             // Normalize the probability densities
-            if (mSurfaceArea > 0.f)
+            if (mAreaLightData.surfaceArea > 0.f)
             {
-                float invSurfaceArea = 1.f / mSurfaceArea;
+                float invSurfaceArea = 1.f / mAreaLightData.surfaceArea;
                 for (uint32_t i = 1; i < mMeshCDF.size(); ++i)
                 {
                     mMeshCDF[i] *= invSurfaceArea;
@@ -459,8 +456,8 @@ namespace Falcor
             ivec3 pId = pIndices[0];
             const vec3 p0(pVertices[pId.x]), p1(pVertices[pId.y]), p2(pVertices[pId.z]);
 
-            mTangent = p0 - p1;
-            mBitangent = p2 - p1;
+            mAreaLightData.tangent = p0 - p1;
+            mAreaLightData.bitangent = p2 - p1;
 
             // Create a CDF buffer
             mpMeshCDFBuffer.reset();

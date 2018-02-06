@@ -274,8 +274,17 @@ namespace Falcor
         float getPower() const override;
 
 
-        // #TODO Document
+        /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader
+            and declare a constant buffer to bind the values to using the AREA_LIGHTS() macro defined in HostDeviceSharedMacros.h
+            \param[in] pVars The program vars to set the parameters into.
+            \param[in] pBuffer The constant buffer to set the parameters into.
+            \param[in] varName The name of the declared variable in the program. "gAreaLights" by default.
+        */
         virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName);
+
+        /** Do not use this overload for area lights. Area light data contains resources that cannot be bound using an offset when
+            there is an array of light data. Calling this function will do nothing except log a warning.
+        */
         virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
 
         /** Render UI elements for this light.
@@ -306,7 +315,7 @@ namespace Falcor
 
         /** Get surface area of the mesh
         */
-        float getSurfaceArea() const { return mSurfaceArea; }
+        float getSurfaceArea() const { return mAreaLightData.surfaceArea; }
 
         /** Get the probability distribution of the mesh
         */
@@ -367,9 +376,6 @@ namespace Falcor
         Buffer::SharedPtr mpTexCoordBuffer; ///< Buffer for texcoord
         Buffer::SharedPtr mpMeshCDFBuffer;  ///< Buffer for mesh Cumulative distribution function (CDF)
 
-        float mSurfaceArea;          ///< Surface area of the mesh
-        vec3 mTangent;               ///< Unnormalized tangent vector of the light
-        vec3 mBitangent;             ///< Unnormalized bitangent vector of the light
         std::vector<float> mMeshCDF; ///< CDF function for importance sampling a triangle mesh
     };
 

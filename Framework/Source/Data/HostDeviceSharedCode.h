@@ -153,25 +153,25 @@ struct LightProbeData
 
 struct AreaLightResources
 {
-    RAW_BUFFER indexBuffer;     ///< Buffer id for indices (uint32_t)
-    RAW_BUFFER vertexBuffer;    ///< Buffer id for vertices (float3)
-    RAW_BUFFER texCoordBuffer;  ///< Buffer id for vertices (float2)
-    RAW_BUFFER meshCDFBuffer;   ///< Buffer id for vertices (float)
+    RAW_BUFFER indexBuffer;     ///< Buffer for indices (uint32_t)
+    RAW_BUFFER vertexBuffer;    ///< Buffer for vertices (float3)
+    RAW_BUFFER texCoordBuffer;  ///< Buffer for vertices (float2)
+    RAW_BUFFER meshCDFBuffer;   ///< Buffer for vertices (float)
 
     MaterialData material;      ///< Emissive material of the geometry mesh
 };
 
 struct AreaLightData
 {
-    float3      posW            DEFAULTS(float3());         ///< World-space position of the center of a light source
+    float3      posW            DEFAULTS(float3());         ///< World-space position the light source
     float       surfaceArea     DEFAULTS(0.f);              ///< Surface area of the geometry mesh
     float3      dirW            DEFAULTS(float3());         ///< World-space orientation of the light source
     uint32_t    numIndices      DEFAULTS(0);                ///< Number of triangle indices in a polygonal area light
-    float3      intensity       DEFAULTS(float3(1.0f));     ///< Emitted radiance of th light source
+    float3      intensity       DEFAULTS(float3(1.0f));     ///< Emitted radiance of the light source
     float       pad0;
     float3      tangent         DEFAULTS(float3());         ///< Tangent vector of the geometry mesh
     float       pad1;
-    float3      bitangent       DEFAULTS(float3());         ///< BiTangent vector of the geometry mesh
+    float3      bitangent       DEFAULTS(float3());         ///< Bitangent vector of the geometry mesh
     float       pad2;
     float3      aabbMin         DEFAULTS(float3(1e20f));    ///< Minimum corner of the AABB
     float       pad3;
