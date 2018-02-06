@@ -52,6 +52,8 @@ private:
     bool mUseLeanMap = true;
     Sampler::SharedPtr mpLinearSampler;
 
+	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
+
     //Testing
     void onInitializeTesting() override;
     void onEndTestFrame() override;

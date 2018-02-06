@@ -66,7 +66,7 @@ void NormalMapFiltering::updateProgram()
 
 void NormalMapFiltering::onLoad()
 {
-    Scene::SharedPtr pScene = Scene::loadFromFile("Scenes/ogre.fscene");
+    Scene::SharedPtr pScene = Scene::loadFromFile(mkDefaultScene);
     if(pScene == nullptr)
     {
         exit(1);

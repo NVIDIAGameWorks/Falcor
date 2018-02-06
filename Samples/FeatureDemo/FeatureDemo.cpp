@@ -252,7 +252,10 @@ void FeatureDemo::onLoad()
     mpState = GraphicsState::create();
 
     initPostProcess();
-    initializeTesting();
+	if (!initializeTesting())
+	{
+		loadScene(mkDefaultScene, true);
+	}
 }
 
 void FeatureDemo::renderSkyBox()

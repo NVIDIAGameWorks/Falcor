@@ -69,5 +69,6 @@ private:
     Sampler::SharedPtr mpLinearSampler;
 
     SSAO::UniquePtr mpSSAO;
-
+ 
+	const std::string mkDefaultModel = "Arcade\\Arcade.fbx";
 };

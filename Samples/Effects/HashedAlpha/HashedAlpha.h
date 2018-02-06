@@ -44,6 +44,7 @@ public:
 
 private:
     void loadModel();
+	void loadModel(std::string filename);
     void updateProgram();
 
     enum class AlphaTestMode
@@ -65,4 +66,6 @@ private:
     static const Gui::DropdownList kModeList;
     AlphaTestMode mAlphaTestMode = AlphaTestMode::HashedAlphaIsotropic;
     float mHashScale = 1.0f;
+
+	const std::string mkDefaultModel = "alphatest\\alpha_test.obj";
 };

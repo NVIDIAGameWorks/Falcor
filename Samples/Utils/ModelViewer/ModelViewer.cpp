@@ -271,6 +271,8 @@ void ModelViewer::onLoad()
     mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
+
+	loadModelFromFile(mkDefaultModel);
 }
 
 void ModelViewer::onFrameRender()
