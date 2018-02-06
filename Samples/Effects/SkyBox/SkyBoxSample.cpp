@@ -25,9 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "EnvMap.h"
+#include "SkyBoxSample.h"
 
-void EnvMap::onGuiRender()
+void SkyBoxSample::onGuiRender()
 {
     if (mpGui->addButton("Load TexCube"))
     {
@@ -40,7 +40,7 @@ void EnvMap::onGuiRender()
     }
 }
 
-void EnvMap::onLoad()
+void SkyBoxSample::onLoad()
 {
     mpCamera = Camera::create();
     mpCameraController = SixDoFCameraController::SharedPtr(new SixDoFCameraController);
@@ -49,12 +49,12 @@ void EnvMap::onLoad()
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
 
-    mpSkybox = SkyBox::createFromTexture("Cubemaps/Sorsele3/Sorsele3.dds", true, mpTriLinearSampler);
+    mpSkybox = SkyBox::createFromTexture(mkDefaultSkyBox, true, mpTriLinearSampler);
 
     initializeTesting();
 }
 
-void EnvMap::loadTexture()
+void SkyBoxSample::loadTexture()
 {
     std::string filename;
     if(openFileDialog("DDS files\0*.dds\0\0", filename))
@@ -63,7 +63,7 @@ void EnvMap::loadTexture()
     }
 }
 
-void EnvMap::onFrameRender()
+void SkyBoxSample::onFrameRender()
 {
     beginTestFrame();
 
@@ -79,17 +79,17 @@ void EnvMap::onFrameRender()
     endTestFrame();
 }
 
-bool EnvMap::onKeyEvent(const KeyboardEvent& keyEvent)
+bool SkyBoxSample::onKeyEvent(const KeyboardEvent& keyEvent)
 {
     return mpCameraController->onKeyEvent(keyEvent);
 }
 
-bool EnvMap::onMouseEvent(const MouseEvent& mouseEvent)
+bool SkyBoxSample::onMouseEvent(const MouseEvent& mouseEvent)
 {
     return mpCameraController->onMouseEvent(mouseEvent);
 }
 
-void EnvMap::onResizeSwapChain()
+void SkyBoxSample::onResizeSwapChain()
 {
     float h = (float)mpDefaultFBO->getHeight();
     float w = (float)mpDefaultFBO->getWidth();
@@ -98,7 +98,7 @@ void EnvMap::onResizeSwapChain()
     mpCamera->setDepthRange(0.01f, 1000);
 }
 
-void EnvMap::onInitializeTesting()
+void SkyBoxSample::onInitializeTesting()
 {
     std::vector<ArgList::Arg> viewFrames = mArgList.getValues("changeView");
     if (!viewFrames.empty())
@@ -113,7 +113,7 @@ void EnvMap::onInitializeTesting()
     mChangeViewIt = mChangeViewFrames.begin();
 }
 
-void EnvMap::onEndTestFrame()
+void SkyBoxSample::onEndTestFrame()
 {
     //initial target is (0, 0, -1)
     static uint32_t targetIndex = 0;
@@ -146,9 +146,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    EnvMap sample;
+	SkyBoxSample sample;
     SampleConfig config;
-    config.windowDesc.title = "Skybox Sample";
+    config.windowDesc.title = "SkyBox Sample";
 #ifdef _WIN32
     sample.run(config);
 #else

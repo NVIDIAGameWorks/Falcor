@@ -25,14 +25,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "FeatureDemoSceneRenderer.h"
+#include "ForwardRendererSceneRenderer.h"
 
 static bool isMaterialTransparent(const Material* pMaterial)
 {
     return pMaterial->getDiffuseColor().a < 1.0f;
 }
 
-FeatureDemoSceneRenderer::FeatureDemoSceneRenderer(const Scene::SharedPtr& pScene) : SceneRenderer(pScene)
+ForwardRendererSceneRenderer::ForwardRendererSceneRenderer(const Scene::SharedPtr& pScene) : SceneRenderer(pScene)
 {
     for (uint32_t model = 0; model < mpScene->getModelCount(); model++)
     {
@@ -50,12 +50,12 @@ FeatureDemoSceneRenderer::FeatureDemoSceneRenderer(const Scene::SharedPtr& pScen
     }
 }
 
-FeatureDemoSceneRenderer::SharedPtr FeatureDemoSceneRenderer::create(const Scene::SharedPtr& pScene)
+ForwardRendererSceneRenderer::SharedPtr ForwardRendererSceneRenderer::create(const Scene::SharedPtr& pScene)
 {
-    return SharedPtr(new FeatureDemoSceneRenderer(pScene));
+    return SharedPtr(new ForwardRendererSceneRenderer(pScene));
 }
 
-bool FeatureDemoSceneRenderer::setPerMeshData(const CurrentWorkingData& currentData, const Mesh* pMesh)
+bool ForwardRendererSceneRenderer::setPerMeshData(const CurrentWorkingData& currentData, const Mesh* pMesh)
 {
     switch (mRenderMode)
     {
@@ -71,7 +71,7 @@ bool FeatureDemoSceneRenderer::setPerMeshData(const CurrentWorkingData& currentD
     }
 }
 
-void FeatureDemoSceneRenderer::renderScene(RenderContext* pContext)
+void ForwardRendererSceneRenderer::renderScene(RenderContext* pContext)
 {
     switch (mRenderMode)
     {

@@ -25,18 +25,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "PostProcess.h"
+#include "HDRToneMapping.h"
 
 using namespace Falcor;
 
-const Gui::DropdownList PostProcess::kImageList = { { HdrImage::EveningSun, "Evening Sun" },
+const Gui::DropdownList HDRToneMapping::kImageList = { { HdrImage::EveningSun, "Evening Sun" },
                                                     { HdrImage::AtTheWindow, "Window" },
                                                     { HdrImage::OvercastDay, "Overcast Day" } };
 
-void PostProcess::onLoad()
+void HDRToneMapping::onLoad()
 {
     //Create model and camera
-    mpTeapot = Model::createFromFile("teapot.obj");
+    mpTeapot = Model::createFromFile(mkDefaultModel.c_str());
     mpCamera = Camera::create();
     float nearZ = 0.1f;
     float farZ = mpTeapot->getRadius() * 1000;
@@ -47,7 +47,7 @@ void PostProcess::onLoad()
     mCameraController.setModelParams(mpTeapot->getCenter(), mpTeapot->getRadius(), 2.0f);    
     
     //Program
-    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("PostProcess.vs"), appendShaderExtension("PostProcess.ps"));
+    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("HDRToneMapping.vs"), appendShaderExtension("HDRToneMapping.ps"));
     mpProgramVars = GraphicsVars::create(mpMainProg->getActiveVersion()->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setFbo(mpDefaultFBO);
@@ -67,7 +67,7 @@ void PostProcess::onLoad()
     initializeTesting();
 }
 
-void PostProcess::loadImage()
+void HDRToneMapping::loadImage()
 {
     std::string filename;
     switch(mHdrImageIndex)
@@ -87,7 +87,7 @@ void PostProcess::loadImage()
     mpSkyBox = SkyBox::create(mHdrImage, mpTriLinearSampler);
 }
 
-void PostProcess::onGuiRender()
+void HDRToneMapping::onGuiRender()
 {
     uint32_t uHdrIndex = static_cast<uint32_t>(mHdrImageIndex);
     if (mpGui->addDropdown("HdrImage", kImageList, uHdrIndex))
@@ -100,7 +100,7 @@ void PostProcess::onGuiRender()
     mpToneMapper->renderUI(mpGui.get(), "HDR");
 }
 
-void PostProcess::renderTeapot()
+void HDRToneMapping::renderTeapot()
 {
     //Update vars
     glm::mat4 wvp = mpCamera->getProjMatrix() * mpCamera->getViewMatrix();
@@ -119,7 +119,7 @@ void PostProcess::renderTeapot()
     mpRenderContext->drawIndexed(mpTeapot->getMesh(0)->getIndexCount(), 0, 0);
 }
 
-void PostProcess::onFrameRender()
+void HDRToneMapping::onFrameRender()
 {
     beginTestFrame();
 
@@ -143,11 +143,11 @@ void PostProcess::onFrameRender()
     endTestFrame();
 }
 
-void PostProcess::onShutdown()
+void HDRToneMapping::onShutdown()
 {
 }
 
-void PostProcess::onResizeSwapChain()
+void HDRToneMapping::onResizeSwapChain()
 {
     //Camera aspect 
     float height = (float)mpDefaultFBO->getHeight();
@@ -164,17 +164,17 @@ void PostProcess::onResizeSwapChain()
     mpHdrFbo = FboHelper::create2D(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight(), desc);
 }
 
-bool PostProcess::onKeyEvent(const KeyboardEvent& keyEvent)
+bool HDRToneMapping::onKeyEvent(const KeyboardEvent& keyEvent)
 {
     return mCameraController.onKeyEvent(keyEvent);
 }
 
-bool PostProcess::onMouseEvent(const MouseEvent& mouseEvent)
+bool HDRToneMapping::onMouseEvent(const MouseEvent& mouseEvent)
 {
     return mCameraController.onMouseEvent(mouseEvent);
 }
 
-void PostProcess::onInitializeTesting()
+void HDRToneMapping::onInitializeTesting()
 {
     std::vector<ArgList::Arg> modeFrames = mArgList.getValues("changeMode");
     if (!modeFrames.empty())
@@ -192,7 +192,7 @@ void PostProcess::onInitializeTesting()
     mpToneMapper->setOperator(ToneMapping::Operator::Clamp);
 }
 
-void PostProcess::onEndTestFrame()
+void HDRToneMapping::onEndTestFrame()
 {
     uint32_t frameId = frameRate().getFrameCount();
     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
@@ -220,13 +220,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    PostProcess postProcessSample;
+	HDRToneMapping toneMappingSample;
     SampleConfig config;
-    config.windowDesc.title = "Post Processing";
+    config.windowDesc.title = "HDR Tone Mapping";
 #ifdef _WIN32
-    postProcessSample.run(config);
+	toneMappingSample.run(config);
 #else
-    postProcessSample.run(config, (uint32_t)argc, argv);
+	toneMappingSample.run(config, (uint32_t)argc, argv);
 #endif
     return 0;
 }

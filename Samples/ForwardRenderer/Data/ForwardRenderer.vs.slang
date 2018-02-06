@@ -25,58 +25,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Falcor.h"
-#include "SampleTest.h"
-using namespace Falcor;
+#include "ForwardRendererCommon.hlsli"
 
-class PostProcess : public SampleTest
+MainVsOut main(VertexIn vIn)
 {
-public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
+    MainVsOut vsOut;
+    vsOut.vsData = defaultVS(vIn);
 
-private:
-    Model::SharedPtr mpTeapot;
-    Texture::SharedPtr mHdrImage;
-    ModelViewCameraController mCameraController;
-    Camera::SharedPtr mpCamera;
-    float mLightIntensity = 1.0f;
-    float mSurfaceRoughness = 5.0f;
+#ifdef _OUTPUT_MOTION_VECTORS
+    vsOut.vsData.prevPosH.xy += vsOut.vsData.prevPosH.w * 2 * float2(gCam.jitterX, gCam.jitterY);
+#endif
 
-    void onGuiRender() override;
-    void renderTeapot();
-
-    Sampler::SharedPtr mpTriLinearSampler;
-    GraphicsProgram::SharedPtr mpMainProg = nullptr;
-    GraphicsVars::SharedPtr mpProgramVars = nullptr;
-    GraphicsState::SharedPtr mpGraphicsState = nullptr;
-
-    SkyBox::UniquePtr mpSkyBox;
-
-    enum HdrImage
-    {
-        EveningSun,
-        OvercastDay,
-        AtTheWindow
-    };
-    static const Gui::DropdownList kImageList;
-
-    HdrImage mHdrImageIndex = HdrImage::EveningSun;
-    Fbo::SharedPtr mpHdrFbo;
-    ToneMapping::UniquePtr mpToneMapper;
-    SceneRenderer::SharedPtr mpSceneRenderer;
-
-    void loadImage();
-
-    //testing
-    void onInitializeTesting() override;
-    void onEndTestFrame() override;
-    std::vector<uint32_t> mChangeModeFrames;
-    std::vector<uint32_t>::iterator mChangeModeIt;
-    uint32_t mToneMapOperatorIndex;
-};
+    vsOut.shadowsDepthC = mul(float4(vsOut.vsData.posW, 1), camVpAtLastCsmUpdate).z;
+    return vsOut;
+}

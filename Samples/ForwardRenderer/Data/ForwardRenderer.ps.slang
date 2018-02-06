@@ -25,17 +25,72 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "FeatureDemoCommon.hlsli"
+#include "ForwardRendererCommon.hlsli"
 
-MainVsOut main(VertexIn vIn)
+__import Shading;
+__import Helpers;
+__import BRDF;
+
+layout(set = 1, binding = 1) SamplerState gSampler;
+
+struct PsOut
 {
-    MainVsOut vsOut;
-    vsOut.vsData = defaultVS(vIn);
-
+    float4 color : SV_TARGET0;
+    float4 normal : SV_TARGET1;
 #ifdef _OUTPUT_MOTION_VECTORS
-    vsOut.vsData.prevPosH.xy += vsOut.vsData.prevPosH.w * 2 * float2(gCam.jitterX, gCam.jitterY);
+    float2 motion : SV_TARGET2;
+#endif
+};
+
+PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
+{
+    PsOut psOut;
+
+    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.posW);
+
+    float4 finalColor = float4(0, 0, 0, 1);
+    
+    [unroll]
+    for (uint l = 0; l < _LIGHT_COUNT; l++)
+    {
+        float shadowFactor = 1;
+#ifdef _ENABLE_SHADOWS
+        if (l == 0)
+        {
+            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, hitPt.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
+            shadowFactor *= hitPt.opacity;
+        }
+#endif
+        finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color.rgb;
+    }
+
+    // Add the emissive component
+    finalColor.rgb += hitPt.emissive;
+
+#ifdef _ENABLE_TRANSPARENCY
+    finalColor.a = hitPt.opacity * gOpacityScale;
 #endif
 
-    vsOut.shadowsDepthC = mul(float4(vsOut.vsData.posW, 1), camVpAtLastCsmUpdate).z;
-    return vsOut;
+#ifdef _ENABLE_REFLECTIONS
+    finalColor.rgb += evalMaterial(hitPt, gLightProbe).color.rgb;
+#endif
+
+    // add ambient
+    finalColor.rgb += gAmbientLighting * hitPt.diffuse;
+
+    // Add light-map
+    finalColor.rgb += hitPt.diffuse * hitPt.lightMap.rgb;
+
+    psOut.color = finalColor;
+    psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
+
+
+#ifdef _OUTPUT_MOTION_VECTORS
+    psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);
+#endif
+
+#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
+    psOut.color.rgb *= getBlendedCascadeColor(gCsmData, vOut.shadowsDepthC);
+#endif
+    return psOut;
 }

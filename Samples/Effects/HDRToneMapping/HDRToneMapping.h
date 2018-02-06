@@ -27,29 +27,57 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-
+#include "SampleTest.h"
 using namespace Falcor;
 
-class FeatureDemoSceneRenderer : public SceneRenderer
+class HDRToneMapping : public SampleTest
 {
 public:
-    using SharedPtr = std::shared_ptr<FeatureDemoSceneRenderer>;
-    ~FeatureDemoSceneRenderer() = default;
-    enum class Mode
-    {
-        All,
-        Opaque,
-        Transparent
-    };
+    void onLoad() override;
+    void onFrameRender() override;
+    void onShutdown() override;
+    void onResizeSwapChain() override;
+    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
-    static SharedPtr create(const Scene::SharedPtr& pScene);
-    void setRenderMode(Mode renderMode) { mRenderMode = renderMode; }
-    void renderScene(RenderContext* pContext) override;
 private:
-    bool setPerMeshData(const CurrentWorkingData& currentData, const Mesh* pMesh) override;
-    FeatureDemoSceneRenderer(const Scene::SharedPtr& pScene);
-    std::vector<bool> mTransparentMeshes;
-    Mode mRenderMode = Mode::All;
-    bool mHasOpaqueObjects = false;
-    bool mHasTransparentObject = false;
+    Model::SharedPtr mpTeapot;
+    Texture::SharedPtr mHdrImage;
+    ModelViewCameraController mCameraController;
+    Camera::SharedPtr mpCamera;
+    float mLightIntensity = 1.0f;
+    float mSurfaceRoughness = 5.0f;
+
+    void onGuiRender() override;
+    void renderTeapot();
+
+    Sampler::SharedPtr mpTriLinearSampler;
+    GraphicsProgram::SharedPtr mpMainProg = nullptr;
+    GraphicsVars::SharedPtr mpProgramVars = nullptr;
+    GraphicsState::SharedPtr mpGraphicsState = nullptr;
+
+    SkyBox::UniquePtr mpSkyBox;
+
+    enum HdrImage
+    {
+        EveningSun,
+        OvercastDay,
+        AtTheWindow
+    };
+    static const Gui::DropdownList kImageList;
+
+    HdrImage mHdrImageIndex = HdrImage::EveningSun;
+    Fbo::SharedPtr mpHdrFbo;
+    ToneMapping::UniquePtr mpToneMapper;
+    SceneRenderer::SharedPtr mpSceneRenderer;
+
+    void loadImage();
+	const std::string mkDefaultModel = "teapot.obj";
+
+    //testing
+    void onInitializeTesting() override;
+    void onEndTestFrame() override;
+    std::vector<uint32_t> mChangeModeFrames;
+    std::vector<uint32_t>::iterator mChangeModeIt;
+    uint32_t mToneMapOperatorIndex;
 };

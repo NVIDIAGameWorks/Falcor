@@ -25,27 +25,31 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
-__import Shading;
-__import DefaultVS;
+#pragma once
+#include "Falcor.h"
 
-cbuffer PerFrameCB : register(b0)
+using namespace Falcor;
+
+class ForwardRendererSceneRenderer : public SceneRenderer
 {
-    float3 gAmbient;
-};
-
-float4 main(VertexOut vOut) : SV_TARGET
-{
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
-
-    float3 result = 0;
-
-    [unroll]
-    for (uint l = 0; l < _LIGHT_COUNT; l++)
+public:
+    using SharedPtr = std::shared_ptr<ForwardRendererSceneRenderer>;
+    ~ForwardRendererSceneRenderer() = default;
+    enum class Mode
     {
-        result += evalMaterial(hitPt, gLights[l], 1).color;
-    }
+        All,
+        Opaque,
+        Transparent
+    };
 
-    result += gAmbient * hitPt.diffuse;
-    return float4(result, 1);
-}
+    static SharedPtr create(const Scene::SharedPtr& pScene);
+    void setRenderMode(Mode renderMode) { mRenderMode = renderMode; }
+    void renderScene(RenderContext* pContext) override;
+private:
+    bool setPerMeshData(const CurrentWorkingData& currentData, const Mesh* pMesh) override;
+	ForwardRendererSceneRenderer(const Scene::SharedPtr& pScene);
+    std::vector<bool> mTransparentMeshes;
+    Mode mRenderMode = Mode::All;
+    bool mHasOpaqueObjects = false;
+    bool mHasTransparentObject = false;
+};
