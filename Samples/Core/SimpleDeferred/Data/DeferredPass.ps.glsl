@@ -38,7 +38,7 @@ layout(location = 0) in VertexOut vOut;
 
 void main()
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
 
     fragColor0 = vec4(hitPt.posW, 1);
     fragColor1 = vec4(hitPt.N, hitPt.linearRoughness);

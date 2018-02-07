@@ -47,8 +47,8 @@ void main()
         gsOut.colorV = vsOut[i].colorV;
 
         vec4 posW = vec4(vsOut[i].posW, 1.0f);
-        gsOut.prevPosH = gCam.prevViewProjMat * posW;
-        gl_Position = gCam.viewProjMat * posW;
+        gsOut.prevPosH = gCamera.prevViewProjMat * posW;
+        gl_Position = gCamera.viewProjMat * posW;
 
         EmitVertex();
     }
@@ -65,8 +65,8 @@ void main()
         gsOut.colorV = vsOut[i].colorV;
 
         vec4 posW = vec4(vsOut[i].posW, 1.0f);
-        gsOut.prevPosH = gCam.rightEyePrevViewProjMat * posW;
-        gl_Position = gCam.rightEyeViewProjMat * posW;
+        gsOut.prevPosH = gCamera.rightEyePrevViewProjMat * posW;
+        gl_Position = gCamera.rightEyeViewProjMat * posW;
 
         EmitVertex();
     }

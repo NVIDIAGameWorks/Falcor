@@ -103,7 +103,7 @@ LightSample evalPointLight(in LightData light, in float3 hitPosW)
 
 /** Evaluate a area light source intensity/direction at a shading point
 */
-LightSample evalAreaLight(in LightData light, in float3 hitPosW)
+LightSample evalAreaLight(in AreaLightData light, in float3 hitPosW)
 {
     LightSample ls;
     ls.posW = mul(float4(light.posW, 1.0), light.transMat).xyz;
@@ -135,7 +135,6 @@ LightSample evalLight(LightData light, HitPoint hitPt)
     LightSample ls;
     if(light.type == LightDirectional) ls = evalDirectionalLight(light, hitPt.posW);
     else if(light.type == LightPoint)  ls = evalPointLight(light, hitPt.posW);
-    else ls = evalAreaLight(light, hitPt.posW);
     calcCommonLightProperties(hitPt, ls);
     return ls;
 };

@@ -137,7 +137,6 @@ void FeatureDemo::onGuiRender()
 
     if (mpSceneRenderer)
     {
-
         if (mpGui->addButton("Load SkyBox Texture"))
         {
             std::string filename;
@@ -154,12 +153,6 @@ void FeatureDemo::onGuiRender()
             if (mpGui->addFloatVar("Camera Speed", camSpeed))
             {
                 pScene->setCameraSpeed(camSpeed);
-            }
-
-            vec3 ambient = pScene->getAmbientIntensity();
-            if (mpGui->addRgbColor("Ambient Intensity", ambient))
-            {
-                pScene->setAmbientIntensity(ambient);
             }
 
             vec2 depthRange(pScene->getActiveCamera()->getNearPlane(), pScene->getActiveCamera()->getFarPlane());
@@ -248,33 +241,26 @@ void FeatureDemo::onGuiRender()
             mpGui->endGroup();
         }
 
-        if (mpGui->beginGroup("Reflections"))
+        if (mpGui->beginGroup("Light Probes"))
         {
-            if (mpGui->addButton("Load Reflection Texture"))
+            if (mpSceneRenderer->getScene()->getLightProbeCount() == 0)
             {
-                std::string filename;
-                if (openFileDialog(kImageFileString, filename))
+                if (mpGui->addButton("Add Light Probe"))
                 {
-                    initLightProbe(filename);
+                    LightProbe::SharedPtr pLightProbe = LightProbe::create(nullptr);
+                    pLightProbe->setSampler(mpSceneSampler);
+                    mpSceneRenderer->getScene()->addLightProbe(pLightProbe);
                 }
             }
-
-            if(mpSceneRenderer->getScene()->getLightProbeCount() > 0)
+            else
             {
                 if (mpGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
                 }
 
-                if (mControls[ControlID::EnableReflections].enabled)
-                {
-                    const LightProbe::SharedPtr& pLightProbe = mpSceneRenderer->getScene()->getLightProbe(0);
-                    float intensity = pLightProbe->getIntensity().r;
-                    if (mpGui->addFloatVar("Intensity", intensity, 0))
-                    {
-                        pLightProbe->setIntensity(vec3(intensity));
-                    }
-                }
+                mpGui->addSeparator();
+                mpSceneRenderer->getScene()->getLightProbe(0)->renderUI(mpGui.get());
             }
             mpGui->endGroup();
         }
