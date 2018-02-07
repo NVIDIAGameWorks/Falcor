@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PM_PACKMAN_VERSION=5.0.1
+PM_PACKMAN_VERSION=5.1
 
 # Specify where packman command exists
 export PM_INSTALL_PATH=$(dirname ${BASH_SOURCE})
@@ -68,7 +68,7 @@ fi
 PM_7za_VERSION=16.02
 export PM_7za_PATH="$PM_PACKAGES_ROOT/chk/7za/$PM_7za_VERSION"
 if [ ! -f "$PM_7za_PATH" ]; then
-    $PM_PYTHON "$PM_MODULE" install 7za $PM_7za_VERSION -r packman:s3
+    $PM_PYTHON "$PM_MODULE" install 7za $PM_7za_VERSION -r packman:cloudfront
     if [ "$?" -ne 0 ]; then
         echo "Failure while installing required 7za package"
         exit 1
@@ -78,7 +78,7 @@ fi
 # Generate temporary file name for environment variables:
 PM_VAR_PATH=`mktemp -u -t tmp.XXXXX.$$.pmvars`
 
-$PM_PYTHON "$PM_MODULE" $* --var-path="$PM_VAR_PATH"
+$PM_PYTHON -u "$PM_MODULE" $* --var-path="$PM_VAR_PATH"
 exit_code=$?
 # Export the variables if the file was used and remove the file:
 if [ -f "$PM_VAR_PATH" ]; then
