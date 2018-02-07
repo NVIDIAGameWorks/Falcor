@@ -290,7 +290,7 @@ namespace Falcor
 
     float AreaLight::getPower() const
     {
-        return luminance(mAreaLightData.intensity) * (float)M_PI * mSurfaceArea;
+        return luminance(mAreaLightData.intensity) * (float)M_PI * mAreaLightData.surfaceArea;
     }
 
     void AreaLight::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName)

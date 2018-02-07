@@ -94,22 +94,6 @@ namespace Falcor
         */
         const vec3& getIntensity() const { return mData.intensity; }
 
-        /** Change the light-probe's texture
-            \param[in] pTexture The source texture
-            \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
-            \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
-            \param[in] preFilteredFormat The format of the pre-filtered texture
-        */
-        void setTexture(const Texture::SharedPtr& pTexture, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
-
-        /** Change the light-probe's texture
-            \param[in] pTexture The source texture
-            \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
-            \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
-            \param[in] preFilteredFormat The format of the pre-filtered texture
-        */
-        void setTexture(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat = ResourceFormat::Unknown, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
-
         /** Attach a sampler to the light-probe
         */
         void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.samplerState = pSampler; }

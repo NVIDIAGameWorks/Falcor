@@ -35,14 +35,27 @@ namespace Falcor
 {
     LightProbe::LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
-        setTexture(pTexture, filter, size, preFilteredFormat);
+        assert(filter == PreFilterMode::None);
+        mData.type = LightProbeLinear2D;
+        mData.resources.origTexture = pTexture;
     }
 
     LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
-        LightProbe::SharedPtr pLightProbe = create(nullptr);
-        pLightProbe->setTexture(filename, loadAsSrgb, generateMips, overrideFormat, filter, size, preFilteredFormat);
-        return pLightProbe;
+        Texture::SharedPtr pTexture;
+        if (overrideFormat != ResourceFormat::Unknown)
+        {
+            Texture::SharedPtr pOrigTex = createTextureFromFile(filename, false, loadAsSrgb);
+            pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, generateMips ? Texture::kMaxPossible : 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+            gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
+            pTexture->generateMips(gpDevice->getRenderContext().get());
+        }
+        else
+        {
+            pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
+        }
+        
+        return create(pTexture, filter, size, preFilteredFormat);
     }
 
     LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
@@ -54,15 +67,6 @@ namespace Falcor
     {
         if (group == nullptr || pGui->beginGroup(group))
         {
-            if (pGui->addButton("Change Image"))
-            {
-                std::string filename;
-                if (openFileDialog("HDR Images\0*.hdr;*.exr\0\0", filename))
-                {
-                    setTexture(filename, true, true, ResourceFormat::RGBA16Float);
-                }
-            }
-
             pGui->addFloat3Var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
 
             float intensity = mData.intensity.r;
@@ -91,31 +95,6 @@ namespace Falcor
             return false;
         }
         return true;
-    }
-
-    void LightProbe::setTexture(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat format)
-    {
-        assert(filter == PreFilterMode::None);
-        mData.type = LightProbeLinear2D;
-        mData.resources.origTexture = pTexture;
-    }
-
-    void LightProbe::setTexture(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
-    {
-        Texture::SharedPtr pTexture;
-        if (overrideFormat != ResourceFormat::Unknown)
-        {
-            Texture::SharedPtr pOrigTex = createTextureFromFile(filename, false, loadAsSrgb);
-            pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, generateMips ? Texture::kMaxPossible : 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
-            gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
-            pTexture->generateMips(gpDevice->getRenderContext().get());
-        }
-        else
-        {
-            pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
-        }
-
-        setTexture(pTexture, filter, size, preFilteredFormat);
     }
 
 #if _LOG_ENABLED

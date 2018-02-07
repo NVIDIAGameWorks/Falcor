@@ -261,7 +261,6 @@ namespace Falcor
         */
         float getPower() const override;
 
-
         /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader
             and declare a constant buffer to bind the values to using the AREA_LIGHTS() macro defined in HostDeviceSharedMacros.h
             \param[in] pVars The program vars to set the parameters into.

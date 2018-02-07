@@ -243,25 +243,26 @@ void FeatureDemo::onGuiRender()
 
         if (mpGui->beginGroup("Light Probes"))
         {
-            if (mpSceneRenderer->getScene()->getLightProbeCount() == 0)
+            if (mpGui->addButton("Add/Change Light Probe"))
             {
-                if (mpGui->addButton("Add Light Probe"))
+                std::string filename;
+                if (openFileDialog(kImageFileString, filename))
                 {
-                    LightProbe::SharedPtr pLightProbe = LightProbe::create(nullptr);
-                    pLightProbe->setSampler(mpSceneSampler);
-                    mpSceneRenderer->getScene()->addLightProbe(pLightProbe);
+                    initLightProbe(filename);
                 }
             }
-            else
+
+            Scene::SharedPtr pScene = mpSceneRenderer->getScene();
+            if (pScene->getLightProbeCount() > 0)
             {
                 if (mpGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
                 }
-
                 mpGui->addSeparator();
-                mpSceneRenderer->getScene()->getLightProbe(0)->renderUI(mpGui.get());
+                pScene->getLightProbe(0)->renderUI(mpGui.get());
             }
+            
             mpGui->endGroup();
         }
 
