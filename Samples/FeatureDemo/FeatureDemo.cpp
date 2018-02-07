@@ -141,7 +141,6 @@ void FeatureDemo::initScene(Scene::SharedPtr pScene)
         pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
         pDirLight->setName("DirLight");
         pScene->addLight(pDirLight);
-        pScene->setAmbientIntensity(vec3(0.1f));
     }
 
     mpSceneRenderer = FeatureDemoSceneRenderer::create(pScene);
@@ -244,7 +243,7 @@ void FeatureDemo::initTAA()
 
 void FeatureDemo::initPostProcess()
 {
-    mpToneMapper = ToneMapping::create(ToneMapping::Operator::HableUc2);
+    mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
 }
 
 void FeatureDemo::onLoad()

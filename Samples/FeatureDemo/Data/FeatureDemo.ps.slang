@@ -46,10 +46,10 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.posW);
+    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
-    
+
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
@@ -75,15 +75,11 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     finalColor.rgb += evalMaterial(hitPt, gLightProbe).color.rgb;
 #endif
 
-    // add ambient
-    finalColor.rgb += gAmbientLighting * hitPt.diffuse;
-
     // Add light-map
     finalColor.rgb += hitPt.diffuse * hitPt.lightMap.rgb;
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
-
 
 #ifdef _OUTPUT_MOTION_VECTORS
     psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);

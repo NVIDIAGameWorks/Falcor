@@ -48,6 +48,7 @@ namespace Falcor {
 *******************************************************************/
     class Sampler;
     class Texture;
+#define RAW_BUFFER Buffer::SharedPtr
 
 #else
 /*******************************************************************
@@ -55,6 +56,7 @@ namespace Falcor {
 *******************************************************************/
 typedef uint uint32_t;
 typedef int int32_t;
+#define RAW_BUFFER ByteAddressBuffer
 #endif
 
 
@@ -149,6 +151,37 @@ struct LightProbeData
     LightProbeResources resources;
 };
 
+struct AreaLightResources
+{
+    RAW_BUFFER indexBuffer;     ///< Buffer for indices (uint32_t)
+    RAW_BUFFER vertexBuffer;    ///< Buffer for vertices (float3)
+    RAW_BUFFER texCoordBuffer;  ///< Buffer for vertices (float2)
+    RAW_BUFFER meshCDFBuffer;   ///< Buffer for vertices (float)
+
+    MaterialData material;      ///< Emissive material of the geometry mesh
+};
+
+struct AreaLightData
+{
+    float3      posW            DEFAULTS(float3());         ///< World-space position the light source
+    float       surfaceArea     DEFAULTS(0.f);              ///< Surface area of the geometry mesh
+    float3      dirW            DEFAULTS(float3());         ///< World-space orientation of the light source
+    uint32_t    numIndices      DEFAULTS(0);                ///< Number of triangle indices in a polygonal area light
+    float3      intensity       DEFAULTS(float3(1.0f));     ///< Emitted radiance of the light source
+    float       pad0;
+    float3      tangent         DEFAULTS(float3());         ///< Tangent vector of the geometry mesh
+    float       pad1;
+    float3      bitangent       DEFAULTS(float3());         ///< Bitangent vector of the geometry mesh
+    float       pad2;
+    float3      aabbMin         DEFAULTS(float3(1e20f));    ///< Minimum corner of the AABB
+    float       pad3;
+    float3      aabbMax         DEFAULTS(float3(-1e20f));   ///< Maximum corner of the AABB
+    float       pad4;
+    float4x4    transMat        DEFAULTS(float4x4());       ///< Transformation matrix of the area light
+
+    AreaLightResources resources;
+};
+
 struct LightData
 {
     float3   posW               DEFAULTS(float3(0, 0, 0));  ///< World-space position of the center of a light source
@@ -157,26 +190,8 @@ struct LightData
     float    openingAngle       DEFAULTS(3.14159265f);      ///< For point (spot) light: Opening angle of a spot light cut-off, pi by default - full-sphere point light
     float3   intensity          DEFAULTS(float3(1, 1, 1));  ///< Emitted radiance of th light source
     float    cosOpeningAngle    DEFAULTS(-1.f);             ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
-    float3   aabbMin            DEFAULTS(float3(1e20f));    ///< For area light: minimum corner of the AABB
     float    penumbraAngle      DEFAULTS(0.f);              ///< For point (spot) light: Opening angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
-    float3   aabbMax            DEFAULTS(float3(-1e20f));   ///< For area light: maximum corner of the AABB
-    float    surfaceArea        DEFAULTS(0.f);              ///< Surface area of the geometry mesh
-	float3   tangent            DEFAULTS(float3());         ///< Tangent vector of the geometry mesh
-	uint32_t numIndices         DEFAULTS(0);                ///< Number of triangle indices in a polygonal area light
-	float3   bitangent          DEFAULTS(float3());         ///< BiTangent vector of the geometry mesh
-	float    pad;
-    float4x4 transMat           DEFAULTS(float4x4());       ///< Transformation matrix of the model instance for area lights
-
-    // For area light
-// 	BufPtr          indexPtr;                                     ///< Buffer id for indices
-// 	BufPtr          vertexPtr;                                    ///< Buffer id for vertices
-// 	BufPtr          texCoordPtr;                                  ///< Buffer id for texcoord
-// 	BufPtr          meshCDFPtr;                                   ///< Pointer to probability distributions of triangle meshes
-
-    /*TODO(tfoley) HACK: Slang can't hanlde this
-    // Keep that last
-    MaterialData    material;                                     ///< Emissive material of the geometry mesh
-    */
+    float3   pad;
 };
 
 /*******************************************************************

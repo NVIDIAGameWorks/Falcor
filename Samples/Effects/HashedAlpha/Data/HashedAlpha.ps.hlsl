@@ -31,6 +31,6 @@ __import DefaultVS;
 
 float4 main(VertexOut vOut) : SV_TARGET0
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
     return float4(hitPt.diffuse, 1);
 }

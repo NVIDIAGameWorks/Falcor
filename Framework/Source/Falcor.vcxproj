@@ -361,7 +361,6 @@
     <ClCompile Include="Graphics\Scene\SceneExporter.cpp" />
     <ClCompile Include="Graphics\Scene\SceneImporter.cpp" />
     <ClCompile Include="Graphics\Scene\SceneRenderer.cpp" />
-    <ClCompile Include="Graphics\Scene\SceneUtils.cpp" />
     <ClCompile Include="Graphics\TextureHelper.cpp" />
     <ClCompile Include="MultiRendererSample.cpp" />
     <ClCompile Include="Sample.cpp" />
@@ -817,7 +816,6 @@
     <ClInclude Include="Graphics\Scene\SceneExportImportCommon.h" />
     <ClInclude Include="Graphics\Scene\SceneImporter.h" />
     <ClInclude Include="Graphics\Scene\SceneRenderer.h" />
-    <ClInclude Include="Graphics\Scene\SceneUtils.h" />
     <ClInclude Include="Graphics\TextureHelper.h" />
     <ClInclude Include="MultiRendererSample.h" />
     <ClInclude Include="Sample.h" />

@@ -35,6 +35,7 @@ namespace Falcor
 {
     class ProgramVars;
     class ConstantBuffer;
+    class Gui;
 
     class LightProbe : public IMovableObject, std::enable_shared_from_this<LightProbe>
     {
@@ -64,12 +65,18 @@ namespace Falcor
         static SharedPtr create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat = ResourceFormat::Unknown, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
         /** Create a light-probe from a texture
-        \param[in] pTexture The source texture
-        \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
-        \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
-        \param[in] format The format of the pre-filtered texture
+            \param[in] pTexture The source texture
+            \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
+            \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
+            \param[in] preFilteredFormat The format of the pre-filtered texture
         */
-        static SharedPtr create(const Texture::SharedPtr& pTexture, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat format = ResourceFormat::RGBA16Float);
+        static SharedPtr create(const Texture::SharedPtr& pTexture, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+
+        /** Render UI elements for this light.
+            \param[in] pGui The GUI to create the elements with
+            \param[in] group Optional. If specified, creates a UI group to display elements within
+        */
+        void renderUI(Gui* pGui, const char* group = nullptr);
 
         /** Set the light-probe's world-space position
         */
@@ -87,6 +94,22 @@ namespace Falcor
         */
         const vec3& getIntensity() const { return mData.intensity; }
 
+        /** Change the light-probe's texture
+            \param[in] pTexture The source texture
+            \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
+            \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
+            \param[in] preFilteredFormat The format of the pre-filtered texture
+        */
+        void setTexture(const Texture::SharedPtr& pTexture, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+
+        /** Change the light-probe's texture
+            \param[in] pTexture The source texture
+            \param[in] filter The pre-filtering mode. If this value equals PreFilterMode::None, then a pre-filtering texture will not be created
+            \param[in] size The width and height of the pre-filtered texture. We always create a square texture. If this value equals Texture::kMaxPossible, the size will chosen automatically
+            \param[in] preFilteredFormat The format of the pre-filtered texture
+        */
+        void setTexture(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat = ResourceFormat::Unknown, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+
         /** Attach a sampler to the light-probe
         */
         void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.samplerState = pSampler; }
@@ -101,7 +124,7 @@ namespace Falcor
 
     private:
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
-        LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat format);
+        LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat);
         LightProbeData mData;
     };
 }

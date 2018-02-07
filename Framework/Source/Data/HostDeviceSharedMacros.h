@@ -146,6 +146,12 @@
 
 #define MAX_LIGHT_SOURCES 16
 
+// To bind area lights, use this macro to declare the constant buffer in your shader
+#define AREA_LIGHTS(n) cbuffer InternalAreaLightCB \
+{ \
+    AreaLightData gAreaLights[n]; \
+};
+
 /** Light probe types
 */
 #define LightProbeLinear2D          0    ///< Light probe filtered with linear-filtering, 2D texture

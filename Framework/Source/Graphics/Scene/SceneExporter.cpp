@@ -149,8 +149,6 @@ namespace Falcor
         {
             addString(jval, Allocator, SceneKeys::kActiveCamera, mpScene->getActiveCamera()->getName());
         }
-
-        addVector(jval, Allocator, SceneKeys::kAmbientIntensity, mpScene->getAmbientIntensity());
     }
 
     void createModelValue(const Scene::SharedPtr& pScene, uint32_t modelID, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jmodel)
