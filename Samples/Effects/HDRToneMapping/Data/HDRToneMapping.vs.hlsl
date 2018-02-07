@@ -34,22 +34,22 @@ cbuffer PerFrameCB : register(b0)
     float gSurfaceRoughness;
 };
 
-struct PostProcessIn
+struct ToneMappingIn
 {
     float4 pos : POSITION;
     float3 normal : NORMAL;
 };
 
-struct PostProcessOut
+struct ToneMappingOut
 {
     float4 pos : SV_POSITION;
     float3 posW : POSITION;
     float3 normalW : NORMAL;
 };
 
-PostProcessOut main(PostProcessIn vIn)
+ToneMappingOut main(ToneMappingIn vIn)
 {
-    PostProcessOut vOut;
+	ToneMappingOut vOut;
     vOut.pos = (mul(vIn.pos, gWvpMat));
     vOut.posW = (mul(vIn.pos, gWorldMat)).xyz;
     vOut.normalW = (mul(float4(vIn.normal, 0), gWorldMat)).xyz;

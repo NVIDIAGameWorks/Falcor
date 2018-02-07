@@ -39,14 +39,14 @@ cbuffer PerFrameCB : register(b0)
 Texture2D gEnvMap;
 SamplerState gSampler;
 
-struct PostProcessOut
+struct ToneMappingOut
 {
     float4 pos : SV_POSITION;
     float3 posW : POSITION;
     float3 normalW : NORMAL;
 };
 
-float4 main(PostProcessOut vOut) : SV_TARGET
+float4 main(ToneMappingOut vOut) : SV_TARGET
 {
     float3 p = normalize(vOut.normalW);
     float2 uv;
