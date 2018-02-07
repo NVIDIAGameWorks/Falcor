@@ -46,10 +46,10 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    HitPoint hitPt = prepareHitPoint(vOut.vsData, gMaterial, gCam.posW);
+    ShadingData sd = prepareShadingData(vOut.vsData, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
-    
+
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
@@ -57,33 +57,29 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #ifdef _ENABLE_SHADOWS
         if (l == 0)
         {
-            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, hitPt.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
-            shadowFactor *= hitPt.opacity;
+            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, sd.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
+            shadowFactor *= sd.opacity;
         }
 #endif
-        finalColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color.rgb;
+        finalColor.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
     }
 
     // Add the emissive component
-    finalColor.rgb += hitPt.emissive;
+    finalColor.rgb += sd.emissive;
 
 #ifdef _ENABLE_TRANSPARENCY
-    finalColor.a = hitPt.opacity * gOpacityScale;
+    finalColor.a = sd.opacity * gOpacityScale;
 #endif
 
 #ifdef _ENABLE_REFLECTIONS
-    finalColor.rgb += evalMaterial(hitPt, gLightProbe).color.rgb;
+    finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
 #endif
 
-    // add ambient
-    finalColor.rgb += gAmbientLighting * hitPt.diffuse;
-
     // Add light-map
-    finalColor.rgb += hitPt.diffuse * hitPt.lightMap.rgb;
+    finalColor.rgb += sd.diffuse * sd.lightMap.rgb;
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
-
 
 #ifdef _OUTPUT_MOTION_VECTORS
     psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);

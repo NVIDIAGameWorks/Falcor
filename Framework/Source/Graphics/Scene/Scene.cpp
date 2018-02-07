@@ -243,6 +243,12 @@ namespace Falcor
 
     uint32_t Scene::addLight(const Light::SharedPtr& pLight)
     {
+        if (pLight->getType() == LightArea)
+        {
+            logWarning("Use Scene::addAreaLight() for area lights.");
+            return uint32(-1);
+        }
+
         mpLights.push_back(pLight);
         mExtentsDirty = true;
         return (uint32_t)mpLights.size() - 1;
@@ -263,6 +269,17 @@ namespace Falcor
     void Scene::deleteLightProbe(uint32_t lightID)
     {
         mpLightProbes.erase(mpLightProbes.begin() + lightID);
+    }
+
+    uint32_t Scene::addAreaLight(const AreaLight::SharedPtr& pAreaLight)
+    {
+        mpAreaLights.push_back(pAreaLight);
+        return (uint32_t)mpAreaLights.size() - 1;
+    }
+
+    void Scene::deleteAreaLight(uint32_t lightID)
+    {
+        mpAreaLights.erase(mpAreaLights.begin() + lightID);
     }
 
     uint32_t Scene::addPath(const ObjectPath::SharedPtr& pPath)
@@ -313,7 +330,7 @@ namespace Falcor
     void Scene::createAreaLights()
     {
         // Clean up area light(s) before adding
-        deleteAreaLights();
+        mpAreaLights.clear();
 
         // Go through all models in the scene
         for (uint32_t modelId = 0; modelId < getModelCount(); ++modelId)
@@ -321,29 +338,8 @@ namespace Falcor
             const Model::SharedPtr& pModel = getModel(modelId);
             if (pModel)
             {
-                // Retrieve model instances for this model
-                for (uint32_t modelInstanceId = 0; modelInstanceId < getModelInstanceCount(modelId); ++modelInstanceId)
-                {
-
-                }
-            }
-        }
-    }
-
-    void Scene::deleteAreaLights()
-    {
-        // Clean up the list before adding
-        std::vector<Light::SharedPtr>::iterator it = mpLights.begin();
-
-        for (; it != mpLights.end();)
-        {
-            if ((*it)->getType() == LightArea)
-            {
-                it = mpLights.erase(it);
-            }
-            else
-            {
-                ++it;
+                std::vector<AreaLight::SharedPtr> areaLights = createAreaLightsForModel(pModel.get());
+                mpAreaLights.insert(mpAreaLights.end(), areaLights.begin(), areaLights.end());
             }
         }
     }

@@ -141,7 +141,6 @@ void ForwardRenderer::initScene(Scene::SharedPtr pScene)
         pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
         pDirLight->setName("DirLight");
         pScene->addLight(pDirLight);
-        pScene->setAmbientIntensity(vec3(0.1f));
     }
 
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
@@ -244,7 +243,7 @@ void ForwardRenderer::initTAA()
 
 void ForwardRenderer::initPostProcess()
 {
-    mpToneMapper = ToneMapping::create(ToneMapping::Operator::HableUc2);
+    mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
 }
 
 void ForwardRenderer::onLoad()

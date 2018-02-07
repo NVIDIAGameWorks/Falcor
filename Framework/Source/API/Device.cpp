@@ -56,7 +56,8 @@ namespace Falcor
         // Create the descriptor pools
         DescriptorPool::Desc poolDesc;
         // For DX12 there is no difference between the different SRV/UAV types. For Vulkan it matters, hence the #ifdef
-        poolDesc.setDescCount(DescriptorPool::Type::TextureSrv, 16 * 1024).setDescCount(DescriptorPool::Type::Sampler, 2048).setShaderVisible(true);
+        // DX12 guarantees at least 1,000,000 descriptors
+        poolDesc.setDescCount(DescriptorPool::Type::TextureSrv, 1000000).setDescCount(DescriptorPool::Type::Sampler, 2048).setShaderVisible(true);
 #ifndef FALCOR_D3D12
         poolDesc.setDescCount(DescriptorPool::Type::Cbv, 16 * 1024).setDescCount(DescriptorPool::Type::TextureUav, 16 * 1024);
         poolDesc.setDescCount(DescriptorPool::Type::StructuredBufferSrv, 2 * 1024).setDescCount(DescriptorPool::Type::StructuredBufferUav, 2 * 1024).setDescCount(DescriptorPool::Type::TypedBufferSrv, 2 * 1024).setDescCount(DescriptorPool::Type::TypedBufferUav, 2 * 1024);
@@ -69,7 +70,6 @@ namespace Falcor
 
         mVsyncOn = desc.enableVsync;
 
-        // Create the swap-chain
         mpResourceAllocator = ResourceAllocator::create(1024 * 1024 * 2, mpRenderContext->getLowLevelData()->getFence());
 
         mpFrameFence = GpuFence::create();

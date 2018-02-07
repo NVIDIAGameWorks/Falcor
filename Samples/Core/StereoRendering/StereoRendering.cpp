@@ -135,10 +135,6 @@ void StereoRendering::setRenderMode()
 {
     if(mpScene)
     {
-        std::string lights;
-        getSceneLightString(mpScene.get(), lights);
-        mpMonoSPSProgram->addDefine("_LIGHT_SOURCES", lights);
-        mpStereoProgram->addDefine("_LIGHT_SOURCES", lights);
         mpMonoSPSProgram->removeDefine("_SINGLE_PASS_STEREO");
 
         mpGraphicsState->toggleSinglePassStereo(false);

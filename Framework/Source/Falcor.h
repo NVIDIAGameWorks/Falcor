@@ -103,8 +103,6 @@
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/SceneRenderer.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
-#include "Graphics/Scene/SceneUtils.h"
-
 
 // Math
 #include "Utils/Math/FalcorMath.h"
@@ -144,8 +142,8 @@
 #include "Effects/ParticleSystem/ParticleSystem.h"
 #include "Effects/TAA/TAA.h"
 
-#define FALCOR_MAJOR_VERSION 2
-#define FALCOR_MINOR_VERSION 5
-#define FALCOR_DEV_STAGE "beta"
+#define FALCOR_MAJOR_VERSION 3
+#define FALCOR_MINOR_VERSION 0
+#define FALCOR_DEV_STAGE ""
 #define FALCOR_DEV_REVISION 0
-#define FALCOR_VERSION_STRING "2.5b0"
+#define FALCOR_VERSION_STRING "3.0"

@@ -145,7 +145,6 @@ namespace Falcor
         void setObjectPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable, const std::string& objType);
 
         // Global functions
-        void setAmbientIntensity(Gui* pGui);
         void saveScene();
 
         void renderModelAnimation(Gui* pGui);

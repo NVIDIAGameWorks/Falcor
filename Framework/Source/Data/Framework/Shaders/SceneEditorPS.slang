@@ -53,7 +53,7 @@ cbuffer ConstColorCB : register(b0)
 
 PSOut main(EditorVSOut vOut) : SV_TARGET
 {
-    float3 toCamera = normalize(gCam.posW - vOut.vOut.posW);
+    float3 toCamera = normalize(gCamera.posW - vOut.vOut.posW);
 
 #ifdef CULL_REAR_SECTION
     if(dot(toCamera, vOut.toVertex) < -0.1)

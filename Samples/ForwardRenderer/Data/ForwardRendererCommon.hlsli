@@ -32,11 +32,10 @@ __import Effects.CascadedShadowMap;
 
 layout(binding = 0) cbuffer PerFrameCB : register(b0)
 {
-    float3 gAmbient;
-    float gOpacityScale;
     CsmData gCsmData;
     float4x4 camVpAtLastCsmUpdate;
     float2 gRenderTargetDim;
+    float gOpacityScale;
 };
 
 struct MainVsOut

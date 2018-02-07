@@ -38,9 +38,9 @@ layout(location = 0) in VertexOut vOut;
 
 void main()
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
-    fragColor0 = vec4(hitPt.posW, 1);
-    fragColor1 = vec4(hitPt.N, hitPt.linearRoughness);
-    fragColor2 = vec4(hitPt.diffuse, hitPt.opacity);
+    fragColor0 = vec4(sd.posW, 1);
+    fragColor1 = vec4(sd.N, sd.linearRoughness);
+    fragColor2 = vec4(sd.diffuse, sd.opacity);
 }

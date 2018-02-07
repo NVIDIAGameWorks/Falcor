@@ -561,7 +561,7 @@ namespace Falcor
 
         /** Create a new object for a Slang reflector object
         */
-        static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
+        static SharedPtr create(slang::ShaderReflection* pSlangReflector, std::string& log);
 
         /** Get the index of a parameter block
         */

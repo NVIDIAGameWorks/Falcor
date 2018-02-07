@@ -244,16 +244,6 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::setAmbientIntensity(Gui* pGui)
-    {
-        vec3 ambientIntensity = mpScene->getAmbientIntensity();
-        if (pGui->addRgbColor("Ambient intensity", ambientIntensity))
-        {
-            mpScene->setAmbientIntensity(ambientIntensity);
-            mSceneDirty = true;
-        }
-    }
-
     void SceneEditor::setInstanceTranslation(Gui* pGui)
     {
         auto& pInstance = mpScene->getModelInstance(mSelectedModel, mSelectedModelInstance);
@@ -991,7 +981,6 @@ namespace Falcor
         if (pGui->beginGroup("Global Settings"))
         {
             setCameraSpeed(pGui);
-            setAmbientIntensity(pGui);
             pGui->endGroup();
         }
     }
