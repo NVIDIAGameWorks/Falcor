@@ -61,7 +61,7 @@ float getMetallic(float diffuse, float spec)
 }
 
 /*******************************************************************
-					Alpha test
+                    Alpha test
 *******************************************************************/
 void basicAlphaTest(float alpha, float threshold)
 {
@@ -154,7 +154,7 @@ float calculateHashedAlpha(float3 hashInputCoord, float hashScale, bool useAniso
 }
 
 /*******************************************************************
-    alpha test
+    Alpha test
 *******************************************************************/    
 void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
 {
