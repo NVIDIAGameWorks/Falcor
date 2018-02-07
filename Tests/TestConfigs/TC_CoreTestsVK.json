@@ -6,8 +6,8 @@
         "CoreTestsVK" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Source Branch Target" : "new-testing-system",
-            "Compare Branch Target" : "new-testing-system",
+            "Source Branch Target" : "media2.0",
+            "Compare Branch Target" : "media2.0",
             "Tests Configs Target" : "TestConfigsDev\\",
             
             "Tests":

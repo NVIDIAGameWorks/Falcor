@@ -6,8 +6,8 @@
         "CoreTestsVK_Quick" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Source Branch Target" : "master",
-            "Compare Branch Target" : "master",
+            "Source Branch Target" : "media2.0",
+            "Compare Branch Target" : "media2.0",
             "Tests Configs Target" : "TestConfigs/",
             
             "Tests":

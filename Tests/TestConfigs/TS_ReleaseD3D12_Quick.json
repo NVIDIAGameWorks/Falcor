@@ -15,17 +15,17 @@
         "AnimationTest":
         {
             "Enabled" : true,
-            "Project Name" : "FeatureDemo",
+            "Project Name" : "ForwardRenderer",
             "Project Tests Args" :
             [
                 "-test -fixedtimedelta 0.03333 -loadscene Cerberus/Standard/Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
             ]
         },
 
-        "FeatureDemoTest":
+        "ForwardRendererTest":
         {
             "Enabled" : true,
-            "Project Name" : "FeatureDemo",
+            "Project Name" : "ForwardRenderer",
             "Test Config" : {
                 "Type" : "Image Compare",
                 "Tolerance" : 0.01
@@ -34,7 +34,7 @@
             [
                 "-test -fixedtimedelta 0.03333 -loadscene san-miguel/SanMiguel.fscene -sstimes 10 20 30 -shutdowntime 31",
                 "-test -fixedtimedelta 0.03333 -loadscene SunTemple/SunTemple.fscene -sstimes 10 27 50 -shutdowntime 51",
-                "-test -fixedtimedelta 0.03333 -loadscene Bistro/Compressed/Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 19"
+                "-test -fixedtimedelta 0.03333 -loadscene Bistro/Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 19"
             ]
         }
     }

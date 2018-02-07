@@ -213,11 +213,8 @@ void SimpleDeferred::onLoad()
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
 
-	if (!initializeTesting())
-	{
-		// Load default model
-		loadModelFromFile(mkDefaultModel);
-	}
+	// Load default model
+	loadModelFromFile(mkDefaultModel);
 }
 
 void SimpleDeferred::onFrameRender()

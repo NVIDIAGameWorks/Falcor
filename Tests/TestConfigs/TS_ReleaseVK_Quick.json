@@ -15,17 +15,17 @@
         "AnimationTest":
         {
             "Enabled" : true,
-            "Project Name" : "FeatureDemo",
+            "Project Name" : "ForwardRenderer",
             "Project Tests Args" :
             [
                 "-test -fixedtimedelta 0.03333 -loadscene Cerberus/Standard/Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
             ]
         },
 
-        "FeatureDemoTest":
+        "ForwardRendererTest":
         {
             "Enabled" : true,
-            "Project Name" : "FeatureDemo",
+            "Project Name" : "ForwardRenderer",
             "Test Config" : {
                 "Type" : "Image Compare",
                 "Tolerance" : 0.01
