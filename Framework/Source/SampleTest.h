@@ -42,8 +42,9 @@ namespace Falcor
     public:
 
         /** Initializes Test Task vectors based on command line arguments
+			returns true if testing is enabled
         */
-        void initializeTesting();
+        bool initializeTesting();
 
         /** Callback for anything the testing sample wants to initialize
         */

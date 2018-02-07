@@ -31,30 +31,29 @@
 
 using namespace Falcor;
 
-class NormalMapFiltering : public SampleTest
+class SkyBoxSample : public SampleTest
 {
 public:
     void onLoad() override;
     void onFrameRender() override;
-    void onShutdown() override;
     void onResizeSwapChain() override;
-    void onGuiRender() override;
     bool onKeyEvent(const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    
+    void onGuiRender() override;
+
 private:
-    void updateProgram();
-    GraphicsProgram::SharedPtr mpProgram;
-    SceneRenderer::SharedPtr mpRenderer;
-    GraphicsVars::SharedPtr mpVars;
-    ModelViewCameraController mCameraController;
-    LeanMap::UniquePtr mpLeanMap;
-    bool mUseLeanMap = true;
-    Sampler::SharedPtr mpLinearSampler;
+    void loadTexture();
+    
+    Camera::SharedPtr mpCamera;
+    SixDoFCameraController::SharedPtr mpCameraController;
+    SkyBox::UniquePtr mpSkybox;  
+    Sampler::SharedPtr mpTriLinearSampler;
+
+	const std::string mkDefaultSkyBox = "Cubemaps/Sorsele3/Sorsele3.dds";
 
     //Testing
     void onInitializeTesting() override;
     void onEndTestFrame() override;
-    std::vector<uint32_t> mChangeModeFrames;
-    std::vector<uint32_t>::iterator mChangeModeIt;
+    std::vector<uint32_t> mChangeViewFrames;
+    std::vector<uint32_t>::iterator mChangeViewIt;
 };

@@ -109,7 +109,7 @@ void Shadows::createScene(const std::string& filename)
 
 void Shadows::onLoad()
 {
-    createScene("Scenes/DragonPlane.fscene");
+    createScene(mkDefaultScene);
     createVisualizationProgram();
     initializeTesting();
 }

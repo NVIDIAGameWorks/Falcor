@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "FeatureDemo.h"
+#include "ForwardRenderer.h"
 
 //  Halton Sampler Pattern.
 static const float kHaltonSamplePattern[8][2] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
@@ -47,15 +47,15 @@ static const float kDX11SamplePattern[8][2] = { { 1.0f / 16.0f, -3.0f / 16.0f },
 { 3.0f / 16.0f, 7.0f / 16.0f },
 { 7.0f / 16.0f, -7.0f / 16.0f } };
 
-void FeatureDemo::initDepthPass()
+void ForwardRenderer::initDepthPass()
 {
     mDepthPass.pProgram = GraphicsProgram::createFromFile("", "DepthPass.ps.slang");
     mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getActiveVersion()->getReflector());
 }
 
-void FeatureDemo::initLightingPass()
+void ForwardRenderer::initLightingPass()
 {
-    mLightingPass.pProgram = GraphicsProgram::createFromFile("FeatureDemo.vs.slang", "FeatureDemo.ps.slang");
+    mLightingPass.pProgram = GraphicsProgram::createFromFile("ForwardRenderer.vs.slang", "ForwardRenderer.ps.slang");
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpSceneRenderer->getScene()->getLightCount()));
     initControls();
     mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getActiveVersion()->getReflector());
@@ -73,7 +73,7 @@ void FeatureDemo::initLightingPass()
     mLightingPass.pAlphaBlendBS = BlendState::create(bsDesc);
 }
 
-void FeatureDemo::initShadowPass()
+void ForwardRenderer::initShadowPass()
 {
     mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
     mShadowPass.pCsm->setFilterMode(CsmFilterEvsm2);
@@ -82,7 +82,7 @@ void FeatureDemo::initShadowPass()
     mShadowPass.pCsm->setEvsmBlur(7, 3);
 }
 
-void FeatureDemo::initSSAO()
+void ForwardRenderer::initSSAO()
 {
     mSSAO.pSSAO = SSAO::create(uvec2(1024));
     mSSAO.pApplySSAOPass = FullScreenPass::create("ApplyAO.ps.slang");
@@ -93,7 +93,7 @@ void FeatureDemo::initSSAO()
     mSSAO.pVars->setSampler("gSampler", Sampler::create(desc));
 }
 
-void FeatureDemo::setSceneSampler(uint32_t maxAniso)
+void ForwardRenderer::setSceneSampler(uint32_t maxAniso)
 {
     Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene().get());
     Sampler::Desc samplerDesc;
@@ -102,7 +102,7 @@ void FeatureDemo::setSceneSampler(uint32_t maxAniso)
     pScene->bindSampler(mpSceneSampler);
 }
 
-void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& filename)
+void ForwardRenderer::applyCustomSceneVars(const Scene* pScene, const std::string& filename)
 {
     std::string folder = getDirectoryFromFile(filename);
 
@@ -113,7 +113,7 @@ void FeatureDemo::applyCustomSceneVars(const Scene* pScene, const std::string& f
     if (var.type == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.d64;
 }
 
-void FeatureDemo::initScene(Scene::SharedPtr pScene)
+void ForwardRenderer::initScene(Scene::SharedPtr pScene)
 {
     if (pScene->getCameraCount() == 0)
     {
@@ -144,7 +144,7 @@ void FeatureDemo::initScene(Scene::SharedPtr pScene)
         pScene->setAmbientIntensity(vec3(0.1f));
     }
 
-    mpSceneRenderer = FeatureDemoSceneRenderer::create(pScene);
+    mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
     mpSceneRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
     mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
     setSceneSampler(mpSceneSampler ? mpSceneSampler->getMaxAnisotropy() : 4);
@@ -161,13 +161,13 @@ void FeatureDemo::initScene(Scene::SharedPtr pScene)
     mCurrentTime = 0;
 }
 
-void FeatureDemo::resetScene()
+void ForwardRenderer::resetScene()
 {
     mpSceneRenderer = nullptr;
     mSkyBox.pEffect = nullptr;
 }
 
-void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
+void ForwardRenderer::loadModel(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
@@ -186,7 +186,7 @@ void FeatureDemo::loadModel(const std::string& filename, bool showProgressBar)
     initScene(pScene);
 }
 
-void FeatureDemo::loadScene(const std::string& filename, bool showProgressBar)
+void ForwardRenderer::loadScene(const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
@@ -206,7 +206,7 @@ void FeatureDemo::loadScene(const std::string& filename, bool showProgressBar)
     }
 }
 
-void FeatureDemo::initSkyBox(const std::string& name)
+void ForwardRenderer::initSkyBox(const std::string& name)
 {
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
@@ -217,7 +217,7 @@ void FeatureDemo::initSkyBox(const std::string& name)
     mSkyBox.pDS = DepthStencilState::create(dsDesc);
 }
 
-void FeatureDemo::initLightProbe(const std::string& name)
+void ForwardRenderer::initLightProbe(const std::string& name)
 {
     Scene::SharedPtr pScene = mpSceneRenderer->getScene();
 
@@ -236,26 +236,29 @@ void FeatureDemo::initLightProbe(const std::string& name)
     applyLightingProgramControl(ControlID::EnableReflections);
 }
 
-void FeatureDemo::initTAA()
+void ForwardRenderer::initTAA()
 {
     mTAA.pTAA = TemporalAA::create();
     applyAaMode();
 }
 
-void FeatureDemo::initPostProcess()
+void ForwardRenderer::initPostProcess()
 {
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::HableUc2);
 }
 
-void FeatureDemo::onLoad()
+void ForwardRenderer::onLoad()
 {
     mpState = GraphicsState::create();
 
     initPostProcess();
-    initializeTesting();
+	if (!initializeTesting())
+	{
+		loadScene(mkDefaultScene, true);
+	}
 }
 
-void FeatureDemo::renderSkyBox()
+void ForwardRenderer::renderSkyBox()
 {
     if (mSkyBox.pEffect)
     {
@@ -266,7 +269,7 @@ void FeatureDemo::renderSkyBox()
     }
 }
 
-void FeatureDemo::beginFrame()
+void ForwardRenderer::beginFrame()
 {
     mpRenderContext->pushGraphicsState(mpState);
     mpRenderContext->clearFbo(mpMainFbo.get(), glm::vec4(0.7f, 0.7f, 0.7f, 1.0f), 1, 0, FboAttachmentType::All);
@@ -286,18 +289,18 @@ void FeatureDemo::beginFrame()
     }
 }
 
-void FeatureDemo::endFrame()
+void ForwardRenderer::endFrame()
 {
     mpRenderContext->popGraphicsState();
 }
 
-void FeatureDemo::postProcess()
+void ForwardRenderer::postProcess()
 {
     PROFILE(postProcess);
     mpToneMapper->execute(mpRenderContext.get(), mpResolveFbo, mControls[EnableSSAO].enabled ? mpPostProcessFbo : mpDefaultFBO);
 }
 
-void FeatureDemo::depthPass()
+void ForwardRenderer::depthPass()
 {
     PROFILE(depthPass);
     if (mEnableDepthPass == false) 
@@ -309,12 +312,12 @@ void FeatureDemo::depthPass()
     mpState->setProgram(mDepthPass.pProgram);
     mpRenderContext->setGraphicsVars(mDepthPass.pVars);
     
-    auto renderMode = mControls[EnableTransparency].enabled ? FeatureDemoSceneRenderer::Mode::Opaque : FeatureDemoSceneRenderer::Mode::All;
+    auto renderMode = mControls[EnableTransparency].enabled ? ForwardRendererSceneRenderer::Mode::Opaque : ForwardRendererSceneRenderer::Mode::All;
     mpSceneRenderer->setRenderMode(renderMode);
     mpSceneRenderer->renderScene(mpRenderContext.get());
 }
 
-void FeatureDemo::lightingPass()
+void ForwardRenderer::lightingPass()
 {
     PROFILE(lightingPass);
     mpState->setProgram(mLightingPass.pProgram);
@@ -342,22 +345,22 @@ void FeatureDemo::lightingPass()
     }
     else
     {
-        mpSceneRenderer->setRenderMode(FeatureDemoSceneRenderer::Mode::All);
+        mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::All);
         mpSceneRenderer->renderScene(mpRenderContext.get());
     }
     mpRenderContext->flush();
     mpState->setDepthStencilState(nullptr);
 }
 
-void FeatureDemo::renderOpaqueObjects()
+void ForwardRenderer::renderOpaqueObjects()
 {
-    mpSceneRenderer->setRenderMode(FeatureDemoSceneRenderer::Mode::Opaque);
+    mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::Opaque);
     mpSceneRenderer->renderScene(mpRenderContext.get());
 }
 
-void FeatureDemo::renderTransparentObjects()
+void ForwardRenderer::renderTransparentObjects()
 {
-    mpSceneRenderer->setRenderMode(FeatureDemoSceneRenderer::Mode::Transparent);
+    mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::Transparent);
     mpState->setBlendState(mLightingPass.pAlphaBlendBS);
     mpState->setRasterizerState(mLightingPass.pNoCullRS);
     mpSceneRenderer->renderScene(mpRenderContext.get());
@@ -365,14 +368,14 @@ void FeatureDemo::renderTransparentObjects()
     mpState->setRasterizerState(nullptr);
 }
 
-void FeatureDemo::resolveMSAA()
+void ForwardRenderer::resolveMSAA()
 {
     mpRenderContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
     mpRenderContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
     mpRenderContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
 }
 
-void FeatureDemo::shadowPass()
+void ForwardRenderer::shadowPass()
 {
     PROFILE(shadowPass);
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
@@ -383,7 +386,7 @@ void FeatureDemo::shadowPass()
     }
 }
 
-void FeatureDemo::antiAliasing()
+void ForwardRenderer::antiAliasing()
 {
     PROFILE(resolveMSAA);
     switch (mAAMode)
@@ -397,7 +400,7 @@ void FeatureDemo::antiAliasing()
     }
 }
 
-void FeatureDemo::runTAA()
+void ForwardRenderer::runTAA()
 {
     //  Get the Current Color and Motion Vectors
     const Texture::SharedPtr pCurColor = mpMainFbo->getColorTexture(0);
@@ -422,7 +425,7 @@ void FeatureDemo::runTAA()
     mTAA.switchFbos();
 }
 
-void FeatureDemo::ambientOcclusion()
+void ForwardRenderer::ambientOcclusion()
 {
     PROFILE(ssao);
     if (mControls[EnableSSAO].enabled)
@@ -438,7 +441,7 @@ void FeatureDemo::ambientOcclusion()
     }
 }
 
-void FeatureDemo::onBeginTestFrame()
+void ForwardRenderer::onBeginTestFrame()
 {
     //  Already exisitng. Is this a problem?
     if (mCurrentTriggerType == SampleTest::TriggerType::None)
@@ -449,7 +452,7 @@ void FeatureDemo::onBeginTestFrame()
     }
 }
 
-void FeatureDemo::onFrameRender()
+void ForwardRenderer::onFrameRender()
 {
     beginTestFrame();
     
@@ -480,7 +483,7 @@ void FeatureDemo::onFrameRender()
     endTestFrame();
 }
 
-void FeatureDemo::applyCameraPathState()
+void ForwardRenderer::applyCameraPathState()
 {
     const Scene* pScene = mpSceneRenderer->getScene().get();
     if(pScene->getPathCount())
@@ -497,7 +500,7 @@ void FeatureDemo::applyCameraPathState()
     }
 }
 
-bool FeatureDemo::onKeyEvent(const KeyboardEvent& keyEvent)
+bool ForwardRenderer::onKeyEvent(const KeyboardEvent& keyEvent)
 {
     if (mpSceneRenderer && keyEvent.type == KeyboardEvent::Type::KeyPressed)
     {
@@ -517,7 +520,7 @@ bool FeatureDemo::onKeyEvent(const KeyboardEvent& keyEvent)
     return mpSceneRenderer ? mpSceneRenderer->onKeyEvent(keyEvent) : false;
 }
 
-void FeatureDemo::onDroppedFile(const std::string& filename)
+void ForwardRenderer::onDroppedFile(const std::string& filename)
 {
     if (hasSuffix(filename, ".fscene", false) == false)
     {
@@ -527,12 +530,12 @@ void FeatureDemo::onDroppedFile(const std::string& filename)
     loadScene(filename, true);
 }
 
-bool FeatureDemo::onMouseEvent(const MouseEvent& mouseEvent)
+bool ForwardRenderer::onMouseEvent(const MouseEvent& mouseEvent)
 {
     return mpSceneRenderer ? mpSceneRenderer->onMouseEvent(mouseEvent) : true;
 }
 
-void FeatureDemo::onResizeSwapChain()
+void ForwardRenderer::onResizeSwapChain()
 {
     uint32_t w = mpDefaultFBO->getWidth();
     uint32_t h = mpDefaultFBO->getHeight();
@@ -552,14 +555,14 @@ void FeatureDemo::onResizeSwapChain()
     }
 }
 
-void FeatureDemo::setActiveCameraAspectRatio()
+void ForwardRenderer::setActiveCameraAspectRatio()
 {
     uint32_t w = mpDefaultFBO->getWidth();
     uint32_t h = mpDefaultFBO->getHeight();
     mpSceneRenderer->getScene()->getActiveCamera()->setAspectRatio((float)w / (float)h);
 }
 
-void FeatureDemo::onInitializeTesting()
+void ForwardRenderer::onInitializeTesting()
 {
     std::vector<ArgList::Arg> model = mArgList.getValues("loadmodel");
     if (!model.empty())
@@ -592,9 +595,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    FeatureDemo sample;
+	ForwardRenderer sample;
     SampleConfig config;
-    config.windowDesc.title = "Falcor Feature Demo";
+    config.windowDesc.title = "Falcor Forward Renderer";
     config.windowDesc.resizableWindow = false;
 #ifdef _WIN32
     sample.run(config);

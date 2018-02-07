@@ -36,6 +36,6 @@
         <package name="glfw" version="3.2.1" platforms="win" />
     </dependency>
     <dependency name="falcor_media" linkPath="Media">
-        <package name="falcor_media" version="1.0" />
+        <package name="falcor_media" version="2.0" />
     </dependency>
 </project>

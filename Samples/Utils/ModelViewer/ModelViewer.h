@@ -96,6 +96,7 @@ private:
     PointLight::SharedPtr mpPointLight;
 
     std::string mModelString;
+	const std::string mkDefaultModel = "Arcade\\Arcade.fbx";
 
     float mNearZ;
     float mFarZ;

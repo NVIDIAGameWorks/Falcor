@@ -25,33 +25,59 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-cbuffer PerFrameCB : register(b0)
-{
-    float4x4 gWvpMat;
-    float4x4 gWorldMat;
-    float3 gEyePosW;
-    float gLightIntensity;
-    float gSurfaceRoughness;
-};
+#pragma once
+#include "Falcor.h"
+#include "SampleTest.h"
+using namespace Falcor;
 
-struct PostProcessIn
+class HDRToneMapping : public SampleTest
 {
-    float4 pos : POSITION;
-    float3 normal : NORMAL;
-};
+public:
+    void onLoad() override;
+    void onFrameRender() override;
+    void onShutdown() override;
+    void onResizeSwapChain() override;
+    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
-struct PostProcessOut
-{
-    float4 pos : SV_POSITION;
-    float3 posW : POSITION;
-    float3 normalW : NORMAL;
-};
+private:
+    Model::SharedPtr mpTeapot;
+    Texture::SharedPtr mHdrImage;
+    ModelViewCameraController mCameraController;
+    Camera::SharedPtr mpCamera;
+    float mLightIntensity = 1.0f;
+    float mSurfaceRoughness = 5.0f;
 
-PostProcessOut main(PostProcessIn vIn)
-{
-    PostProcessOut vOut;
-    vOut.pos = (mul(vIn.pos, gWvpMat));
-    vOut.posW = (mul(vIn.pos, gWorldMat)).xyz;
-    vOut.normalW = (mul(float4(vIn.normal, 0), gWorldMat)).xyz;
-    return vOut;
-}
+    void onGuiRender() override;
+    void renderTeapot();
+
+    Sampler::SharedPtr mpTriLinearSampler;
+    GraphicsProgram::SharedPtr mpMainProg = nullptr;
+    GraphicsVars::SharedPtr mpProgramVars = nullptr;
+    GraphicsState::SharedPtr mpGraphicsState = nullptr;
+
+    SkyBox::UniquePtr mpSkyBox;
+
+    enum HdrImage
+    {
+        EveningSun,
+        OvercastDay,
+        AtTheWindow
+    };
+    static const Gui::DropdownList kImageList;
+
+    HdrImage mHdrImageIndex = HdrImage::EveningSun;
+    Fbo::SharedPtr mpHdrFbo;
+    ToneMapping::UniquePtr mpToneMapper;
+    SceneRenderer::SharedPtr mpSceneRenderer;
+
+    void loadImage();
+	const std::string mkDefaultModel = "teapot.obj";
+
+    //testing
+    void onInitializeTesting() override;
+    void onEndTestFrame() override;
+    std::vector<uint32_t> mChangeModeFrames;
+    std::vector<uint32_t>::iterator mChangeModeIt;
+    uint32_t mToneMapOperatorIndex;
+};

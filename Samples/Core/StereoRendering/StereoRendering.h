@@ -76,4 +76,6 @@ private:
     bool mShowStereoViews = true;
     void submitStereo(bool singlePassStereo);
     void setRenderMode();
+
+	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
 };

@@ -197,6 +197,8 @@ void StereoRendering::onLoad()
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
+
+	loadScene(mkDefaultScene);
 }
 
 void StereoRendering::blitTexture(Texture::SharedPtr pTexture, uint32_t xStart)

@@ -28,11 +28,11 @@
 #pragma once
 #include "Falcor.h"
 #include "SampleTest.h"
-#include "FeatureDemoSceneRenderer.h"
+#include "ForwardRendererSceneRenderer.h"
 
 using namespace Falcor;
 
-class FeatureDemo : public SampleTest
+class ForwardRenderer : public SampleTest
 {
 public:
     void onLoad() override;
@@ -149,7 +149,7 @@ private:
     void initControls();
 
     GraphicsState::SharedPtr mpState;
-    FeatureDemoSceneRenderer::SharedPtr mpSceneRenderer;
+	ForwardRendererSceneRenderer::SharedPtr mpSceneRenderer;
     void loadModel(const std::string& filename, bool showProgressBar);
     void loadScene(const std::string& filename, bool showProgressBar);
     void initScene(Scene::SharedPtr pScene);
@@ -206,6 +206,8 @@ private:
     void applyCameraPathState();
     bool mPerMaterialShader = false;
     bool mEnableDepthPass = true;
+
+	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
 
     // Testing 
     void onInitializeTesting() override;
