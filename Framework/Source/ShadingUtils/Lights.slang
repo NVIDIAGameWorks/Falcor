@@ -33,21 +33,21 @@ __import Helpers;
 
 struct LightSample
 {
-    float3 diffuse;   // The light intensity at the hit point used for the diffuse term
-    float3 specular;  // The light intensity at the hit point used for the specular term. For light probes, the diffuse and specular components are different
+    float3 diffuse;   // The light intensity at the surface location used for the diffuse term
+    float3 specular;  // The light intensity at the surface location used for the specular term. For light probes, the diffuse and specular components are different
     float3 L;         // The direction from the surface to the light source
     float3 posW;      // The world-space position of the light 
     float NdotH;      // Unclamped, can be negative
     float NdotL;      // Unclamped, can be negative
     float LdotH;      // Unclamped, can be negative
-    float distance;  // Distance from the light-source to the surface
+    float distance;   // Distance from the light-source to the surface
 };
 
-void calcCommonLightProperties(HitPoint hitPt, inout LightSample ls)
+void calcCommonLightProperties(ShadingData sd, inout LightSample ls)
 {
-    float3 H = normalize(hitPt.V + ls.L);
-    ls.NdotH = dot(hitPt.N, H);
-    ls.NdotL = dot(hitPt.N, ls.L);
+    float3 H = normalize(sd.V + ls.L);
+    ls.NdotH = dot(sd.N, H);
+    ls.NdotL = dot(sd.N, ls.L);
     ls.LdotH = dot(ls.L, H);
 };
 
@@ -59,24 +59,24 @@ float getDistanceFalloff(float distSquared)
 
 /** Evaluate a directional light source intensity/direction at a shading point
 */
-LightSample evalDirectionalLight(in LightData light, in float3 hitPosW)
+LightSample evalDirectionalLight(in LightData light, in float3 surfacePosW)
 {
     LightSample ls;
     ls.diffuse = light.intensity;
     ls.specular = light.intensity;
     ls.L = -normalize(light.dirW);
-    float dist = length(hitPosW - light.posW);
-    ls.posW = hitPosW - light.dirW * dist;
+    float dist = length(surfacePosW - light.posW);
+    ls.posW = surfacePosW - light.dirW * dist;
     return ls;
 }
 
 /** Evaluate a point light source intensity/direction at a shading point
 */
-LightSample evalPointLight(in LightData light, in float3 hitPosW)
+LightSample evalPointLight(in LightData light, in float3 surfacePosW)
 {
     LightSample ls;
     ls.posW = light.posW;
-    ls.L = light.posW - hitPosW;
+    ls.L = light.posW - surfacePosW;
     // Avoid NaN
     float distSquared = dot(ls.L, ls.L);
     ls.distance = (distSquared > 1e-5f) ? length(ls.L) : 0;
@@ -103,11 +103,11 @@ LightSample evalPointLight(in LightData light, in float3 hitPosW)
 
 /** Evaluate a area light source intensity/direction at a shading point
 */
-LightSample evalAreaLight(in AreaLightData light, in float3 hitPosW)
+LightSample evalAreaLight(in AreaLightData light, in float3 surfacePosW)
 {
     LightSample ls;
     ls.posW = mul(float4(light.posW, 1.0), light.transMat).xyz;
-    ls.L = light.posW - hitPosW;
+    ls.L = light.posW - surfacePosW;
     float distSquared = dot(ls.L, ls.L);
     ls.distance = (distSquared > 1e-5f) ? length(ls.L) : 0;
     ls.L = (distSquared > 1e-5f) ? normalize(ls.L) : 0;
@@ -130,12 +130,12 @@ float linearRoughnessToLod(float linearRoughness, float mipCount)
 
 /** Evaluate a light source intensity/direction at a shading point
 */
-LightSample evalLight(LightData light, HitPoint hitPt)
+LightSample evalLight(LightData light, ShadingData sd)
 {
     LightSample ls;
-    if(light.type == LightDirectional) ls = evalDirectionalLight(light, hitPt.posW);
-    else if(light.type == LightPoint)  ls = evalPointLight(light, hitPt.posW);
-    calcCommonLightProperties(hitPt, ls);
+    if(light.type == LightDirectional) ls = evalDirectionalLight(light, sd.posW);
+    else if(light.type == LightPoint)  ls = evalPointLight(light, sd.posW);
+    calcCommonLightProperties(sd, ls);
     return ls;
 };
 
@@ -156,12 +156,12 @@ float3 getSpecularDominantDir(float3 N, float3 R, float roughness)
 
 /** Evaluate a 2D light-probe filtered using linear-filtering
 */
-LightSample evalLightProbeLinear2D(LightProbeData probe, HitPoint hitPt)
+LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
 {
     LightSample ls;
 
     // Calculate the reflection vector
-    ls.L = reflect(-hitPt.V, hitPt.N);
+    ls.L = reflect(-sd.V, sd.N);
 
     // Get the mip-level count
     uint h, w, mipCount;
@@ -171,25 +171,25 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, HitPoint hitPt)
     ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, 0, mipCount - 2).rgb;
 
     // Get the specular component
-    float3 specDir = getSpecularDominantDir(hitPt.N, ls.L, hitPt.roughness);
+    float3 specDir = getSpecularDominantDir(sd.N, ls.L, sd.roughness);
     float2 specCrd = dirToSphericalCrd(specDir);
-    float lod = linearRoughnessToLod(hitPt.linearRoughness, mipCount);
+    float lod = linearRoughnessToLod(sd.linearRoughness, mipCount);
     ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, specCrd, lod).rgb;
     
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
     ls.posW = probe.posW;
-    ls.distance = length(probe.posW - hitPt.posW);
-    calcCommonLightProperties(hitPt, ls);
+    ls.distance = length(probe.posW - sd.posW);
+    calcCommonLightProperties(sd, ls);
 
     return ls;
 }
 
 /** Evaluate the properties of a light-probe
 */
-LightSample evalLightProbe(LightProbeData probe, HitPoint hitPt)
+LightSample evalLightProbe(LightProbeData probe, ShadingData sd)
 {
-    return evalLightProbeLinear2D(probe, hitPt);
+    return evalLightProbeLinear2D(probe, sd);
 }
 
 #endif	// _FALCOR_LIGHTS_SLANG_

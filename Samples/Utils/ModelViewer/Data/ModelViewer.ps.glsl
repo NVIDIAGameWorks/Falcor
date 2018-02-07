@@ -49,10 +49,10 @@ void main()
     }
     else
     {
-        HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
+        ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
-        fragColor.rgb = evalMaterial(hitPt, gDirLight, 1).color.rgb;
-        fragColor.rgb += evalMaterial(hitPt, gPointLight, 1).color.rgb;
+        fragColor.rgb = evalMaterial(sd, gDirLight, 1).color.rgb;
+        fragColor.rgb += evalMaterial(sd, gPointLight, 1).color.rgb;
         fragColor.a = 1;
     }
 }

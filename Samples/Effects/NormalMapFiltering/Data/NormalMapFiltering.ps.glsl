@@ -39,13 +39,13 @@ layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
-    fragColor = vec4(gAmbient * hitPt.diffuse, 1);
+    fragColor = vec4(gAmbient * sd.diffuse, 1);
 
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
-        fragColor.rgb += evalMaterial(hitPt, gLights[l], 1).color.rgb;
+        fragColor.rgb += evalMaterial(sd, gLights[l], 1).color.rgb;
     }
 }

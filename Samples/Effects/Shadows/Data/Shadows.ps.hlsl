@@ -46,17 +46,17 @@ struct ShadowsVSOut
 
 float4 main(ShadowsVSOut pIn) : SV_TARGET0
 {
-    HitPoint hitPoint = prepareHitPoint(pIn.vsData, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData(pIn.vsData, gMaterial, gCamera.posW);
     float4 color = float4(0,0,0,1);
     
     [unroll]
     for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
     {
-        float shadowFactor = calcShadowFactor(gCsmData[l], pIn.shadowsDepthC, hitPoint.posW, pIn.vsData.posH.xy/pIn.vsData.posH.w);
-        color.rgb += evalMaterial(hitPoint, gLights[l], shadowFactor).color;
+        float shadowFactor = calcShadowFactor(gCsmData[l], pIn.shadowsDepthC, sd.posW, pIn.vsData.posH.xy/pIn.vsData.posH.w);
+        color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color;
     }
 
-    color.rgb += gAmbient * hitPoint.diffuse * 0.1;
+    color.rgb += gAmbient * sd.diffuse * 0.1;
     if(visualizeCascades)
     {
         //Ideally this would be light index so you can visualize the cascades of the 

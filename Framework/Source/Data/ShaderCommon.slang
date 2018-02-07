@@ -100,7 +100,7 @@ float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim
 
 /** This struct describes the geometric data for a specific hit point used for lighting calculations 
 */
-struct HitPoint
+struct ShadingData
 {
     float3    posW;         ///< Shading hit position in world space
     float3    V;            ///< Direction to the eye at shading hit

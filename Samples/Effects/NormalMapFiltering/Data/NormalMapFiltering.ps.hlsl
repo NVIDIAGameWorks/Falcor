@@ -36,16 +36,16 @@ cbuffer PerFrameCB : register(b0)
 
 float4 main(VertexOut vOut) : SV_TARGET
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
     float3 result = 0;
 
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
-        result += evalMaterial(hitPt, gLights[l], 1).color;
+        result += evalMaterial(sd, gLights[l], 1).color;
     }
 
-    result += gAmbient * hitPt.diffuse;
+    result += gAmbient * sd.diffuse;
     return float4(result, 1);
 }

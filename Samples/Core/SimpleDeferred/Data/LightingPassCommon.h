@@ -47,20 +47,20 @@ vec3 shade(vec3 posW, vec3 normalW, float linearRoughness, vec4 albedo)
     }
 
     /* Reconstruct the hit-point */
-    HitPoint hitPt = initHitPoint();
-    hitPt.posW = posW;
-    hitPt.V = normalize(gCamera.posW - posW);
-    hitPt.N = normalW;
-    hitPt.NdotV = abs(dot(hitPt.V, hitPt.N));
-    hitPt.linearRoughness = linearRoughness;
+    ShadingData sd = initShadingData();
+    sd.posW = posW;
+    sd.V = normalize(gCamera.posW - posW);
+    sd.N = normalW;
+    sd.NdotV = abs(dot(sd.V, sd.N));
+    sd.linearRoughness = linearRoughness;
 
     /* Reconstruct layers (one diffuse layer) */
-    hitPt.diffuse = albedo.rgb;
-    hitPt.opacity = 0;
+    sd.diffuse = albedo.rgb;
+    sd.opacity = 0;
 
     /* Do lighting */
-    ShadingResult dirResult = evalMaterial(hitPt, gDirLight, 1);
-    ShadingResult pointResult = evalMaterial(hitPt, gPointLight, 1);
+    ShadingResult dirResult = evalMaterial(sd, gDirLight, 1);
+    ShadingResult pointResult = evalMaterial(sd, gPointLight, 1);
 
     float3 result;
     // Debug vis
@@ -71,7 +71,7 @@ vec3 shade(vec3 posW, vec3 normalW, float linearRoughness, vec4 albedo)
     else if (gDebugMode == ShowAlbedo)
         result = albedo.rgb;
     else if (gDebugMode == ShowLighting)
-        result = (dirResult.diffuseBrdf + pointResult.diffuseBrdf) / hitPt.diffuse.rgb;
+        result = (dirResult.diffuseBrdf + pointResult.diffuseBrdf) / sd.diffuse.rgb;
     else
         result = dirResult.diffuse + pointResult.diffuse;
 

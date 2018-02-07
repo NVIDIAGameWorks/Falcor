@@ -31,13 +31,13 @@ __import DefaultVS;
 
 float4 main(VertexOut vOut) : SV_TARGET
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
     float3 color = 0;
 
     for (uint l = 0; l < gLightsCount; l++)
     {
-        color += evalMaterial(hitPt, gLights[l], 1).color.rgb;
+        color += evalMaterial(sd, gLights[l], 1).color.rgb;
     }
 
     return float4(color, 1.f);
