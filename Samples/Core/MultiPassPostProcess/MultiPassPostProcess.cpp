@@ -151,13 +151,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    MultiPassPostProcess multiPassPostProcess;
+    MultiPassPostProcess::UniquePtr pRenderer = std::make_unique<MultiPassPostProcess>();
+
     SampleConfig config;
     config.windowDesc.title = "Multi-pass post-processing";
 #ifdef _WIN32
-    Sample::run(config, multiPassPostProcess);
+    Sample::run(config, pRenderer);
 #else
-    Sample::run(config, multiPassPostProcess, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

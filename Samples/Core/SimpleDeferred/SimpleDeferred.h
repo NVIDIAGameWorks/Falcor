@@ -31,23 +31,23 @@
 
 using namespace Falcor;
 
-class SimpleDeferred : public SampleTest
+class SimpleDeferred : public Renderer
 {
 public:
     ~SimpleDeferred();
 
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    void onGuiRender() override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onShutdown(SampleCallbacks* pSample) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 private:
-    void loadModel();
-    void loadModelFromFile(const std::string& filename);
+    void loadModel(Fbo* pCurrentFbo);
+    void loadModelFromFile(const std::string& filename, Fbo* pCurrentFbo);
     void resetCamera();
-    void renderModelUiElements();
+    void renderModelUiElements(Gui* pGui);
 
     Model::SharedPtr mpModel = nullptr;
     ModelViewCameraController mModelViewCameraController;
@@ -105,8 +105,8 @@ private:
     float mFarZ = 1e3f;
 
     //testing
-    void onInitializeTesting() override;
-    void onEndTestFrame() override;
+//     void onInitializeTesting() override;
+//     void onEndTestFrame() override;
     std::vector<uint32_t> mChangeModeFrames;
     std::vector<uint32_t>::iterator mChangeModeIt;
 };

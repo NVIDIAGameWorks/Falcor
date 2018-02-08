@@ -83,7 +83,7 @@ namespace Falcor
     class Renderer : std::enable_shared_from_this<Renderer>
     {
     public:
-        using SharedPtr = std::shared_ptr<Renderer>;
+        using UniquePtr = std::unique_ptr<Renderer>;
         Renderer() = default;
         virtual ~Renderer() {};
 

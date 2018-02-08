@@ -219,7 +219,7 @@ namespace Falcor
             {
                 pDx12Debug->EnableDebugLayer();
             }
-            dxgiFlags |= DXGI_CREATE_FACTORY_DEBUG;
+//            dxgiFlags |= DXGI_CREATE_FACTORY_DEBUG;
         }
 
         // Create the DXGI factory

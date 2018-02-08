@@ -127,15 +127,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    ComputeShader renderer;
+    ComputeShader::UniquePtr pRenderer = std::make_unique<ComputeShader>();
     SampleConfig config;
     config.windowDesc.title = "Compute Shader";
     config.windowDesc.resizableWindow = true;
     config.deviceDesc.depthFormat = ResourceFormat::Unknown;
 #ifdef _WIN32
-    Sample::run(config, renderer);
+    Sample::run(config, pRenderer);
 #else
-    Sample::run(config, renderer, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

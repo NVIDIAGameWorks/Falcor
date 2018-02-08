@@ -36,14 +36,14 @@ void ProjectTemplate::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void ProjectTemplate::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
+void ProjectTemplate::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
 }
 
-void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, Fbo* pCurrentFbo)
+void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
 {
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pCurrentFbo, clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 }
 
 void ProjectTemplate::onShutdown(SampleCallbacks* pSample)
@@ -66,16 +66,16 @@ void ProjectTemplate::onDataReload(SampleCallbacks* pSample)
 
 }
 
-void ProjectTemplate::onResizeSwapChain(SampleCallbacks* pSample)
+void ProjectTemplate::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
-    ProjectTemplate renderer;
+    ProjectTemplate::UniquePtr pRenderer = std::make_unique<ProjectTemplate>();
     SampleConfig config;
     config.windowDesc.title = "Falcor Project Template";
     config.windowDesc.resizableWindow = true;
-    Sample::run(config, renderer);
+    Sample::run(config, pRenderer);
     return 0;
 }

@@ -87,7 +87,7 @@ namespace Falcor
             \param[in] argc Optional. Number of command line arguments
             \param[in] argv Optional. Array of command line arguments
         */
-        static void run(const SampleConfig& config, Renderer& renderer, uint32_t argc = 0, char** argv = nullptr);
+        static void run(const SampleConfig& config, Renderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
         virtual ~Sample();
     protected:
@@ -154,7 +154,7 @@ namespace Falcor
         bool mShowUI = true;
         bool mCaptureScreen = false;
 
-        Renderer& mRenderer;
+        Renderer::UniquePtr mpRenderer;
 
         struct VideoCaptureData
         {
@@ -176,7 +176,7 @@ namespace Falcor
         uint32_t mSampleGuiWidth = 250;
         uint32_t mSampleGuiHeight = 200;
 
-        Sample(Renderer& renderer) : mRenderer(renderer) {}
+        Sample(Renderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
         Sample(const Sample&) = delete;
         Sample& operator=(const Sample&) = delete;
     };

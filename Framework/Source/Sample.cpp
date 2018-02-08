@@ -52,7 +52,7 @@ namespace Falcor
         mpGui->onWindowResize(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
 
         // Call the user callback
-        mRenderer.onResizeSwapChain(this, mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
+        mpRenderer->onResizeSwapChain(this, mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
     }
 
     void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent)
@@ -109,7 +109,7 @@ namespace Falcor
                         break;
                     case KeyboardEvent::Key::F5:
                         Program::reloadAllPrograms();
-                        mRenderer.onDataReload(this);
+                        mpRenderer->onDataReload(this);
                         break;
                     case KeyboardEvent::Key::Escape:
                         if (mVideoCapture.pVideoCapture)
@@ -130,12 +130,12 @@ namespace Falcor
         }
 
         // If we got here, this is a user specific message
-        mRenderer.onKeyEvent(this, keyEvent);
+        mpRenderer->onKeyEvent(this, keyEvent);
     }
 
     void Sample::handleDroppedFile(const std::string& filename)
     {
-        mRenderer.onDroppedFile(this, filename);
+        mpRenderer->onDroppedFile(this, filename);
     }
 
     void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
@@ -145,7 +145,7 @@ namespace Falcor
             if (mpGui->onMouseEvent(mouseEvent)) return;
             if (mpPixelZoom->onMouseEvent(mouseEvent)) return;
         }
-        mRenderer.onMouseEvent(this, mouseEvent);
+        mpRenderer->onMouseEvent(this, mouseEvent);
     }
 
     // Sample functions
@@ -168,9 +168,9 @@ namespace Falcor
         gpDevice.reset();
     }
 
-    void Sample::run(const SampleConfig& config, Renderer& renderer, uint32_t argc, char** argv)
+    void Sample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer, uint32_t argc, char** argv)
     {
-        Sample s(renderer);
+        Sample s(pRenderer);
         s.runInternal(config, argc, argv);
     }
 
@@ -255,13 +255,14 @@ namespace Falcor
         }
 
         // Load and run
-        mRenderer.onLoad(this, mpRenderContext);
+        mpRenderer->onLoad(this, mpRenderContext);
         pBar = nullptr;
 
         mFrameRate.resetClock();
         mpWindow->msgLoop();
 
-        mRenderer.onShutdown(this);
+        mpRenderer->onShutdown(this);
+        mpRenderer.release();
         Logger::shutdown();
     }
 
@@ -344,7 +345,7 @@ namespace Falcor
             mpGui->endGroup();
         }
 
-        mRenderer.onGuiRender(this, mpGui.get());
+        mpRenderer->onGuiRender(this, mpGui.get());
         mpGui->popWindow();
         
         if (mVideoCapture.pUI)
@@ -375,7 +376,7 @@ namespace Falcor
                 mpDefaultPipelineState->setFbo(mpDefaultFBO);
             }
             calculateTime();
-            mRenderer.onFrameRender(this, mpRenderContext, mpDefaultFBO);
+            mpRenderer->onFrameRender(this, mpRenderContext, mpDefaultFBO);
         }
         {
             PROFILE(renderGUI);

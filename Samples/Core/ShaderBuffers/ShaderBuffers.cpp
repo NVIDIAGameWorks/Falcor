@@ -213,14 +213,15 @@ int main(int argc, char** argv)
     return 0;
 #endif
 
-    ShaderBuffersSample buffersSample;
+    ShaderBuffersSample::UniquePtr pRenderer = std::make_unique<ShaderBuffersSample>();
+
     SampleConfig config;
     config.windowDesc.title = "Shader Buffers";
     config.windowDesc.resizableWindow = true;
 #ifdef _WIN32
-    Sample::run(config, buffersSample);
+    Sample::run(config, pRenderer);
 #else
-    Sample::run(config, buffersSample, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }
