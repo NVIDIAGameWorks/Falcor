@@ -41,10 +41,6 @@
 
 namespace Falcor
 {
-    Sample::Sample()
-    {
-    }
-
     void Sample::handleWindowSizeChange()
     {
         if (!gpDevice) return;
@@ -56,7 +52,7 @@ namespace Falcor
         mpGui->onWindowResize(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
 
         // Call the user callback
-        onResizeSwapChain();
+        mRenderer.onResizeSwapChain(this, mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
     }
 
     void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent)
@@ -113,7 +109,7 @@ namespace Falcor
                         break;
                     case KeyboardEvent::Key::F5:
                         Program::reloadAllPrograms();
-                        onDataReload();
+                        mRenderer.onDataReload(this);
                         break;
                     case KeyboardEvent::Key::Escape:
                         if (mVideoCapture.pVideoCapture)
@@ -134,12 +130,12 @@ namespace Falcor
         }
 
         // If we got here, this is a user specific message
-        onKeyEvent(keyEvent);
+        mRenderer.onKeyEvent(this, keyEvent);
     }
 
     void Sample::handleDroppedFile(const std::string& filename)
     {
-        onDroppedFile(filename);
+        mRenderer.onDroppedFile(this, filename);
     }
 
     void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
@@ -149,7 +145,7 @@ namespace Falcor
             if (mpGui->onMouseEvent(mouseEvent)) return;
             if (mpPixelZoom->onMouseEvent(mouseEvent)) return;
         }
-        onMouseEvent(mouseEvent);
+        mRenderer.onMouseEvent(this, mouseEvent);
     }
 
     // Sample functions
@@ -172,7 +168,13 @@ namespace Falcor
         gpDevice.reset();
     }
 
-    void Sample::run(const SampleConfig& config, uint32_t argc, char** argv)
+    void Sample::run(const SampleConfig& config, Renderer& renderer, uint32_t argc, char** argv)
+    {
+        Sample s(renderer);
+        s.runInternal(config, argc, argv);
+    }
+
+    void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv)
     {
         mTimeScale = config.timeScale;
         mFixedTimeDelta = config.fixedTimeDelta;
@@ -253,13 +255,13 @@ namespace Falcor
         }
 
         // Load and run
-        onLoad();
+        mRenderer.onLoad(this, mpRenderContext);
         pBar = nullptr;
 
         mFrameRate.resetClock();
         mpWindow->msgLoop();
 
-        onShutdown();
+        mRenderer.onShutdown(this);
         Logger::shutdown();
     }
 
@@ -276,7 +278,7 @@ namespace Falcor
         }
     }
 
-    void Sample::setSampleGuiWindowSize(uint32_t width, uint32_t height)
+    void Sample::setDefaultGuiSize(uint32_t width, uint32_t height)
     {
         mSampleGuiWidth = width;
         mSampleGuiHeight = height;
@@ -342,7 +344,7 @@ namespace Falcor
             mpGui->endGroup();
         }
 
-        onGuiRender();
+        mRenderer.onGuiRender(this, mpGui.get());
         mpGui->popWindow();
         
         if (mVideoCapture.pUI)
@@ -373,7 +375,7 @@ namespace Falcor
                 mpDefaultPipelineState->setFbo(mpDefaultFBO);
             }
             calculateTime();
-            onFrameRender();
+            mRenderer.onFrameRender(this, mpRenderContext, mpDefaultFBO);
         }
         {
             PROFILE(renderGUI);
@@ -431,7 +433,7 @@ namespace Falcor
         mpTextRenderer = TextRenderer::create();
     }
 
-    const std::string Sample::getFpsMsg() const
+    std::string Sample::getFpsMsg()
     {
         std::string s;
         if (mShowText)
@@ -456,12 +458,12 @@ namespace Falcor
         mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
     }
 
-    bool Sample::isKeyPressed(const KeyboardEvent::Key& key) const
+    bool Sample::isKeyPressed(const KeyboardEvent::Key& key)
     {
         return mPressedKeys.find(key) != mPressedKeys.cend();
     }
 
-    void Sample::renderText(const std::string& msg, const glm::vec2& position, const glm::vec2 shadowOffset) const
+    void Sample::renderText(const std::string& msg, const glm::vec2& position, const glm::vec2 shadowOffset)
     {
         if (mShowText)
         {
@@ -571,20 +573,5 @@ namespace Falcor
                 }
             }
         }
-    }
-
-    void Sample::shutdownApp()
-    {
-        mpWindow->shutdown();
-    }
-
-    void Sample::pollForEvents()
-    {
-        mpWindow->pollForEvents();
-    }
-
-    void Sample::setWindowTitle(const std::string& title)
-    {
-        mpWindow->setWindowTitle(title);
     }
 }

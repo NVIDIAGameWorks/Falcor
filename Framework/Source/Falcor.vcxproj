@@ -818,6 +818,7 @@
     <ClInclude Include="Graphics\Scene\SceneRenderer.h" />
     <ClInclude Include="Graphics\TextureHelper.h" />
     <ClInclude Include="MultiRendererSample.h" />
+    <ClInclude Include="Renderer.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
     <ClInclude Include="Utils\AABB.h" />
@@ -844,7 +845,7 @@
     <ClInclude Include="Utils\Psychophysics\Experiment.h" />
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
     <ClInclude Include="Utils\PythonEmbedding.h" />
-    <ClInclude Include="Utils\Renderer\Renderer.h" />
+    <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />

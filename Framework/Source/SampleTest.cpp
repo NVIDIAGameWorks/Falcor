@@ -645,7 +645,7 @@ namespace Falcor
 
     void SampleTest::LoadTimeCheckTask::onFrameBegin(SampleTest* sampleTest)
     {
-        mLoadTimeCheckResult = sampleTest->frameRate().getLastFrameTime();
+        mLoadTimeCheckResult = sampleTest->mFrameRate.getLastFrameTime();
     }
 
     void SampleTest::LoadTimeCheckTask::onFrameEnd(SampleTest* sampleTest)
@@ -703,7 +703,7 @@ namespace Falcor
         sampleTest->writeJsonTestResults();
 
         // Shutdown the App.
-        sampleTest->shutdownApp();
+        sampleTest->getWindow()->shutdown();
 
         // On Test Shutdown.
         sampleTest->onTestShutdown();
@@ -797,7 +797,7 @@ namespace Falcor
             sampleTest->writeJsonTestResults();
 
             // Shutdown the App.
-            sampleTest->shutdownApp();
+            sampleTest->getWindow()->shutdown();
 
             // On Test Shutdown.
             sampleTest->onTestShutdown();

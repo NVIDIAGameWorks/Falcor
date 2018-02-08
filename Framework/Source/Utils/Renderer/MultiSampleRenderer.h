@@ -34,7 +34,7 @@ using namespace Falcor;
 
 /** Abstract base class for encapsulated renderers used for for Falcor's MultiRendererSample
 */
-class Renderer : public std::enable_shared_from_this<Renderer>
+class MultiSampleRenderer : public std::enable_shared_from_this<MultiSampleRenderer>
 {
 public:
 	using SharedPtr      = std::shared_ptr<Renderer>;
@@ -44,9 +44,9 @@ public:
 	    \param[in] rendererName The name used in the MultiRendererSample drop down to select between renderers
 	    \param[in] guiName The name of the GUI window
 	*/
-	Renderer( const std::string rendererName = "<Unknown Renderer>", 
+    MultiSampleRenderer( const std::string rendererName = "<Unknown Renderer>",
 		      const std::string guiName      = "<Unknown Renderer>" ) : mRendererName(rendererName), mGuiGroupName(guiName) {}
-	virtual ~Renderer() = default;
+	virtual ~MultiSampleRenderer() = default;
 
 	/** Callback on program initialization
 		\param[in] pContext Provides the current context to initialize resources for your renderer
@@ -135,8 +135,8 @@ protected:
 public:
 
 	// Deleted copy operators (copy a pointer type!)
-	Renderer(const Renderer&) = delete;
-	Renderer& operator=(const Renderer &) = delete;
+    MultiSampleRenderer(const MultiSampleRenderer&) = delete;
+    MultiSampleRenderer& operator=(const MultiSampleRenderer &) = delete;
 
 	/** The global app tracks the global time.  This is a setter called by the app to ensure renderers have access to the time
 	*/
