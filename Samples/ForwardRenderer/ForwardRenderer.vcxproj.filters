@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="FeatureDemo.cpp" />
-    <ClCompile Include="FeatureDemoControls.cpp" />
-    <ClCompile Include="FeatureDemoSceneRenderer.cpp" />
+    <ClCompile Include="ForwardRenderer.cpp" />
+    <ClCompile Include="ForwardRendererControls.cpp" />
+    <ClCompile Include="ForwardRendererSceneRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FeatureDemo.h" />
-    <ClInclude Include="FeatureDemoSceneRenderer.h" />
+    <ClInclude Include="ForwardRenderer.h" />
+    <ClInclude Include="ForwardRendererSceneRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Data">
@@ -15,19 +15,19 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\FeatureDemoCommon.hlsli">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\FeatureDemo.ps.slang">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\FeatureDemo.vs.slang">
-      <Filter>Data</Filter>
-    </None>
     <None Include="Data\ApplyAO.ps.slang">
       <Filter>Data</Filter>
     </None>
     <None Include="Data\DepthPass.ps.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\ForwardRenderer.ps.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\ForwardRenderer.vs.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\ForwardRendererCommon.hlsli">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

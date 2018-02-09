@@ -28,15 +28,15 @@
 #pragma once
 #include "Falcor.h"
 #include "SampleTest.h"
-#include "FeatureDemoSceneRenderer.h"
+#include "ForwardRendererSceneRenderer.h"
 
 using namespace Falcor;
 
-class FeatureDemo : public Renderer
+class ForwardRenderer : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
@@ -120,17 +120,17 @@ private:
         GraphicsVars::SharedPtr pVars;
     } mSSAO;
 
-    void beginFrame(RenderContext* pContext, Fbo* pCurrentFbo, uint32_t frameId);
+    void beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint32_t frameId);
     void endFrame(RenderContext* pContext);
     void depthPass(RenderContext* pContext);
     void shadowPass(RenderContext* pContext);
     void renderSkyBox(RenderContext* pContext);
-    void lightingPass(RenderContext* pContext, Fbo* pCurrentFbo);
+    void lightingPass(RenderContext* pContext, Fbo* pTargetFbo);
     void antiAliasing(RenderContext* pContext);
     void resolveMSAA(RenderContext* pContext);
     void runTAA(RenderContext* pContext);
-    void postProcess(RenderContext* pContext, Fbo::SharedPtr pCurrentFbo);
-    void ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pCurrentFbo);
+    void postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
+    void ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
 
 
     void renderOpaqueObjects(RenderContext* pContext);
@@ -149,7 +149,7 @@ private:
     void initControls();
 
     GraphicsState::SharedPtr mpState;
-    FeatureDemoSceneRenderer::SharedPtr mpSceneRenderer;
+	ForwardRendererSceneRenderer::SharedPtr mpSceneRenderer;
     void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
     void loadScene(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
     void initScene(SampleCallbacks* pSample, Scene::SharedPtr pScene);
@@ -206,6 +206,8 @@ private:
     void applyCameraPathState();
     bool mPerMaterialShader = false;
     bool mEnableDepthPass = true;
+
+	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
 
     // Testing 
 //     void onInitializeTesting() override;

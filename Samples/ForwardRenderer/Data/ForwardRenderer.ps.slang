@@ -25,42 +25,68 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#define PI 3.141591
+#include "ForwardRendererCommon.hlsli"
 
-cbuffer PerFrameCB : register(b0)
+__import Shading;
+__import Helpers;
+__import BRDF;
+
+layout(set = 1, binding = 1) SamplerState gSampler;
+
+struct PsOut
 {
-    float4x4 gWvpMat;
-    float4x4 gWorldMat;
-    float3 gEyePosW;
-    float gLightIntensity;
-    float gSurfaceRoughness;
+    float4 color : SV_TARGET0;
+    float4 normal : SV_TARGET1;
+#ifdef _OUTPUT_MOTION_VECTORS
+    float2 motion : SV_TARGET2;
+#endif
 };
 
-Texture2D gEnvMap;
-SamplerState gSampler;
-
-struct PostProcessOut
+PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
-    float4 pos : SV_POSITION;
-    float3 posW : POSITION;
-    float3 normalW : NORMAL;
-};
+    PsOut psOut;
 
-float4 main(PostProcessOut vOut) : SV_TARGET
-{
-    float3 p = normalize(vOut.normalW);
-    float2 uv;
-    uv.x = ( 1 + atan2(-p.z, p.x) / PI) * 0.5;
-    uv.y = 1 - (-acos(p.y) / PI);
-    float4 color = gEnvMap.Sample(gSampler, uv);
-    color.rgb *= gLightIntensity;
+    ShadingData sd = prepareShadingData(vOut.vsData, gMaterial, gCamera.posW);
 
-    // compute halfway vector
-    float3 eyeDir = normalize(gEyePosW - vOut.posW);
-    float3 h = normalize(eyeDir + vOut.normalW);
-    float edoth = dot(eyeDir, h);
-    float intensity = pow(clamp(edoth, 0, 1), gSurfaceRoughness);
+    float4 finalColor = float4(0, 0, 0, 1);
 
-    color.rgb *= intensity;
-    return color;
+    [unroll]
+    for (uint l = 0; l < _LIGHT_COUNT; l++)
+    {
+        float shadowFactor = 1;
+#ifdef _ENABLE_SHADOWS
+        if (l == 0)
+        {
+            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, sd.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
+            shadowFactor *= sd.opacity;
+        }
+#endif
+        finalColor.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
+    }
+
+    // Add the emissive component
+    finalColor.rgb += sd.emissive;
+
+#ifdef _ENABLE_TRANSPARENCY
+    finalColor.a = sd.opacity * gOpacityScale;
+#endif
+
+#ifdef _ENABLE_REFLECTIONS
+    finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
+#endif
+
+    // Add light-map
+    finalColor.rgb += sd.diffuse * sd.lightMap.rgb;
+
+    psOut.color = finalColor;
+    psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
+
+#ifdef _OUTPUT_MOTION_VECTORS
+    psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);
+#endif
+
+#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
+    psOut.color.rgb *= getBlendedCascadeColor(gCsmData, vOut.shadowsDepthC);
+#endif
+    return psOut;
 }

@@ -271,13 +271,15 @@ void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
     mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
+
+	loadModelFromFile(mkDefaultModel, pRenderContext->getGraphicsState()->getFbo()->getColorTexture(0)->getFormat());
 }
 
-void ModelViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void ModelViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    mpGraphicsState->setFbo(pCurrentFbo);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    mpGraphicsState->setFbo(pTargetFbo);
 
     if(mpModel)
     {

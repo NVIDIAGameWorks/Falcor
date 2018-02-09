@@ -71,7 +71,7 @@ void ComputeShader::loadImageFromFile(SampleCallbacks* pSample, std::string file
     mpTmpTexture = createTmpTex(pSample->getCurrentFbo().get());
 }
 
-void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pCurrentFbo)
+void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
 //    beginTestFrame();
 
@@ -97,11 +97,11 @@ void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::Share
         uint32_t w = (mpImage->getWidth() / 16) + 1;
         uint32_t h = (mpImage->getHeight() / 16) + 1;
         pContext->dispatch(w, h, 1);
-        pContext->copyResource(pCurrentFbo->getColorTexture(0).get(), mpTmpTexture.get());
+        pContext->copyResource(pTargetFbo->getColorTexture(0).get(), mpTmpTexture.get());
     }
     else
     {
-        pContext->clearRtv(pCurrentFbo->getRenderTargetView(0).get(), clearColor);
+        pContext->clearRtv(pTargetFbo->getRenderTargetView(0).get(), clearColor);
     }
 
 //    endTestFrame();

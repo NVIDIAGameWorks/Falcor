@@ -81,10 +81,7 @@ void Shadows::createScene(const std::string& filename)
 {
     // Load the scene
     mpScene = Scene::loadFromFile(filename);
-    for (uint32_t i = 0; i < mpScene->getPathCount(); i++)
-    {
-        mpScene->getPath(i)->detachAllObjects();
-    }
+
     // Create the renderer
     mpRenderer = SceneRenderer::create(mpScene);
     mpRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
@@ -109,7 +106,7 @@ void Shadows::createScene(const std::string& filename)
 
 void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
-    createScene("Scenes/DragonPlane.fscene");
+    createScene(mkDefaultScene);
     createVisualizationProgram();
 }
 
@@ -140,10 +137,10 @@ void Shadows::displayShadowMap(RenderContext* pContext)
     pContext->popGraphicsVars();
 }
 
-void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     if(mpScene)
     {

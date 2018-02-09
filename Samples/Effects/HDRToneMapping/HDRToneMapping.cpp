@@ -25,15 +25,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "PostProcess.h"
+#include "HDRToneMapping.h"
 
 using namespace Falcor;
 
-const Gui::DropdownList PostProcess::kImageList = { { HdrImage::EveningSun, "Evening Sun" },
+const Gui::DropdownList HDRToneMapping::kImageList = { { HdrImage::EveningSun, "Evening Sun" },
                                                     { HdrImage::AtTheWindow, "Window" },
                                                     { HdrImage::OvercastDay, "Overcast Day" } };
 
-void PostProcess::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void HDRToneMapping::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     //Create model and camera
     mpTeapot = Model::createFromFile("teapot.obj");
@@ -47,7 +47,7 @@ void PostProcess::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
     mCameraController.setModelParams(mpTeapot->getCenter(), mpTeapot->getRadius(), 2.0f);    
     
     //Program
-    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("PostProcess.vs"), appendShaderExtension("PostProcess.ps"));
+    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("HDRToneMapping.vs"), appendShaderExtension("HDRToneMapping.ps"));
     mpProgramVars = GraphicsVars::create(mpMainProg->getActiveVersion()->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setFbo(pSample->getCurrentFbo());
@@ -67,7 +67,7 @@ void PostProcess::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
 //    initializeTesting();
 }
 
-void PostProcess::loadImage()
+void HDRToneMapping::loadImage()
 {
     std::string filename;
     switch(mHdrImageIndex)
@@ -87,7 +87,7 @@ void PostProcess::loadImage()
     mpSkyBox = SkyBox::create(mHdrImage, mpTriLinearSampler);
 }
 
-void PostProcess::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+void HDRToneMapping::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     uint32_t uHdrIndex = static_cast<uint32_t>(mHdrImageIndex);
     if (pGui->addDropdown("HdrImage", kImageList, uHdrIndex))
@@ -100,7 +100,7 @@ void PostProcess::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     mpToneMapper->renderUI(pGui, "HDR");
 }
 
-void PostProcess::renderTeapot(RenderContext* pContext)
+void HDRToneMapping::renderTeapot(RenderContext* pContext)
 {
     //Update vars
     glm::mat4 wvp = mpCamera->getProjMatrix() * mpCamera->getViewMatrix();
@@ -119,7 +119,7 @@ void PostProcess::renderTeapot(RenderContext* pContext)
     pContext->drawIndexed(mpTeapot->getMesh(0)->getIndexCount(), 0, 0);
 }
 
-void PostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void HDRToneMapping::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
 //    beginTestFrame();
 
@@ -135,7 +135,7 @@ void PostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedP
     mpGraphicsState->popFbo();
 
     //Run tone mapping
-    mpToneMapper->execute(pRenderContext.get(), mpHdrFbo, pCurrentFbo);
+    mpToneMapper->execute(pRenderContext.get(), mpHdrFbo, pTargetFbo);
 
     std::string Txt = pSample->getFpsMsg() + '\n';
     pSample->renderText(Txt, glm::vec2(10, 10));
@@ -143,7 +143,7 @@ void PostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedP
 //    endTestFrame();
 }
 
-void PostProcess::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
+void HDRToneMapping::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     //Camera aspect 
     mpCamera->setFocalLength(21.0f);
@@ -158,17 +158,17 @@ void PostProcess::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, ui
     mpHdrFbo = FboHelper::create2D(width, height, desc);
 }
 
-bool PostProcess::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
+bool HDRToneMapping::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mCameraController.onKeyEvent(keyEvent);
 }
 
-bool PostProcess::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
+bool HDRToneMapping::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCameraController.onMouseEvent(mouseEvent);
 }
 
-// void PostProcess::onInitializeTesting()
+// void HDRToneMapping::onInitializeTesting()
 // {
 //     std::vector<ArgList::Arg> modeFrames = mArgList.getValues("changeMode");
 //     if (!modeFrames.empty())
@@ -186,7 +186,7 @@ bool PostProcess::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouse
 //     mpToneMapper->setOperator(ToneMapping::Operator::Clamp);
 // }
 
-// void PostProcess::onEndTestFrame()
+// void HDRToneMapping::onEndTestFrame()
 // {
 //     uint32_t frameId = frameRate().getFrameCount();
 //     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
@@ -214,7 +214,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    PostProcess::UniquePtr pRenderer = std::make_unique<PostProcess>();
+    HDRToneMapping::UniquePtr pRenderer = std::make_unique<HDRToneMapping>();
     SampleConfig config;
     config.windowDesc.title = "Post Processing";
 #ifdef _WIN32

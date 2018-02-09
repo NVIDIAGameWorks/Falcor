@@ -96,7 +96,7 @@ namespace Falcor
 
         /** Called on each frame render.
         */
-        virtual void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) {}
+        virtual void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) {}
 
         /** Called right before the context is destroyed.
         */

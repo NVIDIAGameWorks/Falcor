@@ -33,16 +33,22 @@
 namespace Falcor
 {
     // Initialize the Testing.
-    void SampleTest::initializeTesting()
+    bool SampleTest::initializeTesting()
     {
-        if (mArgList.argExists("test"))
-        {
-            // Initialize the Tests.
-            initializeTests();
+		if (mArgList.argExists("test"))
+		{
+			// Initialize the Tests.
+			initializeTests();
 
-            // Initialize Testing Callback.
-            onInitializeTesting();
-        }
+			// Initialize Testing Callback.
+			onInitializeTesting();
+
+			return true;
+		}
+		else
+		{
+			return false;
+		}
     }
 
     // Begin Test Frame.

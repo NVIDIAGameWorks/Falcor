@@ -34,13 +34,14 @@ class HashedAlpha : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
     void loadModel();
+	void loadModel(std::string filename);
     void updateProgram();
 
     enum class AlphaTestMode
@@ -62,4 +63,6 @@ private:
     static const Gui::DropdownList kModeList;
     AlphaTestMode mAlphaTestMode = AlphaTestMode::HashedAlphaIsotropic;
     float mHashScale = 1.0f;
+
+	const std::string mkDefaultModel = "alphatest\\alpha_test.obj";
 };

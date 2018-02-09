@@ -35,7 +35,7 @@ class ComputeShader : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:

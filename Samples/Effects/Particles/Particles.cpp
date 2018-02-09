@@ -62,10 +62,10 @@ void Particles::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRende
     pRenderContext->getGraphicsState()->setBlendState(pBlend);
 }
 
-void Particles::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void Particles::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpCamController.update();
 
     for (auto it = mpParticleSystems.begin(); it != mpParticleSystems.end(); ++it)

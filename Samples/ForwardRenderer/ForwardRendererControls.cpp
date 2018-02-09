@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "FeatureDemo.h"
+#include "ForwardRenderer.h"
 
 Gui::DropdownList kSampleCountList = 
 {
@@ -42,7 +42,7 @@ const Gui::DropdownList aaModeList =
 };
 
 
-void FeatureDemo::initControls()
+void ForwardRenderer::initControls()
 {
     mControls.resize(ControlID::Count);
     mControls[ControlID::SuperSampling] = { false, false, "INTERPOLATION_MODE", "sample" };
@@ -59,7 +59,7 @@ void FeatureDemo::initControls()
     }
 }
 
-void FeatureDemo::applyLightingProgramControl(ControlID controlId)
+void ForwardRenderer::applyLightingProgramControl(ControlID controlId)
 {
     const ProgramControl control = mControls[controlId];
     if(control.define.size())
@@ -78,7 +78,7 @@ void FeatureDemo::applyLightingProgramControl(ControlID controlId)
     }
 }
 
-void FeatureDemo::applyAaMode(SampleCallbacks* pSample)
+void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
 {
     if (mLightingPass.pProgram == nullptr) return;
 
@@ -114,7 +114,7 @@ void FeatureDemo::applyAaMode(SampleCallbacks* pSample)
     mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
 }
 
-void FeatureDemo::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     static const char* kImageFileString = "Image files\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga;*.hdr;*.exr\0\0";
     if (pGui->addButton("Load Model"))

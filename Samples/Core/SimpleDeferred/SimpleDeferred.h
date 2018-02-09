@@ -37,15 +37,15 @@ public:
     ~SimpleDeferred();
 
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
     void onShutdown(SampleCallbacks* pSample) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 private:
-    void loadModel(Fbo* pCurrentFbo);
-    void loadModelFromFile(const std::string& filename, Fbo* pCurrentFbo);
+    void loadModel(Fbo* pTargetFbo);
+    void loadModelFromFile(const std::string& filename, Fbo* pTargetFbo);
     void resetCamera();
     void renderModelUiElements(Gui* pGui);
 
@@ -103,6 +103,8 @@ private:
 
     float mNearZ = 1e-2f;
     float mFarZ = 1e3f;
+
+	const std::string mkDefaultModel = "Arcade\\Arcade.fbx";
 
     //testing
 //     void onInitializeTesting() override;

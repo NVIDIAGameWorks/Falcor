@@ -25,36 +25,33 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Falcor.h"
-#include "SampleTest.h"
-
-using namespace Falcor;
-
-class NormalMapFiltering : public SampleTest
+cbuffer PerFrameCB : register(b0)
 {
-public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    void onResizeSwapChain() override;
-    void onGuiRender() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    
-private:
-    void updateProgram();
-    GraphicsProgram::SharedPtr mpProgram;
-    SceneRenderer::SharedPtr mpRenderer;
-    GraphicsVars::SharedPtr mpVars;
-    ModelViewCameraController mCameraController;
-    LeanMap::UniquePtr mpLeanMap;
-    bool mUseLeanMap = true;
-    Sampler::SharedPtr mpLinearSampler;
-
-    //Testing
-    void onInitializeTesting() override;
-    void onEndTestFrame() override;
-    std::vector<uint32_t> mChangeModeFrames;
-    std::vector<uint32_t>::iterator mChangeModeIt;
+    float4x4 gWvpMat;
+    float4x4 gWorldMat;
+    float3 gEyePosW;
+    float gLightIntensity;
+    float gSurfaceRoughness;
 };
+
+struct ToneMappingIn
+{
+    float4 pos : POSITION;
+    float3 normal : NORMAL;
+};
+
+struct ToneMappingOut
+{
+    float4 pos : SV_POSITION;
+    float3 posW : POSITION;
+    float3 normalW : NORMAL;
+};
+
+ToneMappingOut main(ToneMappingIn vIn)
+{
+	ToneMappingOut vOut;
+    vOut.pos = (mul(vIn.pos, gWvpMat));
+    vOut.posW = (mul(vIn.pos, gWorldMat)).xyz;
+    vOut.normalW = (mul(float4(vIn.normal, 0), gWorldMat)).xyz;
+    return vOut;
+}

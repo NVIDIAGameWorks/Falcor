@@ -36,7 +36,7 @@ class ModelViewer : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
@@ -95,6 +95,7 @@ private:
     PointLight::SharedPtr mpPointLight;
 
     std::string mModelString;
+	const std::string mkDefaultModel = "Arcade\\Arcade.fbx";
 
     float mNearZ;
     float mFarZ;

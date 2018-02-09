@@ -99,7 +99,7 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
     mpSSAO = SSAO::create(uvec2(1024));
 
     // Model
-    mpModel = Model::createFromFile("ogre/bs_smile.obj");
+    mpModel = Model::createFromFile(mkDefaultModel.c_str());
 
     mpCamera = Camera::create();
     mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
@@ -108,13 +108,13 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
     resetCamera();
 }
 
-void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     mpCamera->setDepthRange(mNearZ, mFarZ);
     mCameraController.update();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     pRenderContext->clearFbo(mpGBufferFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     // Render Scene
@@ -132,7 +132,7 @@ void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, RenderContext::Sh
     mpCopyVars->setTexture("gColor", mpGBufferFbo->getColorTexture(0));
     mpCopyVars->setTexture("gAOMap", pAOMap);
     pRenderContext->setGraphicsVars(mpCopyVars);
-    pRenderContext->getGraphicsState()->setFbo(pCurrentFbo);
+    pRenderContext->getGraphicsState()->setFbo(pTargetFbo);
     mpCopyPass->execute(pRenderContext.get());
 }
 

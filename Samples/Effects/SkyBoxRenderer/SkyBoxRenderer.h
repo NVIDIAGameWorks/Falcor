@@ -25,27 +25,35 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
-__import Shading;
-__import DefaultVS;
+#pragma once
+#include "Falcor.h"
+#include "SampleTest.h"
 
-layout(set = 0, binding = 0) uniform PerFrameCB
+using namespace Falcor;
+
+class SkyBoxRenderer : public Renderer
 {
-    vec3 gAmbient;
+public:
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+
+private:
+    void loadTexture();
+    
+    Camera::SharedPtr mpCamera;
+    SixDoFCameraController::SharedPtr mpCameraController;
+    SkyBox::UniquePtr mpSkybox;  
+    Sampler::SharedPtr mpTriLinearSampler;
+
+	const std::string mkDefaultSkyBoxTexture = "Cubemaps/Sorsele3/Sorsele3.dds";
+
+    //Testing
+//     void onInitializeTesting() override;
+//     void onEndTestFrame() override;
+    std::vector<uint32_t> mChangeViewFrames;
+    std::vector<uint32_t>::iterator mChangeViewIt;
 };
-
-in VertexOut vOut;
-layout(location = 0) out vec4 fragColor;
-
-void main()
-{
-    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
-
-    fragColor = vec4(gAmbient * sd.diffuse, 1);
-
-    [unroll]
-    for (uint l = 0; l < _LIGHT_COUNT; l++)
-    {
-        fragColor.rgb += evalMaterial(sd, gLights[l], 1).color.rgb;
-    }
-}

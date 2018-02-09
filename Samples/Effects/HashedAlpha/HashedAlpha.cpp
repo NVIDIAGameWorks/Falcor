@@ -56,31 +56,36 @@ void HashedAlpha::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
+void HashedAlpha::loadModel(std::string filename)
+{
+	mpModel = Model::createFromFile(filename.c_str());
+
+	if (mpModel == nullptr)
+	{
+		msgBox("Could not load model");
+		return;
+	}
+
+	// update the camera position
+	float radius = mpModel->getRadius();
+	const glm::vec3& modelCenter = mpModel->getCenter();
+	glm::vec3 camPos = modelCenter;
+	camPos.z += radius * 5.0f;
+
+	mpCamera->setPosition(camPos);
+	mpCamera->setTarget(modelCenter);
+	mpCamera->setUpVector(glm::vec3(0, 1, 0));
+	mpCamera->setDepthRange(std::max(0.01f, radius / 750.0f), radius * 50.0f);
+
+	mCameraController.setModelParams(modelCenter, radius, 3.5f);
+}
+
 void HashedAlpha::loadModel()
 {
     std::string filename;
     if (openFileDialog(Model::kSupportedFileFormatsStr, filename))
     {
-        mpModel = Model::createFromFile(filename.c_str());
-
-        if (mpModel == nullptr)
-        {
-            msgBox("Could not load model");
-            return;
-        }
-
-        // update the camera position
-        float radius = mpModel->getRadius();
-        const glm::vec3& modelCenter = mpModel->getCenter();
-        glm::vec3 camPos = modelCenter;
-        camPos.z += radius * 5.0f;
-
-        mpCamera->setPosition(camPos);
-        mpCamera->setTarget(modelCenter);
-        mpCamera->setUpVector(glm::vec3(0, 1, 0));
-        mpCamera->setDepthRange(std::max(0.01f, radius / 750.0f), radius * 50.0f);
-
-        mCameraController.setModelParams(modelCenter, radius, 3.5f);
+		loadModel(filename);
     }
 }
 
@@ -117,13 +122,15 @@ void HashedAlpha::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
     mpCamera = Camera::create();
     mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
     mCameraController.attachCamera(mpCamera);
+
+	loadModel(mkDefaultModel.c_str());
 }
 
-void HashedAlpha::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void HashedAlpha::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    mpState->setFbo(pCurrentFbo);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    mpState->setFbo(pTargetFbo);
     mCameraController.update();
 
     if (mpModel)

@@ -107,12 +107,12 @@ void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::Shared
 //    initializeTesting();
 }
 
-void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pCurrentFbo)
+void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
 //   beginTestFrame();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mCameraController.update();
 
     //

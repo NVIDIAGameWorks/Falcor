@@ -27,31 +27,29 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 
 using namespace Falcor;
 
-class EnvMap : public Renderer
+class ForwardRendererSceneRenderer : public SceneRenderer
 {
 public:
-    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    using SharedPtr = std::shared_ptr<ForwardRendererSceneRenderer>;
+    ~ForwardRendererSceneRenderer() = default;
+    enum class Mode
+    {
+        All,
+        Opaque,
+        Transparent
+    };
 
+    static SharedPtr create(const Scene::SharedPtr& pScene);
+    void setRenderMode(Mode renderMode) { mRenderMode = renderMode; }
+    void renderScene(RenderContext* pContext) override;
 private:
-    void loadTexture();
-    
-    Camera::SharedPtr mpCamera;
-    SixDoFCameraController::SharedPtr mpCameraController;
-    SkyBox::UniquePtr mpSkybox;  
-    Sampler::SharedPtr mpTriLinearSampler;
-
-    //Testing
-//     void onInitializeTesting() override;
-//     void onEndTestFrame() override;
-    std::vector<uint32_t> mChangeViewFrames;
-    std::vector<uint32_t>::iterator mChangeViewIt;
+    bool setPerMeshData(const CurrentWorkingData& currentData, const Mesh* pMesh) override;
+	ForwardRendererSceneRenderer(const Scene::SharedPtr& pScene);
+    std::vector<bool> mTransparentMeshes;
+    Mode mRenderMode = Mode::All;
+    bool mHasOpaqueObjects = false;
+    bool mHasTransparentObject = false;
 };

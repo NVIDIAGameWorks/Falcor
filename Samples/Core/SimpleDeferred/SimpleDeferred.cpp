@@ -45,14 +45,14 @@ CameraController& SimpleDeferred::getActiveCameraController()
     }
 }
 
-void SimpleDeferred::loadModelFromFile(const std::string& filename, Fbo* pCurrentFbo)
+void SimpleDeferred::loadModelFromFile(const std::string& filename, Fbo* pTargetFbo)
 {
     Model::LoadFlags flags = Model::LoadFlags::None;
     if (mGenerateTangentSpace == false)
     {
         flags |= Model::LoadFlags::DontGenerateTangentSpace;
     }
-    auto fboFormat = pCurrentFbo->getColorTexture(0)->getFormat();
+    auto fboFormat = pTargetFbo->getColorTexture(0)->getFormat();
     flags |= isSrgbFormat(fboFormat) ? Model::LoadFlags::None : Model::LoadFlags::AssumeLinearSpaceTextures;
 
     mpModel = Model::createFromFile(filename.c_str(), flags);
@@ -68,12 +68,12 @@ void SimpleDeferred::loadModelFromFile(const std::string& filename, Fbo* pCurren
     mpPointLight->setWorldPosition(glm::vec3(0, Radius*1.25f, 0));
 }
 
-void SimpleDeferred::loadModel(Fbo* pCurrentFbo)
+void SimpleDeferred::loadModel(Fbo* pTargetFbo)
 {
     std::string filename;
     if(openFileDialog("Supported Formats\0*.obj;*.bin;*.dae;*.x;*.md5mesh\0\0", filename))
     {
-        loadModelFromFile(filename, pCurrentFbo);
+        loadModelFromFile(filename, pTargetFbo);
     }
 }
 
@@ -216,9 +216,13 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     loadModelFromFile("ogre/bs_rest.obj", pSample->getCurrentFbo().get());
 
 //    initializeTesting();
+	{
+		// Load default model
+		loadModelFromFile(mkDefaultModel);
+	}
 }
 
-void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
 //    beginTestFrame();
 
@@ -256,8 +260,8 @@ void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
 
     // Lighting pass (fullscreen quad)
     {
-        pState->setFbo(pCurrentFbo);
-        pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
+        pState->setFbo(pTargetFbo);
+        pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
 
         // Reset render state
         pState->setRasterizerState(mpCullRastState[0]);

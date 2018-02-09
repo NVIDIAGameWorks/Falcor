@@ -72,12 +72,12 @@ void MultiPassPostProcess::loadImageFromFile(SampleCallbacks* pSample, std::stri
     mpProgVars = GraphicsVars::create(mpBlit->getProgram()->getActiveVersion()->getReflector());
 }
 
-void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pCurrentFbo)
+void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
 //    beginTestFrame();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pContext->clearFbo(pCurrentFbo.get(), clearColor, 0, 0, FboAttachmentType::Color);
+    pContext->clearFbo(pTargetFbo.get(), clearColor, 0, 0, FboAttachmentType::Color);
 
     if(mpImage)
     {

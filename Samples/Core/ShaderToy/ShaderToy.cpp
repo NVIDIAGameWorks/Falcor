@@ -61,11 +61,11 @@ void ShaderToy::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRende
     mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock()->getResourceBinding("ToyCB");
 }
 
-void ShaderToy::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void ShaderToy::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     // iResolution
-    float width = (float)pCurrentFbo->getWidth();
-    float height = (float)pCurrentFbo->getHeight();
+    float width = (float)pTargetFbo->getWidth();
+    float height = (float)pTargetFbo->getHeight();
     ParameterBlock* pDefaultBlock = mpToyVars->getDefaultBlock().get();
     pDefaultBlock->getConstantBuffer(mToyCBBinding, 0)["iResolution"] = glm::vec2(width, height);;
 

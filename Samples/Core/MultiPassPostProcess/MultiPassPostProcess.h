@@ -35,7 +35,7 @@ class MultiPassPostProcess : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo) override;
     void onShutdown(SampleCallbacks* pSample) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;

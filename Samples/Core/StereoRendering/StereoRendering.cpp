@@ -56,7 +56,7 @@ bool displaySpsWarning()
     return false;
 }
 
-void StereoRendering::initVR(Fbo* pCurrentFbo)
+void StereoRendering::initVR(Fbo* pTargetFbo)
 {
     mSubmitModeList.clear();
     mSubmitModeList.push_back({ (int)RenderMode::Mono, "Render to Screen" });
@@ -66,8 +66,8 @@ void StereoRendering::initVR(Fbo* pCurrentFbo)
         // Create the FBOs
         Fbo::Desc vrFboDesc;
 
-        vrFboDesc.setColorTarget(0, pCurrentFbo->getColorTexture(0)->getFormat());
-        vrFboDesc.setDepthStencilTarget(pCurrentFbo->getDepthStencilTexture()->getFormat());
+        vrFboDesc.setColorTarget(0, pTargetFbo->getColorTexture(0)->getFormat());
+        vrFboDesc.setDepthStencilTarget(pTargetFbo->getDepthStencilTexture()->getFormat());
 
         mpVrFbo = VrFbo::create(vrFboDesc);
 
@@ -88,7 +88,7 @@ void StereoRendering::initVR(Fbo* pCurrentFbo)
     }
 }
 
-void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pCurrentFbo, bool singlePassStereo)
+void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pTargetFbo, bool singlePassStereo)
 {
     PROFILE(STEREO);
     VRSystem::instance()->refresh();
@@ -118,14 +118,14 @@ void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pCurr
 
     // Submit the views and display them
     mpVrFbo->submitToHmd(pContext);
-    blitTexture(pContext, pCurrentFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Left), 0);
-    blitTexture(pContext, pCurrentFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Right), pCurrentFbo->getWidth() / 2);
+    blitTexture(pContext, pTargetFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Left), 0);
+    blitTexture(pContext, pTargetFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Right), pTargetFbo->getWidth() / 2);
 }
 
-void StereoRendering::submitToScreen(RenderContext* pContext, Fbo::SharedPtr pCurrentFbo)
+void StereoRendering::submitToScreen(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     mpGraphicsState->setProgram(mpMonoSPSProgram);
-    mpGraphicsState->setFbo(pCurrentFbo);
+    mpGraphicsState->setFbo(pTargetFbo);
     pContext->setGraphicsState(mpGraphicsState);
     pContext->setGraphicsVars(mpMonoSPSVars);
     mpSceneRenderer->renderScene(pContext);
@@ -193,26 +193,28 @@ void StereoRendering::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
+
+	loadScene(mkDefaultScene);
 }
 
-void StereoRendering::blitTexture(RenderContext* pContext, Fbo* pCurrentFbo, Texture::SharedPtr pTexture, uint32_t xStart)
+void StereoRendering::blitTexture(RenderContext* pContext, Fbo* pTargetFbo, Texture::SharedPtr pTexture, uint32_t xStart)
 {
     if(mShowStereoViews)
     {
         uvec4 dstRect;
         dstRect.x = xStart;
         dstRect.y = 0;
-        dstRect.z = xStart + (pCurrentFbo->getWidth() / 2);
-        dstRect.w = pCurrentFbo->getHeight();
-        pContext->blit(pTexture->getSRV(0, 1, 0, 1), pCurrentFbo->getRenderTargetView(0), uvec4(-1), dstRect);
+        dstRect.z = xStart + (pTargetFbo->getWidth() / 2);
+        dstRect.w = pTargetFbo->getHeight();
+        pContext->blit(pTexture->getSRV(0, 1, 0, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), dstRect);
     }
 }
 
-void StereoRendering::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void StereoRendering::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     static uint32_t frameCount = 0u;
 
-    pRenderContext->clearFbo(pCurrentFbo.get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
 
     if(mpSceneRenderer)
     {      
@@ -221,13 +223,13 @@ void StereoRendering::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
         switch(mRenderMode)
         {
         case RenderMode::Mono:
-            submitToScreen(pRenderContext.get(), pCurrentFbo);
+            submitToScreen(pRenderContext.get(), pTargetFbo);
             break;
         case RenderMode::SinglePassStereo:
-            submitStereo(pRenderContext.get(), pCurrentFbo, true);
+            submitStereo(pRenderContext.get(), pTargetFbo, true);
             break;
         case RenderMode::Stereo:
-            submitStereo(pRenderContext.get(), pCurrentFbo, false);
+            submitStereo(pRenderContext.get(), pTargetFbo, false);
             break;
         default:
             should_not_get_here();

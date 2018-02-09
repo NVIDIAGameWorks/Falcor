@@ -34,7 +34,7 @@ class StereoRendering : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
@@ -68,11 +68,13 @@ private:
     RenderMode mRenderMode = RenderMode::Mono;
     Gui::DropdownList mSubmitModeList;
 
-    void submitToScreen(RenderContext* pContext, Fbo::SharedPtr pCurrentFbo);
-    void initVR(Fbo* pCurrentFbo);
-    void blitTexture(RenderContext* pContext, Fbo* pCurrentFbo, Texture::SharedPtr pTexture, uint32_t xStart);
+    void submitToScreen(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
+    void initVR(Fbo* pTargetFbo);
+    void blitTexture(RenderContext* pContext, Fbo* pTargetFbo, Texture::SharedPtr pTexture, uint32_t xStart);
     VrFbo::UniquePtr mpVrFbo;
     bool mShowStereoViews = true;
-    void submitStereo(RenderContext* pContext, Fbo::SharedPtr pCurrentFbo, bool singlePassStereo);
+    void submitStereo(RenderContext* pContext, Fbo::SharedPtr pTargetFbo, bool singlePassStereo);
     void setRenderMode();
+
+	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
 };

@@ -25,9 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "EnvMap.h"
+#include "SkyBoxRenderer.h"
 
-void EnvMap::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+void SkyBoxRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load TexCube"))
     {
@@ -40,7 +40,7 @@ void EnvMap::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void EnvMap::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpCamera = Camera::create();
     mpCameraController = SixDoFCameraController::SharedPtr(new SixDoFCameraController);
@@ -49,12 +49,12 @@ void EnvMap::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderCo
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
 
-    mpSkybox = SkyBox::createFromTexture("Cubemaps/Sorsele3/Sorsele3.dds", true, mpTriLinearSampler);
+    mpSkybox = SkyBox::createFromTexture(mkDefaultSkyBoxTexture, true, mpTriLinearSampler);
 
 //    initializeTesting();
 }
 
-void EnvMap::loadTexture()
+void SkyBoxRenderer::loadTexture()
 {
     std::string filename;
     if(openFileDialog("DDS files\0*.dds\0\0", filename))
@@ -63,12 +63,12 @@ void EnvMap::loadTexture()
     }
 }
 
-void EnvMap::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
+void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
 //    beginTestFrame();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     if(mpSkybox)
     {
@@ -79,24 +79,24 @@ void EnvMap::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pR
 //    endTestFrame();
 }
 
-bool EnvMap::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
+bool SkyBoxRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mpCameraController->onKeyEvent(keyEvent);
 }
 
-bool EnvMap::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
+bool SkyBoxRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mpCameraController->onMouseEvent(mouseEvent);
 }
 
-void EnvMap::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
+void SkyBoxRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     mpCamera->setFocalLength(60.0f);
     mpCamera->setAspectRatio((float)width / (float)height);
     mpCamera->setDepthRange(0.01f, 1000);
 }
 
-// void EnvMap::onInitializeTesting()
+// void SkyBoxRenderer::onInitializeTesting()
 // {
 //     std::vector<ArgList::Arg> viewFrames = mArgList.getValues("changeView");
 //     if (!viewFrames.empty())
@@ -111,7 +111,7 @@ void EnvMap::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_
 //     mChangeViewIt = mChangeViewFrames.begin();
 // }
 
-// void EnvMap::onEndTestFrame()
+// void SkyBoxRenderer::onEndTestFrame()
 // {
 //     //initial target is (0, 0, -1)
 //     static uint32_t targetIndex = 0;
@@ -144,7 +144,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    EnvMap::UniquePtr pRenderer = std::make_unique<EnvMap>();
+	SkyBoxRenderer::UniquePtr pRenderer = std::make_unique<SkyBoxRenderer>();
     SampleConfig config;
     config.windowDesc.title = "Skybox Sample";
 #ifdef _WIN32
