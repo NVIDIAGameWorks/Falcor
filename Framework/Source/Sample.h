@@ -95,7 +95,7 @@ namespace Falcor
         /* Callback inherited from SampleCallbacks                                 */
         /************************************************************************/
         RenderContext::SharedPtr getRenderContext() override { return mpRenderContext; }
-        Fbo::SharedPtr getCurrentFbo() override { return mpDefaultFBO; }
+        Fbo::SharedPtr getCurrentFbo() override { return mpTargetFBO; }
         Gui* getGui() override { return mpGui.get(); }
         float getCurrentTime() override { return mCurrentTime; }
         void resizeSwapChain(uint32_t width, uint32_t height) override;
@@ -114,8 +114,8 @@ namespace Falcor
         */
         Gui::UniquePtr mpGui;                               ///< Main sample GUI
         RenderContext::SharedPtr mpRenderContext;           ///< The rendering context
-        GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline state
-        Fbo::SharedPtr mpDefaultFBO;                        ///< The default FBO object
+        GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline 
+        Fbo::SharedPtr mpTargetFBO;                         ///< An FBO available to renderers
         bool mFreezeTime;                                   ///< Whether global time is frozen
         float mCurrentTime = 0;                             ///< Global time
         float mTimeScale;                                   ///< Global time scale
@@ -180,6 +180,8 @@ namespace Falcor
         Sample(Renderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
         Sample(const Sample&) = delete;
         Sample& operator=(const Sample&) = delete;
+    private:
+        Fbo::SharedPtr mpBackBufferFBO;     ///< The FBO for the back buffer
     };
     enum_class_operators(SampleConfig::Flags);
 };
