@@ -90,7 +90,6 @@ void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::Shared
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthTest(true);
     mpGraphicsState->setDepthStencilState(DepthStencilState::create(dsDesc));
-    mpGraphicsState->setFbo(pSample->getCurrentFbo());
     mpGraphicsState->setVao(mpVao);
     mpGraphicsState->setProgram(mpProgram);
 
@@ -140,6 +139,7 @@ void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, RenderContext:
 
     // Bind compute output
     mpProgramVars->setStructuredBuffer("gLight[3]", mpAppendLightData);
+    mpGraphicsState->setFbo(pSample->getCurrentFbo());
     pContext->setGraphicsState(mpGraphicsState);
 
     // Update uniform-buffers data
