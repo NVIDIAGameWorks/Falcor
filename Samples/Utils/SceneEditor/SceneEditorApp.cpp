@@ -25,33 +25,33 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "SceneEditorSample.h"
+#include "SceneEditorApp.h"
 #include "Graphics/Scene/SceneImporter.h"
 
-void SceneEditorSample::onGuiRender()
+void SceneEditorApp::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    mpGui->addSeparator();
+	pGui->addSeparator();
 
-    if (mpGui->addButton("Create New Scene"))
+    if (pGui->addButton("Create New Scene"))
     {
         createScene();
     }
-    if (mpGui->addButton("Load Scene"))
+    if (pGui->addButton("Load Scene"))
     {
         loadScene();
     }
 
     if(mpEditor)
     {
-        mpEditor->renderGui(mpGui.get());
+        mpEditor->renderGui(pGui);
         if(mpScene->getCameraCount())
         {
-            mpGui->addCheckBox("Preview Camera", mCameraLiveViewMode);
+			pGui->addCheckBox("Preview Camera", mCameraLiveViewMode);
         }
     }
 }
 
-void SceneEditorSample::onResizeSwapChain()
+void SceneEditorApp::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     if (mpEditor)
     {
@@ -59,17 +59,17 @@ void SceneEditorSample::onResizeSwapChain()
     }
 }
 
-void SceneEditorSample::onLoad()
+void SceneEditorApp::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
 }
 
-void SceneEditorSample::reset()
+void SceneEditorApp::reset()
 {
     mpProgram = nullptr;
     mpVars = nullptr;
 }
 
-void SceneEditorSample::initNewScene()
+void SceneEditorApp::initNewScene()
 {
     if(mpScene)
     {
@@ -80,13 +80,13 @@ void SceneEditorSample::initNewScene()
     }
 }
 
-void SceneEditorSample::initShader()
+void SceneEditorApp::initShader()
 {
-    mpProgram = GraphicsProgram::createFromFile("", "SceneEditorSample.ps.slang");
+    mpProgram = GraphicsProgram::createFromFile("", "SceneEditorApp.ps.slang");
     mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
 }
 
-void SceneEditorSample::loadScene()
+void SceneEditorApp::loadScene()
 {
     std::string Filename;
     if(openFileDialog(Scene::kFileFormatString, Filename))
@@ -98,45 +98,46 @@ void SceneEditorSample::loadScene()
     }
 }
 
-void SceneEditorSample::createScene()
+void SceneEditorApp::createScene()
 {
     reset();
     mpScene = Scene::create();
     initNewScene();
 }
 
-void SceneEditorSample::onFrameRender()
+void SceneEditorApp::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     if(mpScene)
     {
-        mpDefaultPipelineState->setBlendState(nullptr);
-        mpDefaultPipelineState->setDepthStencilState(nullptr);
-        mpRenderContext->setGraphicsVars(mpVars);
-        mpDefaultPipelineState->setProgram(mpProgram);
+		auto& state = pRenderContext->getGraphicsState();
+		state->setBlendState(nullptr);
+		state->setDepthStencilState(nullptr);
+        pRenderContext->setGraphicsVars(mpVars);
+		state->setProgram(mpProgram);
 
-        mpEditor->update(mCurrentTime);
-        mpRenderer->update(mCurrentTime);
+		auto currentTime = pSample->getCurrentTime();
+        mpEditor->update(currentTime);
+        mpRenderer->update(currentTime);
 
         const auto& pCamera = mCameraLiveViewMode ? mpScene->getActiveCamera() : mpEditor->getEditorCamera();
-        mpRenderer->renderScene(mpRenderContext.get(), pCamera.get());
+        mpRenderer->renderScene(pRenderContext.get(), pCamera.get());
     }
 
     if (mpEditor && mCameraLiveViewMode == false)
     {
-        mpEditor->render(mpRenderContext.get());
+        mpEditor->render(pRenderContext.get());
     }
 }
 
-void SceneEditorSample::onShutdown()
+void SceneEditorApp::onShutdown(SampleCallbacks* pSample)
 {
     reset();
 }
 
-bool SceneEditorSample::onKeyEvent(const KeyboardEvent& keyEvent)
+bool SceneEditorApp::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     if (mCameraLiveViewMode)
     {
@@ -146,14 +147,14 @@ bool SceneEditorSample::onKeyEvent(const KeyboardEvent& keyEvent)
     return mpEditor ? mpEditor->onKeyEvent(keyEvent) : false;
 }
 
-bool SceneEditorSample::onMouseEvent(const MouseEvent& mouseEvent)
+bool SceneEditorApp::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     if (mCameraLiveViewMode)
     {
         return mpRenderer->onMouseEvent(mouseEvent);
     }
 
-    return mpEditor ? mpEditor->onMouseEvent(mpRenderContext.get(), mouseEvent) : false;
+    return mpEditor ? mpEditor->onMouseEvent(pSample->getRenderContext().get(), mouseEvent) : false;
 }
 
 #ifdef _WIN32
@@ -162,12 +163,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    SceneEditorSample sample;
+	SceneEditorApp::UniquePtr pRenderer = std::make_unique<SceneEditorApp>();
     SampleConfig config;
     config.windowDesc.title = "Scene Editor";
     config.freezeTimeOnStartup = true;
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
     sample.run(config, (uint32_t)argc, argv);
 #endif

@@ -16,13 +16,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="SceneEditorSample.cpp" />
+    <ClCompile Include="SceneEditorApp.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="SceneEditorSample.h" />
+    <ClInclude Include="SceneEditorApp.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\SceneEditorSample.ps.slang" />
+    <None Include="Data\SceneEditorApp.ps.slang" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{DE6A0005-923E-4007-B58C-3C35F690773F}</ProjectGuid>
