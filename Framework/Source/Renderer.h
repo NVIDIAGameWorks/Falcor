@@ -78,6 +78,9 @@ namespace Falcor
 
         /** Set the default GUI size */
         virtual void setDefaultGuiSize(uint32_t width, uint32_t height) = 0;
+
+        /** Get the current frame ID*/
+        virtual uint32_t getCurrentFrameId() = 0;
     };
 
     class Renderer : std::enable_shared_from_this<Renderer>

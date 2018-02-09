@@ -31,15 +31,15 @@
 
 using namespace Falcor;
 
-class EnvMap : public SampleTest
+class EnvMap : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    void onGuiRender() override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
     void loadTexture();
@@ -50,8 +50,8 @@ private:
     Sampler::SharedPtr mpTriLinearSampler;
 
     //Testing
-    void onInitializeTesting() override;
-    void onEndTestFrame() override;
+//     void onInitializeTesting() override;
+//     void onEndTestFrame() override;
     std::vector<uint32_t> mChangeViewFrames;
     std::vector<uint32_t>::iterator mChangeViewIt;
 };

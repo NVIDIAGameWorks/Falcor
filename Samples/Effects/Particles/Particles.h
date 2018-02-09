@@ -30,15 +30,15 @@
 
 using namespace Falcor;
 
-class Particles : public Sample
+class Particles : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    void onGuiRender() override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
     enum class ExamplePixelShaders
@@ -75,9 +75,9 @@ private:
         uint32_t texIndex;
     };
 
-    void CreateSystemGui();
-    void EditPropertiesGui();
-    void UpdateColorInterpolation();
+    void CreateSystemGui(RenderContext* pContext, Gui* pGui);
+    void EditPropertiesGui(Gui* pGui);
+    void UpdateColorInterpolation(Gui* pGui);
 
     std::vector<ParticleSystem::SharedPtr> mpParticleSystems;
     Camera::SharedPtr mpCamera;

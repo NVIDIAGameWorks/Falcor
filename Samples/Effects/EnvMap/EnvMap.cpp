@@ -27,20 +27,20 @@
 ***************************************************************************/
 #include "EnvMap.h"
 
-void EnvMap::onGuiRender()
+void EnvMap::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (mpGui->addButton("Load TexCube"))
+    if (pGui->addButton("Load TexCube"))
     {
         loadTexture();
     }
     float s = mpSkybox->getScale();
-    if (mpGui->addFloatVar("Cubemap Scale", s, 0.01f, FLT_MAX, 0.01f))
+    if (pGui->addFloatVar("Cubemap Scale", s, 0.01f, FLT_MAX, 0.01f))
     {
         mpSkybox->setScale(s);
     }
 }
 
-void EnvMap::onLoad()
+void EnvMap::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpCamera = Camera::create();
     mpCameraController = SixDoFCameraController::SharedPtr(new SixDoFCameraController);
@@ -51,7 +51,7 @@ void EnvMap::onLoad()
 
     mpSkybox = SkyBox::createFromTexture("Cubemaps/Sorsele3/Sorsele3.dds", true, mpTriLinearSampler);
 
-    initializeTesting();
+//    initializeTesting();
 }
 
 void EnvMap::loadTexture()
@@ -63,82 +63,80 @@ void EnvMap::loadTexture()
     }
 }
 
-void EnvMap::onFrameRender()
+void EnvMap::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
 {
-    beginTestFrame();
+//    beginTestFrame();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pCurrentFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     if(mpSkybox)
     {
         mpCameraController->update();
-        mpSkybox->render(mpRenderContext.get(), mpCamera.get());
+        mpSkybox->render(pRenderContext.get(), mpCamera.get());
     }
 
-    endTestFrame();
+//    endTestFrame();
 }
 
-bool EnvMap::onKeyEvent(const KeyboardEvent& keyEvent)
+bool EnvMap::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mpCameraController->onKeyEvent(keyEvent);
 }
 
-bool EnvMap::onMouseEvent(const MouseEvent& mouseEvent)
+bool EnvMap::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mpCameraController->onMouseEvent(mouseEvent);
 }
 
-void EnvMap::onResizeSwapChain()
+void EnvMap::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    float h = (float)mpDefaultFBO->getHeight();
-    float w = (float)mpDefaultFBO->getWidth();
     mpCamera->setFocalLength(60.0f);
-    mpCamera->setAspectRatio(w / h);
+    mpCamera->setAspectRatio((float)width / (float)height);
     mpCamera->setDepthRange(0.01f, 1000);
 }
 
-void EnvMap::onInitializeTesting()
-{
-    std::vector<ArgList::Arg> viewFrames = mArgList.getValues("changeView");
-    if (!viewFrames.empty())
-    {
-        mChangeViewFrames.resize(viewFrames.size());
-        for (uint32_t i = 0; i < viewFrames.size(); ++i)
-        {
-            mChangeViewFrames[i] = viewFrames[i].asUint();
-        }
-    }
+// void EnvMap::onInitializeTesting()
+// {
+//     std::vector<ArgList::Arg> viewFrames = mArgList.getValues("changeView");
+//     if (!viewFrames.empty())
+//     {
+//         mChangeViewFrames.resize(viewFrames.size());
+//         for (uint32_t i = 0; i < viewFrames.size(); ++i)
+//         {
+//             mChangeViewFrames[i] = viewFrames[i].asUint();
+//         }
+//     }
+// 
+//     mChangeViewIt = mChangeViewFrames.begin();
+// }
 
-    mChangeViewIt = mChangeViewFrames.begin();
-}
-
-void EnvMap::onEndTestFrame()
-{
-    //initial target is (0, 0, -1)
-    static uint32_t targetIndex = 0;
-    static const uint32_t numTargets = 5;
-    static const vec3 targets[numTargets] = {
-        vec3(0,  0, 1),
-        vec3(0.1,  0.9, 0), //camera doesn't like looking directly up or down
-        vec3(-0.1, -0.9, 0),
-        vec3(1,  0, 0),
-        vec3(-1, 0, 0) 
-    };
-
-    uint32_t frameId = frameRate().getFrameCount();
-    if (mChangeViewIt != mChangeViewFrames.end() && frameId >= *mChangeViewIt)
-    {
-        ++mChangeViewIt;
-        mpCamera->setTarget(targets[targetIndex]);
-        ++targetIndex;
-        //wrap around so it doesn't crash if too many args are given
-        if (targetIndex == numTargets)
-        {
-            targetIndex = 0;
-        }
-    }
-}
+// void EnvMap::onEndTestFrame()
+// {
+//     //initial target is (0, 0, -1)
+//     static uint32_t targetIndex = 0;
+//     static const uint32_t numTargets = 5;
+//     static const vec3 targets[numTargets] = {
+//         vec3(0,  0, 1),
+//         vec3(0.1,  0.9, 0), //camera doesn't like looking directly up or down
+//         vec3(-0.1, -0.9, 0),
+//         vec3(1,  0, 0),
+//         vec3(-1, 0, 0) 
+//     };
+// 
+//     uint32_t frameId = frameRate().getFrameCount();
+//     if (mChangeViewIt != mChangeViewFrames.end() && frameId >= *mChangeViewIt)
+//     {
+//         ++mChangeViewIt;
+//         mpCamera->setTarget(targets[targetIndex]);
+//         ++targetIndex;
+//         //wrap around so it doesn't crash if too many args are given
+//         if (targetIndex == numTargets)
+//         {
+//             targetIndex = 0;
+//         }
+//     }
+// }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -146,13 +144,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    EnvMap sample;
+    EnvMap::UniquePtr pRenderer = std::make_unique<EnvMap>();
     SampleConfig config;
     config.windowDesc.title = "Skybox Sample";
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

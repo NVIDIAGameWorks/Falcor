@@ -108,6 +108,7 @@ namespace Falcor
         void toggleUI(bool showUI) { mShowUI = showUI && gpDevice; }
         void setDefaultGuiSize(uint32_t width, uint32_t height) override;
         void setCurrentTime(float time) override { mCurrentTime = time; }
+        uint32_t getCurrentFrameId() override { return mFrameRate.getFrameCount(); }
 
         /** Internal data structures
         */

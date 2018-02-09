@@ -199,7 +199,7 @@ bool ShaderBuffersSample::onMouseEvent(SampleCallbacks* pSample, const MouseEven
 void ShaderBuffersSample::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     mpCamera->setFocalLength(60.0f);
-    mpCamera->setAspectRatio(width / height);
+    mpCamera->setAspectRatio((float)width / (float)height);
 }
 
 #ifdef _WIN32

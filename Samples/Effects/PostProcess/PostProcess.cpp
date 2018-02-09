@@ -33,7 +33,7 @@ const Gui::DropdownList PostProcess::kImageList = { { HdrImage::EveningSun, "Eve
                                                     { HdrImage::AtTheWindow, "Window" },
                                                     { HdrImage::OvercastDay, "Overcast Day" } };
 
-void PostProcess::onLoad()
+void PostProcess::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     //Create model and camera
     mpTeapot = Model::createFromFile("teapot.obj");
@@ -50,7 +50,7 @@ void PostProcess::onLoad()
     mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("PostProcess.vs"), appendShaderExtension("PostProcess.ps"));
     mpProgramVars = GraphicsVars::create(mpMainProg->getActiveVersion()->getReflector());
     mpGraphicsState = GraphicsState::create();
-    mpGraphicsState->setFbo(mpDefaultFBO);
+    mpGraphicsState->setFbo(pSample->getCurrentFbo());
     
     //Sampler
     Sampler::Desc samplerDesc;
@@ -64,7 +64,7 @@ void PostProcess::onLoad()
 
     loadImage();
     
-    initializeTesting();
+//    initializeTesting();
 }
 
 void PostProcess::loadImage()
@@ -87,20 +87,20 @@ void PostProcess::loadImage()
     mpSkyBox = SkyBox::create(mHdrImage, mpTriLinearSampler);
 }
 
-void PostProcess::onGuiRender()
+void PostProcess::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     uint32_t uHdrIndex = static_cast<uint32_t>(mHdrImageIndex);
-    if (mpGui->addDropdown("HdrImage", kImageList, uHdrIndex))
+    if (pGui->addDropdown("HdrImage", kImageList, uHdrIndex))
     {
         mHdrImageIndex = static_cast<HdrImage>(uHdrIndex);
         loadImage();
     }
-    mpGui->addFloatVar("Surface Roughness", mSurfaceRoughness, 0.01f, 1000, 0.01f);
-    mpGui->addFloatVar("Light Intensity", mLightIntensity, 0.5f, FLT_MAX, 0.1f);
-    mpToneMapper->renderUI(mpGui.get(), "HDR");
+    pGui->addFloatVar("Surface Roughness", mSurfaceRoughness, 0.01f, 1000, 0.01f);
+    pGui->addFloatVar("Light Intensity", mLightIntensity, 0.5f, FLT_MAX, 0.1f);
+    mpToneMapper->renderUI(pGui, "HDR");
 }
 
-void PostProcess::renderTeapot()
+void PostProcess::renderTeapot(RenderContext* pContext)
 {
     //Update vars
     glm::mat4 wvp = mpCamera->getProjMatrix() * mpCamera->getViewMatrix();
@@ -115,45 +115,39 @@ void PostProcess::renderTeapot()
     //Set Gfx state
     mpGraphicsState->setVao(mpTeapot->getMesh(0)->getVao());
     mpGraphicsState->setProgram(mpMainProg);
-    mpRenderContext->setGraphicsVars(mpProgramVars);
-    mpRenderContext->drawIndexed(mpTeapot->getMesh(0)->getIndexCount(), 0, 0);
+    pContext->setGraphicsVars(mpProgramVars);
+    pContext->drawIndexed(mpTeapot->getMesh(0)->getIndexCount(), 0, 0);
 }
 
-void PostProcess::onFrameRender()
+void PostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pCurrentFbo)
 {
-    beginTestFrame();
+//    beginTestFrame();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpHdrFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpHdrFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mCameraController.update();
 
     //Render teapot to hdr fbo
     mpGraphicsState->pushFbo(mpHdrFbo);
-    mpRenderContext->setGraphicsState(mpGraphicsState);
-    renderTeapot();
-    mpSkyBox->render(mpRenderContext.get(), mpCamera.get());
+    pRenderContext->setGraphicsState(mpGraphicsState);
+    renderTeapot(pRenderContext.get());
+    mpSkyBox->render(pRenderContext.get(), mpCamera.get());
     mpGraphicsState->popFbo();
 
     //Run tone mapping
-    mpToneMapper->execute(mpRenderContext.get(), mpHdrFbo, mpDefaultFBO);
+    mpToneMapper->execute(pRenderContext.get(), mpHdrFbo, pCurrentFbo);
 
-    std::string Txt = getFpsMsg() + '\n';
-    renderText(Txt, glm::vec2(10, 10));
+    std::string Txt = pSample->getFpsMsg() + '\n';
+    pSample->renderText(Txt, glm::vec2(10, 10));
 
-    endTestFrame();
+//    endTestFrame();
 }
 
-void PostProcess::onShutdown()
-{
-}
-
-void PostProcess::onResizeSwapChain()
+void PostProcess::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     //Camera aspect 
-    float height = (float)mpDefaultFBO->getHeight();
-    float width = (float)mpDefaultFBO->getWidth();
     mpCamera->setFocalLength(21.0f);
-    float aspectRatio = (width / height);
+    float aspectRatio = (float(width )/ float(height));
     mpCamera->setAspectRatio(aspectRatio);
 
     //recreate hdr fbo
@@ -161,58 +155,58 @@ void PostProcess::onResizeSwapChain()
     Fbo::Desc desc;
     desc.setDepthStencilTarget(ResourceFormat::D16Unorm);
     desc.setColorTarget(0u, format);
-    mpHdrFbo = FboHelper::create2D(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight(), desc);
+    mpHdrFbo = FboHelper::create2D(width, height, desc);
 }
 
-bool PostProcess::onKeyEvent(const KeyboardEvent& keyEvent)
+bool PostProcess::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mCameraController.onKeyEvent(keyEvent);
 }
 
-bool PostProcess::onMouseEvent(const MouseEvent& mouseEvent)
+bool PostProcess::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCameraController.onMouseEvent(mouseEvent);
 }
 
-void PostProcess::onInitializeTesting()
-{
-    std::vector<ArgList::Arg> modeFrames = mArgList.getValues("changeMode");
-    if (!modeFrames.empty())
-    {
-        mChangeModeFrames.resize(modeFrames.size());
-        for (uint32_t i = 0; i < modeFrames.size(); ++i)
-        {
-            mChangeModeFrames[i] = modeFrames[i].asUint();
-        }
-    }
+// void PostProcess::onInitializeTesting()
+// {
+//     std::vector<ArgList::Arg> modeFrames = mArgList.getValues("changeMode");
+//     if (!modeFrames.empty())
+//     {
+//         mChangeModeFrames.resize(modeFrames.size());
+//         for (uint32_t i = 0; i < modeFrames.size(); ++i)
+//         {
+//             mChangeModeFrames[i] = modeFrames[i].asUint();
+//         }
+//     }
+// 
+//     mChangeModeIt = mChangeModeFrames.begin();
+//     mToneMapOperatorIndex = 0;
+//     mHdrImageIndex = HdrImage::EveningSun;
+//     mpToneMapper->setOperator(ToneMapping::Operator::Clamp);
+// }
 
-    mChangeModeIt = mChangeModeFrames.begin();
-    mToneMapOperatorIndex = 0;
-    mHdrImageIndex = HdrImage::EveningSun;
-    mpToneMapper->setOperator(ToneMapping::Operator::Clamp);
-}
-
-void PostProcess::onEndTestFrame()
-{
-    uint32_t frameId = frameRate().getFrameCount();
-    if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
-    {
-        ++mChangeModeIt;
-        if (mToneMapOperatorIndex == static_cast<uint32_t>(ToneMapping::Operator::HableUc2))
-        {
-            //Done all operators on this image, go to next image
-            mToneMapOperatorIndex = 0;
-            mHdrImageIndex = static_cast<HdrImage>(min(mHdrImageIndex + 1u, static_cast<uint32_t>(AtTheWindow)));
-            loadImage();
-        }
-        else
-        {
-            //Next operator
-            ++mToneMapOperatorIndex;
-        }
-        mpToneMapper->setOperator(static_cast<ToneMapping::Operator>(mToneMapOperatorIndex));
-    }
-}
+// void PostProcess::onEndTestFrame()
+// {
+//     uint32_t frameId = frameRate().getFrameCount();
+//     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
+//     {
+//         ++mChangeModeIt;
+//         if (mToneMapOperatorIndex == static_cast<uint32_t>(ToneMapping::Operator::HableUc2))
+//         {
+//             //Done all operators on this image, go to next image
+//             mToneMapOperatorIndex = 0;
+//             mHdrImageIndex = static_cast<HdrImage>(min(mHdrImageIndex + 1u, static_cast<uint32_t>(AtTheWindow)));
+//             loadImage();
+//         }
+//         else
+//         {
+//             //Next operator
+//             ++mToneMapOperatorIndex;
+//         }
+//         mpToneMapper->setOperator(static_cast<ToneMapping::Operator>(mToneMapOperatorIndex));
+//     }
+// }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -220,13 +214,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    PostProcess postProcessSample;
+    PostProcess::UniquePtr pRenderer = std::make_unique<PostProcess>();
     SampleConfig config;
     config.windowDesc.title = "Post Processing";
 #ifdef _WIN32
-    postProcessSample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    postProcessSample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }
