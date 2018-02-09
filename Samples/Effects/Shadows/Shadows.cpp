@@ -81,10 +81,7 @@ void Shadows::createScene(const std::string& filename)
 {
     // Load the scene
     mpScene = Scene::loadFromFile(filename);
-    for (uint32_t i = 0; i < mpScene->getPathCount(); i++)
-    {
-        mpScene->getPath(i)->detachAllObjects();
-    }
+
     // Create the renderer
     mpRenderer = SceneRenderer::create(mpScene);
     mpRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
