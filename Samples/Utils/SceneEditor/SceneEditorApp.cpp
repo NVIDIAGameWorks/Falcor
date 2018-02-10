@@ -112,11 +112,11 @@ void SceneEditorApp::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
 
     if(mpScene)
     {
-		auto& state = pRenderContext->getGraphicsState();
-		state->setBlendState(nullptr);
-		state->setDepthStencilState(nullptr);
+		GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
+		pState->setBlendState(nullptr);
+		pState->setDepthStencilState(nullptr);
         pRenderContext->setGraphicsVars(mpVars);
-		state->setProgram(mpProgram);
+		pState->setProgram(mpProgram);
 
 		auto currentTime = pSample->getCurrentTime();
         mpEditor->update(currentTime);
@@ -170,7 +170,7 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 }
