@@ -106,10 +106,7 @@ void Shadows::createScene(const std::string& filename)
 
 void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
-    if (!pSample->initializeTesting())
-    {
-        createScene(mkDefaultScene);
-    }
+    createScene(mkDefaultScene);
     createVisualizationProgram();
 }
 
@@ -145,7 +142,6 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
-    pSample->beginTestFrame();
     if(mpScene)
     {
         // Update the scene
@@ -179,7 +175,6 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
     }
 
     pSample->renderText(pSample->getFpsMsg(), glm::vec2(10, 10));
-    pSample->endTestFrame();
 }
 
 bool Shadows::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

@@ -46,8 +46,6 @@ void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, RenderContext::Share
     mpLuminance = FullScreenPass::create(appendShaderExtension("Luminance.ps"));
     mpGaussianBlur = GaussianBlur::create(5);
     mpBlit = FullScreenPass::create(appendShaderExtension("Blit.ps"));
-
-    pSample->initializeTesting();
 }
 
 void MultiPassPostProcess::loadImage(SampleCallbacks* pSample)
@@ -74,8 +72,6 @@ void MultiPassPostProcess::loadImageFromFile(SampleCallbacks* pSample, std::stri
 
 void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-    pSample->beginTestFrame();
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pContext->clearFbo(pTargetFbo.get(), clearColor, 0, 0, FboAttachmentType::Color);
 
@@ -99,8 +95,6 @@ void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext
             mpBlit->execute(pContext.get());
         }
     }
-
-    pSample->endTestFrame();
 }
 
 void MultiPassPostProcess::onShutdown(SampleCallbacks* pSample)

@@ -99,14 +99,9 @@ namespace Falcor
         /** Get the fixed delta time */
         virtual float getFixedTimeDelta() = 0;
 
-        /** Takes and outputs a screenshot. If useTargetFbo is true, uses the 
-            temp target fbo given to user samples rather than final swapchain fbo 
-            Use this is you want to call captureScreen in the middle of a frame. 
-            If you call captureScreen mid frame with useTargetFbo set to false, 
-            it will actually screenshot the previous frame b/c target hasn't been
-            copied over to backbuffer yet. 
+        /** Takes and outputs a screenshot. 
         */
-        virtual std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "", bool useTargetFbo = false) = 0;
+        virtual std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") = 0;
 
         /** Check is testing is enabled and initialize it if it is
         */
@@ -120,20 +115,8 @@ namespace Falcor
         */
         virtual void endTestFrame() = 0;
 
-        /** All of the testing callbacks below are available to testing through this
-        SampleCallbacks interface, but just calls the same callbacks on the 
-        sample's renderer
-        */
-
-        /** Callback for anything the testing sample wants to do before the frame renders
-        */
-        virtual void onBeginTestFrame() = 0;
-
-        /** Callback for anything the testing sample wants to do after the frame renders
-        */
-        virtual void onEndTestFrame() = 0;
-
-        /** Callback for anything the testing sample wants to do right before shutdown
+        /** Callback for anything the renderer wants to do right before 
+            early shutdown requested by testing
         */
         virtual void onTestShutdown() = 0;
     };

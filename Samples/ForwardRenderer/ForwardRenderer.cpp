@@ -249,13 +249,8 @@ void ForwardRenderer::initPostProcess()
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpState = GraphicsState::create();
-
     initPostProcess();
-    //Only load default if not testing. If testing, probably specified what to load
-    if (!pSample->initializeTesting())
-    {
-        loadScene(pSample, mkDefaultScene, true);
-    }
+    loadScene(pSample, mkDefaultScene, true);
 }
 
 void ForwardRenderer::renderSkyBox(RenderContext* pContext)
@@ -456,7 +451,6 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
 {
     if (mpSceneRenderer)
     {
-        pSample->beginTestFrame();
         beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
 
         {
@@ -473,7 +467,6 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
         postProcess(pRenderContext.get(), pTargetFbo);
         ambientOcclusion(pRenderContext.get(), pTargetFbo);
         endFrame(pRenderContext.get());
-        pSample->endTestFrame();
     }
     else
     {

@@ -239,7 +239,6 @@ namespace Falcor
 
             // Init the UI
             initUI();
-
             mpPixelZoom = PixelZoom::create(mpTargetFBO.get());
         }
         else
@@ -264,6 +263,7 @@ namespace Falcor
 
         // Load and run
         mpRenderer->onLoad(this, mpRenderContext);
+        initializeTesting();
         pBar = nullptr;
 
         mFrameRate.resetClock();
@@ -387,6 +387,8 @@ namespace Falcor
         }
 
         mFrameRate.newFrame();
+        beginTestFrame();
+        mpRenderer->onBeginTestFrame(mpSampleTest.get());
         {
             PROFILE(onFrameRender);
             // The swap-chain FBO might have changed between frames, so get it
@@ -401,6 +403,13 @@ namespace Falcor
             calculateTime();
             mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
         }
+        //blits the temp fbo given to user's renderer onto the backbuffer
+        mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
+        //Takes testing screenshots if desired (leaves out gui and fps text)
+        endTestFrame();
+        mpRenderer->onEndTestFrame(this, mpSampleTest.get());
+        //Swaps back to backbuffer to render fps text and gui directly onto it
+        mpDefaultPipelineState->setFbo(mpBackBufferFBO);
         {
             PROFILE(renderGUI);
             if (mShowUI)
@@ -414,9 +423,6 @@ namespace Falcor
         {
             mpPixelZoom->render(mpRenderContext.get(), mpTargetFBO.get());
         }
-
-		//blits the temp fbo given to user's renderer onto the backbuffer
-		mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
 
         captureVideoFrame();
         printProfileData();
@@ -432,7 +438,7 @@ namespace Falcor
         }
     }
 
-    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory, bool useTargetFbo)
+    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory)
     {
         mCaptureScreen = false;
 
@@ -443,14 +449,7 @@ namespace Falcor
         if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
         {
             Texture::SharedPtr pTexture;
-            if (useTargetFbo)
-            {
-                pTexture = mpTargetFBO->getColorTexture(0);
-            }
-            else
-            {
-                pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
-            }
+            pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
         }
         else

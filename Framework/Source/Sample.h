@@ -115,15 +115,14 @@ namespace Falcor
         ArgList getArgList() override { return mArgList; }
         void setFixedTimeDelta(float newFixedTimeDelta) override { mFixedTimeDelta = newFixedTimeDelta; }
         float getFixedTimeDelta() override  { return mFixedTimeDelta; }
-        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "", bool useTargetFbo = false) override;
-        //Testing
-        //If testing was requested, instatitates a sample test object 
-        bool initializeTesting() override;
+        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
+        //Any cleanup required by renderer if its being shut down early via testing 
+        void onTestShutdown() override { mpRenderer->onTestShutdown(mpSampleTest.get()); }
+
+        //Non inherited testing functions 
+        bool initializeTesting();
         void beginTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->beginTestFrame(this); } }
         void endTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->endTestFrame(this); } }
-        void onBeginTestFrame() override { mpRenderer->onBeginTestFrame(mpSampleTest.get()); }
-        void onEndTestFrame() override { mpRenderer->onEndTestFrame(this, mpSampleTest.get()); }
-        void onTestShutdown() override { mpRenderer->onTestShutdown(mpSampleTest.get()); }
 
         /** Internal data structures
         */

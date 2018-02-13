@@ -50,8 +50,6 @@ void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mpTriLinearSampler = Sampler::create(samplerDesc);
 
     mpSkybox = SkyBox::createFromTexture(mkDefaultSkyBoxTexture, true, mpTriLinearSampler);
-
-    pSample->initializeTesting();
 }
 
 void SkyBoxRenderer::loadTexture()
@@ -65,8 +63,6 @@ void SkyBoxRenderer::loadTexture()
 
 void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    pSample->beginTestFrame();
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
@@ -75,8 +71,6 @@ void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
         mpCameraController->update();
         mpSkybox->render(pRenderContext.get(), mpCamera.get());
     }
-
-    pSample->endTestFrame();
 }
 
 bool SkyBoxRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

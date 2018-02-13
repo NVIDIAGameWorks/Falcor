@@ -62,8 +62,6 @@ namespace Falcor
                 mFrameTasks[mCurrentFrameTaskIndex]->onFrameBegin(pSample);
             }
         }
-
-        pSample->onBeginTestFrame();
     }
 
     // End Test Frame.
@@ -93,8 +91,6 @@ namespace Falcor
                 mCurrentFrameTaskIndex++;
             }
         }
-
-        pSample->onEndTestFrame();
     }
 
     //Get the type of the next time task if there is one
@@ -685,14 +681,14 @@ namespace Falcor
         if (pSampleTest->mHasSetDirectory)
         {
             // Capture the Screen.
-            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, pSampleTest->mTestOutputDirectory, true);
+            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, pSampleTest->mTestOutputDirectory);
             mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
             mCaptureFilename = getFilenameFromPath(mCaptureFile);
         }
         else
         {
             // Capture the Screen.
-            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, "", true);
+            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename);
             mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
             mCaptureFilename = getFilenameFromPath(mCaptureFile);
         }

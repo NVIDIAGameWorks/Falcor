@@ -49,8 +49,6 @@ void ComputeShader::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pC
     mpProgVars = ComputeVars::create(mpProg->getActiveVersion()->getReflector());
 
     mpTmpTexture = createTmpTex(pSample->getCurrentFbo().get());
-
-    pSample->initializeTesting();
 }
 
 void ComputeShader::loadImage(SampleCallbacks* pSample)
@@ -73,8 +71,6 @@ void ComputeShader::loadImageFromFile(SampleCallbacks* pSample, std::string file
 
 void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-    pSample->beginTestFrame();
-
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
 
     if(mpImage)
@@ -103,8 +99,6 @@ void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::Share
     {
         pContext->clearRtv(pTargetFbo->getRenderTargetView(0).get(), clearColor);
     }
-
-    pSample->endTestFrame();
 }
 
  void ComputeShader::onInitializeTesting(SampleCallbacks* pSample)

@@ -212,15 +212,12 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mpDeferredVars = GraphicsVars::create(mpDeferredPassProgram->getActiveVersion()->getReflector());
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
-    pSample->initializeTesting();
     // Load default model
     loadModelFromFile(mkDefaultModel, pSample->getCurrentFbo().get());
 }
 
 void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    pSample->beginTestFrame();
-
     GraphicsState* pState = pRenderContext->getGraphicsState().get();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
@@ -281,8 +278,6 @@ void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
         pRenderContext->setGraphicsVars(mpLightingVars);
         mpLightingPass->execute(pRenderContext.get());
     }
-
-    pSample->endTestFrame();
 }
 
 void SimpleDeferred::onShutdown(SampleCallbacks* pSample)

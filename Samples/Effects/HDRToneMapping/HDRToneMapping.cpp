@@ -63,8 +63,6 @@ void HDRToneMapping::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mLightIntensity = 2.5f;
 
     loadImage();
-    
-    pSample->initializeTesting();
 }
 
 void HDRToneMapping::loadImage()
@@ -121,8 +119,6 @@ void HDRToneMapping::renderTeapot(RenderContext* pContext)
 
 void HDRToneMapping::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    pSample->beginTestFrame();
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(mpHdrFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mCameraController.update();
@@ -139,8 +135,6 @@ void HDRToneMapping::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
 
     std::string Txt = pSample->getFpsMsg() + '\n';
     pSample->renderText(Txt, glm::vec2(10, 10));
-
-    pSample->endTestFrame();
 }
 
 void HDRToneMapping::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
