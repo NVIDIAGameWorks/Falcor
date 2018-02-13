@@ -97,8 +97,8 @@ private:
 	const std::string mkDefaultScene = "Arcade/Arcade.fscene";
 
     //Testing 
-//     void onInitializeTesting() override;
-//     void onEndTestFrame() override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
     std::vector<uint32_t> mFilterFrames;
     std::vector<uint32_t>::iterator mFilterFramesIt;
 };

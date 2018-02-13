@@ -73,8 +73,8 @@ private:
     void loadImage();
 
     //testing
-//     void onInitializeTesting() override;
-//     void onEndTestFrame() override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
     std::vector<uint32_t> mChangeModeFrames;
     std::vector<uint32_t>::iterator mChangeModeIt;
     uint32_t mToneMapOperatorIndex;

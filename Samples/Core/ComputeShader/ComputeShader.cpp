@@ -50,7 +50,7 @@ void ComputeShader::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pC
 
     mpTmpTexture = createTmpTex(pSample->getCurrentFbo().get());
 
-//    initializeTesting();
+    pSample->initializeTesting();
 }
 
 void ComputeShader::loadImage(SampleCallbacks* pSample)
@@ -73,7 +73,7 @@ void ComputeShader::loadImageFromFile(SampleCallbacks* pSample, std::string file
 
 void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-//    beginTestFrame();
+    pSample->beginTestFrame();
 
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
 
@@ -104,22 +104,23 @@ void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::Share
         pContext->clearRtv(pTargetFbo->getRenderTargetView(0).get(), clearColor);
     }
 
-//    endTestFrame();
+    pSample->endTestFrame();
 }
 
-// void ComputeShader::onInitializeTesting()
-// {
-//     std::vector<ArgList::Arg> filenames = mArgList.getValues("loadimage");
-//     if (!filenames.empty())
-//     {
-//         loadImageFromFile(filenames[0].asString());
-//     }
-// 
-//     if (mArgList.argExists("pixelate"))
-//     {
-//         mbPixelate = true;
-//     }
-// }
+ void ComputeShader::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> filenames = argList.getValues("loadimage");
+     if (!filenames.empty())
+     {
+         loadImageFromFile(pSample, filenames[0].asString());
+     }
+ 
+     if (argList.argExists("pixelate"))
+     {
+         mbPixelate = true;
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

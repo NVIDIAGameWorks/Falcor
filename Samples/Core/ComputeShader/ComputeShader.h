@@ -50,5 +50,5 @@ private:
     void loadImageFromFile(SampleCallbacks* pSample, std::string file);
 
     //testing
-//    void onInitializeTesting() override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
 };

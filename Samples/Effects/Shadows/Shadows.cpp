@@ -106,7 +106,10 @@ void Shadows::createScene(const std::string& filename)
 
 void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
-    createScene(mkDefaultScene);
+    if (!pSample->initializeTesting())
+    {
+        createScene(mkDefaultScene);
+    }
     createVisualizationProgram();
 }
 
@@ -142,6 +145,7 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
+    pSample->beginTestFrame();
     if(mpScene)
     {
         // Update the scene
@@ -175,6 +179,7 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
     }
 
     pSample->renderText(pSample->getFpsMsg(), glm::vec2(10, 10));
+    pSample->endTestFrame();
 }
 
 bool Shadows::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
@@ -212,51 +217,47 @@ void Shadows::createVisualizationProgram()
     }
 }
 
-// void Shadows::onInitializeTesting()
-// {
-//     std::vector<ArgList::Arg> specifiedScene = mArgList.getValues("loadscene");
-// 
-//     if (!specifiedScene.empty())
-//     {
-//         createScene(specifiedScene[0].asString());
-//     }
-// 
-//     std::vector<ArgList::Arg> filterFrames = mArgList.getValues("incrementFilter");
-//     
-// 
-// 
-// 
-//     if (!filterFrames.empty())
-//     {
-//         mFilterFrames.resize(filterFrames.size());
-//         for (uint32_t i = 0; i < filterFrames.size(); ++i)
-//         {
-//             mFilterFrames[i] = filterFrames[i].asUint();
-//         }
-//     }
-// 
-//     //Set to first filter mode because it's going to be incrementing
-//     mFilterFramesIt = mFilterFrames.begin();
-//     for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-//     {
-//         mpCsmTech[i]->setFilterMode(CsmFilterPoint);
-//     }
-// }
+ void Shadows::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> specifiedScene = argList.getValues("loadscene");
+     if (!specifiedScene.empty())
+     {
+         createScene(specifiedScene[0].asString());
+     }
+ 
+     std::vector<ArgList::Arg> filterFrames = argList.getValues("incrementFilter");
+     if (!filterFrames.empty())
+     {
+         mFilterFrames.resize(filterFrames.size());
+         for (uint32_t i = 0; i < filterFrames.size(); ++i)
+         {
+             mFilterFrames[i] = filterFrames[i].asUint();
+         }
+     }
+ 
+     //Set to first filter mode because it's going to be incrementing
+     mFilterFramesIt = mFilterFrames.begin();
+     for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
+     {
+         mpCsmTech[i]->setFilterMode(CsmFilterPoint);
+     }
+ }
 
-// void Shadows:: onEndTestFrame()
-// {
-//     uint32_t frameId = frameRate().getFrameCount();
-//     if (mFilterFramesIt != mFilterFrames.end() && frameId >= *mFilterFramesIt)
-//     {
-//         ++mFilterFramesIt;
-//         uint32_t nextFilterMode = mpCsmTech[0]->getFilterMode() + 1;
-//         nextFilterMode = min(nextFilterMode, static_cast<uint32_t>(CsmFilterStochasticPcf));
-//         for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-//         {
-//             mpCsmTech[i]->setFilterMode(nextFilterMode);
-//         }
-//     }
-// }
+ void Shadows:: onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
+ {
+     uint32_t frameId = pSample->getFrameID();
+     if (mFilterFramesIt != mFilterFrames.end() && frameId >= *mFilterFramesIt)
+     {
+         ++mFilterFramesIt;
+         uint32_t nextFilterMode = mpCsmTech[0]->getFilterMode() + 1;
+         nextFilterMode = min(nextFilterMode, static_cast<uint32_t>(CsmFilterStochasticPcf));
+         for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
+         {
+             mpCsmTech[i]->setFilterMode(nextFilterMode);
+         }
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

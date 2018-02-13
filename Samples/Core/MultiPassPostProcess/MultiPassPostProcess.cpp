@@ -47,7 +47,7 @@ void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, RenderContext::Share
     mpGaussianBlur = GaussianBlur::create(5);
     mpBlit = FullScreenPass::create(appendShaderExtension("Blit.ps"));
 
-//    initializeTesting();
+    pSample->initializeTesting();
 }
 
 void MultiPassPostProcess::loadImage(SampleCallbacks* pSample)
@@ -74,7 +74,7 @@ void MultiPassPostProcess::loadImageFromFile(SampleCallbacks* pSample, std::stri
 
 void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-//    beginTestFrame();
+    pSample->beginTestFrame();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pContext->clearFbo(pTargetFbo.get(), clearColor, 0, 0, FboAttachmentType::Color);
@@ -100,7 +100,7 @@ void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext
         }
     }
 
-//    endTestFrame();
+    pSample->endTestFrame();
 }
 
 void MultiPassPostProcess::onShutdown(SampleCallbacks* pSample)
@@ -127,23 +127,24 @@ bool MultiPassPostProcess::onKeyEvent(SampleCallbacks* pSample, const KeyboardEv
     return false;
 }
 
-// void MultiPassPostProcess::onInitializeTesting()
-// {
-//     std::vector<ArgList::Arg> filenames = mArgList.getValues("loadimage");
-//     if (!filenames.empty())
-//     {
-//         loadImageFromFile(filenames[0].asString());
-//     }
-// 
-//     if (mArgList.argExists("gaussianblur"))
-//     {
-//         mEnableGaussianBlur = true;
-//         if (mArgList.argExists("grayscale"))
-//         {
-//             mEnableGrayscale = true;
-//         }
-//     }
-// }
+ void MultiPassPostProcess::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> filenames = argList.getValues("loadimage");
+     if (!filenames.empty())
+     {
+         loadImageFromFile(pSample, filenames[0].asString());
+     }
+ 
+     if (argList.argExists("gaussianblur"))
+     {
+         mEnableGaussianBlur = true;
+         if (argList.argExists("grayscale"))
+         {
+             mEnableGrayscale = true;
+         }
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

@@ -191,7 +191,7 @@ namespace Falcor
 
         /** Callback for anything the tested renderer wants to do after the frame renders
         */
-        virtual void onEndTestFrame(SampleTest* pSampleTest) {};
+        virtual void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) {};
 
         /** Callback for anything the tested renderer wants to do right before shutdown
         */

@@ -104,12 +104,12 @@ void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::Shared
     mpAppendLightData = StructuredBuffer::create(mpComputeProgram, "gLightOut", 2);
     mpComputeVars->setStructuredBuffer("gLightOut", mpAppendLightData);
 
-//    initializeTesting();
+    pSample->initializeTesting();
 }
 
 void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-//   beginTestFrame();
+    pSample->beginTestFrame();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
@@ -178,7 +178,7 @@ void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, RenderContext:
         pContext->clearUAVCounter(mpRWBuffer, 0);
     }
 
-//    endTestFrame();
+    pSample->endTestFrame();
 }
 
 void ShaderBuffersSample::onDataReload(SampleCallbacks* pSample)

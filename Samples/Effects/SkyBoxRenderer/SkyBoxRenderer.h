@@ -52,8 +52,8 @@ private:
 	const std::string mkDefaultSkyBoxTexture = "Cubemaps/Sorsele3/Sorsele3.dds";
 
     //Testing
-//     void onInitializeTesting() override;
-//     void onEndTestFrame() override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
     std::vector<uint32_t> mChangeViewFrames;
     std::vector<uint32_t>::iterator mChangeViewIt;
 };

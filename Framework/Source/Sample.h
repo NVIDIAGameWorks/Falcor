@@ -122,7 +122,7 @@ namespace Falcor
         void beginTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->beginTestFrame(this); } }
         void endTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->endTestFrame(this); } }
         void onBeginTestFrame() override { mpRenderer->onBeginTestFrame(mpSampleTest.get()); }
-        void onEndTestFrame() override { mpRenderer->onEndTestFrame(mpSampleTest.get()); }
+        void onEndTestFrame() override { mpRenderer->onEndTestFrame(this, mpSampleTest.get()); }
         void onTestShutdown() override { mpRenderer->onTestShutdown(mpSampleTest.get()); }
 
         /** Internal data structures

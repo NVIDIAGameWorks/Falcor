@@ -212,14 +212,14 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mpDeferredVars = GraphicsVars::create(mpDeferredPassProgram->getActiveVersion()->getReflector());
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
-//    initializeTesting();
-	// Load default model
-	loadModelFromFile(mkDefaultModel, pSample->getCurrentFbo().get());
+    pSample->initializeTesting();
+    // Load default model
+    loadModelFromFile(mkDefaultModel, pSample->getCurrentFbo().get());
 }
 
 void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-//    beginTestFrame();
+    pSample->beginTestFrame();
 
     GraphicsState* pState = pRenderContext->getGraphicsState().get();
 
@@ -282,7 +282,7 @@ void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
         mpLightingPass->execute(pRenderContext.get());
     }
 
-//    endTestFrame();
+    pSample->endTestFrame();
 }
 
 void SimpleDeferred::onShutdown(SampleCallbacks* pSample)
@@ -349,31 +349,32 @@ void SimpleDeferred::resetCamera()
     }
 }
 
-// void SimpleDeferred::onInitializeTesting()
-// {
-//     std::vector<ArgList::Arg> modeFrames = mArgList.getValues("incrementDebugMode");
-//     if (!modeFrames.empty())
-//     {
-//         mChangeModeFrames.resize(modeFrames.size());
-//         for (uint32_t i = 0; i < modeFrames.size(); ++i)
-//         {
-//             mChangeModeFrames[i] = modeFrames[i].asUint();
-//         }
-//     }
-// 
-//     mChangeModeIt = mChangeModeFrames.begin();
-// }
-// 
-// void SimpleDeferred::onEndTestFrame()
-// {
-//     uint32_t frameId = frameRate().getFrameCount();
-//     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
-//     {
-//         ++mChangeModeIt;
-//         uint32_t* pMode = (uint32_t*)&mDebugMode;
-//         *pMode = min(*pMode + 1, (uint32_t)ShowLighting);
-//     }
-// }
+ void SimpleDeferred::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> modeFrames = argList.getValues("incrementDebugMode");
+     if (!modeFrames.empty())
+     {
+         mChangeModeFrames.resize(modeFrames.size());
+         for (uint32_t i = 0; i < modeFrames.size(); ++i)
+         {
+             mChangeModeFrames[i] = modeFrames[i].asUint();
+         }
+     }
+ 
+     mChangeModeIt = mChangeModeFrames.begin();
+ }
+ 
+ void SimpleDeferred::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
+ {
+     uint32_t frameId = pSample->getFrameID();
+     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
+     {
+         ++mChangeModeIt;
+         uint32_t* pMode = (uint32_t*)&mDebugMode;
+         *pMode = min(*pMode + 1, (uint32_t)ShowLighting);
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
