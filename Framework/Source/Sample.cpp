@@ -364,6 +364,21 @@ namespace Falcor
         mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
     }
 
+    bool Sample::initializeTesting()
+    {
+        if (mArgList.argExists("test"))
+        {
+            mpSampleTest = SampleTest::create();
+            mpSampleTest->initializeTests(this);
+            mpRenderer->onInitializeTesting(this);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     void Sample::renderFrame()
     {
         if (gpDevice && gpDevice->isWindowOccluded())
@@ -457,11 +472,6 @@ namespace Falcor
             if (mVsyncOn) s += std::string(", VSync");
         }
         return s;
-    }
-
-    void Sample::toggleText(bool enabled)
-    {
-        mShowText = enabled && gpDevice;
     }
 
     void Sample::resizeSwapChain(uint32_t width, uint32_t height)

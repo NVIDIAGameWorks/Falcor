@@ -26,33 +26,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "SampleTest.h"
+#include "Sample.h"
 #include <algorithm>
 #include <fstream>
 
 namespace Falcor
 {
-    // Initialize the Testing.
-    bool SampleTest::initializeTesting()
-    {
-		if (mArgList.argExists("test"))
-		{
-			// Initialize the Tests.
-			initializeTests();
-
-			// Initialize Testing Callback.
-			onInitializeTesting();
-
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-    }
-
     // Begin Test Frame.
-    void SampleTest::beginTestFrame()
+    void SampleTest::beginTestFrame(SampleCallbacks* pSample)
     {
         // Check if we have any tests.
         if (!(mCurrentTimeTaskIndex < mTimeTasks.size() || mCurrentFrameTaskIndex < mFrameTasks.size()))
@@ -64,29 +45,29 @@ namespace Falcor
 
         if (mCurrentTimeTaskIndex < mTimeTasks.size() && mCurrentTriggerType == TriggerType::None)
         {
-            if (mTimeTasks[mCurrentTimeTaskIndex]->isActive(this))
+            if (mTimeTasks[mCurrentTimeTaskIndex]->isActive(pSample))
             {
                 mCurrentTriggerType = TriggerType::Time;
 
-                mTimeTasks[mCurrentTimeTaskIndex]->onFrameBegin(this);
+                mTimeTasks[mCurrentTimeTaskIndex]->onFrameBegin(pSample);
             }
         }
 
         if (mCurrentFrameTaskIndex < mFrameTasks.size() && mCurrentTriggerType == TriggerType::None)
         {
-            if (mFrameTasks[mCurrentFrameTaskIndex]->isActive(this))
+            if (mFrameTasks[mCurrentFrameTaskIndex]->isActive(pSample))
             {
                 mCurrentTriggerType = TriggerType::Frame;
 
-                mFrameTasks[mCurrentFrameTaskIndex]->onFrameBegin(this);
+                mFrameTasks[mCurrentFrameTaskIndex]->onFrameBegin(pSample);
             }
         }
 
-        onBeginTestFrame();
+        pSample->onBeginTestFrame();
     }
 
     // End Test Frame.
-    void SampleTest::endTestFrame()
+    void SampleTest::endTestFrame(SampleCallbacks* pSample)
     {
         if (!(mCurrentTimeTaskIndex < mTimeTasks.size() || mCurrentFrameTaskIndex < mFrameTasks.size()))
         {
@@ -95,7 +76,7 @@ namespace Falcor
 
         if (mCurrentTriggerType == TriggerType::Time)
         {
-            mTimeTasks[mCurrentTimeTaskIndex]->onFrameEnd(this);
+            mTimeTasks[mCurrentTimeTaskIndex]->onFrameEnd(pSample, this);
 
             if (mTimeTasks[mCurrentTimeTaskIndex]->mIsTaskComplete)
             {
@@ -105,7 +86,7 @@ namespace Falcor
 
         if (mCurrentTriggerType == TriggerType::Frame)
         {
-            mFrameTasks[mCurrentFrameTaskIndex]->onFrameEnd(this);
+            mFrameTasks[mCurrentFrameTaskIndex]->onFrameEnd(pSample, this);
 
             if (mFrameTasks[mCurrentFrameTaskIndex]->mIsTaskComplete)
             {
@@ -113,7 +94,33 @@ namespace Falcor
             }
         }
 
-        onEndTestFrame();
+        pSample->onEndTestFrame();
+    }
+
+    //Get the type of the next time task if there is one
+    SampleTest::TaskType SampleTest::getNextTimeTaskType()
+    {
+        if (mTimeTasks.size() > mCurrentTimeTaskIndex)
+        {
+            return mTimeTasks[mCurrentTimeTaskIndex]->mTaskType;
+        }
+        else
+        {
+            return TaskType::None;
+        }
+    }
+
+    //Get the type of the next frame task is there is one
+    SampleTest::TaskType SampleTest::getNextFrameTaskType()
+    {
+        if (mFrameTasks.size() > mCurrentFrameTaskIndex)
+        {
+            return mFrameTasks[mCurrentFrameTaskIndex]->mTaskType;
+        }
+        else
+        {
+            return TaskType::None;
+        }
     }
 
     // Write the JSON Literal.
@@ -358,12 +365,13 @@ namespace Falcor
     }
 
     // Initialize the Tests.
-    void SampleTest::initializeTests()
+    void SampleTest::initializeTests(SampleCallbacks* pSample)
     {
         // Check for an Output Directory.
-        if (mArgList.argExists("outputdir"))
+        auto argList = pSample->getArgList();
+        if (argList.argExists("outputdir"))
         {
-            std::vector<ArgList::Arg> odArgs = mArgList.getValues("outputdir");
+            std::vector<ArgList::Arg> odArgs = argList.getValues("outputdir");
             if (!odArgs.empty())
             {
                 mHasSetDirectory = true;
@@ -372,9 +380,9 @@ namespace Falcor
         }
 
         // Check for a Results File.
-        if (mArgList.argExists("outputfilename"))
+        if (argList.argExists("outputfilename"))
         {
-            std::vector<ArgList::Arg> orfArgs = mArgList.getValues("outputfilename");
+            std::vector<ArgList::Arg> orfArgs = argList.getValues("outputfilename");
             if (!orfArgs.empty())
             {
                 mHasSetFilename = true;
@@ -382,27 +390,27 @@ namespace Falcor
             }
         }
 
-        if (mArgList.argExists("fixedtimedelta"))
+        if (argList.argExists("fixedtimedelta"))
         {
-            std::vector<ArgList::Arg> ftdArgs = mArgList.getValues("fixedtimedelta");
+            std::vector<ArgList::Arg> ftdArgs = argList.getValues("fixedtimedelta");
             if (!ftdArgs.empty())
             {
-                setFixedTimeDelta(ftdArgs[0].asFloat());
+                pSample->setFixedTimeDelta(ftdArgs[0].asFloat());
             }
         }
 
         // Ready the Frame Based Tests.
-        initializeFrameTests();
+        initializeFrameTests(argList);
 
         // Ready the Time Based Tests.
-        initializeTimeTests();
+        initializeTimeTests(argList);
     }
 
     // Initialize Frame Tests.
-    void SampleTest::initializeFrameTests()
+    void SampleTest::initializeFrameTests(const ArgList& args)
     {
         // Check for a Load Time.
-        if (mArgList.argExists("loadtime"))
+        if (args.argExists("loadtime"))
         {
             mLoadTimeCheckTask = std::make_shared<LoadTimeCheckTask>();
             mFrameTasks.push_back(mLoadTimeCheckTask);
@@ -410,9 +418,9 @@ namespace Falcor
 
         //
         // Check for a Shutdown Frame.
-        if (mArgList.argExists("shutdown"))
+        if (args.argExists("shutdown"))
         {
-            std::vector<ArgList::Arg> shutdownFrame = mArgList.getValues("shutdown");
+            std::vector<ArgList::Arg> shutdownFrame = args.getValues("shutdown");
             if (!shutdownFrame.empty())
             {
                 uint32_t startFrame = shutdownFrame[0].asUint();
@@ -422,9 +430,9 @@ namespace Falcor
         }
 
         // Check for a Screenshot Frame.
-        if (mArgList.argExists("ssframes"))
+        if (args.argExists("ssframes"))
         {
-            std::vector<ArgList::Arg> ssFrames = mArgList.getValues("ssframes");
+            std::vector<ArgList::Arg> ssFrames = args.getValues("ssframes");
             for (uint32_t i = 0; i < ssFrames.size(); ++i)
             {
                 uint32_t captureFrame = ssFrames[i].asUint();
@@ -437,14 +445,14 @@ namespace Falcor
     }
 
     // Initialize Time Tests.
-    void SampleTest::initializeTimeTests()
+    void SampleTest::initializeTimeTests(const ArgList& args)
     {
         //
         // Check for a Shutdown Time.
-        if (mArgList.argExists("shutdowntime"))
+        if (args.argExists("shutdowntime"))
         {
             //Shutdown
-            std::vector<ArgList::Arg> shutdownTimeArg = mArgList.getValues("shutdowntime");
+            std::vector<ArgList::Arg> shutdownTimeArg = args.getValues("shutdowntime");
             if (!shutdownTimeArg.empty())
             {
                 float shutdownTime = shutdownTimeArg[0].asFloat();
@@ -454,9 +462,9 @@ namespace Falcor
         }
 
         // Check for a Screenshot Frame.
-        if (mArgList.argExists("sstimes"))
+        if (args.argExists("sstimes"))
         {
-            std::vector<ArgList::Arg> ssTimes = mArgList.getValues("sstimes");
+            std::vector<ArgList::Arg> ssTimes = args.getValues("sstimes");
             for (uint32_t i = 0; i < ssTimes.size(); ++i)
             {
                 float captureTime = ssTimes[i].asFloat();
@@ -466,10 +474,10 @@ namespace Falcor
         }
 
         // Check for Performance Time Ranges.
-        if (mArgList.argExists("perftimes"))
+        if (args.argExists("perftimes"))
         {
             // Performance Check Frames.
-            std::vector<ArgList::Arg> perfframeRanges = mArgList.getValues("perftimes");
+            std::vector<ArgList::Arg> perfframeRanges = args.getValues("perftimes");
 
             if (perfframeRanges.size() % 2 != 0)
             {
@@ -484,10 +492,10 @@ namespace Falcor
         }
 
         // Check for Memory Time Ranges.
-        if (mArgList.argExists("memtimes"))
+        if (args.argExists("memtimes"))
         {
             // Memory Check Frames.
-            std::vector<ArgList::Arg> memframeRanges = mArgList.getValues("memtimes");
+            std::vector<ArgList::Arg> memframeRanges = args.getValues("memtimes");
         }
 
         std::sort(mTimeTasks.begin(), mTimeTasks.end(), TimeTaskPtrCompare());
@@ -644,17 +652,17 @@ namespace Falcor
 
     // LoadTimeCheckTask
 
-    bool SampleTest::LoadTimeCheckTask::isActive(SampleTest* sampleTest)
+    bool SampleTest::LoadTimeCheckTask::isActive(SampleCallbacks* pSample)
     {
-        return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
+        return pSample->getFrameID() == mStartFrame && !mIsTaskComplete;
     }
 
-    void SampleTest::LoadTimeCheckTask::onFrameBegin(SampleTest* sampleTest)
+    void SampleTest::LoadTimeCheckTask::onFrameBegin(SampleCallbacks* pSample)
     {
-        mLoadTimeCheckResult = sampleTest->mFrameRate.getLastFrameTime();
+        mLoadTimeCheckResult = pSample->getLastFrameTime();
     }
 
-    void SampleTest::LoadTimeCheckTask::onFrameEnd(SampleTest* sampleTest)
+    void SampleTest::LoadTimeCheckTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
         // Task is Complete!
         mIsTaskComplete = true;
@@ -662,35 +670,35 @@ namespace Falcor
 
     // ScreenCaptureFrameTask
 
-    bool SampleTest::ScreenCaptureFrameTask::isActive(SampleTest* sampleTest)
+    bool SampleTest::ScreenCaptureFrameTask::isActive(SampleCallbacks* pSample)
     {
-        return sampleTest->getFrameID() == mCaptureFrame && !mIsTaskComplete;
+        return pSample->getFrameID() == mCaptureFrame && !mIsTaskComplete;
     }
 
-    void SampleTest::ScreenCaptureFrameTask::onFrameBegin(SampleTest* sampleTest)
+    void SampleTest::ScreenCaptureFrameTask::onFrameBegin(SampleCallbacks* pSample)
     {
-        sampleTest->toggleText(false);
+        pSample->toggleText(false);
     }
 
-    void SampleTest::ScreenCaptureFrameTask::onFrameEnd(SampleTest* sampleTest)
+    void SampleTest::ScreenCaptureFrameTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
-        if (sampleTest->mHasSetDirectory)
+        if (pSampleTest->mHasSetDirectory)
         {
             // Capture the Screen.
-            std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename, sampleTest->mTestOutputDirectory);
+            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, pSampleTest->mTestOutputDirectory);
             mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
             mCaptureFilename = getFilenameFromPath(mCaptureFile);
         }
         else
         {
             // Capture the Screen.
-            std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename);
+            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename);
             mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
             mCaptureFilename = getFilenameFromPath(mCaptureFile);
         }
 
         // Toggle the Text Back.
-        sampleTest->toggleText(true);
+        pSample->toggleText(true);
 
         // Task is Complete!
         mIsTaskComplete = true;
@@ -698,21 +706,21 @@ namespace Falcor
 
     // ShutdownFrameTask
 
-    bool SampleTest::ShutdownFrameTask::isActive(SampleTest* sampleTest)
+    bool SampleTest::ShutdownFrameTask::isActive(SampleCallbacks* pSample)
     {
-        return sampleTest->getFrameID() == mStartFrame && !mIsTaskComplete;
+        return pSample->getFrameID() == mStartFrame && !mIsTaskComplete;
     }
 
-    void SampleTest::ShutdownFrameTask::onFrameEnd(SampleTest* sampleTest)
+    void SampleTest::ShutdownFrameTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
         // Write the json Test Results.
-        sampleTest->writeJsonTestResults();
+        pSampleTest->writeJsonTestResults();
 
         // Shutdown the App.
-        sampleTest->getWindow()->shutdown();
+        pSample->getWindow()->shutdown();
 
         // On Test Shutdown.
-        sampleTest->onTestShutdown();
+        pSample->onTestShutdown();
 
         // Task is Complete!
         mIsTaskComplete = true;
@@ -720,93 +728,95 @@ namespace Falcor
 
     // MemoryCheckTimeTask
 
-    void SampleTest::MemoryCheckTimeTask::onFrameEnd(SampleTest* sampleTest)
+    void SampleTest::MemoryCheckTimeTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
-        if (sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime && !mIsActive)
+        auto currentTime = pSample->getCurrentTime();
+        if (currentTime >= mStartTime && currentTime <= mEndTime && !mIsActive)
         {
             mIsActive = true;
-            sampleTest->getMemoryStatistics(mStartCheck);
+            pSampleTest->getMemoryStatistics(mStartCheck);
         }
 
-        if (sampleTest->mCurrentTime >= mEndTime && mIsActive)
+        if (currentTime >= mEndTime && mIsActive)
         {
-            sampleTest->getMemoryStatistics(mEndCheck);
+            pSampleTest->getMemoryStatistics(mEndCheck);
             mIsActive = false;
             mIsTaskComplete = true;
         }
     }
 
-    bool SampleTest::PerformanceCheckTimeTask::isActive(SampleTest* sampleTest)
+    bool SampleTest::PerformanceCheckTimeTask::isActive(SampleCallbacks* pSample)
     {
-        return sampleTest->mCurrentTime >= mStartTime && sampleTest->mCurrentTime <= mEndTime;
+        auto currentTime = pSample->getCurrentTime();
+        return currentTime >= mStartTime && currentTime <= mEndTime;
     }
 
-    void SampleTest::PerformanceCheckTimeTask::onFrameEnd(SampleTest* sampleTest)
+    void SampleTest::PerformanceCheckTimeTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
         // Task is Complete!
         mIsTaskComplete = true;
     }
 
-    bool SampleTest::ScreenCaptureTimeTask::isActive(SampleTest* sampleTest)
+    bool SampleTest::ScreenCaptureTimeTask::isActive(SampleCallbacks* pSample)
     {
-        return mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
+        return mCaptureTime <= pSample->getCurrentTime() && !mIsTaskComplete;
     }
 
-    void SampleTest::ScreenCaptureTimeTask::onFrameBegin(SampleTest* sampleTest)
+    void SampleTest::ScreenCaptureTimeTask::onFrameBegin(SampleCallbacks* pSample)
     {
-        if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        if (mCaptureTime <= pSample->getCurrentTime() && !mIsTaskComplete)
         {
             // Sneakily set the time of the program! For perfect pictures.
-            sampleTest->mCurrentTime = mCaptureTime;
+            pSample->setCurrentTime(mCaptureTime);
 
-            sampleTest->toggleText(false);
+            pSample->toggleText(false);
         }
     }
 
-    void SampleTest::ScreenCaptureTimeTask::onFrameEnd(SampleTest* sampleTest)
+    void SampleTest::ScreenCaptureTimeTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
-        if (mCaptureTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        if (mCaptureTime <= pSample->getCurrentTime() && !mIsTaskComplete)
         {
-            if (sampleTest->mHasSetDirectory)
+            if (pSampleTest->mHasSetDirectory)
             {
                 // Capture the Screen.
-                std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename, sampleTest->mTestOutputDirectory);
+                std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, pSampleTest->mTestOutputDirectory);
                 mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                 mCaptureFilename = getFilenameFromPath(mCaptureFile);
             }
             else
             {
                 // Capture the Screen.
-                std::string mCaptureFile = sampleTest->captureScreen(sampleTest->mTestOutputFilename);
+                std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename);
                 mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
                 mCaptureFilename = getFilenameFromPath(mCaptureFile);
             }
 
             // Toggle the Text Back.
-            sampleTest->toggleText(true);
+            pSample->toggleText(true);
 
             // Task is Complete!
             mIsTaskComplete = true;
         }
     }
 
-    bool SampleTest::ShutdownTimeTask::isActive(SampleTest* sampleTest)
+    bool SampleTest::ShutdownTimeTask::isActive(SampleCallbacks* pSample)
     {
-        return mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete;
+        return mShutdownTime <= pSample->getCurrentTime() && !mIsTaskComplete;
     }
 
-    void SampleTest::ShutdownTimeTask::onFrameEnd(SampleTest* sampleTest)
+    void SampleTest::ShutdownTimeTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
-        if (mShutdownTime <= sampleTest->mCurrentTime && !mIsTaskComplete)
+        if (mShutdownTime <= pSample->getCurrentTime() && !mIsTaskComplete)
         {
             // Write the json Test Results.
-            sampleTest->writeJsonTestResults();
+            pSampleTest->writeJsonTestResults();
 
             // Shutdown the App.
-            sampleTest->getWindow()->shutdown();
+            pSample->getWindow()->shutdown();
 
             // On Test Shutdown.
-            sampleTest->onTestShutdown();
+            pSample->onTestShutdown();
 
             // Task is Complete!
             mIsTaskComplete = true;

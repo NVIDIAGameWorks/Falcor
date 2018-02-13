@@ -251,8 +251,11 @@ void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
     mpState = GraphicsState::create();
 
     initPostProcess();
-//    initializeTesting();
-	loadScene(pSample, mkDefaultScene, true);
+    //Only load default if not testing. If testing, probably specified what to load
+    if (!pSample->initializeTesting())
+    {
+        loadScene(pSample, mkDefaultScene, true);
+    }
 }
 
 void ForwardRenderer::renderSkyBox(RenderContext* pContext)
@@ -438,22 +441,23 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
     }
 }
 
-// void FeatureDemo::onBeginTestFrame()
-// {
-//     //  Already exisitng. Is this a problem?
-//     if (mCurrentTriggerType == SampleTest::TriggerType::None)
-//     {
-//        SampleTest::TaskType taskType = (mCurrentTriggerType == SampleTest::TriggerType::Frame) ? mFrameTasks[mCurrentFrameTaskIndex]->mTaskType : mTimeTasks[mCurrentTimeTaskIndex]->mTaskType;
-// 
-//         mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
-//     }
-// }
+ void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
+ {
+     //  Already exisitng. Is this a problem?
+     auto nextTriggerType = pSampleTest->getNextTriggerType();
+     if (nextTriggerType == SampleTest::TriggerType::None)
+     {
+         SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
+        mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
+     }
+ }
 
 void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     if (mpSceneRenderer)
     {
-        beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getCurrentFrameId());
+        pSample->beginTestFrame();
+        beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
 
         {
             PROFILE(updateScene);
@@ -469,11 +473,13 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
         postProcess(pRenderContext.get(), pTargetFbo);
         ambientOcclusion(pRenderContext.get(), pTargetFbo);
         endFrame(pRenderContext.get());
+        pSample->endTestFrame();
     }
     else
     {
         pRenderContext->clearFbo(pTargetFbo.get(), vec4(0.2f, 0.4f, 0.5f, 1), 1, 0);
     }
+
 }
 
 void ForwardRenderer::applyCameraPathState()
@@ -550,32 +556,33 @@ void ForwardRenderer::setActiveCameraAspectRatio(uint32_t w, uint32_t h)
     mpSceneRenderer->getScene()->getActiveCamera()->setAspectRatio((float)w / (float)h);
 }
 
-// void FeatureDemo::onInitializeTesting()
-// {
-//     std::vector<ArgList::Arg> model = mArgList.getValues("loadmodel");
-//     if (!model.empty())
-//     {
-//         loadModel(model[0].asString(), false);
-//     }
-// 
-//     std::vector<ArgList::Arg> scene = mArgList.getValues("loadscene");
-//     if (!scene.empty())
-//     {
-//         loadScene(scene[0].asString(), false);
-//     }
-// 
-//     std::vector<ArgList::Arg> cameraPos = mArgList.getValues("camerapos");
-//     if (!cameraPos.empty())
-//     {
-//         mpSceneRenderer->getScene()->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
-//     }
-// 
-//     std::vector<ArgList::Arg> cameraTarget = mArgList.getValues("cameratarget");
-//     if (!cameraTarget.empty())
-//     {
-//         mpSceneRenderer->getScene()->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
-//     }
-// }
+ void ForwardRenderer::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto args = pSample->getArgList();
+     std::vector<ArgList::Arg> model = args.getValues("loadmodel");
+     if (!model.empty())
+     {
+         loadModel(pSample, model[0].asString(), false);
+     }
+ 
+     std::vector<ArgList::Arg> scene = args.getValues("loadscene");
+     if (!scene.empty())
+     {
+         loadScene(pSample, scene[0].asString(), false);
+     }
+ 
+     std::vector<ArgList::Arg> cameraPos = args.getValues("camerapos");
+     if (!cameraPos.empty())
+     {
+         mpSceneRenderer->getScene()->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
+     }
+ 
+     std::vector<ArgList::Arg> cameraTarget = args.getValues("cameratarget");
+     if (!cameraTarget.empty())
+     {
+         mpSceneRenderer->getScene()->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

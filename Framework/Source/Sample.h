@@ -40,6 +40,7 @@
 #include "ArgList.h"
 #include "Utils/PixelZoom.h"
 #include "Renderer.h"
+#include "SampleTest.h"
 
 namespace Falcor
 {
@@ -101,14 +102,27 @@ namespace Falcor
         void resizeSwapChain(uint32_t width, uint32_t height) override;
         bool isKeyPressed(const KeyboardEvent::Key& key) override;
         float getFrameRate() override { return mFrameRate.getAverageFrameTime(); }
+        float getLastFrameTime() override { return mFrameRate.getLastFrameTime();  }
         float getTimeSinceLastFrame() override { return mFrameRate.getLastFrameTime(); }
+        uint32_t getFrameID() override { return mFrameRate.getFrameCount(); }
         void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = vec2(1)) override;
         std::string getFpsMsg() override;
         Window* getWindow() override { return mpWindow.get(); }
-        void toggleUI(bool showUI) { mShowUI = showUI && gpDevice; }
+        void toggleText(bool showText) override { mShowText = showText && gpDevice; }
+        void toggleUI(bool showUI) override { mShowUI = showUI && gpDevice; }
         void setDefaultGuiSize(uint32_t width, uint32_t height) override;
         void setCurrentTime(float time) override { mCurrentTime = time; }
-        uint32_t getCurrentFrameId() override { return mFrameRate.getFrameCount(); }
+        ArgList getArgList() override { return mArgList; }
+        void setFixedTimeDelta(float newFixedTimeDelta) override { mFixedTimeDelta = newFixedTimeDelta; }
+        float getFixedTimeDelta() override  { return mFixedTimeDelta; }
+        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
+        //Testing
+        bool initializeTesting();
+        void beginTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->beginTestFrame(this); } }
+        void endTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->endTestFrame(this); } }
+        void onBeginTestFrame() override { mpRenderer->onBeginTestFrame(mpSampleTest.get()); }
+        void onEndTestFrame() override { mpRenderer->onEndTestFrame(mpSampleTest.get()); }
+        void onTestShutdown() override { mpRenderer->onTestShutdown(mpSampleTest.get()); }
 
         /** Internal data structures
         */
@@ -129,14 +143,7 @@ namespace Falcor
         void handleDroppedFile(const std::string& filename) override;
 
         virtual float getTimeScale() final { return mTimeScale; }
-        float getFixedTimeDelta() { return mFixedTimeDelta; }
-        void setFixedTimeDelta(float newFixedTimeDelta) { mFixedTimeDelta = newFixedTimeDelta; }
         void initVideoCapture();
-
-        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "");
-
-        void toggleText(bool enabled);
-        uint32_t getFrameID() const { return mFrameRate.getFrameCount(); }
 
         // Private functions
         void initUI();
@@ -149,6 +156,9 @@ namespace Falcor
         void renderGUI();
 
         void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
+
+        //If testing was requested, instatitates a sample test object 
+        bool initializeTesting();
 
         bool mVsyncOn = false;
         bool mShowText = true;
@@ -182,6 +192,9 @@ namespace Falcor
         Sample& operator=(const Sample&) = delete;
     private:
         Fbo::SharedPtr mpBackBufferFBO;     ///< The FBO for the back buffer
+        //Testing
+        SampleTest::UniquePtr mpSampleTest = nullptr;
+
     };
     enum_class_operators(SampleConfig::Flags);
 };

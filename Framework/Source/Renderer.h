@@ -33,6 +33,8 @@ namespace Falcor
     class Window;
     class RenderContext;
     class Fbo;
+    class SampleTest;
+    class ArgList;
 
     class SampleCallbacks
     {
@@ -60,6 +62,12 @@ namespace Falcor
 
         /** Get the average framerate */
         virtual float getFrameRate() = 0;
+        
+        /** Get the last frame time */
+        virtual float getLastFrameTime() = 0;
+
+        /** Get the current frame ID*/
+        virtual uint32_t getFrameID() = 0;
 
         /** Render text */
         virtual void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = glm::vec2(1)) = 0;
@@ -73,14 +81,55 @@ namespace Falcor
         /** Get the window object */
         virtual Window* getWindow() = 0;
 
+        /** Show/hide text */
+        virtual void toggleText(bool showText) = 0;
+
         /** Show/hide the UI */
         virtual void toggleUI(bool showUI) = 0;
 
         /** Set the default GUI size */
         virtual void setDefaultGuiSize(uint32_t width, uint32_t height) = 0;
 
-        /** Get the current frame ID*/
-        virtual uint32_t getCurrentFrameId() = 0;
+        /** Get the object storing command line arguments */
+        virtual ArgList getArgList() = 0;
+
+        /** Specify the delta time for deterministic testing */
+        virtual void setFixedTimeDelta(float newDelta) = 0;
+
+        /** Get the fixed delta time */
+        virtual float getFixedTimeDelta() = 0;
+
+        /** Takes and outputs a screenshot */
+        virtual std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") = 0;
+
+        /** Check is testing is enabled and initialize it if it is
+        */
+        virtual bool initializeTesting() = 0;
+
+        /** Testing actions that need to occur before frame renders 
+        */
+        virtual void beginTestFrame() = 0;
+
+        /** Testing actiosn taht need to occur after frame renders
+        */
+        virtual void endTestFrame() = 0;
+
+        /** All of the testing callbacks below are available to testing through this
+        SampleCallbacks interface, but just calls the same callbacks on the 
+        sample's renderer
+        */
+
+        /** Callback for anything the testing sample wants to do before the frame renders
+        */
+        virtual void onBeginTestFrame() = 0;
+
+        /** Callback for anything the testing sample wants to do after the frame renders
+        */
+        virtual void onEndTestFrame() = 0;
+
+        /** Callback for anything the testing sample wants to do right before shutdown
+        */
+        virtual void onTestShutdown() = 0;
     };
 
     class Renderer : std::enable_shared_from_this<Renderer>
@@ -131,6 +180,22 @@ namespace Falcor
         /** Called when a file is dropped into the window
         */
         virtual void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) {}
+
+        /** Callback for anything the tested renderer needs to do to initialize testing 
+        */
+        virtual void onInitializeTesting(SampleCallbacks* pSample) {};
+
+        /** Callback for anything the tested renderer wants to do before the frame renders
+        */
+        virtual void onBeginTestFrame(SampleTest* pSampleTest) {};
+
+        /** Callback for anything the tested renderer wants to do after the frame renders
+        */
+        virtual void onEndTestFrame(SampleTest* pSampleTest) {};
+
+        /** Callback for anything the tested renderer wants to do right before shutdown
+        */
+        virtual void onTestShutdown(SampleTest* pSampleTest) {};
 
         // Deleted copy operators (copy a pointer type!)
         Renderer(const Renderer&) = delete;
