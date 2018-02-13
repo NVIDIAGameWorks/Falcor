@@ -45,7 +45,7 @@ public:
     */
     ShaderToyRenderer() {}
     virtual ~ShaderToyRenderer() = default;
-    static SharedPtr create() { return std::make_shared<ShaderToyRenderer>(); }
+    static SharedPtr create() { return std::make_unique<ShaderToyRenderer>(); }
 
     /** Callbacks overridden from Renderer base class
     */

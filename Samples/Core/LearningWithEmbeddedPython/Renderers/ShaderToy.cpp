@@ -78,7 +78,7 @@ void ShaderToyRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::S
     pDefaultBlock->getConstantBuffer(mToyCBBinding, 0)["iResolution"] = glm::vec2(width, height);
 
     // iGlobalTime
-    float iGlobalTime = (float)pSample->getCurrentTime;
+    float iGlobalTime = (float)pSample->getCurrentTime();
     pDefaultBlock->getConstantBuffer(mToyCBBinding, 0)["iGlobalTime"] = iGlobalTime;
 
     // run final pass

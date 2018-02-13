@@ -26,13 +26,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#include "MultiRendererSample.h"
+#include "Utils/Renderer/MultiSampleRenderer.h"
 #include "Renderers/ShaderToy.h"
 #include "Renderers/LiveTrainingDemo.h"
 
 // We're need to override our scene loader to provide good default lights (if there are none),
 //    since our LiveTrainRenderer assumes there's (at least) one light in the scene.
-class DemoApp : public MultiRendererSample
+class DemoApp : public MultiSampleRenderer
 {
     virtual Scene::SharedPtr loadScene(const std::string& filename) override;
 };
@@ -44,7 +44,7 @@ int main(int argc, char** argv)
 #endif
 {
     // Our application program
-    MultiRendererSample sample;
+    MultiSampleRenderer sample = MultiSampleRenderer(";
     
     // Setup our demo config
     SampleConfig config;
@@ -61,7 +61,7 @@ int main(int argc, char** argv)
 #endif
 
     // Create another, fallback renderer to run if there's no Python enabled.
-    Renderer::SharedPtr toyDemo     = ShaderToyRenderer::create();     // Another, super-simple renderer as an example of how to use the MultiRendererSample
+    Renderer::UniquePtr toyDemo     = ShaderToyRenderer::create();     // Another, super-simple renderer as an example of how to use the MultiRendererSample
     sample.addRenderer(toyDemo);
 
     // Run the program
