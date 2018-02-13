@@ -432,7 +432,7 @@ namespace Falcor
         }
     }
 
-    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory)
+    std::string Sample::captureScreen(const std::string explicitFilename, const std::string explicitOutputDirectory, bool useTargetFbo)
     {
         mCaptureScreen = false;
 
@@ -442,7 +442,15 @@ namespace Falcor
         std::string pngFile;
         if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
         {
-            Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
+            Texture::SharedPtr pTexture;
+            if (useTargetFbo)
+            {
+                pTexture = mpTargetFBO->getColorTexture(0);
+            }
+            else
+            {
+                pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
+            }
             pTexture->captureToFile(0, 0, pngFile);
         }
         else

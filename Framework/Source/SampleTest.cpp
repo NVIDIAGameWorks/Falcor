@@ -685,14 +685,14 @@ namespace Falcor
         if (pSampleTest->mHasSetDirectory)
         {
             // Capture the Screen.
-            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, pSampleTest->mTestOutputDirectory);
+            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, pSampleTest->mTestOutputDirectory, true);
             mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
             mCaptureFilename = getFilenameFromPath(mCaptureFile);
         }
         else
         {
             // Capture the Screen.
-            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename);
+            std::string mCaptureFile = pSample->captureScreen(pSampleTest->mTestOutputFilename, "", true);
             mCaptureFilepath = getDirectoryFromFile(mCaptureFile);
             mCaptureFilename = getFilenameFromPath(mCaptureFile);
         }

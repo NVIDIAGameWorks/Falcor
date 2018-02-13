@@ -99,8 +99,14 @@ namespace Falcor
         /** Get the fixed delta time */
         virtual float getFixedTimeDelta() = 0;
 
-        /** Takes and outputs a screenshot */
-        virtual std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") = 0;
+        /** Takes and outputs a screenshot. If useTargetFbo is true, uses the 
+            temp target fbo given to user samples rather than final swapchain fbo 
+            Use this is you want to call captureScreen in the middle of a frame. 
+            If you call captureScreen mid frame with useTargetFbo set to false, 
+            it will actually screenshot the previous frame b/c target hasn't been
+            copied over to backbuffer yet. 
+        */
+        virtual std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "", bool useTargetFbo = false) = 0;
 
         /** Check is testing is enabled and initialize it if it is
         */

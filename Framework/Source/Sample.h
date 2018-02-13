@@ -115,7 +115,7 @@ namespace Falcor
         ArgList getArgList() override { return mArgList; }
         void setFixedTimeDelta(float newFixedTimeDelta) override { mFixedTimeDelta = newFixedTimeDelta; }
         float getFixedTimeDelta() override  { return mFixedTimeDelta; }
-        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
+        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "", bool useTargetFbo = false) override;
         //Testing
         //If testing was requested, instatitates a sample test object 
         bool initializeTesting() override;
