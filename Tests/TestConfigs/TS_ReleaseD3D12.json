@@ -95,7 +95,7 @@
         "SkyBoxTest":
         {
             "Enabled" : true,
-            "Project Name" : "SkyBox",
+            "Project Name" : "SkyBoxRenderer",
             "Project Tests Args" :
             [
                 "-test -changeView 100 200 300 400 500 -ssframes 50 150 250 350 450 550 -shutdown 600"
