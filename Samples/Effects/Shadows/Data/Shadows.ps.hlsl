@@ -53,7 +53,7 @@ float4 main(ShadowsVSOut pIn) : SV_TARGET0
     for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
     {
         float shadowFactor = calcShadowFactor(gCsmData[l], pIn.shadowsDepthC, sd.posW, pIn.vsData.posH.xy/pIn.vsData.posH.w);
-        color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color;
+        color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
     }
 
     color.rgb += gAmbient * sd.diffuse * 0.1;
