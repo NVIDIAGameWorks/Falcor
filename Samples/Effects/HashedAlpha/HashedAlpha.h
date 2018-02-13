@@ -64,5 +64,5 @@ private:
     AlphaTestMode mAlphaTestMode = AlphaTestMode::HashedAlphaIsotropic;
     float mHashScale = 1.0f;
 
-	const std::string mkDefaultModel = "alphatest\\alpha_test.obj";
+	const std::string mkDefaultModel = "alphatest/alpha_test.obj";
 };

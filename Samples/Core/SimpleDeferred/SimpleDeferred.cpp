@@ -214,7 +214,7 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
 
 //    initializeTesting();
 	// Load default model
-	loadModelFromFile(mkDefaultModel);
+	loadModelFromFile(mkDefaultModel, pSample->getCurrentFbo().get());
 }
 
 void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)

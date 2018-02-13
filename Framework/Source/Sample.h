@@ -117,7 +117,8 @@ namespace Falcor
         float getFixedTimeDelta() override  { return mFixedTimeDelta; }
         std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
         //Testing
-        bool initializeTesting();
+        //If testing was requested, instatitates a sample test object 
+        bool initializeTesting() override;
         void beginTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->beginTestFrame(this); } }
         void endTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->endTestFrame(this); } }
         void onBeginTestFrame() override { mpRenderer->onBeginTestFrame(mpSampleTest.get()); }
@@ -157,8 +158,6 @@ namespace Falcor
 
         void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
 
-        //If testing was requested, instatitates a sample test object 
-        bool initializeTesting();
 
         bool mVsyncOn = false;
         bool mShowText = true;

@@ -66,5 +66,5 @@ private:
 
     SSAO::UniquePtr mpSSAO;
  
-	const std::string mkDefaultModel = "Arcade\\Arcade.fbx";
+	const std::string mkDefaultModel = "Arcade/Arcade.fbx";
 };

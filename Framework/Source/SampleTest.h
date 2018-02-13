@@ -243,7 +243,7 @@ namespace Falcor
         public:
             MemoryCheckTimeTask(float memoryCheckRangeBeginTime, float memoryCheckRangeBeginEnd) : TimeTask(TaskType::MemoryCheckTask, memoryCheckRangeBeginTime, memoryCheckRangeBeginEnd) {};
 
-            virtual bool isActive(SampleCallbacks* pSample) {}
+            virtual bool isActive(SampleCallbacks* pSample) { return mIsActive; }
             virtual void onFrameBegin(SampleCallbacks* pSample) {}
             virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest);
 

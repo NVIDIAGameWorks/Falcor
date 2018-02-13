@@ -1,5 +1,5 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
-SAMPLE_CONFIG:=Debug
+SAMPLE_CONFIG:=Release
 
 All : ForwardRenderer AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering

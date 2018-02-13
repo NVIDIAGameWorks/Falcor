@@ -210,7 +210,7 @@ private:
     bool mPerMaterialShader = false;
     bool mEnableDepthPass = true;
 
-	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
+	const std::string mkDefaultScene = "Arcade/Arcade.fscene";
 
     // Testing 
 //     void onInitializeTesting() override;
