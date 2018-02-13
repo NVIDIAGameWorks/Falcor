@@ -213,10 +213,8 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
 //    initializeTesting();
-	{
-		// Load default model
-		loadModelFromFile(mkDefaultModel, pRenderContext->getGraphicsState()->getFbo().get());
-	}
+	// Load default model
+	loadModelFromFile(mkDefaultModel);
 }
 
 void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)

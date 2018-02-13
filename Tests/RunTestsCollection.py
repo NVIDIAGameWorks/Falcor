@@ -8,11 +8,11 @@ import sys
 import json
 import pprint
 
-import RunTestsSet as rTS
 import CloneRepo as cloneRepo
 import Helpers as helpers
 import WriteTestResultsToHTML as write_test_results_to_html
 import MachineConfigs as machine_configs
+import RunTestsSet as rTS
 
 
 class TestsCollectionError(Exception):
@@ -60,18 +60,6 @@ def verify_tests_collection(tests_name, tests_data):
     if 'Compare Branch Target' not in tests_data:
         raise TestsCollectionError('Error - "Branch Target" is not defined in ' + tests_name)
 
-    # Check for a Repository Target.
-    if 'Destination Target' not in tests_data:
-        raise TestsCollectionError('Error - "Destination Target" is not defined in ' + tests_name)
-
-    # Check for a Repository Target.
-    if 'Compare Reference Target' not in tests_data:
-        raise TestsCollectionError('Error - "Compare Reference Target" is not defined in ' + tests_name)
-
-    # Check for a Repository Target.
-    if 'Generate Reference Target' not in tests_data:
-        raise TestsCollectionError('Error - "Compare Reference Target" is not defined in ' + tests_name)
-
     # Check for a Tests Array.
     if 'Tests' not in tests_data:
         raise TestsCollectionError('Error - "Tests" is not defined in ' + tests_name)
@@ -89,7 +77,6 @@ def verify_tests_collection(tests_name, tests_data):
 
 
 def verify_all_tests_collection_ran_successfully(tests_collections_results):
-
     verify_tests_collections = {}
     verify_tests_collections['Success'] = True
     verify_tests_collections['Error Messages'] = {}
@@ -103,11 +90,8 @@ def verify_all_tests_collection_ran_successfully(tests_collections_results):
 
 # Run all of the Tests Collections.
 def run_tests_collections(json_data):
-
     tests_collection_results = {}
     tests_collection_results = json_data['Tests Collections']
-
-    print(tests_collection_results)
 
     # Run each test collection.
     for name in tests_collection_results:
@@ -118,13 +102,12 @@ def run_tests_collections(json_data):
 
         # Run each Test Set.
         for index, current_tests_set in enumerate(tests_collection_results[name]['Tests']):
-
             # The Clone Directory is the Destination Target + The Branch Target + the Test Collection Name + the Build Configuration Name.
             # For the momemnt, do not add multiple solutions to the same Test Collection, because that will create overlapping clone targets.
-            clone_directory = tests_collection_results[name]['Destination Target']
+            clone_directory = machine_configs.destination_target
             clone_directory = clone_directory +  tests_collection_results[name]['Source Branch Target']
-            clone_directory = clone_directory + '\\' +  name + '\\'
-            clone_directory = clone_directory + '\\' + os.path.splitext(os.path.basename(current_tests_set['Tests Set']))[0] + '\\'
+            clone_directory = os.path.join(clone_directory, name)
+            clone_directory = os.path.join(clone_directory, os.path.splitext(os.path.basename(current_tests_set['Tests Set']))[0])
 
             # Clear the directory.
             if helpers.directory_clean_or_make(clone_directory) == None:
@@ -138,9 +121,9 @@ def run_tests_collections(json_data):
                 tests_collection_results[name]['Error'] = "Could not clone the repository. Please try manually removing the directory it is to be cloned into, and verifying the target and branch. " + clone_directory
 
             # Get the Results and Reference Directory.
-            common_directory_path = tests_collection_results[name]['Source Branch Target'] + "\\" + name + '\\'
-            results_directory = 'TestsResults' + '\\' + common_directory_path
-            reference_directory = tests_collection_results[name]['Compare Reference Target'] + '\\'  + machine_configs.machine_name + '\\' + tests_collection_results[name]['Compare Branch Target'] + '\\' + name
+            common_directory_path = os.path.join(tests_collection_results[name]['Source Branch Target'], name)
+            results_directory = os.path.join('TestsResults', common_directory_path)
+            reference_directory = os.path.join(machine_configs.machine_reference_directory, machine_configs.machine_name, tests_collection_results[name]['Compare Branch Target'], name)
 
             # Run the Tests Set.
             test_results = rTS.run_tests_set(clone_directory, False, tests_collection_results[name]['Tests Configs Target'] + current_tests_set['Tests Set'], results_directory, reference_directory)
@@ -151,7 +134,6 @@ def run_tests_collections(json_data):
 
 
 def check_tests_collections_results(tests_collection_results):
-
     for name in tests_collection_results:
         for result in tests_collection_results[name]['Tests Sets Results']:
             # Get the Tests Set Result.
@@ -166,7 +148,7 @@ def write_tests_collection_html(tests_collection_results):
             tests_set_html_result = write_test_results_to_html.write_test_set_results_to_html(current_test_set_result)
 
             # Output the file to disk.
-            html_output_file_path = current_test_set_result['Results Directory'] + '\\' + helpers.build_html_filename(current_test_set_result)
+            html_output_file_path = os.path.join(current_test_set_result['Results Directory'], helpers.build_html_filename(current_test_set_result))
             html_file = open(html_output_file_path, 'w')
             html_file.write(tests_set_html_result)
             html_file.close()
@@ -182,7 +164,7 @@ def write_tests_collection_html(tests_collection_results):
     return html_outputs
 
 
-def dispatch_email(success, html_outputs):
+def prepare_and_dispatch_email(success, html_outputs):
     date_and_time = date.today().strftime("%m-%d-%y")
 
     if success:
@@ -191,15 +173,9 @@ def dispatch_email(success, html_outputs):
         subject = "[FAILED] "
 
     subject += 'Falcor Automated Tests - ' + machine_configs.machine_name + ' : ' + date_and_time
-    dispatcher = 'NvrGfxTest@nvidia.com'
-    recipients = str(open(machine_configs.machine_email_recipients, 'r').read())
-    subprocess.call(['blat.exe', '-install', 'mail.nvidia.com', dispatcher])
-    command = ['blat.exe', '-to', recipients, '-subject', subject, '-body', "   "]
-    for html_output in html_outputs:
-        command.append('-attach')
-        command.append(html_output['HTML File'])
-    subprocess.call(command)
-
+    attachments = [x['HTML File'] for x in html_outputs]
+    
+    helpers.dispatch_email(subject, attachments) 
 
 def all_tests_succeeded(tests_collection_results):
     success = True
@@ -209,6 +185,26 @@ def all_tests_succeeded(tests_collection_results):
 
     return success
 
+def copy_results_to_target(html_outputs):
+    target_base = machine_configs.machine_results_summary_target
+    dateStr = date.today().strftime("%m-%d-%y")
+    today_dir = os.path.join(target_base, dateStr)    
+
+    #If there isn't already a folder for today's results, make one 
+    if not os.path.isdir(today_dir):
+        os.mkdir(today_dir)
+    
+    #copy and rename any output html files    
+    for output in html_outputs:
+        out_path = output['HTML File']
+        out_file = os.path.basename(out_path)
+        shutil.copy(out_path, today_dir)
+        print('Copied ' + out_path + ' to ' + today_dir)
+        copied_path = os.path.join(today_dir, out_file)
+        new_name = output['Machine'] + '_' + out_file
+        new_path = os.path.join(today_dir, new_name)
+        shutil.move(copied_path, new_path)
+        print('Renamed ' + copied_path + ' to ' + new_path)
 
 def main():
 
@@ -236,8 +232,9 @@ def main():
     html_outputs = write_tests_collection_html(tests_collection_results)
 
     if not args.no_email:
-        dispatch_email(all_tests_succeeded(tests_collection_results), html_outputs)
-
+        prepare_and_dispatch_email(all_tests_succeeded(tests_collection_results), html_outputs)
+    
+    copy_results_to_target(html_outputs)
 
 if __name__ == '__main__':
     main()
