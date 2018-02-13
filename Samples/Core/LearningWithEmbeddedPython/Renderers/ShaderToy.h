@@ -28,7 +28,7 @@
 
 #pragma once
 #include "Falcor.h"
-#include "Utils/Renderer/Renderer.h"
+#include "Renderer.h"
 
 using namespace Falcor;
 
@@ -43,15 +43,14 @@ public:
 
     /** Constructors and destructors
     */
-    ShaderToyRenderer(const std::string rendererName = "Shader Toy",
-                      const std::string guiName = "Options: Shader Toy") : Renderer(rendererName, guiName) { }
+    ShaderToyRenderer() {}
     virtual ~ShaderToyRenderer() = default;
     static SharedPtr create() { return std::make_shared<ShaderToyRenderer>(); }
 
     /** Callbacks overridden from Renderer base class
     */
-    virtual void onInitialize(RenderContext::SharedPtr pContext) override;
-    virtual void onFrameRender(RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo) override;
+    virtual void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext) override;
+    virtual void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
 
 private:
     Sampler::SharedPtr              mpLinearSampler;
@@ -63,4 +62,5 @@ private:
     GraphicsVars::SharedPtr         mpToyVars;
     ProgramReflection::BindLocation mToyCBBinding;
     TextRenderer::UniquePtr         mTextRender;
+    bool                            mIsInitialized = false;
 };
