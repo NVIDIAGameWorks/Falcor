@@ -379,6 +379,24 @@ namespace Falcor
         }
     }
 
+    void Sample::beginTestFrame()
+    { 
+        if (mpSampleTest != nullptr) 
+        { 
+            mpSampleTest->beginTestFrame(this); 
+            mpRenderer->onBeginTestFrame(mpSampleTest.get());
+        } 
+    }
+
+    void Sample::endTestFrame()
+    {
+        if (mpSampleTest != nullptr)
+        {
+            mpSampleTest->endTestFrame(this);
+            mpRenderer->onEndTestFrame(this, mpSampleTest.get());
+        }
+    }
+
     void Sample::renderFrame()
     {
         if (gpDevice && gpDevice->isWindowOccluded())
@@ -388,7 +406,6 @@ namespace Falcor
 
         mFrameRate.newFrame();
         beginTestFrame();
-        mpRenderer->onBeginTestFrame(mpSampleTest.get());
         {
             PROFILE(onFrameRender);
             // The swap-chain FBO might have changed between frames, so get it
@@ -407,7 +424,6 @@ namespace Falcor
         mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
         //Takes testing screenshots if desired (leaves out gui and fps text)
         endTestFrame();
-        mpRenderer->onEndTestFrame(this, mpSampleTest.get());
         //Swaps back to backbuffer to render fps text and gui directly onto it
         mpDefaultPipelineState->setFbo(mpBackBufferFBO);
         {

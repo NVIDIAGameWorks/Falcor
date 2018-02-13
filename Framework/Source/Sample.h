@@ -121,8 +121,8 @@ namespace Falcor
 
         //Non inherited testing functions 
         bool initializeTesting();
-        void beginTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->beginTestFrame(this); } }
-        void endTestFrame() { if (mpSampleTest != nullptr) { mpSampleTest->endTestFrame(this); } }
+        void beginTestFrame();
+        void endTestFrame();
 
         /** Internal data structures
         */
