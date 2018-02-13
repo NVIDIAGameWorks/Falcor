@@ -163,7 +163,15 @@
                 Math
 *******************************************************************/
 #ifndef M_PI
-#define M_PI       3.14159265358979323846
+#define M_PI    3.14159265358979323846
+#endif
+
+#ifndef M_PI2
+#define M_PI2   6.28318530717958647692
+#endif
+
+#ifndef M_INV_PI
+#define M_INV_PI 0.3183098861837906715
 #endif
 
 #endif //_HOST_DEVICE_SHARED_MACROS_H

@@ -145,6 +145,11 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
         pScene->addLight(pDirLight);
     }
 
+    if (pScene->getLightProbeCount() > 0)
+    {
+        pScene->getLightProbe(0)->mData.radius = pScene->getRadius();
+    }
+
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
     mpSceneRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
     mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
@@ -453,22 +458,53 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
 {
     if (mpSceneRenderer)
     {
-        beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
-
+        if (mpSceneRenderer->getScene()->getLightProbeCount() > 0)
         {
-            PROFILE(updateScene);
-            mpSceneRenderer->update(pSample->getCurrentTime());
+            if (mControls[ControlID::Reintegrate].enabled)
+            {
+                static uint32_t sampleCount = 512;
+
+                if (mControls[ControlID::Reintegrate].unsetOnEnabled)
+                {
+                    sampleCount = min(32 * 1024u, sampleCount << 1);
+                }
+                else
+                {
+                    sampleCount = max(1u, sampleCount >> 1);
+                }
+
+                mpSceneRenderer->getScene()->getLightProbe(0)->TEST_CODE_reintegrate(sampleCount);
+                mControls[ControlID::Reintegrate].enabled = false;
+                mControls[ControlID::Reintegrate].value = std::to_string(sampleCount);
+            }
         }
 
-        depthPass(pRenderContext.get());
-        shadowPass(pRenderContext.get());
-        mpState->setFbo(mpMainFbo);
-        renderSkyBox(pRenderContext.get());
-        lightingPass(pRenderContext.get(), pTargetFbo.get());
-        antiAliasing(pRenderContext.get());
-        postProcess(pRenderContext.get(), pTargetFbo);
-        ambientOcclusion(pRenderContext.get(), pTargetFbo);
-        endFrame(pRenderContext.get());
+        if (mControls[ControlID::DebugLightProbe].enabled)
+        {
+            if (mControls[ControlID::DebugLightProbeOrig].enabled)
+                mpRenderContext->blit(mpSceneRenderer->getScene()->getLightProbe(0)->mData.resources.origTexture->getSRV(), mpDefaultFBO->getRenderTargetView(0));
+            else
+                pRenderContext->blit(mpSceneRenderer->getScene()->getLightProbe(0)->mData.resources.diffuseTexture->getSRV(), mpDefaultFBO->getRenderTargetView(0));
+        }
+        else
+        {
+            beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
+
+            {
+                PROFILE(updateScene);
+                mpSceneRenderer->update(pSample->getCurrentTime());
+            }
+
+            depthPass(pRenderContext.get());
+            shadowPass(pRenderContext.get());
+            mpState->setFbo(mpMainFbo);
+            renderSkyBox(pRenderContext.get());
+            lightingPass(pRenderContext.get(), pTargetFbo.get());
+            antiAliasing(pRenderContext.get());
+            postProcess(pRenderContext.get(), pTargetFbo);
+            ambientOcclusion(pRenderContext.get(), pTargetFbo);
+            endFrame(pRenderContext.get());
+        }
     }
     else
     {

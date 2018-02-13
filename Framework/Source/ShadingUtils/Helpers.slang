@@ -34,12 +34,48 @@
 *******************************************************************/
 float2 dirToSphericalCrd(float3 direction)
 {
-    static const float PI = 3.14159265f;
     float3 p = normalize(direction);
     float2 uv;
-    uv.x = (1 + atan2(-p.z, p.x) / PI) * 0.5;
-    uv.y = 1 - (-acos(p.y) / PI);
+    uv.x = (1 + atan2(-p.z, p.x) / M_PI) * 0.5;
+    uv.y = 1 - (-acos(p.y) / M_PI);
     return uv;
+}
+
+float3 sphericalCrdToDir(float2 uv)
+{
+    float phi = M_PI * uv.y;
+    float theta = M_PI2 * uv.x - (M_PI / 2.0f);
+
+    float3 dir;
+    dir.x = sin(phi) * sin(theta);
+    dir.y = cos(phi);
+    dir.z = sin(phi) * cos(theta);
+
+    return normalize(dir);
+}
+
+bool intersectRaySphere(float3 rayPosW, float3 rayDir, float3 spherePosW, float sphereRadius,
+    out float3 intersectionPosW)
+{
+    float3 m = rayPosW - spherePosW;
+    float b = dot(m, rayDir);
+    float c = dot(m, m) - (sphereRadius * sphereRadius);
+
+    // If ray origin is outside sphere (c > 0) and ray is pointing away from sphere (b > 0)
+    // For now assume input always produces valid intersection
+    // if(c > 0.0f && b > 0.0f) return false;
+
+    float discr = b * b - c;
+    // Negative discriminant means ray missed sphere
+    // if(discr < 0.0f) return false;
+
+    float t = -b - sqrt(discr);
+
+    // t will be negative if origin is inside sphere, 
+    // take the abs since we want the position on the sphere's surface
+    intersectionPosW = rayPosW + abs(t) * rayDir;
+
+    return true;
 }
 
 float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, float2 texC)

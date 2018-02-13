@@ -181,6 +181,9 @@ private:
         EnableHashedAlpha,
         EnableTransparency,
         VisualizeCascades,
+        DebugLightProbe,
+        DebugLightProbeOrig,
+        Reintegrate,
         Count
     };
 

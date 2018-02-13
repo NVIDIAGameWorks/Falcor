@@ -52,6 +52,9 @@ void ForwardRenderer::initControls()
     mControls[ControlID::EnableTransparency] = { false, false, "_ENABLE_TRANSPARENCY" };
     mControls[ControlID::EnableSSAO] = { true, false, "" };
     mControls[ControlID::VisualizeCascades] = { false, false, "_VISUALIZE_CASCADES" };
+    mControls[ControlID::DebugLightProbe] = { false, false, "" };
+    mControls[ControlID::DebugLightProbeOrig] = { false, false, "" };
+    mControls[ControlID::Reintegrate] = { false, false, "" };
 
     for (uint32_t i = 0 ; i < ControlID::Count ; i++)
     {
@@ -255,6 +258,23 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             Scene::SharedPtr pScene = mpSceneRenderer->getScene();
             if (pScene->getLightProbeCount() > 0)
             {
+                pGui->addCheckBox("Debug", mControls[ControlID::DebugLightProbe].enabled);
+                pGui->addCheckBox("Orig Texture", mControls[ControlID::DebugLightProbeOrig].enabled);
+                
+                if (pGui->addButton("Reintegrate 2x Samples"))
+                {
+                    mControls[ControlID::Reintegrate].enabled = true;
+                    mControls[ControlID::Reintegrate].unsetOnEnabled = true;
+                }
+                if (pGui->addButton("Reintegrate 0.5x Samples"))
+                {
+                    mControls[ControlID::Reintegrate].enabled = true;
+                    mControls[ControlID::Reintegrate].unsetOnEnabled = false;
+                }
+
+                std::string sampleString = "Samples: " + mControls[ControlID::Reintegrate].value;
+                pGui->addText(sampleString.c_str());
+
                 if (pGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
@@ -262,7 +282,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 pGui->addSeparator();
                 pScene->getLightProbe(0)->renderUI(pGui);
             }
-            
+
             pGui->endGroup();
         }
 

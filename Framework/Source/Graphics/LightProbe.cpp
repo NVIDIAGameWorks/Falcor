@@ -30,14 +30,65 @@
 #include "API/Device.h"
 #include "TextureHelper.h"
 #include "Utils/Gui.h"
+#include "Graphics/FboHelper.h"
 
 namespace Falcor
 {
+    Texture::SharedPtr preIntegration(const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat preFilteredFormat, uint32_t sampleCount)
+    {
+        static FullScreenPass::UniquePtr pIntegration;
+        static GraphicsVars::SharedPtr pVars;
+        static Sampler::SharedPtr pSampler;
+        if (pIntegration == nullptr)
+        {
+            // Specify some default value so the shader compiles
+            Program::DefineList defines;
+            defines.add("_SAMPLE_COUNT", "1024");
+            pIntegration = FullScreenPass::create("Framework/Shaders/LightProbeIntegration.ps.slang", defines);
+            pVars = GraphicsVars::create(pIntegration->getProgram()->getActiveVersion()->getReflector());
+            pSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
+        }
+
+        pIntegration->getProgram()->addDefine("_SAMPLE_COUNT", std::to_string(sampleCount));
+
+        size = (size == Texture::kMaxPossible) ? 128 : size;
+
+        Fbo::Desc fboDesc;
+        fboDesc.setColorTarget(0, preFilteredFormat);
+
+        Texture::SharedPtr pIntegrationTexture = Texture::create2D(size, size, preFilteredFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
+        Fbo::SharedPtr pFbo = Fbo::create();
+        pFbo->attachColorTarget(pIntegrationTexture, 0);
+
+        auto& pRenderContext = gpDevice->getRenderContext();
+        GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
+        pState->pushFbo(pFbo);
+
+        auto& pBlock = pVars->getDefaultBlock();
+        auto bindLocation = pBlock->getReflection()->getResourceBinding("gInputTex");
+        pBlock->setSrv(bindLocation, 0, pTexture->getSRV());
+
+        pRenderContext->pushGraphicsVars(pVars);
+
+        pIntegration->execute(pRenderContext.get());
+
+        pRenderContext->popGraphicsVars();
+        pState->popFbo();
+
+        //pIntegrationTexture->generateMips(pRenderContext.get());
+
+        return pIntegrationTexture;
+    }
+
     LightProbe::LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
         assert(filter == PreFilterMode::None);
         mData.type = LightProbeLinear2D;
         mData.resources.origTexture = pTexture;
+        mData.resources.diffuseTexture = preIntegration(pTexture, 128, preFilteredFormat, 1024);
+
+        TEST_CODE_mFormat = preFilteredFormat;
+        TEST_CODE_mDiffuseSize = 128;
     }
 
     LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
@@ -61,6 +112,11 @@ namespace Falcor
     LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
         return SharedPtr(new LightProbe(pTexture, filter, size, preFilteredFormat));
+    }
+
+    void LightProbe::TEST_CODE_reintegrate(uint32_t sampleCount)
+    {
+        mData.resources.diffuseTexture = preIntegration(mData.resources.origTexture, TEST_CODE_mDiffuseSize, TEST_CODE_mFormat, sampleCount);
     }
 
     void LightProbe::renderUI(Gui* pGui, const char* group)
@@ -126,6 +182,7 @@ namespace Falcor
 
         // Bind the textures
         pVars->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
+        pVars->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
         pVars->setSampler(varName + ".resources.samplerState", mData.resources.samplerState);
     }
 }

@@ -1027,6 +1027,7 @@
     <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang" />
     <None Include="Data\Framework\Shaders\Gui.ps.slang" />
     <None Include="Data\Framework\Shaders\Gui.vs.slang" />
+    <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang" />
     <None Include="Data\Framework\Shaders\MaterialBlock.slang" />
     <None Include="Data\Framework\Shaders\ParallelReduction.ps.slang" />
     <None Include="Data\Framework\Shaders\SceneEditorPS.slang" />

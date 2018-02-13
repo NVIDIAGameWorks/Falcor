@@ -167,15 +167,18 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
     uint h, w, mipCount;
     probe.resources.origTexture.GetDimensions(0, h, w, mipCount);
 
-    // For the diffuse component, we use the last mip-level
-    ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, 0, mipCount - 2).rgb;
+    // Sample diffuse texture
+    float3 intersectPosW;
+    intersectRaySphere(sd.posW, sd.N, probe.posW, probe.radius, intersectPosW);
+    float2 diffuseCrd = dirToSphericalCrd(normalize(intersectPosW));
+    ls.diffuse = probe.resources.diffuseTexture.SampleLevel(probe.resources.samplerState, diffuseCrd, 0).rgb;
 
     // Get the specular component
     float3 specDir = getSpecularDominantDir(sd.N, ls.L, sd.roughness);
     float2 specCrd = dirToSphericalCrd(specDir);
     float lod = linearRoughnessToLod(sd.linearRoughness, mipCount);
     ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, specCrd, lod).rgb;
-    
+
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
     ls.posW = probe.posW;

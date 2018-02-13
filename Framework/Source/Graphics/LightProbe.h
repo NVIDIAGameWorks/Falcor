@@ -72,6 +72,8 @@ namespace Falcor
         */
         static SharedPtr create(const Texture::SharedPtr& pTexture, PreFilterMode filter = PreFilterMode::None, uint32_t size = Texture::kMaxPossible, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
+        void TEST_CODE_reintegrate(uint32_t sampleCount);
+
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
             \param[in] group Optional. If specified, creates a UI group to display elements within
@@ -106,9 +108,12 @@ namespace Falcor
         */
         void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName);
 
+        // #TODO Move me back to private
+        LightProbeData mData;
     private:
+        ResourceFormat TEST_CODE_mFormat;
+        uint32_t TEST_CODE_mDiffuseSize;
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
         LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat);
-        LightProbeData mData;
     };
 }
