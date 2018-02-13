@@ -31,7 +31,7 @@ ShaderToy::~ShaderToy()
 {
 }
 
-void ShaderToy::onLoad()
+void ShaderToy::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     // create rasterizer state
     RasterizerState::Desc rsDesc;
@@ -61,28 +61,28 @@ void ShaderToy::onLoad()
     mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock()->getResourceBinding("ToyCB");
 }
 
-void ShaderToy::onFrameRender()
+void ShaderToy::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     // iResolution
-    float width = (float)mpDefaultFBO->getWidth();
-    float height = (float)mpDefaultFBO->getHeight();
+    float width = (float)pTargetFbo->getWidth();
+    float height = (float)pTargetFbo->getHeight();
     ParameterBlock* pDefaultBlock = mpToyVars->getDefaultBlock().get();
     pDefaultBlock->getConstantBuffer(mToyCBBinding, 0)["iResolution"] = glm::vec2(width, height);;
 
     // iGlobalTime
-    float iGlobalTime = (float)mCurrentTime;  
+    float iGlobalTime = (float)pSample->getCurrentTime();  
     pDefaultBlock->getConstantBuffer(mToyCBBinding, 0)["iGlobalTime"] = iGlobalTime;
 
     // run final pass
-    mpRenderContext->setGraphicsVars(mpToyVars);
-    mpMainPass->execute(mpRenderContext.get());
+    pRenderContext->setGraphicsVars(mpToyVars);
+    mpMainPass->execute(pRenderContext.get());
 }
 
-void ShaderToy::onShutdown()
+void ShaderToy::onShutdown(SampleCallbacks* pSample)
 {
 }
 
-bool ShaderToy::onKeyEvent(const KeyboardEvent& keyEvent)
+bool ShaderToy::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     bool bHandled = false;
     {
@@ -98,17 +98,14 @@ bool ShaderToy::onKeyEvent(const KeyboardEvent& keyEvent)
     return bHandled;
 }
 
-bool ShaderToy::onMouseEvent(const MouseEvent& mouseEvent)
+bool ShaderToy::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     bool bHandled = false;
     return bHandled;
 }
 
-void ShaderToy::onResizeSwapChain()
+void ShaderToy::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    uint32_t width = mpDefaultFBO->getWidth();
-    uint32_t height = mpDefaultFBO->getHeight();
-
     mAspectRatio = (float(width) / float(height));
 }
 
@@ -118,7 +115,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    ShaderToy sample;
+    ShaderToy::UniquePtr pRenderer = std::make_unique<ShaderToy>();
     SampleConfig config;
     config.windowDesc.width = 1280;
     config.windowDesc.height = 720;
@@ -126,9 +123,9 @@ int main(int argc, char** argv)
     config.windowDesc.resizableWindow = true;
     config.windowDesc.title = "Falcor Shader Toy";
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

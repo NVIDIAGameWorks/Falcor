@@ -32,16 +32,19 @@
 
 using namespace Falcor;
 
-class ForwardRenderer : public SampleTest
+class ForwardRenderer : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    void onGuiRender() override;
-    void onDroppedFile(const std::string& filename) override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) override;
+    //Testing
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onBeginTestFrame(SampleTest* pSampleTest) override;
 
 private:
     Fbo::SharedPtr mpMainFbo;
@@ -120,21 +123,21 @@ private:
         GraphicsVars::SharedPtr pVars;
     } mSSAO;
 
-    void beginFrame();
-    void endFrame();
-    void depthPass();
-    void shadowPass();
-    void renderSkyBox();
-    void lightingPass();
-    void antiAliasing();
-    void resolveMSAA();
-    void runTAA();
-    void postProcess();
-    void ambientOcclusion();
+    void beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint32_t frameId);
+    void endFrame(RenderContext* pContext);
+    void depthPass(RenderContext* pContext);
+    void shadowPass(RenderContext* pContext);
+    void renderSkyBox(RenderContext* pContext);
+    void lightingPass(RenderContext* pContext, Fbo* pTargetFbo);
+    void antiAliasing(RenderContext* pContext);
+    void resolveMSAA(RenderContext* pContext);
+    void runTAA(RenderContext* pContext);
+    void postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
+    void ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
 
 
-    void renderOpaqueObjects();
-    void renderTransparentObjects();
+    void renderOpaqueObjects(RenderContext* pContext);
+    void renderTransparentObjects(RenderContext* pContext);
 
 
     void initSkyBox(const std::string& name);
@@ -144,19 +147,19 @@ private:
     void initShadowPass();
     void initSSAO();
     void initLightProbe(const std::string& name);
-    void initTAA();
+    void initTAA(SampleCallbacks* pSample);
 
     void initControls();
 
     GraphicsState::SharedPtr mpState;
 	ForwardRendererSceneRenderer::SharedPtr mpSceneRenderer;
-    void loadModel(const std::string& filename, bool showProgressBar);
-    void loadScene(const std::string& filename, bool showProgressBar);
-    void initScene(Scene::SharedPtr pScene);
+    void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
+    void loadScene(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
+    void initScene(SampleCallbacks* pSample, Scene::SharedPtr pScene);
     void applyCustomSceneVars(const Scene* pScene, const std::string& filename);
     void resetScene();
 
-    void setActiveCameraAspectRatio();
+    void setActiveCameraAspectRatio(uint32_t w, uint32_t h);
     void setSceneSampler(uint32_t maxAniso);
 
     Sampler::SharedPtr mpSceneSampler;
@@ -198,7 +201,7 @@ private:
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;
     SamplePattern mTAASamplePattern = SamplePattern::Halton;
-    void applyAaMode();
+    void applyAaMode(SampleCallbacks* pSample);
     std::vector<ProgramControl> mControls;
     void applyLightingProgramControl(ControlID controlID);
 
@@ -210,6 +213,6 @@ private:
 	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
 
     // Testing 
-    void onInitializeTesting() override;
-    void onBeginTestFrame() override;
+//     void onInitializeTesting() override;
+//     void onBeginTestFrame() override;
 };

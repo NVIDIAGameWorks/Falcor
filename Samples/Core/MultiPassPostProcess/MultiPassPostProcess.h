@@ -31,14 +31,14 @@
 
 using namespace Falcor;
 
-class MultiPassPostProcess : public SampleTest
+class MultiPassPostProcess : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    void onGuiRender() override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo) override;
+    void onShutdown(SampleCallbacks* pSample) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 private:
     Texture::SharedPtr mpImage;
     Fbo::SharedPtr mpTempFB;
@@ -50,9 +50,9 @@ private:
 
     bool mEnableGaussianBlur = false;
     bool mEnableGrayscale = false;
-    void loadImage();
-    void loadImageFromFile(std::string filename);
+    void loadImage(SampleCallbacks* pSample);
+    void loadImageFromFile(SampleCallbacks* pSample, std::string filename);
     
     //testing 
-    void onInitializeTesting() override;
+//    void onInitializeTesting() override;
 };

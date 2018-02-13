@@ -289,7 +289,7 @@ namespace Falcor
         Program::DefineList progDef;
         progDef.add("TEST_ALPHA");
         progDef.add("_CASCADE_COUNT", std::to_string(mCsmData.cascadeCount));
-        progDef.add("_ALPHA_CHANNEL", "r");
+        progDef.add("_ALPHA_CHANNEL", "a");
         ResourceFormat colorFormat = ResourceFormat::Unknown;
         switch(mCsmData.filterMode)
         {

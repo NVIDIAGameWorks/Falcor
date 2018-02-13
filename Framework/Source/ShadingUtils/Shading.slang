@@ -27,7 +27,7 @@
 ***************************************************************************/
 #ifndef _FALCOR_SHADING_SLANG_
 #define _FALCOR_SHADING_SLANG_
-#import "HostDeviceData.h"
+#include "HostDeviceData.h"
 __import DefaultVS;
 __exported __import ShaderCommon;
 __import Lights;
@@ -78,12 +78,12 @@ float3 RgToNormal(float2 rg)
 
 /** Apply normal map
 */
-void applyNormalMap(MaterialData m, inout HitPoint hitPt)
+void applyNormalMap(MaterialData m, inout ShadingData sd)
 {
     uint mapType = EXTRACT_NORMAL_MAP_TYPE(m.flags);
     if(mapType == NormalMapUnused) return;
 
-    float3 mapN = m.resources.normalMap.Sample(m.resources.samplerState, hitPt.uv).rgb;
+    float3 mapN = m.resources.normalMap.Sample(m.resources.samplerState, sd.uv).rgb;
     switch(mapType)
     {
     case NormalMapRGB:
@@ -97,9 +97,9 @@ void applyNormalMap(MaterialData m, inout HitPoint hitPt)
     }
 
     // Apply the transformation. Everything is normalized already
-    hitPt.N = hitPt.T * mapN.x + hitPt.B * mapN.y + hitPt.N * mapN.z;
-    hitPt.B = normalize(hitPt.B - hitPt.N * dot(hitPt.B, hitPt.N));
-    hitPt.T = normalize(cross(hitPt.B, hitPt.N));
+    sd.N = sd.T * mapN.x + sd.B * mapN.y + sd.N * mapN.z;
+    sd.B = normalize(sd.B - sd.N * dot(sd.B, sd.N));
+    sd.T = normalize(cross(sd.B, sd.N));
 }
 
 /** Apply alpha-test
@@ -112,78 +112,78 @@ void applyAlphaTest(MaterialData m, float alpha)
     }
 }
 
-HitPoint initHitPoint()
+ShadingData initShadingData()
 {
-    HitPoint hitPt;
-    hitPt.posW = 0;
-    hitPt.V = 0;
-    hitPt.N = 0;
-    hitPt.T = 0;
-    hitPt.B = 0;
-    hitPt.uv = 0;
-    hitPt.NdotV = 0;
-    hitPt.diffuse = 0;
-    hitPt.opacity = 1;
-    hitPt.specular = 0;
-    hitPt.linearRoughness = 0;
-    hitPt.roughness = 0;
-    hitPt.emissive = 0;
-    hitPt.occlusion = 0;
-    hitPt.lightMap = 0;
-    hitPt.height = 0;
-    hitPt.IoR = 0;
-    hitPt.doubleSidedMaterial = false;
+    ShadingData sd;
+    sd.posW = 0;
+    sd.V = 0;
+    sd.N = 0;
+    sd.T = 0;
+    sd.B = 0;
+    sd.uv = 0;
+    sd.NdotV = 0;
+    sd.diffuse = 0;
+    sd.opacity = 1;
+    sd.specular = 0;
+    sd.linearRoughness = 0;
+    sd.roughness = 0;
+    sd.emissive = 0;
+    sd.occlusion = 0;
+    sd.lightMap = 0;
+    sd.height = 0;
+    sd.IoR = 0;
+    sd.doubleSidedMaterial = false;
 
-    return hitPt;
+    return sd;
 }
 
 /** Prepare the hit-point data
 */
-HitPoint prepareHitPoint(VertexOut v, MaterialData m, float3 camPosW)
+ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 {
-    HitPoint hitPt = initHitPoint();
+    ShadingData sd = initShadingData();
 
     // Sample the diffuse texture and apply the alpha test
     float4 diffuse = sampleTexture(m.resources.diffuse, m.resources.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
-    hitPt.diffuse = diffuse.rgb;
-    hitPt.opacity = m.diffuse.a;
+    sd.diffuse = diffuse.rgb;
+    sd.opacity = m.diffuse.a;
     alphaTest(m.flags, diffuse.a, m.alphaThreshold, v.posW);
 
-    hitPt.posW = v.posW;
-    hitPt.uv = v.texC;
-    hitPt.V = normalize(camPosW - v.posW);
-    hitPt.N = normalize(v.normalW);
+    sd.posW = v.posW;
+    sd.uv = v.texC;
+    sd.V = normalize(camPosW - v.posW);
+    sd.N = normalize(v.normalW);
 
-    hitPt.B = normalize(v.bitangentW - hitPt.N * (dot(v.bitangentW, hitPt.N)));
-    hitPt.T = normalize(cross(hitPt.B, hitPt.N));
+    sd.B = normalize(v.bitangentW - sd.N * (dot(v.bitangentW, sd.N)));
+    sd.T = normalize(cross(sd.B, sd.N));
 
     // Sample the rest of the texture
     float4 spec = sampleTexture(m.resources.specular, m.resources.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags));
-    hitPt.specular = spec.rgb;
-    hitPt.linearRoughness = max(0.08, 1 - spec.a); // Clamp the roughness so that the BRDF won't explode
-    hitPt.roughness = hitPt.linearRoughness * hitPt.linearRoughness;
-    hitPt.emissive = sampleTexture(m.resources.emissive, m.resources.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
-    hitPt.IoR = m.IoR;
-    hitPt.doubleSidedMaterial = EXTRACT_DOUBLE_SIDED(m.flags);
+    sd.specular = spec.rgb;
+    sd.linearRoughness = max(0.08, 1 - spec.a); // Clamp the roughness so that the BRDF won't explode
+    sd.roughness = sd.linearRoughness * sd.linearRoughness;
+    sd.emissive = sampleTexture(m.resources.emissive, m.resources.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
+    sd.IoR = m.IoR;
+    sd.doubleSidedMaterial = EXTRACT_DOUBLE_SIDED(m.flags);
 
 #define channel_type(extract) (extract(m.flags) ? ChannelTypeTexture : ChannelTypeUnused)
-    hitPt.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_OCCLUSION_MAP));
-    hitPt.lightMap = sampleTexture(m.resources.lightMap, m.resources.samplerState, v.lightmapC, 1, channel_type(EXTRACT_LIGHT_MAP)).rgb;
-    hitPt.height = sampleTexture(m.resources.heightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
-    hitPt.height = hitPt.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
+    sd.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_OCCLUSION_MAP));
+    sd.lightMap = sampleTexture(m.resources.lightMap, m.resources.samplerState, v.lightmapC, 1, channel_type(EXTRACT_LIGHT_MAP)).rgb;
+    sd.height = sampleTexture(m.resources.heightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
+    sd.height = sd.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
 #undef channel_type
     
-    applyNormalMap(m, hitPt);
-    hitPt.NdotV = dot(hitPt.N, hitPt.V);
+    applyNormalMap(m, sd);
+    sd.NdotV = dot(sd.N, sd.V);
 
     // Flip the normal if it's backfacing
-    if(hitPt.NdotV <= 0 && hitPt.doubleSidedMaterial)
+    if(sd.NdotV <= 0 && sd.doubleSidedMaterial)
     {
-        hitPt.N = -hitPt.N;
-        hitPt.NdotV = -hitPt.NdotV;
+        sd.N = -sd.N;
+        sd.NdotV = -sd.NdotV;
     }
 
-    return hitPt;
+    return sd;
 }
 
 ShadingResult initShadingResult()
@@ -198,22 +198,22 @@ ShadingResult initShadingResult()
     return sr;
 }
 
-ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
+ShadingResult evalMaterial(ShadingData sd, LightData light, float shadowFactor)
 {
     ShadingResult sr = initShadingResult();
-    LightSample ls = evalLight(light, hitPt);
+    LightSample ls = evalLight(light, sd);
 
     // If the light doesn't hit the surface or we are viewing the surface from the back, return
-    if(ls.NdotL <= 0 || hitPt.NdotV <= 0) return sr;
+    if(ls.NdotL <= 0 || sd.NdotV <= 0) return sr;
 
     // Calculate the diffuse term
-    sr.diffuseBrdf = evalDiffuseBrdf(hitPt, ls);
+    sr.diffuseBrdf = evalDiffuseBrdf(sd, ls);
     sr.diffuse = ls.diffuse * sr.diffuseBrdf * ls.NdotL;
     sr.color.rgb = sr.diffuse;
-    sr.color.a = hitPt.opacity;
+    sr.color.a = sd.opacity;
 
     // Calculate the specular term
-    sr.specularBrdf = evalSpecularBrdf(hitPt, ls);
+    sr.specularBrdf = evalSpecularBrdf(sd, ls);
     sr.specular = ls.specular * sr.specularBrdf * ls.NdotL;
     sr.color.rgb += sr.specular;
 
@@ -223,14 +223,14 @@ ShadingResult evalMaterial(HitPoint hitPt, LightData light, float shadowFactor)
     return sr;
 };
 
-ShadingResult evalMaterial(HitPoint hitPt, LightProbeData probe)
+ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
 {
     ShadingResult sr = initShadingResult();
-    LightSample ls = evalLightProbe(probe, hitPt);
+    LightSample ls = evalLightProbe(probe, sd);
 
-    sr.diffuse = hitPt.diffuse.rgb * ls.diffuse;
+    sr.diffuse = sd.diffuse.rgb * ls.diffuse;
     sr.color.rgb = sr.diffuse;
-    sr.specular = saturate(evalGGX(hitPt.roughness, ls.NdotH)) * ls.specular * hitPt.specular;
+    sr.specular = saturate(evalGGX(sd.roughness, ls.NdotH)) * ls.specular * sd.specular;
     sr.color.rgb += sr.specular;
     return sr;
 }

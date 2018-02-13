@@ -45,17 +45,17 @@ layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-    HitPoint hitPt = prepareHitPoint(vsData, gMaterial, gCam.posW);
+    ShadingData sd = prepareShadingData(vsData, gMaterial, gCamera.posW);
     fragColor = vec4(0,0,0,1);
 
     [unroll]
     for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
     {
-        float shadowFactor = calcShadowFactor(gCsmData[l], shadowsDepthC, hitPt.posW, gl_FragCoord.xy/gl_FragCoord.w);
-        fragColor.rgb += evalMaterial(hitPt, gLights[l], shadowFactor).color.rgb;
+        float shadowFactor = calcShadowFactor(gCsmData[l], shadowsDepthC, sd.posW, gl_FragCoord.xy/gl_FragCoord.w);
+        fragColor.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
     }
 
-    fragColor.rgb += gAmbient * hitPt.diffuse * 0.1;
+    fragColor.rgb += gAmbient * sd.diffuse * 0.1;
     if(visualizeCascades)
     {
         //Ideally this would be light index so you can visualize the cascades of the 

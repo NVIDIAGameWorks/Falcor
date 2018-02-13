@@ -26,21 +26,33 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include <string>
-#include "Graphics/Light.h"
+#include "Falcor.h"
 
-namespace Falcor
+using namespace Falcor;
+
+class SceneEditorApp: public Renderer
 {
-    class Scene;
-    class ConstantBuffer;
+public:
+	void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+	void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+	void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+	bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+	bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+	void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+	void onShutdown(SampleCallbacks* pSample);
 
-    /*!
-    *  \addtogroup Falcor
-    *  @{
-    */
+private:
+    void loadScene();
+    void createScene();
+    void reset();
+    void initNewScene();
+    void initShader();
 
-    void getSceneLightString(const Scene* pScene, std::string& lights);
-    void setSceneLightsIntoConstantBuffer(const Scene* pScene, ConstantBuffer* pBuffer);
+    bool mCameraLiveViewMode = false;
 
-    /*! @} */
-}
+    Scene::SharedPtr mpScene = nullptr;
+    GraphicsProgram::SharedPtr mpProgram = nullptr;
+    SceneRenderer::SharedPtr mpRenderer = nullptr;
+    SceneEditor::UniquePtr mpEditor = nullptr;
+    GraphicsVars::SharedPtr mpVars = nullptr;
+};

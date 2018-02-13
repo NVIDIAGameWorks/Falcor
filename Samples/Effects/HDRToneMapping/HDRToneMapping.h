@@ -30,15 +30,15 @@
 #include "SampleTest.h"
 using namespace Falcor;
 
-class HDRToneMapping : public SampleTest
+class HDRToneMapping : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
     Model::SharedPtr mpTeapot;
@@ -48,8 +48,7 @@ private:
     float mLightIntensity = 1.0f;
     float mSurfaceRoughness = 5.0f;
 
-    void onGuiRender() override;
-    void renderTeapot();
+    void renderTeapot(RenderContext* pContext);
 
     Sampler::SharedPtr mpTriLinearSampler;
     GraphicsProgram::SharedPtr mpMainProg = nullptr;
@@ -72,11 +71,10 @@ private:
     SceneRenderer::SharedPtr mpSceneRenderer;
 
     void loadImage();
-	const std::string mkDefaultModel = "teapot.obj";
 
     //testing
-    void onInitializeTesting() override;
-    void onEndTestFrame() override;
+//     void onInitializeTesting() override;
+//     void onEndTestFrame() override;
     std::vector<uint32_t> mChangeModeFrames;
     std::vector<uint32_t>::iterator mChangeModeIt;
     uint32_t mToneMapOperatorIndex;

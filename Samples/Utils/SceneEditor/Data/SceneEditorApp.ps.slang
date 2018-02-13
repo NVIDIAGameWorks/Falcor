@@ -25,34 +25,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Falcor.h"
+__import ShaderCommon;
+__import Shading;
+__import DefaultVS;
 
-using namespace Falcor;
-
-class SceneEditorSample : public Sample
+float4 main(VertexOut vOut) : SV_TARGET
 {
-public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    void onGuiRender() override;
-    void onResizeSwapChain() override;
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
-private:
-    void loadScene();
-    void createScene();
-    void reset();
-    void initNewScene();
-    void initShader();
+    float3 color = 0;
 
-    bool mCameraLiveViewMode = false;
+    for (uint l = 0; l < gLightsCount; l++)
+    {
+        color += evalMaterial(sd, gLights[l], 1).color.rgb;
+    }
 
-    Scene::SharedPtr mpScene = nullptr;
-    GraphicsProgram::SharedPtr mpProgram = nullptr;
-    SceneRenderer::SharedPtr mpRenderer = nullptr;
-    SceneEditor::UniquePtr mpEditor = nullptr;
-    GraphicsVars::SharedPtr mpVars = nullptr;
-};
+    return float4(color, 1.f);
+}

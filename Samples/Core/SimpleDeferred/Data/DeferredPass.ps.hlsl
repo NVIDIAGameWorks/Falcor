@@ -40,12 +40,12 @@ struct PsOut
 
 PsOut main(VertexOut vOut)
 {
-    HitPoint hitPt = prepareHitPoint(vOut, gMaterial, gCam.posW);
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
     PsOut psOut;
-    psOut.fragColor0 = float4(hitPt.posW, 1);
-    psOut.fragColor1 = float4(hitPt.N, hitPt.linearRoughness);
-    psOut.fragColor2 = float4(hitPt.diffuse, hitPt.opacity);
+    psOut.fragColor0 = float4(sd.posW, 1);
+    psOut.fragColor1 = float4(sd.N, sd.linearRoughness);
+    psOut.fragColor2 = float4(sd.diffuse, sd.opacity);
 
     return psOut;
 }

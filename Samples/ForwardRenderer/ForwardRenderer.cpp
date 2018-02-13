@@ -113,7 +113,7 @@ void ForwardRenderer::applyCustomSceneVars(const Scene* pScene, const std::strin
     if (var.type == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.d64;
 }
 
-void ForwardRenderer::initScene(Scene::SharedPtr pScene)
+void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScene)
 {
     if (pScene->getCameraCount() == 0)
     {
@@ -141,24 +141,23 @@ void ForwardRenderer::initScene(Scene::SharedPtr pScene)
         pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
         pDirLight->setName("DirLight");
         pScene->addLight(pDirLight);
-        pScene->setAmbientIntensity(vec3(0.1f));
     }
 
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
     mpSceneRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
     mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
     setSceneSampler(mpSceneSampler ? mpSceneSampler->getMaxAnisotropy() : 4);
-    setActiveCameraAspectRatio();
+    setActiveCameraAspectRatio(pSample->getCurrentFbo()->getWidth(), pSample->getCurrentFbo()->getHeight());
     initDepthPass();
     initLightingPass();
     initShadowPass();
     initSSAO();
-    initTAA();
+    initTAA(pSample);
 
     mControls[EnableReflections].enabled = pScene->getLightProbeCount() > 0;
     applyLightingProgramControl(ControlID::EnableReflections);
     
-    mCurrentTime = 0;
+    pSample->setCurrentTime(0);
 }
 
 void ForwardRenderer::resetScene()
@@ -167,7 +166,7 @@ void ForwardRenderer::resetScene()
     mSkyBox.pEffect = nullptr;
 }
 
-void ForwardRenderer::loadModel(const std::string& filename, bool showProgressBar)
+void ForwardRenderer::loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
@@ -183,10 +182,10 @@ void ForwardRenderer::loadModel(const std::string& filename, bool showProgressBa
     Scene::SharedPtr pScene = Scene::create();
     pScene->addModelInstance(pModel, "instance");
 
-    initScene(pScene);
+    initScene(pSample, pScene);
 }
 
-void ForwardRenderer::loadScene(const std::string& filename, bool showProgressBar)
+void ForwardRenderer::loadScene(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar)
 {
     Mesh::resetGlobalIdCounter();
     resetScene();
@@ -201,7 +200,7 @@ void ForwardRenderer::loadScene(const std::string& filename, bool showProgressBa
 
     if (pScene != nullptr)
     {
-        initScene(pScene);
+        initScene(pSample, pScene);
         applyCustomSceneVars(pScene.get(), filename);
     }
 }
@@ -236,71 +235,72 @@ void ForwardRenderer::initLightProbe(const std::string& name)
     applyLightingProgramControl(ControlID::EnableReflections);
 }
 
-void ForwardRenderer::initTAA()
+void ForwardRenderer::initTAA(SampleCallbacks* pSample)
 {
     mTAA.pTAA = TemporalAA::create();
-    applyAaMode();
+    applyAaMode(pSample);
 }
 
 void ForwardRenderer::initPostProcess()
 {
-    mpToneMapper = ToneMapping::create(ToneMapping::Operator::HableUc2);
+    mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
 }
 
-void ForwardRenderer::onLoad()
+void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpState = GraphicsState::create();
 
     initPostProcess();
-	if (!initializeTesting())
-	{
-		loadScene(mkDefaultScene, true);
-	}
+    //Only load default if not testing. If testing, probably specified what to load
+    if (!pSample->initializeTesting())
+    {
+        loadScene(pSample, mkDefaultScene, true);
+    }
 }
 
-void ForwardRenderer::renderSkyBox()
+void ForwardRenderer::renderSkyBox(RenderContext* pContext)
 {
     if (mSkyBox.pEffect)
     {
         PROFILE(skyBox);
         mpState->setDepthStencilState(mSkyBox.pDS);
-        mSkyBox.pEffect->render(mpRenderContext.get(), mpSceneRenderer->getScene()->getActiveCamera().get());
+        mSkyBox.pEffect->render(pContext, mpSceneRenderer->getScene()->getActiveCamera().get());
         mpState->setDepthStencilState(nullptr);
     }
 }
 
-void ForwardRenderer::beginFrame()
+void ForwardRenderer::beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint32_t frameId)
 {
-    mpRenderContext->pushGraphicsState(mpState);
-    mpRenderContext->clearFbo(mpMainFbo.get(), glm::vec4(0.7f, 0.7f, 0.7f, 1.0f), 1, 0, FboAttachmentType::All);
-    mpRenderContext->clearFbo(mpPostProcessFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
+    pContext->pushGraphicsState(mpState);
+    pContext->clearFbo(mpMainFbo.get(), glm::vec4(0.7f, 0.7f, 0.7f, 1.0f), 1, 0, FboAttachmentType::All);
+    pContext->clearFbo(mpPostProcessFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
 
     if (mAAMode == AAMode::TAA)
     {
-        glm::vec2 targetResolution = glm::vec2(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
-        mpRenderContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0));
-        mpRenderContext->clearFbo(mpResolveFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
+        glm::vec2 targetResolution = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
+        pContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0));
+        pContext->clearFbo(mpResolveFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
 
         //  Select the sample pattern and set the camera jitter
         const auto& samplePattern = (mTAASamplePattern == SamplePattern::Halton) ? kHaltonSamplePattern : kDX11SamplePattern;
         static_assert(arraysize(kHaltonSamplePattern) == arraysize(kDX11SamplePattern), "Mismatch in the array size of the sample patterns");
-        uint32_t patternIndex = getFrameID() % arraysize(kHaltonSamplePattern);
+        uint32_t patternIndex = frameId % arraysize(kHaltonSamplePattern);
         mpSceneRenderer->getScene()->getActiveCamera()->setJitter(samplePattern[patternIndex][0] / targetResolution.x, samplePattern[patternIndex][1] / targetResolution.y);
     }
 }
 
-void ForwardRenderer::endFrame()
+void ForwardRenderer::endFrame(RenderContext* pContext)
 {
-    mpRenderContext->popGraphicsState();
+    pContext->popGraphicsState();
 }
 
-void ForwardRenderer::postProcess()
+void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     PROFILE(postProcess);
-    mpToneMapper->execute(mpRenderContext.get(), mpResolveFbo, mControls[EnableSSAO].enabled ? mpPostProcessFbo : mpDefaultFBO);
+    mpToneMapper->execute(pContext, mpResolveFbo, mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo);
 }
 
-void ForwardRenderer::depthPass()
+void ForwardRenderer::depthPass(RenderContext* pContext)
 {
     PROFILE(depthPass);
     if (mEnableDepthPass == false) 
@@ -310,19 +310,19 @@ void ForwardRenderer::depthPass()
 
     mpState->setFbo(mpDepthPassFbo);
     mpState->setProgram(mDepthPass.pProgram);
-    mpRenderContext->setGraphicsVars(mDepthPass.pVars);
+    pContext->setGraphicsVars(mDepthPass.pVars);
     
     auto renderMode = mControls[EnableTransparency].enabled ? ForwardRendererSceneRenderer::Mode::Opaque : ForwardRendererSceneRenderer::Mode::All;
     mpSceneRenderer->setRenderMode(renderMode);
-    mpSceneRenderer->renderScene(mpRenderContext.get());
+    mpSceneRenderer->renderScene(pContext);
 }
 
-void ForwardRenderer::lightingPass()
+void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
 {
     PROFILE(lightingPass);
     mpState->setProgram(mLightingPass.pProgram);
     mpState->setDepthStencilState(mEnableDepthPass ? mLightingPass.pDsState : nullptr);
-    mpRenderContext->setGraphicsVars(mLightingPass.pVars);
+    pContext->setGraphicsVars(mLightingPass.pVars);
     ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
     pCB["gOpacityScale"] = mOpacityScale;
 
@@ -334,73 +334,73 @@ void ForwardRenderer::lightingPass()
 
     if (mAAMode == AAMode::TAA)
     {
-        mpRenderContext->clearFbo(mTAA.getActiveFbo().get(), vec4(0.0, 0.0, 0.0, 0.0), 1, 0, FboAttachmentType::Color);
-        pCB["gRenderTargetDim"] = glm::vec2(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
+        pContext->clearFbo(mTAA.getActiveFbo().get(), vec4(0.0, 0.0, 0.0, 0.0), 1, 0, FboAttachmentType::Color);
+        pCB["gRenderTargetDim"] = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     }
 
     if(mControls[EnableTransparency].enabled)
     {
-        renderOpaqueObjects();
-        renderTransparentObjects();
+        renderOpaqueObjects(pContext);
+        renderTransparentObjects(pContext);
     }
     else
     {
         mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::All);
-        mpSceneRenderer->renderScene(mpRenderContext.get());
+        mpSceneRenderer->renderScene(pContext);
     }
-    mpRenderContext->flush();
+    pContext->flush();
     mpState->setDepthStencilState(nullptr);
 }
 
-void ForwardRenderer::renderOpaqueObjects()
+void ForwardRenderer::renderOpaqueObjects(RenderContext* pContext)
 {
     mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::Opaque);
-    mpSceneRenderer->renderScene(mpRenderContext.get());
+    mpSceneRenderer->renderScene(pContext);
 }
 
-void ForwardRenderer::renderTransparentObjects()
+void ForwardRenderer::renderTransparentObjects(RenderContext* pContext)
 {
     mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::Transparent);
     mpState->setBlendState(mLightingPass.pAlphaBlendBS);
     mpState->setRasterizerState(mLightingPass.pNoCullRS);
-    mpSceneRenderer->renderScene(mpRenderContext.get());
+    mpSceneRenderer->renderScene(pContext);
     mpState->setBlendState(nullptr);
     mpState->setRasterizerState(nullptr);
 }
 
-void ForwardRenderer::resolveMSAA()
+void ForwardRenderer::resolveMSAA(RenderContext* pContext)
 {
-    mpRenderContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
-    mpRenderContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    mpRenderContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
+    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
+    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
 }
 
-void ForwardRenderer::shadowPass()
+void ForwardRenderer::shadowPass(RenderContext* pContext)
 {
     PROFILE(shadowPass);
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
         mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
-        mShadowPass.pCsm->setup(mpRenderContext.get(), mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
-        mpRenderContext->flush();
+        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
+        pContext->flush();
     }
 }
 
-void ForwardRenderer::antiAliasing()
+void ForwardRenderer::antiAliasing(RenderContext* pContext)
 {
     PROFILE(resolveMSAA);
     switch (mAAMode)
     {
     case AAMode::MSAA:
-        return resolveMSAA();
+        return resolveMSAA(pContext);
     case AAMode::TAA:
-        return runTAA();
+        return runTAA(pContext);
     default:
         should_not_get_here();
     }
 }
 
-void ForwardRenderer::runTAA()
+void ForwardRenderer::runTAA(RenderContext* pContext)
 {
     //  Get the Current Color and Motion Vectors
     const Texture::SharedPtr pCurColor = mpMainFbo->getColorTexture(0);
@@ -410,77 +410,76 @@ void ForwardRenderer::runTAA()
     const Texture::SharedPtr pPrevColor = mTAA.getInactiveFbo()->getColorTexture(0);
 
     //  Execute the Temporal Anti-Aliasing
-    mpRenderContext->getGraphicsState()->pushFbo(mTAA.getActiveFbo());
-    mTAA.pTAA->execute(mpRenderContext.get(), pCurColor, pPrevColor, pMotionVec);
-    mpRenderContext->getGraphicsState()->popFbo();
+    pContext->getGraphicsState()->pushFbo(mTAA.getActiveFbo());
+    mTAA.pTAA->execute(pContext, pCurColor, pPrevColor, pMotionVec);
+    pContext->getGraphicsState()->popFbo();
 
     //  Copy over the Anti-Aliased Color Texture
-    mpRenderContext->blit(mTAA.getActiveFbo()->getColorTexture(0)->getSRV(0, 1), mpResolveFbo->getColorTexture(0)->getRTV());
+    pContext->blit(mTAA.getActiveFbo()->getColorTexture(0)->getSRV(0, 1), mpResolveFbo->getColorTexture(0)->getRTV());
 
     //  Copy over the Remaining Texture Data
-    mpRenderContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    mpRenderContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
+    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
 
     //  Swap the Fbos
     mTAA.switchFbos();
 }
 
-void ForwardRenderer::ambientOcclusion()
+void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     PROFILE(ssao);
     if (mControls[EnableSSAO].enabled)
     {
-        Texture::SharedPtr pAOMap = mSSAO.pSSAO->generateAOMap(mpRenderContext.get(), mpSceneRenderer->getScene()->getActiveCamera().get(), mpResolveFbo->getColorTexture(2), mpResolveFbo->getColorTexture(1));
+        Texture::SharedPtr pAOMap = mSSAO.pSSAO->generateAOMap(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mpResolveFbo->getColorTexture(2), mpResolveFbo->getColorTexture(1));
         mSSAO.pVars->setTexture("gColor", mpPostProcessFbo->getColorTexture(0));
         mSSAO.pVars->setTexture("gAOMap", pAOMap);
 
-        mpRenderContext->getGraphicsState()->setFbo(mpDefaultFBO);
-        mpRenderContext->setGraphicsVars(mSSAO.pVars);
+        pContext->getGraphicsState()->setFbo(pTargetFbo);
+        pContext->setGraphicsVars(mSSAO.pVars);
 
-        mSSAO.pApplySSAOPass->execute(mpRenderContext.get());
+        mSSAO.pApplySSAOPass->execute(pContext);
     }
 }
 
-void ForwardRenderer::onBeginTestFrame()
-{
-    //  Already exisitng. Is this a problem?
-    if (mCurrentTriggerType == SampleTest::TriggerType::None)
-    {
-       SampleTest::TaskType taskType = (mCurrentTriggerType == SampleTest::TriggerType::Frame) ? mFrameTasks[mCurrentFrameTaskIndex]->mTaskType : mTimeTasks[mCurrentTimeTaskIndex]->mTaskType;
-
+ void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
+ {
+     //  Already exisitng. Is this a problem?
+     auto nextTriggerType = pSampleTest->getNextTriggerType();
+     if (nextTriggerType == SampleTest::TriggerType::None)
+     {
+         SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
         mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
-    }
-}
+     }
+ }
 
-void ForwardRenderer::onFrameRender()
+void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    beginTestFrame();
-    
     if (mpSceneRenderer)
     {
-        beginFrame();
+        pSample->beginTestFrame();
+        beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
 
         {
             PROFILE(updateScene);
-            mpSceneRenderer->update(mCurrentTime);
+            mpSceneRenderer->update(pSample->getCurrentTime());
         }
 
-        depthPass();
-        shadowPass();
+        depthPass(pRenderContext.get());
+        shadowPass(pRenderContext.get());
         mpState->setFbo(mpMainFbo);
-        renderSkyBox();
-        lightingPass();
-        antiAliasing();
-        postProcess();
-        ambientOcclusion();
-        endFrame();
+        renderSkyBox(pRenderContext.get());
+        lightingPass(pRenderContext.get(), pTargetFbo.get());
+        antiAliasing(pRenderContext.get());
+        postProcess(pRenderContext.get(), pTargetFbo);
+        ambientOcclusion(pRenderContext.get(), pTargetFbo);
+        endFrame(pRenderContext.get());
+        pSample->endTestFrame();
     }
     else
     {
-        mpRenderContext->clearFbo(mpDefaultFBO.get(), vec4(0.2f, 0.4f, 0.5f, 1), 1, 0);
+        pRenderContext->clearFbo(pTargetFbo.get(), vec4(0.2f, 0.4f, 0.5f, 1), 1, 0);
     }
 
-    endTestFrame();
 }
 
 void ForwardRenderer::applyCameraPathState()
@@ -500,7 +499,7 @@ void ForwardRenderer::applyCameraPathState()
     }
 }
 
-bool ForwardRenderer::onKeyEvent(const KeyboardEvent& keyEvent)
+bool ForwardRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     if (mpSceneRenderer && keyEvent.type == KeyboardEvent::Type::KeyPressed)
     {
@@ -520,74 +519,70 @@ bool ForwardRenderer::onKeyEvent(const KeyboardEvent& keyEvent)
     return mpSceneRenderer ? mpSceneRenderer->onKeyEvent(keyEvent) : false;
 }
 
-void ForwardRenderer::onDroppedFile(const std::string& filename)
+void ForwardRenderer::onDroppedFile(SampleCallbacks* pSample, const std::string& filename)
 {
     if (hasSuffix(filename, ".fscene", false) == false)
     {
         msgBox("You can only drop a scene file into the window");
         return;
     }
-    loadScene(filename, true);
+    loadScene(pSample, filename, true);
 }
 
-bool ForwardRenderer::onMouseEvent(const MouseEvent& mouseEvent)
+bool ForwardRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mpSceneRenderer ? mpSceneRenderer->onMouseEvent(mouseEvent) : true;
 }
 
-void ForwardRenderer::onResizeSwapChain()
+void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    uint32_t w = mpDefaultFBO->getWidth();
-    uint32_t h = mpDefaultFBO->getHeight();
-
     // Create the post-process FBO and AA resolve Fbo
     Fbo::Desc fboDesc;
     fboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
-    mpPostProcessFbo = FboHelper::create2D(w, h, fboDesc);
+    mpPostProcessFbo = FboHelper::create2D(width, height, fboDesc);
     fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
-    mpResolveFbo = FboHelper::create2D(w, h, fboDesc);
+    mpResolveFbo = FboHelper::create2D(width, height, fboDesc);
 
-    applyAaMode();
+    applyAaMode(pSample);
     
     if(mpSceneRenderer)
     {
-        setActiveCameraAspectRatio();
+        setActiveCameraAspectRatio(width, height);
     }
 }
 
-void ForwardRenderer::setActiveCameraAspectRatio()
+void ForwardRenderer::setActiveCameraAspectRatio(uint32_t w, uint32_t h)
 {
-    uint32_t w = mpDefaultFBO->getWidth();
-    uint32_t h = mpDefaultFBO->getHeight();
     mpSceneRenderer->getScene()->getActiveCamera()->setAspectRatio((float)w / (float)h);
 }
 
-void ForwardRenderer::onInitializeTesting()
-{
-    std::vector<ArgList::Arg> model = mArgList.getValues("loadmodel");
-    if (!model.empty())
-    {
-        loadModel(model[0].asString(), false);
-    }
-
-    std::vector<ArgList::Arg> scene = mArgList.getValues("loadscene");
-    if (!scene.empty())
-    {
-        loadScene(scene[0].asString(), false);
-    }
-
-    std::vector<ArgList::Arg> cameraPos = mArgList.getValues("camerapos");
-    if (!cameraPos.empty())
-    {
-        mpSceneRenderer->getScene()->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
-    }
-
-    std::vector<ArgList::Arg> cameraTarget = mArgList.getValues("cameratarget");
-    if (!cameraTarget.empty())
-    {
-        mpSceneRenderer->getScene()->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
-    }
-}
+ void ForwardRenderer::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto args = pSample->getArgList();
+     std::vector<ArgList::Arg> model = args.getValues("loadmodel");
+     if (!model.empty())
+     {
+         loadModel(pSample, model[0].asString(), false);
+     }
+ 
+     std::vector<ArgList::Arg> scene = args.getValues("loadscene");
+     if (!scene.empty())
+     {
+         loadScene(pSample, scene[0].asString(), false);
+     }
+ 
+     std::vector<ArgList::Arg> cameraPos = args.getValues("camerapos");
+     if (!cameraPos.empty())
+     {
+         mpSceneRenderer->getScene()->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
+     }
+ 
+     std::vector<ArgList::Arg> cameraTarget = args.getValues("cameratarget");
+     if (!cameraTarget.empty())
+     {
+         mpSceneRenderer->getScene()->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -595,14 +590,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-	ForwardRenderer sample;
+	ForwardRenderer::UniquePtr pRenderer = std::make_unique<ForwardRenderer>();
     SampleConfig config;
     config.windowDesc.title = "Falcor Forward Renderer";
     config.windowDesc.resizableWindow = false;
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

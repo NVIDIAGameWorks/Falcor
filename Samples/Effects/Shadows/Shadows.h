@@ -31,20 +31,19 @@
 
 using namespace Falcor;
 
-class Shadows : public SampleTest
+class Shadows : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
-    void onGuiRender() override;
-    void displayShadowMap();
-    void runMainPass();
+    void displayShadowMap(RenderContext* pContext);
+    void runMainPass(RenderContext* pContext);
     void createVisualizationProgram();
     void createScene(const std::string& filename);
     void displayLoadSceneDialog();
@@ -67,7 +66,6 @@ private:
 
     Sampler::SharedPtr mpLinearSampler = nullptr;
 
-    glm::vec3 mAmbientIntensity = glm::vec3(0.1f, 0.1f, 0.1f);
     SceneRenderer::SharedPtr mpRenderer;
 
     struct Controls
@@ -99,8 +97,8 @@ private:
 	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
 
     //Testing 
-    void onInitializeTesting() override;
-    void onEndTestFrame() override;
+//     void onInitializeTesting() override;
+//     void onEndTestFrame() override;
     std::vector<uint32_t> mFilterFrames;
     std::vector<uint32_t>::iterator mFilterFramesIt;
 };

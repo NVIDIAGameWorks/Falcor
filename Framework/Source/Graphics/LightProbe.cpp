@@ -29,17 +29,18 @@
 #include "LightProbe.h"
 #include "API/Device.h"
 #include "TextureHelper.h"
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
-    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat format)
+    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
         assert(filter == PreFilterMode::None);
         mData.type = LightProbeLinear2D;
         mData.resources.origTexture = pTexture;
     }
 
-    LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat format)
+    LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown)
@@ -51,14 +52,34 @@ namespace Falcor
         }
         else
         {
-           pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
+            pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
         }
-        return create(pTexture, filter, size, format);
+        
+        return create(pTexture, filter, size, preFilteredFormat);
     }
 
-    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat format)
+    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
-        return SharedPtr(new LightProbe(pTexture, filter, size, format));
+        return SharedPtr(new LightProbe(pTexture, filter, size, preFilteredFormat));
+    }
+
+    void LightProbe::renderUI(Gui* pGui, const char* group)
+    {
+        if (group == nullptr || pGui->beginGroup(group))
+        {
+            pGui->addFloat3Var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
+
+            float intensity = mData.intensity.r;
+            if (pGui->addFloatVar("Intensity", intensity, 0.0f))
+            {
+                mData.intensity = vec3(intensity);
+            }
+
+            if (group != nullptr)
+            {
+                pGui->endGroup();
+            }
+        }
     }
 
     void LightProbe::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)

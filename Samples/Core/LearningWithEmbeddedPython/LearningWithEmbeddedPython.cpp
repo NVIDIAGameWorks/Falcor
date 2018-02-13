@@ -99,7 +99,6 @@ Scene::SharedPtr DemoApp::loadScene(const std::string& filename)
             pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
             pDirLight->setName("DirLight");
             pScene->addLight(pDirLight);
-            pScene->setAmbientIntensity(vec3(0.1f));
         }
     }
     return pScene;

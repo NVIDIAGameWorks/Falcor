@@ -25,37 +25,35 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "SceneUtils.h"
-#include "Scene.h"
-#include "API/ConstantBuffer.h"
+#pragma once
+#include "Falcor.h"
+#include "SampleTest.h"
 
-namespace Falcor
+using namespace Falcor;
+
+class SkyBoxRenderer : public Renderer
 {
-    void getSceneLightString(const Scene* pScene, std::string& lights)
-    {
-        lights.clear();
-        for(uint32_t i = 0; i < pScene->getLightCount(); i++)
-        {
-            auto pLight = pScene->getLight(i);
-            lights += " " + pLight->getName() + ",";
-        }
+public:
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
-        if(lights.size() > 0)
-        {
-            // Remove the last ','
-            lights = lights.erase(lights.length() - 1);
-        }
-    }
+private:
+    void loadTexture();
+    
+    Camera::SharedPtr mpCamera;
+    SixDoFCameraController::SharedPtr mpCameraController;
+    SkyBox::UniquePtr mpSkybox;  
+    Sampler::SharedPtr mpTriLinearSampler;
 
-    void setSceneLightsIntoConstantBuffer(const Scene* pScene, ConstantBuffer* pBuffer)
-    {
-        // Set all the lights
-        for(uint32_t i = 0; i < pScene->getLightCount(); i++)
-        {
-            auto pLight = pScene->getLight(i);
-            pLight->setIntoConstantBuffer(pBuffer, pLight->getName());
-        }
-        pBuffer->setVariable("gAmbient", pScene->getAmbientIntensity());
-    }
-}
+	const std::string mkDefaultSkyBoxTexture = "Cubemaps/Sorsele3/Sorsele3.dds";
+
+    //Testing
+//     void onInitializeTesting() override;
+//     void onEndTestFrame() override;
+    std::vector<uint32_t> mChangeViewFrames;
+    std::vector<uint32_t>::iterator mChangeViewIt;
+};
