@@ -64,6 +64,7 @@ namespace Falcor
             AssumeLinearSpaceTextures   = 0x4,    ///< By default, textures representing colors (diffuse/specular) are interpreted as sRGB data. Use this flag to force linear space for color textures.
             DontMergeMeshes             = 0x8,    ///< Preserve the original list of meshes in the scene, don't merge meshes with the same material
             BuffersAsShaderResource     = 0x10,   ///< Generate the VBs and IB with the shader-resource-view bind flag
+            RemoveInstancing            = 0x20,   ///< Flatten mesh instances
         };
 
         /** Create a new model from file

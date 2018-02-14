@@ -493,29 +493,20 @@ namespace Falcor
             return false;
         }
 
-        uint32_t AssimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
+        uint32_t assimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
             aiProcess_OptimizeGraph |
             aiProcess_FlipUVs |
-            // aiProcess_FixInfacingNormals | // causes incorrect facing normals for crytek-sponza
             0;
 
-        // aiProcessPreset_TargetRealtime_MaxQuality enabled some optimizations the user might not want
-        if(is_set(mFlags, Model::LoadFlags::FindDegeneratePrimitives) == false)
-        {
-            AssimpFlags &= ~aiProcess_FindDegenerates;
-        }
-
-        // Avoid merging original meshes
-        if(is_set(mFlags, Model::LoadFlags::DontMergeMeshes))
-        {
-            AssimpFlags &= ~aiProcess_OptimizeMeshes;
-        }
+        if(is_set(mFlags, Model::LoadFlags::FindDegeneratePrimitives) == false) assimpFlags &= ~aiProcess_FindDegenerates;
+        if(is_set(mFlags, Model::LoadFlags::DontMergeMeshes))                   assimpFlags &= ~aiProcess_OptimizeMeshes; // Avoid merging original meshes
+        if(is_set(mFlags, Model::LoadFlags::RemoveInstancing))                  assimpFlags |= aiProcess_PreTransformVertices;
 
         // Never use Assimp's tangent gen code
-        AssimpFlags &= ~(aiProcess_CalcTangentSpace);
+        assimpFlags &= ~(aiProcess_CalcTangentSpace);
 
         Assimp::Importer importer;
-        const aiScene* pScene = importer.ReadFile(fullpath, AssimpFlags);
+        const aiScene* pScene = importer.ReadFile(fullpath, assimpFlags);
 
         if((pScene == nullptr) || (verifyScene(pScene) == false))
         {
