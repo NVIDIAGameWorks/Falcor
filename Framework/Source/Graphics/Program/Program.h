@@ -116,11 +116,11 @@ namespace Falcor
 
             /** Enable/disable treat-warnings-as-error compilation flag
             */
-            void warningsAsErrors(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : shaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); }
+            Desc& warningsAsErrors(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : shaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
 
             /** Enable/disable pre-processed shader dump
             */
-            void dumpIntermediates(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::DumpIntermediates : shaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); }
+            Desc& dumpIntermediates(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::DumpIntermediates : shaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
 
             /** Get the compiler flags
             */
