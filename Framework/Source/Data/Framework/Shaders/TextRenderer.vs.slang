@@ -29,7 +29,7 @@
 layout(set = 0, binding = 1) cbuffer PerFrameCB : register(b0)
 {
 	float4x4 gvpTransform;
-	float3 gFontColor[2];
+	float3 gFontColor;
 };
 
 float4 transform(float2 posS)

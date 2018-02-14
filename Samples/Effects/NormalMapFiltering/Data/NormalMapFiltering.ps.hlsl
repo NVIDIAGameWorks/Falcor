@@ -43,7 +43,7 @@ float4 main(VertexOut vOut) : SV_TARGET
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
-        result += evalMaterial(sd, gLights[l], 1).color;
+        result += evalMaterial(sd, gLights[l], 1).color.rgb;
     }
 
     result += gAmbient * sd.diffuse;
