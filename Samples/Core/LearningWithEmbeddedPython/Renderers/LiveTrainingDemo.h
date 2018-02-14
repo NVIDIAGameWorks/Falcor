@@ -28,10 +28,10 @@
 
 #pragma once
 #include "FalcorConfig.h"
+#include "Falcor.h"
 
 #if FALCOR_USE_PYTHON
 
-#include "Utils/Renderer/Renderer.h"
 #include "Utils/PythonEmbedding.h"
 #include <ctime>
 #include <random>
@@ -49,21 +49,18 @@ public:
     using SharedConstPtr = std::shared_ptr<const LiveTrainRenderer>;
 
     /** Constructor & destructors
-     */
-    LiveTrainRenderer(const std::string rendererName = "Live Training Example",
-        const std::string guiName = "Options: Live Training Example") : Renderer(rendererName, guiName) { }
+        */
     virtual ~LiveTrainRenderer() = default;
     static SharedPtr create() { return std::make_shared<LiveTrainRenderer>(); }
 
     /** Callbacks overridden from Renderer base class
-     */
-    virtual void onInitialize(RenderContext::SharedPtr context) override;
-    virtual void onResizeSwapChain(uint32_t newWidth, uint32_t newHeight) override;
-    virtual void onInitNewScene(SceneRenderer::SharedPtr scene) override;
-    virtual void onDisplay(RenderContext::SharedPtr context, Fbo::SharedPtr targetFbo) override;
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    virtual void onGuiRender() override;
+        */
+    virtual void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    virtual void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    virtual void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    virtual bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    virtual bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
     /** Methods to handle/encapsulate basic Falcor scene rendering
      */
@@ -74,7 +71,7 @@ public:
     /** Methods to encapsulate basic training/inference features
      */
     void doPythonInit();
-    void doPythonTrain( Texture::SharedPtr fromTex );
+    void doPythonTrain(Texture::SharedPtr fromTex);
     void doPythonInference();
     void doRandomTrain();
 
@@ -87,16 +84,18 @@ public:
 
     /** Helper functions to make text additions to the GUI slightly cleaner in onGuiRender()
             Probably should do these "right" at some point...
-     */
-    void addTextHelper(const char *format, int intVal);
-    void addTextHelper(const char *format, float floatVal);
-    void addTextHelper(const char *format, float floatVal1, float floatVal2);
+        */
+    void addTextHelper(Gui* pGui, const char *format, int intVal);
+    void addTextHelper(Gui* pGui, const char *format, float floatVal);
+    void addTextHelper(Gui* pGui, const char *format, float floatVal1, float floatVal2);
 
     /** Load / reload Python.  Stringifies scripts to avoid reloading them each frame.
-     */
-    void reloadPythonScripts( void );
+        */
+    void reloadPythonScripts(void);
 
 private:
+    Scene::SharedPtr loadScene(const std::string& filename);
+    void initNewScene(SceneRenderer::SharedPtr scene);
 
     // Stringified versions of our Python code.
     std::string mPythonInit;
@@ -123,6 +122,7 @@ private:
     int mTrainsLeft = 0;
 
     bool mHasFailure = false;
+    bool mIsInitialized = false;
     bool mPythonInitialized = false;
 
     bool mDoTraining = false;
