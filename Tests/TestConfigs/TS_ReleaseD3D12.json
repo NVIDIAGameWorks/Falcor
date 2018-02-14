@@ -67,8 +67,8 @@
             "Project Name" : "Shadows",
             "Project Tests Args" :
             [
-                "-test -loadscene Arcade/Arcade.fscene incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300",
-                "-test -loadscene alphatest/alpha_test.fscene -incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300"
+                "-test -fixedtimedelta 0.03333 -loadscene Arcade/Arcade.fscene incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300",
+                "-test -fixedtimedelta 0.03333 -loadscene alphatest/alpha_test.fscene -incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300"
             ]
         },
 
