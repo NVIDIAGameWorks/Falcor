@@ -23,7 +23,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\toy.fs" />
-    <None Include="Data\toyContainer.ps.glsl" />
     <None Include="Data\toyContainer.ps.hlsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

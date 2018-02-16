@@ -21,14 +21,5 @@
     <None Include="Data\VisualizeMap.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\VisualizeMap.ps.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Data\Shadows.ps.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Data\Shadows.vs.glsl">
-      <Filter>Shaders</Filter>
-    </None>
   </ItemGroup>
 </Project>
