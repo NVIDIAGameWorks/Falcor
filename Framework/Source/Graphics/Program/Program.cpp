@@ -266,10 +266,23 @@ namespace Falcor
 
     static const char* getSlangTargetString(ShaderType type)
     {
-        // TODO: either pick these based on target API,
-        // or invent some API-neutral target names
         switch (type)
         {
+
+#if defined FALCOR_VK
+        case ShaderType::Vertex:
+            return "glsl_vertex";
+        case ShaderType::Pixel:
+            return "glsl_fragment";
+        case ShaderType::Hull:
+            return "glsl_tess_control";
+        case ShaderType::Domain:
+            return "glsl_tess_eval";
+        case ShaderType::Geometry:
+            return "glsl_geometry";
+        case ShaderType::Compute:
+            return "glsl_compute";
+#elif defined FALCOR_D3D
         case ShaderType::Vertex:
             return "vs_5_0";
         case ShaderType::Pixel:
@@ -282,6 +295,10 @@ namespace Falcor
             return "gs_5_0";
         case ShaderType::Compute:
             return "cs_5_0";
+#else
+#error unknown shader compilation target
+#endif
+
         default:
             should_not_get_here();
             return "";
