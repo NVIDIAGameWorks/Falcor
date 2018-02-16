@@ -14,10 +14,6 @@
             [
                 {
                     "Tests Set" : "TS_ReleaseVK.json"
-                },
-        
-                {
-                    "Tests Set" : "TS_DebugVK.json"
                 }
             ]
         }
