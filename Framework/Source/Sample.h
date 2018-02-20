@@ -103,11 +103,9 @@ namespace Falcor
         bool isKeyPressed(const KeyboardEvent::Key& key) override;
         float getFrameRate() override { return mFrameRate.getAverageFrameTime(); }
         float getLastFrameTime() override { return mFrameRate.getLastFrameTime();  }
-        float getTimeSinceLastFrame() override { return mFrameRate.getLastFrameTime(); }
-        uint32_t getFrameID() override { return mFrameRate.getFrameCount(); }
+        uint64_t getFrameID() override { return mFrameRate.getFrameCount(); }
         void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = vec2(1)) override;
         std::string getFpsMsg() override;
-        Window* getWindow() override { return mpWindow.get(); }
         void toggleText(bool showText) override { mShowText = showText && gpDevice; }
         void toggleUI(bool showUI) override { mShowUI = showUI && gpDevice; }
         void setDefaultGuiSize(uint32_t width, uint32_t height) override;
@@ -116,6 +114,8 @@ namespace Falcor
         void setFixedTimeDelta(float newFixedTimeDelta) override { mFixedTimeDelta = newFixedTimeDelta; }
         float getFixedTimeDelta() override  { return mFixedTimeDelta; }
         std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
+        void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
+        
         //Any cleanup required by renderer if its being shut down early via testing 
         void onTestShutdown() override { mpRenderer->onTestShutdown(mpSampleTest.get()); }
 

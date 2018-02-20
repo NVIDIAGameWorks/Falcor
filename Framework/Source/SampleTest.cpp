@@ -713,7 +713,7 @@ namespace Falcor
         pSampleTest->writeJsonTestResults();
 
         // Shutdown the App.
-        pSample->getWindow()->shutdown();
+        pSample->shutdown();
 
         // On Test Shutdown.
         pSample->onTestShutdown();
@@ -809,7 +809,7 @@ namespace Falcor
             pSampleTest->writeJsonTestResults();
 
             // Shutdown the App.
-            pSample->getWindow()->shutdown();
+            pSample->shutdown();
 
             // On Test Shutdown.
             pSample->onTestShutdown();

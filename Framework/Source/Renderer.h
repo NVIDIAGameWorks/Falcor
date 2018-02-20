@@ -51,9 +51,6 @@ namespace Falcor
         /** Get the current time*/
         virtual float getCurrentTime() = 0;
 
-        /** Get the time that passed since the last frame*/
-        virtual float getTimeSinceLastFrame() = 0;
-
         /** Set the current time*/
         virtual void setCurrentTime(float time) = 0;
 
@@ -67,7 +64,7 @@ namespace Falcor
         virtual float getLastFrameTime() = 0;
 
         /** Get the current frame ID*/
-        virtual uint32_t getFrameID() = 0;
+        virtual uint64_t getFrameID() = 0;
 
         /** Render text */
         virtual void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = glm::vec2(1)) = 0;
@@ -77,9 +74,6 @@ namespace Falcor
 
         /** Check if a key is pressed*/
         virtual bool isKeyPressed(const KeyboardEvent::Key& key) = 0;
-
-        /** Get the window object */
-        virtual Window* getWindow() = 0;
 
         /** Show/hide text */
         virtual void toggleText(bool showText) = 0;
@@ -103,17 +97,9 @@ namespace Falcor
         */
         virtual std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") = 0;
 
-        /** Check is testing is enabled and initialize it if it is
+        /* Shutdown the app 
         */
-        virtual bool initializeTesting() = 0;
-
-        /** Testing actions that need to occur before frame renders 
-        */
-        virtual void beginTestFrame() = 0;
-
-        /** Testing actiosn taht need to occur after frame renders
-        */
-        virtual void endTestFrame() = 0;
+        virtual void shutdown() = 0;
 
         /** Callback for anything the renderer wants to do right before 
             early shutdown requested by testing
