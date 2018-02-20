@@ -70,7 +70,7 @@ void Particles::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr
 
     for (auto it = mpParticleSystems.begin(); it != mpParticleSystems.end(); ++it)
     {
-        (*it)->update(pRenderContext.get(), pSample->getTimeSinceLastFrame(), mpCamera->getViewMatrix());
+        (*it)->update(pRenderContext.get(), pSample->getLastFrameTime(), mpCamera->getViewMatrix());
         (*it)->render(pRenderContext.get(), mpCamera->getViewMatrix(), mpCamera->getProjMatrix());
     }
 }
