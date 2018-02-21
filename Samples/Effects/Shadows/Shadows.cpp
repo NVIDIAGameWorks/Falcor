@@ -27,15 +27,17 @@
 ***************************************************************************/
 #include "Shadows.h"
 
-void Shadows::onGuiRender()
+const std::string Shadows::skDefaultScene = "Arcade/Arcade.fscene";
+
+void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (mpGui->addButton("Load Scene"))
+    if (pGui->addButton("Load Scene"))
     {
         displayLoadSceneDialog();
     }
 
-    mpGui->addCheckBox("Update Shadow Map", mControls.updateShadowMap);
-    if(mpGui->addIntVar("Cascade Count", mControls.cascadeCount, 1u, CSM_MAX_CASCADES))
+    pGui->addCheckBox("Update Shadow Map", mControls.updateShadowMap);
+    if(pGui->addIntVar("Cascade Count", mControls.cascadeCount, 1u, CSM_MAX_CASCADES))
     {
         for (uint32_t i = 0; i < mpCsmTech.size(); i++)
         {
@@ -45,22 +47,22 @@ void Shadows::onGuiRender()
     }
 
     bool visualizeCascades = mPerFrameCBData.visualizeCascades != 0;
-    mpGui->addCheckBox("Visualize Cascades", visualizeCascades);
+    pGui->addCheckBox("Visualize Cascades", visualizeCascades);
     mPerFrameCBData.visualizeCascades = visualizeCascades;
-    mpGui->addCheckBox("Display Shadow Map", mControls.showShadowMap);
-    mpGui->addIntVar("Displayed Cascade", mControls.displayedCascade, 0u, mControls.cascadeCount - 1);
-    if (mpGui->addIntVar("LightIndex", mControls.lightIndex, 0u, mpScene->getLightCount() - 1))
+    pGui->addCheckBox("Display Shadow Map", mControls.showShadowMap);
+    pGui->addIntVar("Displayed Cascade", mControls.displayedCascade, 0u, mControls.cascadeCount - 1);
+    if (pGui->addIntVar("LightIndex", mControls.lightIndex, 0u, mpScene->getLightCount() - 1))
     {
         mLightingPass.pProgram->addDefine("_LIGHT_INDEX", std::to_string(mControls.lightIndex));
     }
 
     std::string groupName = "Light " + std::to_string(mControls.lightIndex);
-    if (mpGui->beginGroup(groupName.c_str()))
+    if (pGui->beginGroup(groupName.c_str()))
     {
-        mpScene->getLight(mControls.lightIndex)->renderUI(mpGui.get());
-        mpGui->endGroup();
+        mpScene->getLight(mControls.lightIndex)->renderUI(pGui);
+        pGui->endGroup();
     }
-    mpCsmTech[mControls.lightIndex]->renderUi(mpGui.get(), "CSM");
+    mpCsmTech[mControls.lightIndex]->renderUi(pGui, "CSM");
 }
 
 void Shadows::displayLoadSceneDialog()
@@ -81,10 +83,7 @@ void Shadows::createScene(const std::string& filename)
 {
     // Load the scene
     mpScene = Scene::loadFromFile(filename);
-    for (uint32_t i = 0; i < mpScene->getPathCount(); i++)
-    {
-        mpScene->getPath(i)->detachAllObjects();
-    }
+
     // Create the renderer
     mpRenderer = SceneRenderer::create(mpScene);
     mpRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
@@ -107,51 +106,48 @@ void Shadows::createScene(const std::string& filename)
     mOffsets.visualizeCascades = static_cast<uint32_t>(pCB->getVariableOffset("visualizeCascades"));
 }
 
-void Shadows::onLoad()
+void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
-    createScene("Scenes/DragonPlane.fscene");
+    createScene(skDefaultScene);
     createVisualizationProgram();
-    initializeTesting();
 }
 
-void Shadows::runMainPass()
+void Shadows::runMainPass(RenderContext* pContext)
 {
     //Only part of the gfx state I actually want to set
-    mpRenderContext->getGraphicsState()->setProgram(mLightingPass.pProgram);
+    pContext->getGraphicsState()->setProgram(mLightingPass.pProgram);
 
     //vars
     ConstantBuffer::SharedPtr pPerFrameCB = mLightingPass.pProgramVars->getConstantBuffer(0, 0, 0);
     pPerFrameCB->setBlob(&mPerFrameCBData, mOffsets.visualizeCascades, sizeof(mPerFrameCBData));
-    mpRenderContext->pushGraphicsVars(mLightingPass.pProgramVars);
+    pContext->pushGraphicsVars(mLightingPass.pProgramVars);
     
-    mpRenderer->renderScene(mpRenderContext.get());
+    mpRenderer->renderScene(pContext);
 
-    mpRenderContext->popGraphicsVars();
+    pContext->popGraphicsVars();
 }
 
-void Shadows::displayShadowMap()
+void Shadows::displayShadowMap(RenderContext* pContext)
 {
     mShadowVisualizer.pProgramVars->setSrv(0, 0, 0, mpCsmTech[mControls.lightIndex]->getShadowMap()->getSRV());
     if (mControls.cascadeCount > 1)
     {
         mShadowVisualizer.pProgramVars->getConstantBuffer(0, 0, 0)->setBlob(&mControls.displayedCascade, mOffsets.displayedCascade, sizeof(mControls.displayedCascade));
     }
-    mpRenderContext->pushGraphicsVars(mShadowVisualizer.pProgramVars);
-    mShadowVisualizer.pProgram->execute(mpRenderContext.get());
-    mpRenderContext->popGraphicsVars();
+    pContext->pushGraphicsVars(mShadowVisualizer.pProgramVars);
+    mShadowVisualizer.pProgram->execute(pContext);
+    pContext->popGraphicsVars();
 }
 
-void Shadows::onFrameRender()
+void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    beginTestFrame();
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     if(mpScene)
     {
         // Update the scene
-        mpRenderer->update(mCurrentTime);
+        mpRenderer->update(pSample->getCurrentTime());
 
         // Run the shadow pass
         if(mControls.updateShadowMap)
@@ -159,7 +155,7 @@ void Shadows::onFrameRender()
             mPerFrameCBData.camVpAtLastCsmUpdate = mpScene->getActiveCamera()->getViewProjMatrix();
             for(uint32_t i = 0; i < mpCsmTech.size(); i++)
             {
-                mpCsmTech[i]->setup(mpRenderContext.get(), mpScene->getActiveCamera().get(), nullptr);
+                mpCsmTech[i]->setup(pRenderContext.get(), mpScene->getActiveCamera().get(), nullptr);
             }
         }
 
@@ -172,41 +168,33 @@ void Shadows::onFrameRender()
 
         if(mControls.showShadowMap)
         {
-            displayShadowMap();
+            displayShadowMap(pRenderContext.get());
         }
         else
         {
-            runMainPass();
+            runMainPass(pRenderContext.get());
         }
     }
 
-    renderText(getFpsMsg(), glm::vec2(10, 10));
-    
-    endTestFrame();
+    pSample->renderText(pSample->getFpsMsg(), glm::vec2(10, 10));
 }
 
-void Shadows::onShutdown()
-{
-}
-
-bool Shadows::onKeyEvent(const KeyboardEvent& keyEvent)
+bool Shadows::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mpRenderer->onKeyEvent(keyEvent);
 }
 
-bool Shadows::onMouseEvent(const MouseEvent& mouseEvent)
+bool Shadows::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mpRenderer->onMouseEvent(mouseEvent);
 }
 
-void Shadows::onResizeSwapChain()
+void Shadows::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     //Camera aspect 
-    float height = (float)mpDefaultFBO->getHeight();
-    float width = (float)mpDefaultFBO->getWidth();
     Camera::SharedPtr activeCamera = mpScene->getActiveCamera();
     activeCamera->setFocalLength(21.0f);
-    float aspectRatio = (width / height);
+    float aspectRatio = (float(width) / float(height));
     activeCamera->setAspectRatio(aspectRatio);
 }
 
@@ -226,51 +214,47 @@ void Shadows::createVisualizationProgram()
     }
 }
 
-void Shadows::onInitializeTesting()
-{
-    std::vector<ArgList::Arg> specifiedScene = mArgList.getValues("loadscene");
+ void Shadows::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> specifiedScene = argList.getValues("loadscene");
+     if (!specifiedScene.empty())
+     {
+         createScene(specifiedScene[0].asString());
+     }
+ 
+     std::vector<ArgList::Arg> filterFrames = argList.getValues("incrementFilter");
+     if (!filterFrames.empty())
+     {
+         mFilterFrames.resize(filterFrames.size());
+         for (uint32_t i = 0; i < filterFrames.size(); ++i)
+         {
+             mFilterFrames[i] = filterFrames[i].asUint();
+         }
+     }
+ 
+     //Set to first filter mode because it's going to be incrementing
+     mFilterFramesIt = mFilterFrames.begin();
+     for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
+     {
+         mpCsmTech[i]->setFilterMode(CsmFilterPoint);
+     }
+ }
 
-    if (!specifiedScene.empty())
-    {
-        createScene(specifiedScene[0].asString());
-    }
-
-    std::vector<ArgList::Arg> filterFrames = mArgList.getValues("incrementFilter");
-    
-
-
-
-    if (!filterFrames.empty())
-    {
-        mFilterFrames.resize(filterFrames.size());
-        for (uint32_t i = 0; i < filterFrames.size(); ++i)
-        {
-            mFilterFrames[i] = filterFrames[i].asUint();
-        }
-    }
-
-    //Set to first filter mode because it's going to be incrementing
-    mFilterFramesIt = mFilterFrames.begin();
-    for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-    {
-        mpCsmTech[i]->setFilterMode(CsmFilterPoint);
-    }
-}
-
-void Shadows:: onEndTestFrame()
-{
-    uint32_t frameId = frameRate().getFrameCount();
-    if (mFilterFramesIt != mFilterFrames.end() && frameId >= *mFilterFramesIt)
-    {
-        ++mFilterFramesIt;
-        uint32_t nextFilterMode = mpCsmTech[0]->getFilterMode() + 1;
-        nextFilterMode = min(nextFilterMode, static_cast<uint32_t>(CsmFilterStochasticPcf));
-        for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-        {
-            mpCsmTech[i]->setFilterMode(nextFilterMode);
-        }
-    }
-}
+ void Shadows:: onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
+ {
+     uint32_t frameId = pSample->getFrameID();
+     if (mFilterFramesIt != mFilterFrames.end() && frameId >= *mFilterFramesIt)
+     {
+         ++mFilterFramesIt;
+         uint32_t nextFilterMode = mpCsmTech[0]->getFilterMode() + 1;
+         nextFilterMode = min(nextFilterMode, static_cast<uint32_t>(CsmFilterStochasticPcf));
+         for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
+         {
+             mpCsmTech[i]->setFilterMode(nextFilterMode);
+         }
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -278,13 +262,13 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    Shadows shadows;
+    Shadows::UniquePtr pRenderer = std::make_unique<Shadows>();
     SampleConfig config;
     config.windowDesc.title = "Shadows Sample";
 #ifdef _WIN32
-    shadows.run(config);
+    Sample::run(config, pRenderer);
 #else
-    shadows.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

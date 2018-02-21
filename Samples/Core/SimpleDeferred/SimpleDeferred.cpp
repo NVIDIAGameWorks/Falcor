@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "SimpleDeferred.h"
 
+const std::string SimpleDeferred::skDefaultModel = "Arcade/Arcade.fbx";
+
 SimpleDeferred::~SimpleDeferred()
 {
 }
@@ -45,14 +47,14 @@ CameraController& SimpleDeferred::getActiveCameraController()
     }
 }
 
-void SimpleDeferred::loadModelFromFile(const std::string& filename)
+void SimpleDeferred::loadModelFromFile(const std::string& filename, Fbo* pTargetFbo)
 {
     Model::LoadFlags flags = Model::LoadFlags::None;
     if (mGenerateTangentSpace == false)
     {
         flags |= Model::LoadFlags::DontGenerateTangentSpace;
     }
-    auto fboFormat = mpDefaultFBO->getColorTexture(0)->getFormat();
+    auto fboFormat = pTargetFbo->getColorTexture(0)->getFormat();
     flags |= isSrgbFormat(fboFormat) ? Model::LoadFlags::None : Model::LoadFlags::AssumeLinearSpaceTextures;
 
     mpModel = Model::createFromFile(filename.c_str(), flags);
@@ -68,27 +70,27 @@ void SimpleDeferred::loadModelFromFile(const std::string& filename)
     mpPointLight->setWorldPosition(glm::vec3(0, Radius*1.25f, 0));
 }
 
-void SimpleDeferred::loadModel()
+void SimpleDeferred::loadModel(Fbo* pTargetFbo)
 {
     std::string filename;
     if(openFileDialog("Supported Formats\0*.obj;*.bin;*.dae;*.x;*.md5mesh\0\0", filename))
     {
-        loadModelFromFile(filename);
+        loadModelFromFile(filename, pTargetFbo);
     }
 }
 
-void SimpleDeferred::onGuiRender()
+void SimpleDeferred::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     // Load model group
-    if (mpGui->addButton("Load Model"))
+    if (pGui->addButton("Load Model"))
     {
-        loadModel();
+        loadModel(pSample->getCurrentFbo().get());
     }
 
-    if(mpGui->beginGroup("Load Options"))
+    if(pGui->beginGroup("Load Options"))
     {
-        mpGui->addCheckBox("Generate Tangent Space", mGenerateTangentSpace);
-        mpGui->endGroup();
+        pGui->addCheckBox("Generate Tangent Space", mGenerateTangentSpace);
+        pGui->endGroup();
     }
 
     Gui::DropdownList debugModeList;
@@ -97,42 +99,42 @@ void SimpleDeferred::onGuiRender()
     debugModeList.push_back({ 2, "Normals" });
     debugModeList.push_back({ 3, "Albedo" });
     debugModeList.push_back({ 4, "Illumination" });
-    mpGui->addDropdown("Debug mode", debugModeList, (uint32_t&)mDebugMode);
+    pGui->addDropdown("Debug mode", debugModeList, (uint32_t&)mDebugMode);
 
     Gui::DropdownList cullList;
     cullList.push_back({0, "No Culling"});
     cullList.push_back({1, "Backface Culling"});
     cullList.push_back({2, "Frontface Culling"});
-    mpGui->addDropdown("Cull Mode", cullList, (uint32_t&)mCullMode);
+    pGui->addDropdown("Cull Mode", cullList, (uint32_t&)mCullMode);
 
-    if(mpGui->beginGroup("Lights"))
+    if(pGui->beginGroup("Lights"))
     {
-        mpGui->addRgbColor("Ambient intensity", mAmbientIntensity);
-        if(mpGui->beginGroup("Directional Light"))
+        pGui->addRgbColor("Ambient intensity", mAmbientIntensity);
+        if(pGui->beginGroup("Directional Light"))
         {
-            mpDirLight->renderUI(mpGui.get());
-            mpGui->endGroup();
+            mpDirLight->renderUI(pGui);
+            pGui->endGroup();
         }
-        if (mpGui->beginGroup("Point Light"))
+        if (pGui->beginGroup("Point Light"))
         {
-            mpPointLight->renderUI(mpGui.get());
-            mpGui->endGroup();
+            mpPointLight->renderUI(pGui);
+            pGui->endGroup();
         }
-        mpGui->endGroup();
+        pGui->endGroup();
     }
 
     Gui::DropdownList cameraList;
     cameraList.push_back({ModelViewCamera, "Model-View"});
     cameraList.push_back({FirstPersonCamera, "First-Person"});
-    mpGui->addDropdown("Camera Type", cameraList, (uint32_t&)mCameraType);
+    pGui->addDropdown("Camera Type", cameraList, (uint32_t&)mCameraType);
 
     if (mpModel)
     {
-        renderModelUiElements();
+        renderModelUiElements(pGui);
     }
 }
 
-void SimpleDeferred::renderModelUiElements()
+void SimpleDeferred::renderModelUiElements(Gui* pGui)
 {
     bool bAnim = mpModel->hasAnimations();
     static const char* animateStr = "Animate";
@@ -142,7 +144,7 @@ void SimpleDeferred::renderModelUiElements()
     {
         mActiveAnimationID = sBindPoseAnimationID;
 
-        mpGui->addCheckBox(animateStr, mAnimate);
+        pGui->addCheckBox(animateStr, mAnimate);
         Gui::DropdownList list;
         list.resize(mpModel->getAnimationsCount() + 1);
         list[0].label = "Bind Pose";
@@ -157,21 +159,21 @@ void SimpleDeferred::renderModelUiElements()
                 list[i + 1].label = std::to_string(i);
             }
         }
-        if (mpGui->addDropdown(activeAnimStr, list, mActiveAnimationID))
+        if (pGui->addDropdown(activeAnimStr, list, mActiveAnimationID))
         {
             mpModel->setActiveAnimation(mActiveAnimationID);
         }
     }
-    if(mpGui->beginGroup("Depth Range"))
+    if(pGui->beginGroup("Depth Range"))
     {
         const float minDepth = mpModel->getRadius() * 1 / 1000;
-        mpGui->addFloatVar("Near Plane", mNearZ, minDepth, mpModel->getRadius() * 15, minDepth * 5);
-        mpGui->addFloatVar("Far Plane", mFarZ, minDepth, mpModel->getRadius() * 15, minDepth * 5);
-        mpGui->endGroup();
+        pGui->addFloatVar("Near Plane", mNearZ, minDepth, mpModel->getRadius() * 15, minDepth * 5);
+        pGui->addFloatVar("Far Plane", mFarZ, minDepth, mpModel->getRadius() * 15, minDepth * 5);
+        pGui->endGroup();
     }
 }
 
-void SimpleDeferred::onLoad()
+void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpCamera = Camera::create();
 
@@ -213,23 +215,19 @@ void SimpleDeferred::onLoad()
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
     // Load default model
-    loadModelFromFile("ogre/bs_rest.obj");
-
-    initializeTesting();
+    loadModelFromFile(skDefaultModel, pSample->getCurrentFbo().get());
 }
 
-void SimpleDeferred::onFrameRender()
+void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    beginTestFrame();
-
-    GraphicsState* pState = mpRenderContext->getGraphicsState().get();
+    GraphicsState* pState = pRenderContext->getGraphicsState().get();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
 
     // G-Buffer pass
     if(mpModel)
     {
-        mpRenderContext->clearFbo(mpGBufferFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::Color | FboAttachmentType::Depth);
+        pRenderContext->clearFbo(mpGBufferFbo.get(), glm::vec4(0), 1.0f, 0, FboAttachmentType::Color | FboAttachmentType::Depth);
         pState->setFbo(mpGBufferFbo);
 
         mpCamera->setDepthRange(mNearZ, mFarZ);
@@ -240,7 +238,7 @@ void SimpleDeferred::onFrameRender()
         if(mAnimate)
         {
             PROFILE(Animate);
-            mpModel->animate(mCurrentTime);
+            mpModel->animate(pSample->getCurrentTime());
         }
 
         // Set render state
@@ -249,15 +247,15 @@ void SimpleDeferred::onFrameRender()
 
         // Render model
         mpModel->bindSamplerToMaterials(mpLinearSampler);
-        mpRenderContext->setGraphicsVars(mpDeferredVars);
+        pRenderContext->setGraphicsVars(mpDeferredVars);
         pState->setProgram(mpDeferredPassProgram);
-        ModelRenderer::render(mpRenderContext.get(), mpModel, mpCamera.get());
+        ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
     }
 
     // Lighting pass (fullscreen quad)
     {
-        pState->setFbo(mpDefaultFBO);
-        mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
+        pState->setFbo(pTargetFbo);
+        pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::Color);
 
         // Reset render state
         pState->setRasterizerState(mpCullRastState[0]);
@@ -279,19 +277,17 @@ void SimpleDeferred::onFrameRender()
 
 
         // Kick it off
-        mpRenderContext->setGraphicsVars(mpLightingVars);
-        mpLightingPass->execute(mpRenderContext.get());
+        pRenderContext->setGraphicsVars(mpLightingVars);
+        mpLightingPass->execute(pRenderContext.get());
     }
-
-    endTestFrame();
 }
 
-void SimpleDeferred::onShutdown()
+void SimpleDeferred::onShutdown(SampleCallbacks* pSample)
 {
     mpModel.reset();
 }
 
-bool SimpleDeferred::onKeyEvent(const KeyboardEvent& keyEvent)
+bool SimpleDeferred::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     bool bHandled = getActiveCameraController().onKeyEvent(keyEvent);
     if(bHandled == false)
@@ -311,16 +307,13 @@ bool SimpleDeferred::onKeyEvent(const KeyboardEvent& keyEvent)
     return bHandled;
 }
 
-bool SimpleDeferred::onMouseEvent(const MouseEvent& mouseEvent)
+bool SimpleDeferred::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return getActiveCameraController().onMouseEvent(mouseEvent);
 }
 
-void SimpleDeferred::onResizeSwapChain()
+void SimpleDeferred::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    uint32_t width = mpDefaultFBO->getWidth();
-    uint32_t height = mpDefaultFBO->getHeight();
-
     mpCamera->setFocalLength(21.0f);
     mAspectRatio = (float(width) / float(height));
     mpCamera->setAspectRatio(mAspectRatio);
@@ -353,31 +346,32 @@ void SimpleDeferred::resetCamera()
     }
 }
 
-void SimpleDeferred::onInitializeTesting()
-{
-    std::vector<ArgList::Arg> modeFrames = mArgList.getValues("incrementDebugMode");
-    if (!modeFrames.empty())
-    {
-        mChangeModeFrames.resize(modeFrames.size());
-        for (uint32_t i = 0; i < modeFrames.size(); ++i)
-        {
-            mChangeModeFrames[i] = modeFrames[i].asUint();
-        }
-    }
-
-    mChangeModeIt = mChangeModeFrames.begin();
-}
-
-void SimpleDeferred::onEndTestFrame()
-{
-    uint32_t frameId = frameRate().getFrameCount();
-    if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
-    {
-        ++mChangeModeIt;
-        uint32_t* pMode = (uint32_t*)&mDebugMode;
-        *pMode = min(*pMode + 1, (uint32_t)ShowLighting);
-    }
-}
+ void SimpleDeferred::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> modeFrames = argList.getValues("incrementDebugMode");
+     if (!modeFrames.empty())
+     {
+         mChangeModeFrames.resize(modeFrames.size());
+         for (uint32_t i = 0; i < modeFrames.size(); ++i)
+         {
+             mChangeModeFrames[i] = modeFrames[i].asUint();
+         }
+     }
+ 
+     mChangeModeIt = mChangeModeFrames.begin();
+ }
+ 
+ void SimpleDeferred::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
+ {
+     uint32_t frameId = pSample->getFrameID();
+     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
+     {
+         ++mChangeModeIt;
+         uint32_t* pMode = (uint32_t*)&mDebugMode;
+         *pMode = min(*pMode + 1, (uint32_t)ShowLighting);
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -385,16 +379,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    SimpleDeferred sample;
+    SimpleDeferred::UniquePtr pRenderer = std::make_unique<SimpleDeferred>();
     SampleConfig config;
     config.windowDesc.width = 1280;
     config.windowDesc.height = 720;
     config.windowDesc.resizableWindow = true;
     config.windowDesc.title = "Simple Deferred";
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

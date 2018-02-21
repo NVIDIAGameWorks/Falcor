@@ -66,9 +66,9 @@ namespace Falcor
         */
         float getAverageFrameTime() const
         {
-            uint32_t frames = min(mFrameCount, sFrameWindow);
+            uint64_t frames = min(mFrameCount, sFrameWindow);
             double elapsedTime = 0;
-            for(uint32_t i = 0; i < frames; i++)
+            for(uint64_t i = 0; i < frames; i++)
             {
                 elapsedTime += mFrameTimes[i];
             }
@@ -86,7 +86,7 @@ namespace Falcor
 
         /** Get the numer of frames passed from the last resetClock() call.
         */
-        uint32_t getFrameCount() const
+        uint64_t getFrameCount() const
         {
             return mFrameCount;
         }
@@ -94,7 +94,7 @@ namespace Falcor
 
         CpuTimer mTimer;
         std::vector<float> mFrameTimes;
-        uint32_t mFrameCount;
-        static const uint32_t sFrameWindow = 60;
+        uint64_t mFrameCount;
+        static const uint64_t sFrameWindow = 60;
     };
 }

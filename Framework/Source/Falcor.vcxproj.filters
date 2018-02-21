@@ -484,7 +484,9 @@
     <ClCompile Include="API\D3D12\LowLevel\D3D12DescriptorPool.cpp">
       <Filter>API\D3D12\LowLevel</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\LightProbe.cpp" />
+    <ClCompile Include="Graphics\LightProbe.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1530,9 +1532,6 @@
     <ClInclude Include="Utils\ThreadPool.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Renderer\Renderer.h">
-      <Filter>Utils\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="MultiRendererSample.h" />
     <ClInclude Include="Utils\PythonEmbedding.h">
       <Filter>Utils</Filter>
@@ -1591,7 +1590,13 @@
     <ClInclude Include="API\D3D12\LowLevel\D3D12DescriptorHeap.h">
       <Filter>API\D3D12\LowLevel</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\LightProbe.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Graphics\LightProbe.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h">
+      <Filter>Utils\Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

@@ -6,20 +6,14 @@
         "GitHub_DailyTests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Destination Target" : "C:\\Falcor\\GitHub\\",
-            "Source Branch Target" : "master",
-            "Compare Branch Target" : "master",
-            "Compare Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
-            "Generate Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
+            "Source Branch Target" : "RendererClass",
+            "Compare Branch Target" : "RendererClass",
             "Tests Configs Target" : "TestConfigs\\",
 
             "Tests":
             [
                 {
                     "Tests Set" : "TS_ReleaseD3D12.json"
-                },
-                {
-                    "Tests Set" : "TS_ReleaseVK.json"
                 }
             ]
         }

@@ -7,21 +7,18 @@
     <Filter Include="Python Snippets">
       <UniqueIdentifier>{a47a8b63-84be-49d1-99d3-cde96bff2662}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{d76ccbad-acaa-4b50-878b-f1c0cfe81ea1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LearningWithEmbeddedPython.cpp" />
     <ClCompile Include="Renderers\LiveTrainingDemo.cpp">
       <Filter>Renderers</Filter>
     </ClCompile>
-    <ClCompile Include="Renderers\ShaderToy.cpp">
-      <Filter>Renderers</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderers\LiveTrainingDemo.h">
-      <Filter>Renderers</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderers\ShaderToy.h">
       <Filter>Renderers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -37,6 +34,15 @@
     </None>
     <None Include="Data\demo_train.py">
       <Filter>Python Snippets</Filter>
+    </None>
+    <None Include="Data\RenderForLearning.ps.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\RenderForLearning.vs.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\RenderForLearningCommon.hlsli">
+      <Filter>Data</Filter>
     </None>
   </ItemGroup>
 </Project>

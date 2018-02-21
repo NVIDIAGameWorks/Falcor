@@ -6,21 +6,14 @@
         "CoreTestsVK" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Destination Target" : "C:\\Falcor\\GitHub\\",
-            "Source Branch Target" : "new-testing-system",
-            "Compare Branch Target" : "new-testing-system",
-            "Compare Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
-            "Generate Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
-            "Tests Configs Target" : "TestConfigsDev\\",
+            "Source Branch Target" : "RendererClass",
+            "Compare Branch Target" : "RendererClass",
+            "Tests Configs Target" : "TestConfigs/",
             
             "Tests":
             [
                 {
                     "Tests Set" : "TS_ReleaseVK.json"
-                },
-        
-                {
-                    "Tests Set" : "TS_DebugVK.json"
                 }
             ]
         }

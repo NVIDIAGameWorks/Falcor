@@ -26,16 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#include "MultiRendererSample.h"
-#include "Renderers/ShaderToy.h"
+#include "Utils/Renderer/MultiSampleRenderer.h"
 #include "Renderers/LiveTrainingDemo.h"
-
-// We're need to override our scene loader to provide good default lights (if there are none),
-//    since our LiveTrainRenderer assumes there's (at least) one light in the scene.
-class DemoApp : public MultiRendererSample
-{
-    virtual Scene::SharedPtr loadScene(const std::string& filename) override;
-};
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -43,9 +35,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    // Our application program
-    MultiRendererSample sample;
-    
+#if FALCOR_USE_PYTHON
     // Setup our demo config
     SampleConfig config;
     config.windowDesc.title = "Live Training & Python Integration Demo";
@@ -55,52 +45,19 @@ int main(int argc, char** argv)
     config.freezeTimeOnStartup = true;
 
     // Create our Python integration renderer
-#if FALCOR_USE_PYTHON
-    Renderer::SharedPtr liveTrain   = LiveTrainRenderer::create();     // The renderer that does Python-based live training (default; program starts showing this one)
-    sample.addRenderer(liveTrain);
-#endif
-
-    // Create another, fallback renderer to run if there's no Python enabled.
-    Renderer::SharedPtr toyDemo     = ShaderToyRenderer::create();     // Another, super-simple renderer as an example of how to use the MultiRendererSample
-    sample.addRenderer(toyDemo);
+    Renderer::UniquePtr pLiveTrain   = std::make_unique<LiveTrainRenderer>();     
 
     // Run the program
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pLiveTrain);
 #else
     sample.run(config, (uint32_t)argc, argv);
 #endif
     return 0;
-}
-
-Scene::SharedPtr DemoApp::loadScene(const std::string& filename)
-{
-    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
-    if (pScene != nullptr)
-    {
-        if (pScene->getCameraCount() == 0)
-        {
-            const Model* pModel = pScene->getModel(0).get();
-            Camera::SharedPtr pCamera = Camera::create();
-            vec3 position = pModel->getCenter();
-            float radius = pModel->getRadius();
-            position.y += 0.1f * radius;
-            pScene->setCameraSpeed(radius * 0.03f);
-            pCamera->setPosition(position);
-            pCamera->setTarget(position + vec3(0, -0.3f, -radius));
-            pCamera->setDepthRange(0.1f, radius * 10);
-            pScene->addCamera(pCamera);
-        }
-
-        if (pScene->getLightCount() == 0)
-        {
-            DirectionalLight::SharedPtr pDirLight = DirectionalLight::create();
-            pDirLight->setWorldDirection(vec3(-0.189f, -0.861f, -0.471f));
-            pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
-            pDirLight->setName("DirLight");
-            pScene->addLight(pDirLight);
-        }
-    }
-    return pScene;
+#else 
+    logWarning("Python is not enabled! Please set FALCOR_USE_PYTHON to 1 in FalcorConfig.h \
+    Read README.txt in the LearningWithEmbeddedPython directory to ensure correct version of packages.", true);
+    return 1;
+#endif
 }
 

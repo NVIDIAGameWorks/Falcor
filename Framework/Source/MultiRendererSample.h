@@ -27,8 +27,9 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "Utils/Renderer/Renderer.h"
-
+#include "Renderer.h"
+#include "Utils/Renderer/MultiSampleRenderer.h"
+#if 0
 namespace Falcor
 {
     /** A more complex "Sample" that handles virtually all window / GUI stuff internally, so writing a prototype
@@ -43,7 +44,7 @@ namespace Falcor
 
         There are two methods users of MultiRendererSample object may need: addRenderer() and loadScene().
     */
-    class MultiRendererSample : public Sample
+    class MultiRendererSample : public Renderer
     {
     public:
         /** Add a renderer to the list selectable in this application.  First one added runs by default on app load.
@@ -90,5 +91,6 @@ namespace Falcor
         void internalSceneLoader(const std::string& filename);
     };
 
-
 } // End namespace Falcor
+
+#endif

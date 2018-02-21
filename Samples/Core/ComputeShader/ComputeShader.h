@@ -31,12 +31,12 @@
 
 using namespace Falcor;
 
-class ComputeShader : public SampleTest
+class ComputeShader : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onGuiRender() override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
     ComputeProgram::SharedPtr mpProg;
@@ -46,9 +46,9 @@ private:
     Texture::SharedPtr mpImage;
 
     Texture::SharedPtr mpTmpTexture;
-    void loadImage();
-    void loadImageFromFile(std::string file);
+    void loadImage(SampleCallbacks* pSample);
+    void loadImageFromFile(SampleCallbacks* pSample, std::string file);
 
     //testing
-    void onInitializeTesting() override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
 };

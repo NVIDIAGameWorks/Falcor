@@ -27,55 +27,55 @@
 ***************************************************************************/
 #include "ProjectTemplate.h"
 
-void ProjectTemplate::onGuiRender()
+void ProjectTemplate::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    mpGui->addText("Hello from ProjectTemplate");
-    if (mpGui->addButton("Click Here"))
+    pGui->addText("Hello from ProjectTemplate");
+    if (pGui->addButton("Click Here"))
     {
         msgBox("Now why would you do that?");
     }
 }
 
-void ProjectTemplate::onLoad()
+void ProjectTemplate::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
 }
 
-void ProjectTemplate::onFrameRender()
+void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
- 	mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 }
 
-void ProjectTemplate::onShutdown()
+void ProjectTemplate::onShutdown(SampleCallbacks* pSample)
 {
 
 }
 
-bool ProjectTemplate::onKeyEvent(const KeyboardEvent& keyEvent)
-{
-    return false;
-}
-
-bool ProjectTemplate::onMouseEvent(const MouseEvent& mouseEvent)
+bool ProjectTemplate::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return false;
 }
 
-void ProjectTemplate::onDataReload()
+bool ProjectTemplate::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
+{
+    return false;
+}
+
+void ProjectTemplate::onDataReload(SampleCallbacks* pSample)
 {
 
 }
 
-void ProjectTemplate::onResizeSwapChain()
+void ProjectTemplate::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
-    ProjectTemplate sample;
+    ProjectTemplate::UniquePtr pRenderer = std::make_unique<ProjectTemplate>();
     SampleConfig config;
     config.windowDesc.title = "Falcor Project Template";
     config.windowDesc.resizableWindow = true;
-    sample.run(config);
+    Sample::run(config, pRenderer);
     return 0;
 }

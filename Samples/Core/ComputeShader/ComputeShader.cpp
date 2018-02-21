@@ -27,13 +27,13 @@
 ***************************************************************************/
 #include "ComputeShader.h"
 
-void ComputeShader::onGuiRender()
+void ComputeShader::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (mpGui->addButton("Load Image"))
+    if (pGui->addButton("Load Image"))
     {
-        loadImage();
+        loadImage(pSample);
     }
-    mpGui->addCheckBox("Pixelate", mbPixelate);
+    pGui->addCheckBox("Pixelate", mbPixelate);
 }
 
 Texture::SharedPtr createTmpTex(const Fbo* pFbo)
@@ -41,45 +41,41 @@ Texture::SharedPtr createTmpTex(const Fbo* pFbo)
     return Texture::create2D(pFbo->getWidth(), pFbo->getHeight(), ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
 }
 
-void ComputeShader::onLoad()
+void ComputeShader::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
 {
     mpProg = ComputeProgram::createFromFile(appendShaderExtension("compute"));
     mpState = ComputeState::create();
     mpState->setProgram(mpProg);
     mpProgVars = ComputeVars::create(mpProg->getActiveVersion()->getReflector());
 
-    mpTmpTexture = createTmpTex(mpDefaultFBO.get());
-
-    initializeTesting();
+    mpTmpTexture = createTmpTex(pSample->getCurrentFbo().get());
 }
 
-void ComputeShader::loadImage()
+void ComputeShader::loadImage(SampleCallbacks* pSample)
 {
     std::string filename;
     if(openFileDialog("Supported Formats\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga\0\0", filename))
     {
-        loadImageFromFile(filename);
+        loadImageFromFile(pSample, filename);
     }
 }
 
-void ComputeShader::loadImageFromFile(std::string filename)
+void ComputeShader::loadImageFromFile(SampleCallbacks* pSample, std::string filename)
 {
     mpImage = createTextureFromFile(filename, false, true);
 
-    resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
+    pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
     mpProgVars->setTexture("gInput", mpImage);
-    mpTmpTexture = createTmpTex(mpDefaultFBO.get());
+    mpTmpTexture = createTmpTex(pSample->getCurrentFbo().get());
 }
 
-void ComputeShader::onFrameRender()
+void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-    beginTestFrame();
-
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
 
     if(mpImage)
     {
-        mpRenderContext->clearUAV(mpTmpTexture->getUAV().get(), clearColor);
+        pContext->clearUAV(mpTmpTexture->getUAV().get(), clearColor);
 
         if (mbPixelate)
         {
@@ -91,35 +87,34 @@ void ComputeShader::onFrameRender()
         }
         mpProgVars->setTexture("gOutput", mpTmpTexture);
 
-        mpRenderContext->setComputeState(mpState);
-        mpRenderContext->setComputeVars(mpProgVars);
+        pContext->setComputeState(mpState);
+        pContext->setComputeVars(mpProgVars);
 
         uint32_t w = (mpImage->getWidth() / 16) + 1;
         uint32_t h = (mpImage->getHeight() / 16) + 1;
-        mpRenderContext->dispatch(w, h, 1);
-        mpRenderContext->copyResource(mpDefaultFBO->getColorTexture(0).get(), mpTmpTexture.get());
+        pContext->dispatch(w, h, 1);
+        pContext->copyResource(pTargetFbo->getColorTexture(0).get(), mpTmpTexture.get());
     }
     else
     {
-        mpRenderContext->clearRtv(mpDefaultFBO->getRenderTargetView(0).get(), clearColor);
-    }
-
-    endTestFrame();
-}
-
-void ComputeShader::onInitializeTesting()
-{
-    std::vector<ArgList::Arg> filenames = mArgList.getValues("loadimage");
-    if (!filenames.empty())
-    {
-        loadImageFromFile(filenames[0].asString());
-    }
-
-    if (mArgList.argExists("pixelate"))
-    {
-        mbPixelate = true;
+        pContext->clearRtv(pTargetFbo->getRenderTargetView(0).get(), clearColor);
     }
 }
+
+ void ComputeShader::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> filenames = argList.getValues("loadimage");
+     if (!filenames.empty())
+     {
+         loadImageFromFile(pSample, filenames[0].asString());
+     }
+ 
+     if (argList.argExists("pixelate"))
+     {
+         mbPixelate = true;
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -127,15 +122,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    ComputeShader sample;
+    ComputeShader::UniquePtr pRenderer = std::make_unique<ComputeShader>();
     SampleConfig config;
     config.windowDesc.title = "Compute Shader";
     config.windowDesc.resizableWindow = true;
     config.deviceDesc.depthFormat = ResourceFormat::Unknown;
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }

@@ -27,33 +27,59 @@
 ***************************************************************************/
 #include "HashedAlpha.h"
 
+const std::string HashedAlpha::skDefaultModel = "alphatest/alpha_test.obj";
+
 const Gui::DropdownList HashedAlpha::kModeList = { 
     { (uint32_t)AlphaTestMode::HashedAlphaIsotropic, "Hashed Alpha Isotropic" },
     { (uint32_t)AlphaTestMode::HashedAlphaAnisotropic, "Hashed Alpha Anisotropic" },
     { (uint32_t)AlphaTestMode::AlphaTest, "Alpha Test" } 
 };
 
-void HashedAlpha::onGuiRender()
+void HashedAlpha::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (mpGui->addButton("Load Model"))
+    if (pGui->addButton("Load Model"))
     {
         loadModel();
     }
 
-    mpGui->addSeparator();
+    pGui->addSeparator();
 
     uint32_t mode = (uint32_t)mAlphaTestMode;
-    if (mpGui->addDropdown("Mode", kModeList, mode))
+    if (pGui->addDropdown("Mode", kModeList, mode))
     {
         mAlphaTestMode = (AlphaTestMode)mode;
         mDirty = true;
     }
 
-    mpGui->addFloatVar("Hash Scale", mHashScale, 0.01f, 10.0f, 0.01f);
-    if (mpGui->addButton("Apply Scale"))
+    pGui->addFloatVar("Hash Scale", mHashScale, 0.01f, 10.0f, 0.01f);
+    if (pGui->addButton("Apply Scale"))
     {
         mDirty = true;
     }
+}
+
+void HashedAlpha::loadModel(std::string filename)
+{
+	mpModel = Model::createFromFile(filename.c_str());
+
+	if (mpModel == nullptr)
+	{
+		msgBox("Could not load model");
+		return;
+	}
+
+	// update the camera position
+	float radius = mpModel->getRadius();
+	const glm::vec3& modelCenter = mpModel->getCenter();
+	glm::vec3 camPos = modelCenter;
+	camPos.z += radius * 5.0f;
+
+	mpCamera->setPosition(camPos);
+	mpCamera->setTarget(modelCenter);
+	mpCamera->setUpVector(glm::vec3(0, 1, 0));
+	mpCamera->setDepthRange(std::max(0.01f, radius / 750.0f), radius * 50.0f);
+
+	mCameraController.setModelParams(modelCenter, radius, 3.5f);
 }
 
 void HashedAlpha::loadModel()
@@ -61,26 +87,7 @@ void HashedAlpha::loadModel()
     std::string filename;
     if (openFileDialog(Model::kSupportedFileFormatsStr, filename))
     {
-        mpModel = Model::createFromFile(filename.c_str());
-
-        if (mpModel == nullptr)
-        {
-            msgBox("Could not load model");
-            return;
-        }
-
-        // update the camera position
-        float radius = mpModel->getRadius();
-        const glm::vec3& modelCenter = mpModel->getCenter();
-        glm::vec3 camPos = modelCenter;
-        camPos.z += radius * 5.0f;
-
-        mpCamera->setPosition(camPos);
-        mpCamera->setTarget(modelCenter);
-        mpCamera->setUpVector(glm::vec3(0, 1, 0));
-        mpCamera->setDepthRange(std::max(0.01f, radius / 750.0f), radius * 50.0f);
-
-        mCameraController.setModelParams(modelCenter, radius, 3.5f);
+		loadModel(filename);
     }
 }
 
@@ -105,7 +112,7 @@ void HashedAlpha::updateProgram()
     }
 }
 
-void HashedAlpha::onLoad()
+void HashedAlpha::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpProgram = GraphicsProgram::createFromFile("", appendShaderExtension("HashedAlpha.ps"));
     mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
@@ -115,48 +122,36 @@ void HashedAlpha::onLoad()
     mpState->setProgram(mpProgram);
 
     mpCamera = Camera::create();
-    mpCamera->setAspectRatio((float)mpDefaultFBO->getWidth() / (float)mpDefaultFBO->getHeight());
+    mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
     mCameraController.attachCamera(mpCamera);
+
+    loadModel(skDefaultModel.c_str());
 }
 
-void HashedAlpha::onFrameRender()
+void HashedAlpha::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    mpState->setFbo(mpDefaultFBO);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    mpState->setFbo(pTargetFbo);
     mCameraController.update();
 
     if (mpModel)
     {
         updateProgram();
-        mpRenderContext->setGraphicsState(mpState);
-        mpRenderContext->setGraphicsVars(mpVars);
-        ModelRenderer::render(mpRenderContext.get(), mpModel, mpCamera.get());
+        pRenderContext->setGraphicsState(mpState);
+        pRenderContext->setGraphicsVars(mpVars);
+        ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
     }
 }
 
-void HashedAlpha::onShutdown()
-{
-
-}
-
-bool HashedAlpha::onKeyEvent(const KeyboardEvent& keyEvent)
+bool HashedAlpha::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mCameraController.onKeyEvent(keyEvent);
 }
 
-bool HashedAlpha::onMouseEvent(const MouseEvent& mouseEvent)
+bool HashedAlpha::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCameraController.onMouseEvent(mouseEvent);
-}
-
-void HashedAlpha::onDataReload()
-{
-
-}
-
-void HashedAlpha::onResizeSwapChain()
-{
 }
 
 #ifdef _WIN32
@@ -165,14 +160,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    HashedAlpha sample;
+    HashedAlpha::UniquePtr pRenderer = std::make_unique<HashedAlpha>();
     SampleConfig config;
     config.windowDesc.title = "Hashed Alpha Test";
     config.windowDesc.resizableWindow = true;
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    Sample::run(config, pRenderer, (uint32_t)argc, argv);
 #endif
     return 0;
 }
