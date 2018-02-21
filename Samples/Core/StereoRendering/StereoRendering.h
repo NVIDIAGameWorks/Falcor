@@ -76,5 +76,5 @@ private:
     void submitStereo(RenderContext* pContext, Fbo::SharedPtr pTargetFbo, bool singlePassStereo);
     void setRenderMode();
 
-	const std::string mkDefaultScene = "Arcade\\Arcade.fscene";
+    static const std::string skDefaultScene;
 };

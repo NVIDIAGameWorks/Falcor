@@ -75,9 +75,9 @@ private:
         uint32_t texIndex;
     };
 
-    void CreateSystemGui(RenderContext* pContext, Gui* pGui);
-    void EditPropertiesGui(Gui* pGui);
-    void UpdateColorInterpolation(Gui* pGui);
+    void createSystemGui(RenderContext* pContext, Gui* pGui);
+    void editPropertiesGui(Gui* pGui);
+    void updateColorInterpolation(Gui* pGui);
 
     std::vector<ParticleSystem::SharedPtr> mpParticleSystems;
     Camera::SharedPtr mpCamera;

@@ -94,7 +94,7 @@ private:
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     } mPerFrameCBData;
 
-	const std::string mkDefaultScene = "Arcade/Arcade.fscene";
+    static const std::string skDefaultScene;
 
     //Testing 
     void onInitializeTesting(SampleCallbacks* pSample) override;

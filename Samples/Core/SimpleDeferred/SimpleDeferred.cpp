@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "SimpleDeferred.h"
 
+const std::string SimpleDeferred::skDefaultModel = "Arcade/Arcade.fbx";
+
 SimpleDeferred::~SimpleDeferred()
 {
 }
@@ -213,7 +215,7 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
 
     // Load default model
-    loadModelFromFile(mkDefaultModel, pSample->getCurrentFbo().get());
+    loadModelFromFile(skDefaultModel, pSample->getCurrentFbo().get());
 }
 
 void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)

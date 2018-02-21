@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "ShaderBuffers.h"
 
+const std::string ShaderBuffersSample::skDefaultModel = "teapot.obj";
+
 void ShaderBuffersSample::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     pGui->addDirectionWidget("Light Direction", mLightData.worldDir);
@@ -50,7 +52,7 @@ void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::Shared
     mpProgram = GraphicsProgram::createFromFile(appendShaderExtension("ShaderBuffers.vs"), appendShaderExtension("ShaderBuffers.ps"));
 
     // Load the model
-    mpModel = Model::createFromFile("teapot.obj");
+    mpModel = Model::createFromFile(skDefaultModel.c_str());
 
     // Plane has only one mesh, get the VAO now
     mpVao = getVao();

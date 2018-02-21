@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "AmbientOcclusion.h"
 
+const std::string AmbientOcclusion::skDefaultModel = "Arcade/Arcade.fbx";
+
 void AmbientOcclusion::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (mpSSAO != nullptr)
@@ -99,7 +101,7 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
     mpSSAO = SSAO::create(uvec2(1024));
 
     // Model
-    mpModel = Model::createFromFile(mkDefaultModel.c_str());
+    mpModel = Model::createFromFile(skDefaultModel.c_str());
 
     mpCamera = Camera::create();
     mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());

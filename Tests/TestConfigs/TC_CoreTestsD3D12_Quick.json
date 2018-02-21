@@ -8,7 +8,7 @@
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Source Branch Target" : "RendererClass",
             "Compare Branch Target" : "RendererClass",
-            "Tests Configs Target" : "TestConfigs\\",
+            "Tests Configs Target" : "TestConfigs/",
             
             "Tests":
             [

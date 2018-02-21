@@ -175,10 +175,10 @@ namespace Falcor
         gpDevice.reset();
     }
 
-    void Sample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer, uint32_t argc, char** argv)
+    void Sample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer)
     {
         Sample s(pRenderer);
-        s.runInternal(config, argc, argv);
+        s.runInternal(config, config.argc, config.argv);
     }
 
     void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv)
@@ -414,8 +414,8 @@ namespace Falcor
                 mpBackBufferFBO = gpDevice->getSwapChainFbo();
                 mpRenderContext = gpDevice->getRenderContext();
                 // Bind the default state
-                mpRenderContext->setGraphicsState(mpDefaultPipelineState);
                 mpDefaultPipelineState->setFbo(mpTargetFBO);
+                mpRenderContext->setGraphicsState(mpDefaultPipelineState);
             }
             calculateTime();
             mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
@@ -426,6 +426,7 @@ namespace Falcor
         endTestFrame();
         //Swaps back to backbuffer to render fps text and gui directly onto it
         mpDefaultPipelineState->setFbo(mpBackBufferFBO);
+        mpRenderContext->setGraphicsState(mpDefaultPipelineState);
         {
             PROFILE(renderGUI);
             if (mShowUI)

@@ -74,4 +74,6 @@ private:
 
     glm::vec3 mSurfaceColor = glm::vec3(0.36f,0.87f,0.52f);
     Vao::SharedConstPtr getVao();
+
+    static const std::string skDefaultModel;
 };

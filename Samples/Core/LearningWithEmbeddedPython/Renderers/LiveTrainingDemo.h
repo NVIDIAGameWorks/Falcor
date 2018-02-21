@@ -27,7 +27,6 @@
 ***************************************************************************/
 
 #pragma once
-#include "FalcorConfig.h"
 #include "Falcor.h"
 
 #if FALCOR_USE_PYTHON

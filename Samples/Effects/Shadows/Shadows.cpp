@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "Shadows.h"
 
+const std::string Shadows::skDefaultScene = "Arcade/Arcade.fscene";
+
 void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load Scene"))
@@ -106,7 +108,7 @@ void Shadows::createScene(const std::string& filename)
 
 void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
-    createScene(mkDefaultScene);
+    createScene(skDefaultScene);
     createVisualizationProgram();
 }
 

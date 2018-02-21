@@ -133,8 +133,8 @@ void HDRToneMapping::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
     //Run tone mapping
     mpToneMapper->execute(pRenderContext.get(), mpHdrFbo, pTargetFbo);
 
-    std::string Txt = pSample->getFpsMsg() + '\n';
-    pSample->renderText(Txt, glm::vec2(10, 10));
+    std::string txt = pSample->getFpsMsg() + '\n';
+    pSample->renderText(txt, glm::vec2(10, 10));
 }
 
 void HDRToneMapping::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)

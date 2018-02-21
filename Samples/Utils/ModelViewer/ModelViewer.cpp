@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "ModelViewer.h"
 
+const std::string ModelViewer::skDefaultModel = "Arcade/Arcade.fbx";
+
 void ModelViewer::deleteCulledMeshes()
 {
     if(mpModel)
@@ -272,7 +274,7 @@ void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
 
-	loadModelFromFile(mkDefaultModel, pRenderContext->getGraphicsState()->getFbo()->getColorTexture(0)->getFormat());
+    loadModelFromFile(skDefaultModel, pRenderContext->getGraphicsState()->getFbo()->getColorTexture(0)->getFormat());
 }
 
 void ModelViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)

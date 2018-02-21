@@ -104,7 +104,7 @@ private:
     float mNearZ = 1e-2f;
     float mFarZ = 1e3f;
 
-	const std::string mkDefaultModel = "Arcade\\Arcade.fbx";
+    static const std::string skDefaultModel;
 
     //testing
     void onInitializeTesting(SampleCallbacks* pSample) override;

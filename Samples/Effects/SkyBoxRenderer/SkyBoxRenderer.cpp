@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "SkyBoxRenderer.h"
 
+const std::string SkyBoxRenderer::skDefaultSkyBoxTexture = "Cubemaps/Sorsele3/Sorsele3.dds";
+
 void SkyBoxRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load TexCube"))
@@ -49,7 +51,7 @@ void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
 
-    mpSkybox = SkyBox::createFromTexture(mkDefaultSkyBoxTexture, true, mpTriLinearSampler);
+    mpSkybox = SkyBox::createFromTexture(skDefaultSkyBoxTexture, true, mpTriLinearSampler);
 }
 
 void SkyBoxRenderer::loadTexture()

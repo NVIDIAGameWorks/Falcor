@@ -49,7 +49,7 @@ struct ToneMappingOut
 
 ToneMappingOut main(ToneMappingIn vIn)
 {
-	ToneMappingOut vOut;
+    ToneMappingOut vOut;
     vOut.pos = (mul(vIn.pos, gWvpMat));
     vOut.posW = (mul(vIn.pos, gWorldMat)).xyz;
     vOut.normalW = (mul(float4(vIn.normal, 0), gWorldMat)).xyz;

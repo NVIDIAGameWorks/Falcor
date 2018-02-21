@@ -45,11 +45,11 @@ int main(int argc, char** argv)
     config.freezeTimeOnStartup = true;
 
     // Create our Python integration renderer
-    Renderer::UniquePtr liveTrain   = std::make_unique<LiveTrainRenderer>();     
+    Renderer::UniquePtr pLiveTrain   = std::make_unique<LiveTrainRenderer>();     
 
     // Run the program
 #ifdef _WIN32
-    Sample::run(config, liveTrain);
+    Sample::run(config, pLiveTrain);
 #else
     sample.run(config, (uint32_t)argc, argv);
 #endif

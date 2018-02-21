@@ -42,9 +42,9 @@ const std::string kDefaultTexture = "smoke-puff.png";
 
 void Particles::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    CreateSystemGui(pSample->getRenderContext().get(), pGui);
+    createSystemGui(pSample->getRenderContext().get(), pGui);
     pGui->addSeparator();
-    EditPropertiesGui(pGui);
+    editPropertiesGui(pGui);
 }
 
 void Particles::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -94,7 +94,7 @@ void Particles::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint
     mpCamera->setAspectRatio(aspectRatio);
 }
 
-void Particles::CreateSystemGui(RenderContext* pContext, Gui* pGui)
+void Particles::createSystemGui(RenderContext* pContext, Gui* pGui)
 {
     if (pGui->beginGroup("Create System"))
     {
@@ -154,7 +154,7 @@ void Particles::CreateSystemGui(RenderContext* pContext, Gui* pGui)
     }
 }
 
-void Particles::EditPropertiesGui(Gui* pGui)
+void Particles::editPropertiesGui(Gui* pGui)
 {
     pGui->addIntVar("System index", mGuiData.mSystemIndex, 0, ((int32_t)mpParticleSystems.size()) - 1);
     pGui->addSeparator();
@@ -184,7 +184,7 @@ void Particles::EditPropertiesGui(Gui* pGui)
         }
         case ExamplePixelShaders::ColorInterp:
         {
-            UpdateColorInterpolation(pGui);
+            updateColorInterpolation(pGui);
             break;
         }
         case ExamplePixelShaders::Textured:
@@ -204,7 +204,7 @@ void Particles::EditPropertiesGui(Gui* pGui)
                 mPsData[mGuiData.mSystemIndex].texIndex = texIndex;
             }
 
-            UpdateColorInterpolation(pGui);
+            updateColorInterpolation(pGui);
             break;
         }
         default:
@@ -215,7 +215,7 @@ void Particles::EditPropertiesGui(Gui* pGui)
     }
 }
 
-void Particles::UpdateColorInterpolation(Gui* pGui)
+void Particles::updateColorInterpolation(Gui* pGui)
 {
     bool dirty = pGui->addRgbaColor("Color1", mPsData[mGuiData.mSystemIndex].colorData.color1);
     dirty |= pGui->addFloatVar("Color T1", mPsData[mGuiData.mSystemIndex].colorData.colorT1);

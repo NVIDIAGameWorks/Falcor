@@ -417,18 +417,18 @@ bool LiveTrainRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 // Below here:  Mostly encapsulation of simple/basic Falcor rendering code
 ///////////////////////////////////////////////////////////////////////////////////
 
-void LiveTrainRenderer::msaaResolvePass(RenderContext::SharedPtr context)
+void LiveTrainRenderer::msaaResolvePass(RenderContext::SharedPtr pContext)
 {
-    context->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
-    context->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    context->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
+    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
+    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
 }
 
-void LiveTrainRenderer::lightingPass(RenderContext::SharedPtr context)
+void LiveTrainRenderer::lightingPass(RenderContext::SharedPtr pContext)
 {
-    context->getGraphicsState()->setProgram(mLightingPass.pProgram);
-    context->setGraphicsVars(mLightingPass.pVars);
-    mpScene->renderScene(context.get());
+    pContext->getGraphicsState()->setProgram(mLightingPass.pProgram);
+    pContext->setGraphicsVars(mLightingPass.pVars);
+    mpScene->renderScene(pContext.get());
 }
 
 void LiveTrainRenderer::initLightingPass()

@@ -70,6 +70,8 @@ namespace Falcor
         bool freezeTimeOnStartup = false;                           ///< Control whether or not to start the clock when the sample start running.
         std::function<void(void)> deviceCreatedCallback = nullptr;  ///< Callback function which will be called after the device is created
         Flags flags = Flags::None;                                  ///< Sample flags
+        uint32_t argc = 0;                                          ///< Arg count 
+        char** argv = nullptr;                                      ///< Arg values
     };
 
     /** Bootstrapper class for Falcor
@@ -88,7 +90,7 @@ namespace Falcor
             \param[in] argc Optional. Number of command line arguments
             \param[in] argv Optional. Array of command line arguments
         */
-        static void run(const SampleConfig& config, Renderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
+        static void run(const SampleConfig& config, Renderer::UniquePtr& pRenderer);
 
         virtual ~Sample();
     protected:
@@ -129,7 +131,7 @@ namespace Falcor
         Gui::UniquePtr mpGui;                               ///< Main sample GUI
         RenderContext::SharedPtr mpRenderContext;           ///< The rendering context
         GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline 
-        Fbo::SharedPtr mpTargetFBO;                         ///< An FBO available to renderers
+        Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
         bool mFreezeTime;                                   ///< Whether global time is frozen
         float mCurrentTime = 0;                             ///< Global time
         float mTimeScale;                                   ///< Global time scale

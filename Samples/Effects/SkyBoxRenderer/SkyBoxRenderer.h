@@ -49,7 +49,7 @@ private:
     SkyBox::UniquePtr mpSkybox;  
     Sampler::SharedPtr mpTriLinearSampler;
 
-	const std::string mkDefaultSkyBoxTexture = "Cubemaps/Sorsele3/Sorsele3.dds";
+    static const std::string skDefaultSkyBoxTexture;
 
     //Testing
     void onInitializeTesting(SampleCallbacks* pSample) override;

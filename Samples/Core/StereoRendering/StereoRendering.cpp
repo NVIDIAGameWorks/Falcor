@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "StereoRendering.h"
 
+const std::string StereoRendering::skDefaultScene = "Arcade/Arcade.fscene";
+
 static const glm::vec4 kClearColor(0.38f, 0.52f, 0.10f, 1);
 
 
@@ -194,7 +196,7 @@ void StereoRendering::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
 
-	loadScene(mkDefaultScene);
+    loadScene(skDefaultScene);
 }
 
 void StereoRendering::blitTexture(RenderContext* pContext, Fbo* pTargetFbo, Texture::SharedPtr pTexture, uint32_t xStart)

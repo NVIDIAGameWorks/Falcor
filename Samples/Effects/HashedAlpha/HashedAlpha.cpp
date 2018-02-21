@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "HashedAlpha.h"
 
+const std::string HashedAlpha::skDefaultModel = "alphatest/alpha_test.obj";
+
 const Gui::DropdownList HashedAlpha::kModeList = { 
     { (uint32_t)AlphaTestMode::HashedAlphaIsotropic, "Hashed Alpha Isotropic" },
     { (uint32_t)AlphaTestMode::HashedAlphaAnisotropic, "Hashed Alpha Anisotropic" },
@@ -123,7 +125,7 @@ void HashedAlpha::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
     mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
     mCameraController.attachCamera(mpCamera);
 
-	loadModel(mkDefaultModel.c_str());
+    loadModel(skDefaultModel.c_str());
 }
 
 void HashedAlpha::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)

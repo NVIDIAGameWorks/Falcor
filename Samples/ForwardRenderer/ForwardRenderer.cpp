@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "ForwardRenderer.h"
 
+const std::string ForwardRenderer::skDefaultScene = "Arcade/Arcade.fscene";
+
 //  Halton Sampler Pattern.
 static const float kHaltonSamplePattern[8][2] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
 { 1.0f / 4.0f - 0.5f, 2.0f / 3.0f - 0.5f },
@@ -250,7 +252,7 @@ void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
 {
     mpState = GraphicsState::create();
     initPostProcess();
-    loadScene(pSample, mkDefaultScene, true);
+    loadScene(pSample, skDefaultScene, true);
 }
 
 void ForwardRenderer::renderSkyBox(RenderContext* pContext)
