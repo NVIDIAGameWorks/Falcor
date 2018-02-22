@@ -229,7 +229,6 @@ ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
     LightSample ls = evalLightProbe(probe, sd);
 
     sr.diffuse = sd.diffuse.rgb * ls.diffuse;
-    //sr.diffuse = ls.diffuse;
     sr.color.rgb = sr.diffuse;
     sr.specular = saturate(evalGGX(sd.roughness, ls.NdotH)) * ls.specular * sd.specular;
     sr.color.rgb += sr.specular;

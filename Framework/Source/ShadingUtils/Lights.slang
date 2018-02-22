@@ -168,9 +168,19 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
     probe.resources.origTexture.GetDimensions(0, h, w, mipCount);
 
     // Sample diffuse texture
-    float3 intersectPosW;
-    intersectRaySphere(sd.posW, sd.N, probe.posW, probe.radius, intersectPosW);
-    float2 diffuseCrd = dirToSphericalCrd(normalize(intersectPosW));
+    // Interpret negative radius as global light probe with infinite distance
+    float2 diffuseCrd;
+    if(probe.radius < 0.0f)
+    {
+        diffuseCrd = dirToSphericalCrd(sd.N);
+    }
+    else
+    {
+        float3 intersectPosW;
+        intersectRaySphere(sd.posW, sd.N, probe.posW, probe.radius, intersectPosW);
+        diffuseCrd = dirToSphericalCrd(normalize(intersectPosW));
+    }
+
     ls.diffuse = probe.resources.diffuseTexture.SampleLevel(probe.resources.samplerState, diffuseCrd, 0).rgb;
 
     // Get the specular component

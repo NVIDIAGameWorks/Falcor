@@ -37,6 +37,7 @@
 #include <fstream>
 #include <algorithm>
 #include "Graphics/TextureHelper.h"
+#include "API/Device.h"
 
 #define SCENE_IMPORTER
 #include "SceneExportImportCommon.h"
@@ -519,7 +520,7 @@ namespace Falcor
                 }
             }
 
-            LightProbe::SharedPtr pLightProbe = LightProbe::create(actualPath, true, true, ResourceFormat::RGBA16Float);
+            LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext().get(), actualPath, true, true, ResourceFormat::RGBA16Float);
             pLightProbe->setPosW(position);
             pLightProbe->setIntensity(intensity);
             mScene.addLightProbe(pLightProbe);

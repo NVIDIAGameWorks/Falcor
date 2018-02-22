@@ -139,16 +139,15 @@ struct MaterialData
 struct LightProbeResources
 {
     Texture2D origTexture;      ///< The original texture
-    Texture2D diffuseTexture;
+    Texture2D diffuseTexture;   ///< Texture containing pre-integrated diffuse term
     SamplerState samplerState;
 };
 
 struct LightProbeData
 {
     float3 posW         DEFAULTS(float3(0));
-    uint32_t type       DEFAULTS(LightProbeLinear2D);
+    float radius        DEFAULTS(-1.0f);
     float3 intensity    DEFAULTS(float3(1.0f));
-    float radius        DEFAULTS(1.0f);
 
     LightProbeResources resources;
 };

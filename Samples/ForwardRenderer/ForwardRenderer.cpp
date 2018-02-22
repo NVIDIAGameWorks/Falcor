@@ -147,7 +147,7 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
 
     if (pScene->getLightProbeCount() > 0)
     {
-        pScene->getLightProbe(0)->mData.radius = pScene->getRadius();
+        pScene->getLightProbe(0)->setRadius(pScene->getRadius());
     }
 
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
@@ -223,7 +223,7 @@ void ForwardRenderer::initSkyBox(const std::string& name)
     mSkyBox.pDS = DepthStencilState::create(dsDesc);
 }
 
-void ForwardRenderer::initLightProbe(const std::string& name)
+void ForwardRenderer::updateLightProbe(const LightProbe::SharedPtr& pLight)
 {
     Scene::SharedPtr pScene = mpSceneRenderer->getScene();
 
@@ -233,10 +233,12 @@ void ForwardRenderer::initLightProbe(const std::string& name)
         pScene->deleteLightProbe(0);
     }
 
-    // Create new light probe from file
-    LightProbe::SharedPtr pLightProbe = LightProbe::create(name, true, true, ResourceFormat::RGBA16Float);
-    pLightProbe->setSampler(mpSceneSampler);
-    pScene->addLightProbe(pLightProbe);
+    pLight->setRadius(pScene->getRadius());
+
+    pLight->setSampler(mpSceneSampler);
+    pScene->addLightProbe(pLight);
+
+    mLightProbeDiffSampleCount = pLight->getDiffSampleCount();
 
     mControls[EnableReflections].enabled = true;
     applyLightingProgramControl(ControlID::EnableReflections);
@@ -458,53 +460,22 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
 {
     if (mpSceneRenderer)
     {
-        if (mpSceneRenderer->getScene()->getLightProbeCount() > 0)
+        beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
+
         {
-            if (mControls[ControlID::Reintegrate].enabled)
-            {
-                static uint32_t sampleCount = 512;
-
-                if (mControls[ControlID::Reintegrate].unsetOnEnabled)
-                {
-                    sampleCount = min(32 * 1024u, sampleCount << 1);
-                }
-                else
-                {
-                    sampleCount = max(1u, sampleCount >> 1);
-                }
-
-                mpSceneRenderer->getScene()->getLightProbe(0)->TEST_CODE_reintegrate(sampleCount);
-                mControls[ControlID::Reintegrate].enabled = false;
-                mControls[ControlID::Reintegrate].value = std::to_string(sampleCount);
-            }
+            PROFILE(updateScene);
+            mpSceneRenderer->update(pSample->getCurrentTime());
         }
 
-        if (mControls[ControlID::DebugLightProbe].enabled)
-        {
-            if (mControls[ControlID::DebugLightProbeOrig].enabled)
-                mpRenderContext->blit(mpSceneRenderer->getScene()->getLightProbe(0)->mData.resources.origTexture->getSRV(), mpDefaultFBO->getRenderTargetView(0));
-            else
-                pRenderContext->blit(mpSceneRenderer->getScene()->getLightProbe(0)->mData.resources.diffuseTexture->getSRV(), mpDefaultFBO->getRenderTargetView(0));
-        }
-        else
-        {
-            beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
-
-            {
-                PROFILE(updateScene);
-                mpSceneRenderer->update(pSample->getCurrentTime());
-            }
-
-            depthPass(pRenderContext.get());
-            shadowPass(pRenderContext.get());
-            mpState->setFbo(mpMainFbo);
-            renderSkyBox(pRenderContext.get());
-            lightingPass(pRenderContext.get(), pTargetFbo.get());
-            antiAliasing(pRenderContext.get());
-            postProcess(pRenderContext.get(), pTargetFbo);
-            ambientOcclusion(pRenderContext.get(), pTargetFbo);
-            endFrame(pRenderContext.get());
-        }
+        depthPass(pRenderContext.get());
+        shadowPass(pRenderContext.get());
+        mpState->setFbo(mpMainFbo);
+        renderSkyBox(pRenderContext.get());
+        lightingPass(pRenderContext.get(), pTargetFbo.get());
+        antiAliasing(pRenderContext.get());
+        postProcess(pRenderContext.get(), pTargetFbo);
+        ambientOcclusion(pRenderContext.get(), pTargetFbo);
+        endFrame(pRenderContext.get());
     }
     else
     {
@@ -621,7 +592,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-	ForwardRenderer::UniquePtr pRenderer = std::make_unique<ForwardRenderer>();
+    ForwardRenderer::UniquePtr pRenderer = std::make_unique<ForwardRenderer>();
     SampleConfig config;
     config.windowDesc.title = "Falcor Forward Renderer";
     config.windowDesc.resizableWindow = false;

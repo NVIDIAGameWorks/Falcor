@@ -31,25 +31,8 @@ __import Helpers;
 SamplerState gSampler : register(s0);
 texture2D gInputTex : register(t1);
 
-float radicalInverse(uint i)
+void importanceSampleCosDir(float2 u, float3 N, out float3 L, out float NdotL, out float pdf)
 {
-    i = (i & 0x55555555) << 1 | (i & 0xAAAAAAAA) >> 1;
-    i = (i & 0x33333333) << 2 | (i & 0xCCCCCCCC) >> 2;
-    i = (i & 0x0F0F0F0F) << 4 | (i & 0xF0F0F0F0) >> 4;
-    i = (i & 0x00FF00FF) << 8 | (i & 0xFF00FF00) >> 8;
-    i = (i << 16) | (i >> 16);
-    return float(i) * 2.3283064365386963e-10f;
-}
-
-float2 getHammersley(uint i, uint N)
-{
-    return float2(float(i) / float(N), radicalInverse(i));
-}
-
-void importanceSampleCosDir(float2 u, float3 N,
-    out float3 L, out float NdotL, out float pdf)
-{
-    // Local referencial
     float3 up = abs(N.z) < 0.999f ? float3(0, 0, 1) : float3(1, 0, 0);
     float3 right = normalize(cross(up, N));
     float3 forward = cross(N, right);
@@ -70,30 +53,29 @@ void importanceSampleCosDir(float2 u, float3 N,
     pdf = NdotL * M_INV_PI;
 }
 
-float4 integrate(float3 N)
+float4 integration(float3 N)
 {
-    float3 accBrdf = 0;
-    for (uint i = 0; i < _SAMPLE_COUNT; ++i)
+    float3 accumulation = 0;
+    for (uint i = 0; i < _SAMPLE_COUNT; i++)
     {
         float2 eta = getHammersley(i, _SAMPLE_COUNT);
         float3 L;
         float NdotL;
         float pdf;
 
-        // see reference code in appendix
         importanceSampleCosDir(eta, N, L, NdotL, pdf);
         if (NdotL > 0)
         {
             float2 uv = dirToSphericalCrd(L);
-            accBrdf += gInputTex.Sample(gSampler, uv).rgb;
+            accumulation += gInputTex.Sample(gSampler, uv).rgb;
         }
     }
 
-    return float4(accBrdf / float(_SAMPLE_COUNT), 1.0f);
+    return float4(accumulation / float(_SAMPLE_COUNT), 1.0f);
 }
 
 float4 main(float2 texC : TEXCOORD, float4 posS : SV_POSITION) : SV_TARGET0
 {
     float3 dir = sphericalCrdToDir(texC);
-    return integrate(dir);
+    return integration(dir);
 }

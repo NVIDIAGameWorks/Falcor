@@ -54,10 +54,32 @@ float3 sphericalCrdToDir(float2 uv)
     return normalize(dir);
 }
 
-bool intersectRaySphere(float3 rayPosW, float3 rayDir, float3 spherePosW, float sphereRadius,
-    out float3 intersectionPosW)
+/*******************************************************************
+    Sample Patterns
+*******************************************************************/
+
+float radicalInverse(uint i)
 {
-    float3 m = rayPosW - spherePosW;
+    i = (i & 0x55555555) << 1 | (i & 0xAAAAAAAA) >> 1;
+    i = (i & 0x33333333) << 2 | (i & 0xCCCCCCCC) >> 2;
+    i = (i & 0x0F0F0F0F) << 4 | (i & 0xF0F0F0F0) >> 4;
+    i = (i & 0x00FF00FF) << 8 | (i & 0xFF00FF00) >> 8;
+    i = (i << 16) | (i >> 16);
+    return float(i) * 2.3283064365386963e-10f;
+}
+
+float2 getHammersley(uint i, uint N)
+{
+    return float2(float(i) / float(N), radicalInverse(i));
+}
+
+/*******************************************************************
+    Other
+*******************************************************************/
+
+bool intersectRaySphere(float3 rayPos, float3 rayDir, float3 spherePos, float sphereRadius, out float3 intersectionPos)
+{
+    float3 m = rayPos - spherePos;
     float b = dot(m, rayDir);
     float c = dot(m, m) - (sphereRadius * sphereRadius);
 
@@ -73,7 +95,7 @@ bool intersectRaySphere(float3 rayPosW, float3 rayDir, float3 spherePosW, float 
 
     // t will be negative if origin is inside sphere, 
     // take the abs since we want the position on the sphere's surface
-    intersectionPosW = rayPosW + abs(t) * rayDir;
+    intersectionPos = rayPos + abs(t) * rayDir;
 
     return true;
 }

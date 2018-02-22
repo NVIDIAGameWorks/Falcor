@@ -52,9 +52,6 @@ void ForwardRenderer::initControls()
     mControls[ControlID::EnableTransparency] = { false, false, "_ENABLE_TRANSPARENCY" };
     mControls[ControlID::EnableSSAO] = { true, false, "" };
     mControls[ControlID::VisualizeCascades] = { false, false, "_VISUALIZE_CASCADES" };
-    mControls[ControlID::DebugLightProbe] = { false, false, "" };
-    mControls[ControlID::DebugLightProbeOrig] = { false, false, "" };
-    mControls[ControlID::Reintegrate] = { false, false, "" };
 
     for (uint32_t i = 0 ; i < ControlID::Count ; i++)
     {
@@ -251,29 +248,30 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string filename;
                 if (openFileDialog(kImageFileString, filename))
                 {
-                    initLightProbe(filename);
+                    updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, true, ResourceFormat::RGBA16Float, 128, 1024));
                 }
             }
 
             Scene::SharedPtr pScene = mpSceneRenderer->getScene();
             if (pScene->getLightProbeCount() > 0)
             {
-                pGui->addCheckBox("Debug", mControls[ControlID::DebugLightProbe].enabled);
-                pGui->addCheckBox("Orig Texture", mControls[ControlID::DebugLightProbeOrig].enabled);
-                
-                if (pGui->addButton("Reintegrate 2x Samples"))
+                const LightProbe::SharedPtr& pLight = pScene->getLightProbe(0);
+
+                std::string sampleText = "Diffuse Sample Count: " + std::to_string(pLight->getDiffSampleCount());
+                pGui->addText(sampleText.c_str());
+                int32_t samples = uint32_t(mLightProbeDiffSampleCount);
+                if (pGui->addIntVar("", samples, 1, 128 * 1024))
                 {
-                    mControls[ControlID::Reintegrate].enabled = true;
-                    mControls[ControlID::Reintegrate].unsetOnEnabled = true;
-                }
-                if (pGui->addButton("Reintegrate 0.5x Samples"))
-                {
-                    mControls[ControlID::Reintegrate].enabled = true;
-                    mControls[ControlID::Reintegrate].unsetOnEnabled = false;
+                    mLightProbeDiffSampleCount = uint32_t(samples);
                 }
 
-                std::string sampleString = "Samples: " + mControls[ControlID::Reintegrate].value;
-                pGui->addText(sampleString.c_str());
+                if (pGui->addButton("Apply", true))
+                {
+                    if (mLightProbeDiffSampleCount != pLight->getDiffSampleCount())
+                    {
+                        updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), pLight->getOrigTexture(), 128, mLightProbeDiffSampleCount));
+                    }
+                }
 
                 if (pGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
