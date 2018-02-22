@@ -51,7 +51,9 @@ int main(int argc, char** argv)
 #ifdef _WIN32
     Sample::run(config, pLiveTrain);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    config.argc = (uint32_t)argc;
+    config.argv = argv;
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 #else 

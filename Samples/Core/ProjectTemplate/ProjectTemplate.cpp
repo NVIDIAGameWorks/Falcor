@@ -42,7 +42,7 @@ void ProjectTemplate::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
 
 void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
+    const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 }
 

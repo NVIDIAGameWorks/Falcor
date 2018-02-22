@@ -141,13 +141,15 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-	SkyBoxRenderer::UniquePtr pRenderer = std::make_unique<SkyBoxRenderer>();
+    SkyBoxRenderer::UniquePtr pRenderer = std::make_unique<SkyBoxRenderer>();
     SampleConfig config;
     config.windowDesc.title = "Skybox Sample";
 #ifdef _WIN32
     Sample::run(config, pRenderer);
 #else
-    Sample::run(config, pRenderer, (uint32_t)argc, argv);
+    config.argc = (uint32_t)argc;
+    config.argv = argv;
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 }
