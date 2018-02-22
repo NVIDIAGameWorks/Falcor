@@ -6,9 +6,9 @@
         "GitHub_DailyTests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Source Branch Target" : "RendererClass",
-            "Compare Branch Target" : "RendererClass",
-            "Tests Configs Target" : "TestConfigs\\",
+            "Source Branch Target" : "dev-3.0",
+            "Compare Branch Target" : "dev-3.0",
+            "Tests Configs Target" : "TestConfigs/",
 
             "Tests":
             [
