@@ -49,8 +49,48 @@ public:
 private:
     Fbo::SharedPtr mpMainFbo;
     Fbo::SharedPtr mpDepthPassFbo;
-    Fbo::SharedPtr mpResolveFbo;
     Fbo::SharedPtr mpPostProcessFbo;
+
+    // Helper class for handling the AA resolve FBO
+    //
+    // Vulkan is picky when blitting depth-stencil formats, and D3D12 has no blit command.
+    // We have to resolve D32 to D32 in Vulkan, and D32 to R32 in D3D12.
+    class
+    {
+    public:
+        void createFbos(uint32_t width, uint32_t height)
+        {
+            Fbo::Desc desc;
+            desc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm);
+#ifdef FALCOR_D3D12
+            desc.setColorTarget(2, ResourceFormat::R32Float);
+#elif defined(FALCOR_VK)
+            desc.setDepthStencilTarget(ResourceFormat::D32Float);
+#endif
+            mpFbo = FboHelper::create2D(width, height, desc);
+        }
+
+        RenderTargetView::SharedPtr getRTV(uint32_t index)
+        {
+#ifdef FALCOR_VK
+            if (index == 2) return mpFbo->getDepthStencilTexture()->getRTV();
+#endif
+            return mpFbo->getColorTexture(index)->getRTV();
+        }
+
+        Texture::SharedPtr getTexture(uint32_t index)
+        {
+#ifdef FALCOR_VK
+            if (index == 2) return mpFbo->getDepthStencilTexture();
+#endif
+            return mpFbo->getColorTexture(index);
+        }
+
+        const Fbo::SharedPtr& getFbo() const { return mpFbo; }
+
+    private:
+        Fbo::SharedPtr mpFbo;
+    } mResolveFbo;
 
     struct ShadowPass
     {
@@ -112,7 +152,6 @@ private:
         Fbo::SharedPtr pTAAFbos[2];
         uint32_t activeFboIndex = 0;
     } mTAA;
-
 
     ToneMapping::UniquePtr mpToneMapper;
 

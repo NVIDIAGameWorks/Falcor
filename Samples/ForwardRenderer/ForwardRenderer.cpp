@@ -276,7 +276,7 @@ void ForwardRenderer::beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint3
     {
         glm::vec2 targetResolution = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
         pContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0));
-        pContext->clearFbo(mpResolveFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
+        pContext->clearFbo(mResolveFbo.getFbo().get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
 
         //  Select the sample pattern and set the camera jitter
         const auto& samplePattern = (mTAASamplePattern == SamplePattern::Halton) ? kHaltonSamplePattern : kDX11SamplePattern;
@@ -294,7 +294,7 @@ void ForwardRenderer::endFrame(RenderContext* pContext)
 void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     PROFILE(postProcess);
-    mpToneMapper->execute(pContext, mpResolveFbo, mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo);
+    mpToneMapper->execute(pContext, mResolveFbo.getFbo(), mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo);
 }
 
 void ForwardRenderer::depthPass(RenderContext* pContext)
@@ -367,9 +367,9 @@ void ForwardRenderer::renderTransparentObjects(RenderContext* pContext)
 
 void ForwardRenderer::resolveMSAA(RenderContext* pContext)
 {
-    pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
-    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mResolveFbo.getRTV(0));
+    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mResolveFbo.getRTV(1));
+    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mResolveFbo.getRTV(2));
 }
 
 void ForwardRenderer::shadowPass(RenderContext* pContext)
@@ -412,11 +412,11 @@ void ForwardRenderer::runTAA(RenderContext* pContext)
     pContext->getGraphicsState()->popFbo();
 
     //  Copy over the Anti-Aliased Color Texture
-    pContext->blit(mTAA.getActiveFbo()->getColorTexture(0)->getSRV(0, 1), mpResolveFbo->getColorTexture(0)->getRTV());
+    pContext->blit(mTAA.getActiveFbo()->getColorTexture(0)->getSRV(0, 1), mResolveFbo.getRTV(0));
 
     //  Copy over the Remaining Texture Data
-    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mResolveFbo.getRTV(1));
+    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mResolveFbo.getRTV(2));
 
     //  Swap the Fbos
     mTAA.switchFbos();
@@ -427,7 +427,7 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
     PROFILE(ssao);
     if (mControls[EnableSSAO].enabled)
     {
-        Texture::SharedPtr pAOMap = mSSAO.pSSAO->generateAOMap(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mpResolveFbo->getColorTexture(2), mpResolveFbo->getColorTexture(1));
+        Texture::SharedPtr pAOMap = mSSAO.pSSAO->generateAOMap(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mResolveFbo.getTexture(2), mResolveFbo.getTexture(1));
         mSSAO.pVars->setTexture("gColor", mpPostProcessFbo->getColorTexture(0));
         mSSAO.pVars->setTexture("gAOMap", pAOMap);
 
@@ -535,8 +535,8 @@ void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width
     Fbo::Desc fboDesc;
     fboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
     mpPostProcessFbo = FboHelper::create2D(width, height, fboDesc);
-    fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
-    mpResolveFbo = FboHelper::create2D(width, height, fboDesc);
+
+    mResolveFbo.createFbos(width, height);
 
     applyAaMode(pSample);
     
@@ -598,3 +598,4 @@ int main(int argc, char** argv)
 #endif
     return 0;
 }
+
