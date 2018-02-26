@@ -343,7 +343,9 @@ namespace Falcor
         // Pick the right target based on the current graphics API
 #ifdef FALCOR_VK
         spSetCodeGenTarget(slangRequest, SLANG_SPIRV);
+        spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
 #elif defined FALCOR_D3D
+        spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
         // Note: we could compile Slang directly to DXBC (by having Slang invoke the MS compiler for us,
         // but that path seems to have more issues at present, so let's just go to HLSL instead...)
         spSetCodeGenTarget(slangRequest, SLANG_HLSL);
@@ -352,7 +354,6 @@ namespace Falcor
 #endif
 
         // We will always work with HLSL input, even when targetting Vulkan/SPIR-V
-        spAddPreprocessorDefine(slangRequest, "FALCOR_HLSL", "1");
         SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
 
         // Configure any flags for the Slang compilation step
