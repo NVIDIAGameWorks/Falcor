@@ -9,6 +9,7 @@ import stat
 import sys
 import json
 import pprint
+import webbrowser 
 
 import MachineConfigs as machine_configs
 import Helpers as helpers
@@ -393,8 +394,10 @@ def main():
     html_file.close()
 
     # Open it up.
-    os.system("start " + html_file_path)
-
+    if os.name == 'nt':
+        os.system("start " + html_file_path)
+    else:
+        webbrowser.open('file://' + os.path.abspath(html_file_path))
 
 if __name__ == '__main__':
     main()
