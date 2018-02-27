@@ -212,12 +212,51 @@ namespace Falcor
         ResourceFormat colorFormat = mpSwapChainFbos[0]->getColorTexture(0)->getFormat();
         const auto& pDepth = mpSwapChainFbos[0]->getDepthStencilTexture();
         ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
+
+        // updateDefaultFBO() attaches the resized swapchain to new Texture objects, with Undefined resource state.
+        // This is fine in Vulkan because a new swapchain is created, but D3D12 can resize without changing
+        // internal resource state, so we must cache the Falcor resource state to track it correctly in the new Texture object.
+        // #TODO Is there a better place to cache state within D3D12 implementation instead of #ifdef-ing here?
+
+#ifdef FALCOR_D3D12
+        // Save FBO resource states
+        std::vector<Resource::State> fboColorStates(mSwapChainBufferCount, Resource::State::Undefined);
+        std::vector<Resource::State> fboDepthStates(mSwapChainBufferCount, Resource::State::Undefined);
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
+        {
+            fboColorStates[i] = mpSwapChainFbos[i]->getColorTexture(0)->getState();
+
+            const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
+            if (pSwapChainDepth != nullptr)
+            {
+                fboDepthStates[i] = pSwapChainDepth->getState();
+            }
+        }
+#endif
+
         assert(mpSwapChainFbos[0]->getSampleCount() == 1);
 
         // Delete all the FBOs
         releaseFboData();
         apiResizeSwapChain(width, height, colorFormat);
         updateDefaultFBO(width, height, colorFormat, depthFormat);
+
+#ifdef FALCOR_D3D12
+        // Restore FBO resource states
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
+        {
+            mpSwapChainFbos[i]->getColorTexture(0)->mState = fboColorStates[i];
+            const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
+            if (pSwapChainDepth != nullptr)
+            {
+                pSwapChainDepth->mState = fboDepthStates[i];
+            }
+        }
+#endif
+
+#if !defined(FALCOR_D3D12) && !defined(FALCOR_VK)
+#error Verify state handling on swapchain resize for this API
+#endif
 
         return getSwapChainFbo();
     }
