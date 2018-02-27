@@ -8,14 +8,16 @@ default_json_data = {
         'Destination Target' : 'C:\\Falcor\\GitHub\\',
         'Reference Target ' : '\\\\netapp-wa02\\public\\Falcor\\Github\\References\\',
         'Email List' : '\\\\netapp-wa02\\public\\Falcor\\email.txt',
-        'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\Results\\'
+        'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\Results\\',
+        'Default Main Directory' : '..\\'
     },
     'Linux':
     {   
         'Destination Target' : '/home/nvrgfxtest/Desktop/FalcorGitHub/',
         'Reference Target' : 'media/netapp/Falcor/Github/References/',
         'Email List' : '/media/netapp/Falcor/email.txt',
-        'Results Summary Target' : '/media/netapp/Falcor/Github/Results/'
+        'Results Summary Target' : '/media/netapp/Falcor/Github/Results/',
+        'Default Main Directory' : '../'
     }
 }
 
@@ -43,3 +45,7 @@ machine_reference_directory = platform_data['Reference Target']
 destination_target = platform_data['Destination Target']
 machine_email_recipients = platform_data['Email List']
 machine_results_summary_target = platform_data['Results Summary Target']
+#for running test sets, not collections. Like check in tests
+default_reference_machine_name = 'nvrgfxtest1'
+default_reference_branch_name = 'master'
+default_main_dir = platform_data['Default Main Directory']

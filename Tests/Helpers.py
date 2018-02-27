@@ -8,7 +8,6 @@ import MachineConfigs as machine_configs
 
 # CLean the directory if it exists, or make it if it does not.
 def directory_clean_or_make(destination):
-
     # Check if the Directory exists, and make it if it does not.
     if not os.path.isdir(destination):
         try:

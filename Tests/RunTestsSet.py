@@ -18,15 +18,21 @@ import WriteTestResultsToHTML as write_test_results_to_html
 class TestsSetError(Exception):
     pass
 
-def get_executable_directory(configuration, test_set):
+def get_executable_directory(configuration, test_set, runAsCollection):
+    if runAsCollection:
+        exe_dir = os.path.join(test_set, 'Bin')
+    else:
+        exe_dir = 'Bin'
+        
     if os.name == 'nt':
-        exe_dir = test_set + '\\Bin\\x64\\'
+        exe_dir = os.path.join(exe_dir, 'x64')
         if configuration.lower() == 'released3d12' or configuration.lower() == 'releasevk' :
-            return exe_dir + 'Release\\'
+            config = 'Release'
         else:
-            return exe_dir + 'Debug\\'
-    else: 
-        return test_set + '/Bin/'
+            config = 'Debug'
+        return os.path.join(exe_dir, config)
+    else:
+        return exe_dir
 
 def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuild):
     if os.name == 'nt':
@@ -88,7 +94,7 @@ def run_test_run(executable_filepath, current_arguments, output_file_base_name, 
         raise TestsSetError('Error when trying to run ' + executable_filepath + ' ' + current_arguments + ' ' + 'with outputfilename ' + output_file_base_name + ' and outputdir ' + output_directory)
 
 # Run the tests set..
-def run_tests_set(main_directory, rebuild, json_filepath, results_directory, reference_directory):
+def run_tests_set(main_directory, rebuild, json_filepath, results_directory, reference_directory, runAsCollection):
 
     tests_set_run_data = {}
 
@@ -140,7 +146,8 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
             current_tests_group['Results']['Errors'] = {}
 
             # Get the executable directory.
-            executable_directory = os.path.join(absolutepath, get_executable_directory(tests_set_run_data['Configuration Target'], tests_set_run_data['Name']))
+            executable_directory = get_executable_directory(tests_set_run_data['Configuration Target'], tests_set_run_data['Name'], runAsCollection)
+            executable_directory = os.path.join(absolutepath, executable_directory)
             # Get the results directory.
             current_results_directory = os.path.join(tests_set_run_data['Results Directory'], current_tests_group_name)
 
@@ -324,16 +331,48 @@ def main():
 
     # Add the Argument for which Tests Set to run.
     parser.add_argument('-ts', '--tests_set', action='store', help='Specify the Tests Set file.')
+    
+    #Which branch to compare to 
+    parser.add_argument('-br', '--branch', action='store', help='Branch of refence to compare to')
+    
+    #Which machine name to use for reference comparsion 
+    parser.add_argument('-mn', '--machine_name', action='store', help='Which machine name use as reference')
 
     # Parse the Arguments.
     args = parser.parse_args()
 
     # Get the machine constants.
     main_results_directory = machine_configs.machine_relative_checkin_local_results_directory
-    main_reference_directory = machine_configs.machine_default_checkin_reference_directory
+    
+    if not args.tests_set:
+        print('ERROR: No test set supplied.')
+        return
+        
+    main_directory = ''
+    if not args.main_directory:
+        print('No Main directory supplied, assuming running from test dir, assuming default ' + str(machine_configs.default_main_dir))
+        main_directory = machine_configs.default_main_dir
+    else:
+        main_directory = args.md
+    
+    branch = ''
+    if not args.branch:
+        print('No Branch supplied, using default: ' + str(machine_configs.default_reference_branch_name))
+        branch = 'master'
+    else:
+        branch = str(args.branch)
+        
+    ref_machine_name = ''
+    if not args.machine_name:
+        print('No reference machine name supplied, using default: ' + str(machine_configs.default_reference_machine_name))
+        ref_machine_name = machine_configs.default_reference_machine_name
+    else:
+        ref_machine_name = str(args.machine_name)
+    
+    main_reference_directory = os.path.join(machine_configs.machine_reference_directory, ref_machine_name, branch)
 
     # Run the Test Set.
-    tests_set_data = run_tests_set(args.main_directory, args.rebuild, args.tests_set, main_results_directory, main_reference_directory)
+    tests_set_data = run_tests_set(main_directory, args.rebuild, args.tests_set, main_results_directory, main_reference_directory, False)
 
     if tests_set_data['Success'] == False:
         print(tests_set_data['Error'])
