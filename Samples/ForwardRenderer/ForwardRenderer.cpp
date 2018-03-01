@@ -145,6 +145,11 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
         pScene->addLight(pDirLight);
     }
 
+    if (pScene->getLightProbeCount() > 0)
+    {
+        pScene->getLightProbe(0)->setRadius(pScene->getRadius());
+    }
+
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
     mpSceneRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
     mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
@@ -218,7 +223,7 @@ void ForwardRenderer::initSkyBox(const std::string& name)
     mSkyBox.pDS = DepthStencilState::create(dsDesc);
 }
 
-void ForwardRenderer::initLightProbe(const std::string& name)
+void ForwardRenderer::updateLightProbe(const LightProbe::SharedPtr& pLight)
 {
     Scene::SharedPtr pScene = mpSceneRenderer->getScene();
 
@@ -228,10 +233,12 @@ void ForwardRenderer::initLightProbe(const std::string& name)
         pScene->deleteLightProbe(0);
     }
 
-    // Create new light probe from file
-    LightProbe::SharedPtr pLightProbe = LightProbe::create(name, true, true, ResourceFormat::RGBA16Float);
-    pLightProbe->setSampler(mpSceneSampler);
-    pScene->addLightProbe(pLightProbe);
+    pLight->setRadius(pScene->getRadius());
+
+    pLight->setSampler(mpSceneSampler);
+    pScene->addLightProbe(pLight);
+
+    mLightProbeDiffSampleCount = pLight->getDiffSampleCount();
 
     mControls[EnableReflections].enabled = true;
     applyLightingProgramControl(ControlID::EnableReflections);

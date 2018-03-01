@@ -248,13 +248,31 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string filename;
                 if (openFileDialog(kImageFileString, filename))
                 {
-                    initLightProbe(filename);
+                    updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, true, ResourceFormat::RGBA16Float, 128, 1024));
                 }
             }
 
             Scene::SharedPtr pScene = mpSceneRenderer->getScene();
             if (pScene->getLightProbeCount() > 0)
             {
+                const LightProbe::SharedPtr& pLight = pScene->getLightProbe(0);
+
+                std::string sampleText = "Diffuse Sample Count: " + std::to_string(pLight->getDiffSampleCount());
+                pGui->addText(sampleText.c_str());
+                int32_t samples = uint32_t(mLightProbeDiffSampleCount);
+                if (pGui->addIntVar("", samples, 1, 128 * 1024))
+                {
+                    mLightProbeDiffSampleCount = uint32_t(samples);
+                }
+
+                if (pGui->addButton("Apply", true))
+                {
+                    if (mLightProbeDiffSampleCount != pLight->getDiffSampleCount())
+                    {
+                        updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), pLight->getOrigTexture(), 128, mLightProbeDiffSampleCount));
+                    }
+                }
+
                 if (pGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
@@ -262,7 +280,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 pGui->addSeparator();
                 pScene->getLightProbe(0)->renderUI(pGui);
             }
-            
+
             pGui->endGroup();
         }
 

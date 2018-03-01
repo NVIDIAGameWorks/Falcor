@@ -2225,5 +2225,8 @@
     <None Include="ShadingUtils\Helpers.slang">
       <Filter>ShadingUtils</Filter>
     </None>
+    <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
