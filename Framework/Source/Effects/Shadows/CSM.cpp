@@ -781,7 +781,7 @@ namespace Falcor
 
         mCsmData.lightDir = glm::normalize(((DirectionalLight*)mpLight.get())->getWorldDirection());
         ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
-        size_t offset = pCB->getVariableOffset(varName + ".globalMat");
+        size_t offset = pCB->getVariableOffset(varName);
         pCB->setBlob(&mCsmData, offset, sizeof(mCsmData));
     }
     

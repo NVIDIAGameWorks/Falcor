@@ -220,10 +220,17 @@ namespace Falcor
         // Vao must be valid so at least primitive topology is known
         assert(mpGraphicsState->getVao().get());
 
+        auto gso = mpGraphicsState->getGSO(mpGraphicsVars.get());
+        auto rootSignature = gso->getDesc().getProgramKernels()->getRootSignature();
+
+        if (mBindGraphicsRootSig)
+        {
+            rootSignature->bindForGraphics(this);
+        }
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if (mpGraphicsVars)
         {
-            applyGraphicsVars();
+            applyGraphicsVars(rootSignature.get());
         }
         else
         {
@@ -248,7 +255,7 @@ namespace Falcor
         D3D12SetFbo(this, mpGraphicsState->getFbo().get());
         D3D12SetViewports(pList, &mpGraphicsState->getViewport(0));
         D3D12SetScissors(pList, &mpGraphicsState->getScissors(0));
-        pList->SetPipelineState(mpGraphicsState->getGSO(mpGraphicsVars.get())->getApiHandle());
+        pList->SetPipelineState(gso->getApiHandle());
         BlendState::SharedPtr blendState = mpGraphicsState->getBlendState();
         if (blendState != nullptr)
         {
@@ -264,27 +271,32 @@ namespace Falcor
     void RenderContext::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t startVertexLocation, uint32_t startInstanceLocation)
     {
         prepareForDraw();
+        gEventCounter.numDrawCalls++;
         mpLowLevelData->getCommandList()->DrawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
     }
 
     void RenderContext::draw(uint32_t vertexCount, uint32_t startVertexLocation)
     {
+        gEventCounter.numDrawCalls++;
         drawInstanced(vertexCount, 1, startVertexLocation, 0);
     }
 
     void RenderContext::drawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
     {
         prepareForDraw();
+        gEventCounter.numDrawCalls++;
         mpLowLevelData->getCommandList()->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
     }
 
     void RenderContext::drawIndexed(uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation)
     {
+        gEventCounter.numDrawCalls++;
         drawIndexedInstanced(indexCount, 1, startIndexLocation, baseVertexLocation, 0);
     }
 
     void RenderContext::drawIndirect(const Buffer* argBuffer, uint64_t argBufferOffset)
     {
+        gEventCounter.numDrawCalls++;
         prepareForDraw();
         resourceBarrier(argBuffer, Resource::State::IndirectArg);
         mpLowLevelData->getCommandList()->ExecuteIndirect(spDrawCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
@@ -292,6 +304,7 @@ namespace Falcor
 
     void RenderContext::drawIndexedIndirect(const Buffer* argBuffer, uint64_t argBufferOffset)
     {
+        gEventCounter.numDrawCalls++;
         prepareForDraw();
         resourceBarrier(argBuffer, Resource::State::IndirectArg);
         mpLowLevelData->getCommandList()->ExecuteIndirect(spDrawIndexCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);

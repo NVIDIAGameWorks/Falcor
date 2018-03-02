@@ -67,6 +67,23 @@ namespace Falcor
         return true;
     }
 
+    std::unordered_map<std::string, int> typeNameRegistry;
+
+    void ParameterBlock::setTypeName(std::string name)
+    {
+        typeName = name;
+        auto findRs = typeNameRegistry.find(name);
+        if (findRs != typeNameRegistry.end())
+            typeId = findRs->second;
+        typeId = (int)typeNameRegistry.size();
+        typeNameRegistry[name] = typeId;
+    }
+
+    std::string ParameterBlock::getTypeName() const
+    {
+        return typeName;
+    }
+
     ParameterBlock::~ParameterBlock() = default;
 
     ParameterBlock::AssignedResource::AssignedResource() : pResource(nullptr), type(DescriptorSet::Type::Count), pCB(nullptr)
@@ -136,7 +153,19 @@ namespace Falcor
     }
 
     ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers) : mpReflector(pReflection)
-    {
+    {   
+        // SLANG-INTEGRATION
+        // when creating parameter blocks, we also store the element type of the parameter block
+        auto paramBlockType = pReflection->getType();
+        if (paramBlockType)
+        {
+            if (auto structType = paramBlockType->asStructType())
+                typeName = structType->getName();
+            else if (auto genericType = paramBlockType->asGenericType())
+                typeName = genericType->name;
+            if (typeName == "TMaterial")
+                printf("break");
+        }
         // Initialize the resource vectors
         const auto& setLayouts = pReflection->getDescriptorSetLayouts();
         mAssignedResources.resize(setLayouts.size());
@@ -640,7 +669,7 @@ namespace Falcor
         {
             if (mRootSets[s].dirty == false) continue;
             const auto& pDescSet = mRootSets[s].pSet;
-
+            gEventCounter.numParamBlockUpdates++;
             const auto& set = mAssignedResources[s];
             for (uint32_t r = 0 ; r < set.size() ; r++)
             {

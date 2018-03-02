@@ -68,7 +68,7 @@ namespace Falcor
             Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
             Desc& setVertexLayout(VertexLayout::SharedConstPtr pLayout) { mpLayout = pLayout; return *this; }
             Desc& setFboFormats(const Fbo::Desc& fboFormats) { mFboDesc = fboFormats; return *this; }
-            Desc& setProgramVersion(ProgramVersion::SharedConstPtr pProgram) { mpProgram = pProgram; return *this; }
+            Desc& setProgramKernels(ProgramKernels::SharedConstPtr pProgram) { mpProgram = pProgram; return *this; }
             Desc& setBlendState(BlendState::SharedPtr pBlendState) { mpBlendState = pBlendState; return *this; }
             Desc& setRasterizerState(RasterizerState::SharedPtr pRasterizerState) { mpRasterizerState = pRasterizerState; return *this; }
             Desc& setDepthStencilState(DepthStencilState::SharedPtr pDepthStencilState) { mpDepthStencilState = pDepthStencilState; return *this; }
@@ -83,7 +83,7 @@ namespace Falcor
             GraphicsStateObject::PrimitiveType getPrimitiveType() const { return mPrimType; }
             VertexLayout::SharedConstPtr getVertexLayout() const { return mpLayout; }
             const Fbo::Desc& getFboDesc() const { return mFboDesc; }
-            ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram; }
+            ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
 
             bool getSinglePassStereoEnabled() const { return mSinglePassStereoEnabled; }
 
@@ -93,7 +93,7 @@ namespace Falcor
             friend class GraphicsStateObject;
             VertexLayout::SharedConstPtr mpLayout;
             Fbo::Desc mFboDesc;
-            ProgramVersion::SharedConstPtr mpProgram;
+            ProgramKernels::SharedConstPtr mpProgram;
             RasterizerState::SharedPtr mpRasterizerState;
             DepthStencilState::SharedPtr mpDepthStencilState;
             BlendState::SharedPtr mpBlendState;

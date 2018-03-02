@@ -31,7 +31,7 @@
 #include <unordered_set>
 #include "Externals/Slang/slang.h"
 #include "API/DescriptorSet.h"
-
+#include <map>
 namespace Falcor
 {
     class ReflectionVar;
@@ -39,6 +39,7 @@ namespace Falcor
     class ReflectionBasicType;
     class ReflectionStructType;
     class ReflectionArrayType;
+    class ReflectionGenericType;
 
     /** Base class for reflection types
     */
@@ -69,6 +70,11 @@ namespace Falcor
         /** Dynamic-cast the current object to ReflectionArrayType
         */
         const ReflectionArrayType* asArrayType() const;
+
+        /** Dynamic-cast the current object to ReflectionGenericType
+        */
+        const ReflectionGenericType* asGenericType() const;
+
 
         /** For ReflectionArrayType, recursively look for an underlying type which is not an array
         */
@@ -270,6 +276,30 @@ namespace Falcor
         size_t mSize;
         bool mIsRowMajor;
         virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override;
+    };
+
+    class ReflectionGenericType : public ReflectionType, public inherit_shared_from_this<ReflectionType, ReflectionGenericType>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ReflectionGenericType>;
+        using SharedConstPtr = std::shared_ptr<const ReflectionGenericType>;
+        std::string name;
+        static SharedPtr create(std::string inName);
+        virtual bool operator==(const ReflectionType& other) const override;
+        virtual size_t getSize() const override
+        {
+            return 0;
+        }
+        ReflectionGenericType(std::string inName)
+            : ReflectionType(0), name(inName)
+        {}
+    private:
+        
+        virtual std::shared_ptr<const ReflectionVar> findMemberInternal(const std::string& name, size_t strPos, size_t offset, uint32_t regIndex, uint32_t regSpace, uint32_t descOffset) const override
+        {
+            return nullptr;
+        }
+
     };
 
     /** Reflection object for resources
@@ -507,6 +537,12 @@ namespace Falcor
         */
         const std::string& getName() const { return mName; }
 
+        ReflectionType::SharedConstPtr mType;
+        const ReflectionType* getType() const
+        {
+            return mType.get();
+        }
+
         /** Check if the block contains any resources
         */
         bool isEmpty() const;
@@ -526,9 +562,9 @@ namespace Falcor
         /** Get a vector with the required descriptor-set layouts for the block. Useful when creating root-signatures
         */
         const SetLayoutVec& getDescriptorSetLayouts() const { return mSetLayouts; }
-    private:
         friend class ProgramReflection;
         void addResource(const ReflectionVar::SharedConstPtr& pVar);
+        void setElementType(const ReflectionType::SharedConstPtr& pType);
         void finalize();
         ParameterBlockReflection(const std::string& name);
         ResourceVec mResources;
@@ -548,6 +584,8 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ProgramReflection>;
         static const uint32_t kInvalidLocation = -1;
 
+        std::map<std::string, uint32_t> typeParameterIndexMap;
+
         /** Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs
         */
         struct ShaderVariable
@@ -561,7 +599,7 @@ namespace Falcor
 
         /** Create a new object for a Slang reflector object
         */
-        static SharedPtr create(slang::ShaderReflection* pSlangReflector, std::string& log);
+        static SharedPtr create(slang::ShaderReflection* pSlangReflector ,std::string& log);
 
         /** Get the index of a parameter block
         */
@@ -606,6 +644,8 @@ namespace Falcor
         /** Get a pixel shader output variable
         */
         const ShaderVariable* getPixelShaderOutput(const std::string& name) const;
+
+        uint32_t getTypeParameterIndexByName(const std::string& name) const;
 
         /** Resource bind type
         */

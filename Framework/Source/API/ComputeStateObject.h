@@ -46,12 +46,12 @@ namespace Falcor
         {
         public:
             Desc& setRootSignature(RootSignature::SharedPtr pSignature) { mpRootSignature = pSignature; return *this; }
-            Desc& setProgramVersion(ProgramVersion::SharedConstPtr pProgram) { mpProgram = pProgram; return *this; }
-            ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram; }
+            Desc& setProgramKernels(ProgramKernels::SharedConstPtr pProgram) { mpProgram = pProgram; return *this; }
+            ProgramKernels::SharedConstPtr getProgramKernels() const { return mpProgram; }
             bool operator==(const Desc& other) const;
         private:
             friend class ComputeStateObject;
-            ProgramVersion::SharedConstPtr mpProgram;
+            ProgramKernels::SharedConstPtr mpProgram;
             RootSignature::SharedPtr mpRootSignature;
         };
 

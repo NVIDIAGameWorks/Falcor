@@ -73,7 +73,7 @@ namespace Falcor
 
         struct CachedData
         {
-            const ProgramVersion* pProgramVersion = nullptr;
+            const ProgramKernels* pProgramKernels = nullptr;
             const RootSignature* pRootSig = nullptr;
         };
         CachedData mCachedData;

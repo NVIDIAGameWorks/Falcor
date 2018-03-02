@@ -37,18 +37,21 @@ namespace Falcor
     {
         assert(mpComputeState);
 
+        auto cso = mpComputeState->getCSO(mpComputeVars.get());
+        auto rootSignature = cso->getDesc().getProgramKernels()->getRootSignature();
+        if (mBindComputeRootSig)
+        {
+            mpLowLevelData->getCommandList()->SetComputeRootSignature(rootSignature->getApiHandle());
+        }
+
         // Apply the vars. Must be first because applyComputeVars() might cause a flush        
         if (mpComputeVars)
         {
-            applyComputeVars();
+            applyComputeVars(rootSignature.get());
         }
-        else
-        {
-            mpLowLevelData->getCommandList()->SetComputeRootSignature(RootSignature::getEmpty()->getApiHandle());
-        }
-        mBindComputeRootSig = false;
-        mpLowLevelData->getCommandList()->SetPipelineState(mpComputeState->getCSO(mpComputeVars.get())->getApiHandle());
+        mpLowLevelData->getCommandList()->SetPipelineState(cso->getApiHandle());
         mCommandsPending = true;
+        mBindComputeRootSig = false;
     }
 
     void ComputeContext::dispatch(uint32_t groupSizeX, uint32_t groupSizeY, uint32_t groupSizeZ)

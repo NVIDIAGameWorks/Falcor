@@ -185,7 +185,7 @@ namespace Falcor
         compute context's initDispatchCommandSignature() to create command signature for dispatchIndirect
         */
         static void initDrawCommandSignatures();
-        void applyGraphicsVars();
+        void applyGraphicsVars(RootSignature* rootSignature);
 
         // Internal functions used by the API layers
         void prepareForDraw();

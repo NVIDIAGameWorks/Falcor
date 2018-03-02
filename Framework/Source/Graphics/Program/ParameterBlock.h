@@ -40,7 +40,15 @@ namespace Falcor
     */
     class ParameterBlock : public std::enable_shared_from_this<ParameterBlock>
     {
+    private:
+        std::string typeName;
+        int typeId = 0;
     public:
+        // SLANG-INTEGRATION:
+        // A ParameterBlock should hold a type name of the shader component
+        void setTypeName(std::string name);
+        std::string getTypeName() const;
+        int getTypeId() const { return typeId; }
         template<typename T>
         class SharedPtrT : public std::shared_ptr<T>
         {

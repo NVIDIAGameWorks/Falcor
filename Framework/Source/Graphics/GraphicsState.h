@@ -253,7 +253,7 @@ namespace Falcor
 
         struct CachedData
         {
-            const ProgramVersion* pProgramVersion = nullptr;
+            const ProgramKernels* pProgramKernels = nullptr;
             const RootSignature* pRootSig = nullptr;
             const Fbo::Desc* pFboDesc = nullptr;
         };

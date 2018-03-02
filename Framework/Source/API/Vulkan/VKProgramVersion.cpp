@@ -30,12 +30,12 @@
 
 namespace Falcor
 {
-    void ProgramVersion::deleteApiHandle()
+    void ProgramKernels::deleteApiHandle()
     {
 
     }
 
-    bool ProgramVersion::init(std::string& log)
+    bool ProgramKernels::init(std::string& log)
     {
         return true;
     }

@@ -38,7 +38,7 @@
 namespace Falcor
 {
     bool gProfileEnabled = false;
-
+    EventCounter gEventCounter;
     std::map<size_t, Profiler::EventData*> Profiler::sProfilerEvents;
     uint32_t Profiler::sCurrentLevel = 0;
     uint32_t Profiler::sGpuTimerIndex = 0;

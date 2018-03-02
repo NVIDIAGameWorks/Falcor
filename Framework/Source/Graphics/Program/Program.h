@@ -31,10 +31,17 @@
 #include <vector>
 #include "Graphics/Program//ProgramVersion.h"
 
+struct SlangCompileRequest;
+
 namespace Falcor
 {
     class Shader;
     class RenderContext;
+
+    enum class CompilePurpose
+    {
+        ReflectionOnly, CodeGen
+    };
 
     /** High-level abstraction of a program class.
         This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
@@ -218,13 +225,23 @@ namespace Falcor
         void replaceAllDefines(const DefineList& dl) { mDefineList = dl; }
 
     protected:
+        friend class ProgramVersion;
+
         Program();
 
         void init(Desc const& desc, DefineList const& programDefines);
 
         bool link() const;
+
+        SlangCompileRequest* createSlangCompileRequest(DefineList const& defines, CompilePurpose purpose, const std::vector<std::string> & typeArgs) const;
+        int Program::doSlangCompilation(SlangCompileRequest* slangRequest, std::string& log) const;
+
         ProgramVersion::SharedPtr preprocessAndCreateProgramVersion(std::string& log) const;
-        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const;
+        ProgramKernels::SharedPtr preprocessAndCreateProgramKernels(
+            ProgramVersion const* pVersion,
+            ProgramVars    const* pVars,
+            std::string         & log) const;
+        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const;
 
         // The description used to create this program
         Desc mDesc;
