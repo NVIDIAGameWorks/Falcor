@@ -287,12 +287,13 @@ namespace Falcor
         set_texture(heightMap);
 #undef set_texture
         pBlock->setSampler(varName + "resources.samplerState", data.resources.samplerState);
+        pBlock->setTypeName("StandardMaterial");
     }
 
     void Material::setIntoParameterBlock(ParameterBlock* pBlock) const
     {
         ConstantBuffer* pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
-        setMaterialIntoBlockCommon(pBlock, pCB, 0, "", mData);
+        setMaterialIntoBlockCommon(pBlock, pCB, 0, "materialData.", mData);
     }
 
     void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const

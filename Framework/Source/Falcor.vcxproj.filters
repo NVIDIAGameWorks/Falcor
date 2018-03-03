@@ -2186,9 +2186,6 @@
     <None Include="ShadingUtils\Shading.slang">
       <Filter>ShadingUtils</Filter>
     </None>
-    <None Include="Data\ShaderCommon.slang">
-      <Filter>Data</Filter>
-    </None>
     <None Include="Data\HostDeviceData.slang">
       <Filter>Data</Filter>
     </None>
@@ -2221,6 +2218,21 @@
     </None>
     <None Include="ShadingUtils\Helpers.slang">
       <Filter>ShadingUtils</Filter>
+    </None>
+    <None Include="Data\ShaderCommonImpl.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\Interfaces.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\Material.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\ShaderCommon.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\TextureChannel.slang">
+      <Filter>Data</Filter>
     </None>
   </ItemGroup>
 </Project>

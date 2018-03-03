@@ -27,9 +27,7 @@
 ***************************************************************************/
 #include "ForwardRendererCommon.hlsli"
 
-__import Shading;
-__import Helpers;
-__import BRDF;
+import Material;
 
 layout(set = 1, binding = 1) SamplerState gSampler;
 
@@ -46,7 +44,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    ShadingData sd = prepareShadingData(vOut.vsData, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData<TMaterial>(vOut.vsData, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
 
@@ -57,26 +55,23 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #ifdef _ENABLE_SHADOWS
         if (l == 0)
         {
-            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, sd.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
-            shadowFactor *= sd.opacity;
+            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, sd.geom.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
+            shadowFactor *= sd.bxdf.getOpacity();
         }
 #endif
-        finalColor.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
+        finalColor.rgb += evalMaterial<TMaterial.BxDF>(sd, gLights[l], shadowFactor).color.rgb;
     }
-
-    // Add the emissive component
-    finalColor.rgb += sd.emissive;
-
+        
 #ifdef _ENABLE_TRANSPARENCY
-    finalColor.a = sd.opacity * gOpacityScale;
+    finalColor.a = sd.bxdf.getOpacity() * gOpacityScale;
 #endif
 
 #ifdef _ENABLE_REFLECTIONS
     finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
 #endif
 
-    // Add light-map
-    finalColor.rgb += sd.diffuse * sd.lightMap.rgb;
+    // Add light-map and/or the emissive component
+    finalColor.rgb += sd.bxdf.getIntrinsicLighting();
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);

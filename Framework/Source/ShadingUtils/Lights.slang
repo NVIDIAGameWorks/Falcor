@@ -27,9 +27,11 @@
 ***************************************************************************/
 #ifndef _FALCOR_LIGHTS_SLANG_
 #define _FALCOR_LIGHTS_SLANG_
+
 #include "HostDeviceData.h"
-__import ShaderCommon;
-__import Helpers;
+
+import Helpers;
+import Interfaces;
 
 struct LightSample
 {
@@ -43,11 +45,11 @@ struct LightSample
     float distance;   // Distance from the light-source to the surface
 };
 
-void calcCommonLightProperties(ShadingData sd, inout LightSample ls)
+void calcCommonLightProperties(SurfaceGeometry geom, inout LightSample ls)
 {
-    float3 H = normalize(sd.V + ls.L);
-    ls.NdotH = dot(sd.N, H);
-    ls.NdotL = dot(sd.N, ls.L);
+    float3 H = normalize(geom.V + ls.L);
+    ls.NdotH = dot(geom.N, H);
+    ls.NdotL = dot(geom.N, ls.L);
     ls.LdotH = dot(ls.L, H);
 };
 
@@ -130,12 +132,12 @@ float linearRoughnessToLod(float linearRoughness, float mipCount)
 
 /** Evaluate a light source intensity/direction at a shading point
 */
-LightSample evalLight(LightData light, ShadingData sd)
+LightSample evalLight(LightData light, SurfaceGeometry geom)
 {
     LightSample ls;
-    if(light.type == LightDirectional) ls = evalDirectionalLight(light, sd.posW);
-    else if(light.type == LightPoint)  ls = evalPointLight(light, sd.posW);
-    calcCommonLightProperties(sd, ls);
+    if(light.type == LightDirectional) ls = evalDirectionalLight(light, geom.posW);
+    else if(light.type == LightPoint)  ls = evalPointLight(light, geom.posW);
+    calcCommonLightProperties(geom, ls);
     return ls;
 };
 
@@ -156,12 +158,12 @@ float3 getSpecularDominantDir(float3 N, float3 R, float roughness)
 
 /** Evaluate a 2D light-probe filtered using linear-filtering
 */
-LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
+LightSample evalLightProbeLinear2D(SurfaceGeometry geom, LightProbeData probe, float roughness, float linearRoughness)
 {
     LightSample ls;
 
     // Calculate the reflection vector
-    ls.L = reflect(-sd.V, sd.N);
+    ls.L = reflect(-geom.V, geom.N);
 
     // Get the mip-level count
     uint h, w, mipCount;
@@ -171,25 +173,25 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
     ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, 0, mipCount - 2).rgb;
 
     // Get the specular component
-    float3 specDir = getSpecularDominantDir(sd.N, ls.L, sd.roughness);
+    float3 specDir = getSpecularDominantDir(geom.N, ls.L, roughness);
     float2 specCrd = dirToSphericalCrd(specDir);
-    float lod = linearRoughnessToLod(sd.linearRoughness, mipCount);
+    float lod = linearRoughnessToLod(linearRoughness, mipCount);
     ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, specCrd, lod).rgb;
     
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
     ls.posW = probe.posW;
-    ls.distance = length(probe.posW - sd.posW);
-    calcCommonLightProperties(sd, ls);
+    ls.distance = length(probe.posW - geom.posW);
+    calcCommonLightProperties(geom, ls);
 
     return ls;
 }
 
 /** Evaluate the properties of a light-probe
 */
-LightSample evalLightProbe(LightProbeData probe, ShadingData sd)
+LightSample evalLightProbe(SurfaceGeometry geom, LightProbeData probe, float roughness, float linearRoughness)
 {
-    return evalLightProbeLinear2D(probe, sd);
+    return evalLightProbeLinear2D(geom, probe, roughness, linearRoughness);
 }
 
 #endif	// _FALCOR_LIGHTS_SLANG_
