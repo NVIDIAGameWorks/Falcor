@@ -39,7 +39,7 @@ namespace Falcor
     ConstantBuffer::~ConstantBuffer() = default;
 
     ConstantBuffer::ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size) :
-        VariablesBuffer(name, pReflectionType, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::Write)
+        VariablesBuffer(name, pReflectionType, size, 1, Buffer::BindFlags::Constant, Buffer::CpuAccess::None)
     {
     }
 
@@ -47,6 +47,7 @@ namespace Falcor
     {
         size_t size = (overrideSize == 0) ? pReflectionType->getSize() : overrideSize;
         SharedPtr pBuffer = SharedPtr(new ConstantBuffer(name, pReflectionType, size));
+        pBuffer->mpCbv = ConstantBufferView::create(pBuffer->Resource::shared_from_this());
         return pBuffer;
     }
 
@@ -66,20 +67,5 @@ namespace Falcor
         }
         logError("Can't find a constant buffer named \"" + name + "\" in the program");
         return nullptr;
-    }
-
-    bool ConstantBuffer::uploadToGPU(size_t offset, size_t size)
-    {
-        if (mDirty) mpCbv = nullptr;
-        return VariablesBuffer::uploadToGPU(offset, size);
-    }
-
-    ConstantBufferView::SharedPtr ConstantBuffer::getCbv() const
-    {
-        if (mpCbv == nullptr)
-        {
-            mpCbv = ConstantBufferView::create(Resource::shared_from_this());
-        }
-        return mpCbv;
     }
 }

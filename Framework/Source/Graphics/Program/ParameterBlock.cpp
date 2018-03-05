@@ -274,6 +274,8 @@ namespace Falcor
             return false;
         }
 #endif
+        if (res.pResource == pCB) return true;
+
         res.pResource = pCB;
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
@@ -315,6 +317,8 @@ namespace Falcor
         ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
         if (checkResourceIndices(bindLoc, descOffset, type, funcName) == false) return;
         auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
+        if (desc.pResource == pResource) return;
+
         desc.pResource = pResource;
 
         switch (type)
@@ -434,7 +438,9 @@ namespace Falcor
     bool ParameterBlock::setSampler(const BindLocation& bindLocation, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
         if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Sampler, "setSampler()") == false) return false;
-        mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pSampler = pSampler ? pSampler : Sampler::getDefault();
+        auto& desc = mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex];
+        if (desc.pSampler == pSampler) return true;
+        desc.pSampler = pSampler ? pSampler : Sampler::getDefault();
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
     }
@@ -529,7 +535,9 @@ namespace Falcor
             return false;
         }
 #endif
-        desc.pSRV = pSrv ? pSrv : ShaderResourceView::getNullView();
+        const ShaderResourceView::SharedPtr pView = pSrv ? pSrv : ShaderResourceView::getNullView();
+        if (desc.pSRV == pView) return true;
+        desc.pSRV = pView;
         desc.pResource = getResourceFromView(pSrv.get());
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
@@ -546,7 +554,9 @@ namespace Falcor
             return false;
         }
 #endif
-        desc.pUAV = pUav ? pUav : UnorderedAccessView::getNullView();
+        UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView();
+        if (desc.pUAV == pView) return true;
+        desc.pUAV = pView;
         desc.pResource = getResourceFromView(pUav.get());
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
@@ -565,27 +575,30 @@ namespace Falcor
         }
     }
 
-    static bool prepareResource(CopyContext* pContext, Resource* pResource, DescriptorSet::Type type)
+    static void prepareResource(CopyContext* pContext, Resource* pResource, DescriptorSet::Type type)
     {
-        if (!pResource) return false;
+        if (!pResource) return;
 
         ConstantBuffer* pCB = dynamic_cast<ConstantBuffer*>(pResource);
-        if (pCB) return pCB->uploadToGPU();
+        if (pCB) 
+        {
+            pCB->uploadToGPU();
+            return;
+        }
 
-        bool dirty = false;
         bool isUav = isUavSetType(type);
 
         // If it's a typed buffer, upload it to the GPU
         TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pResource);
-        if (pTypedBuffer)
+        if (pTypedBuffer) 
         {
-            dirty = pTypedBuffer->uploadToGPU();
+            pTypedBuffer->uploadToGPU();
         }
+
         StructuredBuffer* pStructured = dynamic_cast<StructuredBuffer*>(pResource);
         if (pStructured)
         {
-            dirty = pStructured->uploadToGPU();
-
+            pStructured->uploadToGPU();
             if (isUav && pStructured->hasUAVCounter())
             {
                 pContext->resourceBarrier(pStructured->getUAVCounter().get(), Resource::State::UnorderedAccess);
@@ -599,7 +612,6 @@ namespace Falcor
             if (pTypedBuffer) pTypedBuffer->setGpuCopyDirty();
             if (pStructured)  pStructured->setGpuCopyDirty();
         }
-        return dirty;
     }
 
     bool ParameterBlock::prepareForDraw(CopyContext* pContext)
@@ -612,10 +624,7 @@ namespace Falcor
             {
                 for (const auto& desc : range)
                 {
-                    if (prepareResource(pContext, desc.pResource.get(), desc.type))
-                    {
-                        mRootSets[s].pSet = nullptr;
-                    }
+                    prepareResource(pContext, desc.pResource.get(), desc.type);
                 }
             }
         }
