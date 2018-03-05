@@ -130,7 +130,7 @@ namespace Falcor
             \param[in] instanceID ID of the instance
             \return Mesh instance
         */
-        const MeshInstance::SharedPtr& getMeshInstance(uint_t meshID, uint_t instanceID) const { return mMeshes[meshID][instanceID]; }
+        const MeshInstance::SharedPtr& getMeshInstance(uint32_t meshID, uint32_t instanceID) const { return mMeshes[meshID][instanceID]; }
 
         /** Gets a mesh.
             \param[in] meshID ID of the mesh

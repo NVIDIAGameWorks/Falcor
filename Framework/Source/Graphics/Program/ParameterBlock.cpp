@@ -593,6 +593,7 @@ namespace Falcor
         }
 
         pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
+
         if (isUav)
         {
             if (pTypedBuffer) pTypedBuffer->setGpuCopyDirty();
