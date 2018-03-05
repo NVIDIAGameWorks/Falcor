@@ -575,30 +575,27 @@ namespace Falcor
         }
     }
 
-    static void prepareResource(CopyContext* pContext, Resource* pResource, DescriptorSet::Type type)
+    static bool prepareResource(CopyContext* pContext, Resource* pResource, DescriptorSet::Type type)
     {
-        if (!pResource) return;
+        if (!pResource) return false;
 
         ConstantBuffer* pCB = dynamic_cast<ConstantBuffer*>(pResource);
-        if (pCB) 
-        {
-            pCB->uploadToGPU();
-            return;
-        }
+        if (pCB) return pCB->uploadToGPU();
 
+        bool dirty = false;
         bool isUav = isUavSetType(type);
 
         // If it's a typed buffer, upload it to the GPU
         TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pResource);
-        if (pTypedBuffer) 
+        if (pTypedBuffer)
         {
-            pTypedBuffer->uploadToGPU();
+            dirty = pTypedBuffer->uploadToGPU();
         }
-
         StructuredBuffer* pStructured = dynamic_cast<StructuredBuffer*>(pResource);
         if (pStructured)
         {
-            pStructured->uploadToGPU();
+            dirty = pStructured->uploadToGPU();
+
             if (isUav && pStructured->hasUAVCounter())
             {
                 pContext->resourceBarrier(pStructured->getUAVCounter().get(), Resource::State::UnorderedAccess);
@@ -612,6 +609,7 @@ namespace Falcor
             if (pTypedBuffer) pTypedBuffer->setGpuCopyDirty();
             if (pStructured)  pStructured->setGpuCopyDirty();
         }
+        return dirty;
     }
 
     bool ParameterBlock::prepareForDraw(CopyContext* pContext)
@@ -624,7 +622,10 @@ namespace Falcor
             {
                 for (const auto& desc : range)
                 {
-                    prepareResource(pContext, desc.pResource.get(), desc.type);
+                    if (prepareResource(pContext, desc.pResource.get(), desc.type))
+                    {
+                        mRootSets[s].pSet = nullptr;
+                    }
                 }
             }
         }

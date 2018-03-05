@@ -132,7 +132,10 @@ namespace Falcor
         {
             return VariablesBuffer::setVariableArray(name, 0, pValue, count);
         }
-        ConstantBufferView::SharedPtr getCbv() const { return mpCbv; }
+
+        virtual bool uploadToGPU(size_t offset = 0, size_t size = -1) override;
+
+        ConstantBufferView::SharedPtr getCbv() const;
     protected:
         ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;
