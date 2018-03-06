@@ -68,10 +68,23 @@ SurfaceGeometry initSurfaceGeometry()
     return rs;
 }
 
+struct LightSample
+{
+    float3 diffuse;   // The light intensity at the surface location used for the diffuse term
+    float3 specular;  // The light intensity at the surface location used for the specular term. For light probes, the diffuse and specular components are different
+    float3 L;         // The direction from the surface to the light source
+    float3 posW;      // The world-space position of the light 
+    float NdotH;      // Unclamped, can be negative
+    float NdotL;      // Unclamped, can be negative
+    float LdotH;      // Unclamped, can be negative
+    float distance;   // Distance from the light-source to the surface
+};
+
 interface IBxDF
 {
-    ShadingResult eval(SurfaceGeometry geom, LightData light, float shadowFactor);
-    ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData probe);
+    ShadingResult eval(SurfaceGeometry geom, LightSample light, float shadowFactor);
+    ShadingResult evalAmbient(float3 ambientLight);
+    ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData lightProbe);
     float3 getIntrinsicLighting();
     float getOpacity();
 }
@@ -88,21 +101,17 @@ interface IMaterial
     ShadingPoint<BxDF> evalShadingPoint(VertexOut v, float3 camPosW);
 }
 
-ShadingResult evalMaterial<TBxDF : IBxDF>(ShadingPoint<TBxDF> p, LightData light, float shadowFactor)
+interface ILight
 {
-    return p.bxdf.eval(p.geom, light, shadowFactor);
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor);
 }
 
-ShadingResult evalMaterial<TBxDF : IBxDF>(ShadingPoint<TBxDF> p, LightProbeData probe)
+ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILight>(ShadingPoint<TBxDF> p, TLight light, float shadowFactor)
 {
-    return p.bxdf.evalProbe(p.geom, probe);
+    return light.evalLighting(p, shadowFactor);
 }
 
 ShadingPoint<TMaterial.BxDF> prepareShadingData<TMaterial : IMaterial>(VertexOut v, TMaterial mat, float3 camPosW)
 {
     return mat.evalShadingPoint(v, camPosW);
 }
-
-interface ILightEnv
-{
-};

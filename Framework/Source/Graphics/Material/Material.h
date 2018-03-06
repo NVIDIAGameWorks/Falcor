@@ -231,11 +231,14 @@ namespace Falcor
         /** Get the ParameterBlock object for the material. Each material is created with a parameter-block. Using it is more efficient than assigning data to a custom constant-buffer.
         */
         ParameterBlock::SharedConstPtr getParameterBlock() const;
+
+        /** Set the material parameters into an existing parameter block.
+        */
+        void setIntoParameterBlock(ParameterBlock* pBlock, const std::string& varName) const;
     private:
         void updateDiffuseType();
         void updateSpecularType();
         void updateEmissiveType();
-        void setIntoParameterBlock(ParameterBlock* pBlock) const;
         
         Material(const std::string& name);
         std::string mName;

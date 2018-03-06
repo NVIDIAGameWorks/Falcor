@@ -58,6 +58,7 @@ namespace Falcor
     {
         // Reset all global id counters recursively
         Model::resetGlobalIdCounter();
+        mpLightEnv = LightEnv::create();
     }
 
     Scene::~Scene() = default;
@@ -104,7 +105,7 @@ namespace Falcor
             }
 
             // Update light extents
-            for (auto& light : mpLights)
+            for (auto& light : getLights())
             {
                 if (light->getType() == LightDirectional)
                 {
@@ -243,20 +244,13 @@ namespace Falcor
 
     uint32_t Scene::addLight(const Light::SharedPtr& pLight)
     {
-        if (pLight->getType() == LightArea)
-        {
-            logWarning("Use Scene::addAreaLight() for area lights.");
-            return uint32(-1);
-        }
-
-        mpLights.push_back(pLight);
         mExtentsDirty = true;
-        return (uint32_t)mpLights.size() - 1;
+        return mpLightEnv->addLight(pLight);
     }
 
     void Scene::deleteLight(uint32_t lightID)
     {
-        mpLights.erase(mpLights.begin() + lightID);
+        mpLightEnv->deleteLight(lightID);
         mExtentsDirty = true;
     }
 
@@ -319,10 +313,10 @@ namespace Falcor
 #define merge(name_) name_.insert(name_.end(), pFrom->name_.begin(), pFrom->name_.end());
 
         merge(mModels);
-        merge(mpLights);
         merge(mpPaths);
         merge(mCameras);
 #undef merge
+        mpLightEnv->merge(pFrom->mpLightEnv.get());
         mUserVars.insert(pFrom->mUserVars.begin(), pFrom->mUserVars.end());
         mExtentsDirty = true;
     }

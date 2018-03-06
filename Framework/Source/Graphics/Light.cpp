@@ -37,7 +37,7 @@
 #include "Graphics/Model/Model.h"
 #include "Graphics/TextureHelper.h"
 #include "API/Device.h"
-
+#include <sstream>
 namespace Falcor
 {
     bool checkOffset(const std::string& structName, size_t cbOffset, size_t cppOffset, const char* field)
@@ -67,6 +67,17 @@ namespace Falcor
 
     void Light::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset)
     {
+        static_assert(kDataSize % sizeof(float) * 4 == 0, "LightData size should be a multiple of 16");
+        assert(offset + kDataSize <= pCb->getSize());
+
+        // Set everything except for the material
+        pCb->setBlob(&mData, offset, kDataSize);
+    }
+
+    void Light::setIntoParameterBlock(ParameterBlock * pBlock, size_t offset, const std::string & varName)
+    {
+        auto pCb = pBlock->getConstantBuffer(pBlock->getReflection()->getName());
+
         static_assert(kDataSize % sizeof(float) * 4 == 0, "LightData size should be a multiple of 16");
         assert(offset + kDataSize <= pCb->getSize());
 
@@ -116,6 +127,7 @@ namespace Falcor
         mUiLightIntensityColor = uiColor;
         mData.intensity = (mUiLightIntensityColor * mUiLightIntensityScale);
         updateAreaLightIntensity(mData);
+        makeDirty();
     }
 
     float Light::getIntensityForUI()
@@ -143,6 +155,7 @@ namespace Falcor
         mUiLightIntensityScale = intensity;
         mData.intensity = (mUiLightIntensityColor * mUiLightIntensityScale);
         updateAreaLightIntensity(mData);
+        makeDirty();
     }
 
     void Light::renderUI(Gui* pGui, const char* group)
@@ -200,6 +213,7 @@ namespace Falcor
     {
         mData.dirW = normalize(dir);
         mData.posW = mCenter - mData.dirW * mDistance; // Move light's position sufficiently far away
+        makeDirty();
     }
 
     void DirectionalLight::setWorldParams(const glm::vec3& center, float radius)
@@ -207,6 +221,7 @@ namespace Falcor
         mDistance = radius;
         mCenter = center;
         mData.posW = mCenter - mData.dirW * mDistance; // Move light's position sufficiently far away
+        makeDirty();
     }
 
     float DirectionalLight::getPower() const
@@ -268,6 +283,7 @@ namespace Falcor
         mData.openingAngle = openingAngle;
         /* Prepare an auxiliary cosine of the opening angle to quickly check whether we're within the cone of a spot light */
         mData.cosOpeningAngle = cos(openingAngle);
+        makeDirty();
     }
 
     void PointLight::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
@@ -326,6 +342,37 @@ namespace Falcor
     void AreaLight::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset)
     {
         logWarning("AreaLight::setIntoProgramVars() - Area light data contains resources that cannot be bound by offset. Ignoring call.");
+    }
+
+    void AreaLight::setIntoParameterBlock(ParameterBlock * pBlock, size_t offset, const std::string & varName)
+    {
+        auto pCb = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
+
+        // Set data except for material and mesh buffers
+        //size_t offset = pCb->getVariableOffset(varName);
+        static_assert(kDataSize % sizeof(float) * 4 == 0, "AreaLightData size should be a multiple of 16");
+        assert(offset + kAreaLightDataSize <= pCb->getSize());
+        pCb->setBlob(&mData, offset, kAreaLightDataSize);
+
+#if _LOG_ENABLED
+#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("AreaLightData", pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(AreaLightData, _a), #_a));} b = false;}
+        check_offset(dirW);
+        check_offset(intensity);
+        check_offset(tangent);
+        check_offset(bitangent);
+        check_offset(aabbMin);
+        check_offset(aabbMax);
+#undef check_offset
+#endif
+
+        // Set buffers and material
+        pBlock->setRawBuffer(varName + ".resources.indexBuffer", mpIndexBuffer);
+        pBlock->setRawBuffer(varName + ".resources.vertexBuffer", mpVertexBuffer);
+        pBlock->setRawBuffer(varName + ".resources.texCoordBuffer", mpTexCoordBuffer);
+        pBlock->setRawBuffer(varName + ".resources.meshCDFBuffer", mpMeshCDFBuffer);
+
+        std::string matVarName = varName + ".resources.material.";
+        mpMeshInstance->getObject()->getMaterial()->setIntoParameterBlock(pBlock, matVarName.c_str());
     }
 
     void AreaLight::renderUI(Gui* pGui, const char* group)
@@ -391,6 +438,7 @@ namespace Falcor
             {
                 mAreaLightData.intensity = pMaterial->getEmissiveColor();
             }
+            makeDirty();
         }
     }
 
@@ -527,4 +575,187 @@ namespace Falcor
         return areaLights;
     }
 
+
+    // LightEnv
+
+    LightEnv::SharedPtr LightEnv::create()
+    {
+        return LightEnv::SharedPtr(new LightEnv());
+    }
+
+    LightEnv::LightEnv()
+    {
+        shaderTypeName = "AmbientLight";
+    }
+
+    void LightEnv::merge(LightEnv const* lightEnv)
+    {
+        mpLights.insert(mpLights.end(), lightEnv->mpLights.begin(), lightEnv->mpLights.end());
+        mLightVersionIDs.resize(mpLights.size(), -1);
+    }
+
+    uint32_t LightEnv::addLight(const Light::SharedPtr& pLight)
+    {
+        mpLights.push_back(pLight);
+        mLightVersionIDs.push_back(-1);
+        return (uint32_t)mpLights.size() - 1;
+    }
+
+    void LightEnv::deleteLight(uint32_t lightID)
+    {
+        mpLights.erase(mpLights.begin() + lightID);
+        mLightVersionIDs.erase(mLightVersionIDs.begin() + lightID);
+    }
+
+    void LightEnv::deleteAreaLights()
+    {
+        // Clean up the list before adding
+        std::vector<Light::SharedPtr>::iterator it = mpLights.begin();
+        std::vector<VersionID>::iterator vi = mLightVersionIDs.begin();
+
+        for (; it != mpLights.end();)
+        {
+            if ((*it)->getType() == LightArea)
+            {
+                it = mpLights.erase(it);
+                vi = mLightVersionIDs.erase(vi);
+            }
+            else
+            {
+                ++it;
+                ++vi;
+            }
+        }
+    }
+
+    // SLANG-INTEGRATION: forward declare
+    ReflectionType::SharedPtr reflectType(slang::TypeLayoutReflection* pSlangType);
+
+    ParameterBlockReflection::SharedConstPtr LightEnv::spBlockReflection;
+
+    // Field offsets inside the parameter block.
+    // TODO: these will need to be more dynamic once we are building a dynamic type...
+    size_t LightEnv::sLightCountOffset = ConstantBuffer::kInvalidOffset;
+    size_t LightEnv::sLightArrayOffset = ConstantBuffer::kInvalidOffset;
+    size_t LightEnv::sAmbientLightOffset = ConstantBuffer::kInvalidOffset;
+
+    ParameterBlock::SharedConstPtr LightEnv::getParameterBlock() const
+    {
+        auto env = const_cast<LightEnv*>(this);
+        auto versionID = getVersionID();
+        if (versionID > mParamBlockVersionID)
+        {
+            mParamBlockVersionID = versionID;
+            // SLANG-INTEGRATION
+            if (spBlockReflection == nullptr)
+            {
+                env->lightTypes.clear();
+                for (auto light : mpLights)
+                {
+                    auto lightType = light->getType();
+                    auto findRs = env->lightTypes.find(lightType);
+                    if (findRs == env->lightTypes.end())
+                    {
+                        LightTypeInfo newInfo;
+                        newInfo.typeName = light->getShaderTypeName();
+                        env->lightTypes[lightType] = newInfo;
+                        findRs = env->lightTypes.find(lightType);
+                    }
+                    findRs->second.lights.push_back(light);
+                }
+                std::stringstream varNameSb, strStream;
+                for (auto & lt : env->lightTypes)
+                {
+                    strStream << "LightPair<LightArray<" << lt.second.typeName << ", " << lt.second.lights.size()
+                        << ">, ";
+                    lt.second.variableName = varNameSb.str() + "light1";
+                    varNameSb << "light2.";
+                }
+                strStream << "AmbientLight";
+                for (size_t i = 0u; i < env->lightTypes.size(); i++)
+                    strStream << "> ";
+                GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
+                ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
+                auto slangReq = pProgram->getActiveVersion()->slangRequest;
+                auto reflection = spGetReflection(slangReq);
+
+                auto materialType = spReflection_FindTypeByName(reflection, strStream.str().c_str());
+                auto layout = spReflection_GetTypeLayout(reflection, materialType, SLANG_LAYOUT_RULES_DEFAULT);
+                auto blockType = reflectType((slang::TypeLayoutReflection*)layout);
+                auto blockReflection = ParameterBlockReflection::create("");
+                blockReflection->setElementType(blockType);
+                blockReflection->finalize();
+                spBlockReflection = blockReflection;
+                assert(spBlockReflection);
+                for (auto & lt : env->lightTypes)
+                {
+                    lt.second.cbOffset = blockType->findMember(lt.second.variableName)->getOffset();
+                }
+                const auto& pAmbientOffset = blockType->findMember(varNameSb.str() + "ambientLight");
+                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                env->shaderTypeName = strStream.str();
+            }
+            mpParamBlock = ParameterBlock::create(spBlockReflection, true);
+            mpParamBlock->setTypeName(shaderTypeName);
+            // Note: the following logic used to be in the `SceneRenderer`,
+            // and so some stuff doesn't translate directly (e.g., we don't
+            // currently have a representation of ambient lights in the
+            // light environment, but we could/should).
+            //
+            glm::vec3 ambientIntensity = glm::vec3(0.0f);
+
+            ConstantBuffer* pCB = mpParamBlock->getConstantBuffer(mpParamBlock->getReflection()->getName()).get();
+            for (auto & lt : env->lightTypes)
+            {
+                uint32_t i = 0;
+                for (auto l : lt.second.lights)
+                {
+                    l->setIntoParameterBlock(mpParamBlock.get(), i * Light::getShaderStructSize() + lt.second.cbOffset,
+                        lt.second.variableName + ".lights[" + std::to_string(i) + "]");
+
+                    i++;
+                }
+            }
+            // Set lights
+            if (sAmbientLightOffset != ConstantBuffer::kInvalidOffset)
+            {
+                pCB->setVariable(sAmbientLightOffset, ambientIntensity);
+            }
+        }
+        return mpParamBlock;
+    }
+
+    void LightEnv::setIntoProgramVars(ProgramVars * vars)
+    {
+        auto block = vars->getDefaultBlock();
+        //        block->setTexture("g_ltc_mat", texLtcMat);
+        //        block->setTexture("g_ltc_mag", texLtcMag);
+        //        block->setSampler("g_light_texSampler", linearSampler);
+    }
+
+    VersionID LightEnv::getVersionID() const
+    {
+        // check if any light has been modified
+        bool dirty = false;
+
+        auto ll = mpLights.begin(), le = mpLights.end();
+        auto vv = mLightVersionIDs.begin();
+        for (; ll != le; ++ll, ++vv)
+        {
+            auto oldVersionID = *vv;
+            auto newVersionID = (*ll)->getVersionID();
+
+            if (newVersionID > oldVersionID)
+            {
+                dirty = true;
+                *vv = newVersionID;
+            }
+        }
+
+        if (dirty)
+        {
+            mVersionID++;
+        }
+        return mVersionID;
+    }
 }

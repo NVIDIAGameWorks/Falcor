@@ -290,10 +290,10 @@ namespace Falcor
         pBlock->setTypeName("StandardMaterial");
     }
 
-    void Material::setIntoParameterBlock(ParameterBlock* pBlock) const
+    void Material::setIntoParameterBlock(ParameterBlock* pBlock, const std::string& varName) const
     {
         ConstantBuffer* pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
-        setMaterialIntoBlockCommon(pBlock, pCB, 0, "materialData.", mData);
+        setMaterialIntoBlockCommon(pBlock, pCB, 0, varName + "materialData.", mData);
     }
 
     void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const
@@ -313,7 +313,7 @@ namespace Falcor
         if (mParamBlockDirty)
         {
             mParamBlockDirty = false;
-            setIntoParameterBlock(mpParameterBlock.get());
+            setIntoParameterBlock(mpParameterBlock.get(), "");
         }
         return mpParameterBlock;
     }

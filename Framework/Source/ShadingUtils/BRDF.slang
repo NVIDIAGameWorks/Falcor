@@ -30,6 +30,7 @@
 
 #include "HostDeviceSharedMacros.h"
 __import Lights;
+import Interfaces;
 
 #define DiffuseBrdfLambert      0
 #define DiffuseBrdfDisney       1

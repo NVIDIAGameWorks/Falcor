@@ -47,7 +47,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     ShadingData sd = prepareShadingData<TMaterial>(vOut.vsData, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
-
+/******
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
@@ -69,7 +69,9 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #ifdef _ENABLE_REFLECTIONS
     finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
 #endif
+****/
 
+    finalColor.rgb += gLightEnv.evalLighting(sd, 1.0).color.rgb;// evalMaterial<ShadingData, TLightEnv>(sd, gLightEnv).color.rgb;
     // Add light-map and/or the emissive component
     finalColor.rgb += sd.bxdf.getIntrinsicLighting();
 

@@ -374,6 +374,7 @@ namespace Falcor
             slangFlags |= SLANG_COMPILE_FLAG_NO_CODEGEN;
 
         spSetCompileFlags(slangRequest, slangFlags);
+        spSetLineDirectiveMode(slangRequest, SLANG_LINE_DIRECTIVE_MODE_NONE);
 
         // Now lets add all our input shader code, one-by-one
         int translationUnitsAdded = 0;

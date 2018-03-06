@@ -25,26 +25,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#ifndef _FALCOR_LIGHTS_SLANG_
-#define _FALCOR_LIGHTS_SLANG_
-
 #include "HostDeviceData.h"
 
 import Helpers;
 import Interfaces;
 
-struct LightSample
-{
-    float3 diffuse;   // The light intensity at the surface location used for the diffuse term
-    float3 specular;  // The light intensity at the surface location used for the specular term. For light probes, the diffuse and specular components are different
-    float3 L;         // The direction from the surface to the light source
-    float3 posW;      // The world-space position of the light 
-    float NdotH;      // Unclamped, can be negative
-    float NdotL;      // Unclamped, can be negative
-    float LdotH;      // Unclamped, can be negative
-    float distance;   // Distance from the light-source to the surface
-};
+// work around compiler issue
+#define calcCommonLightProperties(geom, ls) \
+    float3 H = normalize(geom.V + ls.L); \
+    ls.NdotH = dot(geom.N, H); \
+    ls.NdotL = dot(geom.N, ls.L); \
+    ls.LdotH = dot(ls.L, H);
 
+/*
 void calcCommonLightProperties(SurfaceGeometry geom, inout LightSample ls)
 {
     float3 H = normalize(geom.V + ls.L);
@@ -52,6 +45,7 @@ void calcCommonLightProperties(SurfaceGeometry geom, inout LightSample ls)
     ls.NdotL = dot(geom.N, ls.L);
     ls.LdotH = dot(ls.L, H);
 };
+*/
 
 float getDistanceFalloff(float distSquared)
 {
@@ -194,4 +188,82 @@ LightSample evalLightProbe(SurfaceGeometry geom, LightProbeData probe, float rou
     return evalLightProbeLinear2D(geom, probe, roughness, linearRoughness);
 }
 
-#endif	// _FALCOR_LIGHTS_SLANG_
+struct PointLight : ILight
+{
+    LightData light;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    {
+        LightSample ls = evalPointLight(light, p.geom.posW);
+        calcCommonLightProperties(p.geom, ls);
+
+        /* Evaluate material with lighting attributes */
+        return p.bxdf.eval(p.geom, ls, shadowFactor);
+    }
+};
+
+struct DirectionalLight : ILight
+{
+    LightData light;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    {
+        LightSample ls = evalDirectionalLight(light, p.geom.posW);
+        calcCommonLightProperties(p.geom, ls);
+        
+        /* Evaluate material with lighting attributes */
+        return p.bxdf.eval(p.geom, ls, shadowFactor);
+    }
+};
+
+struct ProbeLight : ILight
+{
+    LightProbeData probeData;
+
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    {
+        return p.bxdf.evalProbe(p.geom, probeData);
+    }
+};
+
+struct AmbientLight : ILight
+{
+    float3 ambientLight;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    {
+        return p.bxdf.evalAmbient(ambientLight);
+    }
+};
+
+struct LightArray<TLight:ILight, let N:int> : ILight
+{   
+    TLight lights[N];
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor)
+    {
+        ShadingResult rs = initShadingResult();
+        for (int i = 0; i < N; i++)
+        {
+            ShadingResult r = lights[i].evalLighting(shAttr, shadowFactor);
+            rs.diffuse += r.diffuse;
+            rs.specular += r.specular;
+            rs.color += r.color;
+            rs.color.a = r.color.a;
+        }
+        return rs;
+    }
+};
+
+struct LightPair<TLight1 : ILight, TLight2 : ILight> : ILight
+{
+    TLight1 light1;
+    TLight2 light2;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor)
+    {
+        ShadingResult rs = initShadingResult();
+        ShadingResult r1 = light1.evalLighting(shAttr, shadowFactor);
+        ShadingResult r2 = light2.evalLighting(shAttr, shadowFactor);
+        rs.diffuse = r1.diffuse + r2.diffuse;
+        rs.specular = r1.specular + r2.specular;
+        rs.color = r1.color + r2.color;
+        rs.color.a = r1.color.a;
+        return rs;
+    }
+};

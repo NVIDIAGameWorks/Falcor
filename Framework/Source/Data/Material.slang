@@ -34,10 +34,9 @@ struct StandardBxDF : IBxDF
         return opacity;
     }
 
-    ShadingResult eval(SurfaceGeometry geom, LightData light, float shadowFactor)
+    ShadingResult eval(SurfaceGeometry geom, LightSample ls, float shadowFactor)
     {
         ShadingResult sr = initShadingResult();
-        LightSample ls = evalLight(light, geom);
 
         // If the light doesn't hit the surface or we are viewing the surface from the back, return
         if(ls.NdotL <= 0 || geom.NdotV <= 0) return sr;
@@ -56,6 +55,14 @@ struct StandardBxDF : IBxDF
         // Apply the shadow factor
         sr.color.rgb *= shadowFactor;
 
+        return sr;
+    }
+    ShadingResult evalAmbient(float3 ambientLight)
+    {
+        ShadingResult sr = initShadingResult();
+        sr.diffuse = diffuse * ambientLight;
+        sr.color.rgb = sr.diffuse;
+        sr.color.a = this.opacity;
         return sr;
     }
     ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData probe)

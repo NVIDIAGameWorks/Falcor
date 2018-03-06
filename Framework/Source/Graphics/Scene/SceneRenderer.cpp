@@ -122,7 +122,7 @@ namespace Falcor
             {
                 currentData.pCamera->setIntoConstantBuffer(pCB, sCameraDataOffset);
             }
-
+#if 0
             // Set lights
             if (sLightArrayOffset != ConstantBuffer::kInvalidOffset)
             {
@@ -141,7 +141,11 @@ namespace Falcor
                 // #TODO Support multiple light probes
                 mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kLightProbeVarName);
             }
+#endif
+
         }
+
+        currentData.pVars->setParameterBlock("gLightEnv", currentData.pLightEnv->getParameterBlock());
 
         if (mpScene->getAreaLightCount() > 0)
         {
@@ -348,6 +352,7 @@ namespace Falcor
 
     void SceneRenderer::renderScene(CurrentWorkingData& currentData)
     {
+        currentData.pLightEnv = mpScene->getLightEnv().get();
         setPerFrameData(currentData);
 
         for (uint32_t modelID = 0; modelID < mpScene->getModelCount(); modelID++)

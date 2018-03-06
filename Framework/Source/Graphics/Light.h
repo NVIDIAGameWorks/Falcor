@@ -41,6 +41,9 @@ namespace Falcor
     class ConstantBuffer;
     class Gui;
 
+    // Sequential ID used to note that something has been changed
+    typedef int64_t VersionID;
+
     /** Base class for light sources. All light sources should inherit from this.
     */
     class Light : public IMovableObject, std::enable_shared_from_this<Light>
@@ -65,6 +68,14 @@ namespace Falcor
             \param[in] offset Byte offset into the constant buffer to set data to.
         */
         virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
+
+        /** Set the light parameters into a parameter block. 
+            This is called by LightEnv::getParameterBlock() method.
+            \param[in] pBlock The parameter block to set the parameters into.
+            \param[in] offset Byte offset into the constant buffer of the parameter block to set data to.
+            \param[in] varName The name of the light variable in the parameter block.
+        */
+        virtual void setIntoParameterBlock(ParameterBlock* pBlock, size_t offset, const std::string& varName);
 
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
@@ -96,6 +107,10 @@ namespace Falcor
         */
         static uint32_t getShaderStructSize() { return kDataSize; }
 
+        VersionID getVersionID() const { return mVersionID; }
+        
+        virtual const char * getShaderTypeName() { return "InfinitessimalLight"; };
+
     protected:
 
         static const size_t kDataSize = sizeof(LightData);
@@ -112,6 +127,9 @@ namespace Falcor
         glm::vec3 mUiLightIntensityColor = glm::vec3(0.5f, 0.5f, 0.5f);
         float     mUiLightIntensityScale = 1.0f;
         LightData mData;
+
+        VersionID mVersionID = 0;
+        void makeDirty() { mVersionID++; }
     };
 
     /** Directional light source.
@@ -140,7 +158,7 @@ namespace Falcor
         /** Set the light intensity.
             \param[in] intensity Vec3 corresponding to RGB intensity
         */
-        void setIntensity(const glm::vec3& intensity) { mData.intensity = intensity; }
+        void setIntensity(const glm::vec3& intensity) { mData.intensity = intensity; makeDirty(); }
 
         /** Set the scene parameters
         */
@@ -161,6 +179,8 @@ namespace Falcor
         /** IMovableObject interface
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
+
+        virtual const char * getShaderTypeName() override { return "DirectionalLight"; };
 
     private:
 
@@ -193,15 +213,15 @@ namespace Falcor
 
         /** Set the light's world-space position
         */
-        void setWorldPosition(const glm::vec3& pos) { mData.posW = pos; }
+        void setWorldPosition(const glm::vec3& pos) { mData.posW = pos; makeDirty(); }
 
         /** Set the light's world-space position
         */
-        void setWorldDirection(const glm::vec3& dir) { mData.dirW = dir; }
+        void setWorldDirection(const glm::vec3& dir) { mData.dirW = dir; makeDirty(); }
 
         /** Set the light intensity.
         */
-        void setIntensity(const glm::vec3& intensity) { mData.intensity = intensity; }
+        void setIntensity(const glm::vec3& intensity) { mData.intensity = intensity; makeDirty(); }
 
         /** Set the cone opening angle for use as a spot light
             \param[in] openingAngle Angle in radians.
@@ -227,7 +247,7 @@ namespace Falcor
         /** Set the penumbra angle
             \param[in] angle Angle in radians
         */
-        void setPenumbraAngle(float angle) { mData.penumbraAngle = glm::clamp(angle, 0.0f, mData.openingAngle);; }
+        void setPenumbraAngle(float angle) { mData.penumbraAngle = glm::clamp(angle, 0.0f, mData.openingAngle);; makeDirty(); }
 
         /** Get the opening angle
         */
@@ -236,6 +256,8 @@ namespace Falcor
         /** IMovableObject interface
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
+
+        virtual const char * getShaderTypeName() override { return "PointLight"; };
 
     private:
     };
@@ -274,6 +296,11 @@ namespace Falcor
         */
         virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
 
+        /** Used by LightEnv class.
+        */
+        virtual void setIntoParameterBlock(ParameterBlock* pBlock, size_t offset, const std::string& varName) override;
+
+
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
             \param[in] group Optional. If specified, creates a UI group to display elements within
@@ -307,7 +334,7 @@ namespace Falcor
         /** Set the index buffer
             \param[in] indexBuf Buffer containing mesh indices
         */
-        void setIndexBuffer(const Buffer::SharedPtr& indexBuf) { mpIndexBuffer = indexBuf; }
+        void setIndexBuffer(const Buffer::SharedPtr& indexBuf) { mpIndexBuffer = indexBuf; makeDirty(); }
 
         /** Get the index buffer.
         */
@@ -316,7 +343,7 @@ namespace Falcor
         /** Set the vertex buffer.
             \param[in] vertexBuf Buffer containing mesh vertices
         */
-        void setPositionsBuffer(const Buffer::SharedPtr& vertexBuf) { mpVertexBuffer = vertexBuf; }
+        void setPositionsBuffer(const Buffer::SharedPtr& vertexBuf) { mpVertexBuffer = vertexBuf; makeDirty(); }
 
         /** Get the vertex buffer.
         */
@@ -325,7 +352,7 @@ namespace Falcor
         /** Set the texture coordinate/UV buffer.
             \param[in] texCoordBuf Buffer containing texture coordinates
         */
-        void setTexCoordBuffer(const Buffer::SharedPtr& texCoordBuf) { mpTexCoordBuffer = texCoordBuf; }
+        void setTexCoordBuffer(const Buffer::SharedPtr& texCoordBuf) { mpTexCoordBuffer = texCoordBuf; makeDirty(); }
 
         /** Get texture coordinate buffer.
         */
@@ -334,7 +361,7 @@ namespace Falcor
         /** Set the mesh CDF buffer.
             \param[in] meshCDF Buffer containing mesh CDF data
         */
-        void setMeshCDFBuffer(const Buffer::SharedPtr& meshCDFBuf) { mpMeshCDFBuffer = meshCDFBuf; }
+        void setMeshCDFBuffer(const Buffer::SharedPtr& meshCDFBuf) { mpMeshCDFBuffer = meshCDFBuf; makeDirty(); }
 
         /** Get the mesh CDF buffer
         */
@@ -348,6 +375,8 @@ namespace Falcor
         */
         static uint32_t getShaderStructSize() { return kAreaLightDataSize; }
 
+        virtual const char * getShaderTypeName() override { return "AreaLight"; };
+
     private:
 
         static const size_t kAreaLightDataSize = sizeof(AreaLightData) - sizeof(AreaLightResources);
@@ -360,6 +389,62 @@ namespace Falcor
         Buffer::SharedPtr mpMeshCDFBuffer;  ///< Buffer for mesh Cumulative distribution function (CDF)
 
         std::vector<float> mMeshCDF; ///< CDF function for importance sampling a triangle mesh
+    };
+
+    // Represent a lighting environment, which is effectively an array of lights
+    class LightEnv : public std::enable_shared_from_this<LightEnv>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<LightEnv>;
+        using SharedConstPtr = std::shared_ptr<const LightEnv>;
+
+        static LightEnv::SharedPtr create();
+        struct LightTypeInfo
+        {
+            const char* typeName;
+            std::string variableName;
+            size_t cbOffset = 0;
+            std::vector<Light::SharedPtr> lights;
+        };
+        std::string shaderTypeName;
+        std::map<uint32_t, LightTypeInfo> lightTypes;
+
+        void merge(LightEnv const* lightEnv);
+
+        uint32_t addLight(const Light::SharedPtr& pLight);
+        void deleteLight(uint32_t lightID);
+        uint32_t getLightCount() const { return (uint32_t)mpLights.size(); }
+        const Light::SharedPtr& getLight(uint32_t index) const { return mpLights[index]; }
+
+        std::vector<Light::SharedPtr>& getLights() { return mpLights; }
+        const std::vector<Light::SharedPtr>& getLights() const { return mpLights; }
+
+        /**
+        This routine deletes area light(s) from the environment.
+        */
+        void deleteAreaLights();
+
+        /** Get the ParameterBlock object for the lighting environment.
+        */
+        ParameterBlock::SharedConstPtr getParameterBlock() const;
+        void setIntoProgramVars(ProgramVars* vars);
+    private:
+        LightEnv();
+        LightEnv(LightEnv const&) = delete;
+
+        std::vector<Light::SharedPtr> mpLights;
+        mutable std::vector<VersionID> mLightVersionIDs;
+
+        mutable VersionID mVersionID = 0;
+        VersionID getVersionID() const;
+
+        mutable ParameterBlock::SharedPtr mpParamBlock;
+        mutable VersionID mParamBlockVersionID = -1;
+        static ParameterBlockReflection::SharedConstPtr spBlockReflection;
+
+        static size_t sLightCountOffset;
+        static size_t sLightArrayOffset;
+        static size_t sAmbientLightOffset;
     };
 
     AreaLight::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance);

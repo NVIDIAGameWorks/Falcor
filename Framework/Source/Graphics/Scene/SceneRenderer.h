@@ -102,6 +102,7 @@ namespace Falcor
         {
             RenderContext* pContext = nullptr;
             GraphicsVars* pVars = nullptr;
+            LightEnv* pLightEnv = nullptr;
             GraphicsState* pState = nullptr;
             const Camera* pCamera = nullptr;
             const Model* pModel = nullptr;
