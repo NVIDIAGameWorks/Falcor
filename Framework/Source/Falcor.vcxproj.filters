@@ -2204,9 +2204,6 @@
     <None Include="Data\Effects\ShadowPass.gs.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\Framework\Shaders\FullScreenPass.gs.glsl">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
     <None Include="Data\Effects\TAA.ps.slang">
       <Filter>Data\Effects</Filter>
     </None>

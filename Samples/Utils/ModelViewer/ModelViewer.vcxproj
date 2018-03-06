@@ -27,9 +27,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\ModelViewer.ps.glsl" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7BFFD891-AAD6-4E5C-8ADC-611C2625DCD9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

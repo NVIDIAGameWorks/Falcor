@@ -86,10 +86,6 @@
     <ClInclude Include="HDRToneMapping.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\HDRToneMapping.ps.glsl" />
-    <None Include="Data\HDRToneMapping.vs.glsl" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\..\Framework\Source\Falcor.vcxproj">
       <Project>{3b602f0e-3834-4f73-b97d-7dfc91597a98}</Project>
     </ProjectReference>

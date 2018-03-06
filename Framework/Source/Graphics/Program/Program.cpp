@@ -266,10 +266,23 @@ namespace Falcor
 
     static const char* getSlangTargetString(ShaderType type)
     {
-        // TODO: either pick these based on target API,
-        // or invent some API-neutral target names
         switch (type)
         {
+
+#if defined FALCOR_VK
+        case ShaderType::Vertex:
+            return "glsl_vertex";
+        case ShaderType::Pixel:
+            return "glsl_fragment";
+        case ShaderType::Hull:
+            return "glsl_tess_control";
+        case ShaderType::Domain:
+            return "glsl_tess_eval";
+        case ShaderType::Geometry:
+            return "glsl_geometry";
+        case ShaderType::Compute:
+            return "glsl_compute";
+#elif defined FALCOR_D3D
         case ShaderType::Vertex:
             return "vs_5_0";
         case ShaderType::Pixel:
@@ -282,6 +295,10 @@ namespace Falcor
             return "gs_5_0";
         case ShaderType::Compute:
             return "cs_5_0";
+#else
+#error unknown shader compilation target
+#endif
+
         default:
             should_not_get_here();
             return "";
@@ -326,17 +343,18 @@ namespace Falcor
         // Pick the right target based on the current graphics API
 #ifdef FALCOR_VK
         spSetCodeGenTarget(slangRequest, SLANG_SPIRV);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_GLSL", "1");
-        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_GLSL;
+        spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
 #elif defined FALCOR_D3D
+        spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
         // Note: we could compile Slang directly to DXBC (by having Slang invoke the MS compiler for us,
         // but that path seems to have more issues at present, so let's just go to HLSL instead...)
         spSetCodeGenTarget(slangRequest, SLANG_HLSL);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_HLSL", "1");
-        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
 #else
 #error unknown shader compilation target
 #endif
+
+        // We will always work with HLSL input, even when targetting Vulkan/SPIR-V
+        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
 
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
@@ -362,7 +380,6 @@ namespace Falcor
                     SlangSourceLanguage language;
                 } kInferLanguageFromExtension[] = {
                     { ".hlsl", SLANG_SOURCE_LANGUAGE_HLSL },
-                    { ".glsl", SLANG_SOURCE_LANGUAGE_GLSL },
                     { ".slang", SLANG_SOURCE_LANGUAGE_SLANG },
                     { nullptr, SLANG_SOURCE_LANGUAGE_UNKNOWN },
                 };

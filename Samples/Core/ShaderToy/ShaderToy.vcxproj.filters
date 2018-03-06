@@ -12,9 +12,6 @@
     <None Include="Data\toyContainer.ps.hlsl">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\toyContainer.ps.glsl">
-      <Filter>Data</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ShaderToy.cpp" />

@@ -22,13 +22,11 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\AOPrePass.ps.glsl" />
     <None Include="Data\AOPrePass.ps.hlsl">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\ApplyAO.ps.glsl" />
     <None Include="Data\ApplyAO.ps.hlsl">
       <FileType>Document</FileType>
     </None>
