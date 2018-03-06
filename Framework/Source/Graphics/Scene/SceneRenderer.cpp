@@ -254,13 +254,13 @@ namespace Falcor
 
             if(mCompileMaterialWithProgram)
             {
-                MaterialSystem::patchProgram(currentData.pState->getProgram().get(), mpLastMaterial);
+                currentData.pState->getProgram()->addDefine("_MS_STATIC_MATERIAL_FLAGS", std::to_string(mpLastMaterial->getFlags()));
             }
         }
 
         executeDraw(currentData, pMesh->getIndexCount(), instanceCount);
         postFlushDraw(currentData);
-        currentData.pState->getProgram()->removeDefine("_MS_STATIC_MATERIAL_DESC");
+        currentData.pState->getProgram()->removeDefine("_MS_STATIC_MATERIAL_FLAGS");
     }
 
     void SceneRenderer::postFlushDraw(const CurrentWorkingData& currentData)

@@ -186,7 +186,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             pGui->addCheckBox("Depth Pass", mEnableDepthPass);
             pGui->addTooltip("Run a depth-pass at the beginning of the frame");
 
-            if (pGui->addCheckBox("Per-Material Shaders", mPerMaterialShader))
+            if (pGui->addCheckBox("Specialize Material Shaders", mPerMaterialShader))
             {
                 mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
             }

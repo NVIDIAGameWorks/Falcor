@@ -27,7 +27,6 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Graphics/Program/ProgramVersion.h"
-#include "Graphics/Material/MaterialSystem.h"
 
 namespace Falcor
 {
@@ -100,7 +99,6 @@ namespace Falcor
 
     ProgramVersion::~ProgramVersion()
     {
-        MaterialSystem::removeProgramVersion(this);
         deleteApiHandle();
     }
 }

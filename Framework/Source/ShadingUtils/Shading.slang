@@ -143,6 +143,10 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 {
     ShadingData sd = initShadingData();
 
+#ifdef _MS_STATIC_MATERIAL_FLAGS
+    m.flags = _MS_STATIC_MATERIAL_FLAGS;
+#endif
+
     // Sample the diffuse texture and apply the alpha test
     float4 diffuse = sampleTexture(m.resources.diffuse, m.resources.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
     sd.diffuse = diffuse.rgb;

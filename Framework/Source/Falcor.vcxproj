@@ -327,7 +327,6 @@
     <ClCompile Include="Graphics\Light.cpp" />
     <ClCompile Include="Graphics\LightProbe.cpp" />
     <ClCompile Include="Graphics\Material\Material.cpp" />
-    <ClCompile Include="Graphics\Material\MaterialSystem.cpp" />
     <ClCompile Include="Graphics\Model\Animation.cpp" />
     <ClCompile Include="Graphics\Model\AnimationController.cpp" />
     <ClCompile Include="Graphics\Model\Loaders\AssimpModelImporter.cpp" />
@@ -778,7 +777,6 @@
     <ClInclude Include="Graphics\Light.h" />
     <ClInclude Include="Graphics\LightProbe.h" />
     <ClInclude Include="Graphics\Material\Material.h" />
-    <ClInclude Include="Graphics\Material\MaterialSystem.h" />
     <ClInclude Include="Graphics\Model\Animation.h" />
     <ClInclude Include="Graphics\Model\AnimationController.h" />
     <ClInclude Include="Graphics\Model\Loaders\AssimpModelImporter.h" />
