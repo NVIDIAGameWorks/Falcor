@@ -36,7 +36,6 @@
 #include "VR/OpenVR/VRSystem.h"
 #include "API/Device.h"
 #include "glm/matrix.hpp"
-#include "Graphics/Material/MaterialSystem.h"
 
 namespace Falcor
 {
