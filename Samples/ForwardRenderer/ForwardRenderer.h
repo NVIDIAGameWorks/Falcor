@@ -42,6 +42,7 @@ public:
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) override;
+    void onDataReload(SampleCallbacks* pSample) override;
     //Testing
     void onInitializeTesting(SampleCallbacks* pSample) override;
     void onBeginTestFrame(SampleTest* pSampleTest) override;
@@ -181,6 +182,8 @@ private:
         EnableHashedAlpha,
         EnableTransparency,
         VisualizeCascades,
+        DebugLightProbe,
+        DebugOrig,
         Count
     };
 

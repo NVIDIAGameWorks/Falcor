@@ -116,6 +116,10 @@ namespace Falcor
         */
         const Texture::SharedPtr& getDiffuseTexture() const { return mData.resources.diffuseTexture; }
 
+        const Texture::SharedPtr& getDfgTexture() const { return mData.resources.dfgTexture; }
+
+        const Texture::SharedPtr& getSpecularTexture() const { return mData.resources.specularTexture; }
+
         /** Bind the light data into a ProgramVars object
         */
         void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName);

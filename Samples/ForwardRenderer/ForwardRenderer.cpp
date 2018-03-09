@@ -467,14 +467,26 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
             mpSceneRenderer->update(pSample->getCurrentTime());
         }
 
-        depthPass(pRenderContext.get());
-        shadowPass(pRenderContext.get());
-        mpState->setFbo(mpMainFbo);
-        renderSkyBox(pRenderContext.get());
-        lightingPass(pRenderContext.get(), pTargetFbo.get());
-        antiAliasing(pRenderContext.get());
-        postProcess(pRenderContext.get(), pTargetFbo);
-        ambientOcclusion(pRenderContext.get(), pTargetFbo);
+        if (mControls[ControlID::DebugLightProbe].enabled)
+        {
+            if (mControls[ControlID::DebugOrig].enabled)
+                pRenderContext->blit(mpSceneRenderer->getScene()->getLightProbe(0)->getOrigTexture()->getSRV(), pTargetFbo->getRenderTargetView(0));
+            else
+                pRenderContext->blit(mpSceneRenderer->getScene()->getLightProbe(0)->getSpecularTexture()->getSRV(), pTargetFbo->getRenderTargetView(0));
+        }
+        else
+        {
+
+            depthPass(pRenderContext.get());
+            shadowPass(pRenderContext.get());
+            mpState->setFbo(mpMainFbo);
+            renderSkyBox(pRenderContext.get());
+            lightingPass(pRenderContext.get(), pTargetFbo.get());
+            antiAliasing(pRenderContext.get());
+            postProcess(pRenderContext.get(), pTargetFbo);
+            ambientOcclusion(pRenderContext.get(), pTargetFbo);
+        }
+
         endFrame(pRenderContext.get());
     }
     else
@@ -529,6 +541,16 @@ void ForwardRenderer::onDroppedFile(SampleCallbacks* pSample, const std::string&
         return;
     }
     loadScene(pSample, filename, true);
+}
+
+void ForwardRenderer::onDataReload(SampleCallbacks* pSample)
+{
+    auto pScene = mpSceneRenderer->getScene();
+    if (mpSceneRenderer != nullptr && pScene->getLightProbeCount() > 0)
+    {
+        const LightProbe::SharedPtr& pLight = pScene->getLightProbe(0);
+        updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), pLight->getOrigTexture(), 128, mLightProbeDiffSampleCount));
+    }
 }
 
 bool ForwardRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
