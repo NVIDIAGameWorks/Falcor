@@ -225,13 +225,13 @@ void ForwardRenderer::initLightProbe(const std::string& name)
     // Remove existing light probes
     while (pScene->getLightProbeCount() > 0)
     {
-        pScene->deleteLightProbe(0);
+        pScene->deleteLightProbes();
     }
 
     // Create new light probe from file
     LightProbe::SharedPtr pLightProbe = LightProbe::create(name, true, true, ResourceFormat::RGBA16Float);
     pLightProbe->setSampler(mpSceneSampler);
-    pScene->addLightProbe(pLightProbe);
+    pScene->addLight(pLightProbe);
 
     mControls[EnableReflections].enabled = true;
     applyLightingProgramControl(ControlID::EnableReflections);

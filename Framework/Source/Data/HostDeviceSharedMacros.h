@@ -154,11 +154,12 @@
 
 /** Light probe types
 */
-#define LightProbeLinear2D          0    ///< Light probe filtered with linear-filtering, 2D texture
-#define LightProbePreIntegrated2D   1    ///< Pre-integrated light probe, 2D texture
-#define LightProbeLinearCube        2    ///< Light probe filtered with linear-filtering, texture-cube
-#define LightProbePreIntegratedCube 3    ///< Pre-integrated light probe, texture-cube
-
+#define LightProbeTypeStart         32
+#define LightProbeLinear2D          32    ///< Light probe filtered with linear-filtering, 2D texture
+#define LightProbePreIntegrated2D   33    ///< Pre-integrated light probe, 2D texture
+#define LightProbeLinearCube        34    ///< Light probe filtered with linear-filtering, texture-cube
+#define LightProbePreIntegratedCube 35    ///< Pre-integrated light probe, texture-cube
+#define LightProbeTypeEnd           36
 /*******************************************************************
                 Math
 *******************************************************************/

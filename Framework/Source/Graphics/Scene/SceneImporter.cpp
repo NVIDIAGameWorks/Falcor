@@ -522,7 +522,7 @@ namespace Falcor
             LightProbe::SharedPtr pLightProbe = LightProbe::create(actualPath, true, true, ResourceFormat::RGBA16Float);
             pLightProbe->setPosW(position);
             pLightProbe->setIntensity(intensity);
-            mScene.addLightProbe(pLightProbe);
+            mScene.addLight(pLightProbe);
         }
 
         return true;

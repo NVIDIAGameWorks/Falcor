@@ -71,7 +71,7 @@ namespace Falcor
         assert(offset + kDataSize <= pCb->getSize());
 
         // Set everything except for the material
-        pCb->setBlob(&mData, offset, kDataSize);
+        pCb->setBlob(getRawData(), offset, kDataSize);
     }
 
     void Light::setIntoParameterBlock(ParameterBlock * pBlock, size_t offset, const std::string & varName)
@@ -82,67 +82,49 @@ namespace Falcor
         assert(offset + kDataSize <= pCb->getSize());
 
         // Set everything except for the material
-        pCb->setBlob(&mData, offset, kDataSize);
+        pCb->setBlob(getRawData(), offset, kDataSize);
     }
 
     glm::vec3 Light::getColorForUI()
     {
-        if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
+        if ((mUiLightIntensityColor * mUiLightIntensityScale) != getIntensityData())
         {
-            float mag = max(mData.intensity.x, max(mData.intensity.y, mData.intensity.z));
+            float mag = max(getIntensityData().x, max(getIntensityData().y, getIntensityData().z));
             if (mag <= 1.f)
             {
-                mUiLightIntensityColor = mData.intensity;
+                mUiLightIntensityColor = getIntensityData();
                 mUiLightIntensityScale = 1.0f;
             }
             else
             {
-                mUiLightIntensityColor = mData.intensity / mag;
+                mUiLightIntensityColor = getIntensityData() / mag;
                 mUiLightIntensityScale = mag;
             }
         }
 
         return mUiLightIntensityColor;
     }
-
-    void updateAreaLightIntensity(LightData& light)
-    {
-        // Update material
-        if (light.type == LightArea)
-        {
-//            for (int i = 0; i < MatMaxLayers; ++i)
-            {
-                /*TODO(tfoley) HACK:SPIRE
-                if (light.material.desc.layers[i].type == MatEmissive)
-                {
-                    light.material.values.layers[i].albedo = v4(light.intensity, 0.f);
-                }
-                */
-            }
-        }
-    }
-
+    
     void Light::setColorFromUI(const glm::vec3& uiColor)
     {
         mUiLightIntensityColor = uiColor;
-        mData.intensity = (mUiLightIntensityColor * mUiLightIntensityScale);
-        updateAreaLightIntensity(mData);
+        getIntensityData() = (mUiLightIntensityColor * mUiLightIntensityScale);
         makeDirty();
     }
 
     float Light::getIntensityForUI()
     {
-        if ((mUiLightIntensityColor * mUiLightIntensityScale) != mData.intensity)
+        if ((mUiLightIntensityColor * mUiLightIntensityScale) != getIntensityData())
         {
-            float mag = max(mData.intensity.x, max(mData.intensity.y, mData.intensity.z));
+            float mag = max(getIntensityData().x, max(getIntensityData().y, getIntensityData().z));
             if (mag <= 1.f)
             {
-                mUiLightIntensityColor = mData.intensity;
+                mUiLightIntensityColor = getIntensityData();
                 mUiLightIntensityScale = 1.0f;
             }
             else
             {
-                mUiLightIntensityColor = mData.intensity / mag;
+                mUiLightIntensityColor = getIntensityData() / mag;
                 mUiLightIntensityScale = mag;
             }
         }
@@ -153,8 +135,7 @@ namespace Falcor
     void Light::setIntensityFromUI(float intensity)
     {
         mUiLightIntensityScale = intensity;
-        mData.intensity = (mUiLightIntensityColor * mUiLightIntensityScale);
-        updateAreaLightIntensity(mData);
+        getIntensityData() = (mUiLightIntensityColor * mUiLightIntensityScale);
         makeDirty();
     }
 
@@ -315,7 +296,7 @@ namespace Falcor
         size_t offset = pCb->getVariableOffset(varName);
         static_assert(kDataSize % sizeof(float) * 4 == 0, "AreaLightData size should be a multiple of 16");
         assert(offset + kAreaLightDataSize <= pCb->getSize());
-        pCb->setBlob(&mData, offset, kAreaLightDataSize);
+        pCb->setBlob(&mAreaLightData, offset, kAreaLightDataSize);
 
 #if _LOG_ENABLED
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("AreaLightData", pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(AreaLightData, _a), #_a));} b = false;}
@@ -352,7 +333,7 @@ namespace Falcor
         //size_t offset = pCb->getVariableOffset(varName);
         static_assert(kDataSize % sizeof(float) * 4 == 0, "AreaLightData size should be a multiple of 16");
         assert(offset + kAreaLightDataSize <= pCb->getSize());
-        pCb->setBlob(&mData, offset, kAreaLightDataSize);
+        pCb->setBlob(&mAreaLightData, offset, kAreaLightDataSize);
 
 #if _LOG_ENABLED
 #define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("AreaLightData", pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(AreaLightData, _a), #_a));} b = false;}
@@ -586,6 +567,7 @@ namespace Falcor
     LightEnv::LightEnv()
     {
         shaderTypeName = "AmbientLight";
+        lightCollectionChanged = true;
     }
 
     void LightEnv::merge(LightEnv const* lightEnv)
@@ -598,24 +580,49 @@ namespace Falcor
     {
         mpLights.push_back(pLight);
         mLightVersionIDs.push_back(-1);
+        lightCollectionChanged = true;
         return (uint32_t)mpLights.size() - 1;
     }
 
     void LightEnv::deleteLight(uint32_t lightID)
     {
+        lightCollectionChanged = true;
         mpLights.erase(mpLights.begin() + lightID);
         mLightVersionIDs.erase(mLightVersionIDs.begin() + lightID);
     }
 
     void LightEnv::deleteAreaLights()
     {
+        lightCollectionChanged = true;
+        // Clean up the list before adding
+        std::vector<Light::SharedPtr>::iterator it = mpLights.begin();
+        std::vector<VersionID>::iterator vi = mLightVersionIDs.begin();
+        for (; it != mpLights.end();)
+        {
+            if ((*it)->getType() == LightArea)
+            {
+                it = mpLights.erase(it);
+                vi = mLightVersionIDs.erase(vi);
+            }
+            else
+            {
+                ++it;
+                ++vi;
+            }
+        }
+    }
+
+    void LightEnv::deleteLightProbes()
+    {
+        lightCollectionChanged = true;
         // Clean up the list before adding
         std::vector<Light::SharedPtr>::iterator it = mpLights.begin();
         std::vector<VersionID>::iterator vi = mLightVersionIDs.begin();
 
         for (; it != mpLights.end();)
         {
-            if ((*it)->getType() == LightArea)
+            auto t = (*it)->getType();
+            if (t >= LightProbeTypeStart && t < LightProbeTypeEnd)
             {
                 it = mpLights.erase(it);
                 vi = mLightVersionIDs.erase(vi);
@@ -647,8 +654,9 @@ namespace Falcor
         {
             mParamBlockVersionID = versionID;
             // SLANG-INTEGRATION
-            if (spBlockReflection == nullptr)
+            if (spBlockReflection == nullptr || lightCollectionChanged)
             {
+                lightCollectionChanged = false;
                 env->lightTypes.clear();
                 for (auto light : mpLights)
                 {
@@ -674,6 +682,7 @@ namespace Falcor
                 strStream << "AmbientLight";
                 for (size_t i = 0u; i < env->lightTypes.size(); i++)
                     strStream << "> ";
+
                 GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
                 ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
                 auto slangReq = pProgram->getActiveVersion()->slangRequest;
@@ -736,7 +745,7 @@ namespace Falcor
     VersionID LightEnv::getVersionID() const
     {
         // check if any light has been modified
-        bool dirty = false;
+        bool dirty = lightCollectionChanged;
 
         auto ll = mpLights.begin(), le = mpLights.end();
         auto vv = mLightVersionIDs.begin();

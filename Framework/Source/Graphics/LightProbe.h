@@ -30,6 +30,7 @@
 #include "API/Texture.h"
 #include "Data/HostDeviceData.h"
 #include "API/Sampler.h"
+#include "Graphics/Light.h"
 
 namespace Falcor
 {
@@ -37,7 +38,7 @@ namespace Falcor
     class ConstantBuffer;
     class Gui;
 
-    class LightProbe : public IMovableObject, std::enable_shared_from_this<LightProbe>
+    class LightProbe : public Light, std::enable_shared_from_this<LightProbe>
     {
     public:
         using SharedPtr = std::shared_ptr<LightProbe>;
@@ -84,7 +85,7 @@ namespace Falcor
 
         /** Get the light-probe's world-space position
         */
-        const vec3& getPosW() const { return mData.posW; }
+        vec3 getPosW() const { return vec3(mData.posW.x, mData.posW.y, mData.posW.z); }
 
         /** Set the light-probe's light intensity
         */
@@ -96,8 +97,9 @@ namespace Falcor
 
         /** Attach a sampler to the light-probe
         */
-        void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.samplerState = pSampler; }
+        virtual void setSampler(const Sampler::SharedPtr& pSampler) override { mData.resources.samplerState = pSampler; }
 
+        float getPower() const { return 0.0f; }
         /** Get the sampler state
         */
         const Sampler::SharedPtr& getSampler() const { return mData.resources.samplerState; }
@@ -106,9 +108,21 @@ namespace Falcor
         */
         void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName);
 
+        void setIntoParameterBlock(ParameterBlock * pBlock, ConstantBuffer* pBuffer, size_t offset, const std::string & varName);
+
+        virtual void setIntoParameterBlock(ParameterBlock* pBlock, size_t offset, const std::string& varName) override;
+
+        static uint32_t getShaderStructSize() { return sizeof(LightProbeData); }
+
+        virtual const char * getShaderTypeName() override { return "ProbeLight"; };
+        virtual uint32_t getType() const override;
+        virtual void * getRawData() override { return &mData; }
+
     private:
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
         LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat);
         LightProbeData mData;
+    protected:
+        glm::vec3& getIntensityData();
     };
 }

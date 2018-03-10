@@ -128,11 +128,11 @@ namespace Falcor
         LightEnv::SharedPtr const& getLightEnv() const { return mpLightEnv; }
 
         // Light Probes
-        uint32_t addLightProbe(const LightProbe::SharedPtr& pLightProbe);
-        void deleteLightProbe(uint32_t lightID);
         uint32_t getLightProbeCount() const { return (uint32_t)mpLightProbes.size(); }
-        const LightProbe::SharedPtr& getLightProbe(uint32_t index) const { return mpLightProbes[index]; }
-        const std::vector<LightProbe::SharedPtr>& getLightProbes() const { return mpLightProbes; }
+        void deleteLightProbes() { mpLightEnv->deleteLightProbes(); }
+        // Note that the index parameter here is not the same as the lightID returned by addLight
+        LightProbe* getLightProbe(uint32_t index) const { return mpLightProbes[index]; }
+        const std::vector<LightProbe*>& getLightProbes() const { return mpLightProbes; }
 
         // Area Lights
         uint32_t addAreaLight(const AreaLight::SharedPtr& pAreaLight);
@@ -215,7 +215,7 @@ namespace Falcor
         LightEnv::SharedPtr mpLightEnv;
         std::vector<Camera::SharedPtr> mCameras;
         std::vector<ObjectPath::SharedPtr> mpPaths;
-        std::vector<LightProbe::SharedPtr> mpLightProbes;
+        std::vector<LightProbe*> mpLightProbes;
         std::vector<AreaLight::SharedPtr> mpAreaLights;
 
         uint32_t mActiveCameraID = 0;

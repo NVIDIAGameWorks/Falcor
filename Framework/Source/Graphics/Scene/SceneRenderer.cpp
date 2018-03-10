@@ -49,14 +49,11 @@ namespace Falcor
     size_t SceneRenderer::sWorldInvTransposeMatOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sMeshIdOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sDrawIDOffset = ConstantBuffer::kInvalidOffset;
-    size_t SceneRenderer::sLightCountOffset = ConstantBuffer::kInvalidOffset;
-    size_t SceneRenderer::sLightArrayOffset = ConstantBuffer::kInvalidOffset;
 
     const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
-    const char* SceneRenderer::kLightProbeVarName = "gLightProbe";
     const char* SceneRenderer::kAreaLightCbName = "InternalAreaLightCB";
 
 
@@ -104,10 +101,6 @@ namespace Falcor
             {
                 const ReflectionType* pType = pVar->getType().get();
                 sCameraDataOffset = pType->findMember("gCamera.viewMat")->getOffset();
-                const auto& pCountOffset = pType->findMember("gLightsCount");
-                sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pType->findMember("gLights");
-                sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }
@@ -122,27 +115,6 @@ namespace Falcor
             {
                 currentData.pCamera->setIntoConstantBuffer(pCB, sCameraDataOffset);
             }
-#if 0
-            // Set lights
-            if (sLightArrayOffset != ConstantBuffer::kInvalidOffset)
-            {
-                assert(mpScene->getLightCount() <= MAX_LIGHT_SOURCES);  // Max array size in the shader
-                for (uint_t i = 0; i < mpScene->getLightCount(); i++)
-                {
-                    mpScene->getLight(i)->setIntoProgramVars(currentData.pVars, pCB, sLightArrayOffset + (i * Light::getShaderStructSize()));
-                }
-            }
-            if (sLightCountOffset != ConstantBuffer::kInvalidOffset)
-            {
-                pCB->setVariable(sLightCountOffset, mpScene->getLightCount());
-            }
-            if (mpScene->getLightProbeCount() > 0)
-            {
-                // #TODO Support multiple light probes
-                mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kLightProbeVarName);
-            }
-#endif
-
         }
 
         currentData.pVars->setParameterBlock("gLightEnv", currentData.pLightEnv->getParameterBlock());

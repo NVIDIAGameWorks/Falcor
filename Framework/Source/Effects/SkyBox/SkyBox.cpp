@@ -61,6 +61,7 @@ namespace Falcor
             logError("Failed to load cube model for SkyBox");
             return false;
         }
+        modelRenderer.init(mpCubeModel);
 
         // Create the program
         Program::DefineList defines;
@@ -150,7 +151,7 @@ namespace Falcor
         pRenderCtx->pushGraphicsVars(mpVars);
         pRenderCtx->pushGraphicsState(mpState);
 
-        ModelRenderer::render(pRenderCtx, mpCubeModel, pCamera, false);
+        modelRenderer.render(pRenderCtx, pCamera, false);
 
         pRenderCtx->popGraphicsVars();
         pRenderCtx->popGraphicsState();
