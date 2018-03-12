@@ -32,7 +32,6 @@
 #include "API/Buffer.h"
 #include "Utils/Platform/OS.h"
 #include "Utils/Math/FalcorMath.h"
-#include "MaterialSystem.h"
 #include "Graphics/Program/ProgramVars.h"
 #include "Graphics/Program/GraphicsProgram.h"
 

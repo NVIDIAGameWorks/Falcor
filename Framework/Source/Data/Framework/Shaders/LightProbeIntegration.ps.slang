@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,22 +25,57 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Graphics/Program/ProgramVersion.h"
+__import Helpers;
+#include "HostDeviceSharedMacros.h"
 
-namespace Falcor
+SamplerState gSampler : register(s0);
+texture2D gInputTex : register(t1);
+
+void importanceSampleCosDir(float2 u, float3 N, out float3 L, out float NdotL, out float pdf)
 {
-    class Material;
-    class Program;
+    float3 up = abs(N.z) < 0.999f ? float3(0, 0, 1) : float3(1, 0, 0);
+    float3 right = normalize(cross(up, N));
+    float3 forward = cross(N, right);
 
-    namespace MaterialSystem
+    float u1 = u.x;
+    float u2 = u.y;
+
+    float r = sqrt(u1);
+    float phi = u2 * M_PI * 2.0f;
+
+    L = float3(r * cos(phi),
+               r * sin(phi), 
+               sqrt(max(0.0f, 1.0f - u1)));
+
+    L = normalize(right * L.y + forward * L.x + N * L.z);
+
+    NdotL = dot(L, N);
+    pdf = NdotL * M_INV_PI;
+}
+
+float4 integration(float3 N)
+{
+    float3 accumulation = 0;
+    for (uint i = 0; i < _SAMPLE_COUNT; i++)
     {
-        void reset();
-        void removeMaterial(uint32_t flags);
-        void removeProgramVersion(const ProgramVersion* pProgramVersion);
+        float2 eta = getHammersley(i, _SAMPLE_COUNT);
+        float3 L;
+        float NdotL;
+        float pdf;
 
-        /** Updates shader program defines controlling the material system
-        */
-        void patchProgram(Program* pProgram, const Material* pMaterial);
-    };
+        importanceSampleCosDir(eta, N, L, NdotL, pdf);
+        if (NdotL > 0)
+        {
+            float2 uv = dirToSphericalCrd(L);
+            accumulation += gInputTex.Sample(gSampler, uv).rgb;
+        }
+    }
+
+    return float4(accumulation / float(_SAMPLE_COUNT), 1.0f);
+}
+
+float4 main(float2 texC : TEXCOORD, float4 posS : SV_POSITION) : SV_TARGET0
+{
+    float3 dir = sphericalCrdToDir(texC);
+    return integration(dir);
 }

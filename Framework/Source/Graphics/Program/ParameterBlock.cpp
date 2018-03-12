@@ -274,6 +274,8 @@ namespace Falcor
             return false;
         }
 #endif
+        if (res.pResource == pCB) return true;
+
         res.pResource = pCB;
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
@@ -315,6 +317,8 @@ namespace Falcor
         ParameterBlockReflection::BindLocation bindLoc = mpReflector->getResourceBinding(name);
         if (checkResourceIndices(bindLoc, descOffset, type, funcName) == false) return;
         auto& desc = mAssignedResources[bindLoc.setIndex][bindLoc.rangeIndex][descOffset];
+        if (desc.pResource == pResource) return;
+
         desc.pResource = pResource;
 
         switch (type)
@@ -434,7 +438,9 @@ namespace Falcor
     bool ParameterBlock::setSampler(const BindLocation& bindLocation, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
     {
         if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Sampler, "setSampler()") == false) return false;
-        mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pSampler = pSampler ? pSampler : Sampler::getDefault();
+        auto& desc = mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex];
+        if (desc.pSampler == pSampler) return true;
+        desc.pSampler = pSampler ? pSampler : Sampler::getDefault();
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
     }
@@ -529,7 +535,9 @@ namespace Falcor
             return false;
         }
 #endif
-        desc.pSRV = pSrv ? pSrv : ShaderResourceView::getNullView();
+        const ShaderResourceView::SharedPtr pView = pSrv ? pSrv : ShaderResourceView::getNullView();
+        if (desc.pSRV == pView) return true;
+        desc.pSRV = pView;
         desc.pResource = getResourceFromView(pSrv.get());
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
@@ -546,7 +554,9 @@ namespace Falcor
             return false;
         }
 #endif
-        desc.pUAV = pUav ? pUav : UnorderedAccessView::getNullView();
+        UnorderedAccessView::SharedPtr pView = pUav ? pUav : UnorderedAccessView::getNullView();
+        if (desc.pUAV == pView) return true;
+        desc.pUAV = pView;
         desc.pResource = getResourceFromView(pUav.get());
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
@@ -593,6 +603,7 @@ namespace Falcor
         }
 
         pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
+
         if (isUav)
         {
             if (pTypedBuffer) pTypedBuffer->setGpuCopyDirty();

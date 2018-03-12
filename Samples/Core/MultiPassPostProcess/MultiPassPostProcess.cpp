@@ -46,6 +46,7 @@ void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, RenderContext::Share
     mpLuminance = FullScreenPass::create(appendShaderExtension("Luminance.ps"));
     mpGaussianBlur = GaussianBlur::create(5);
     mpBlit = FullScreenPass::create(appendShaderExtension("Blit.ps"));
+    mpProgVars = GraphicsVars::create(mpBlit->getProgram()->getActiveVersion()->getReflector());
 }
 
 void MultiPassPostProcess::loadImage(SampleCallbacks* pSample)
@@ -67,7 +68,6 @@ void MultiPassPostProcess::loadImageFromFile(SampleCallbacks* pSample, std::stri
     mpTempFB = FboHelper::create2D(mpImage->getWidth(), mpImage->getHeight(), fboDesc);
 
     pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
-    mpProgVars = GraphicsVars::create(mpBlit->getProgram()->getActiveVersion()->getReflector());
 }
 
 void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)

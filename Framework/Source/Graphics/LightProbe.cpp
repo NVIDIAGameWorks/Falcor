@@ -30,17 +30,53 @@
 #include "API/Device.h"
 #include "TextureHelper.h"
 #include "Utils/Gui.h"
+#include "Graphics/FboHelper.h"
 
 namespace Falcor
 {
-    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
+    Texture::SharedPtr integrateDiffuse(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat preFilteredFormat, uint32_t diffSampleCount)
     {
-        assert(filter == PreFilterMode::None);
-        mData.type = LightProbeLinear2D;
-        mData.resources.origTexture = pTexture;
+        static FullScreenPass::UniquePtr pIntegration;
+        static GraphicsVars::SharedPtr pVars;
+        static Sampler::SharedPtr pSampler;
+
+        // Initialize fullscreen pass
+        if (pIntegration == nullptr)
+        {
+            Program::DefineList defines;
+            defines.add("_SAMPLE_COUNT", std::to_string(diffSampleCount));
+            pIntegration = FullScreenPass::create("Framework/Shaders/LightProbeIntegration.ps.slang", defines);
+            pVars = GraphicsVars::create(pIntegration->getProgram()->getActiveVersion()->getReflector());
+            pSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
+            pVars->getDefaultBlock()->setSampler("gSampler", pSampler);
+        }
+
+        // Set inputs
+        pIntegration->getProgram()->addDefine("_SAMPLE_COUNT", std::to_string(diffSampleCount));
+        pVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
+
+        // Output texture
+        Fbo::SharedPtr pFbo = FboHelper::create2D(size, size, Fbo::Desc().setColorTarget(0, preFilteredFormat));
+
+        // Execute
+        GraphicsState::SharedPtr pState = pContext->getGraphicsState();
+        pState->pushFbo(pFbo);
+        pContext->pushGraphicsVars(pVars);
+        pIntegration->execute(pContext);
+        pContext->popGraphicsVars();
+        pState->popFbo();
+
+        return pFbo->getColorTexture(0);
     }
 
-    LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
+    LightProbe::LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
+        : mDiffSampleCount(diffSampleCount)
+    {
+        mData.resources.origTexture = pTexture;
+        mData.resources.diffuseTexture = integrateDiffuse(pContext, pTexture, size, preFilteredFormat, diffSampleCount);
+    }
+
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
     {
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown)
@@ -55,12 +91,12 @@ namespace Falcor
             pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
         }
         
-        return create(pTexture, filter, size, preFilteredFormat);
+        return create(pContext, pTexture, size, diffSampleCount, preFilteredFormat);
     }
 
-    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
     {
-        return SharedPtr(new LightProbe(pTexture, filter, size, preFilteredFormat));
+        return SharedPtr(new LightProbe(pContext, pTexture, size, diffSampleCount, preFilteredFormat));
     }
 
     void LightProbe::renderUI(Gui* pGui, const char* group)
@@ -126,6 +162,7 @@ namespace Falcor
 
         // Bind the textures
         pVars->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
+        pVars->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
         pVars->setSampler(varName + ".resources.samplerState", mData.resources.samplerState);
     }
 }

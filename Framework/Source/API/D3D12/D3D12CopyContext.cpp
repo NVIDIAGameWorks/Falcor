@@ -152,7 +152,7 @@ namespace Falcor
 
         //Get buffer data
         std::vector<uint8> result;
-		uint32_t actualRowSize = footprint.Footprint.Width * getFormatBytesPerBlock(pTexture->getFormat());
+        uint32_t actualRowSize = footprint.Footprint.Width * getFormatBytesPerBlock(pTexture->getFormat());
         result.resize(rowCount * actualRowSize);
         uint8* pData = reinterpret_cast<uint8*>(pBuffer->map(Buffer::MapType::Read));
 

@@ -424,6 +424,7 @@ namespace Falcor
         mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
         //Takes testing screenshots if desired (leaves out gui and fps text)
         endTestFrame();
+
         //Swaps back to backbuffer to render fps text and gui directly onto it
         mpDefaultPipelineState->setFbo(mpBackBufferFBO);
         mpRenderContext->setGraphicsState(mpDefaultPipelineState);

@@ -92,7 +92,6 @@
 
 // Material
 #include "Graphics/Material/Material.h"
-#include "Graphics/Material/MaterialSystem.h"
 
 // Model
 #include "Graphics/Model/Mesh.h"

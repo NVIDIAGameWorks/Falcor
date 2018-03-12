@@ -146,7 +146,7 @@ private:
     void initDepthPass();
     void initShadowPass();
     void initSSAO();
-    void initLightProbe(const std::string& name);
+    void updateLightProbe(const LightProbe::SharedPtr& pLight);
     void initTAA(SampleCallbacks* pSample);
 
     void initControls();
@@ -200,6 +200,7 @@ private:
     float mOpacityScale = 0.5f;
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;
+    uint32_t mLightProbeDiffSampleCount = 1024;
     SamplePattern mTAASamplePattern = SamplePattern::Halton;
     void applyAaMode(SampleCallbacks* pSample);
     std::vector<ProgramControl> mControls;

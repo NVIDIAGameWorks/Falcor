@@ -121,9 +121,6 @@
     <ClCompile Include="Utils\MonitorInfo.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\Material\MaterialSystem.cpp">
-      <Filter>Graphics\Material</Filter>
-    </ClCompile>
     <ClCompile Include="Effects\NormalMap\LeanMap.cpp">
       <Filter>Effects\NormalMap</Filter>
     </ClCompile>
@@ -650,9 +647,6 @@
     </ClInclude>
     <ClInclude Include="Utils\MonitorInfo.h">
       <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\Material\MaterialSystem.h">
-      <Filter>Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Effects\NormalMap\LeanMap.h">
       <Filter>Effects\NormalMap</Filter>
@@ -2221,6 +2215,9 @@
     </None>
     <None Include="ShadingUtils\Helpers.slang">
       <Filter>ShadingUtils</Filter>
+    </None>
+    <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang">
+      <Filter>Data\Framework\Shaders</Filter>
     </None>
   </ItemGroup>
 </Project>

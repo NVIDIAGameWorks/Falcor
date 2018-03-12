@@ -1,8 +1,4 @@
 <project toolsVersion="5.0">
-    <remote name="github-slang" type="https"
-            packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
-    <remote name="github-slang-linux" type="https"
-            packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
     <dependency name="openvr" linkPath="Framework/Externals/OpenVR">
         <package name="openvr" version="1.0.8" platforms="win"/>
         <package name="openvr" version="1.0.8-linux" platforms="linux"/>
