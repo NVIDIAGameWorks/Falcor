@@ -672,6 +672,7 @@ namespace Falcor
                     findRs->second.lights.push_back(light);
                 }
                 std::stringstream varNameSb, strStream;
+                varNameSb << "lights.";
                 for (auto & lt : env->lightTypes)
                 {
                     strStream << "LightPair<LightArray<" << lt.second.typeName << ", " << lt.second.lights.size()
@@ -682,13 +683,16 @@ namespace Falcor
                 strStream << "AmbientLight";
                 for (size_t i = 0u; i < env->lightTypes.size(); i++)
                     strStream << "> ";
+                
+                env->lightCollectionTypeName = strStream.str();
+                env->shaderTypeName = "LightEnv<" + env->lightCollectionTypeName + " >";
 
                 GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
                 ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
                 auto slangReq = pProgram->getActiveVersion()->slangRequest;
                 auto reflection = spGetReflection(slangReq);
 
-                auto materialType = spReflection_FindTypeByName(reflection, strStream.str().c_str());
+                auto materialType = spReflection_FindTypeByName(reflection, env->shaderTypeName.c_str());
                 auto layout = spReflection_GetTypeLayout(reflection, materialType, SLANG_LAYOUT_RULES_DEFAULT);
                 auto blockType = reflectType((slang::TypeLayoutReflection*)layout);
                 auto blockReflection = ParameterBlockReflection::create("");
@@ -702,10 +706,11 @@ namespace Falcor
                 }
                 const auto& pAmbientOffset = blockType->findMember(varNameSb.str() + "ambientLight");
                 sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                env->shaderTypeName = strStream.str();
             }
             mpParamBlock = ParameterBlock::create(spBlockReflection, true);
             mpParamBlock->setTypeName(shaderTypeName);
+            mpParamBlock->genericTypeParamName = "TLightCollection";
+            mpParamBlock->genericTypeArgumentName = lightCollectionTypeName;
             // Note: the following logic used to be in the `SceneRenderer`,
             // and so some stuff doesn't translate directly (e.g., we don't
             // currently have a representation of ambient lights in the
@@ -725,6 +730,8 @@ namespace Falcor
                     i++;
                 }
             }
+            // set global params
+            mpParamBlock->setSampler("params.probeSampler", lightProbeSampler);
             // Set lights
             if (sAmbientLightOffset != ConstantBuffer::kInvalidOffset)
             {
@@ -740,6 +747,12 @@ namespace Falcor
         //        block->setTexture("g_ltc_mat", texLtcMat);
         //        block->setTexture("g_ltc_mag", texLtcMag);
         //        block->setSampler("g_light_texSampler", linearSampler);
+    }
+
+    void LightEnv::bindSampler(Sampler::SharedPtr sampler)
+    {
+        lightProbeSampler = sampler;
+        mVersionID++;
     }
 
     VersionID LightEnv::getVersionID() const

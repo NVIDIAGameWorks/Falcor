@@ -417,10 +417,11 @@ namespace Falcor
     // Represent a lighting environment, which is effectively an array of lights
     class LightEnv : public std::enable_shared_from_this<LightEnv>
     {
+    private:
+        Sampler::SharedPtr lightProbeSampler;
     public:
         using SharedPtr = std::shared_ptr<LightEnv>;
         using SharedConstPtr = std::shared_ptr<const LightEnv>;
-
         static LightEnv::SharedPtr create();
         struct LightTypeInfo
         {
@@ -429,7 +430,7 @@ namespace Falcor
             size_t cbOffset = 0;
             std::vector<Light::SharedPtr> lights;
         };
-        std::string shaderTypeName;
+        std::string shaderTypeName, lightCollectionTypeName;
         std::map<uint32_t, LightTypeInfo> lightTypes;
 
         void merge(LightEnv const* lightEnv);
@@ -451,10 +452,10 @@ namespace Falcor
         */
         ParameterBlock::SharedConstPtr getParameterBlock() const;
         void setIntoProgramVars(ProgramVars* vars);
+        void bindSampler(Sampler::SharedPtr sampler);
     private:
         LightEnv();
         LightEnv(LightEnv const&) = delete;
-
         std::vector<Light::SharedPtr> mpLights;
         mutable std::vector<VersionID> mLightVersionIDs;
 

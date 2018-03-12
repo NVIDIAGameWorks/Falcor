@@ -65,10 +65,10 @@ struct StandardBxDF : IBxDF
         sr.color.a = this.opacity;
         return sr;
     }
-    ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData probe)
+    ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData probe, GlobalLightParams gParams)
     {
         ShadingResult sr = initShadingResult();
-        LightSample ls = evalLightProbe(geom, probe, roughness, linearRoughness);
+        LightSample ls = evalLightProbe(geom, probe, gParams.probeSampler, roughness, linearRoughness);
 
         sr.diffuse = this.diffuse.rgb * ls.diffuse;
         sr.color.rgb = sr.diffuse;

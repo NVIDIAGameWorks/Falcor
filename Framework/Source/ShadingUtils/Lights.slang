@@ -152,7 +152,7 @@ float3 getSpecularDominantDir(float3 N, float3 R, float roughness)
 
 /** Evaluate a 2D light-probe filtered using linear-filtering
 */
-LightSample evalLightProbeLinear2D(SurfaceGeometry geom, LightProbeData probe, float roughness, float linearRoughness)
+LightSample evalLightProbeLinear2D(SurfaceGeometry geom, LightProbeData probe, SamplerState lightProbeSampler, float roughness, float linearRoughness)
 {
     LightSample ls;
 
@@ -164,13 +164,13 @@ LightSample evalLightProbeLinear2D(SurfaceGeometry geom, LightProbeData probe, f
     probe.resources.origTexture.GetDimensions(0, h, w, mipCount);
 
     // For the diffuse component, we use the last mip-level
-    ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, 0, mipCount - 2).rgb;
+    ls.diffuse = probe.resources.origTexture.SampleLevel(lightProbeSampler, 0, mipCount - 2).rgb;
 
     // Get the specular component
     float3 specDir = getSpecularDominantDir(geom.N, ls.L, roughness);
     float2 specCrd = dirToSphericalCrd(specDir);
     float lod = linearRoughnessToLod(linearRoughness, mipCount);
-    ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, specCrd, lod).rgb;
+    ls.specular = probe.resources.origTexture.SampleLevel(lightProbeSampler, specCrd, lod).rgb;
     
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
@@ -183,15 +183,15 @@ LightSample evalLightProbeLinear2D(SurfaceGeometry geom, LightProbeData probe, f
 
 /** Evaluate the properties of a light-probe
 */
-LightSample evalLightProbe(SurfaceGeometry geom, LightProbeData probe, float roughness, float linearRoughness)
+LightSample evalLightProbe(SurfaceGeometry geom, LightProbeData probe, SamplerState lightProbeSampler, float roughness, float linearRoughness)
 {
-    return evalLightProbeLinear2D(geom, probe, roughness, linearRoughness);
+    return evalLightProbeLinear2D(geom, probe, lightProbeSampler, roughness, linearRoughness);
 }
 
 struct PointLight : ILight
 {
     LightData light;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
     {
         LightSample ls = evalPointLight(light, p.geom.posW);
         calcCommonLightProperties(p.geom, ls);
@@ -204,7 +204,7 @@ struct PointLight : ILight
 struct DirectionalLight : ILight
 {
     LightData light;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
     {
         LightSample ls = evalDirectionalLight(light, p.geom.posW);
         calcCommonLightProperties(p.geom, ls);
@@ -218,16 +218,16 @@ struct ProbeLight : ILight
 {
     LightProbeData probeData;
 
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
     {
-        return p.bxdf.evalProbe(p.geom, probeData);
+        return p.bxdf.evalProbe(p.geom, probeData, gParams);
     }
 };
 
 struct AmbientLight : ILight
 {
     float3 ambientLight;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
     {
         return p.bxdf.evalAmbient(ambientLight);
     }
@@ -236,12 +236,12 @@ struct AmbientLight : ILight
 struct LightArray<TLight:ILight, let N:int> : ILight
 {   
     TLight lights[N];
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor, GlobalLightParams gParams)
     {
         ShadingResult rs = initShadingResult();
         for (int i = 0; i < N; i++)
         {
-            ShadingResult r = lights[i].evalLighting(shAttr, shadowFactor);
+            ShadingResult r = lights[i].evalLighting(shAttr, shadowFactor, gParams);
             rs.diffuse += r.diffuse;
             rs.specular += r.specular;
             rs.color += r.color;
@@ -255,11 +255,11 @@ struct LightPair<TLight1 : ILight, TLight2 : ILight> : ILight
 {
     TLight1 light1;
     TLight2 light2;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor, GlobalLightParams gParams)
     {
         ShadingResult rs = initShadingResult();
-        ShadingResult r1 = light1.evalLighting(shAttr, shadowFactor);
-        ShadingResult r2 = light2.evalLighting(shAttr, shadowFactor);
+        ShadingResult r1 = light1.evalLighting(shAttr, shadowFactor, gParams);
+        ShadingResult r2 = light2.evalLighting(shAttr, shadowFactor, gParams);
         rs.diffuse = r1.diffuse + r2.diffuse;
         rs.specular = r1.specular + r2.specular;
         rs.color = r1.color + r2.color;

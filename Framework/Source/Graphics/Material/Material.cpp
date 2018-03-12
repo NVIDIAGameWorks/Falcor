@@ -288,6 +288,8 @@ namespace Falcor
 #undef set_texture
         pBlock->setSampler(varName + "resources.samplerState", data.resources.samplerState);
         pBlock->setTypeName("StandardMaterial");
+        pBlock->genericTypeParamName = "TMaterial";
+        pBlock->genericTypeArgumentName = "StandardMaterial";
     }
 
     void Material::setIntoParameterBlock(ParameterBlock* pBlock, const std::string& varName) const

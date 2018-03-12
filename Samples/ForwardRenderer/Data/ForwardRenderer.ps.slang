@@ -48,7 +48,7 @@ PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 
     float4 finalColor = float4(0, 0, 0, 1);
 
-    finalColor.rgb += gLightEnv.evalLighting(sd, 1.0).color.rgb;// evalMaterial<ShadingData, TLightEnv>(sd, gLightEnv).color.rgb;
+    finalColor.rgb += evalMaterial<TMaterial.BxDF, TLightCollection>(sd, 1.0, gLightEnv).color.rgb;
     // Add light-map and/or the emissive component
     finalColor.rgb += sd.bxdf.getIntrinsicLighting();
 

@@ -80,11 +80,16 @@ struct LightSample
     float distance;   // Distance from the light-source to the surface
 };
 
+struct GlobalLightParams
+{
+    SamplerState probeSampler;
+};
+
 interface IBxDF
 {
     ShadingResult eval(SurfaceGeometry geom, LightSample light, float shadowFactor);
     ShadingResult evalAmbient(float3 ambientLight);
-    ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData lightProbe);
+    ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData lightProbe, GlobalLightParams gParams);
     float3 getIntrinsicLighting();
     float getOpacity();
 }
@@ -103,12 +108,18 @@ interface IMaterial
 
 interface ILight
 {
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor);
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams globalLightParams);
 }
 
-ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILight>(ShadingPoint<TBxDF> p, TLight light, float shadowFactor)
+struct LightEnv<TLight : ILight>
 {
-    return light.evalLighting(p, shadowFactor);
+    TLight lights;
+    GlobalLightParams params;
+};
+
+ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILight>(ShadingPoint<TBxDF> p, float shadowFactor, LightEnv<TLight> lEnv)
+{
+    return lEnv.lights.evalLighting(p, shadowFactor, lEnv.params);
 }
 
 ShadingPoint<TMaterial.BxDF> prepareShadingData<TMaterial : IMaterial>(VertexOut v, TMaterial mat, float3 camPosW)

@@ -139,7 +139,6 @@ struct MaterialData
 struct LightProbeResources
 {
     Texture2D origTexture;      ///< The original texture
-    SamplerState samplerState;
 };
 
 struct LightProbeData

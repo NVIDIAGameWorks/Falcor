@@ -342,7 +342,7 @@ namespace Falcor
         {
             model[0]->getObject()->bindSamplerToMaterials(pSampler);
         }
-
+        mpLightEnv->bindSampler(pSampler);
         for (auto& light : mpLightEnv->getLights())
         {
             light->setSampler(pSampler);

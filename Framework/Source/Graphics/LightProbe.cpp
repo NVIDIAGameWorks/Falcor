@@ -136,7 +136,6 @@ namespace Falcor
 
         // Bind the textures
         pBlock->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
-        pBlock->setSampler(varName + ".resources.samplerState", mData.resources.samplerState);
     }
     
     void LightProbe::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName)

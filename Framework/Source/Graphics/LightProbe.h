@@ -95,14 +95,7 @@ namespace Falcor
         */
         const vec3& getIntensity() const { return mData.intensity; }
 
-        /** Attach a sampler to the light-probe
-        */
-        virtual void setSampler(const Sampler::SharedPtr& pSampler) override { mData.resources.samplerState = pSampler; }
-
         float getPower() const { return 0.0f; }
-        /** Get the sampler state
-        */
-        const Sampler::SharedPtr& getSampler() const { return mData.resources.samplerState; }
 
         /** Bind the light-data into a ProgramVars object
         */

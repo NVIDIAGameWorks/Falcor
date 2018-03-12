@@ -510,13 +510,13 @@ namespace Falcor
         for (uint32_t i = 0; i < paramBlockCount; i++)
         {
             auto paramBlock = originalReflector->getParameterBlock(i);
-            if (auto genType = paramBlock->getType()->asGenericType())
+            auto newParamBlock = pVars->getParameterBlock(i);
+            if (newParamBlock->genericTypeParamName.length())
             {
-                auto index = originalReflector->getTypeParameterIndexByName(genType->name);
-                auto newParamBlock = pVars->getParameterBlock(i);
+                auto index = originalReflector->getTypeParameterIndexByName(newParamBlock->genericTypeParamName);
                 if (typeArguments.size() <= index)
                     typeArguments.resize(index + 1);
-                typeArguments[index] = newParamBlock->getTypeName();
+                typeArguments[index] = newParamBlock->genericTypeArgumentName;
             }
         }
 
