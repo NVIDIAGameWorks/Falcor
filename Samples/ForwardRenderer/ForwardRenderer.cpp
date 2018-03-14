@@ -148,6 +148,7 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
     if (pScene->getLightProbeCount() > 0)
     {
         pScene->getLightProbe(0)->setRadius(pScene->getRadius());
+        pScene->getLightProbe(0)->setPosW(pScene->getCenter());
     }
 
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
@@ -234,8 +235,9 @@ void ForwardRenderer::updateLightProbe(const LightProbe::SharedPtr& pLight)
     }
 
     pLight->setRadius(pScene->getRadius());
+    pLight->setPosW(pScene->getCenter());
 
-    //pLight->setSampler(mpSceneSampler);
+    pLight->setSampler(mpSceneSampler);
     pScene->addLightProbe(pLight);
 
     mLightProbeDiffSampleCount = pLight->getDiffSampleCount();

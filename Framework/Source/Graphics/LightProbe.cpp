@@ -34,135 +34,141 @@
 
 namespace Falcor
 {
-    Texture::SharedPtr integrateDiffuse(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat preFilteredFormat, uint32_t sampleCount)
-    {
-        static FullScreenPass::UniquePtr pIntegration;
-        static GraphicsVars::SharedPtr pVars;
-        static Sampler::SharedPtr pSampler;
+    uint32_t LightProbe::sLightProbeCount = 0;
+    LightProbeSharedResources LightProbe::sSharedData;
 
-        // Initialize fullscreen pass
-        if (pIntegration == nullptr)
+    class PreIntegration
+    {
+    public:
+        const char* kShader = "Framework/Shaders/LightProbeIntegration.ps.slang";
+
+        bool isInitialized() const { return mInitialized; }
+
+        void init()
         {
-            Program::DefineList defines;
-            defines.add("_INTEGRATE_DIFFUSE_LD", std::to_string(sampleCount));
-            pIntegration = FullScreenPass::create("Framework/Shaders/LightProbeIntegration.ps.slang", defines);
-            pVars = GraphicsVars::create(pIntegration->getProgram()->getActiveVersion()->getReflector());
-            pSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
-            pVars->getDefaultBlock()->setSampler("gSampler", pSampler);
+            mpDiffuseLDPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_DIFFUSE_LD"));
+            mpSpecularLDPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_SPECULAR_LD"));
+            mpDFGPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
+
+            // Shared
+            mpVars = GraphicsVars::create(mpDiffuseLDPass->getProgram()->getActiveVersion()->getReflector());
+            mpSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
+            mpVars->getDefaultBlock()->setSampler("gSampler", mpSampler);
+
+            mInitialized = true;
         }
 
-        // Set inputs
-        pIntegration->getProgram()->addDefine("_SAMPLE_COUNT", std::to_string(sampleCount));
-        pVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
-
-        // Output texture
-        Fbo::SharedPtr pFbo = FboHelper::create2D(size, size, Fbo::Desc().setColorTarget(0, preFilteredFormat));
-
-        // Execute
-        GraphicsState::SharedPtr pState = pContext->getGraphicsState();
-        pState->pushFbo(pFbo);
-        pContext->pushGraphicsVars(pVars);
-        pIntegration->execute(pContext);
-        pContext->popGraphicsVars();
-        pState->popFbo();
-
-        return pFbo->getColorTexture(0);
-    }
-
-    Texture::SharedPtr integrateDFG(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat preFilteredFormat, uint32_t sampleCount)
-    {
-        static FullScreenPass::UniquePtr pIntegration;
-        static GraphicsVars::SharedPtr pVars;
-        static Sampler::SharedPtr pSampler;
-
-        // Initialize fullscreen pass
-        if (pIntegration == nullptr)
+        void release()
         {
-            Program::DefineList defines;
-            defines.add("_INTEGRATE_DFG", std::to_string(sampleCount));
-            pIntegration = FullScreenPass::create("Framework/Shaders/LightProbeIntegration.ps.slang", defines);
-            pVars = GraphicsVars::create(pIntegration->getProgram()->getActiveVersion()->getReflector());
-            pSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
-            pVars->getDefaultBlock()->setSampler("gSampler", pSampler);
+            mpDiffuseLDPass = nullptr;
+            mpSpecularLDPass = nullptr;
+            mpDFGPass = nullptr;
+            mpVars = nullptr;
+            mpSampler = nullptr;
+
+            mInitialized = false;
         }
 
-        // Set inputs
-        pIntegration->getProgram()->addDefine("_SAMPLE_COUNT", std::to_string(sampleCount));
-        pVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
-
-        // Output texture
-        Fbo::SharedPtr pFbo = FboHelper::create2D(size, size, Fbo::Desc().setColorTarget(0, preFilteredFormat));
-
-        // Execute
-        GraphicsState::SharedPtr pState = pContext->getGraphicsState();
-        pState->pushFbo(pFbo);
-        pContext->pushGraphicsVars(pVars);
-        pIntegration->execute(pContext);
-        pContext->popGraphicsVars();
-        pState->popFbo();
-
-        return pFbo->getColorTexture(0);
-    }
-
-    Texture::SharedPtr integrateSpecular(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat preFilteredFormat, uint32_t sampleCount)
-    {
-        static FullScreenPass::UniquePtr pIntegration;
-        static GraphicsVars::SharedPtr pVars;
-        static Sampler::SharedPtr pSampler;
-
-        // Initialize fullscreen pass
-        if (pIntegration == nullptr)
+        Texture::SharedPtr integrateDFG(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
         {
-            Program::DefineList defines;
-            defines.add("_INTEGRATE_SPECULAR_LD", std::to_string(sampleCount));
-            pIntegration = FullScreenPass::create("Framework/Shaders/LightProbeIntegration.ps.slang", defines);
-            pVars = GraphicsVars::create(pIntegration->getProgram()->getActiveVersion()->getReflector());
-            pSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
-            pVars->getDefaultBlock()->setSampler("gSampler", pSampler);
+            return executeSingleMip(pContext, mpDFGPass, pTexture, size, format, sampleCount);
         }
 
-        // Set inputs
-        pIntegration->getProgram()->addDefine("_SAMPLE_COUNT", std::to_string(sampleCount));
-        pVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
-        pContext->pushGraphicsVars(pVars);
-
-        Texture::SharedPtr pOutput = Texture::create2D(size, size, preFilteredFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
-
-        // Execute on each mip level
-        GraphicsState::SharedPtr pState = pContext->getGraphicsState();
-        uint32_t mipCount = pOutput->getMipCount();
-        for (uint32_t i = 0; i < mipCount; i++)
+        Texture::SharedPtr integrateDiffuseLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
         {
-            Fbo::SharedPtr pFbo = Fbo::create();
-            pFbo->attachColorTarget(pOutput, 0, i);
+            return executeSingleMip(pContext, mpDiffuseLDPass, pTexture, size, format, sampleCount);
+        }
 
-            // Roughness to integrate for on current mip level
-            pVars["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
+        Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
+        {
+            mpVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
+            mpVars["DataCB"]["gSampleCount"] = sampleCount;
 
+            Texture::SharedPtr pOutput = Texture::create2D(size, size, format, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
+
+            GraphicsState::SharedPtr pState = pContext->getGraphicsState();
+            pContext->pushGraphicsVars(mpVars);
+            // Execute on each mip level
+            uint32_t mipCount = pOutput->getMipCount();
+            for (uint32_t i = 0; i < mipCount; i++)
+            {
+                Fbo::SharedPtr pFbo = Fbo::create();
+                pFbo->attachColorTarget(pOutput, 0, i);
+
+                // Roughness to integrate for on current mip level
+                mpVars["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
+
+                pState->pushFbo(pFbo);
+                mpSpecularLDPass->execute(pContext);
+                pState->popFbo();
+            }
+
+            pContext->popGraphicsVars();
+            return pOutput;
+        }
+
+    private:
+
+        Texture::SharedPtr executeSingleMip(RenderContext* pContext, const FullScreenPass::UniquePtr& pPass, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
+        {
+            mpVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
+            mpVars["DataCB"]["gSampleCount"] = sampleCount;
+
+            // Output texture
+            Fbo::SharedPtr pFbo = FboHelper::create2D(size, size, Fbo::Desc().setColorTarget(0, format));
+
+            // Execute
+            GraphicsState::SharedPtr pState = pContext->getGraphicsState();
             pState->pushFbo(pFbo);
-            pIntegration->execute(pContext);
+            pContext->pushGraphicsVars(mpVars);
+            pPass->execute(pContext);
+            pContext->popGraphicsVars();
             pState->popFbo();
+
+            return pFbo->getColorTexture(0);
         }
 
-        pContext->popGraphicsVars();
-        return pOutput;
-    }
+
+        bool mInitialized = false;
+        FullScreenPass::UniquePtr mpDiffuseLDPass;
+        FullScreenPass::UniquePtr mpSpecularLDPass;
+        FullScreenPass::UniquePtr mpDFGPass;
+        GraphicsVars::SharedPtr mpVars;
+        Sampler::SharedPtr mpSampler;
+    };
+
+    static PreIntegration sIntegration;
 
     LightProbe::LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
         : mDiffSampleCount(diffSampleCount)
     {
+        if (sIntegration.isInitialized() == false)
+        {
+            assert(sLightProbeCount == 0);
+            sIntegration.init();
+            sSharedData.dfgTexture = sIntegration.integrateDFG(pContext, pTexture, size, ResourceFormat::RGBA16Float, 1024);
+            sSharedData.dfgSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
+        }
+
         pTexture->generateMips(pContext);
         mData.resources.origTexture = pTexture;
-        mData.resources.diffuseTexture = integrateDiffuse(pContext, pTexture, size, preFilteredFormat, diffSampleCount);
-        mData.resources.specularTexture = integrateSpecular(pContext, pTexture, 4096, preFilteredFormat, 1024);
-        mData.resources.dfgTexture = integrateDFG(pContext, pTexture, 128, preFilteredFormat, 1024);
-
-        // #TODO create these once
-        mData.resources.linearSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
-        mData.resources.pointSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
+        mData.resources.diffuseTexture = sIntegration.integrateDiffuseLD(pContext, pTexture, size, preFilteredFormat, diffSampleCount);
+        mData.resources.specularTexture = sIntegration.integrateSpecularLD(pContext, pTexture, 4096, preFilteredFormat, 1024);
+        sLightProbeCount++;
     }
 
-    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
+    LightProbe::~LightProbe()
+    {
+        sLightProbeCount--;
+        if (sLightProbeCount == 0)
+        {
+            sSharedData.dfgTexture = nullptr;
+            sSharedData.dfgSampler = nullptr;
+            sIntegration.release();
+        }
+    }
+
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, uint32_t size, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
     {
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown)
@@ -176,11 +182,11 @@ namespace Falcor
         {
             pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
         }
-        
-        return create(pContext, pTexture, size, diffSampleCount, preFilteredFormat);
+
+        return create(pContext, pTexture, size, diffSampleCount, specSampleCount, preFilteredFormat);
     }
 
-    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
     {
         return SharedPtr(new LightProbe(pContext, pTexture, size, diffSampleCount, preFilteredFormat));
     }
@@ -242,15 +248,19 @@ namespace Falcor
 
         assert(offset + kDataSize <= pBuffer->getSize());
 
-        // Set everything except for the material
+        // Set everything except for the resources
         pBuffer->setBlob(&mData, offset, kDataSize);
 
         // Bind the textures
         pVars->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
         pVars->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
-        pVars->setTexture(varName + ".resources.dfgTexture", mData.resources.dfgTexture);
         pVars->setTexture(varName + ".resources.specularTexture", mData.resources.specularTexture);
-        pVars->setSampler(varName + ".resources.pointSampler", mData.resources.pointSampler);
-        pVars->setSampler(varName + ".resources.linearSampler", mData.resources.linearSampler);
+        pVars->setSampler(varName + ".resources.sampler", mData.resources.sampler);
+    }
+
+    void LightProbe::setCommonIntoProgramVars(ProgramVars* pVars, const std::string& varName)
+    {
+        pVars->setTexture(varName + ".dfgTexture", sSharedData.dfgTexture);
+        pVars->setSampler(varName + ".dfgSampler", sSharedData.dfgSampler);
     }
 }

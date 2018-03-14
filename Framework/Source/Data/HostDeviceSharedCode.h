@@ -141,9 +141,7 @@ struct LightProbeResources
     Texture2D origTexture;      ///< The original texture
     Texture2D diffuseTexture;   ///< Texture containing pre-integrated diffuse (LD) term
     Texture2D specularTexture;  ///< Texture containing pre-integrated specular (LD) term
-    Texture2D dfgTexture;       ///< Texture containing shared pre-integrated (DFG) term
-    SamplerState pointSampler;
-    SamplerState linearSampler;
+    SamplerState sampler;
 };
 
 struct LightProbeData
@@ -153,6 +151,12 @@ struct LightProbeData
     float3 intensity    DEFAULTS(float3(1.0f));
 
     LightProbeResources resources;
+};
+
+struct LightProbeSharedResources
+{
+    Texture2D dfgTexture;       ///< Texture containing shared pre-integrated (DFG) term
+    SamplerState dfgSampler;
 };
 
 struct AreaLightResources

@@ -32,13 +32,10 @@ __import BRDF;
 SamplerState gSampler : register(s0);
 Texture2D gInputTex : register(t1);
 
-#ifndef _SAMPLE_COUNT
-#define _SAMPLE_COUNT 1024
-#endif
-
 cbuffer DataCB : register(b0)
 {
     float gRoughness;
+    uint32_t gSampleCount;
 }
 
 void generateBasis(float3 N, out float3 up, out float3 right, out float3 forward)
@@ -98,9 +95,9 @@ float smithGGX(float NdotL, float NdotV, float roughness)
 float4 integrateDiffuseLD(float3 N)
 {
     float3 accumulation = 0;
-    for (uint i = 0; i < _SAMPLE_COUNT; i++)
+    for (uint i = 0; i < gSampleCount; i++)
     {
-        float2 u = getHammersley(i, _SAMPLE_COUNT);
+        float2 u = getHammersley(i, gSampleCount);
         float3 L = importanceSampleCosDir(u, N);
         float NdotL = dot(N, L);
         if (NdotL > 0)
@@ -110,7 +107,7 @@ float4 integrateDiffuseLD(float3 N)
         }
     }
 
-    return float4(accumulation / float(_SAMPLE_COUNT), 1.0f);
+    return float4(accumulation / float(gSampleCount), 1.0f);
 }
 
 float4 integrateSpecularLD(float3 V, float3 N, float roughness)
@@ -125,9 +122,9 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
 
     float3 accBrdf = 0;
     float accBrdfWeight = 0;
-    for (uint i = 0; i < _SAMPLE_COUNT; i++)
+    for (uint i = 0; i < gSampleCount; i++)
     {
-        float2 u = getHammersley(i, _SAMPLE_COUNT);
+        float2 u = getHammersley(i, gSampleCount);
         float3 H = importanceSampleGGX(u, N, roughness);
         float3 L = reflect(-N, H);
         float NdotL = dot(N, L);
@@ -140,7 +137,7 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
             // D term GGX
             float pdf = (evalGGX(roughness, NdotH) * M_INV_PI) * NdotH / (4 * LdotH);
 
-            float omegaS = 1 / (_SAMPLE_COUNT * pdf);
+            float omegaS = 1 / (gSampleCount * pdf);
             float omegaP = 4.0 * M_PI / (6 * cubeWidth * cubeWidth);
             float mipLevel = clamp(0.5 * log2(omegaS / omegaP), 0, mipCount);
 
@@ -160,9 +157,9 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
     float NdotV = dot(N, V);
     float3 accumulation = 0;
 
-    for(uint i = 0; i < _SAMPLE_COUNT; i++)
+    for(uint i = 0; i < gSampleCount; i++)
     {
-        float2 u = getHammersley(i, _SAMPLE_COUNT);
+        float2 u = getHammersley(i, gSampleCount);
 
         // Specular GGX DFG integration (stored in RG)
         float3 H = importanceSampleGGX(u, N, roughness);
@@ -171,8 +168,7 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
         float LdotH = saturate(dot(L, H));
         float NdotL = saturate(dot(N, L));
 
-        // Our GGX includes division by (4 * NdotV), undo it
-        //float G = evalSmithGGX(NdotL, NdotV, roughness) * 4 * NdotV;
+        // #TODO Using our evalSmithGGX (modified to undo optimized terms) looks bad in certain cases.
         float G = smithGGX(NdotL, NdotV, roughness);
         if(NdotL > 0 && G > 0)
         {
@@ -194,7 +190,7 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
         }
     }
 
-    return float4(accumulation / float(_SAMPLE_COUNT), 1.0f);
+    return float4(accumulation / float(gSampleCount), 1.0f);
 }
 
 // DFG texture will be sampled using

@@ -43,13 +43,20 @@ float3 fresnelSchlick(float3 f0, float3 f90, float u)
     return f0 + (f90 - f0) * pow(1 - u, 5);
 }
 
+/** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
+*/
 float disneyDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRoughness)
 {
-    float fd90 = saturate(0.5 + 2 * LdotH * LdotH * linearRoughness);
+    float fd90 = 0.5 + 2 * LdotH * LdotH * linearRoughness;
     float fd0 = 1;
-    float lightScatter = fresnelSchlick(fd0, fd90, saturate(NdotL)).r;
-    float viewScatter = fresnelSchlick(fd0, fd90, saturate(NdotV)).r;
+    float lightScatter = fresnelSchlick(fd0, fd90, NdotL).r;
+    float viewScatter = fresnelSchlick(fd0, fd90, NdotV).r;
     return lightScatter * viewScatter;
+}
+
+float3 evalDiffuseDisneyBrdf(ShadingData sd, LightSample ls)
+{
+    return disneyDiffuseFresnel(sd.NdotV, ls.NdotL, ls.LdotH, sd.linearRoughness) * M_INV_PI * sd.diffuse.rgb;
 }
 
 /** Lambertian diffuse
@@ -57,19 +64,6 @@ float disneyDiffuseFresnel(float NdotV, float NdotL, float LdotH, float linearRo
 float3 evalDiffuseLambertBrdf(ShadingData sd, LightSample ls)
 {
     return sd.diffuse.rgb * (1 / M_PI);
-}
-
-/** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
-*/
-float3 evalDiffuseDisneyBrdf(ShadingData sd, LightSample ls)
-{
-    float fd90 = 0.5 + 2 * ls.LdotH * ls.LdotH * sd.linearRoughness;
-    float fd0 = 1;
-    float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
-    float viewScatter = fresnelSchlick(fd0, fd90, sd.NdotV).r;
-    return (viewScatter * lightScatter) * M_INV_PI * sd.diffuse.rgb;
-    
-    //return disneyDiffuseFresnel(sd.NdotV, ls.NdotL, ls.LdotH, sd.linearRoughness) * M_INV_PI * sd.diffuse.rgb;
 }
 
 /** Frostbites's diffuse term. Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
@@ -84,9 +78,6 @@ float3 evalDiffuseFrostbiteBrdf(ShadingData sd, LightSample ls)
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;
     float viewScatter = fresnelSchlick(fd0, fd90, sd.NdotV).r;
     return (viewScatter * lightScatter * energyFactor * M_INV_PI) * sd.diffuse.rgb;
-
-
-    //return (disneyDiffuseFresnel(sd.NdotV, ls.NdotL, ls.LdotH, sd.linearRoughness) * energyFactor * (1 / M_PI)) * sd.diffuse.rgb;
 }
 
 float3 evalDiffuseBrdf(ShadingData sd, LightSample ls)

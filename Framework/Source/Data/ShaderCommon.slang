@@ -37,6 +37,7 @@ cbuffer InternalPerFrameCB : register(b10)
     float3 internalPerFrameCBPad;
     LightData gLights[MAX_LIGHT_SOURCES];
     LightProbeData gLightProbe;
+    LightProbeSharedResources gProbeShared;
 };
 
 cbuffer InternalPerMeshCB
