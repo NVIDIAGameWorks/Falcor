@@ -439,7 +439,7 @@ namespace Falcor
 
     /** An object describing a variable
     */
-    class ReflectionVar
+    class ReflectionVar : public std::enable_shared_from_this<ReflectionVar>
     {
     public:
         using SharedPtr = std::shared_ptr<ReflectionVar>;
@@ -495,7 +495,7 @@ namespace Falcor
 
     /** A reflection object describing a parameter-bloc
     */
-    class ParameterBlockReflection
+    class ParameterBlockReflection : public std::enable_shared_from_this<ParameterBlockReflection>
     {
     public:
         using SharedPtr = std::shared_ptr<ParameterBlockReflection>;

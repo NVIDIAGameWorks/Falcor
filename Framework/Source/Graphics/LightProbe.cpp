@@ -88,7 +88,7 @@ namespace Falcor
         }
     }
 
-    uint32_t LightProbe::getType() const
+    uint32_t LightProbe::getTypeId() const
     {
         return mData.type;
     }

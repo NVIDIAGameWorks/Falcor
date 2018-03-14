@@ -37,6 +37,8 @@
 #include "API/Device.h"
 #include "glm/matrix.hpp"
 #include "Graphics/Material/MaterialSystem.h"
+#include "Graphics/Light.h"
+#include "Effects/Shadows/CSM.h"
 
 namespace Falcor
 {
@@ -115,8 +117,9 @@ namespace Falcor
             {
                 currentData.pCamera->setIntoConstantBuffer(pCB, sCameraDataOffset);
             }
+            pCB->setVariable("gCamVpAtLastCsmUpdate", camVpAtLastCsmUpdate);
         }
-
+        
         currentData.pVars->setParameterBlock("gLightEnv", currentData.pLightEnv->getParameterBlock());
 
         if (mpScene->getAreaLightCount() > 0)
@@ -361,6 +364,20 @@ namespace Falcor
         currentData.pModel = nullptr;
         currentData.drawID = 0;
         renderScene(currentData);
+    }
+
+    void SceneRenderer::runShadowPass(RenderContext * pContext, Camera * pCamera, Texture::SharedPtr pDepthBuffer)
+    {
+        camVpAtLastCsmUpdate = pCamera->getViewProjMatrix();
+        for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
+        {
+            auto light = mpScene->getLight(i);
+            if (light->getTypeId() & LightType_ShadowBit)
+            {
+                auto infLight = dynamic_cast<InfinitesimalLight*>(light.get());
+                infLight->getCsm()->setup(pContext, mpScene->getActiveCamera().get(), pDepthBuffer);
+            }
+        }
     }
 
     void SceneRenderer::setCameraControllerType(CameraControllerType type)

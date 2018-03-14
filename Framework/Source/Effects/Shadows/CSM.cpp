@@ -717,8 +717,10 @@ namespace Falcor
     {
         if(mControls.useMinMaxSdsm)
         {
-            reduceDepthSdsmMinMax(pRenderCtx, pCamera, pDepthBuffer);
-            return mSdsmData.sdsmResult;
+            //DEBUG:REMOVE THIS WHEN DONE
+            return vec2(0.0f, 0.001f);
+            //reduceDepthSdsmMinMax(pRenderCtx, pCamera, pDepthBuffer);
+            //return mSdsmData.sdsmResult;
         }
         else
         {
@@ -760,30 +762,42 @@ namespace Falcor
 
     void CascadedShadowMaps::setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName)
     {
+        ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
+        size_t offset = pCB->getVariableOffset(varName);
+        setDataIntoParameterBlock(pVars->getDefaultBlock().get(), pVars->getConstantBuffer("PerFrameCB"), offset, varName);
+    }
+
+    void CascadedShadowMaps::setDataIntoParameterBlock(ParameterBlock* pBlock, ConstantBuffer::SharedPtr pCB, size_t offset, const std::string & varName)
+    {
         switch (mCsmData.filterMode)
         {
         case CsmFilterPoint:
-            pVars->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
-            pVars->setSampler("gCsmCompareSampler", mShadowPass.pPointCmpSampler);
+            pBlock->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
+            pBlock->setSampler(varName + ".csmComparisonSampler", mShadowPass.pPointCmpSampler);
             break;
         case CsmFilterHwPcf:
         case CsmFilterFixedPcf:
         case CsmFilterStochasticPcf:
-            pVars->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
-            pVars->setSampler("gCsmCompareSampler", mShadowPass.pLinearCmpSampler);
+            pBlock->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
+            pBlock->setSampler(varName + ".csmComparisonSampler", mShadowPass.pLinearCmpSampler);
             break;
         case CsmFilterVsm:
         case CsmFilterEvsm2:
         case CsmFilterEvsm4:
-            pVars->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getColorTexture(0));
-            pVars->setSampler(varName + ".csmSampler", mShadowPass.pVSMTrilinearSampler);
+            pBlock->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getColorTexture(0));
+            pBlock->setSampler(varName + ".csmSampler", mShadowPass.pVSMTrilinearSampler);
             break;
-        }    
+        }
 
-        mCsmData.lightDir = glm::normalize(((DirectionalLight*)mpLight.get())->getWorldDirection());
-        ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
-        size_t offset = pCB->getVariableOffset(varName);
+        mCsmData.lightDir = glm::normalize(((InfinitesimalLight*)mpLight.get())->getWorldDirection());
         pCB->setBlob(&mCsmData, offset, sizeof(mCsmData));
+    }
+
+    void CascadedShadowMaps::setDataIntoParameterBlock(ParameterBlock* pBlock, const std::string & varName)
+    {
+        ConstantBuffer::SharedPtr pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName());
+        size_t offset = pCB->getVariableOffset(varName);
+        setDataIntoParameterBlock(pBlock, pCB, offset, varName);
     }
     
     Texture::SharedPtr CascadedShadowMaps::getShadowMap() const

@@ -45,6 +45,8 @@ namespace Falcor
 
     class SceneRenderer
     {
+    private:
+        glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     public:
         using SharedPtr = std::shared_ptr<SceneRenderer>;
         using SharedConstPtr = std::shared_ptr<const SceneRenderer>;
@@ -64,6 +66,8 @@ namespace Falcor
             Call update() before using this function otherwise model animation will not work
         */
         virtual void renderScene(RenderContext* pContext, Camera* pCamera);
+
+        virtual void runShadowPass(RenderContext* pContext, Camera* pCamera, Texture::SharedPtr pDepthBuffer);
 
         /** Update the camera and model animation.
             Should be called before renderScene(), unless not animations are used and you update the camera manually

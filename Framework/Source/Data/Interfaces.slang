@@ -14,6 +14,7 @@ struct VertexOut
     INTERPOLATION_MODE float4 prevPosH   : PREVPOSH;
     INTERPOLATION_MODE float2 lightmapC  : LIGHTMAPUV;
     float4 posH : SV_POSITION;
+    float shadowsDepthC : SYS_DEPTH;
 #ifdef _SINGLE_PASS_STEREO
     INTERPOLATION_MODE float4 rightEyePosS : NV_X_RIGHT;
     uint4 viewportMask : NV_VIEWPORT_MASK;
@@ -47,12 +48,14 @@ ShadingResult initShadingResult()
 struct SurfaceGeometry
 {
     float3    posW;         ///< Shading hit position in world space
+    float     NdotV;        // Unclamped, can be negative
+    float4    posH;
     float3    V;            ///< Direction to the eye at shading hit
     float3    N;            ///< Shading normal at shading hit
     float3    T;            ///< Shading tangent at shading hit
     float3    B;            ///< Shading bitangent at shading hit
     float2    uv;           ///< Texture mapping coordinates
-    float     NdotV;        // Unclamped, can be negative
+    float     shadowDepthC;
 };
 
 SurfaceGeometry initSurfaceGeometry()
@@ -108,7 +111,7 @@ interface IMaterial
 
 interface ILight
 {
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams globalLightParams);
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams globalLightParams);
 }
 
 struct LightEnv<TLight : ILight>
@@ -117,9 +120,15 @@ struct LightEnv<TLight : ILight>
     GlobalLightParams params;
 };
 
+ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILight>(ShadingPoint<TBxDF> p, LightEnv<TLight> lEnv)
+{
+    return lEnv.lights.evalLighting(p, lEnv.params);
+}
+
+// deprecated
 ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILight>(ShadingPoint<TBxDF> p, float shadowFactor, LightEnv<TLight> lEnv)
 {
-    return lEnv.lights.evalLighting(p, shadowFactor, lEnv.params);
+    return lEnv.lights.evalLighting(p, lEnv.params);
 }
 
 ShadingPoint<TMaterial.BxDF> prepareShadingData<TMaterial : IMaterial>(VertexOut v, TMaterial mat, float3 camPosW)

@@ -26,9 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#include "CsmData.h"
-
-SamplerComparisonState gCsmCompareSampler;
+#include "Effects/CsmData.h"
 
 int getCascadeCount(CsmData csmData)
 {
@@ -129,7 +127,7 @@ float2 applyEvsmExponents(float depth, float2 exponents)
 
 float csmFilterUsingHW(CsmData csmData, float2 texC, float depthRef, uint32_t cascadeIndex)
 {
-    float res = csmData.shadowMap.SampleCmpLevelZero(gCsmCompareSampler, float3(texC, cascadeIndex), depthRef).r;
+    float res = csmData.shadowMap.SampleCmpLevelZero(csmData.csmComparisonSampler, float3(texC, cascadeIndex), depthRef).r;
     return saturate(res);
 }
 
@@ -146,7 +144,7 @@ float csmFixedSizePcf(CsmData csmData, float2 texC, float depthRef, uint32_t cas
         for(int j = -halfKernelSize; j <= halfKernelSize; j++)
         {
             float2 sampleCrd = texC + float2(i, j) * pixelSize;
-            res += csmData.shadowMap.SampleCmpLevelZero(gCsmCompareSampler, float3(sampleCrd, cascadeIndex), depthRef).r;
+            res += csmData.shadowMap.SampleCmpLevelZero(csmData.csmComparisonSampler, float3(sampleCrd, cascadeIndex), depthRef).r;
         }
     }
 
@@ -188,7 +186,7 @@ float csmStochasticFilter(CsmData csmData, float2 texC, float depthRef, uint32_t
         int idx = int(i + 71 * pos.x + 37 * pos.y) & 3;// Temporal version: (csmData.temporalSampleCount*numStochasticSamples + i)&15;
         float2 texelOffset = poissonDisk[idx] * halfKernelSize;
         float2 sampleCrd = texelOffset + texC;
-        res += csmData.shadowMap.SampleCmpLevelZero(gCsmCompareSampler, float3(sampleCrd, cascadeIndex), depthRef).r;
+        res += csmData.shadowMap.SampleCmpLevelZero(csmData.csmComparisonSampler, float3(sampleCrd, cascadeIndex), depthRef).r;
     }
 
     return res / float(numStochasticSamples);
@@ -324,7 +322,6 @@ float calcShadowFactor(CsmData csmData, float cameraDepth, float3 posW, float2 p
     weight = (cameraDepth - csmData.cascadeRange[cascadeIndex].x) / csmData.cascadeRange[cascadeIndex].y;
     blend = weight < csmData.cascadeBlendThreshold;
 #endif
-
     if(blend)
     {       
         weight = smoothstep(0.0, csmData.cascadeBlendThreshold, weight);
@@ -337,6 +334,5 @@ float calcShadowFactor(CsmData csmData, float cameraDepth, float3 posW, float2 p
     {
         s = calcShadowFactorWithCascadeIdx(csmData, cascadeIndex, posW, posSxy);
     }
-
     return s;
 }

@@ -40,6 +40,8 @@ namespace Falcor
 {
     class ConstantBuffer;
     class Gui;
+    class Scene;
+    class CascadedShadowMaps;
 
     // Sequential ID used to note that something has been changed
     typedef int64_t VersionID;
@@ -89,7 +91,8 @@ namespace Falcor
 
         /** Get the light type
         */
-        virtual uint32_t getType() const = 0;
+        virtual uint32_t getTypeId() const = 0;
+        uint32_t getType() const { return getTypeId() & (~LightType_ShadowBit); }
 
         /** Name the light
         */
@@ -136,10 +139,25 @@ namespace Falcor
     class InfinitesimalLight : public Light, public std::enable_shared_from_this<InfinitesimalLight>
     {
     protected:
+        bool isShadowed = false;
+        std::unique_ptr<CascadedShadowMaps> mCsm;
         LightData mData;
         virtual glm::vec3& getIntensityData() { return mData.intensity; }
     public:
+        ~InfinitesimalLight();
+
+        /** Get the light's world-space direction.
+        */
+        const glm::vec3& getWorldDirection() const { return mData.dirW; }
+        void enableShadowMap(std::shared_ptr<Scene> pScene, int width, int height, int numCascades);
+        void disableShadowMap();
+        CascadedShadowMaps* getCsm() { return mCsm.get(); }
+        bool getShadowed() const { return isShadowed; }
         virtual vec3 getPosW() const override { return vec3(mData.posW.x, mData.posW.y, mData.posW.z); }
+        virtual void setIntoParameterBlock(ParameterBlock* pBlock, size_t offset, const std::string& varName) override;
+        void updateShadowParameters(ParameterBlock* pBlock, const std::string& varName);
+        virtual void renderUI(Gui* pGui, const char* group = nullptr);
+
     };
 
     /** Directional light source.
@@ -161,7 +179,7 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* group = nullptr) override;
 
-        virtual uint32_t getType() const { return LightDirectional; }
+        virtual uint32_t getTypeId() const { return LightDirectional | (isShadowed ? LightType_ShadowBit : 0); ; }
         
         /** Set the light's world-space direction.
         */
@@ -176,10 +194,6 @@ namespace Falcor
         */
         void setWorldParams(const glm::vec3& center, float radius);
 
-        /** Get the light's world-space direction.
-        */
-        const glm::vec3& getWorldDirection() const { return mData.dirW; }
-
         /** Get the light intensity.
         */
         const glm::vec3& getIntensity() const { return mData.intensity; }
@@ -192,7 +206,7 @@ namespace Falcor
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
 
-        virtual const char * getShaderTypeName() override { return "DirectionalLight"; };
+        virtual const char * getShaderTypeName() override { return isShadowed ? "DirectionalLight<CsmShadow> " : "DirectionalLight<NoShadow> "; };
 
     private:
 
@@ -221,7 +235,7 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* group = nullptr) override;
         
-        virtual uint32_t getType() const { return LightPoint; }
+        virtual uint32_t getTypeId() const { return LightPoint | (isShadowed ? LightType_ShadowBit : 0); }
 
         /** Get total light power (needed for light picking)
         */
@@ -273,7 +287,7 @@ namespace Falcor
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
 
-        virtual const char * getShaderTypeName() override { return "PointLight"; };
+        virtual const char * getShaderTypeName() override { return isShadowed?"PointLight<CsmShadow> " : "PointLight<NoShadow> "; };
     protected:
         void * getRawData() override { return &mData; }
     };
@@ -295,7 +309,7 @@ namespace Falcor
         AreaLight();
         ~AreaLight();
         
-        virtual uint32_t getType() const { return LightArea; }
+        virtual uint32_t getTypeId() const { return LightArea; }
 
         /** Get total light power (needed for light picking)
         */

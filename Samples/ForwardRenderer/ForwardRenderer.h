@@ -144,7 +144,6 @@ private:
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();
-    void initShadowPass();
     void initSSAO();
     void initLightProbe(const std::string& name);
     void initTAA(SampleCallbacks* pSample);

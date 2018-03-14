@@ -120,6 +120,6 @@ VertexOut defaultVS(VertexIn vIn)
     vOut.viewportMask = 0x00000001;
     vOut.renderTargetIndex = 0;
 #endif
-
+    vOut.shadowsDepthC = mul(float4(vOut.posW, 1), gCamVpAtLastCsmUpdate).z;
   return vOut;
 }

@@ -88,6 +88,8 @@ namespace Falcor
             \param[in] varName Name of the CsmData variable in the program
         */
         void setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName);
+        void setDataIntoParameterBlock(ParameterBlock* pBlock, ConstantBuffer::SharedPtr pCb, size_t offset, const std::string & varName);
+        void setDataIntoParameterBlock(ParameterBlock* pBlock, const std::string& varName);
 
         /** Set number of cascade partitions.
         */

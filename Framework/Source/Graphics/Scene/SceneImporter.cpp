@@ -324,6 +324,13 @@ namespace Falcor
                 }
                 pDirLight->setWorldDirection(direction);
             }
+            else if (key == SceneKeys::kLightShadow)
+            {
+                if (strcmp(value.GetString(), "true") == 0)
+                {
+                    pDirLight->enableShadowMap(Scene::SharedPtr(&mScene), 2048, 2048, 4);
+                }
+            }
             else
             {
                 return error("Invalid key found in directional light object. Key == " + key + ".");
@@ -388,6 +395,13 @@ namespace Falcor
                     return false;
                 }
                 pPointLight->setIntensity(intensity);
+            }
+            else if (key == SceneKeys::kLightShadow)
+            {
+                if (value.GetBool())
+                {
+                    pPointLight->enableShadowMap(Scene::SharedPtr(&mScene), 2048, 2048, 1);
+                }
             }
             else if(key == SceneKeys::kLightPos)
             {

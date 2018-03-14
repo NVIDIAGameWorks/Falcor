@@ -108,7 +108,7 @@ namespace Falcor
         static uint32_t getShaderStructSize() { return sizeof(LightProbeData); }
 
         virtual const char * getShaderTypeName() override { return "ProbeLight"; };
-        virtual uint32_t getType() const override;
+        virtual uint32_t getTypeId() const override;
         virtual void * getRawData() override { return &mData; }
 
     private:

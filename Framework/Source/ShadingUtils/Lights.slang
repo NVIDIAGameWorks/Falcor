@@ -29,13 +29,14 @@
 
 import Helpers;
 import Interfaces;
+import Effects.CascadedShadowMap;
 
 // work around compiler issue
 #define calcCommonLightProperties(geom, ls) \
-    float3 H = normalize(geom.V + ls.L); \
-    ls.NdotH = dot(geom.N, H); \
-    ls.NdotL = dot(geom.N, ls.L); \
-    ls.LdotH = dot(ls.L, H);
+    { float3 H = normalize(geom.V + ls.L); \
+      ls.NdotH = dot(geom.N, H); \
+      ls.NdotL = dot(geom.N, ls.L); \
+      ls.LdotH = dot(ls.L, H);   }
 
 /*
 void calcCommonLightProperties(SurfaceGeometry geom, inout LightSample ls)
@@ -188,27 +189,52 @@ LightSample evalLightProbe(SurfaceGeometry geom, LightProbeData probe, SamplerSt
     return evalLightProbeLinear2D(geom, probe, lightProbeSampler, roughness, linearRoughness);
 }
 
-struct PointLight : ILight
+interface IShadow
+{
+    float getShadowFactor(SurfaceGeometry geom);
+}
+
+struct NoShadow : IShadow
+{
+    float getShadowFactor(SurfaceGeometry geom)
+    {
+        return 1.0;
+    }
+};
+
+struct CsmShadow : IShadow
+{
+    CsmData csm;
+    float getShadowFactor(SurfaceGeometry geom)
+    {
+        return calcShadowFactor(csm, geom.shadowDepthC, geom.posW, geom.posH.xy/geom.posH.w);
+    }
+};
+
+
+struct PointLight<TShadow : IShadow> : ILight
 {
     LightData light;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
+    TShadow shadow;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         LightSample ls = evalPointLight(light, p.geom.posW);
         calcCommonLightProperties(p.geom, ls);
-
+        float shadowFactor = shadow.getShadowFactor(p.geom);
         /* Evaluate material with lighting attributes */
         return p.bxdf.eval(p.geom, ls, shadowFactor);
     }
 };
 
-struct DirectionalLight : ILight
+struct DirectionalLight<TShadow : IShadow> : ILight
 {
     LightData light;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
+    TShadow shadow;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         LightSample ls = evalDirectionalLight(light, p.geom.posW);
         calcCommonLightProperties(p.geom, ls);
-        
+        float shadowFactor = shadow.getShadowFactor(p.geom);
         /* Evaluate material with lighting attributes */
         return p.bxdf.eval(p.geom, ls, shadowFactor);
     }
@@ -218,7 +244,7 @@ struct ProbeLight : ILight
 {
     LightProbeData probeData;
 
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         return p.bxdf.evalProbe(p.geom, probeData, gParams);
     }
@@ -227,7 +253,7 @@ struct ProbeLight : ILight
 struct AmbientLight : ILight
 {
     float3 ambientLight;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, float shadowFactor, GlobalLightParams gParams)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         return p.bxdf.evalAmbient(ambientLight);
     }
@@ -236,12 +262,12 @@ struct AmbientLight : ILight
 struct LightArray<TLight:ILight, let N:int> : ILight
 {   
     TLight lights[N];
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor, GlobalLightParams gParams)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, GlobalLightParams gParams)
     {
         ShadingResult rs = initShadingResult();
         for (int i = 0; i < N; i++)
         {
-            ShadingResult r = lights[i].evalLighting(shAttr, shadowFactor, gParams);
+            ShadingResult r = lights[i].evalLighting(shAttr, gParams);
             rs.diffuse += r.diffuse;
             rs.specular += r.specular;
             rs.color += r.color;
@@ -255,11 +281,11 @@ struct LightPair<TLight1 : ILight, TLight2 : ILight> : ILight
 {
     TLight1 light1;
     TLight2 light2;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, float shadowFactor, GlobalLightParams gParams)
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, GlobalLightParams gParams)
     {
         ShadingResult rs = initShadingResult();
-        ShadingResult r1 = light1.evalLighting(shAttr, shadowFactor, gParams);
-        ShadingResult r2 = light2.evalLighting(shAttr, shadowFactor, gParams);
+        ShadingResult r1 = light1.evalLighting(shAttr, gParams);
+        ShadingResult r2 = light2.evalLighting(shAttr, gParams);
         rs.diffuse = r1.diffuse + r2.diffuse;
         rs.specular = r1.specular + r2.specular;
         rs.color = r1.color + r2.color;

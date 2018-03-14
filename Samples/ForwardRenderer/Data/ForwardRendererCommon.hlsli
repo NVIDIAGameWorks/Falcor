@@ -34,7 +34,6 @@ import Interfaces;
 layout(binding = 0) cbuffer PerFrameCB : register(b0)
 {
     CsmData gCsmData;
-    float4x4 camVpAtLastCsmUpdate;
     float2 gRenderTargetDim;
     float gOpacityScale;
 };

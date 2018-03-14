@@ -143,7 +143,7 @@
 #define LightPoint                  0    ///< Point light source, can be a spot light if its opening angle is < 2pi
 #define LightDirectional            1    ///< Directional light source
 #define LightArea                   2    ///< Area light source, potentially with arbitrary geometry
-
+#define LightType_ShadowBit         128
 #define MAX_LIGHT_SOURCES 16
 
 // To bind area lights, use this macro to declare the constant buffer in your shader

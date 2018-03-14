@@ -152,8 +152,9 @@ namespace Falcor
         return SharedPtr(new ParameterBlock(pReflection, createBuffers));
     }
 
-    ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers) : mpReflector(pReflection)
-    {   
+    ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers)
+    {
+        mpReflector = pReflection;
         // SLANG-INTEGRATION
         // when creating parameter blocks, we also store the element type of the parameter block
         auto paramBlockType = pReflection->getType();
@@ -163,8 +164,6 @@ namespace Falcor
                 typeName = structType->getName();
             else if (auto genericType = paramBlockType->asGenericType())
                 typeName = genericType->name;
-            if (typeName == "TMaterial")
-                printf("break");
         }
         // Initialize the resource vectors
         const auto& setLayouts = pReflection->getDescriptorSetLayouts();

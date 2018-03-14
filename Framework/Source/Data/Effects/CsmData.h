@@ -64,6 +64,7 @@ struct CsmData
 #ifndef HOST_CODE
     Texture2DArray shadowMap;
     SamplerState csmSampler;
+    SamplerComparisonState csmComparisonSampler;
 #endif
 };
 

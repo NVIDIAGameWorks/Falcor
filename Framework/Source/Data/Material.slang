@@ -134,12 +134,15 @@ struct StandardMaterial : IMaterial
         alphaTest(materialData.flags, diffuse.a, materialData.alphaThreshold, v.posW);
 
         geom.posW = v.posW;
+        geom.posH = v.posH;
         geom.uv = v.texC;
         geom.V = normalize(camPosW - v.posW);
         geom.N = normalize(v.normalW);
 
         geom.B = normalize(v.bitangentW - geom.N * (dot(v.bitangentW, geom.N)));
         geom.T = normalize(cross(geom.B, geom.N));
+        
+        geom.shadowDepthC = v.shadowsDepthC;
 
         // Sample the rest of the texture
         float4 spec = sampleTexture(materialData.resources.specular, materialData.resources.samplerState, v.texC, materialData.specular, EXTRACT_SPECULAR_TYPE(materialData.flags));

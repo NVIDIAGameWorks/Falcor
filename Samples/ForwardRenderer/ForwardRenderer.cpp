@@ -75,14 +75,14 @@ void ForwardRenderer::initLightingPass()
     mLightingPass.pAlphaBlendBS = BlendState::create(bsDesc);
 }
 
-void ForwardRenderer::initShadowPass()
-{
-    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
-    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm2);
-    mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
-    mShadowPass.pCsm->setVsmMaxAnisotropy(4);
-    mShadowPass.pCsm->setEvsmBlur(7, 3);
-}
+//void ForwardRenderer::initShadowPass()
+//{
+//    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
+//    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm2);
+//    mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
+//    mShadowPass.pCsm->setVsmMaxAnisotropy(4);
+//    mShadowPass.pCsm->setEvsmBlur(7, 3);
+//}
 
 void ForwardRenderer::initSSAO()
 {
@@ -142,6 +142,7 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
         pDirLight->setWorldDirection(vec3(-0.189f, -0.861f, -0.471f));
         pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
         pDirLight->setName("DirLight");
+        pDirLight->enableShadowMap(pScene, 2048, 2048, 6);
         pScene->addLight(pDirLight);
     }
 
@@ -152,7 +153,6 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
     setActiveCameraAspectRatio(pSample->getCurrentFbo()->getWidth(), pSample->getCurrentFbo()->getHeight());
     initDepthPass();
     initLightingPass();
-    initShadowPass();
     initSSAO();
     initTAA(pSample);
 
@@ -327,12 +327,6 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
     pCB["gOpacityScale"] = mOpacityScale;
 
-    if (mControls[ControlID::EnableShadows].enabled)
-    {
-        pCB["camVpAtLastCsmUpdate"] = mShadowPass.camVpAtLastCsmUpdate;
-        mShadowPass.pCsm->setDataIntoGraphicsVars(mLightingPass.pVars, "gCsmData");
-    }
-
     if (mAAMode == AAMode::TAA)
     {
         pContext->clearFbo(mTAA.getActiveFbo().get(), vec4(0.0, 0.0, 0.0, 0.0), 1, 0, FboAttachmentType::Color);
@@ -380,9 +374,7 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
     PROFILE(shadowPass);
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
-        mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
-        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
-        pContext->flush();
+        mpSceneRenderer->runShadowPass(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mpDepthPassFbo->getDepthStencilTexture());
     }
 }
 

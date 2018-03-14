@@ -36,6 +36,8 @@
 #include "Data/VertexAttrib.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/TextureHelper.h"
+#include "Effects/Shadows/CSM.h"
+#include "Graphics/Scene/Scene.h"
 #include "API/Device.h"
 #include <sstream>
 namespace Falcor
@@ -74,7 +76,7 @@ namespace Falcor
         pCb->setBlob(getRawData(), offset, kDataSize);
     }
 
-    void Light::setIntoParameterBlock(ParameterBlock * pBlock, size_t offset, const std::string & varName)
+    void Light::setIntoParameterBlock(ParameterBlock* pBlock, size_t offset, const std::string & varName)
     {
         auto pCb = pBlock->getConstantBuffer(pBlock->getReflection()->getName());
 
@@ -182,7 +184,7 @@ namespace Falcor
             {
                 setWorldDirection(mData.dirW);
             }
-            Light::renderUI(pGui);
+            InfinitesimalLight::renderUI(pGui);
             if (group)
             {
                 pGui->endGroup();
@@ -249,7 +251,7 @@ namespace Falcor
             {
                 setPenumbraAngle(mData.penumbraAngle);
             }
-            Light::renderUI(pGui);
+            InfinitesimalLight::renderUI(pGui);
 
             if (group)
             {
@@ -660,7 +662,7 @@ namespace Falcor
                 env->lightTypes.clear();
                 for (auto light : mpLights)
                 {
-                    auto lightType = light->getType();
+                    auto lightType = light->getTypeId();
                     auto findRs = env->lightTypes.find(lightType);
                     if (findRs == env->lightTypes.end())
                     {
@@ -726,7 +728,6 @@ namespace Falcor
                 {
                     l->setIntoParameterBlock(mpParamBlock.get(), i * Light::getShaderStructSize() + lt.second.cbOffset,
                         lt.second.variableName + ".lights[" + std::to_string(i) + "]");
-
                     i++;
                 }
             }
@@ -736,6 +737,24 @@ namespace Falcor
             if (sAmbientLightOffset != ConstantBuffer::kInvalidOffset)
             {
                 pCB->setVariable(sAmbientLightOffset, ambientIntensity);
+            }
+        }
+        else
+        {
+            // update shadow map parameters
+            for (auto & lt : env->lightTypes)
+            {
+                int i = 0;
+                for (auto l : lt.second.lights)
+                {
+                    if ((l->getTypeId() & LightType_ShadowBit))
+                    {
+                        auto infLight = dynamic_cast<InfinitesimalLight*>(l.get());
+                        infLight->updateShadowParameters(mpParamBlock.get(), 
+                            lt.second.variableName + ".lights[" + std::to_string(i) + "]");
+                    }
+                    i++;
+                }
             }
         }
         return mpParamBlock;
@@ -779,5 +798,49 @@ namespace Falcor
             mVersionID++;
         }
         return mVersionID;
+    }
+    InfinitesimalLight::~InfinitesimalLight()
+    {
+    }
+    void InfinitesimalLight::enableShadowMap(Scene::SharedPtr pScene, int width, int height, int numCascades)
+    {
+        isShadowed = true;
+        mCsm = CascadedShadowMaps::create(width, height, Light::SharedPtr(this), pScene, numCascades);
+
+    }
+    void InfinitesimalLight::disableShadowMap()
+    {
+        isShadowed = false;
+        mCsm = nullptr;
+    }
+    void InfinitesimalLight::setIntoParameterBlock(ParameterBlock * pBlock, size_t offset, const std::string & varName)
+    {
+        Light::setIntoParameterBlock(pBlock, offset, varName);
+        if (mCsm)
+        {
+            mCsm->setDataIntoParameterBlock(pBlock, varName + ".shadow.csm");
+        }
+    }
+    void InfinitesimalLight::updateShadowParameters(ParameterBlock * pBlock, const std::string & varName)
+    {
+        if (mCsm)
+        {
+            mCsm->setDataIntoParameterBlock(pBlock, varName + ".shadow.csm");
+        }
+    }
+    void InfinitesimalLight::renderUI(Gui * pGui, const char * group)
+    {
+        if (!group || pGui->beginGroup(group))
+        {
+            Light::renderUI(pGui, nullptr);
+            if (mCsm)
+            {
+                mCsm->renderUi(pGui, "shadow");
+            }
+            if (group)
+            {
+                pGui->endGroup();
+            }
+        }
     }
 }
