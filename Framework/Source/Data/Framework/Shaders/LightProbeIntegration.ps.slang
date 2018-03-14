@@ -43,7 +43,7 @@ cbuffer DataCB : register(b0)
 
 void generateBasis(float3 N, out float3 up, out float3 right, out float3 forward)
 {
-    up = abs(N.z) < 0.999f ? float3(0, 0, 1) : float3(1, 0, 0);
+    up = abs(N.z) < 0.999999f ? float3(0, 0, 1) : float3(1, 0, 0);
     right = normalize(cross(up, N));
     forward = cross(N, right);
 }
@@ -172,7 +172,7 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
         float NdotL = saturate(dot(N, L));
 
         // Our GGX includes division by (4 * NdotV), undo it
-        //float G = evalSmithGGX(NdotL, 1, roughness) * 4 * NdotV;
+        //float G = evalSmithGGX(NdotL, NdotV, roughness) * 4 * NdotV;
         float G = smithGGX(NdotL, NdotV, roughness);
         if(NdotL > 0 && G > 0)
         {
@@ -185,12 +185,12 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
         // Disney Diffuse integration (stored in B)
         u = frac(u + 0.5);
         L = importanceSampleCosDir(u, N);
-        NdotL = dot(N, L);
+        NdotL = saturate(dot(N, L));
         if(NdotL > 0)
         {
             LdotH = saturate(dot(L, normalize(V + L)));
             NdotV = saturate(dot(N, V));
-            accumulation.b += disneyDiffuseFresnel(NdotV, NdotL, LdotH, roughness);
+            accumulation.b += disneyDiffuseFresnel(NdotV, NdotL, LdotH, sqrt(roughness));
         }
     }
 
@@ -225,8 +225,7 @@ float4 main(float2 texC : TEXCOORD, float4 posS : SV_POSITION) : SV_TARGET0
 #endif
 
 #ifdef _INTEGRATE_SPECULAR_LD
-    // #TODO WHERE DOES THE ROUGHNESS COME FROM. RENDER TARGET MIP LEVEL?
-    return integrateSpecularLD(dir, dir, 0.1);
+    return integrateSpecularLD(dir, dir, max(0.01, gRoughness));
 #endif
 
 #endif // _INTEGRATE_DFG else

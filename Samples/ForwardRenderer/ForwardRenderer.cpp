@@ -235,7 +235,7 @@ void ForwardRenderer::updateLightProbe(const LightProbe::SharedPtr& pLight)
 
     pLight->setRadius(pScene->getRadius());
 
-    pLight->setSampler(mpSceneSampler);
+    //pLight->setSampler(mpSceneSampler);
     pScene->addLightProbe(pLight);
 
     mLightProbeDiffSampleCount = pLight->getDiffSampleCount();

@@ -55,7 +55,7 @@ namespace Falcor
             \param[in] diffSampleCount How many times to sample when generating diffuse texture.
             \param[in] preFilteredFormat The format of the pre-filtered texture
             */
-        static SharedPtr create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat = ResourceFormat::Unknown, uint32_t size = 128, uint32_t diffSampleCount = 1024, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+        static SharedPtr create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat = ResourceFormat::Unknown, uint32_t size = 128, uint32_t diffSampleCount = 2048, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
         /** Create a light-probe from a texture
             \param[in] pContext The current render context to be used for pre-integration.
@@ -64,7 +64,7 @@ namespace Falcor
             \param[in] diffSampleCount How many times to sample when generating diffuse texture.
             \param[in] preFilteredFormat The format of the pre-filtered texture
         */
-        static SharedPtr create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size = 128, uint32_t diffSampleCount = 1024, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+        static SharedPtr create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size = 128, uint32_t diffSampleCount = 2048, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
@@ -102,11 +102,13 @@ namespace Falcor
 
         /** Attach a sampler to the light probe
         */
-        void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.samplerState = pSampler; }
+        void setPointSampler(const Sampler::SharedPtr& pSampler) { mData.resources.pointSampler = pSampler; }
+
+        void setLinearSampler(const Sampler::SharedPtr& pSampler) { mData.resources.linearSampler = pSampler; }
 
         /** Get the sampler state
         */
-        const Sampler::SharedPtr& getSampler() const { return mData.resources.samplerState; }
+        const Sampler::SharedPtr& getSampler() const { return mData.resources.linearSampler; }
 
         /** Get the light probe's source texture.
         */

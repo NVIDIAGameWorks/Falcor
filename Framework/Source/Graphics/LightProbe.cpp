@@ -137,7 +137,7 @@ namespace Falcor
             pFbo->attachColorTarget(pOutput, 0, i);
 
             // Roughness to integrate for on current mip level
-            pVars["DataCB"]["gRoughness"] = float(i) / float(mipCount);
+            pVars["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
 
             pState->pushFbo(pFbo);
             pIntegration->execute(pContext);
@@ -151,10 +151,15 @@ namespace Falcor
     LightProbe::LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
         : mDiffSampleCount(diffSampleCount)
     {
+        pTexture->generateMips(pContext);
         mData.resources.origTexture = pTexture;
         mData.resources.diffuseTexture = integrateDiffuse(pContext, pTexture, size, preFilteredFormat, diffSampleCount);
-        mData.resources.specularTexture = integrateSpecular(pContext, pTexture, size, preFilteredFormat, 1024);
+        mData.resources.specularTexture = integrateSpecular(pContext, pTexture, 4096, preFilteredFormat, 1024);
         mData.resources.dfgTexture = integrateDFG(pContext, pTexture, 128, preFilteredFormat, 1024);
+
+        // #TODO create these once
+        mData.resources.linearSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
+        mData.resources.pointSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
     }
 
     LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, uint32_t size, uint32_t diffSampleCount, ResourceFormat preFilteredFormat)
@@ -245,6 +250,7 @@ namespace Falcor
         pVars->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
         pVars->setTexture(varName + ".resources.dfgTexture", mData.resources.dfgTexture);
         pVars->setTexture(varName + ".resources.specularTexture", mData.resources.specularTexture);
-        pVars->setSampler(varName + ".resources.samplerState", mData.resources.samplerState);
+        pVars->setSampler(varName + ".resources.pointSampler", mData.resources.pointSampler);
+        pVars->setSampler(varName + ".resources.linearSampler", mData.resources.linearSampler);
     }
 }

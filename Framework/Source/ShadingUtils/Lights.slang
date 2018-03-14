@@ -170,26 +170,30 @@ float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
         uv = dirToSphericalCrd(normalize(intersectPosW));
     }
 
-    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.samplerState, uv, 0).rgb;
-    float diffF = probe.resources.dfgTexture.SampleLevel(probe.resources.samplerState, float2(sd.NdotV, sd.roughness), 0).z;
+    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.linearSampler, uv, 0).rgb;
+    float diffF = probe.resources.dfgTexture.SampleLevel(probe.resources.pointSampler, float2(sd.NdotV, sd.roughness), 0).z;
 
     return diffuseLighting * diffF;
 }
 
 float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
 {
-    float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.roughness);
+    float dfgWidth, dfgHeight;
+    probe.resources.dfgTexture.GetDimensions(dfgWidth, dfgHeight);
 
     float width, height, mipCount;
-    probe.resources.dfgTexture.GetDimensions(0, width, height, mipCount);
+    probe.resources.specularTexture.GetDimensions(0, width, height, mipCount);
 
-    float NdotV = max(sd.NdotV, 0.5 / width);
-    float mipLevel = linearRoughnessToLod(sd.linearRoughness, mipCount);
+    float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.roughness);
+    float NdotV = max(sd.NdotV, 0.5 / dfgWidth);
+
+    //float mipLevel = sd.roughness * (mipCount - 1);
+    float mipLevel = linearRoughnessToLod(sd.roughness, mipCount);
     float2 uv = dirToSphericalCrd(dominantDir);
+    float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.linearSampler, uv, mipLevel).rgb;
 
-    float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.samplerState, uv, mipLevel).rgb;
-    float2 dfg = probe.resources.dfgTexture.SampleLevel(probe.resources.samplerState, float2(NdotV, sd.roughness), 0).xy;
-
+    float2 dfg = probe.resources.dfgTexture.SampleLevel(probe.resources.pointSampler, float2(NdotV, sd.roughness), 0).xy;
+    
     // ld * (f0 * Gv * (1 - Fc)) + (f90 * Gv * Fc)
     return ld * (sd.specular * dfg.x + dfg.y);
 }
@@ -203,20 +207,23 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
     // Calculate the reflection vector
     ls.L = reflect(-sd.V, sd.N);
 
-    // Get the mip-level count
-    uint h, w, mipCount;
-    probe.resources.origTexture.GetDimensions(0, h, w, mipCount);
-
     // Evaluate diffuse component
     ls.diffuse = evalLightProbeDiffuse(probe, sd);
 
     // Get the specular component
     ls.specular = evalLightProbeSpecular(probe, sd, ls.L);
 
+    // Get the mip-level count
+    //uint h, w, mipCount;
+    //probe.resources.origTexture.GetDimensions(0, h, w, mipCount);
+    //
+    //float2 diffCrd = dirToSphericalCrd(ls.L);
+    //ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.linearSampler, diffCrd, mipCount - 2).rgb;
+    //
     //float3 specDir = getSpecularDominantDir(sd.N, ls.L, sd.roughness);
     //float2 specCrd = dirToSphericalCrd(specDir);
     //float lod = linearRoughnessToLod(sd.linearRoughness, mipCount);
-    //ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, specCrd, lod).rgb;
+    //ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.linearSampler, specCrd, lod).rgb;
 
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
