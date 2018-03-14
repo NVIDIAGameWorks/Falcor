@@ -64,8 +64,8 @@ namespace Falcor
         class DefineList : public std::map<std::string, std::string>
         {
         public:
-            void add(const std::string& name, const std::string& val = "") { (*this)[name] = val; }
-            void remove(const std::string& name) {(*this).erase(name); }
+            DefineList& add(const std::string& name, const std::string& val = "") { (*this)[name] = val; return *this; }
+            DefineList& remove(const std::string& name) { (*this).erase(name); return *this; }
         };
 
         /** create a shader object

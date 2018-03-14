@@ -38,6 +38,9 @@ namespace Falcor
 
         // Not supported in exporter yet
         static const char* kLightProbes = "light_probes";
+        static const char* kLightProbeRadius = "radius";
+        static const char* kLightProbeDiffSamples = "diff_samples";
+        static const char* kLightProbeSpecSamples = "spec_samples";
 
         // Keys for values in older scene versions that are not exported anymore
         static const char* kCamFovY = "fovY";

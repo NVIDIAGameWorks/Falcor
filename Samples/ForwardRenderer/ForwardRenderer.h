@@ -42,6 +42,7 @@ public:
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) override;
+
     //Testing
     void onInitializeTesting(SampleCallbacks* pSample) override;
     void onBeginTestFrame(SampleTest* pSampleTest) override;
@@ -200,7 +201,6 @@ private:
     float mOpacityScale = 0.5f;
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;
-    uint32_t mLightProbeDiffSampleCount = 1024;
     SamplePattern mTAASamplePattern = SamplePattern::Halton;
     void applyAaMode(SampleCallbacks* pSample);
     std::vector<ProgramControl> mControls;

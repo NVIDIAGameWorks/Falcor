@@ -55,7 +55,8 @@ namespace Falcor
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
-    const char* SceneRenderer::kLightProbeVarName = "gLightProbe";
+    const char* SceneRenderer::kProbeVarName = "gLightProbe";
+    const char* SceneRenderer::kProbeSharedVarName = "gProbeShared";
     const char* SceneRenderer::kAreaLightCbName = "InternalAreaLightCB";
 
 
@@ -138,7 +139,8 @@ namespace Falcor
             if (mpScene->getLightProbeCount() > 0)
             {
                 // #TODO Support multiple light probes
-                mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kLightProbeVarName);
+                LightProbe::setCommonIntoProgramVars(currentData.pVars, kProbeSharedVarName);
+                mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kProbeVarName);
             }
         }
 

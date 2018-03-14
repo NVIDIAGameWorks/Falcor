@@ -499,6 +499,9 @@ namespace Falcor
 
             vec3 position;
             glm::vec3 intensity(1.0f);
+            float radius = -1;
+            uint32_t diffuseSamples = LightProbe::kDefaultDiffSamples;
+            uint32_t specSamples = LightProbe::kDefaultSpecSamples;
 
             for (auto m = lightProbe.MemberBegin(); m < lightProbe.MemberEnd(); m++)
             {
@@ -518,9 +521,36 @@ namespace Falcor
                         return false;
                     }
                 }
+                else if (key == SceneKeys::kLightProbeRadius)
+                {
+                    if (value.IsUint() == false)
+                    {
+                        error("Light Probe radius must be a float.");
+                        return false;
+                    }
+                    radius = float(value.GetDouble());
+                }
+                else if (key == SceneKeys::kLightProbeDiffSamples)
+                {
+                    if (value.IsUint() == false)
+                    {
+                        error("Light Probe diffuse sample count must be a uint.");
+                        return false;
+                    }
+                    diffuseSamples = value.GetUint();
+                }
+                else if (key == SceneKeys::kLightProbeSpecSamples)
+                {
+                    if (value.IsUint() == false)
+                    {
+                        error("Light Probe specular sample count must be a uint.");
+                        return false;
+                    }
+                    specSamples = value.GetUint();
+                }
             }
 
-            LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext().get(), actualPath, true, true, ResourceFormat::RGBA16Float);
+            LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext().get(), actualPath, true, ResourceFormat::RGBA16Float, LightProbe::kDefaultDiffSize, LightProbe::kDefaultSpecSize, diffuseSamples, specSamples);
             pLightProbe->setPosW(position);
             pLightProbe->setIntensity(intensity);
             mScene.addLightProbe(pLightProbe);

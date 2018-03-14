@@ -68,47 +68,34 @@ namespace Falcor
         {
             mExtentsDirty = false;
 
-            mRadius = 0.f;
-            float k = 0.f;
-            mCenter = vec3(0, 0, 0);
+            BoundingBox sceneAABB;
+            bool first = true;
             for (uint32_t i = 0; i < getModelCount(); ++i)
             {
-                const auto& model = getModel(i);
-                const float r = model->getRadius();
-                const vec3 c = model->getCenter();
                 for (uint32_t j = 0; j < getModelInstanceCount(i); ++j)
                 {
-                    const auto& inst = getModelInstance(i, j);
-                    const vec3 instC = vec3(vec4(c, 1.f) * inst->getTransformMatrix());
-                    const vec3 scaling = inst->getScaling();
-                    const float instR = r * max(scaling.x, max(scaling.y, scaling.z));
-
-                    if (k == 0.f)
+                    const auto& pInst = getModelInstance(i, j);
+                    if (first)
                     {
-                        mCenter = instC;
-                        mRadius = instR;
+                        sceneAABB = pInst->getBoundingBox();
+                        first = false;
                     }
                     else
                     {
-                        vec3 dir = instC - mCenter;
-                        if (length(dir) > 1e-6f)
-                            dir = normalize(dir);
-                        vec3 a = mCenter - dir * mRadius;
-                        vec3 b = instC + dir * instR;
-
-                        mCenter = (a + b) * 0.5f;
-                        mRadius = length(a - b);
+                        sceneAABB = BoundingBox::fromUnion(sceneAABB, pInst->getBoundingBox());
                     }
-                    k++;
                 }
+
+                mCenter = sceneAABB.center;
+                mRadius = length(sceneAABB.extent);
             }
 
             // Update light extents
-            for (auto& light : mpLights)
+            for (auto& pLight : mpLights)
             {
-                if (light->getType() == LightDirectional)
+                if (pLight->getType() == LightDirectional)
                 {
-                    auto pDirLight = std::dynamic_pointer_cast<DirectionalLight>(light);
+                    auto pDirLight = std::dynamic_pointer_cast<DirectionalLight>(pLight);
                     pDirLight->setWorldParams(getCenter(), getRadius());
                 }
             }
@@ -351,9 +338,9 @@ namespace Falcor
             model[0]->getObject()->bindSamplerToMaterials(pSampler);
         }
 
-        for (auto& probe : mpLightProbes)
-        {
-            probe->setSampler(pSampler);
-        }
+        //for (auto& probe : mpLightProbes)
+        //{
+        //    probe->setSampler(pSampler);
+        //}
     }
 }
