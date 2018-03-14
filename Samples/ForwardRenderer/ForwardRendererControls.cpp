@@ -52,8 +52,6 @@ void ForwardRenderer::initControls()
     mControls[ControlID::EnableTransparency] = { false, false, "_ENABLE_TRANSPARENCY" };
     mControls[ControlID::EnableSSAO] = { true, false, "" };
     mControls[ControlID::VisualizeCascades] = { false, false, "_VISUALIZE_CASCADES" };
-    mControls[ControlID::DebugLightProbe] = { false, false, "" };
-    mControls[ControlID::DebugOrig] = { false, false, "" };
 
     for (uint32_t i = 0 ; i < ControlID::Count ; i++)
     {
@@ -257,28 +255,6 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             Scene::SharedPtr pScene = mpSceneRenderer->getScene();
             if (pScene->getLightProbeCount() > 0)
             {
-                // Debug Code
-                pGui->addCheckBox("Debug Light Probe", mControls[ControlID::DebugLightProbe].enabled);
-                pGui->addCheckBox("Show Orig", mControls[ControlID::DebugOrig].enabled);
-
-                const LightProbe::SharedPtr& pLight = pScene->getLightProbe(0);
-
-                std::string sampleText = "Diffuse Sample Count: " + std::to_string(pLight->getDiffSampleCount());
-                pGui->addText(sampleText.c_str());
-                int32_t samples = int32_t(mLightProbeDiffSampleCount);
-                if (pGui->addIntVar("", samples, 1, 128 * 1024))
-                {
-                    mLightProbeDiffSampleCount = uint32_t(samples);
-                }
-
-                if (pGui->addButton("Apply", true))
-                {
-                    if (mLightProbeDiffSampleCount != pLight->getDiffSampleCount())
-                    {
-                        updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), pLight->getOrigTexture(), 128, mLightProbeDiffSampleCount));
-                    }
-                }
-
                 if (pGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
