@@ -250,7 +250,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string filename;
                 if (openFileDialog(kImageFileString, filename))
                 {
-                    updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, true, ResourceFormat::RGBA16Float, 128, 1024));
+                    updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float));
                 }
             }
 

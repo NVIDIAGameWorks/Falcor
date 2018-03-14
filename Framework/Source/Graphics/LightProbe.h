@@ -44,29 +44,34 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const LightProbe>;
 
         static const uint32_t kDataSize = sizeof(LightProbeData) - sizeof(LightProbeResources);
+        static const uint32_t kDefaultDiffSamples = 1024;
+        static const uint32_t kDefaultSpecSamples = 1024;
+        static const uint32_t kDefaultDiffSize = 128;
+        static const uint32_t kDefaultSpecSize = 1024;
 
         /** Create a light-probe from a file
             \param[in] pContext The current render context to be used for pre-integration.
             \param[in] filename Texture filename
             \param[in] loadAsSrgb Indicates whether the source texture is in sRGB or linear color space
-            \param[in] generateMips Generate mip-chain for the unfiltered texture
             \param[in] overrideFormat Override the format of the original texture. ResourceFormat::Unknown means keep the original format. Useful in cases where generateMips is true, but the original format doesn't support automatic mip generation
-            \param[in] size The width and height of the pre-filtered texture. We always create a square texture.
+            \param[in] diffSize The width and height of the pre-filtered diffuse texture. We always create a square texture.
+            \param[in] specSize The width and height of the pre-filtered specular texture. We always create a square texture.
             \param[in] diffSampleCount How many times to sample when generating diffuse texture.
             \param[in] specSampleCount How many times to sample when generating specular texture.
             \param[in] preFilteredFormat The format of the pre-filtered texture
         */
-        static SharedPtr create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat = ResourceFormat::Unknown, uint32_t size = 128, uint32_t diffSampleCount = 1024, uint32_t specSampleCount = 2048, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+        static SharedPtr create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat = ResourceFormat::Unknown, uint32_t diffSize = kDefaultDiffSize, uint32_t specSize = kDefaultSpecSize, uint32_t diffSampleCount = kDefaultDiffSamples, uint32_t specSampleCount = kDefaultSpecSamples, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
         /** Create a light-probe from a texture
             \param[in] pContext The current render context to be used for pre-integration.
             \param[in] pTexture The source texture
-            \param[in] size The width and height of the pre-filtered texture. We always create a square texture.
+            \param[in] diffSize The width and height of the pre-filtered diffuse texture. We always create a square texture.
+            \param[in] specSize The width and height of the pre-filtered specular texture. We always create a square texture.
             \param[in] diffSampleCount How many times to sample when generating diffuse texture.
             \param[in] specSampleCount How many times to sample when generating specular texture.
             \param[in] preFilteredFormat The format of the pre-filtered texture
         */
-        static SharedPtr create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size = 128, uint32_t diffSampleCount = 1024, uint32_t specSampleCount = 2048, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
+        static SharedPtr create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize = kDefaultDiffSize, uint32_t specSize = kDefaultSpecSize, uint32_t diffSampleCount = kDefaultDiffSamples, uint32_t specSampleCount = kDefaultSpecSamples, ResourceFormat preFilteredFormat = ResourceFormat::RGBA16Float);
 
         ~LightProbe();
 
@@ -96,6 +101,8 @@ namespace Falcor
         */
         uint32_t getDiffSampleCount() const { return mDiffSampleCount; }
 
+        /** Get the sample count used to generate the specular texture.
+        */
         uint32_t getSpecSampleCount() const { return mSpecSampleCount; }
 
         /** Set the light probe's light intensity
@@ -139,12 +146,13 @@ namespace Falcor
         static void setCommonIntoProgramVars(ProgramVars* pVars, const std::string& varName);
 
     private:
-        LightProbeData mData;
         static uint32_t sLightProbeCount;
         static LightProbeSharedResources sSharedData;
+
+        LightProbeData mData;
         uint32_t mDiffSampleCount;
         uint32_t mSpecSampleCount;
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
-        LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, uint32_t diffuseSamples, ResourceFormat preFilteredFormat);
+        LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize, uint32_t specSize, uint32_t diffSamples, uint32_t specSamples, ResourceFormat preFilteredFormat);
     };
 }
