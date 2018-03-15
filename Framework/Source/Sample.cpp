@@ -443,7 +443,7 @@ namespace Falcor
             renderText(getFpsMsg(), glm::vec2(10, 10));
             if (mpPixelZoom)
             {
-                mpPixelZoom->render(mpRenderContext.get(), mpTargetFBO.get());
+                mpPixelZoom->render(mpRenderContext.get(), mpBackBufferFBO.get());
             }
 
             printProfileData();
