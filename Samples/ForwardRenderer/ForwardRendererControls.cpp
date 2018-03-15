@@ -100,6 +100,7 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
 
         Fbo::Desc resolveDesc;
         resolveDesc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
+        mpResolveFbo = FboHelper::create2D(w, h, resolveDesc);
     }
     else if (mAAMode == AAMode::TAA)
     {
