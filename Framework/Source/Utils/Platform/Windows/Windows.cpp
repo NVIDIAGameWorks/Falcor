@@ -59,6 +59,9 @@ namespace Falcor
         case  MsgBoxType::RetryCancel:
             Type = MB_RETRYCANCEL;
             break;
+        case  MsgBoxType::AbortRetryIgnore:
+            Type = MB_ABORTRETRYIGNORE;
+            break;
         default:
             should_not_get_here();
             break;
@@ -73,6 +76,10 @@ namespace Falcor
             return MsgBoxButton::Cancel;
         case IDRETRY:
             return MsgBoxButton::Retry;
+        case IDABORT:
+            return MsgBoxButton::Abort;
+        case IDIGNORE:
+            return MsgBoxButton::Ignore;
         default:
             should_not_get_here();
             return MsgBoxButton::Cancel;

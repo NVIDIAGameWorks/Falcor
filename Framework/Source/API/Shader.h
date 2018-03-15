@@ -92,7 +92,7 @@ namespace Falcor
 
 
 
-#ifdef FALCOR_D3D
+#ifdef FALCOR_D3D12
         ID3DBlobPtr getD3DBlob() const;
         virtual ID3DBlobPtr compile(const Blob& blob, const std::string&  entryPointName, CompilerFlags flags, std::string& errorLog);
 #endif

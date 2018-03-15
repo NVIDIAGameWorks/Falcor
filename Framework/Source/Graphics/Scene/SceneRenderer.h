@@ -75,7 +75,11 @@ namespace Falcor
 
         /** Enable/disable mesh culling. Culling does not always result in performance gain, especially when there are a lot of meshes to process with low rejection rate.
         */
-        void setObjectCullState(bool enable) { mCullEnabled = enable; }
+        void toggleMeshCulling(bool enable) { mCullEnabled = enable; }
+
+        /** Check if mesh culiing is enabled
+        */
+        bool isMeshCullingEnabled() const { return mCullEnabled; }
 
         /** Set the maximal number of mesh instance to dispatch in a single draw call.
         */
@@ -143,6 +147,7 @@ namespace Falcor
         virtual bool setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial);
         virtual void executeDraw(const CurrentWorkingData& currentData, uint32_t indexCount, uint32_t instanceCount);
         virtual void postFlushDraw(const CurrentWorkingData& currentData);
+        virtual bool cullMeshInstance(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, const Model::MeshInstance* pMeshInstance);
 
         void renderModelInstance(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance);
         void renderMeshInstances(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t meshID);

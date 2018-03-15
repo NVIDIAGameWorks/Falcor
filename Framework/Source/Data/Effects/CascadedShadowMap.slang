@@ -50,11 +50,11 @@ uint32_t getFilterMode(CsmData csmData)
 
 int getCascadeIndex(CsmData csmData, float depthCamClipSpace)
 {
-    for(int i = 1; i < getCascadeCount(csmData); i++)
+    for(int i = 0; i < getCascadeCount(csmData); i++)
     {
-        if(depthCamClipSpace < csmData.cascadeRange[i].x)
+        if(depthCamClipSpace < (csmData.cascadeRange[i].x + csmData.cascadeRange[i].y))
         {
-            return i - 1;
+            return i;        
         }
     }
     return getCascadeCount(csmData) - 1;
@@ -285,25 +285,36 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
     }
 }
 
-float3 getBlendedCascadeColor(CsmData csmData, float cameraDepth)
+bool getCascadeParamsAndCheckForBlend(CsmData csmData, float cameraDepth, out int cascadeIndex, out float weight)
 {
-    float weight = 0;
-    float s;
-    int cascadeIndex = 0;
+    cascadeIndex = 0;
+    weight = 0;
     bool blend = false;
+
 #if !defined(_CSM_CASCADE_COUNT) || (_CSM_CASCADE_COUNT != 1)
     cascadeIndex = getCascadeIndex(csmData, cameraDepth);
     // Get the prev cascade factor
-    weight = (cameraDepth - csmData.cascadeRange[cascadeIndex].x) / csmData.cascadeRange[cascadeIndex].y;
+    weight = 1 - ((cameraDepth - csmData.cascadeRange[cascadeIndex].x) / csmData.cascadeRange[cascadeIndex].y);
     blend = weight < csmData.cascadeBlendThreshold;
+    if(blend)
+    {
+        weight /= csmData.cascadeBlendThreshold;
+    }
 #endif
+    return blend;
+}
+
+float3 getBlendedCascadeColor(CsmData csmData, float cameraDepth)
+{
+    float weight;
+    int cascadeIndex;
+    bool blend = getCascadeParamsAndCheckForBlend(csmData, cameraDepth, cascadeIndex, weight);
 
     if(blend)
     {
-        weight = smoothstep(0.0, csmData.cascadeBlendThreshold, weight);
-        int prevCascade = max(0, cascadeIndex - 1);
-        float3 col1 = getCascadeColor(prevCascade);
+        int nextCascade = min(getCascadeCount(csmData) - 1, cascadeIndex + 1);
         float3 col0 = getCascadeColor(cascadeIndex);
+        float3 col1 = getCascadeColor(nextCascade);
         return lerp(col1, col0, weight);
     }
     else
@@ -314,29 +325,16 @@ float3 getBlendedCascadeColor(CsmData csmData, float cameraDepth)
 
 float calcShadowFactor(CsmData csmData, float cameraDepth, float3 posW, float2 posSxy)
 {
-    float weight = 0;
-    float s;
-    int cascadeIndex = 0;
-    bool blend = false;
-#if !defined(_CSM_CASCADE_COUNT) || (_CSM_CASCADE_COUNT != 1)
-    cascadeIndex = getCascadeIndex(csmData, cameraDepth);
-    // Get the prev cascade factor
-    weight = (cameraDepth - csmData.cascadeRange[cascadeIndex].x) / csmData.cascadeRange[cascadeIndex].y;
-    blend = weight < csmData.cascadeBlendThreshold;
-#endif
+    float weight;
+    int cascadeIndex;
+    bool blend = getCascadeParamsAndCheckForBlend(csmData, cameraDepth, cascadeIndex, weight);
+    float s = calcShadowFactorWithCascadeIdx(csmData, cascadeIndex, posW, posSxy);
 
     if(blend)
     {       
-        weight = smoothstep(0.0, csmData.cascadeBlendThreshold, weight);
-        int prevCascade = max(0, cascadeIndex - 1);
-        float s1 = calcShadowFactorWithCascadeIdx(csmData, prevCascade, posW, posSxy);
-        s = calcShadowFactorWithCascadeIdx(csmData, cascadeIndex, posW, posSxy);
-        s = lerp(s1, s, weight);
+        int nextCascade = min(getCascadeCount(csmData) - 1, cascadeIndex + 1);
+        float nextS = calcShadowFactorWithCascadeIdx(csmData, nextCascade, posW, posSxy);
+        s = lerp(nextS, s, weight);
     }
-    else
-    {
-        s = calcShadowFactorWithCascadeIdx(csmData, cascadeIndex, posW, posSxy);
-    }
-
     return s;
 }

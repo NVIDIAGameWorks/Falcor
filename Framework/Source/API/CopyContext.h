@@ -43,11 +43,28 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const CopyContext>;
         virtual ~CopyContext();
 
+        class ReadTextureTask
+        {
+        public:
+            using SharedPtr = std::shared_ptr<ReadTextureTask>;
+            static SharedPtr create(CopyContext::SharedPtr pCtx, const Texture* pTexture, uint32_t subresourceIndex);
+            std::vector<uint8> getData();
+        private:
+            ReadTextureTask() = default;
+            GpuFence::SharedPtr mpFence;
+            Buffer::SharedPtr mpBuffer;
+            CopyContext::SharedPtr mpContext;
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT mFootprint;
+            uint32_t mRowCount;
+            ResourceFormat mTextureFormat;
+        };
+
         static SharedPtr create(CommandQueueHandle queue);
         void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);
         void updateTexture(const Texture* pTexture, const void* pData);
         void updateTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, const void* pData);
         void updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData);
+        ReadTextureTask::SharedPtr asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
         std::vector<uint8> readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
 
         /** Flush the command list. This doesn't reset the command allocator, just submits the commands

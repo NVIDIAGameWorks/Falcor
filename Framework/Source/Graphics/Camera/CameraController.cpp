@@ -313,7 +313,7 @@ namespace Falcor
             // Initialize the parameters from the HMD
             VRDisplay* pDisplay = VRSystem::instance()->getHMD().get();
 
-            pCamera->setFocalLength(fovYToFocalLength(pDisplay->getFovY(), Camera::kDefaultFrameHeight));
+            pCamera->setFocalLength(fovYToFocalLength(pDisplay->getFovY(), pCamera->getFrameHeight()));
             pCamera->setAspectRatio(pDisplay->getAspectRatio());
 
             mInvPrevHmdViewMat = glm::mat4();

@@ -159,6 +159,30 @@ namespace Falcor
         return frameHeight / (2.0f * tan(0.5f * fovY));
     }
 
+    /** Calculates camera aperture radius in scene units.
+        \param[in] fNumber Aperture f-number.
+        \param[in] focalLength Focal length in mm.
+        \param[in] sceneUnit Scene unit in meters.
+    */
+    inline float apertureFNumberToRadius(float fNumber, float focalLength, float sceneUnit)
+    {
+        assert(fNumber > 0.0f && focalLength > 0.f && sceneUnit > 0.f);
+        float radius = 0.5f * focalLength / fNumber; // in mm
+        return radius * 0.001f / sceneUnit;
+    }
+
+    /** Calculates camera aperture f-number from camera parameters.
+        \param[in] apertureRadius Aperture radius in scene units.
+        \param[in] focalLength Focal length in mm.
+        \param[in] sceneUnit Scene unit in meters.
+    */
+    inline float apertureRadiusToFNumber(float apertureRadius, float focalLength, float sceneUnit)
+    {
+        assert(focalLength > 0.f && sceneUnit > 0.f);
+        float radius = apertureRadius * sceneUnit * 1000.f; // in mm
+        return 0.5f * focalLength / radius;
+    }
+
     // Base 2 Van der Corput radical inverse
     inline float radicalInverse(uint32_t i)
     {

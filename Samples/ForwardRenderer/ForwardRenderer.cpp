@@ -78,7 +78,7 @@ void ForwardRenderer::initLightingPass()
 void ForwardRenderer::initShadowPass()
 {
     mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
-    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm2);
+    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm4);
     mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
     mShadowPass.pCsm->setVsmMaxAnisotropy(4);
     mShadowPass.pCsm->setEvsmBlur(7, 3);
@@ -212,6 +212,7 @@ void ForwardRenderer::loadScene(SampleCallbacks* pSample, const std::string& fil
     {
         initScene(pSample, pScene);
         applyCustomSceneVars(pScene.get(), filename);
+        applyCsSkinningMode();
     }
 }
 
@@ -284,7 +285,6 @@ void ForwardRenderer::beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint3
     {
         glm::vec2 targetResolution = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
         pContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0));
-        pContext->clearFbo(mpResolveFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Color);
 
         //  Select the sample pattern and set the camera jitter
         const auto& samplePattern = (mTAASamplePattern == SamplePattern::Halton) ? kHaltonSamplePattern : kDX11SamplePattern;
@@ -301,8 +301,8 @@ void ForwardRenderer::endFrame(RenderContext* pContext)
 
 void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
-    PROFILE(postProcess);
-    mpToneMapper->execute(pContext, mpResolveFbo, mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo);
+    PROFILE(postProcess);    
+    mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
 }
 
 void ForwardRenderer::depthPass(RenderContext* pContext)
@@ -375,9 +375,13 @@ void ForwardRenderer::renderTransparentObjects(RenderContext* pContext)
 
 void ForwardRenderer::resolveMSAA(RenderContext* pContext)
 {
-    pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
-    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    if(mAAMode == AAMode::MSAA)
+    {
+        PROFILE(resolveMSAA);
+        pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
+        pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
+        pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    }
 }
 
 void ForwardRenderer::shadowPass(RenderContext* pContext)
@@ -391,43 +395,29 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
     }
 }
 
-void ForwardRenderer::antiAliasing(RenderContext* pContext)
+void ForwardRenderer::runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo)
 {
-    PROFILE(resolveMSAA);
-    switch (mAAMode)
+    if(mAAMode == AAMode::TAA)
     {
-    case AAMode::MSAA:
-        return resolveMSAA(pContext);
-    case AAMode::TAA:
-        return runTAA(pContext);
-    default:
-        should_not_get_here();
+        PROFILE(runTAA);
+        //  Get the Current Color and Motion Vectors
+        const Texture::SharedPtr pCurColor = pColorFbo->getColorTexture(0);
+        const Texture::SharedPtr pMotionVec = mpMainFbo->getColorTexture(2);
+
+        //  Get the Previous Color
+        const Texture::SharedPtr pPrevColor = mTAA.getInactiveFbo()->getColorTexture(0);
+
+        //  Execute the Temporal Anti-Aliasing
+        pContext->getGraphicsState()->pushFbo(mTAA.getActiveFbo());
+        mTAA.pTAA->execute(pContext, pCurColor, pPrevColor, pMotionVec);
+        pContext->getGraphicsState()->popFbo();
+
+        //  Copy over the Anti-Aliased Color Texture
+        pContext->blit(mTAA.getActiveFbo()->getColorTexture(0)->getSRV(0, 1), pColorFbo->getColorTexture(0)->getRTV());
+
+        //  Swap the Fbos
+        mTAA.switchFbos();
     }
-}
-
-void ForwardRenderer::runTAA(RenderContext* pContext)
-{
-    //  Get the Current Color and Motion Vectors
-    const Texture::SharedPtr pCurColor = mpMainFbo->getColorTexture(0);
-    const Texture::SharedPtr pMotionVec = mpMainFbo->getColorTexture(2);
-
-    //  Get the Previous Color
-    const Texture::SharedPtr pPrevColor = mTAA.getInactiveFbo()->getColorTexture(0);
-
-    //  Execute the Temporal Anti-Aliasing
-    pContext->getGraphicsState()->pushFbo(mTAA.getActiveFbo());
-    mTAA.pTAA->execute(pContext, pCurColor, pPrevColor, pMotionVec);
-    pContext->getGraphicsState()->popFbo();
-
-    //  Copy over the Anti-Aliased Color Texture
-    pContext->blit(mTAA.getActiveFbo()->getColorTexture(0)->getSRV(0, 1), mpResolveFbo->getColorTexture(0)->getRTV());
-
-    //  Copy over the Remaining Texture Data
-    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
-
-    //  Swap the Fbos
-    mTAA.switchFbos();
 }
 
 void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
@@ -435,7 +425,8 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
     PROFILE(ssao);
     if (mControls[EnableSSAO].enabled)
     {
-        Texture::SharedPtr pAOMap = mSSAO.pSSAO->generateAOMap(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mpResolveFbo->getColorTexture(2), mpResolveFbo->getColorTexture(1));
+        Texture::SharedPtr pDepth = (mAAMode == AAMode::TAA) ? mpResolveFbo->getDepthStencilTexture() : mpResolveFbo->getColorTexture(2);
+        Texture::SharedPtr pAOMap = mSSAO.pSSAO->generateAOMap(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), pDepth, mpResolveFbo->getColorTexture(1));
         mSSAO.pVars->setTexture("gColor", mpPostProcessFbo->getColorTexture(0));
         mSSAO.pVars->setTexture("gAOMap", pAOMap);
 
@@ -448,7 +439,7 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
 
  void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
  {
-     //  Already exisitng. Is this a problem?
+     //  Already existing. Is this a problem?
      auto nextTriggerType = pSampleTest->getNextTriggerType();
      if (nextTriggerType == SampleTest::TriggerType::None)
      {
@@ -473,8 +464,11 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
         mpState->setFbo(mpMainFbo);
         renderSkyBox(pRenderContext.get());
         lightingPass(pRenderContext.get(), pTargetFbo.get());
-        antiAliasing(pRenderContext.get());
-        postProcess(pRenderContext.get(), pTargetFbo);
+        resolveMSAA(pRenderContext.get());      // This will only run if we are in MSAA mode
+
+        Fbo::SharedPtr pPostProcessDst = mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo;
+        postProcess(pRenderContext.get(), pPostProcessDst);
+        runTAA(pRenderContext.get(), pPostProcessDst); // This will only run if we are in TAA mode
         ambientOcclusion(pRenderContext.get(), pTargetFbo);
 
         endFrame(pRenderContext.get());
@@ -544,8 +538,6 @@ void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width
     Fbo::Desc fboDesc;
     fboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
     mpPostProcessFbo = FboHelper::create2D(width, height, fboDesc);
-    fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
-    mpResolveFbo = FboHelper::create2D(width, height, fboDesc);
 
     applyAaMode(pSample);
     
@@ -553,6 +545,15 @@ void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width
     {
         setActiveCameraAspectRatio(width, height);
     }
+}
+
+void ForwardRenderer::applyCsSkinningMode()
+{
+    if(mpSceneRenderer)
+    {
+        SkinningCache::SharedPtr pCache = mUseCsSkinning ? SkinningCache::create() : nullptr;
+        mpSceneRenderer->getScene()->attachSkinningCacheToModels(pCache);
+    }    
 }
 
 void ForwardRenderer::setActiveCameraAspectRatio(uint32_t w, uint32_t h)

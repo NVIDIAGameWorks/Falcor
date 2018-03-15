@@ -223,12 +223,7 @@ namespace Falcor
                 logError("Failed to create device");
                 return;
             }
-
-            if (config.deviceCreatedCallback != nullptr)
-            {
-                config.deviceCreatedCallback();
-            }
-
+            
             // Get the default objects before calling onLoad()
             mpBackBufferFBO = gpDevice->getSwapChainFbo();
             mpTargetFBO = FboHelper::create2D(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight(), mpBackBufferFBO->getDesc());
@@ -293,6 +288,12 @@ namespace Falcor
         mSampleGuiHeight = height;
     }
 
+    void Sample::setDefaultGuiPosition(uint32_t x, uint32_t y)
+    {
+        mSampleGuiPositionX = x;
+        mSampleGuiPositionY = y;
+    }
+
     void Sample::renderGUI()
     {
         mpGui->beginFrame();
@@ -314,7 +315,7 @@ namespace Falcor
             ;
 #endif
 
-        mpGui->pushWindow("Falcor", mSampleGuiWidth, mSampleGuiHeight, 20, 40, false);
+        mpGui->pushWindow("Falcor", mSampleGuiWidth, mSampleGuiHeight, mSampleGuiPositionX, mSampleGuiPositionY, false);
         mpGui->addText("Keyboard Shortcuts");
         mpGui->addTooltip(help, true);
 
@@ -420,39 +421,44 @@ namespace Falcor
             calculateTime();
             mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
         }
-        //blits the temp fbo given to user's renderer onto the backbuffer
-        mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
-        //Takes testing screenshots if desired (leaves out gui and fps text)
-        endTestFrame();
 
-        //Swaps back to backbuffer to render fps text and gui directly onto it
-        mpDefaultPipelineState->setFbo(mpBackBufferFBO);
-        mpRenderContext->setGraphicsState(mpDefaultPipelineState);
+        if (gpDevice)
         {
-            PROFILE(renderGUI);
-            if (mShowUI)
+            //blits the temp fbo given to user's renderer onto the backbuffer
+            mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
+            //Takes testing screenshots if desired (leaves out gui and fps text)
+            endTestFrame();
+
+            //Swaps back to backbuffer to render fps text and gui directly onto it
+            mpDefaultPipelineState->setFbo(mpBackBufferFBO);
+            mpRenderContext->setGraphicsState(mpDefaultPipelineState);
             {
-                renderGUI();
+                PROFILE(renderGUI);
+                if (mShowUI)
+                {
+                    renderGUI();
+                }
             }
-        }
 
-        renderText(getFpsMsg(), glm::vec2(10, 10));
-        if(mpPixelZoom)
-        {
-            mpPixelZoom->render(mpRenderContext.get(), mpTargetFBO.get());
-        }
+            renderText(getFpsMsg(), glm::vec2(10, 10));
+            if (mpPixelZoom)
+            {
+                mpPixelZoom->render(mpRenderContext.get(), mpTargetFBO.get());
+            }
 
-        captureVideoFrame();
-        printProfileData();
-        if (mCaptureScreen)
-        {
-            captureScreen();
-        }
+            printProfileData();
+            captureVideoFrame();
 
-        if(gpDevice)
-        {
-            PROFILE(present);
-            gpDevice->present();
+            if (mCaptureScreen)
+            {
+                captureScreen();
+            }
+
+
+            {
+                PROFILE(present);
+                gpDevice->present();
+            }
         }
     }
 
@@ -579,10 +585,6 @@ namespace Falcor
                 mFixedTimeDelta = -mFixedTimeDelta;
             }
             mCurrentTime = mVideoCapture.pUI->getStartTime();
-            if (!mVideoCapture.pUI->captureUI())
-            {
-                mShowUI = false;
-            }
         }
     }
  

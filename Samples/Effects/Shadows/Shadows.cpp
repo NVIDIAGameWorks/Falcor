@@ -87,6 +87,11 @@ void Shadows::createScene(const std::string& filename)
     // Create the renderer
     mpRenderer = SceneRenderer::create(mpScene);
     mpRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
+    mpRenderer->toggleStaticMaterialCompilation(false);
+    if(mpScene->getPath(0))
+    {
+        mpScene->getPath(0)->detachObject(mpScene->getActiveCamera());
+    }
 
     mpCsmTech.resize(mpScene->getLightCount());
     for(uint32_t i = 0; i < mpScene->getLightCount(); i++)

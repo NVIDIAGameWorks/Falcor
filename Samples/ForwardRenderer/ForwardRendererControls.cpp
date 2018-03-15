@@ -97,6 +97,9 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
         mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
         fboDesc.setSampleCount(mMSAASampleCount);
+
+        Fbo::Desc resolveDesc;
+        resolveDesc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
     }
     else if (mAAMode == AAMode::TAA)
     {
@@ -105,13 +108,18 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
         fboDesc.setColorTarget(2, ResourceFormat::RG16Float);
 
         Fbo::Desc taaFboDesc;
-        taaFboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
+        taaFboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
         mTAA.createFbos(w, h, taaFboDesc);
     }
 
     mpMainFbo = FboHelper::create2D(w, h, fboDesc);
     mpDepthPassFbo = Fbo::create();
     mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
+
+    if (mAAMode == AAMode::TAA)
+    {
+        mpResolveFbo = mpMainFbo;
+    }
 }
 
 void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
@@ -177,6 +185,11 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                     pLight->renderUI(pGui, pLight->getName().c_str());
                 }
                 pGui->endGroup();
+            }
+
+            if (pGui->addCheckBox("Use CS for Skinning", mUseCsSkinning))
+            {
+                applyCsSkinningMode();
             }
             pGui->endGroup();
         }
@@ -259,8 +272,11 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
                 }
-                pGui->addSeparator();
-                pScene->getLightProbe(0)->renderUI(pGui);
+                if(mControls[ControlID::EnableReflections].enabled)
+                {
+                    pGui->addSeparator();
+                    pScene->getLightProbe(0)->renderUI(pGui);
+                }
             }
 
             pGui->endGroup();

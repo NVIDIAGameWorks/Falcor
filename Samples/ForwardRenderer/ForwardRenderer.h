@@ -130,9 +130,8 @@ private:
     void shadowPass(RenderContext* pContext);
     void renderSkyBox(RenderContext* pContext);
     void lightingPass(RenderContext* pContext, Fbo* pTargetFbo);
-    void antiAliasing(RenderContext* pContext);
     void resolveMSAA(RenderContext* pContext);
-    void runTAA(RenderContext* pContext);
+    void runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo);
     void postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
     void ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
 
@@ -210,7 +209,7 @@ private:
     void applyCameraPathState();
     bool mPerMaterialShader = false;
     bool mEnableDepthPass = true;
-
+    bool mUseCsSkinning = false;
+    void applyCsSkinningMode();
     static const std::string skDefaultScene;
-
 };

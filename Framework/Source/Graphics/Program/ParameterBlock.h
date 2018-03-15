@@ -201,6 +201,7 @@ namespace Falcor
         ParameterBlockReflection::SharedConstPtr getReflection() const { return mpReflector; }
 
         /** Prepare the block for draw. This call updates the descriptor-sets
+            \return Returns true if successful, false otherwise
         */
         bool prepareForDraw(CopyContext* pContext);
        

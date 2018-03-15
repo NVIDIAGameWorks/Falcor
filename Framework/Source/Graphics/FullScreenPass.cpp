@@ -39,7 +39,7 @@ namespace Falcor
 {
     bool checkForViewportArray2Support()
     {
-#ifdef FALCOR_D3D
+#ifdef FALCOR_D3D12
         return false;
 #elif defined FALCOR_VK
         return false;

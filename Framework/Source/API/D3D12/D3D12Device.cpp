@@ -124,7 +124,7 @@ namespace Falcor
         return pSwapChain3;
     }
 
-    ID3D12DevicePtr createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, Device::Desc::CreateDeviceFunc createFunc, bool& rgb32FSupported)
+    ID3D12DevicePtr createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, const std::vector<UUID>& experimentalFeatures, bool& rgb32FSupported)
     {
         featureLevel = D3D_FEATURE_LEVEL_11_0;
         // Find the HW adapter
@@ -143,12 +143,11 @@ namespace Falcor
             }
 
             // Try and create a D3D12 device
-            if (createFunc)
+            if (experimentalFeatures.size())
             {
-                pDevice = createFunc(pAdapter, featureLevel);
-                if (pDevice) return pDevice;
+                d3d_call(D3D12EnableExperimentalFeatures((uint32_t)experimentalFeatures.size(), experimentalFeatures.data(), nullptr, nullptr));
             }
-            else if (D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice)) == S_OK)
+            if (D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice)) == S_OK)
             {
                 rgb32FSupported = (desc.VendorId != 0x1002); // The AMD cards I tried can't handle 96-bits textures correctly
                 return pDevice;
@@ -225,7 +224,7 @@ namespace Falcor
         // Create the DXGI factory
         d3d_call(CreateDXGIFactory2(dxgiFlags, IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
 
-        mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(desc.apiMajorVersion, desc.apiMinorVersion), desc.createDeviceFunc, mRgb32FloatSupported);
+        mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(desc.apiMajorVersion, desc.apiMinorVersion), desc.experimentalFeatures, mRgb32FloatSupported);
         if (mApiHandle == nullptr)
         {
             return false;

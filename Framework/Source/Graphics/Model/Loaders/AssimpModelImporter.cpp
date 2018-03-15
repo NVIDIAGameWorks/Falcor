@@ -844,6 +844,8 @@ namespace Falcor
             return pAiMesh->HasTextureCoords(0);
         case VERTEX_LIGHTMAP_UV_LOC:
             return pAiMesh->HasTextureCoords(1);
+        case VERTEX_PREV_POSITION_LOC:
+            return false;
         default:
             should_not_get_here();
             return false;
@@ -927,10 +929,18 @@ namespace Falcor
                     size = sizeof(pAiMesh->mColors[0][0]);
                     break;
                 case VERTEX_TEXCOORD_LOC:
+                    if (pAiMesh->mTextureCoords[0][vertexID].z != 0.f)
+                    {
+                        Falcor::logErrorAndExit("AssimpModelImporter::createVertexBuffer: Texcoord[0].z != 0.0");
+                    }
                     pSrc = (uint8_t*)(&pAiMesh->mTextureCoords[0][vertexID]);
                     size = sizeof(pAiMesh->mTextureCoords[0][vertexID]);
                     break;
                 case VERTEX_LIGHTMAP_UV_LOC:
+                    if (pAiMesh->mTextureCoords[1][vertexID].z != 0.f)
+                    {
+                        Falcor::logErrorAndExit("AssimpModelImporter::createVertexBuffer: Texcoord[1].z != 0.0");
+                    }
                     pSrc = (uint8_t*)(&pAiMesh->mTextureCoords[1][vertexID]);
                     size = sizeof(pAiMesh->mTextureCoords[1][vertexID]);
                     break;

@@ -269,6 +269,12 @@ namespace Falcor
 
     }
 
+    bool SceneRenderer::cullMeshInstance(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, const Model::MeshInstance* pMeshInstance)
+    {
+        BoundingBox box = pMeshInstance->getBoundingBox().transform(pModelInstance->getTransformMatrix());
+        return currentData.pCamera->isObjectCulled(box);
+    }
+
     void SceneRenderer::renderMeshInstances(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t meshID)
     {
         const Model* pModel = currentData.pModel;
@@ -277,13 +283,14 @@ namespace Falcor
         if (setPerMeshData(currentData, pMesh))
         {
             Program* pProgram = currentData.pState->getProgram().get();
-            if (pMesh->hasBones())
+            bool useVsSkinning = pMesh->hasBones() && !pModel->getSkinningCache();
+            if (useVsSkinning)
             {
                 pProgram->addDefine("_VERTEX_BLENDING");
             }
 
-            // Bind VAO and set topology
-            currentData.pState->setVao(pMesh->getVao());
+            // Bind VAO and set topology            
+            currentData.pState->setVao(useVsSkinning ? pMesh->getVao() : pModel->getMeshVao(pMesh));
 
             uint32_t activeInstances = 0;
 
@@ -291,11 +298,10 @@ namespace Falcor
             for (uint32_t instanceID = 0; instanceID < instanceCount; instanceID++)
             {
                 const Model::MeshInstance* pMeshInstance = pModel->getMeshInstance(meshID, instanceID).get();
-                BoundingBox box = pMeshInstance->getBoundingBox().transform(pModelInstance->getTransformMatrix());
 
-                if ((mCullEnabled == false) || (currentData.pCamera->isObjectCulled(box) == false))
+                if (pMeshInstance->isVisible())
                 {
-                    if (pMeshInstance->isVisible())
+                    if ((mCullEnabled == false) || (cullMeshInstance(currentData, pModelInstance, pMeshInstance) == false))
                     {
                         if (setPerMeshInstanceData(currentData, pModelInstance, pMeshInstance, activeInstances))
                         {
@@ -319,7 +325,7 @@ namespace Falcor
             }
 
             // Restore the program state
-            if (pMesh->hasBones())
+            if (useVsSkinning)
             {
                 pProgram->removeDefine("_VERTEX_BLENDING");
             }

@@ -113,16 +113,37 @@ namespace Falcor
         */
         uint32_t getFilterMode() const { return mCsmData.filterMode; }
 
+        /** Set the kernel width for PCF
+        */
         void setPcfKernelWidth(uint32_t width) { mCsmData.pcfKernelWidth = width | 1; }
 
+        /** Set the anistropy level for VSM/EVSM
+        */
         void setVsmMaxAnisotropy(uint32_t maxAniso) { createVsmSampleState(maxAniso); }
 
+        /** Set light-bleed reduction for VSM/EVSM
+        */
         void setVsmLightBleedReduction(float reduction) { mCsmData.lightBleedingReduction = reduction; }
 
+        /** Set the depth bias
+        */
         void setDepthBias(float depthBias) { mCsmData.depthBias = depthBias; }
 
+        /** Set the readback latency for SDSM (in frames)
+        */
         void setSdsmReadbackLatency(uint32_t latency);
+
+        /** Set the width and sigma used when blurring the EVSM shadow-map
+        */
         void setEvsmBlur(uint32_t kernelWidth, float sigma);
+
+        /** Enable mesh-culling for the shadow-map generation
+        */
+        void toggleMeshCulling(bool enabled);
+
+        /** Check if mesh-culling is enabled
+        */
+        bool isMeshCullingEnabled() const;
     private:
         CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
         Light::SharedConstPtr mpLight;
@@ -156,6 +177,7 @@ namespace Falcor
             vec2 sdsmResult;   // Used for displaying the range in the UI
             uint32_t width = 0;
             uint32_t height = 0;
+            uint32_t sampleCount = 0;
             int32_t readbackLatency = 1;
         };
         SdsmData mSdsmData;

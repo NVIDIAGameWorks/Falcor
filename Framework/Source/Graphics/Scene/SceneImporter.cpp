@@ -202,8 +202,6 @@ namespace Falcor
             return error("Could not load model: " + file);
         }
 
-        pModel->setFilename(modelFile.GetString());
-
         bool instanceAdded = false;
 
         // Loop over the other members

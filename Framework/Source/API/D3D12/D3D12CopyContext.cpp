@@ -129,38 +129,52 @@ namespace Falcor
         updateTextureSubresources(pTexture, subresourceIndex, 1, pData);
     }
 
-    std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext::SharedPtr pCtx, const Texture* pTexture, uint32_t subresourceIndex)
     {
+        SharedPtr pThis = SharedPtr(new ReadTextureTask);
+        pThis->mpContext = pCtx;
         //Get footprint
         D3D12_RESOURCE_DESC texDesc = pTexture->getApiHandle()->GetDesc();
-        D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-        uint32_t rowCount;
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = pThis->mFootprint;
         uint64_t rowSize;
         uint64_t size;
         ID3D12Device* pDevice = gpDevice->getApiHandle();
-        pDevice->GetCopyableFootprints(&texDesc, subresourceIndex, 1, 0, &footprint, &rowCount, &rowSize, &size);
+        pDevice->GetCopyableFootprints(&texDesc, subresourceIndex, 1, 0, &footprint, &pThis->mRowCount, &rowSize, &size);
 
         //Create buffer 
-        Buffer::SharedPtr pBuffer = Buffer::create(size, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+        pThis->mpBuffer = Buffer::create(size, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
 
         //Copy from texture to buffer
         D3D12_TEXTURE_COPY_LOCATION srcLoc = { pTexture->getApiHandle(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, subresourceIndex };
-        D3D12_TEXTURE_COPY_LOCATION dstLoc = { pBuffer->getApiHandle(), D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, footprint };
-        resourceBarrier(pTexture, Resource::State::CopySource);
-        mpLowLevelData->getCommandList()->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
-        flush(true);
+        D3D12_TEXTURE_COPY_LOCATION dstLoc = { pThis->mpBuffer->getApiHandle(), D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, footprint };
+        pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
+        pCtx->getLowLevelData()->getCommandList()->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
+
+        // Create a fence and signal
+        pThis->mpFence = GpuFence::create();
+        pCtx->flush(false);
+        pThis->mpFence->gpuSignal(pCtx->getLowLevelData()->getCommandQueue());
+        pThis->mTextureFormat = pTexture->getFormat();
+
+        return pThis;
+    }
+
+    std::vector<uint8_t> CopyContext::ReadTextureTask::getData()
+    {
+        mpFence->syncCpu();
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = mFootprint;
 
         //Get buffer data
         std::vector<uint8> result;
-        uint32_t actualRowSize = footprint.Footprint.Width * getFormatBytesPerBlock(pTexture->getFormat());
-        result.resize(rowCount * actualRowSize);
-        uint8* pData = reinterpret_cast<uint8*>(pBuffer->map(Buffer::MapType::Read));
+        uint32_t actualRowSize = footprint.Footprint.Width * getFormatBytesPerBlock(mTextureFormat);
+        result.resize(mRowCount * actualRowSize);
+        uint8* pData = reinterpret_cast<uint8*>(mpBuffer->map(Buffer::MapType::Read));
 
-        for(uint32_t z = 0 ; z < footprint.Footprint.Depth ; z++)
+        for (uint32_t z = 0; z < footprint.Footprint.Depth; z++)
         {
-            const uint8_t* pSrcZ = pData + z * footprint.Footprint.RowPitch * rowCount;
-            uint8_t* pDstZ = result.data() + z * actualRowSize * rowCount;
-            for (uint32_t y = 0; y < rowCount; y++)
+            const uint8_t* pSrcZ = pData + z * footprint.Footprint.RowPitch * mRowCount;
+            uint8_t* pDstZ = result.data() + z * actualRowSize * mRowCount;
+            for (uint32_t y = 0; y < mRowCount; y++)
             {
                 const uint8_t* pSrc = pSrcZ + y *  footprint.Footprint.RowPitch;
                 uint8_t* pDst = pDstZ + y * actualRowSize;
@@ -168,8 +182,19 @@ namespace Falcor
             }
         }
 
-        pBuffer->unmap();
+        mpBuffer->unmap();
         return result;
+    }
+
+    CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    {
+        return CopyContext::ReadTextureTask::create(shared_from_this(), pTexture, subresourceIndex);
+    }
+
+    std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    {
+        CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
+        return pTask->getData();
     }
     
     void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState)

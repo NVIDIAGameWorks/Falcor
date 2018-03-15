@@ -191,20 +191,48 @@ namespace Falcor
         ProgramVersion::SharedConstPtr getActiveVersion() const;
 
         /** Adds a macro definition to the program. If the macro already exists, it will be replaced.
-            \param[in] name The name of define
-            \param[in] value Optional. The value of the define string
+            \param[in] name The name of define.
+            \param[in] value Optional. The value of the define string.
+            \return True if any macro definitions were modified.
         */
-        void addDefine(const std::string& name, const std::string& value = "");
+        bool addDefine(const std::string& name, const std::string& value = "");
+
+        /** Add a list of macro definitions to the program. If a macro already exists, it will be replaced.
+            \param[in] dl List of macro definitions to add.
+            \return True if any macro definitions were modified.
+        */
+        bool addDefines(const DefineList& dl);
 
         /** Remove a macro definition from the program. If the definition doesn't exist, the function call will be silently ignored.
-            \param[in] name The name of define
+            \param[in] name The name of define.
+            \return True if any macro definitions were modified.
         */
-        void removeDefine(const std::string& name);
+        bool removeDefine(const std::string& name);
+
+        /** Removes a list of macro definitions from the program. If a macro doesn't exist, it is silently ignored.
+            \param[in] dl List of macro definitions to remove.
+            \return True if any macro definitions were modified.
+        */
+        bool removeDefines(const DefineList& dl);
+
+        /** Removes all macro definitions that matches string comparison from the program.
+            \param[in] pos Position of the first character in macro name. If this is greater than the string length, the macro will be silently kept.
+            \param[in] len Length of compared macro name (if the string is shorter, as many characters as possible). A value of string::npos indicates all characters.
+            \param[in] str The comparing string that is matched against macro names.
+            \return True if any macro definitions were modified.
+        */
+        bool removeDefines(size_t pos, size_t len, const std::string& str);
 
         /** Clear the macro definition list
+            \return True if any macro definitions were modified.
         */
-        void clearDefines() { mDefineList.clear(); }
+        bool clearDefines();
     
+        /** Update define list
+            \return True if any macro definitions were modified.
+        */
+        bool replaceAllDefines(const DefineList& dl);
+
         /** Get the macro definition string of the active program version
         */
         const DefineList& getActiveDefinesList() const { return mDefineList; }
@@ -212,10 +240,6 @@ namespace Falcor
         /** Reload and relink all programs.
         */
         static void reloadAllPrograms();
-
-        /** Update define list
-        */
-        void replaceAllDefines(const DefineList& dl) { mDefineList = dl; }
 
     protected:
         Program();

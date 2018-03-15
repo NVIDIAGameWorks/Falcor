@@ -32,6 +32,7 @@
 #include "Utils/Math/FalcorMath.h"
 #include "Graphics/FboHelper.h"
 
+
 namespace Falcor
 {
     const char* kDepthPassVSFile = "Effects/ShadowPass.vs.slang";
@@ -89,7 +90,7 @@ namespace Falcor
             mBindLocations.alphaMap = alphaMapLoc;
             mBindLocations.alphaMapSampler = alphaMapSamplerLoc;
 
-            setObjectCullState(false); 
+            toggleMeshCulling(false); 
             Sampler::Desc desc;
             desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
             mpAlphaSampler = Sampler::create(desc);
@@ -271,14 +272,15 @@ namespace Falcor
         // Only create a new technique if it doesn't exist or the dimensions changed
         if (mSdsmData.minMaxReduction)
         {
-            if (mSdsmData.width == pTexture->getWidth() && mSdsmData.height == pTexture->getHeight())
+            if (mSdsmData.width == pTexture->getWidth() && mSdsmData.height == pTexture->getHeight() && mSdsmData.sampleCount == pTexture->getSampleCount())
             {
                 return;
             }
         }
         mSdsmData.width = pTexture->getWidth();
         mSdsmData.height = pTexture->getHeight();
-        mSdsmData.minMaxReduction = ParallelReduction::create(ParallelReduction::Type::MinMax, mSdsmData.readbackLatency, mSdsmData.width, mSdsmData.height);
+        mSdsmData.sampleCount = pTexture->getSampleCount();
+        mSdsmData.minMaxReduction = ParallelReduction::create(ParallelReduction::Type::MinMax, mSdsmData.readbackLatency, mSdsmData.width, mSdsmData.height, mSdsmData.sampleCount);
     }
 
     void CascadedShadowMaps::createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight)
@@ -294,15 +296,15 @@ namespace Falcor
         switch(mCsmData.filterMode)
         {
         case CsmFilterVsm:
-            colorFormat = ResourceFormat::RG32Float;
+            colorFormat = ResourceFormat::RG16Float;
             progDef.add("_VSM");
             break;
         case CsmFilterEvsm2:
-            colorFormat = ResourceFormat::RG32Float;
+            colorFormat = ResourceFormat::RG16Float;
             progDef.add("_EVSM2");
             break;
         case CsmFilterEvsm4:
-            colorFormat = ResourceFormat::RGBA32Float;
+            colorFormat = ResourceFormat::RGBA16Float;
             progDef.add("_EVSM4");
             break;
         }
@@ -347,7 +349,7 @@ namespace Falcor
 
         mpCsmSceneRenderer = CsmSceneRenderer::create(mpScene, alphaMapCB, alphaMap, alphaSampler);
         mpSceneRenderer = SceneRenderer::create(std::const_pointer_cast<Scene>(mpScene));
-        mpSceneRenderer->setObjectCullState(true);
+        mpSceneRenderer->toggleMeshCulling(true);
     }
 
     void CascadedShadowMaps::setCascadeCount(uint32_t cascadeCount)
@@ -364,6 +366,21 @@ namespace Falcor
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
+            if (mpLight->getType() == LightDirectional)
+            {
+                if (pGui->addIntVar("Cascade Count", (int32_t&)mCsmData.cascadeCount, 1, 8))
+                {
+                    setCascadeCount(mCsmData.cascadeCount);
+                }
+            }
+
+            // Mesh culling
+            bool cullEnabled = isMeshCullingEnabled();
+            if (pGui->addCheckBox("Cull Meshes", cullEnabled))
+            {
+                toggleMeshCulling(cullEnabled);
+            }
+
             //Filter mode
             uint32_t filterIndex = static_cast<uint32_t>(mCsmData.filterMode);
             if (pGui->addDropdown("Filter Mode", kFilterList, filterIndex))
@@ -402,9 +419,10 @@ namespace Falcor
                 pGui->addCheckBox("Enable", mControls.useMinMaxSdsm);
                 if(mControls.useMinMaxSdsm)
                 {
-                    if (pGui->addIntVar("Readback Latency", mSdsmData.readbackLatency))
+                    int32_t latency = mSdsmData.readbackLatency;
+                    if (pGui->addIntVar("Readback Latency", latency, 0))
                     {
-                        setSdsmReadbackLatency(mSdsmData.readbackLatency);
+                        setSdsmReadbackLatency(latency);
                     }
                     std::string range = "SDSM Range=[" + std::to_string(mSdsmData.sdsmResult.x) + ", " + std::to_string(mSdsmData.sdsmResult.y) + ']';
                     pGui->addText(range.c_str());
@@ -442,8 +460,8 @@ namespace Falcor
                         const char* evsmExpGroup = "EVSM Exp";
                         if (pGui->beginGroup(evsmExpGroup))
                         {
-                            pGui->addFloatVar("Positive", mCsmData.evsmExponents.x, 0.0f, 42.0f, 0.01f);
-                            pGui->addFloatVar("Negative", mCsmData.evsmExponents.y, 0.0f, 42.0f, 0.01f);
+                            pGui->addFloatVar("Positive", mCsmData.evsmExponents.x, 0.0f, 5.54f, 0.01f);
+                            pGui->addFloatVar("Negative", mCsmData.evsmExponents.y, 0.0f, 5.54f, 0.01f);
                             pGui->endGroup();
                         }
                     }
@@ -584,7 +602,7 @@ namespace Falcor
                 should_not_get_here();
             }
 
-            // If we blend between cascades, we need to expand the range to make sure we will not try to read of the edge of the shadow-map
+            // If we blend between cascades, we need to expand the range to make sure we will not try to read off the edge of the shadow-map
             float blendCorrection = (nextCascadeStart - cascadeStart) *  (mCsmData.cascadeBlendThreshold * 0.5f);
             float cascadeEnd = nextCascadeStart + blendCorrection;
             nextCascadeStart -= blendCorrection;
@@ -644,6 +662,7 @@ namespace Falcor
         pCB->setBlob(&mCsmData, 0, sizeof(mCsmData));
         pCtx->pushGraphicsVars(mShadowPass.pGraphicsVars);
         pCtx->pushGraphicsState(mShadowPass.pState);
+        mpLightCamera->setProjectionMatrix(mCsmData.globalMat);
         mpCsmSceneRenderer->renderScene(pCtx, mpLightCamera.get());
         pCtx->popGraphicsState();
         pCtx->popGraphicsVars();
@@ -813,5 +832,15 @@ namespace Falcor
     {
         mpGaussianBlur->setKernelWidth(kernelWidth);
         mpGaussianBlur->setSigma(sigma);
+    }
+
+    void CascadedShadowMaps::toggleMeshCulling(bool enabled)
+    { 
+        mpCsmSceneRenderer->toggleMeshCulling(enabled); 
+    }
+
+    bool CascadedShadowMaps::isMeshCullingEnabled() const
+    {
+        return mpCsmSceneRenderer->isMeshCullingEnabled();
     }
 }

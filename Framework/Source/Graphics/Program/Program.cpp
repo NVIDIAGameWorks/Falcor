@@ -179,7 +179,7 @@ namespace Falcor
         return desc;
     }
 
-    void Program::addDefine(const std::string& name, const std::string& value)
+    bool Program::addDefine(const std::string& name, const std::string& value)
     {
         // Make sure that it doesn't exist already
         if(mDefineList.find(name) != mDefineList.end())
@@ -187,20 +187,91 @@ namespace Falcor
             if(mDefineList[name] == value)
             {
                 // Same define
-                return;
+                return false;
             }
         }
         mLinkRequired = true;
         mDefineList[name] = value;
+        return true;
     }
 
-    void Program::removeDefine(const std::string& name)
+    bool Program::addDefines(const DefineList& dl)
+    {
+        bool dirty = false;
+        for (auto it : dl)
+        {
+            if (addDefine(it.first, it.second))
+            {
+                dirty = true;
+            }
+        }
+        return dirty;
+    }
+
+    bool Program::removeDefine(const std::string& name)
     {
         if(mDefineList.find(name) != mDefineList.end())
         {
             mLinkRequired = true;
             mDefineList.erase(name);
+            return true;
         }
+        return false;
+    }
+
+    bool Program::removeDefines(const DefineList& dl)
+    {
+        bool dirty = false;
+        for (auto it : dl)
+        {
+            if (removeDefine(it.first))
+            {
+                dirty = true;
+            }
+        }
+        return dirty;
+    }
+
+    bool Program::removeDefines(size_t pos, size_t len, const std::string& str)
+    {
+        bool dirty = false;
+        for (auto it = mDefineList.cbegin(); it != mDefineList.cend();)
+        {
+            if (pos < it->first.length() && it->first.compare(pos, len, str) == 0)
+            {
+                mLinkRequired = true;
+                it = mDefineList.erase(it);
+                dirty = true;
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        return dirty;
+    }
+
+    bool Program::clearDefines()
+    {
+        if (!mDefineList.empty())
+        {
+            mLinkRequired = true;
+            mDefineList.clear();
+            return true;
+        }
+        return false;
+    }
+
+    bool Program::replaceAllDefines(const DefineList& dl)
+    {
+        // TODO: re-link only if new macros differ from existing
+        if (!mDefineList.empty() || !dl.empty())
+        {
+            mLinkRequired = true;
+            mDefineList = dl;
+            return true;
+        }
+        return false;
     }
 
     bool Program::checkIfFilesChanged()
@@ -328,7 +399,7 @@ namespace Falcor
         spSetCodeGenTarget(slangRequest, SLANG_SPIRV);
         spAddPreprocessorDefine(slangRequest, "FALCOR_GLSL", "1");
         SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_GLSL;
-#elif defined FALCOR_D3D
+#elif defined FALCOR_D3D12
         // Note: we could compile Slang directly to DXBC (by having Slang invoke the MS compiler for us,
         // but that path seems to have more issues at present, so let's just go to HLSL instead...)
         spSetCodeGenTarget(slangRequest, SLANG_HLSL);
@@ -518,7 +589,12 @@ namespace Falcor
                 error += getProgramDescString() + "\n";
                 error += log;
 
-                if(msgBox(error, MsgBoxType::RetryCancel) == MsgBoxButton::Cancel)
+                MsgBoxButton button = msgBox(error, MsgBoxType::AbortRetryIgnore);
+                if (button == MsgBoxButton::Abort)
+                {
+                    logErrorAndExit(error);
+                }
+                else if (button == MsgBoxButton::Ignore)
                 {
                     logError(error);
                     return false;

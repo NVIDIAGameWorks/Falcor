@@ -44,6 +44,14 @@ float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint
     return t.Sample(s, uv);
 }
 
+float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint mode, float lod)
+{
+    if(mode == ChannelTypeUnused) return 0;
+    if(mode == ChannelTypeConst) return factor;
+    // else mode == ChannelTypeTexture
+    return t.SampleLevel(s, uv, lod);
+}
+
 /** Shading result struct
 */
 struct ShadingResult
@@ -208,7 +216,8 @@ ShadingResult evalMaterial(ShadingData sd, LightData light, float shadowFactor)
     LightSample ls = evalLight(light, sd);
 
     // If the light doesn't hit the surface or we are viewing the surface from the back, return
-    if(ls.NdotL <= 0 || sd.NdotV <= 0) return sr;
+    if(ls.NdotL <= 0) return sr;
+    sd.NdotV = saturate(sd.NdotV);
 
     // Calculate the diffuse term
     sr.diffuseBrdf = evalDiffuseBrdf(sd, ls);

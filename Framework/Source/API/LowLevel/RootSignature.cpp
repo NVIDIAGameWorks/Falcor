@@ -57,22 +57,23 @@ namespace Falcor
 
     RootSignature::SharedPtr RootSignature::getEmpty()
     {
-        if (spEmptySig == nullptr)
-        {
-            spEmptySig = create(Desc());
-        }
-        return spEmptySig;
+        if (spEmptySig) return spEmptySig;
+        return create(Desc());
     }
-
+    
     RootSignature::SharedPtr RootSignature::create(const Desc& desc)
     {
-        if (desc.mSets.size() == 0) return getEmpty();
+        bool empty = desc.mSets.size() == 0;
+        if (empty && spEmptySig) return spEmptySig;
 
         SharedPtr pSig = SharedPtr(new RootSignature(desc));
         if (pSig->apiInit() == false)
         {
             pSig = nullptr;
         }
+
+        if (empty) spEmptySig = pSig;
+
         return pSig;
     }
 

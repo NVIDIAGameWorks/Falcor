@@ -34,10 +34,6 @@
 #include <dxgi1_4.h>
 #include <dxgiformat.h>
 
-#ifndef FALCOR_D3D
-#define FALCOR_D3D
-#endif
-
 #define MAKE_SMART_COM_PTR(_a) _COM_SMARTPTR_TYPEDEF(_a, __uuidof(_a))
 
 __forceinline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }

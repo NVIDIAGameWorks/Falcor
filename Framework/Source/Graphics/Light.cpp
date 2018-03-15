@@ -446,7 +446,7 @@ namespace Falcor
 
             // Create a CDF buffer
             mpMeshCDFBuffer.reset();
-            mpMeshCDFBuffer = Buffer::create(sizeof(mMeshCDF[0])*mMeshCDF.size(), Buffer::BindFlags::Vertex, Buffer::CpuAccess::None, mMeshCDF.data());
+            mpMeshCDFBuffer = Buffer::create(sizeof(mMeshCDF[0])*mMeshCDF.size(), Buffer::BindFlags::ShaderResource, Buffer::CpuAccess::None, mMeshCDF.data());
 
             // Set the world position and world direction of this light
             if (mpIndexBuffer->getSize() != 0 && mpVertexBuffer->getSize() != 0)

@@ -109,11 +109,6 @@ namespace Falcor
     {
         if(saveFileDialog(VideoEncoder::getSupportedContainerForCodec(mCodec).c_str(), mFilename))
         {
-            if(!mUseTimeRange)
-            {
-                mCaptureUI = true;
-            }
-
             mCapturing = true;
 
             // Call the users callback
@@ -123,16 +118,12 @@ namespace Falcor
 
     void VideoEncoderUI::endCaptureUI(Gui* pGui)
     {
-        if (mCaptureUI)
+        pGui->pushWindow("Video Capture");
+        if (pGui->addButton("End Recording"))
         {
-            pGui->pushWindow("Video Capture");
-            if (pGui->addButton("End Recording"))
-            {
-                mEndCB();
-                mCapturing = false;
-            }
-            pGui->popWindow();
+            mEndCB();
+            mCapturing = false;
         }
-
+        pGui->popWindow();
     }
 }

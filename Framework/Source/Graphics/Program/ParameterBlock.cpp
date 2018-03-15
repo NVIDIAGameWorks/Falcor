@@ -687,6 +687,7 @@ namespace Falcor
 
                     default:
                         should_not_get_here();
+                        return false;
                     }
                 }
             }

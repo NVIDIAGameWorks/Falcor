@@ -358,6 +358,9 @@
     <ClCompile Include="API\Window.cpp">
       <Filter>API</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\Model\SkinningCache.cpp">
+      <Filter>Graphics\Model</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\Program\ParameterBlock.cpp">
       <Filter>Graphics\Program</Filter>
     </ClCompile>
@@ -1585,6 +1588,9 @@
       <Filter>API\D3D12\LowLevel</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Graphics\Model\SkinningCache.h">
+      <Filter>Graphics\Model</Filter>
+    </ClInclude>
     <ClInclude Include="Graphics\LightProbe.h">
       <Filter>Graphics</Filter>
     </ClInclude>
@@ -2205,6 +2211,9 @@
       <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Framework\Shaders\TextRenderer.ps.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
     <None Include="ShadingUtils\Lights.slang">

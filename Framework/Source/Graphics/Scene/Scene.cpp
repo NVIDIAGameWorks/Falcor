@@ -115,10 +115,15 @@ namespace Falcor
 
         for (uint32_t i = 0; i < mModels.size(); i++)
         {
-            mModels[i][0]->getObject()->animate(currentTime);
+            if (mModels[i][0]->getObject()->animate(currentTime))
+            {
+                changed = true;
+            }
         }
 
         mExtentsDirty = mExtentsDirty || changed;
+
+        getActiveCamera()->beginFrame();
 
         // Ignore the elapsed time we got from the user. This will allow camera movement in cases where the time is frozen
         if (cameraController)
@@ -338,9 +343,17 @@ namespace Falcor
             model[0]->getObject()->bindSamplerToMaterials(pSampler);
         }
 
-        //for (auto& probe : mpLightProbes)
-        //{
-        //    probe->setSampler(pSampler);
-        //}
+        for (auto& probe : mpLightProbes)
+        {
+            probe->setSampler(pSampler);
+        }
+    }
+
+    void Scene::attachSkinningCacheToModels(SkinningCache::SharedPtr pSkinningCache)
+    {
+        for (auto& model : mModels)
+        {
+            model[0]->getObject()->attachSkinningCache(pSkinningCache);
+        }
     }
 }

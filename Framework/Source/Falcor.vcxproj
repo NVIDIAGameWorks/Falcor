@@ -338,6 +338,7 @@
     <ClCompile Include="Graphics\Model\Mesh.cpp" />
     <ClCompile Include="Graphics\Model\Model.cpp" />
     <ClCompile Include="Graphics\Model\ModelRenderer.cpp" />
+    <ClCompile Include="Graphics\Model\SkinningCache.cpp" />
     <ClCompile Include="Graphics\Paths\ObjectPath.cpp" />
     <ClCompile Include="Graphics\Paths\PathEditor.cpp" />
     <ClCompile Include="Graphics\GraphicsState.cpp" />
@@ -790,6 +791,7 @@
     <ClInclude Include="Graphics\Model\ObjectInstance.h" />
     <ClInclude Include="Graphics\Model\Model.h" />
     <ClInclude Include="Graphics\Model\ModelRenderer.h" />
+    <ClInclude Include="Graphics\Model\SkinningCache.h" />
     <ClInclude Include="Graphics\Paths\MovableObject.h" />
     <ClInclude Include="Graphics\Paths\ObjectPath.h" />
     <ClInclude Include="Graphics\Paths\PathEditor.h" />
@@ -1020,6 +1022,7 @@
     <None Include="Data\Effects\ToneMapping.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.vs.slang" />
+    <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang" />
     <None Include="Data\Framework\Shaders\FullScreenPass.gs.glsl" />
     <None Include="Data\Framework\Shaders\FullScreenPass.gs.slang" />
     <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang" />
@@ -1048,7 +1051,7 @@
     <ProjectGuid>{3B602F0E-3834-4F73-B97D-7DFC91597A98}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Falcor</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'" Label="Configuration">
