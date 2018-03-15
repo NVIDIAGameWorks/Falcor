@@ -717,10 +717,8 @@ namespace Falcor
     {
         if(mControls.useMinMaxSdsm)
         {
-            //DEBUG:REMOVE THIS WHEN DONE
-            return vec2(0.0f, 0.001f);
-            //reduceDepthSdsmMinMax(pRenderCtx, pCamera, pDepthBuffer);
-            //return mSdsmData.sdsmResult;
+            reduceDepthSdsmMinMax(pRenderCtx, pCamera, pDepthBuffer);
+            return mSdsmData.sdsmResult;
         }
         else
         {

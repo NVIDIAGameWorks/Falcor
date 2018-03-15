@@ -253,6 +253,7 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
 
     // Apply the scale and offset to the derivatives and the position
     shadowPos.xyz = shadowPos.xyz * scale + offset;
+    shadowPos.y = 1.0 - shadowPos.y;
     drvX = drvX * scale.xy;
     drvY = drvY * scale.xy;
 

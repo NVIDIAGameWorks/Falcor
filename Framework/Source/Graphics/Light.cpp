@@ -708,11 +708,12 @@ namespace Falcor
                 }
                 const auto& pAmbientOffset = blockType->findMember(varNameSb.str() + "ambientLight");
                 sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
+                mpParamBlock = ParameterBlock::create(spBlockReflection, true);
+                mpParamBlock->setTypeName(shaderTypeName);
+                mpParamBlock->genericTypeParamName = "TLightCollection";
+                mpParamBlock->genericTypeArgumentName = lightCollectionTypeName;
             }
-            mpParamBlock = ParameterBlock::create(spBlockReflection, true);
-            mpParamBlock->setTypeName(shaderTypeName);
-            mpParamBlock->genericTypeParamName = "TLightCollection";
-            mpParamBlock->genericTypeArgumentName = lightCollectionTypeName;
+            
             // Note: the following logic used to be in the `SceneRenderer`,
             // and so some stuff doesn't translate directly (e.g., we don't
             // currently have a representation of ambient lights in the
