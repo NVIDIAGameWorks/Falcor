@@ -32,12 +32,6 @@
 __import Lights;
 import Interfaces;
 
-#define DiffuseBrdfLambert      0
-#define DiffuseBrdfDisney       1
-#define DiffuseBrdfFrostbite    2
-
-#define DiffuseBrdf DiffuseBrdfFrostbite
-
 float3 fresnelSchlick(float3 f0, float3 f90, float u)
 {
     return f0 + (f90 - f0) * pow(1 - u, 5);

@@ -90,6 +90,12 @@ namespace Falcor
         mParamBlockDirty = mParamBlockDirty || (mData.alphaThreshold != alpha);
         mData.alphaThreshold = alpha; 
     }
+
+    void Material::setDiffuseBrdf(uint32_t brdf)
+    {
+        mParamBlockDirty = mParamBlockDirty || brdf != diffuseBrdf;
+        diffuseBrdf = brdf;
+    }
     
     void Material::setHeightScaleOffset(float scale, float offset) 
     { 
@@ -149,8 +155,8 @@ namespace Falcor
 
     void Material::setNormalMap(Texture::SharedPtr pNormalMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (normalChannel != MaterialChannel(pNormalMap));
-        normalChannel = pNormalMap;
+        mParamBlockDirty = mParamBlockDirty || (normalMap != MaterialChannel(pNormalMap));
+        normalMap = pNormalMap;
         uint32_t normalMode = NormalMapUnused;
         if (pNormalMap)
         {
@@ -201,7 +207,7 @@ namespace Falcor
         compare_field(mData.IoR);
         compare_field(mData.flags);
         compare_field(mData.heightScaleOffset);
-        compare_field(normalChannel);
+        compare_field(normalMap);
         compare_field(occlusionChannel);
         compare_field(lightmapChannel);
         compare_field(heightChannel);
@@ -246,11 +252,12 @@ namespace Falcor
         set_channel(diffuseChannel);
         set_channel(specularChannel);
         set_channel(emissiveChannel);
-        set_channel(normalChannel);
         set_channel(occlusionChannel);
         set_channel(lightmapChannel);
         set_channel(heightChannel);
+        set_channel(normalMap);
 #undef set_texture
+
         pBlock->setSampler(varName + "samplerState", mSampler);
     }
 
@@ -296,10 +303,15 @@ namespace Falcor
             buildTypeStr(sb, diffuseChannel); sb << ", ";
             buildTypeStr(sb, specularChannel); sb << ", ";
             buildTypeStr(sb, emissiveChannel); sb << ", ";
-            buildTypeStr(sb, normalChannel); sb << ", ";
             buildTypeStr(sb, occlusionChannel); sb << ", ";
             buildTypeStr(sb, lightmapChannel); sb << ", ";
-            buildTypeStr(sb, heightChannel);
+            buildTypeStr(sb, heightChannel);  sb << ", ";
+            uint32_t normalMode = EXTRACT_NORMAL_MAP_TYPE(mData.flags);
+            if (normalMode == NormalMapRG) sb << "NormalMap<0> ";
+            else if (normalMode == NormalMapRGB) sb << "NormalMap<1> ";
+            else sb << "NoNormalMap"; 
+            sb << ",";
+            sb << diffuseBrdf;
             sb << ">";
             shaderTypeName = sb.str();
             if (mpParameterBlock == nullptr || spBlockReflection == nullptr 

@@ -83,6 +83,11 @@
 #define AlphaModeOpaque      0
 #define AlphaModeMask        1
 
+// Diffuse BRDFs
+#define DiffuseBrdfLambert      0
+#define DiffuseBrdfDisney       1
+#define DiffuseBrdfFrostbite    2
+
 // Bit count
 #define SHADING_MODEL_BITS   (3)
 #define DIFFUSE_TYPE_BITS    (3)

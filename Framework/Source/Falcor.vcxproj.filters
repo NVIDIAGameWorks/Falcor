@@ -2231,8 +2231,5 @@
     <None Include="Data\ShaderCommon.slang">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\TextureChannel.slang">
-      <Filter>Data</Filter>
-    </None>
   </ItemGroup>
 </Project>

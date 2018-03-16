@@ -149,7 +149,7 @@ namespace Falcor
 
         /** Get the normal map
         */
-        Texture::SharedPtr getNormalMap() const { return normalChannel.texture; }
+        Texture::SharedPtr getNormalMap() const { return normalMap.texture; }
 
         /** Set the occlusion map
         */
@@ -223,6 +223,14 @@ namespace Falcor
         */
         float getAlphaThreshold() const { return mData.alphaThreshold; }
 
+        /** Set the diffuse brdf
+        */
+        void setDiffuseBrdf(uint32_t brdf);
+
+        /** Get the diffuse brdf
+        */
+        uint32_t getDiffuseBrdf() const { return diffuseBrdf; }
+
         /** Get the flags
         */
         uint32_t getFlags() const { return mData.flags; }
@@ -266,8 +274,9 @@ namespace Falcor
     private:        
         Material(const std::string& name);
         std::string mName;
+        uint32_t diffuseBrdf = DiffuseBrdfFrostbite;
         MaterialChannel diffuseChannel, specularChannel, emissiveChannel;
-        MaterialChannel normalChannel, occlusionChannel, lightmapChannel, heightChannel;
+        MaterialChannel occlusionChannel, lightmapChannel, heightChannel, normalMap;
         MaterialData mData;
         Sampler::SharedPtr mSampler;
         mutable bool mParamBlockDirty = true;
