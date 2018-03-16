@@ -75,8 +75,11 @@ namespace Falcor
         auto findRs = typeNameRegistry.find(name);
         if (findRs != typeNameRegistry.end())
             typeId = findRs->second;
-        typeId = (int)typeNameRegistry.size();
-        typeNameRegistry[name] = typeId;
+        else
+        {
+            typeId = (int)typeNameRegistry.size();
+            typeNameRegistry[name] = typeId;
+        }
     }
 
     std::string ParameterBlock::getTypeName() const

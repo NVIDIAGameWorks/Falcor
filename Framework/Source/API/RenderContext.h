@@ -174,6 +174,7 @@ namespace Falcor
         GraphicsVars::SharedPtr mpGraphicsVars;
         GraphicsState::SharedPtr mpGraphicsState;
         bool mBindGraphicsRootSig = true;
+        RootSignature* lastRootSig = nullptr;
 
         std::stack<GraphicsState::SharedPtr> mPipelineStateStack;
         std::stack<GraphicsVars::SharedPtr> mpGraphicsVarsStack;

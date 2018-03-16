@@ -222,10 +222,11 @@ namespace Falcor
 
         auto gso = mpGraphicsState->getGSO(mpGraphicsVars.get());
         auto rootSignature = gso->getDesc().getProgramKernels()->getRootSignature();
-
+        mBindGraphicsRootSig = mBindGraphicsRootSig || rootSignature.get() != lastRootSig;
         if (mBindGraphicsRootSig)
         {
             rootSignature->bindForGraphics(this);
+            lastRootSig = rootSignature.get();
         }
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if (mpGraphicsVars)
