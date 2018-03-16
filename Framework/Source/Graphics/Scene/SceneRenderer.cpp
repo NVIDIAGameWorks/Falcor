@@ -235,11 +235,6 @@ namespace Falcor
                 return;
             }
             mpLastMaterial = pMesh->getMaterial().get();
-
-            if(mCompileMaterialWithProgram)
-            {
-                MaterialSystem::patchProgram(currentData.pState->getProgram().get(), mpLastMaterial);
-            }
         }
 
         executeDraw(currentData, pMesh->getIndexCount(), instanceCount);

@@ -26,8 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 import Material;
-
-ParameterBlock<StandardMaterial> materialBlock;
+import Lights;
 
 float4 main() : SV_TARGET
 {

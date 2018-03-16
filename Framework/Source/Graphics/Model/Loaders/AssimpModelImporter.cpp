@@ -331,7 +331,6 @@ namespace Falcor
         std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
 
         Material::SharedPtr pMaterial = Material::create(nameStr);
-        loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
 
         // Opacity
         float opacity;
@@ -388,6 +387,9 @@ namespace Falcor
                 pMaterial->setEmissiveTexture(pMaterial->getDiffuseTexture());
             }
         }
+
+        loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
+
         // Double-Sided
         int isDoubleSided;
         if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)

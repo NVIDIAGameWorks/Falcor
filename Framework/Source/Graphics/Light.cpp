@@ -318,8 +318,9 @@ namespace Falcor
         pBlock->setRawBuffer(varName + ".resources.texCoordBuffer", mpTexCoordBuffer);
         pBlock->setRawBuffer(varName + ".resources.meshCDFBuffer", mpMeshCDFBuffer);
 
-        std::string matVarName = varName + ".resources.material";
-        mpMeshInstance->getObject()->getMaterial()->setIntoProgramVars(pVars, pCb, matVarName.c_str());
+        // SLANG-INTEGRATION: we don't support this yet
+        //std::string matVarName = varName + ".resources.material";
+        //mpMeshInstance->getObject()->getMaterial()->setIntoProgramVars(pVars, pCb, matVarName.c_str());
     }
 
     void AreaLight::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset)
@@ -354,8 +355,9 @@ namespace Falcor
         pBlock->setRawBuffer(varName + ".resources.texCoordBuffer", mpTexCoordBuffer);
         pBlock->setRawBuffer(varName + ".resources.meshCDFBuffer", mpMeshCDFBuffer);
 
-        std::string matVarName = varName + ".resources.material.";
-        mpMeshInstance->getObject()->getMaterial()->setIntoParameterBlock(pBlock, matVarName.c_str());
+        // SLANG-INTEGRATION: we don't support this yet
+        //std::string matVarName = varName + ".resources.material.";
+        //mpMeshInstance->getObject()->getMaterial()->setIntoParameterBlock(pBlock, matVarName.c_str());
     }
 
     void AreaLight::renderUI(Gui* pGui, const char* group)
@@ -639,8 +641,6 @@ namespace Falcor
 
     // SLANG-INTEGRATION: forward declare
     ReflectionType::SharedPtr reflectType(slang::TypeLayoutReflection* pSlangType);
-
-    ParameterBlockReflection::SharedConstPtr LightEnv::spBlockReflection;
 
     // Field offsets inside the parameter block.
     // TODO: these will need to be more dynamic once we are building a dynamic type...

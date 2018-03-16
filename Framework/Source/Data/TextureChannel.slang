@@ -1,5 +1,5 @@
 #include "HostDeviceSharedMacros.h"
-
+import Interfaces;
 /** Load data from a texture
 */
 float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint mode)
@@ -9,3 +9,4 @@ float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint
     // else mode == ChannelTypeTexture
     return t.Sample(s, uv);
 }
+

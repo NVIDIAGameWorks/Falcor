@@ -35,25 +35,17 @@
 #include "MaterialSystem.h"
 #include "Graphics/Program/ProgramVars.h"
 #include "Graphics/Program/GraphicsProgram.h"
+#include <sstream>
 
 namespace Falcor
 {
     uint32_t Material::sMaterialCounter = 0;
-    ParameterBlockReflection::SharedConstPtr Material::spBlockReflection;
     static const char* kMaterialVarName = "materialBlock";
 
     Material::Material(const std::string& name) : mName(name)
     {
         mData.id = sMaterialCounter;
         sMaterialCounter++;
-        if (spBlockReflection == nullptr)
-        {
-            GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
-            ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
-            spBlockReflection = pReflection->getParameterBlock(kMaterialVarName);
-            assert(spBlockReflection);
-        }
-        mpParameterBlock = ParameterBlock::create(spBlockReflection, true);
     }
 
     Material::SharedPtr Material::create(const std::string& name)
@@ -63,7 +55,7 @@ namespace Falcor
     }
 
     Material::~Material() = default;
-
+    
     void Material::resetGlobalIdCounter()
     {
         sMaterialCounter = 0;
@@ -113,81 +105,52 @@ namespace Falcor
 
     void Material::setSampler(Sampler::SharedPtr pSampler)
     {
-        mParamBlockDirty = mParamBlockDirty || (pSampler != mData.resources.samplerState);
-        mData.resources.samplerState = pSampler;
+        mParamBlockDirty = mParamBlockDirty || (pSampler != mSampler);
+        mSampler = pSampler;
     }
 
     void Material::setDiffuseTexture(Texture::SharedPtr& pDiffuse)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.diffuse != pDiffuse);
-        mData.resources.diffuse = pDiffuse;
-        updateDiffuseType();
+        mParamBlockDirty = mParamBlockDirty || (diffuseChannel != pDiffuse);
+        diffuseChannel = pDiffuse;
         bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
         setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
     }
 
     void Material::setSpecularTexture(Texture::SharedPtr pSpecular)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.specular != pSpecular);
-        mData.resources.specular = pSpecular;
-        updateSpecularType();
+        mParamBlockDirty = mParamBlockDirty || (specularChannel != pSpecular);
+        specularChannel = pSpecular;
     }
 
     void Material::setEmissiveTexture(const Texture::SharedPtr& pEmissive)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.emissive != pEmissive);
-        mData.resources.emissive = pEmissive;
-        updateEmissiveType();
+        mParamBlockDirty = mParamBlockDirty || (emissiveChannel != pEmissive);
+        emissiveChannel = pEmissive;
     }
 
     void Material::setDiffuseColor(const vec4& color)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.diffuse != color);
-        mData.diffuse = color;
-        updateDiffuseType();
+        mParamBlockDirty = mParamBlockDirty || (diffuseChannel != color);
+        diffuseChannel = color;
     }
 
     void Material::setSpecularColor(const vec4& color)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.specular != color);
-        mData.specular = color;
-        updateSpecularType();
+        mParamBlockDirty = mParamBlockDirty || (specularChannel != color);
+        specularChannel = color;
     }
 
     void Material::setEmissiveColor(const vec3& color)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.emissive != color);
-        mData.emissive = color;
-        updateEmissiveType();
-    }
-
-    template<typename vec>
-    static uint32_t getChannelMode(bool hasTexture, const vec& color)
-    {
-        if (hasTexture) return ChannelTypeTexture;
-        if (luminance(color) == 0) return ChannelTypeUnused;
-        return ChannelTypeConst;
-    }
-
-    void Material::updateDiffuseType()
-    {
-        mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.resources.diffuse != nullptr, mData.diffuse));
-    }
-
-    void Material::updateSpecularType()
-    {
-        mData.flags = PACK_SPECULAR_TYPE(mData.flags, getChannelMode(mData.resources.specular != nullptr, mData.specular));
-    }
-
-    void Material::updateEmissiveType()
-    {
-        mData.flags = PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mData.resources.emissive != nullptr, mData.emissive));
+        mParamBlockDirty = mParamBlockDirty || (emissiveChannel != vec4(color, 1.0f));
+        emissiveChannel = vec4(color, 1.0f);
     }
 
     void Material::setNormalMap(Texture::SharedPtr pNormalMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.normalMap != pNormalMap);
-        mData.resources.normalMap = pNormalMap;
+        mParamBlockDirty = mParamBlockDirty || (normalChannel != MaterialChannel(pNormalMap));
+        normalChannel = pNormalMap;
         uint32_t normalMode = NormalMapUnused;
         if (pNormalMap)
         {
@@ -210,104 +173,116 @@ namespace Falcor
 
     void Material::setOcclusionMap(Texture::SharedPtr pOcclusionMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.occlusionMap != pOcclusionMap);
-        mData.resources.occlusionMap = pOcclusionMap;
-        mData.flags = PACK_OCCLUSION_MAP(mData.flags, pOcclusionMap ? 1 : 0);
-        mParamBlockDirty = true;
+        mParamBlockDirty = mParamBlockDirty || (occlusionChannel != pOcclusionMap);
+        occlusionChannel = pOcclusionMap;
     }
 
     void Material::setLightMap(Texture::SharedPtr pLightMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.lightMap != pLightMap);
-        mData.resources.lightMap = pLightMap;
-        mData.flags = PACK_LIGHT_MAP(mData.flags, pLightMap ? 1 : 0);
+        mParamBlockDirty = mParamBlockDirty || (lightmapChannel != pLightMap);
+        lightmapChannel = pLightMap;
         mParamBlockDirty = true;
     }
 
     void Material::setHeightMap(Texture::SharedPtr pHeightMap)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.heightMap != pHeightMap);
-        mData.resources.heightMap = pHeightMap;
-        mData.flags = PACK_HEIGHT_MAP(mData.flags, pHeightMap ? 1 : 0);
+        mParamBlockDirty = mParamBlockDirty || (heightChannel != pHeightMap);
+        heightChannel = pHeightMap;
         mParamBlockDirty = true;
     }
 
     bool Material::operator==(const Material& other) const 
     {
-#define compare_field(_a) if (mData._a != other.mData._a) return false
-        compare_field(diffuse);
-        compare_field(specular);
-        compare_field(emissive);
-        compare_field(alphaThreshold);
-        compare_field(IoR);
-        compare_field(flags);
-        compare_field(heightScaleOffset);
+#define compare_field(_a) if (_a != other._a) return false
+        compare_field(diffuseChannel);
+        compare_field(specularChannel);
+        compare_field(emissiveChannel);
+        compare_field(mData.alphaThreshold);
+        compare_field(mData.IoR);
+        compare_field(mData.flags);
+        compare_field(mData.heightScaleOffset);
+        compare_field(normalChannel);
+        compare_field(occlusionChannel);
+        compare_field(lightmapChannel);
+        compare_field(heightChannel);
 #undef compare_field
 
-#define compare_texture(_a) if (mData.resources._a != other.mData.resources._a) return false
-        compare_texture(diffuse);
-        compare_texture(specular);
-        compare_texture(emissive);
-        compare_texture(normalMap);
-        compare_texture(occlusionMap);
-        compare_texture(lightMap);
-        compare_texture(heightMap);
-#undef compare_texture
-        if (mData.resources.samplerState != other.mData.resources.samplerState) return false;
+        if (mSampler != other.mSampler) return false;
         return true;
     }
     
     #if _LOG_ENABLED
-#define check_offset(_a) assert(pCB->getVariableOffset(std::string(varName) + #_a) == (offsetof(MaterialData, _a) + offset))
+#define check_offset(_a) assert(pCB->getVariableOffset(std::string(varName) + "materialData." #_a) == (offsetof(MaterialData, _a) + offset))
 #else
 #define check_offset(_a)
 #endif
 
-    static void setMaterialIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, size_t offset, const std::string& varName, const MaterialData& data)
+    void setMaterialChannelIntoParameterBlock(ParameterBlock* pBlock, ConstantBuffer* pCB, const std::string& varName, const MaterialChannel& channel)
+    {
+        if (channel.type == MaterialChannel::Type::Texture)
+        {
+            pBlock->setTexture(varName + ".tex", channel.texture);
+        }
+        else if (channel.type == MaterialChannel::Type::Constant)
+        {
+            pCB->setVariable(varName + ".val", channel.constantValue);
+        }
+    }
+
+    void Material::setMaterialIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, size_t offset, const std::string& varName) const
     {
         // OPTME:
         // First set the desc and the values
-        static const size_t dataSize = sizeof(MaterialData) - sizeof(MaterialResources);
+        static const size_t dataSize = sizeof(MaterialData);
         static_assert(dataSize % sizeof(glm::vec4) == 0, "Material::MaterialData size should be a multiple of 16");
 
-        check_offset(emissive);
         check_offset(heightScaleOffset);
         assert(offset + dataSize <= pCB->getSize());
 
-        pCB->setBlob(&data, offset, dataSize);
+        pCB->setBlob(&mData, offset, dataSize);
 
-        // Now set the textures
-#define set_texture(texName) pBlock->setTexture(varName + "resources." #texName, data.resources.texName)
-        set_texture(diffuse);
-        set_texture(specular);
-        set_texture(emissive);
-        set_texture(normalMap);
-        set_texture(occlusionMap);
-        set_texture(lightMap);
-        set_texture(heightMap);
+        // Now set the channels
+#define set_channel(channelName) setMaterialChannelIntoParameterBlock(pBlock, pCB, varName + #channelName, channelName)
+        set_channel(diffuseChannel);
+        set_channel(specularChannel);
+        set_channel(emissiveChannel);
+        set_channel(normalChannel);
+        set_channel(occlusionChannel);
+        set_channel(lightmapChannel);
+        set_channel(heightChannel);
 #undef set_texture
-        pBlock->setSampler(varName + "resources.samplerState", data.resources.samplerState);
-        pBlock->setTypeName("StandardMaterial");
-        pBlock->genericTypeParamName = "TMaterial";
-        pBlock->genericTypeArgumentName = "StandardMaterial";
+        pBlock->setSampler(varName + "samplerState", mSampler);
     }
 
     void Material::setIntoParameterBlock(ParameterBlock* pBlock, const std::string& varName) const
     {
         ConstantBuffer* pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
-        setMaterialIntoBlockCommon(pBlock, pCB, 0, varName + "materialData.", mData);
+        setMaterialIntoBlockCommon(pBlock, pCB, 0, varName);
+        pBlock->setTypeName(shaderTypeName);
+        pBlock->genericTypeParamName = "TMaterial";
+        pBlock->genericTypeArgumentName = shaderTypeName;
     }
 
-    void Material::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const
-    {
-        size_t offset = pCb->getVariableOffset(varName);
+    // SLANG-INTEGRATION: forward declare
+    ReflectionType::SharedPtr reflectType(slang::TypeLayoutReflection* pSlangType);
 
-        if (offset == ConstantBuffer::kInvalidOffset)
+    void buildTypeStr(std::stringstream & sb, const MaterialChannel& channel)
+    {
+        switch (channel.type)
         {
-            logError(std::string("Material::setIntoProgramVars() - variable \"") + varName + "\" not found in constant buffer\n");
+        case MaterialChannel::Type::Unused:
+            sb << "UnusedChannel";
             return;
+        case MaterialChannel::Type::Texture:
+            sb << "TextureChannel";
+            return;
+        case MaterialChannel::Type::Constant:
+            sb << "ConstantChannel";
+            return;
+        default:
+            should_not_get_here();
+            logWarning("Unsupported channel type.");
         }
-        setMaterialIntoBlockCommon(pVars->getDefaultBlock().get(), pCb, offset, std::string(varName) + '.', mData);
     }
 
     ParameterBlock::SharedConstPtr Material::getParameterBlock() const
@@ -315,6 +290,37 @@ namespace Falcor
         if (mParamBlockDirty)
         {
             mParamBlockDirty = false;
+            // build type name
+            std::stringstream sb;
+            sb << "StandardMaterial<";
+            buildTypeStr(sb, diffuseChannel); sb << ", ";
+            buildTypeStr(sb, specularChannel); sb << ", ";
+            buildTypeStr(sb, emissiveChannel); sb << ", ";
+            buildTypeStr(sb, normalChannel); sb << ", ";
+            buildTypeStr(sb, occlusionChannel); sb << ", ";
+            buildTypeStr(sb, lightmapChannel); sb << ", ";
+            buildTypeStr(sb, heightChannel);
+            sb << ">";
+            shaderTypeName = sb.str();
+            if (mpParameterBlock == nullptr || spBlockReflection == nullptr 
+                || reflectionTypeName != shaderTypeName)
+            {
+                GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
+                ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
+                auto slangReq = pProgram->getActiveVersion()->slangRequest;
+                auto reflection = spGetReflection(slangReq);
+
+                auto materialType = spReflection_FindTypeByName(reflection, shaderTypeName.c_str());
+                auto layout = spReflection_GetTypeLayout(reflection, materialType, SLANG_LAYOUT_RULES_DEFAULT);
+                auto blockType = reflectType((slang::TypeLayoutReflection*)layout);
+                auto blockReflection = ParameterBlockReflection::create("");
+                blockReflection->setElementType(blockType);
+                blockReflection->finalize();
+                spBlockReflection = blockReflection;
+                reflectionTypeName = shaderTypeName;
+                assert(spBlockReflection);
+                mpParameterBlock = ParameterBlock::create(spBlockReflection, true);
+            }
             setIntoParameterBlock(mpParameterBlock.get(), "");
         }
         return mpParameterBlock;

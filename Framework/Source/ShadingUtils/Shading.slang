@@ -33,7 +33,6 @@ __exported __import ShaderCommon;
 __import Lights;
 __import BRDF;
 __import Helpers;
-import TextureChannel;
 import Interfaces;
 
 #endif	// _FALCOR_SHADING_SLANG_

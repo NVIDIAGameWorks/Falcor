@@ -479,7 +479,7 @@ namespace Falcor
 
         mutable ParameterBlock::SharedPtr mpParamBlock;
         mutable VersionID mParamBlockVersionID = -1;
-        static ParameterBlockReflection::SharedConstPtr spBlockReflection;
+        mutable ParameterBlockReflection::SharedConstPtr spBlockReflection;
         static size_t sLightCountOffset;
         static size_t sLightArrayOffset;
         static size_t sAmbientLightOffset;
