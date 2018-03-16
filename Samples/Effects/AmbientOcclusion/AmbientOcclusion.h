@@ -45,7 +45,7 @@ private:
     void resetCamera();
 
     Model::SharedPtr mpModel;
-
+    ModelRenderer mModelRenderer;
     Camera::SharedPtr mpCamera;
     ModelViewCameraController mCameraController;
 

@@ -51,6 +51,7 @@ private:
 
     Model::SharedPtr mpModel = nullptr;
     ModelViewCameraController mModelViewCameraController;
+    ModelRenderer mModelRenderer;
     FirstPersonCameraController mFirstPersonCameraController;
     Sampler::SharedPtr mpLinearSampler;
 

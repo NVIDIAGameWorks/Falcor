@@ -58,6 +58,7 @@ private:
     Model::SharedPtr mpModel;
     Camera::SharedPtr mpCamera;
     ModelViewCameraController mCameraController;
+    ModelRenderer mModelRenderer;
 
     bool mDirty = true;
     static const Gui::DropdownList kModeList;

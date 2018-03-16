@@ -106,7 +106,7 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
     mpCamera = Camera::create();
     mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
     mCameraController.attachCamera(mpCamera);
-
+    mModelRenderer.init(mpModel);
     resetCamera();
 }
 
@@ -124,7 +124,7 @@ void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, RenderContext::Sh
 
     pRenderContext->setGraphicsState(mpPrePassState);
     pRenderContext->setGraphicsVars(mpPrePassVars);
-    ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
+    mModelRenderer.render(pRenderContext.get(), mpCamera.get());
 
     // Generate AO Map
     Texture::SharedPtr pAOMap = mpSSAO->generateAOMap(pRenderContext.get(), mpCamera.get(), mpGBufferFbo->getDepthStencilTexture(), mpGBufferFbo->getColorTexture(1));

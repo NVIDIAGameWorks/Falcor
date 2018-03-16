@@ -80,6 +80,7 @@ void HashedAlpha::loadModel(std::string filename)
 	mpCamera->setDepthRange(std::max(0.01f, radius / 750.0f), radius * 50.0f);
 
 	mCameraController.setModelParams(modelCenter, radius, 3.5f);
+    mModelRenderer.init(mpModel);
 }
 
 void HashedAlpha::loadModel()
@@ -140,7 +141,7 @@ void HashedAlpha::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedP
         updateProgram();
         pRenderContext->setGraphicsState(mpState);
         pRenderContext->setGraphicsVars(mpVars);
-        ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
+        mModelRenderer.render(pRenderContext.get(), mpCamera.get());
     }
 }
 
