@@ -73,10 +73,10 @@ namespace Falcor
         mData.flags = PACK_SHADING_MODEL(mData.flags, model); 
     }
 
-    void Material::setAlphaMode(uint32_t alphaMode) 
+    void Material::setAlphaTestMode(AlphaTestMode alphaMode) 
     { 
-        mParamBlockDirty = mParamBlockDirty || (EXTRACT_ALPHA_MODE(mData.flags) != alphaMode);
-        mData.flags = PACK_ALPHA_MODE(mData.flags, alphaMode);
+        mParamBlockDirty = mParamBlockDirty || (alphaTestMode != alphaMode);
+        alphaTestMode = alphaMode;
     }
 
     void Material::setDoubleSided(bool doubleSided) 
@@ -89,6 +89,12 @@ namespace Falcor
     { 
         mParamBlockDirty = mParamBlockDirty || (mData.alphaThreshold != alpha);
         mData.alphaThreshold = alpha; 
+    }
+
+    void Material::setHashedAlphaTestScale(float scale)
+    {
+        mParamBlockDirty = mParamBlockDirty || (hashedAlphaScale != scale);
+        hashedAlphaScale = scale;
     }
 
     void Material::setDiffuseBrdf(uint32_t brdf)
@@ -120,7 +126,7 @@ namespace Falcor
         mParamBlockDirty = mParamBlockDirty || (diffuseChannel != pDiffuse);
         diffuseChannel = pDiffuse;
         bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
-        setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
+        setAlphaTestMode(hasAlpha ? AlphaTestMode::HashedIsotropic : AlphaTestMode::Disabled);
     }
 
     void Material::setSpecularTexture(Texture::SharedPtr pSpecular)
@@ -153,14 +159,12 @@ namespace Falcor
         emissiveChannel = vec4(color, 1.0f);
     }
 
-    void Material::setNormalMap(Texture::SharedPtr pNormalMap)
+    uint32_t Material::getNormalMode(Texture::SharedPtr pNormalMap) const
     {
-        mParamBlockDirty = mParamBlockDirty || (normalMap != MaterialChannel(pNormalMap));
-        normalMap = pNormalMap;
         uint32_t normalMode = NormalMapUnused;
         if (pNormalMap)
         {
-            switch(getFormatChannelCount(pNormalMap->getFormat()))
+            switch (getFormatChannelCount(pNormalMap->getFormat()))
             {
             case 2:
                 normalMode = NormalMapRG;
@@ -174,6 +178,14 @@ namespace Falcor
                 logWarning("Unsupported normal map format for material " + mName);
             }
         }
+        return normalMode;
+    }
+
+    void Material::setNormalMap(Texture::SharedPtr pNormalMap)
+    {
+        mParamBlockDirty = mParamBlockDirty || (normalMap != MaterialChannel(pNormalMap));
+        normalMap = pNormalMap;
+        uint32_t normalMode = getNormalMode(pNormalMap);
         mData.flags = PACK_NORMAL_MAP_TYPE(mData.flags, normalMode);
     }
 
@@ -257,7 +269,9 @@ namespace Falcor
         set_channel(heightChannel);
         set_channel(normalMap);
 #undef set_texture
-
+        if (alphaTestMode == AlphaTestMode::HashedAnisotropic ||
+            alphaTestMode == AlphaTestMode::HashedIsotropic)
+            pCB->setVariable(varName + "alphaTest.hashedAlphaScale", hashedAlphaScale);
         pBlock->setSampler(varName + "samplerState", mSampler);
     }
 
@@ -292,6 +306,34 @@ namespace Falcor
         }
     }
 
+    const char * getAlphaTestShaderType(AlphaTestMode mode)
+    {
+        switch (mode)
+        {
+        case AlphaTestMode::Basic:
+            return "BasicAlphaTest";
+        case AlphaTestMode::HashedAnisotropic:
+            return "HashedAlphaTest<1>";
+        case AlphaTestMode::HashedIsotropic:
+            return "HashedAlphaTest<0>";
+        default:
+            return "NoAlphaTest";
+        }
+    }
+
+    const char * getNormalModeShaderType(uint32_t normalMode)
+    {
+        switch (normalMode)
+        {
+        case NormalMapRGB:
+            return "NormalMap<1>";
+        case NormalMapRG:
+            return "NormalMap<0>";
+        default:
+            return "NoNormalMap";
+        }
+    }
+
     ParameterBlock::SharedConstPtr Material::getParameterBlock() const
     {
         if (mParamBlockDirty)
@@ -306,11 +348,8 @@ namespace Falcor
             buildTypeStr(sb, occlusionChannel); sb << ", ";
             buildTypeStr(sb, lightmapChannel); sb << ", ";
             buildTypeStr(sb, heightChannel);  sb << ", ";
-            uint32_t normalMode = EXTRACT_NORMAL_MAP_TYPE(mData.flags);
-            if (normalMode == NormalMapRG) sb << "NormalMap<0> ";
-            else if (normalMode == NormalMapRGB) sb << "NormalMap<1> ";
-            else sb << "NoNormalMap"; 
-            sb << ",";
+            sb << getNormalModeShaderType(getNormalMode(normalMap.texture)) << ", ";
+            sb << getAlphaTestShaderType(alphaTestMode) << ", ";
             sb << diffuseBrdf;
             sb << ">";
             shaderTypeName = sb.str();

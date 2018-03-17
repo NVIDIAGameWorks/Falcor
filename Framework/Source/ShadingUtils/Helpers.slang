@@ -29,6 +29,7 @@
 #define _FALCOR_HELPERS_SLANG_
 #include "HostDeviceData.h"
 
+import Interfaces;
 /*******************************************************************
     Spherical map sampling
 *******************************************************************/
@@ -177,5 +178,30 @@ void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
     hashedAlphaTest(alpha, threshold, hashedThreshold);
 #endif
 }
+
+struct NoAlphaTest : IAlphaTest
+{
+    void run(float alpha, float threshold, float3 posW)
+    {
+    }
+};
+
+struct BasicAlphaTest : IAlphaTest
+{
+    void run(float alpha, float threshold, float3 posW)
+    {
+        basicAlphaTest(alpha, threshold);
+    }
+};
+
+struct HashedAlphaTest<let IsAnisotropic : int> : IAlphaTest
+{
+    float hashedAlphaScale;
+    void run(float alpha, float threshold, float3 posW)
+    {
+        float hashedThreshold = calculateHashedAlpha(posW, hashedAlphaScale, IsAnisotropic == 1);
+        hashedAlphaTest(alpha, threshold, hashedThreshold);
+    }
+};
 
 #endif //_FALCOR_HELPERS_SLANG_

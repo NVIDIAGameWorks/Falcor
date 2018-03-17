@@ -78,6 +78,11 @@ namespace Falcor
         }
     };
 
+    enum class AlphaTestMode
+    {
+        Disabled, Basic, HashedIsotropic, HashedAnisotropic
+    };
+
     class Material : public std::enable_shared_from_this<Material>
     {
     public:
@@ -201,11 +206,11 @@ namespace Falcor
 
         /** Set the alpha mode
         */
-        void setAlphaMode(uint32_t alphaMode);
+        void setAlphaTestMode(AlphaTestMode mode);
 
         /** Get the alpha mode
         */
-        uint32_t getAlphaMode() const { return EXTRACT_ALPHA_MODE(mData.flags); }
+        AlphaTestMode getAlphaTestMode() const { return alphaTestMode; }
 
         /** Set the double-sided flag. This flag doesn't affect the rasterizer state, just the shading
         */
@@ -222,6 +227,9 @@ namespace Falcor
         /** Get the alpha threshold
         */
         float getAlphaThreshold() const { return mData.alphaThreshold; }
+
+        void setHashedAlphaTestScale(float scale);
+        float getHashedAlphaTestScale() const { return hashedAlphaScale; }
 
         /** Set the diffuse brdf
         */
@@ -279,6 +287,8 @@ namespace Falcor
         MaterialChannel occlusionChannel, lightmapChannel, heightChannel, normalMap;
         MaterialData mData;
         Sampler::SharedPtr mSampler;
+        AlphaTestMode alphaTestMode;
+        float hashedAlphaScale = 1.0f;
         mutable bool mParamBlockDirty = true;
         mutable ParameterBlockReflection::SharedConstPtr spBlockReflection;
         mutable std::string reflectionTypeName; // type name of current reflection data
@@ -287,6 +297,7 @@ namespace Falcor
         static uint32_t sMaterialCounter;
         void setMaterialIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, size_t offset, const std::string& varName) const;
         void setIntoParameterBlock(ParameterBlock* pBlock, const std::string& varName) const;
+        uint32_t Material::getNormalMode(Texture::SharedPtr pNormalMap) const;
     };
 
 #undef Texture2D

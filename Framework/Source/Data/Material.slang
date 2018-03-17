@@ -183,6 +183,7 @@ struct StandardMaterial <
     TLightMap : IMaterialChannel,
     THeight : IMaterialChannel,
     TNormal : INormalMap,
+    TAlphaTest : IAlphaTest,
     let DiffuseBrdf : int
     > : IMaterial
 {
@@ -198,7 +199,8 @@ struct StandardMaterial <
     TLightMap lightmapChannel;
     THeight heightChannel;
     TNormal normalMap;
-    
+    TAlphaTest alphaTest;
+
     ShadingPoint<BxDF> evalShadingPoint(VertexOut v, float3 camPosW)
     {
         ShadingPoint<BxDF> rs;
@@ -212,7 +214,7 @@ struct StandardMaterial <
 
         sd.diffuse = diffuse.rgb;
         sd.opacity = diffuse.a;
-        alphaTest(materialData.flags, diffuse.a, materialData.alphaThreshold, v.posW);
+        alphaTest.run(diffuse.a, materialData.alphaThreshold, v.posW);
 
         geom.posW = v.posW;
         geom.posH = v.posH;
@@ -259,17 +261,6 @@ struct StandardMaterial <
         return rs;
     }
 };
-
-/** Apply alpha-test
-*/
-void applyAlphaTest(MaterialData m, float alpha)
-{
-    if(EXTRACT_ALPHA_MODE(m.flags) == AlphaModeMask)
-    {
-        if(alpha < m.alphaThreshold) discard;
-    }
-}
-
 
 /** Convert RGB to normal
 */

@@ -121,7 +121,7 @@ namespace Falcor
 
         RasterizerState::SharedPtr getRasterizerState(const Material* pMaterial)
         {
-            if (pMaterial->getAlphaMode() == AlphaModeMask)
+            if (pMaterial->getAlphaTestMode() != AlphaTestMode::Disabled)
             {
                 return mDepthClamp ? mpDepthClampNoCullRS : mpNoCullRS;
             }
@@ -135,7 +135,7 @@ namespace Falcor
         {
             mMaterialChanged = true;
             currentData.pVars->setParameterBlock("gMaterial", pMaterial->getParameterBlock());
-            if (currentData.pMaterial->getAlphaMode() == AlphaModeMask)
+            if (pMaterial->getAlphaTestMode() != AlphaTestMode::Disabled)
             {
                 float alphaThreshold = currentData.pMaterial->getAlphaThreshold();
                 auto& pDefaultBlock = currentData.pContext->getGraphicsVars()->getDefaultBlock();

@@ -97,6 +97,11 @@ interface IBxDF
     float getOpacity();
 }
 
+interface IAlphaTest
+{
+    void run(float alpha, float threshold, float3 posW);
+}
+
 struct ShadingPoint<TBxDF:IBxDF>
 {
     SurfaceGeometry geom;
