@@ -200,6 +200,7 @@ private:
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;
     SamplePattern mTAASamplePattern = SamplePattern::Halton;
+    Scene::SharedPtr scene;
     void applyAaMode(SampleCallbacks* pSample);
     std::vector<ProgramControl> mControls;
     void applyLightingProgramControl(ControlID controlID);

@@ -54,7 +54,9 @@ namespace Falcor
         /** Create a renderer instance
             \param[in] pScene Scene this renderer is responsible for rendering
         */
-        static SharedPtr create(const Scene::SharedPtr& pScene);
+        static SharedPtr create(Scene* pScene);
+        static SharedPtr create(Scene::SharedPtr pScene);
+
         virtual ~SceneRenderer() = default;
 
         /** Renders the full scene using the scene's active camera.
@@ -96,7 +98,7 @@ namespace Falcor
 
         void detachCameraController();
 
-        Scene::SharedPtr getScene() const { return mpScene; }
+        Scene* getScene() const { return mpScene; }
 
         void toggleStaticMaterialCompilation(bool on) { mCompileMaterialWithProgram = on; }
 
@@ -115,8 +117,10 @@ namespace Falcor
             uint32_t drawID; // Zero-based mesh instance draw order/ID. Resets at the beginning of renderScene, and increments per mesh instance drawn.
         };
 
-        SceneRenderer(const Scene::SharedPtr& pScene);
-        Scene::SharedPtr mpScene;
+        SceneRenderer(Scene* pScene);
+        SceneRenderer(Scene::SharedPtr pScene) : SceneRenderer(pScene.get()) {}
+
+        Scene* mpScene;
 
         static const char* kPerMaterialCbName;
         static const char* kPerFrameCbName;

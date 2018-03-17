@@ -97,7 +97,7 @@ void ForwardRenderer::initSSAO()
 
 void ForwardRenderer::setSceneSampler(uint32_t maxAniso)
 {
-    Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene().get());
+    Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene());
     Sampler::Desc samplerDesc;
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
@@ -142,7 +142,7 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
         pDirLight->setWorldDirection(vec3(-0.189f, -0.861f, -0.471f));
         pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
         pDirLight->setName("DirLight");
-        pDirLight->enableShadowMap(pScene, 2048, 2048, 6);
+        pDirLight->enableShadowMap(pScene.get(), 2048, 2048, 6);
         pScene->addLight(pDirLight);
     }
 
@@ -198,12 +198,12 @@ void ForwardRenderer::loadScene(SampleCallbacks* pSample, const std::string& fil
         pBar = ProgressBar::create("Loading Scene", 100);
     }
 
-    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
+    scene = Scene::loadFromFile(filename);
 
-    if (pScene != nullptr)
+    if (scene != nullptr)
     {
-        initScene(pSample, pScene);
-        applyCustomSceneVars(pScene.get(), filename);
+        initScene(pSample, scene);
+        applyCustomSceneVars(scene.get(), filename);
     }
 }
 
@@ -220,7 +220,7 @@ void ForwardRenderer::initSkyBox(const std::string& name)
 
 void ForwardRenderer::initLightProbe(const std::string& name)
 {
-    Scene::SharedPtr pScene = mpSceneRenderer->getScene();
+    auto pScene = mpSceneRenderer->getScene();
 
     // Remove existing light probes
     while (pScene->getLightProbeCount() > 0)
@@ -474,7 +474,7 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
 
 void ForwardRenderer::applyCameraPathState()
 {
-    const Scene* pScene = mpSceneRenderer->getScene().get();
+    const Scene* pScene = mpSceneRenderer->getScene();
     if(pScene->getPathCount())
     {
         mUseCameraPath = mUseCameraPath;

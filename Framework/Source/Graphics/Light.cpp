@@ -802,10 +802,10 @@ namespace Falcor
     InfinitesimalLight::~InfinitesimalLight()
     {
     }
-    void InfinitesimalLight::enableShadowMap(Scene::SharedPtr pScene, int width, int height, int numCascades)
+    void InfinitesimalLight::enableShadowMap(Scene* pScene, int width, int height, int numCascades)
     {
         isShadowed = true;
-        mCsm = CascadedShadowMaps::create(width, height, Light::SharedPtr(this), pScene, numCascades);
+        mCsm = CascadedShadowMaps::create(width, height, this, pScene, numCascades);
 
     }
     void InfinitesimalLight::disableShadowMap()

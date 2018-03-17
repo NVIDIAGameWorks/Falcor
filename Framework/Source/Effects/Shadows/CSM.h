@@ -64,7 +64,7 @@ namespace Falcor
             \param[in] cascadeCount Number of cascades
             \param[in] shadowMapFormat Shadow map texture format
         */
-        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
+        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
 
         /** Render UI controls
             \param[in] pGui GUI instance to render UI elements with
@@ -126,9 +126,9 @@ namespace Falcor
         void setSdsmReadbackLatency(uint32_t latency);
         void setEvsmBlur(uint32_t kernelWidth, float sigma);
     private:
-        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
-        Light::SharedConstPtr mpLight;
-        Scene::SharedConstPtr mpScene;
+        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
+        Light* mpLight;
+        Scene* mpScene;
         Camera::SharedPtr mpLightCamera;
         std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;
         std::shared_ptr<SceneRenderer> mpSceneRenderer;
@@ -180,8 +180,8 @@ namespace Falcor
             bool depthClamp = true;
             bool useMinMaxSdsm = false;
             glm::vec2 distanceRange = glm::vec2(0, 1);
-            float pssmLambda = 0.5f;
-            PartitionMode partitionMode = PartitionMode::Logarithmic;
+            float pssmLambda = 0.8f;
+            PartitionMode partitionMode = PartitionMode::PSSM;
             bool stabilizeCascades = false;
         };
 

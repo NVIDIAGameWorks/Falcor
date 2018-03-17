@@ -51,14 +51,14 @@ struct CsmData
 
     float depthBias DEFAULTS(0.005f);
     int cascadeCount DEFAULTS(4);
-    uint32_t filterMode DEFAULTS(CsmFilterHwPcf);
+    uint32_t filterMode DEFAULTS(CsmFilterStochasticPcf);
     int32_t pcfKernelWidth DEFAULTS(5);
     
     float3 lightDir;
     float lightBleedingReduction DEFAULTS(0);
 
     float2 evsmExponents DEFAULTS(float2(40.0f, 5.0f)); // posExp, negExp
-    float cascadeBlendThreshold DEFAULTS(0.2f);
+    float cascadeBlendThreshold DEFAULTS(0.01f);
     uint32_t padding;
 
 #ifndef HOST_CODE

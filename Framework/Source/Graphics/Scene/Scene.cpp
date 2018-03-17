@@ -61,7 +61,10 @@ namespace Falcor
         mpLightEnv = LightEnv::create();
     }
 
-    Scene::~Scene() = default;
+    Scene::~Scene()
+    {
+        printf("break");
+    }
 
     void Scene::updateExtents()
     {

@@ -148,7 +148,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if(pGui->beginGroup("Scene Settings"))
         {
-            Scene* pScene = mpSceneRenderer->getScene().get();
+            Scene* pScene = mpSceneRenderer->getScene();
             float camSpeed = pScene->getCameraSpeed();
             if (pGui->addFloatVar("Camera Speed", camSpeed))
             {
@@ -252,7 +252,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
-            Scene::SharedPtr pScene = mpSceneRenderer->getScene();
+            auto pScene = mpSceneRenderer->getScene();
             if (pScene->getLightProbeCount() > 0)
             {
                 if (pGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))

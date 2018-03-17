@@ -494,7 +494,7 @@ namespace Falcor
         mpEditorScene = Scene::create();
         mpEditorScene->addCamera(Camera::create());
         mpEditorScene->getActiveCamera()->setAspectRatio((float)backBufferWidth/(float)backBufferHeight);
-        mpEditorSceneRenderer = SceneEditorRenderer::create(mpEditorScene);
+        mpEditorSceneRenderer = SceneEditorRenderer::create(mpEditorScene.get());
         mpEditorPicker = Picking::create(mpEditorScene, backBufferWidth, backBufferHeight);
 
         //

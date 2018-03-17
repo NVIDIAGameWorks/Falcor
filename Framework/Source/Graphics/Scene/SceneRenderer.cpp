@@ -59,12 +59,17 @@ namespace Falcor
     const char* SceneRenderer::kAreaLightCbName = "InternalAreaLightCB";
 
 
-    SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
+    SceneRenderer::SharedPtr SceneRenderer::create(Scene* pScene)
     {
         return SharedPtr(new SceneRenderer(pScene));
     }
 
-    SceneRenderer::SceneRenderer(const Scene::SharedPtr& pScene) : mpScene(pScene)
+    SceneRenderer::SharedPtr SceneRenderer::create(Scene::SharedPtr pScene)
+    {
+        return SharedPtr(new SceneRenderer(pScene.get()));
+    }
+
+    SceneRenderer::SceneRenderer(Scene* pScene) : mpScene(pScene)
     {
         setCameraControllerType(CameraControllerType::SixDof);
     }
@@ -239,7 +244,6 @@ namespace Falcor
 
         executeDraw(currentData, pMesh->getIndexCount(), instanceCount);
         postFlushDraw(currentData);
-        currentData.pState->getProgram()->removeDefine("_MS_STATIC_MATERIAL_DESC");
     }
 
     void SceneRenderer::postFlushDraw(const CurrentWorkingData& currentData)

@@ -66,7 +66,7 @@ namespace Falcor
     {
     public:
         using UniquePtr = std::unique_ptr<CsmSceneRenderer>;
-        static UniquePtr create(const Scene::SharedConstPtr& pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
+        static UniquePtr create(Scene* pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
         { 
             return UniquePtr(new CsmSceneRenderer(pScene, alphaMapCbLoc, alphaMapLoc, alphaMapSamplerLoc)); 
         }
@@ -81,8 +81,8 @@ namespace Falcor
         }
 
     protected:
-        CsmSceneRenderer(const Scene::SharedConstPtr& pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
-            : SceneRenderer(std::const_pointer_cast<Scene>(pScene))
+        CsmSceneRenderer(Scene* pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
+            : SceneRenderer(pScene)
         { 
             mBindLocations.alphaCB = alphaMapCbLoc;
             mBindLocations.alphaMap = alphaMapLoc;
@@ -208,7 +208,7 @@ namespace Falcor
 
     CascadedShadowMaps::~CascadedShadowMaps() = default;
 
-    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat) : mpLight(pLight), mpScene(pScene)
+    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat) : mpLight(pLight), mpScene(pScene)
     {
         if(mpLight->getType() != LightDirectional)
         {
@@ -245,7 +245,7 @@ namespace Falcor
         mpGaussianBlur->setKernelWidth(5);
     }
 
-    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
+    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
     {
         if(isDepthFormat(shadowMapFormat) == false)
         {
@@ -341,7 +341,7 @@ namespace Falcor
         mPerLightCbLoc = pDefaultBlock->getResourceBinding("PerLightCB");
 
         mpCsmSceneRenderer = CsmSceneRenderer::create(mpScene, alphaMapCB, alphaMap, alphaSampler);
-        mpSceneRenderer = SceneRenderer::create(std::const_pointer_cast<Scene>(mpScene));
+        mpSceneRenderer = SceneRenderer::create(mpScene);
         mpSceneRenderer->setObjectCullState(true);
     }
 
@@ -543,7 +543,7 @@ namespace Falcor
         camClipSpaceToWorldSpace(pCamera, camFrustum.crd, camFrustum.center, camFrustum.radius);
 
         // Create the global shadow space
-        createShadowMatrix(mpLight.get(), camFrustum.center, camFrustum.radius, mShadowPass.fboAspectRatio, mCsmData.globalMat);
+        createShadowMatrix(mpLight, camFrustum.center, camFrustum.radius, mShadowPass.fboAspectRatio, mCsmData.globalMat);
 
         if(mCsmData.cascadeCount == 1)
         {
@@ -789,7 +789,7 @@ namespace Falcor
             break;
         }
 
-        mCsmData.lightDir = glm::normalize(((InfinitesimalLight*)mpLight.get())->getWorldDirection());
+        mCsmData.lightDir = glm::normalize(((InfinitesimalLight*)mpLight)->getWorldDirection());
         pCB->setBlob(&mCsmData, offset, sizeof(mCsmData));
     }
 

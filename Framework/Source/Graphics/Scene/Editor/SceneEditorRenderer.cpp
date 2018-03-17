@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    SceneEditorRenderer::UniquePtr SceneEditorRenderer::create(const Scene::SharedPtr& pScene)
+    SceneEditorRenderer::UniquePtr SceneEditorRenderer::create(Scene* pScene)
     {
         return UniquePtr(new SceneEditorRenderer(pScene));
     }
@@ -48,7 +48,7 @@ namespace Falcor
         mGizmos = gizmos;
     }
 
-    SceneEditorRenderer::SceneEditorRenderer(const Scene::SharedPtr& pScene)
+    SceneEditorRenderer::SceneEditorRenderer(Scene* pScene)
         : SceneRenderer(pScene)
     {
         mpGraphicsState = GraphicsState::create();

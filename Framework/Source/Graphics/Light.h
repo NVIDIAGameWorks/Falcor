@@ -149,7 +149,7 @@ namespace Falcor
         /** Get the light's world-space direction.
         */
         const glm::vec3& getWorldDirection() const { return mData.dirW; }
-        void enableShadowMap(std::shared_ptr<Scene> pScene, int width, int height, int numCascades);
+        void enableShadowMap(Scene* pScene, int width, int height, int numCascades);
         void disableShadowMap();
         CascadedShadowMaps* getCsm() { return mCsm.get(); }
         bool getShadowed() const { return isShadowed; }
