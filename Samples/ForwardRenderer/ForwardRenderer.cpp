@@ -252,7 +252,11 @@ void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
 {
     mpState = GraphicsState::create();
     initPostProcess();
-    loadScene(pSample, skDefaultScene, true);
+    auto sceneFile = pSample->getArgList().getValues("scene");
+    if (sceneFile.size() > 0)
+        loadScene(pSample, sceneFile.front().asString(), true);
+    else
+        loadScene(pSample, skDefaultScene, true);
 }
 
 void ForwardRenderer::renderSkyBox(RenderContext* pContext)
