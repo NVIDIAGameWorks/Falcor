@@ -424,10 +424,20 @@ namespace Falcor
                 mpRenderContext->setGraphicsState(mpDefaultPipelineState);
             }
             calculateTime();
-            mGpuTimer->begin();
+            
+            if (mEnableProfiling)
+                mGpuTimer->begin();
+            
+            auto cpuStartTime = CpuTimer::getCurrentTimePoint();
             mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
-            mGpuTimer->end();
-            mGpuElaspedTime = (float)mGpuTimer->getElapsedTime();
+            auto cpuEndTime = CpuTimer::getCurrentTimePoint();
+            mCpuElapsedTime = CpuTimer::calcDuration(cpuStartTime, cpuEndTime);
+            
+            if (mEnableProfiling)
+            {
+                mGpuTimer->end();
+                mGpuElapsedTime = (float)mGpuTimer->getElapsedTime();
+            }
         }
         //blits the temp fbo given to user's renderer onto the backbuffer
         mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
@@ -503,8 +513,13 @@ namespace Falcor
             std::string msStr = std::to_string(msPerFrame);
             s = std::to_string(int(ceil(1000 / msPerFrame))) + " FPS (" + msStr.erase(msStr.size() - 4) + " ms/frame)";
             if (mVsyncOn) s += std::string(", VSync");
-            std::string msGpuTimeStr = std::to_string(mGpuElaspedTime);
-            s += std::string(" GPU time: ") + msGpuTimeStr.erase(msGpuTimeStr.size() - 4) + "ms";
+            std::string msCpuTimeStr = std::to_string(mCpuElapsedTime);
+            s += std::string(" CPU time: ") + msCpuTimeStr.erase(msCpuTimeStr.size() - 4) + "ms";
+            if (mEnableProfiling)
+            {
+                std::string msGpuTimeStr = std::to_string(mGpuElapsedTime);
+                s += std::string(" GPU time: ") + msGpuTimeStr.erase(msGpuTimeStr.size() - 4) + "ms";
+            }
         }
         return s;
     }

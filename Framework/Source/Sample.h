@@ -137,7 +137,8 @@ namespace Falcor
         bool mFreezeTime;                                   ///< Whether global time is frozen
         bool mEnableProfiling = true;
         float mCurrentTime = 0;                             ///< Global time
-        float mGpuElaspedTime = 0.0f;
+        float mGpuElapsedTime = 0.0f;
+        float mCpuElapsedTime = 0.0f;
         float mTimeScale;                                   ///< Global time scale
         ArgList mArgList;                                   ///< Arguments passed in by command line
         Window::SharedPtr mpWindow;                         ///< The application's window
