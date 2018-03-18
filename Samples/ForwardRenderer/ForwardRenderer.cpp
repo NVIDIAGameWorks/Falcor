@@ -345,7 +345,6 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
         mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::All);
         mpSceneRenderer->renderScene(pContext);
     }
-    pContext->flush();
     mpState->setDepthStencilState(nullptr);
 }
 

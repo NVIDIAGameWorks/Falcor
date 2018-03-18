@@ -176,7 +176,7 @@ namespace Falcor
         struct Controls
         {
             bool depthClamp = true;
-            bool useMinMaxSdsm = true;
+            bool useMinMaxSdsm = false;
             glm::vec2 distanceRange = glm::vec2(0, 1);
             float pssmLambda = 0.5f;
             PartitionMode partitionMode = PartitionMode::Logarithmic;

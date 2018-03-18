@@ -409,7 +409,7 @@ namespace Falcor
         {
             return;
         }
-
+        gEventCounter.Clear();
         mFrameRate.newFrame();
         beginTestFrame();
         {
@@ -514,12 +514,14 @@ namespace Falcor
             s = std::to_string(int(ceil(1000 / msPerFrame))) + " FPS (" + msStr.erase(msStr.size() - 4) + " ms/frame)";
             if (mVsyncOn) s += std::string(", VSync");
             std::string msCpuTimeStr = std::to_string(mCpuElapsedTime);
-            s += std::string(" CPU time: ") + msCpuTimeStr.erase(msCpuTimeStr.size() - 4) + "ms";
+            s += std::string("\nCPU time: ") + msCpuTimeStr.erase(msCpuTimeStr.size() - 4) + "ms";
             if (mEnableProfiling)
             {
                 std::string msGpuTimeStr = std::to_string(mGpuElapsedTime);
-                s += std::string(" GPU time: ") + msGpuTimeStr.erase(msGpuTimeStr.size() - 4) + "ms";
+                s += std::string("\nGPU time: ") + msGpuTimeStr.erase(msGpuTimeStr.size() - 4) + "ms";
             }
+            s += std::string("\nSyncs(G/C): ") + std::to_string(gEventCounter.numGpuSyncs) + "/" + std::to_string(gEventCounter.numCpuSyncs);
+            s += std::string("\nFlushes: ") + std::to_string(gEventCounter.numFlushes);
         }
         return s;
     }

@@ -53,6 +53,39 @@ namespace Falcor
         const size_t hash;
     };
 
+    struct EventCounter
+    {
+        int numRootSignatureChanges = 0;
+        int numFlushes = 0;
+        int numGpuSyncs = 0, numCpuSyncs = 0;
+        int numDescriptorHeapAllocations = 0;
+        int numDrawCalls = 0;
+        int numMaterialChanges = 0;
+        int numParamBlockUpdates = 0;
+        int numDescriptors = 0, numDescriptorTables = 0;
+        int numSetRootDescriptorTableCalls = 0;
+        int numDescriptorChunkSwitches = 0;
+        int numOutOfChunks = 0;
+        int numMaterials = 0;
+        void Clear()
+        {
+            numGpuSyncs = 0;
+            numCpuSyncs = 0;
+            numRootSignatureChanges = 0;
+            numDescriptorHeapAllocations = 0;
+            numDrawCalls = 0;
+            numMaterialChanges = 0;
+            numFlushes = 0;
+            numParamBlockUpdates = 0;
+            numDescriptors = 0;
+            numSetRootDescriptorTableCalls = 0;
+            numDescriptorChunkSwitches = 0;
+            numOutOfChunks = 0;
+        }
+    };
+
+    extern EventCounter gEventCounter;
+
     /** Container class for CPU/GPU profiling.
         This class uses the most accurately available CPU and GPU timers to profile given events. It automatically creates event hierarchies based on the order of the calls made.
         This class uses a double-buffering scheme for GPU profiling to avoid GPU stalls.
