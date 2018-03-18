@@ -170,6 +170,7 @@ namespace Falcor
         mpTargetFBO.reset();
         mpTextRenderer.reset();
         mpPixelZoom.reset();
+        mGpuTimer.reset();
         mpRenderContext.reset();
         if(gpDevice) gpDevice->cleanup();
         gpDevice.reset();
@@ -261,6 +262,10 @@ namespace Falcor
             mArgList.parseCommandLine(concatCommandLine(argc, argv));
         }
 
+        if (mEnableProfiling)
+            mpRenderContext->enableStablePowerState();
+        mGpuTimer = GpuTimer::create();
+        
         // Load and run
         mpRenderer->onLoad(this, mpRenderContext);
         initializeTesting();
@@ -271,6 +276,7 @@ namespace Falcor
 
         mpRenderer->onShutdown(this);
         mpRenderer.release();
+
         Logger::shutdown();
     }
 
@@ -418,7 +424,10 @@ namespace Falcor
                 mpRenderContext->setGraphicsState(mpDefaultPipelineState);
             }
             calculateTime();
+            mGpuTimer->begin();
             mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
+            mGpuTimer->end();
+            mGpuElaspedTime = (float)mGpuTimer->getElapsedTime();
         }
         //blits the temp fbo given to user's renderer onto the backbuffer
         mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
@@ -494,6 +503,8 @@ namespace Falcor
             std::string msStr = std::to_string(msPerFrame);
             s = std::to_string(int(ceil(1000 / msPerFrame))) + " FPS (" + msStr.erase(msStr.size() - 4) + " ms/frame)";
             if (mVsyncOn) s += std::string(", VSync");
+            std::string msGpuTimeStr = std::to_string(mGpuElaspedTime);
+            s += std::string(" GPU time: ") + msGpuTimeStr.erase(msGpuTimeStr.size() - 4) + "ms";
         }
         return s;
     }

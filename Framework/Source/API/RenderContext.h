@@ -163,6 +163,8 @@ namespace Falcor
         /** Pops the last graphics state from the stack and sets it
         */
         void popGraphicsState();
+
+        void enableStablePowerState();
         
         /** Submit the command list
         */
