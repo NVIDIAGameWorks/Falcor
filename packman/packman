@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PM_PACKMAN_VERSION=5.1
+PM_PACKMAN_VERSION=5.2.4
 
 # Specify where packman command exists
 export PM_INSTALL_PATH=$(dirname ${BASH_SOURCE})
@@ -58,20 +58,25 @@ if [ ! -f "$PM_MODULE" ]; then
 fi
 
 # For now assume python is installed on the box and we just need to find it
-if command -v python2 >/dev/null 2>&1; then
-	export PM_PYTHON=python2
+if command -v python2.7 >/dev/null 2>&1; then
+	export PM_PYTHON=python2.7
+elif command -v python2 >/dev/null 2>&1; then
+    export PM_PYTHON=python2
 else
 	export PM_PYTHON=python
 fi
 
 # Ensure 7za package exists:
-PM_7za_VERSION=16.02
-export PM_7za_PATH="$PM_PACKAGES_ROOT/chk/7za/$PM_7za_VERSION"
-if [ ! -f "$PM_7za_PATH" ]; then
-    $PM_PYTHON "$PM_MODULE" install 7za $PM_7za_VERSION -r packman:cloudfront
-    if [ "$?" -ne 0 ]; then
-        echo "Failure while installing required 7za package"
-        exit 1
+PM_7za_VERSION=16.02.2
+export PM_7za_PATH="$PM_PACKAGES_ROOT/7za/$PM_7za_VERSION"
+if [ ! -d "$PM_7za_PATH" ]; then
+    export PM_7za_PATH="$PM_PACKAGES_ROOT/chk/7za/$PM_7za_VERSION"
+    if [ ! -d "$PM_7za_PATH" ]; then
+        $PM_PYTHON "$PM_MODULE" install 7za $PM_7za_VERSION -r packman:cloudfront
+        if [ "$?" -ne 0 ]; then
+           echo "Failure while installing required 7za package"
+           exit 1
+        fi
     fi
 fi
 
