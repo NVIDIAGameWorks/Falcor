@@ -33,7 +33,7 @@ __import Effects.CascadedShadowMap;
 cbuffer PerFrameCB : register(b0)
 {
     float3 gAmbient;
-    CsmData gCsmData[_LIGHT_COUNT];
+    Texture2D gVisibilityBuffers[_LIGHT_COUNT];
     bool visualizeCascades;
     float4x4 camVpAtLastCsmUpdate;
 };
@@ -52,17 +52,15 @@ float4 main(ShadowsVSOut pIn) : SV_TARGET0
     [unroll]
     for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
     {
-        float shadowFactor = calcShadowFactor(gCsmData[l], pIn.shadowsDepthC, sd.posW, pIn.vsData.posH.xy/pIn.vsData.posH.w);
+        float shadowFactor = gVisibilityBuffers[l].Load(int3(pIn.vsData.posH.xy, 0)).x;
         color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
     }
 
     color.rgb += gAmbient * sd.diffuse * 0.1;
     if(visualizeCascades)
     {
-        //Ideally this would be light index so you can visualize the cascades of the 
-        //currently selected light. However, because csmData contains Textures, it doesn't
-        //like getting them with a non literal index.
-        color.rgb *= getBlendedCascadeColor(gCsmData[_LIGHT_INDEX], pIn.shadowsDepthC);
+        float3 cascadeColor = gVisibilityBuffers[_LIGHT_INDEX].Load(int3(pIn.vsData.posH.xy, 0)).gba;
+        color.rgb *= cascadeColor;
     }
 
     return color;

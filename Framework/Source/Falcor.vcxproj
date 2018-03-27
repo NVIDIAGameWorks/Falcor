@@ -1047,6 +1047,14 @@
       <FileType>Document</FileType>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\Effects\VisibilityPass.ps.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Data\Effects\VisibilityPass.vs.hlsl">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3B602F0E-3834-4F73-B97D-7DFC91597A98}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

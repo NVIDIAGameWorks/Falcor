@@ -28,6 +28,11 @@
 #include "Shadows.h"
 
 const std::string Shadows::skDefaultScene = "Arcade/Arcade.fscene";
+const Gui::DropdownList Shadows::skDebugModeList = {
+    { (uint32_t)Shadows::DebugMode::None, "None" },
+    { (uint32_t)Shadows::DebugMode::ShadowMap, "Shadow Map" },
+    { (uint32_t)Shadows::DebugMode::VisibilityBuffer, "Visibility Buffer" }
+};
 
 void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
@@ -48,8 +53,13 @@ void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     bool visualizeCascades = mPerFrameCBData.visualizeCascades != 0;
     pGui->addCheckBox("Visualize Cascades", visualizeCascades);
+    for (auto it = mpCsmTech.begin(); it != mpCsmTech.end(); ++it)
+    {
+        (*it)->toggleCascadeVisualization(visualizeCascades);
+    }
     mPerFrameCBData.visualizeCascades = visualizeCascades;
-    pGui->addCheckBox("Display Shadow Map", mControls.showShadowMap);
+    
+    pGui->addDropdown("Debug Mode", skDebugModeList, mControls.debugMode);
     pGui->addIntVar("Displayed Cascade", mControls.displayedCascade, 0u, mControls.cascadeCount - 1);
     if (pGui->addIntVar("LightIndex", mControls.lightIndex, 0u, mpScene->getLightCount() - 1))
     {
@@ -96,7 +106,7 @@ void Shadows::createScene(const std::string& filename)
     mpCsmTech.resize(mpScene->getLightCount());
     for(uint32_t i = 0; i < mpScene->getLightCount(); i++)
     {
-        mpCsmTech[i] = CascadedShadowMaps::create(2048, 2048, mpScene->getLight(i), mpScene, mControls.cascadeCount);
+        mpCsmTech[i] = CascadedShadowMaps::create(2048, 2048, mWindowDimensions.x, mWindowDimensions.y, mpScene->getLight(i), mpScene, mControls.cascadeCount);
         mpCsmTech[i]->setFilterMode(CsmFilterHwPcf);
         mpCsmTech[i]->setVsmLightBleedReduction(0.3f);
     }
@@ -113,6 +123,9 @@ void Shadows::createScene(const std::string& filename)
 
 void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
+    auto pTargetFbo = pRenderContext->getGraphicsState()->getFbo();
+    mWindowDimensions.x = pTargetFbo->getWidth();
+    mWindowDimensions.y = pTargetFbo->getHeight();
     createScene(skDefaultScene);
     createVisualizationProgram();
 }
@@ -134,13 +147,21 @@ void Shadows::runMainPass(RenderContext* pContext)
 
 void Shadows::displayShadowMap(RenderContext* pContext)
 {
-    mShadowVisualizer.pProgramVars->setSrv(0, 0, 0, mpCsmTech[mControls.lightIndex]->getShadowMap()->getSRV());
+    mShadowVisualizer.pShadowMapProgramVars->setSrv(0, 0, 0, mpCsmTech[mControls.lightIndex]->getShadowMap()->getSRV());
     if (mControls.cascadeCount > 1)
     {
-        mShadowVisualizer.pProgramVars->getConstantBuffer(0, 0, 0)->setBlob(&mControls.displayedCascade, mOffsets.displayedCascade, sizeof(mControls.displayedCascade));
+        mShadowVisualizer.pShadowMapProgramVars->getConstantBuffer(0, 0, 0)->setBlob(&mControls.displayedCascade, mOffsets.displayedCascade, sizeof(mControls.displayedCascade));
     }
-    pContext->pushGraphicsVars(mShadowVisualizer.pProgramVars);
-    mShadowVisualizer.pProgram->execute(pContext);
+    pContext->pushGraphicsVars(mShadowVisualizer.pShadowMapProgramVars);
+    mShadowVisualizer.pShadowMapProgram->execute(pContext);
+    pContext->popGraphicsVars();
+}
+
+void Shadows::displayVisibilityBuffer(RenderContext* pContext)
+{
+    mShadowVisualizer.pVisibilityBufferProgramVars->setSrv(0, 0, 0, mpCsmTech[mControls.lightIndex]->getVisibilityBuffer()->getSRV());
+    pContext->pushGraphicsVars(mShadowVisualizer.pVisibilityBufferProgramVars);
+    mShadowVisualizer.pVisibilityBufferProgram->execute(pContext);
     pContext->popGraphicsVars();
 }
 
@@ -167,13 +188,17 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
         // Put shadow data in program vars
         for(uint32_t i = 0; i < mpCsmTech.size(); i++)
         {
-            std::string var = "gCsmData[" + std::to_string(i) + "]";
-            mpCsmTech[i]->setDataIntoGraphicsVars(mLightingPass.pProgramVars, var);
+            std::string var = "gVisibilityBuffers[" + std::to_string(i) + "]";
+            mLightingPass.pProgramVars->setTexture(var, mpCsmTech[i]->getVisibilityBuffer());
         }
 
-        if(mControls.showShadowMap)
+        if(mControls.debugMode == (uint32_t)DebugMode::ShadowMap)
         {
             displayShadowMap(pRenderContext.get());
+        }
+        else if (mControls.debugMode == (uint32_t)DebugMode::VisibilityBuffer)
+        {
+            displayVisibilityBuffer(pRenderContext.get());
         }
         else
         {
@@ -201,22 +226,34 @@ void Shadows::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32
     activeCamera->setFocalLength(21.0f);
     float aspectRatio = (float(width) / float(height));
     activeCamera->setAspectRatio(aspectRatio);
+
+    //Update window width/height for visibility buffer
+    mWindowDimensions.x = width;
+    mWindowDimensions.y = height;
+    for (auto it = mpCsmTech.begin(); it != mpCsmTech.end(); ++it)
+    {
+        (*it)->onResize(width, height);
+    }
 }
 
 void Shadows::createVisualizationProgram()
 {
-    // Create the shadow visualizer
-    mShadowVisualizer.pProgram = FullScreenPass::create(appendShaderExtension("VisualizeMap.ps"));
+    // Create the shadow visualizer for shadow maps
+    mShadowVisualizer.pShadowMapProgram = FullScreenPass::create(appendShaderExtension("VisualizeMap.ps"));
     if(mControls.cascadeCount > 1)
     {
-        mShadowVisualizer.pProgram->getProgram()->addDefine("_USE_2D_ARRAY");
-        mShadowVisualizer.pProgramVars = GraphicsVars::create(mShadowVisualizer.pProgram->getProgram()->getActiveVersion()->getReflector());
-        mOffsets.displayedCascade = static_cast<uint32_t>(mShadowVisualizer.pProgramVars->getConstantBuffer("PerImageCB")->getVariableOffset("cascade"));
+        mShadowVisualizer.pShadowMapProgram->getProgram()->addDefine("_USE_2D_ARRAY");
+        mShadowVisualizer.pShadowMapProgramVars = GraphicsVars::create(mShadowVisualizer.pShadowMapProgram->getProgram()->getActiveVersion()->getReflector());
+        mOffsets.displayedCascade = static_cast<uint32_t>(mShadowVisualizer.pShadowMapProgramVars->getConstantBuffer("PerImageCB")->getVariableOffset("cascade"));
     }
     else
     {
-        mShadowVisualizer.pProgramVars = GraphicsVars::create(mShadowVisualizer.pProgram->getProgram()->getActiveVersion()->getReflector());
+        mShadowVisualizer.pShadowMapProgramVars = GraphicsVars::create(mShadowVisualizer.pShadowMapProgram->getProgram()->getActiveVersion()->getReflector());
     }
+
+    // Create the shadow visualizer for visibility buffers
+    mShadowVisualizer.pVisibilityBufferProgram = FullScreenPass::create(appendShaderExtension("VisualizeMap.ps"));
+    mShadowVisualizer.pVisibilityBufferProgramVars = GraphicsVars::create(mShadowVisualizer.pVisibilityBufferProgram->getProgram()->getActiveVersion()->getReflector());
 }
 
  void Shadows::onInitializeTesting(SampleCallbacks* pSample)

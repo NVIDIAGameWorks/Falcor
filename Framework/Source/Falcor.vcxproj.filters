@@ -2232,4 +2232,12 @@
       <Filter>Data\Framework\Shaders</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Data\Effects\VisibilityPass.ps.hlsl">
+      <Filter>Data\Effects</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\Effects\VisibilityPass.vs.hlsl">
+      <Filter>Data\Effects</Filter>
+    </FxCompile>
+  </ItemGroup>
 </Project>

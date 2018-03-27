@@ -64,7 +64,7 @@ namespace Falcor
             \param[in] cascadeCount Number of cascades
             \param[in] shadowMapFormat Shadow map texture format
         */
-        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
+        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, uint32_t windowWidth, uint32_t windowHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
 
         /** Render UI controls
             \param[in] pGui GUI instance to render UI elements with
@@ -144,8 +144,21 @@ namespace Falcor
         /** Check if mesh-culling is enabled
         */
         bool isMeshCullingEnabled() const;
+
+        /** Return the visibility buffer, an eye view buffer of the shadow factor
+        */
+        Texture::SharedPtr getVisibilityBuffer() { return mVisibilityPass.pState->getFbo()->getColorTexture(0); }
+
+        /** Enable saving cascade info into the gba channels of the visibility buffer
+        */
+        void toggleCascadeVisualization(bool shouldVisualze) { mShouldVisualizeCascades = shouldVisualze; }
+
+        /** Call on window resize, re-creates the window-size fbo used for the visibility buffer
+        */
+        void onResize(uint32_t newWidth, uint32_t newHeight);
+
     private:
-        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
+        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t windowWidth, uint32_t windowHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
         Light::SharedConstPtr mpLight;
         Scene::SharedConstPtr mpScene;
         Camera::SharedPtr mpLightCamera;
@@ -154,6 +167,7 @@ namespace Falcor
 
         vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer);
         void createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight);
+        void createVisibilityPassResources(uint32_t windowWidth, uint32_t windowHeight);
         void partitionCascades(const Camera* pCamera, const glm::vec2& distanceRange);
         void renderScene(RenderContext* pCtx);
 
@@ -195,6 +209,14 @@ namespace Falcor
         } mDepthPass;
         void executeDepthPass(RenderContext* pCtx, const Camera* pCamera);
 
+        //Visibility pass
+        struct
+        {
+            GraphicsState::SharedPtr pState;
+            GraphicsVars::SharedPtr pGraphicsVars;
+            Texture::SharedPtr pVisibilityMap;
+        } mVisibilityPass;
+
         struct Controls
         {
             bool depthClamp = true;
@@ -205,6 +227,8 @@ namespace Falcor
             bool stabilizeCascades = false;
         };
 
+        bool mShouldVisualizeCascades = false;
+        uint32_t mVisualizeCascadesOffset;
         int32_t renderCascade = 0;
         Controls mControls;
         CsmData mCsmData;

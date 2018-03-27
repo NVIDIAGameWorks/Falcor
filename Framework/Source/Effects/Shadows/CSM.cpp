@@ -39,6 +39,8 @@ namespace Falcor
     const char* kDepthPassGsFile = "Effects/ShadowPass.gs.slang";
     const char* kGLSLDepthPassGsFile = "Effects/ShadowPass.gs.glsl";
     const char* kDepthPassFsFile = "Effects/ShadowPass.ps.slang";
+    const char* kVisibilityPassVsFile = "Effects/VisibilityPass.vs.hlsl";
+    const char* kVisibilityPassPsFile = "Effects/VisibilityPass.ps.hlsl";
 
     const Gui::DropdownList kFilterList = {
         { (uint32_t)CsmFilterPoint, "Point" },
@@ -75,7 +77,7 @@ namespace Falcor
 
         void setDepthClamp(bool enable) { mDepthClamp = enable; }
 
-        void renderScene(RenderContext* pContext, Camera* pCamera) override
+        void renderScene(RenderContext* pContext, const Camera* pCamera) override
         {
             pContext->getGraphicsState()->setRasterizerState(nullptr);
             mpLastSetRs = nullptr;
@@ -209,7 +211,7 @@ namespace Falcor
 
     CascadedShadowMaps::~CascadedShadowMaps() = default;
 
-    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat) : mpLight(pLight), mpScene(pScene)
+    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t windowWidth, uint32_t windowHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat) : mpLight(pLight), mpScene(pScene)
     {
         if(mpLight->getType() != LightDirectional)
         {
@@ -226,6 +228,7 @@ namespace Falcor
         mDepthPass.pState->setProgram(pProg);
         mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getActiveVersion()->getReflector());
         createShadowPassResources(mapWidth, mapHeight);
+        createVisibilityPassResources(windowWidth, windowHeight);
 
         mpLightCamera = Camera::create();
 
@@ -246,14 +249,14 @@ namespace Falcor
         mpGaussianBlur->setKernelWidth(5);
     }
 
-    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
+    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, uint32_t windowWidth, uint32_t windowHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
     {
         if(isDepthFormat(shadowMapFormat) == false)
         {
             logError(std::string("Can't create CascadedShadowMaps effect. Requested resource format ") + to_string(shadowMapFormat) + " is not a depth format", true);
         }
 
-        CascadedShadowMaps* pCsm = new CascadedShadowMaps(mapWidth, mapHeight, pLight, pScene, cascadeCount, shadowMapFormat);
+        CascadedShadowMaps* pCsm = new CascadedShadowMaps(mapWidth, mapHeight, windowWidth, windowHeight, pLight, pScene, cascadeCount, shadowMapFormat);
         return CascadedShadowMaps::UniquePtr(pCsm);
     }
 
@@ -350,6 +353,19 @@ namespace Falcor
         mpCsmSceneRenderer = CsmSceneRenderer::create(mpScene, alphaMapCB, alphaMap, alphaSampler);
         mpSceneRenderer = SceneRenderer::create(std::const_pointer_cast<Scene>(mpScene));
         mpSceneRenderer->toggleMeshCulling(true);
+    }
+
+    void CascadedShadowMaps::createVisibilityPassResources(uint32_t windowWidth, uint32_t windowHeight)
+    {
+        mVisibilityPass.pState = GraphicsState::create();
+        auto pVisProg = GraphicsProgram::createFromFile(kVisibilityPassVsFile, kVisibilityPassPsFile);
+        mVisibilityPass.pState->setProgram(pVisProg);
+        Fbo::Desc fboDesc;
+        fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
+        fboDesc.setDepthStencilTarget(ResourceFormat::D32Float);
+        mVisibilityPass.pState->setFbo(FboHelper::create2D(windowWidth, windowHeight, fboDesc));
+        mVisibilityPass.pGraphicsVars = GraphicsVars::create(pVisProg->getActiveVersion()->getReflector());
+        mVisualizeCascadesOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("visualizeCascades");
     }
 
     void CascadedShadowMaps::setCascadeCount(uint32_t cascadeCount)
@@ -780,6 +796,19 @@ namespace Falcor
         }
 
         pRenderCtx->popGraphicsState();
+
+        //Clear visibility buffer
+        pRenderCtx->clearFbo(mVisibilityPass.pState->getFbo().get(), glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
+        //Update Vars
+        mVisibilityPass.pGraphicsVars->getConstantBuffer("VsPerFrame")->setBlob(&pCamera->getViewProjMatrix(), 0, sizeof(glm::mat4));
+        setDataIntoGraphicsVars(mVisibilityPass.pGraphicsVars, "gCsmData");
+        mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->setBlob(&mShouldVisualizeCascades, mVisualizeCascadesOffset, sizeof(bool));
+        //Render visibility buffer
+        pRenderCtx->pushGraphicsState(mVisibilityPass.pState);
+        pRenderCtx->pushGraphicsVars(mVisibilityPass.pGraphicsVars);
+        mpSceneRenderer->renderScene(pRenderCtx, pCamera);
+        pRenderCtx->popGraphicsVars();
+        pRenderCtx->popGraphicsState();
     }
 
     void CascadedShadowMaps::setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName)
@@ -842,5 +871,13 @@ namespace Falcor
     bool CascadedShadowMaps::isMeshCullingEnabled() const
     {
         return mpCsmSceneRenderer->isMeshCullingEnabled();
+    }
+
+    void CascadedShadowMaps::onResize(uint32_t newWidth, uint32_t newHeight)
+    {
+        Fbo::Desc fboDesc;
+        fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
+        fboDesc.setDepthStencilTarget(ResourceFormat::D32Float);
+        mVisibilityPass.pState->setFbo(FboHelper::create2D(newWidth, newHeight, fboDesc));
     }
 }

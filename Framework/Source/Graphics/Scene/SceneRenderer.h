@@ -63,7 +63,7 @@ namespace Falcor
         /** Renders the full scene, overriding the internal camera.
             Call update() before using this function otherwise model animation will not work
         */
-        virtual void renderScene(RenderContext* pContext, Camera* pCamera);
+        virtual void renderScene(RenderContext* pContext, const Camera* pCamera);
 
         /** Update the camera and model animation.
             Should be called before renderScene(), unless not animations are used and you update the camera manually
