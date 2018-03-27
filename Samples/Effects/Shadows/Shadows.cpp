@@ -113,7 +113,11 @@ void Shadows::createScene(const std::string& filename)
     setLightIndex(0);
 
     // Create the main effect
-    mLightingPass.pProgram = GraphicsProgram::createFromFile(appendShaderExtension("Shadows.vs"), appendShaderExtension("Shadows.ps"));
+    GraphicsProgram::Desc lightingPassProgDesc;
+    lightingPassProgDesc.sourceFile("Shadows.slang");
+    lightingPassProgDesc.entryPoint(ShaderType::Vertex, "vsMain");
+    lightingPassProgDesc.entryPoint(ShaderType::Pixel, "psMain");
+    mLightingPass.pProgram = GraphicsProgram::create(lightingPassProgDesc);
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpScene->getLightCount()));
     mLightingPass.pProgram->addDefine("_LIGHT_INDEX", std::to_string(mControls.lightIndex));
     mLightingPass.pProgramVars = GraphicsVars::create(mLightingPass.pProgram->getActiveVersion()->getReflector());
@@ -238,8 +242,10 @@ void Shadows::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32
 
 void Shadows::createVisualizationProgram()
 {
+    const std::string kVisPixelShaderFile = "VisualizeMap.slang";
+
     // Create the shadow visualizer for shadow maps
-    mShadowVisualizer.pShadowMapProgram = FullScreenPass::create(appendShaderExtension("VisualizeMap.ps"));
+    mShadowVisualizer.pShadowMapProgram = FullScreenPass::create(kVisPixelShaderFile);
     if(mControls.cascadeCount > 1)
     {
         mShadowVisualizer.pShadowMapProgram->getProgram()->addDefine("_USE_2D_ARRAY");
@@ -252,7 +258,7 @@ void Shadows::createVisualizationProgram()
     }
 
     // Create the shadow visualizer for visibility buffers
-    mShadowVisualizer.pVisibilityBufferProgram = FullScreenPass::create(appendShaderExtension("VisualizeMap.ps"));
+    mShadowVisualizer.pVisibilityBufferProgram = FullScreenPass::create(kVisPixelShaderFile);
     mShadowVisualizer.pVisibilityBufferProgramVars = GraphicsVars::create(mShadowVisualizer.pVisibilityBufferProgram->getProgram()->getActiveVersion()->getReflector());
 }
 

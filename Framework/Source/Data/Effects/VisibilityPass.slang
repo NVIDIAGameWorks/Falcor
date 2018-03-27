@@ -26,24 +26,48 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 __import DefaultVS;
+__import Shading;
 __import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
-layout(set = 0, binding = 0) uniform PerFrameCB
+cbuffer VsPerFrame : register(b0)
 {
-    vec3 gAmbient;
-    CsmData gCsmData[_LIGHT_COUNT];
-    bool visualizeCascades;
-    mat4 camVpAtLastCsmUpdate;
+    float4x4 camVpAtLastCsmUpdate;
 };
 
-in VertexIn vIn;
-
-out VertexOut vOut;
-out float shadowsDepthC;
-
-void main()
+cbuffer PerFrameCB : register(b1)
 {
-    vOut = defaultVS(vIn);
-    shadowsDepthC = (camVpAtLastCsmUpdate * vec4(vOut.posW, 1)).z;
+    CsmData gCsmData;
+    bool visualizeCascades;
+};
+
+struct ShadowsVSOut
+{
+    float4 posH : SV_POSITION;
+    float3 posW : POSITION;
+    float shadowsDepthC : DEPTH;
+};
+
+ShadowsVSOut vsMain(VertexIn vIn)
+{
+    ShadowsVSOut vOut;
+    float4 posW = mul(vIn.pos, getWorldMat(vIn));
+    vOut.posW = posW.xyz;
+    vOut.posH = mul(posW, gCamera.viewProjMat);
+    vOut.shadowsDepthC = mul(float4(vOut.posW, 1), camVpAtLastCsmUpdate).z;
+    return vOut;
 }
+
+float4 psMain(ShadowsVSOut pIn) : SV_TARGET0
+{
+    float4 color = float4(0,0,0,1);
+    color.r = calcShadowFactor(gCsmData, pIn.shadowsDepthC, pIn.posW, pIn.posH.xy / pIn.posH.w);
+
+    if(visualizeCascades)
+    {
+        color.gba = getBlendedCascadeColor(gCsmData, pIn.shadowsDepthC);
+    }
+
+    return color;
+}
+

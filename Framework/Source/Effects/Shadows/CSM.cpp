@@ -35,12 +35,8 @@
 
 namespace Falcor
 {
-    const char* kDepthPassVSFile = "Effects/ShadowPass.vs.slang";
-    const char* kDepthPassGsFile = "Effects/ShadowPass.gs.slang";
-    const char* kGLSLDepthPassGsFile = "Effects/ShadowPass.gs.glsl";
-    const char* kDepthPassFsFile = "Effects/ShadowPass.ps.slang";
-    const char* kVisibilityPassVsFile = "Effects/VisibilityPass.vs.hlsl";
-    const char* kVisibilityPassPsFile = "Effects/VisibilityPass.ps.hlsl";
+    const char* kDepthPassFile = "Effects/ShadowPass.slang";
+    const char* kVisibilityPassFile = "Effects/VisibilityPass.slang";
 
     const Gui::DropdownList kFilterList = {
         { (uint32_t)CsmFilterPoint, "Point" },
@@ -222,7 +218,10 @@ namespace Falcor
             cascadeCount = 1;
         }
         mCsmData.cascadeCount = cascadeCount;
-        GraphicsProgram::SharedPtr pProg = GraphicsProgram::createFromFile(kDepthPassVSFile, "");
+        GraphicsProgram::Desc depthPassDesc;
+        depthPassDesc.sourceFile(kDepthPassFile);
+        depthPassDesc.entryPoint(ShaderType::Vertex, "vsMain");
+        GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(depthPassDesc);
         pProg->addDefine("_APPLY_PROJECTION");
         mDepthPass.pState = GraphicsState::create();
         mDepthPass.pState->setProgram(pProg);
@@ -327,16 +326,12 @@ namespace Falcor
         mShadowPass.fboAspectRatio = (float)mapWidth / (float)mapHeight;
 
         // Create the shadows program
-        GraphicsProgram::SharedPtr pProg = GraphicsProgram::createFromFile(
-            kDepthPassVSFile,
-            kDepthPassFsFile,
-#ifdef FALCOR_VK
-            kGLSLDepthPassGsFile,
-#else
-            kDepthPassGsFile,
-#endif
-            
-            "", "", progDef);
+        GraphicsProgram::Desc shadowPassProgDesc;
+        shadowPassProgDesc.sourceFile(kDepthPassFile);
+        shadowPassProgDesc.entryPoint(ShaderType::Vertex, "vsMain");
+        shadowPassProgDesc.entryPoint(ShaderType::Geometry, "gsMain");
+        shadowPassProgDesc.entryPoint(ShaderType::Pixel, "psMain");
+        GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(shadowPassProgDesc, progDef);
         mShadowPass.pState = GraphicsState::create();
         mShadowPass.pState->setProgram(pProg);
         mShadowPass.pState->setDepthStencilState(nullptr);
@@ -358,7 +353,11 @@ namespace Falcor
     void CascadedShadowMaps::createVisibilityPassResources(uint32_t windowWidth, uint32_t windowHeight)
     {
         mVisibilityPass.pState = GraphicsState::create();
-        auto pVisProg = GraphicsProgram::createFromFile(kVisibilityPassVsFile, kVisibilityPassPsFile);
+        GraphicsProgram::Desc visProgDesc;
+        visProgDesc.sourceFile(kVisibilityPassFile);
+        visProgDesc.entryPoint(ShaderType::Vertex, "vsMain");
+        visProgDesc.entryPoint(ShaderType::Pixel, "psMain");
+        auto pVisProg = GraphicsProgram::create(visProgDesc);
         mVisibilityPass.pState->setProgram(pVisProg);
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);

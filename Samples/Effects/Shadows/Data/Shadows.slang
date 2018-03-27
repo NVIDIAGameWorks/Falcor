@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,11 +26,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 __import DefaultVS;
+__import Shading;
 __import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
-cbuffer VsPerFrame : register(b0)
+cbuffer PerFrameCB : register(b0)
 {
+    float3 gAmbient;
+    Texture2D gVisibilityBuffers[_LIGHT_COUNT];
+    bool visualizeCascades;
     float4x4 camVpAtLastCsmUpdate;
 };
 
@@ -40,7 +44,7 @@ struct ShadowsVSOut
     float shadowsDepthC : DEPTH;
 };
 
-ShadowsVSOut main(VertexIn vIn)
+ShadowsVSOut vsMain(VertexIn vIn)
 {
     VertexOut defaultOut = defaultVS(vIn);
     ShadowsVSOut output;
@@ -48,4 +52,26 @@ ShadowsVSOut main(VertexIn vIn)
 
     output.shadowsDepthC = mul(float4(defaultOut.posW, 1), camVpAtLastCsmUpdate).z;
     return output;
+}
+
+float4 psMain(ShadowsVSOut pIn) : SV_TARGET0
+{
+    ShadingData sd = prepareShadingData(pIn.vsData, gMaterial, gCamera.posW);
+    float4 color = float4(0,0,0,1);
+    
+    [unroll]
+    for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
+    {
+        float shadowFactor = gVisibilityBuffers[l].Load(int3(pIn.vsData.posH.xy, 0)).x;
+        color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
+    }
+
+    color.rgb += gAmbient * sd.diffuse * 0.1;
+    if(visualizeCascades)
+    {
+        float3 cascadeColor = gVisibilityBuffers[_LIGHT_INDEX].Load(int3(pIn.vsData.posH.xy, 0)).gba;
+        color.rgb *= cascadeColor;
+    }
+
+    return color;
 }
