@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,20 +25,33 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
 __import DefaultVS;
+__import Shading;
+__import ShaderCommon;
 __import Effects.CascadedShadowMap;
-#include "VertexAttrib.h"
 
-layout(binding = 0) cbuffer PerFrameCB : register(b0)
+cbuffer PerFrameCB : register(b1)
 {
-    float4x4 camVpAtLastCsmUpdate;
-    float2 gRenderTargetDim;
-    float gOpacityScale;
+    CsmData gCsmData;
+    bool visualizeCascades;
 };
 
-struct MainVsOut
+struct ShadowsVSOut
 {
     VertexOut vsData;
     float shadowsDepthC : DEPTH;
 };
+
+float4 main(ShadowsVSOut pIn) : SV_TARGET0
+{
+    ShadingData sd = prepareShadingData(pIn.vsData, gMaterial, gCamera.posW);
+    float4 color = float4(0,0,0,1);
+    color.r = calcShadowFactor(gCsmData, pIn.shadowsDepthC, sd.posW, pIn.vsData.posH.xy / pIn.vsData.posH.w);
+
+    if(visualizeCascades)
+    {
+        color.gba = getBlendedCascadeColor(gCsmData, pIn.shadowsDepthC);
+    }
+
+    return color;
+}

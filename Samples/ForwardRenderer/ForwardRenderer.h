@@ -144,7 +144,7 @@ private:
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();
-    void initShadowPass();
+    void initShadowPass(uint32_t windowWidth, uint32_t windowHeight);
     void initSSAO();
     void updateLightProbe(const LightProbe::SharedPtr& pLight);
     void initTAA(SampleCallbacks* pSample);

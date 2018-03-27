@@ -25,71 +25,27 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "ForwardRendererCommon.hlsli"
+__import DefaultVS;
+__import ShaderCommon;
+__import Effects.CascadedShadowMap;
 
-__import Shading;
-__import Helpers;
-__import BRDF;
-
-layout(set = 1, binding = 1) SamplerState gSampler;
-
-Texture2D gVisibilityBuffer;
-
-struct PsOut
+cbuffer VsPerFrame : register(b0)
 {
-    float4 color : SV_TARGET0;
-    float4 normal : SV_TARGET1;
-#ifdef _OUTPUT_MOTION_VECTORS
-    float2 motion : SV_TARGET2;
-#endif
+    float4x4 camVpAtLastCsmUpdate;
 };
 
-PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
+struct ShadowsVSOut
 {
-    PsOut psOut;
+    VertexOut vsData;
+    float shadowsDepthC : DEPTH;
+};
 
-    ShadingData sd = prepareShadingData(vOut.vsData, gMaterial, gCamera.posW);
+ShadowsVSOut main(VertexIn vIn)
+{
+    VertexOut defaultOut = defaultVS(vIn);
+    ShadowsVSOut output;
+    output.vsData = defaultOut;
 
-    float4 finalColor = float4(0, 0, 0, 1);
-
-    [unroll]
-    for (uint l = 0; l < _LIGHT_COUNT; l++)
-    {
-        float shadowFactor = 1;
-#ifdef _ENABLE_SHADOWS
-        if (l == 0)
-        {
-            shadowFactor = gVisibilityBuffer.Load(int3(vOut.vsData.posH.xy, 0)).r;
-            shadowFactor *= sd.opacity;
-        }
-#endif
-        finalColor.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
-    }
-
-    // Add the emissive component
-    finalColor.rgb += sd.emissive;
-
-#ifdef _ENABLE_TRANSPARENCY
-    finalColor.a = sd.opacity * gOpacityScale;
-#endif
-
-#ifdef _ENABLE_REFLECTIONS
-    finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
-#endif
-
-    // Add light-map
-    finalColor.rgb += sd.diffuse * sd.lightMap.rgb;
-
-    psOut.color = finalColor;
-    psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
-
-#ifdef _OUTPUT_MOTION_VECTORS
-    psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);
-#endif
-
-#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
-    float3 cascadeColor = gVisibilityBuffer.Load(int3(vOut.vsData.posH.xy, 0)).gba;
-    psOut.color.rgb *= cascadeColor;
-#endif
-    return psOut;
+    output.shadowsDepthC = mul(float4(defaultOut.posW, 1), camVpAtLastCsmUpdate).z;
+    return output;
 }

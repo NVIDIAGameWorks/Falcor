@@ -75,9 +75,9 @@ void ForwardRenderer::initLightingPass()
     mLightingPass.pAlphaBlendBS = BlendState::create(bsDesc);
 }
 
-void ForwardRenderer::initShadowPass()
+void ForwardRenderer::initShadowPass(uint32_t windowWidth, uint32_t windowHeight)
 {
-    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
+    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, windowWidth, windowHeight, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
     mShadowPass.pCsm->setFilterMode(CsmFilterEvsm4);
     mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
     mShadowPass.pCsm->setVsmMaxAnisotropy(4);
@@ -160,7 +160,8 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
     setActiveCameraAspectRatio(pSample->getCurrentFbo()->getWidth(), pSample->getCurrentFbo()->getHeight());
     initDepthPass();
     initLightingPass();
-    initShadowPass();
+    auto pTargetFbo = pSample->getCurrentFbo();
+    initShadowPass(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     initSSAO();
     initTAA(pSample);
 
@@ -334,7 +335,7 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     if (mControls[ControlID::EnableShadows].enabled)
     {
         pCB["camVpAtLastCsmUpdate"] = mShadowPass.camVpAtLastCsmUpdate;
-        mShadowPass.pCsm->setDataIntoGraphicsVars(mLightingPass.pVars, "gCsmData");
+        mLightingPass.pVars->setTexture("gVisibilityBuffer", mShadowPass.pCsm->getVisibilityBuffer());
     }
 
     if (mAAMode == AAMode::TAA)
@@ -540,7 +541,8 @@ void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width
     mpPostProcessFbo = FboHelper::create2D(width, height, fboDesc);
 
     applyAaMode(pSample);
-    
+    mShadowPass.pCsm->onResize(width, height);
+
     if(mpSceneRenderer)
     {
         setActiveCameraAspectRatio(width, height);
