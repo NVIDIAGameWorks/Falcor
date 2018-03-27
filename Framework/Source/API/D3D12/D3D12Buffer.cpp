@@ -102,6 +102,9 @@ namespace Falcor
         else
         {
             mState = Resource::State::Common;
+#ifdef FALCOR_DXR
+            if (is_set(mBindFlags, BindFlags::AccelerationStructure)) mState = Resource::State::AccelerationStructure;
+#endif
             mApiHandle = createBuffer(mState, mSize, kDefaultHeapProps, mBindFlags);
         }
 

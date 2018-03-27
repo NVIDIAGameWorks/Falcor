@@ -22,7 +22,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Blit.ps.glsl" />
     <None Include="Data\Blit.ps.hlsl" />
     <None Include="Data\Luminance.ps.glsl" />
     <None Include="Data\Luminance.ps.hlsl" />

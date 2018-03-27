@@ -32,12 +32,6 @@
 #define ShowAlbedo      3
 #define ShowLighting    4
 
-#ifdef FALCOR_HLSL
-// Some macros to help us call this function from HLSL
-#define vec3 float3
-#define vec4 float4
-#endif
-
 vec3 shade(vec3 posW, vec3 normalW, float linearRoughness, vec4 albedo)
 {
     // Discard empty pixels

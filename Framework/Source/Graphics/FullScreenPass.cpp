@@ -141,11 +141,7 @@ namespace Falcor
             else
             {
                 defs.add("_OUTPUT_VERTEX_COUNT", std::to_string(3 * popcount(viewportMask)));
-#ifdef FALCOR_VK
-                gs = "Framework/Shaders/FullScreenPass.gs.glsl";
-#else
                 gs = "Framework/Shaders/FullScreenPass.gs.slang";
-#endif
             }
         }
 

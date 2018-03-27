@@ -27,7 +27,11 @@
 ***************************************************************************/
 #pragma once
 #define NOMINMAX
+#ifdef FALCOR_DXR
+#include "../../../../../Framework/Externals/DXR/DX12/d3d12_1.h"
+#else
 #include <d3d12.h>
+#endif
 #include <d3dcompiler.h>
 #include "API/Formats.h"
 #include <comdef.h>

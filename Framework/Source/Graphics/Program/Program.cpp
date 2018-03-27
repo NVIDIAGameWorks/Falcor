@@ -335,28 +335,40 @@ namespace Falcor
         spAddBuiltins(getSlangSession(), name, text);
     }
 
-    static const char* getSlangTargetString(ShaderType type)
+    // Translation a Faclor `ShaderType` to the corresponding `SlangStage`
+    SlangStage getSlangStage(ShaderType type)
     {
-        // TODO: either pick these based on target API,
-        // or invent some API-neutral target names
-        switch (type)
+        switch(type)
         {
-        case ShaderType::Vertex:
-            return "vs_5_0";
-        case ShaderType::Pixel:
-            return "ps_5_0";
-        case ShaderType::Hull:
-            return "hs_5_0";
-        case ShaderType::Domain:
-            return "ds_5_0";
-        case ShaderType::Geometry:
-            return "gs_5_0";
-        case ShaderType::Compute:
-            return "cs_5_0";
+        case ShaderType::Vertex:        return SLANG_STAGE_VERTEX;
+        case ShaderType::Pixel:         return SLANG_STAGE_PIXEL;
+        case ShaderType::Geometry:      return SLANG_STAGE_GEOMETRY;
+        case ShaderType::Hull:          return SLANG_STAGE_HULL;
+        case ShaderType::Domain:        return SLANG_STAGE_DOMAIN;
+        case ShaderType::Compute:       return SLANG_STAGE_COMPUTE;
+#ifdef FALCOR_DXR
+        case ShaderType::RayGeneration: return SLANG_STAGE_RAY_GENERATION;
+        case ShaderType::Intersection:  return SLANG_STAGE_INTERSECTION;
+        case ShaderType::AnyHit:        return SLANG_STAGE_ANY_HIT;
+        case ShaderType::ClosestHit:    return SLANG_STAGE_CLOSEST_HIT;
+        case ShaderType::Miss:          return SLANG_STAGE_MISS;
+        case ShaderType::Callable:      return SLANG_STAGE_CALLABLE;
+#endif
         default:
             should_not_get_here();
-            return "";
+            return SLANG_STAGE_NONE;
         }
+    }
+
+    static const char* getSlangProfileString()
+    {
+#if defined FALCOR_VK
+        return "glsl_450";
+#elif defined FALCOR_D3D12
+        return "sm_5_1";
+#else
+#error unknown shader compilation target
+#endif
     }
 
     ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const
@@ -397,17 +409,20 @@ namespace Falcor
         // Pick the right target based on the current graphics API
 #ifdef FALCOR_VK
         spSetCodeGenTarget(slangRequest, SLANG_SPIRV);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_GLSL", "1");
-        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_GLSL;
+        spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
 #elif defined FALCOR_D3D12
+        spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
         // Note: we could compile Slang directly to DXBC (by having Slang invoke the MS compiler for us,
         // but that path seems to have more issues at present, so let's just go to HLSL instead...)
         spSetCodeGenTarget(slangRequest, SLANG_HLSL);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_HLSL", "1");
-        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
 #else
 #error unknown shader compilation target
 #endif
+
+        spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString()));
+
+        // We will always work with HLSL input, even when targetting Vulkan/SPIR-V
+        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
 
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
@@ -486,7 +501,7 @@ namespace Falcor
                 slangRequest,
                 entryPoint.sourceIndex,
                 entryPoint.name.c_str(),
-                spFindProfile(slangSession, getSlangTargetString(ShaderType(i))));
+                getSlangStage(ShaderType(i)));
         }
 
         int anySlangErrors = spCompile(slangRequest);

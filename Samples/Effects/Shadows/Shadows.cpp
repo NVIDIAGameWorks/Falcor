@@ -134,10 +134,10 @@ void Shadows::runMainPass(RenderContext* pContext)
 
 void Shadows::displayShadowMap(RenderContext* pContext)
 {
-    mShadowVisualizer.pProgramVars->setSrv(0, 0, 0, mpCsmTech[mControls.lightIndex]->getShadowMap()->getSRV());
+    mShadowVisualizer.pProgramVars->setTexture("gTexture", mpCsmTech[mControls.lightIndex]->getShadowMap());
     if (mControls.cascadeCount > 1)
     {
-        mShadowVisualizer.pProgramVars->getConstantBuffer(0, 0, 0)->setBlob(&mControls.displayedCascade, mOffsets.displayedCascade, sizeof(mControls.displayedCascade));
+        mShadowVisualizer.pProgramVars->getConstantBuffer("PerImageCB")->setBlob(&mControls.displayedCascade, mOffsets.displayedCascade, sizeof(mControls.displayedCascade));
     }
     pContext->pushGraphicsVars(mShadowVisualizer.pProgramVars);
     mShadowVisualizer.pProgram->execute(pContext);

@@ -12,12 +12,6 @@
     <None Include="Data\LightingPass.ps.hlsl">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\DeferredPass.ps.glsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\LightingPass.ps.glsl">
-      <Filter>Data</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SimpleDeferred.cpp" />

@@ -602,7 +602,10 @@ namespace Falcor
             }
         }
 
-        pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
+        if(is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false)
+        {
+            pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
+        }
 
         if (isUav)
         {

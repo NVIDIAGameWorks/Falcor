@@ -27,9 +27,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\compute.glsl" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{283B18E4-08BC-4CDE-BDB6-B3B70FB7FC18}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
