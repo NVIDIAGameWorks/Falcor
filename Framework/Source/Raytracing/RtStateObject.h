@@ -44,10 +44,12 @@ namespace Falcor
         public:
             Desc& setProgramList(const ProgramList& list) { mProgList = list; return *this; }
             Desc& setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; return *this; }
+            Desc& setGlobalRootSignature(const std::shared_ptr<RootSignature>& pRootSig) { mpGlobalRootSignature = pRootSig; return *this; }
             bool operator==(const Desc& other) const;
 
         private:
             ProgramList mProgList;
+            std::shared_ptr<RootSignature> mpGlobalRootSignature;
             uint32_t mMaxTraceRecursionDepth = 1;
             friend RtStateObject;
         };
@@ -57,7 +59,7 @@ namespace Falcor
 
         const ProgramList& getProgramList() const { return mDesc.mProgList; }
         uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
-
+        const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { return mDesc.mpGlobalRootSignature; }
         const Desc& getDesc() const { return mDesc; }
     private:
         RtStateObject(const Desc& d) : mDesc(d) {}

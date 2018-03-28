@@ -79,6 +79,7 @@ namespace Falcor
         {
             RtStateObject::Desc desc;
             desc.setProgramList(programs).setMaxTraceRecursionDepth(mMaxTraceRecursionDepth);
+            desc.setGlobalRootSignature(mpProgram->getGlobalRootSignature());
 
             StateGraph::CompareFunc cmpFunc = [&desc](RtStateObject::SharedPtr pRtso) -> bool
             {

@@ -92,7 +92,8 @@ namespace Falcor
         }
 
         // Add an empty global root-signature
-        rtsoHelper.addGlobalRootSignature(RootSignature::getEmpty()->getApiHandle().GetInterfacePtr());
+        RootSignature* pRootSig = desc.mpGlobalRootSignature ? desc.mpGlobalRootSignature.get() : RootSignature::getEmpty().get();
+        rtsoHelper.addGlobalRootSignature(pRootSig->getApiHandle());
 
         // Create the state
         D3D12_STATE_OBJECT_DESC objectDesc = rtsoHelper.getDesc();
