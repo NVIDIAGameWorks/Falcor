@@ -156,7 +156,7 @@ namespace Falcor
 
         /** Get member by name
         */
-        const std::shared_ptr<const ReflectionVar>& getMember(const std::string& name) const { return getMember(getMemberIndex(name)); }
+        const std::shared_ptr<const ReflectionVar>& getMember(const std::string& name) const;
 
         /** Get member by index
         */
@@ -540,6 +540,11 @@ namespace Falcor
         /** Get a vector with the required descriptor-set layouts for the block. Useful when creating root-signatures
         */
         const SetLayoutVec& getDescriptorSetLayouts() const { return mSetLayouts; }
+
+        bool operator==(const ParameterBlockReflection& other) const { return *mpResourceVars == *other.mpResourceVars; }
+        bool operator!=(const ParameterBlockReflection& other) const { return !(*this == other); }
+
+        bool merge(const ParameterBlockReflection* pOther);
     private:
         friend class ProgramReflection;
         void addResource(const ReflectionVar::SharedConstPtr& pVar);
@@ -553,7 +558,7 @@ namespace Falcor
         SetLayoutVec mSetLayouts;
     };
 
-    /** Reflection object for an entire program. Essentialy, it's a collection of ParameterBlocks
+    /** Reflection object for an entire program. Essentially, it's a collection of ParameterBlocks
     */
     class ProgramReflection
     {
@@ -643,6 +648,7 @@ namespace Falcor
         */
         const ParameterBlockReflection::BindLocation translateRegisterIndicesToBindLocation(uint32_t regSpace, uint32_t baseRegIndex, BindType type) const { return mResourceBindMap.at({regSpace, baseRegIndex, type}); }
 
+        bool merge(const ProgramReflection* pOther);
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);

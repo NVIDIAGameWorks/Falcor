@@ -646,6 +646,72 @@ namespace Falcor
         }
     }
 
+    bool ParameterBlockReflection::merge(const ParameterBlockReflection* pOther)
+    {
+        const auto& pOtherStruct = pOther->mpResourceVars;
+        for (uint32_t r = 0; r < pOtherStruct->getMemberCount(); r++)
+        {
+            const auto& pMember = pOtherStruct->getMember(r);
+            assert(pMember->getType()->asResourceType());
+            const auto& memberName = pMember->getName();
+            const auto& pMyMember = mpResourceVars->getMember(memberName);
+            if (pMyMember == nullptr)
+            {
+                addResource(pMember);
+            }
+            else
+            {
+                if (*pMyMember != *pMember)
+                {
+                    logError("Can't merge ParameterBlockReflection, one of the members has a different definition");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    bool ProgramReflection::merge(const ProgramReflection* pOther)
+    {
+        bool defaultChanged = false;
+        for (uint32_t b = 0; b < pOther->getParameterBlockCount(); b++)
+        {
+            ParameterBlockReflection::SharedConstPtr pBlock = pOther->getParameterBlock(b);
+            const std::string& blockName = pBlock->getName();
+            // See if this block exists
+            if (mParameterBlocksIndices.find(blockName) == mParameterBlocksIndices.end())
+            {
+                // New block, just add it
+                addParameterBlock(pBlock);
+            }
+            else if (blockName == "")
+            {
+                // Default block
+                ParameterBlockReflection* pDefault = const_cast<ParameterBlockReflection*>(mpDefaultBlock.get());
+                if (pDefault->merge(pBlock.get()) == false)
+                {
+                    return false;
+                }
+                defaultChanged = true;
+            }
+            else
+            {
+                // The block declaration must match
+                uint32_t index = getParameterBlockIndex(blockName);
+                ParameterBlockReflection::SharedConstPtr pMyBlock = getParameterBlock(index);
+                if (*pMyBlock != *pBlock)
+                {
+                    logError("Can't merge ProgramReflection objects. ParameterBlock mismatch. Something bad will probably happen");
+                    return false;
+                }
+            }
+        }
+
+        if (defaultChanged) std::const_pointer_cast<ParameterBlockReflection>(mpDefaultBlock)->finalize();
+
+        return true;
+    }
+
     ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log)
     {
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::create("");
@@ -979,7 +1045,7 @@ namespace Falcor
             }
         }
 
-        mSetLayouts.resize(sets.size());
+        mSetLayouts = SetLayoutVec(sets.size());
         for (uint32_t s = 0; s < sets.size(); s++)
         {
             const auto& src = sets[s];
@@ -1136,6 +1202,13 @@ namespace Falcor
         auto it = mNameToIndex.find(name);
         if (it == mNameToIndex.end()) return kInvalidOffset;
         return it->second;
+    }
+
+    const ReflectionVar::SharedConstPtr& ReflectionStructType::getMember(const std::string& name) const
+    {
+        static ReflectionVar::SharedConstPtr pNull;
+        size_t index = getMemberIndex(name);
+        return (index == kInvalidOffset) ? pNull : getMember(index);
     }
 
     const ReflectionResourceType* ReflectionType::asResourceType() const
