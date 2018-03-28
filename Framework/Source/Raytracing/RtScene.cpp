@@ -242,6 +242,10 @@ namespace Falcor
         {
             mpTopLevelAS = Buffer::create(align_to(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, info.ResultDataMaxSizeInBytes), Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
         }
+        else
+        {
+            gpDevice->getRenderContext()->uavBarrier(mpTopLevelAS.get());
+        }
         Buffer::SharedPtr pInstanceData = Buffer::create(mInstanceCount * sizeof(D3D12_RAYTRACING_INSTANCE_DESC), Buffer::BindFlags::None, Buffer::CpuAccess::None, instanceDesc.data());
 
         assert((mInstanceCount != 0) && pInstanceData->getApiHandle() && mpTopLevelAS->getApiHandle() && pScratchBuffer->getApiHandle());
@@ -262,6 +266,7 @@ namespace Falcor
 
         asDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
         pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc);
+        gpDevice->getRenderContext()->uavBarrier(mpTopLevelAS.get());
 
         // Create the SRV
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

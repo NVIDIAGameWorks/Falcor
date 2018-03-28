@@ -154,7 +154,8 @@ namespace Falcor
 
     void RtModel::buildAccelerationStructure()
     {
-        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = gpDevice->getRenderContext()->getLowLevelData()->getCommandList();
+        RenderContext* pContext = gpDevice->getRenderContext().get();
+        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pContext->getLowLevelData()->getCommandList();
         ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
 
         auto dxrFlags = getDxrBuildFlags(mBuildFlags);
@@ -176,13 +177,17 @@ namespace Falcor
                 const auto& elemDesc = pVao->getElementIndexByLocation(VERTEX_POSITION_LOC);
                 const auto& pVbLayout = pVao->getVertexLayout()->getBufferLayout(elemDesc.vbIndex);
 
-                desc.Triangles.VertexBuffer.StartAddress = pVao->getVertexBuffer(elemDesc.vbIndex)->getGpuAddress() + pVbLayout->getElementOffset(elemDesc.elementIndex);
+                const Buffer* pVB = pVao->getVertexBuffer(elemDesc.vbIndex).get();
+                pContext->resourceBarrier(pVB, Resource::State::NonPixelShader);
+                desc.Triangles.VertexBuffer.StartAddress = pVB->getGpuAddress() + pVbLayout->getElementOffset(elemDesc.elementIndex);
                 desc.Triangles.VertexBuffer.StrideInBytes = pVbLayout->getStride();
                 desc.Triangles.VertexCount = pMesh->getVertexCount();
                 desc.Triangles.VertexFormat = getDxgiFormat(pVbLayout->getElementFormat(elemDesc.elementIndex));
 
                 // Get the IB
-                desc.Triangles.IndexBuffer = pVao->getIndexBuffer()->getGpuAddress();
+                const Buffer* pIB = pVao->getIndexBuffer().get();
+                pContext->resourceBarrier(pIB, Resource::State::NonPixelShader);
+                desc.Triangles.IndexBuffer = pIB->getGpuAddress();
                 desc.Triangles.IndexCount = pMesh->getIndexCount();
                 desc.Triangles.IndexFormat = getDxgiFormat(pVao->getIndexBufferFormat());
 
@@ -220,6 +225,9 @@ namespace Falcor
             asDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
 
             pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc);
+
+            // Insert a UAV barrier
+            pContext->uavBarrier(blasData.pBlas.get());
         }
     }
 

@@ -82,6 +82,10 @@ namespace Falcor
         */
         virtual void resourceBarrier(const Resource* pResource, Resource::State newState);
 
+        /** Insert a UAV barrier
+        */
+        virtual void uavBarrier(const Resource* pResource);
+
         /** Copy an entire resource
         */
         void copyResource(const Resource* pDst, const Resource* pSrc);

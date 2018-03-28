@@ -91,6 +91,7 @@ namespace Falcor
             Present,
             GenericRead,
             Predication,
+            NonPixelShader,
 #ifdef FALCOR_DXR
             AccelerationStructure,
 #endif

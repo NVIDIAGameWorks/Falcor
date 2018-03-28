@@ -102,6 +102,7 @@ namespace Falcor
         state_to_str(ResolveSource);
         state_to_str(Present);
         state_to_str(Predication);
+        state_to_str(NonPixelShader);
 #ifdef FALCOR_DXR
         state_to_str(AccelerationStructure);
 #endif

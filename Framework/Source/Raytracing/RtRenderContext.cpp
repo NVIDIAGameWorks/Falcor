@@ -34,7 +34,7 @@ namespace Falcor
 {
     void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
     {
-        resourceBarrier(pVars->getSBT().get(), Resource::State::ShaderResource);
+        resourceBarrier(pVars->getSBT().get(), Resource::State::NonPixelShader);
 
         Buffer* pSBT = pVars->getSBT().get();
         uint32_t sbtRecordSize = pVars->getRecordSize();
