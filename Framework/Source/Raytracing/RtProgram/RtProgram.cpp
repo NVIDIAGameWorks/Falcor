@@ -27,6 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "RtProgram.h"
+#include "API/LowLevel/RootSignature.h"
 
 namespace Falcor
 {
@@ -34,7 +35,26 @@ namespace Falcor
     {
         SharedPtr pProg = SharedPtr(new RtProgram(pRayGenProgram, missPrograms, hitPrograms));
         pProg->addDefine("_MS_DISABLE_ALPHA_TEST");
+
         return pProg;
+    }
+
+    RtProgram::RtProgram(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms) : mHitProgs(hitPrograms), mMissProgs(missPrograms), mpRayGenProgram(pRayGenProgram)
+    {
+        mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
+        mpGlobalReflector->merge(pRayGenProgram->getGlobalReflector().get());
+
+        for (const auto m : missPrograms)
+        {
+            mpGlobalReflector->merge(m->getGlobalReflector().get());
+        }
+
+        for (const auto& h : hitPrograms)
+        {
+            mpGlobalReflector->merge(h->getGlobalReflector().get());
+        }
+
+        mpGlobalRootSignature = RootSignature::create(mpGlobalReflector.get(), false);
     }
 
     void RtProgram::addDefine(const std::string& name, const std::string& value /*= ""*/)

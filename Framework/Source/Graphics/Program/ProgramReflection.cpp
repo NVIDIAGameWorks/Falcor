@@ -714,6 +714,8 @@ namespace Falcor
 
     ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log)
     {
+        if (!pSlangReflector) return;
+
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::create("");
         for (uint32_t i = 0; i < pSlangReflector->getParameterCount(); i++)
         {

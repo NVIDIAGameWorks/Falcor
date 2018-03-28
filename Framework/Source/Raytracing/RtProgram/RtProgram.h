@@ -56,9 +56,11 @@ namespace Falcor
         void removeDefine(const std::string& name);
 
     private:
-        RtProgram(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms) : mHitProgs(hitPrograms), mMissProgs(missPrograms), mpRayGenProgram(pRayGenProgram) {}
+        RtProgram(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms);
         HitProgramList mHitProgs;
         MissProgramList mMissProgs;
         RayGenProgram::SharedPtr mpRayGenProgram;
+        std::shared_ptr<RootSignature> mpGlobalRootSignature;
+        std::shared_ptr<ProgramReflection> mpGlobalReflector;
     };
 }
