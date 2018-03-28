@@ -61,7 +61,11 @@ namespace Falcor
     {
         D3D12_RESOURCE_FLAGS d3d = D3D12_RESOURCE_FLAG_NONE;
 
-        if (is_set(flags, Resource::BindFlags::UnorderedAccess) || is_set(flags, Resource::BindFlags::AccelerationStructure))
+        bool uavRequired = is_set(flags, Resource::BindFlags::UnorderedAccess);
+#ifdef FALCOR_DXR
+        uavRequired = uavRequired || is_set(flags, Resource::BindFlags::AccelerationStructure);
+#endif
+        if (uavRequired)
         {
             d3d |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }

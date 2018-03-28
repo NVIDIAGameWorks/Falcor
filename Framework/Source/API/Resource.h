@@ -51,7 +51,9 @@ namespace Falcor
             RenderTarget = 0x40,    ///< The resource will be bound as a render-target
             DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
             IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
-            AccelerationStructure = 0x200,  ///< The resource will be bound as an acceleration structure
+#ifdef FALCOR_DXR
+            AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
+#endif
         };
 
         /** Resource types. Notice there are no array types. Array are controlled using the array size parameter on texture creation.

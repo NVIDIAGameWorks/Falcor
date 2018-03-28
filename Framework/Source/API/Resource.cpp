@@ -69,7 +69,9 @@ namespace Falcor
         flag_to_str(UnorderedAccess);
         flag_to_str(RenderTarget);
         flag_to_str(DepthStencil);
+#ifdef FALCOR_DXR
         flag_to_str(AccelerationStructure);
+#endif
 #undef flag_to_str
 
         return s;
