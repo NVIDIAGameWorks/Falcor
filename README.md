@@ -97,6 +97,13 @@ By default, Falcor looks for data files in the following locations:
 
 To search for a data file, call `findFileInDataDirectories()`.
 
+Shaders
+-------
+
+Falcor uses the [Slang](https://github.com/shader-slang/slang) shading language and compiler.
+Users can write HLSL/Slang shader code in `.hlsl` or `.slang` files.
+The framework handles cross-compilation to SPIR-V for you when targetting Vulkan; GLSL shaders are not supported.
+
 Deployment
 ----------
 The best practice is to create a directory called "Data/" next to your **project** file and place all your data files there (shaders/models).  If that directory exists, Falcor will copy it to the output directory, making the output directory self-contained (you can zip only the output directory and it should work).  If not, you will have to copy the data files yourself.
