@@ -619,9 +619,9 @@ namespace Falcor
         }
     }
 
-    ProgramReflection::SharedPtr ProgramReflection::create(slang::ShaderReflection* pSlangReflector, std::string& log)
+    ProgramReflection::SharedPtr ProgramReflection::create(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log)
     {
-        return SharedPtr(new ProgramReflection(pSlangReflector, log));
+        return SharedPtr(new ProgramReflection(pSlangReflector, scopeToReflect, log));
     }
 
     ProgramReflection::BindType getBindTypeFromSetType(DescriptorSet::Type type)
@@ -646,7 +646,7 @@ namespace Falcor
         }
     }
 
-    ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log)
+    ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log)
     {
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::create("");
         for (uint32_t i = 0; i < pSlangReflector->getParameterCount(); i++)
@@ -656,6 +656,10 @@ namespace Falcor
 
             // In GLSL, the varying (in/out) variables are reflected as globals. Ignore them, we will reflect them later
             if (pVar->getType()->unwrapArray()->asResourceType() == nullptr) continue;
+            auto varMod = pVar->getModifier();
+            
+            bool storeVar = is_set(varMod, ReflectionVar::Modifier::Shared) ? is_set(scopeToReflect, ResourceScope::Global) : is_set(scopeToReflect, ResourceScope::Local);
+            if (storeVar == false) continue;
 
             if (pSlangLayout->getType()->unwrapArray()->getKind() == TypeReflection::Kind::ParameterBlock)
             {

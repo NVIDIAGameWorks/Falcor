@@ -573,9 +573,17 @@ namespace Falcor
         using VariableMap = std::unordered_map<std::string, ShaderVariable>;
         using BindLocation = ParameterBlockReflection::BindLocation;
 
+        enum class ResourceScope : uint32_t
+        {
+            Local = 0x1,
+            Global = 0x2,
+
+            All = 0xFFFFFFFF
+        };
+
         /** Create a new object for a Slang reflector object
         */
-        static SharedPtr create(slang::ShaderReflection* pSlangReflector, std::string& log);
+        static SharedPtr create(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log);
 
         /** Get the index of a parameter block
         */
@@ -636,7 +644,7 @@ namespace Falcor
         const ParameterBlockReflection::BindLocation translateRegisterIndicesToBindLocation(uint32_t regSpace, uint32_t baseRegIndex, BindType type) const { return mResourceBindMap.at({regSpace, baseRegIndex, type}); }
 
     private:
-        ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log);
+        ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);
 
         std::vector<ParameterBlockReflection::SharedConstPtr> mpParameterBlocks;
@@ -672,6 +680,8 @@ namespace Falcor
 
         std::unordered_map<ResourceBinding, ParameterBlockReflection::BindLocation, ResourceBindingHash> mResourceBindMap;
     };
+
+    enum_class_operators(ProgramReflection::ResourceScope);
 
     inline const std::string to_string(ReflectionBasicType::Type type)
     {
