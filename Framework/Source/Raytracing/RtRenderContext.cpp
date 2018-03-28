@@ -32,9 +32,9 @@
 
 namespace Falcor
 {
-    void raytrace(RenderContext* pContext, RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
+    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
     {
-        pContext->resourceBarrier(pVars->getSBT().get(), Resource::State::ShaderResource);
+        resourceBarrier(pVars->getSBT().get(), Resource::State::ShaderResource);
 
         Buffer* pSBT = pVars->getSBT().get();
         uint32_t sbtRecordSize = pVars->getRecordSize();
@@ -58,9 +58,9 @@ namespace Falcor
         raytraceDesc.HitGroupTable.SizeInBytes = pVars->getSBT()->getSize() - (pVars->getFirstHitSbtRecordIndex() * sbtRecordSize);
 
         // Currently, we need to set an empty root-signature. Some wizardry is required to make sure we restore the state
-        const auto& pComputeVars = pContext->getComputeVars();
-        pContext->setComputeVars(nullptr);
-        ID3D12GraphicsCommandListPtr pCmdList = pContext->getLowLevelData()->getCommandList();
+        const auto& pComputeVars = getComputeVars();
+        setComputeVars(nullptr);
+        ID3D12GraphicsCommandListPtr pCmdList = getLowLevelData()->getCommandList();
         pCmdList->SetComputeRootSignature(RootSignature::getEmpty()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
@@ -68,6 +68,6 @@ namespace Falcor
         pRtCmdList->DispatchRays(pState->getRtso()->getApiHandle().GetInterfacePtr(), &raytraceDesc);
 
         // Restore the vars
-        pContext->setComputeVars(pComputeVars);
+        setComputeVars(pComputeVars);
     }
 }

@@ -69,5 +69,4 @@ namespace Falcor
     class RtProgramVars;
     class RtState;
 
-    void raytrace(RenderContext* pContext, std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height);
 }

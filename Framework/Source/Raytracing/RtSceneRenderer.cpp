@@ -197,6 +197,6 @@ namespace Falcor
             logError("RtSceneRenderer::renderScene() - applying RtProgramVars failed, most likely because we ran out of descriptors.", true);
             assert(false);
         }
-        raytrace(pContext, pRtVars, pState, targetDim.x, targetDim.y);
+        pContext->raytrace(pRtVars, pState, targetDim.x, targetDim.y);
     }
 }

@@ -487,9 +487,6 @@
     <ClCompile Include="Graphics\LightProbe.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Raytracing\DXR.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
     <ClCompile Include="Raytracing\RtModel.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
@@ -524,6 +521,9 @@
       <Filter>Raytracing\RtProgram</Filter>
     </ClCompile>
     <ClCompile Include="Raytracing\RtShader.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtRenderContext.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
   </ItemGroup>
