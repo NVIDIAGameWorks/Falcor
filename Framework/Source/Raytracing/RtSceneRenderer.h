@@ -38,6 +38,7 @@
 namespace Falcor
 {
     class RtProgramVars;
+    class RtState;
 
     class RtSceneRenderer : public SceneRenderer, inherit_shared_from_this<SceneRenderer, RtSceneRenderer>
     {
@@ -46,7 +47,7 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const RtSceneRenderer>;
 
         static SharedPtr create(RtScene::SharedPtr pScene);
-        void renderScene(RenderContext* pContext, RtProgramVars::SharedPtr pRtVars, RtState::SharedPtr pState, uvec2 targetDim, Camera* pCamera = nullptr);
+        void renderScene(RenderContext* pContext, std::shared_ptr<RtProgramVars> pRtVars, std::shared_ptr<RtState> pState, uvec2 targetDim, Camera* pCamera = nullptr);
     protected:
         RtSceneRenderer(RtScene::SharedPtr pScene) : SceneRenderer(pScene) {}
         struct InstanceData

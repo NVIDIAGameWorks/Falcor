@@ -32,7 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "SingleShaderProgram.h"
 #include "HitProgram.h"
 
@@ -69,4 +68,3 @@ namespace Falcor
         RayGenProgram::SharedPtr mpRayGenProgram;
     };
 }
-#endif

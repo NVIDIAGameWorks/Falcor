@@ -32,7 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #include "Framework.h"
-#include "DXR.h"
 #include "RtModel.h"
 #include "API/Device.h"
 #include "API/RenderContext.h"

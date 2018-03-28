@@ -32,7 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "RtProgram/RtProgramVersion.h"
 
 namespace Falcor
@@ -72,4 +71,3 @@ namespace Falcor
         Desc mDesc;
     };
 }
-#endif

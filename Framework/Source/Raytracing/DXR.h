@@ -32,8 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
-#include "d3d12_1.h"
 
 MAKE_SMART_COM_PTR(ID3D12DeviceRaytracingPrototype);
 MAKE_SMART_COM_PTR(ID3D12CommandListRaytracingPrototype);
@@ -71,25 +69,11 @@ namespace Falcor
 // The max scalars supported by our driver
 #define FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES (14 * sizeof(float))
 
-#include "RtModel.h"
-#include "RtScene.h"
-#include "RtShader.h"
-#include "RtProgram/RtProgram.h"
-#include "RtProgram/RtProgramVersion.h"
-#include "RtProgram/SingleShaderProgram.h"
-#include "RtProgram/HitProgram.h"
-#include "RtProgramVars.h"
-#include "RtState.h"
-#include "RtStateObject.h"
-#include "API/Device.h"
-#include "API/RenderContext.h"
-#include "RtSample.h"
-#include "RtSceneRenderer.h"
-
 namespace Falcor
 {
     class RenderContext;
-    void raytrace(RenderContext* pContext, RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height);
-}
+    class RtProgramVars;
+    class RtState;
 
-#endif
+    void raytrace(RenderContext* pContext, std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height);
+}

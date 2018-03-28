@@ -32,13 +32,14 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Graphics/Program/ProgramVersion.h"
 #include "../RtShader.h"
 #include "API/VAO.h"
 
 namespace Falcor
 {
+    class RootSignature;
+
     // The inheritence here is just so that we could work with Program. We're not actually using anything from ProgramVersion
     class RtProgramVersion : public ProgramVersion, inherit_shared_from_this<ProgramVersion, RtProgramVersion>
     {
@@ -61,7 +62,7 @@ namespace Falcor
 
         RtShader::SharedConstPtr getShader(ShaderType type) const;
 
-        RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
+        std::shared_ptr<RootSignature> getRootSignature() const { return mpRootSignature; }
 
         const std::wstring& getExportName() const { return mExportName; }
 
@@ -75,7 +76,7 @@ namespace Falcor
         bool initCommon(std::string& log, ProgramReflection::SharedPtr pReflector);
 
         RtProgramVersion(Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        RootSignature::SharedPtr mpRootSignature;
+        std::shared_ptr<RootSignature> mpRootSignature;
         Type mType;
         std::wstring mExportName;
 
@@ -100,4 +101,3 @@ namespace Falcor
         }
     }
 }
-#endif

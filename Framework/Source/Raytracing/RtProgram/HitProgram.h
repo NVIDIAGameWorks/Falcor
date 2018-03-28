@@ -32,7 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Graphics/Program/Program.h"
 #include "RtProgramVersion.h"
 
@@ -65,4 +64,3 @@ namespace Falcor
         ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const override;
     };
 }
-#endif

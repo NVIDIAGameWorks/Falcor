@@ -31,9 +31,7 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "DXR.h"
 #include "RtState.h"
 
 namespace Falcor
@@ -117,5 +115,3 @@ namespace Falcor
         mMaxTraceRecursionDepth = maxDepth;
     }
 }
-
-#endif

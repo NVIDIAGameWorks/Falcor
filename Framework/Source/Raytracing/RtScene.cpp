@@ -32,10 +32,10 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #include "Framework.h"
-#include "DXR.h"
 #include "RtScene.h"
 #include "Graphics/Scene/SceneImporter.h"
 #include "API/DescriptorSet.h"
+#include "API/Device.h"
 
 namespace Falcor
 {

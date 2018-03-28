@@ -31,9 +31,7 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "DXR.h"
 #include "RtStateObject.h"
 #include "RtStateObjectHelper.h"
 #include "API/Device.h"
@@ -110,4 +108,3 @@ namespace Falcor
         return pState;
     }
 }
-#endif

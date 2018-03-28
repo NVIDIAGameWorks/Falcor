@@ -204,10 +204,6 @@ namespace Falcor
 #error Undefined falcor backend. Make sure that a backend is selected in "FalcorConfig.h"
 #endif
 
-#if defined(FALCOR_D3D12) || defined(FALCOR_VK)
-#define FALCOR_LOW_LEVEL_API
-#endif
-
 namespace Falcor
 {
     /** Converts ShaderType enum elements to a string.

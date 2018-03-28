@@ -35,7 +35,6 @@
 #include "API/CopyContext.h"
 #include "API/LowLevel/RootSignature.h"
 
-#ifdef FALCOR_DXR
 namespace Falcor
 {
     class RtVarsCmdList : public ID3D12GraphicsCommandList
@@ -134,4 +133,3 @@ namespace Falcor
         CopyContext::SharedPtr mpRayTraceContext;
     };
 }
-#endif

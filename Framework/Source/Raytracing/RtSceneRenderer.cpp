@@ -32,8 +32,9 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #include "Framework.h"
-#include "DXR.h"
 #include "RtSceneRenderer.h"
+#include "RtProgramVars.h"
+#include "RtState.h"
 
 namespace Falcor
 {

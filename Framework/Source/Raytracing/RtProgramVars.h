@@ -32,7 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "RtProgram/RtProgram.h"
 #include "RtScene.h"
 #include "API/Buffer.h"
@@ -95,4 +94,3 @@ namespace Falcor
         RtVarsContext::SharedPtr mpRtVarsHelper;
     };
 }
-#endif

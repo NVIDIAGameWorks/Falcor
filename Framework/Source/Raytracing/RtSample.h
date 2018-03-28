@@ -32,7 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Sample.h"
 
 namespace Falcor
@@ -43,4 +42,3 @@ namespace Falcor
         static void run(const SampleConfig& config, Renderer::UniquePtr& pRenderer);
     };
 }
-#endif

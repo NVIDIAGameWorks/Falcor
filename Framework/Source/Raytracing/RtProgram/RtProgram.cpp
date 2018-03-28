@@ -31,9 +31,7 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "..\DXR.h"
 #include "RtProgram.h"
 
 namespace Falcor
@@ -81,5 +79,3 @@ namespace Falcor
         }
     }
 }
-
-#endif

@@ -31,9 +31,7 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "DXR.h"
 #include "RtProgramVarsHelper.h"
 #include "API/Device.h"
 #include "API/LowLevel/DescriptorPool.h"
@@ -106,4 +104,3 @@ namespace Falcor
         *(D3D12_GPU_VIRTUAL_ADDRESS*)(mpRootBase + rootOffset) = BufferLocation;
     }
 }
-#endif

@@ -32,9 +32,8 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Graphics/Program/Program.h"
-#include "../../../Externals/DXR/dxcapi.h"
+#include "../../Externals/DXR/include/dxcapi.h"
 #include "API/Shader.h"
 
 namespace Falcor
@@ -65,4 +64,3 @@ namespace Falcor
         ShaderType shaderType,
         std::string& log);
 }
-#endif

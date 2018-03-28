@@ -28,7 +28,7 @@
 #pragma once
 #define NOMINMAX
 #ifdef FALCOR_DXR
-#include "../../../../../Framework/Externals/DXR/DX12/d3d12_1.h"
+#include "../../../Externals/DXR/include/d3d12_1.h"
 #else
 #include <d3d12.h>
 #endif
@@ -194,3 +194,7 @@ namespace Falcor
 #define DEFAULT_API_MINOR_VERSION 0
 
 #define UNSUPPORTED_IN_D3D12(msg_) {Falcor::logWarning(msg_ + std::string(" is not supported in D3D12. Ignoring call."));}
+
+#ifdef FALCOR_DXR
+#include "../../Raytracing/DXR.h"
+#endif

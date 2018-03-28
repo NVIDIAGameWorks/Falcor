@@ -31,11 +31,11 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifndef __DXR_COMMON_H__
-#define __DXR_COMMON_H__
+#ifndef __RAYTRACING_H__
+#define __RAYTRACING_H__
 
-__import Shading;
-__import DefaultVS;
+__exported __import Shading;
+__exported __import DefaultVS;
 
 ByteAddressBuffer gIndices      : register(t50);
 ByteAddressBuffer gTexCrds      : register(t51);
@@ -115,4 +115,4 @@ void getTriNormalsAndEdges(uint triangleIndex, out float3 n[3], out float3 e[2])
     n[1] = asfloat(gNormals.Load3((indices[1] * 3) * 4));
     n[2] = asfloat(gNormals.Load3((indices[2] * 3) * 4));
 }
-#endif // __DXR_COMMON_H__
+#endif // __RAYTRACING_H__

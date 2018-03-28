@@ -31,9 +31,7 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "..\DXR.h"
 #include "HitProgram.h"
 #include "..\RtShader.h"
 #include "RtProgramVersion.h"
@@ -91,5 +89,3 @@ namespace Falcor
         return OK ? RtProgramVersion::createHit(pAnyHit, pClosestHit, pIntersect, log, getProgramDescString(), mPreprocessedReflector, mMaxPayloadSize, mMaxAttributeSize) : nullptr;
     }
 }
-
-#endif

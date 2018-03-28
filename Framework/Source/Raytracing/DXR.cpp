@@ -32,9 +32,9 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "DXR.h"
+#include "RtProgramVars.h"
+#include "RtState.h"
 
 namespace Falcor
 {
@@ -77,5 +77,3 @@ namespace Falcor
         pContext->setComputeVars(pComputeVars);
     }
 }
-
-#endif

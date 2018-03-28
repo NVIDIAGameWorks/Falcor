@@ -31,38 +31,22 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#pragma once
-#include "RtProgram/RtProgram.h"
-#include "RtStateObject.h"
-#include "Utils/Graph.h"
 
-namespace Falcor
+__import ShaderCommon;
+__import Shading;
+__import DefaultVS;
+
+float4 main(VertexOut vOut) : SV_TARGET
 {
-    class RtState : public std::enable_shared_from_this<RtState>
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
+    float4 color = 0;
+    color.a = 1;
+
+    [unroll]
+    for (uint i = 0; i < 3; i++)
     {
-    public:
-        using SharedPtr = std::shared_ptr<RtState>;
-        using SharedConstPtr = std::shared_ptr<const RtState>;
-        
-        static SharedPtr create();
-        ~RtState();
-
-        void setProgram(RtProgram::SharedPtr pProg) { mpProgram = pProg; }
-        RtProgram::SharedPtr getProgram() const { return mpProgram; }
-
-        void setMaxTraceRecursionDepth(uint32_t maxDepth);
-        uint32_t getMaxTraceRecursionDepth() const { return mMaxTraceRecursionDepth; }
-
-        void setProgramStackSize(uint32_t stackSize);
-
-        RtStateObject::SharedPtr getRtso();
-    private:
-        RtState();
-        RtProgram::SharedPtr mpProgram;
-        uint32_t mMaxTraceRecursionDepth = 1;
-        using StateGraph = Graph<RtStateObject::SharedPtr, void*>;
-        StateGraph::SharedPtr mpRtsoGraph;
-
-        RtStateObject::ProgramList createProgramList() const;
-    };
+        color += evalMaterial(sd, gLights[i], 1).color;
+    }
+    color.rgb += sd.emissive;
+    return color;
 }

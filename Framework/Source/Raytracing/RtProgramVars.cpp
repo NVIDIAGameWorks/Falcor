@@ -31,11 +31,10 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "DXR.h"
 #include "RtProgramVars.h"
 #include "API/Device.h"
+#include "RtStateObject.h"
 
 namespace Falcor
 {
@@ -205,4 +204,3 @@ namespace Falcor
         return true;
     }
 }
-#endif

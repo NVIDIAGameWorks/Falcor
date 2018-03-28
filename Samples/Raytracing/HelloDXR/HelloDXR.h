@@ -32,37 +32,39 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#include "RtProgram/RtProgram.h"
-#include "RtStateObject.h"
-#include "Utils/Graph.h"
+#include "Falcor.h"
 
-namespace Falcor
+using namespace Falcor;
+
+class HelloDXR : public Renderer
 {
-    class RtState : public std::enable_shared_from_this<RtState>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RtState>;
-        using SharedConstPtr = std::shared_ptr<const RtState>;
-        
-        static SharedPtr create();
-        ~RtState();
+public:
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
-        void setProgram(RtProgram::SharedPtr pProg) { mpProgram = pProg; }
-        RtProgram::SharedPtr getProgram() const { return mpProgram; }
+private:
+    RtScene::SharedPtr mpScene;
+    SceneRenderer::SharedPtr mpSceneRenderer;
 
-        void setMaxTraceRecursionDepth(uint32_t maxDepth);
-        uint32_t getMaxTraceRecursionDepth() const { return mMaxTraceRecursionDepth; }
+    RtProgram::SharedPtr mpRaytraceProgram = nullptr;
+    GraphicsProgram::SharedPtr mpRasterProgram = nullptr;
+    GraphicsVars::SharedPtr mpProgramVars = nullptr;
+    GraphicsState::SharedPtr mpGraphicsState = nullptr;
+    Camera::SharedPtr mpCamera;
+    FirstPersonCameraController mCamController;
 
-        void setProgramStackSize(uint32_t stackSize);
+    bool mRayTrace = true;
+    RtProgramVars::SharedPtr mpRtVars;
+    RtState::SharedPtr mpRtState;
+    RtSceneRenderer::SharedPtr mpRtRenderer;
+    Texture::SharedPtr mpRtOut;
 
-        RtStateObject::SharedPtr getRtso();
-    private:
-        RtState();
-        RtProgram::SharedPtr mpProgram;
-        uint32_t mMaxTraceRecursionDepth = 1;
-        using StateGraph = Graph<RtStateObject::SharedPtr, void*>;
-        StateGraph::SharedPtr mpRtsoGraph;
-
-        RtStateObject::ProgramList createProgramList() const;
-    };
-}
+    void setRayGenVars(const Fbo* pTargetFbo);
+    void renderRT(RenderContext* pContext, const Fbo* pTargetFbo);
+    void renderRaster(RenderContext* pContext);
+    void loadScene(const std::string& filename, const Fbo* pTargetFbo);
+};

@@ -31,11 +31,10 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
 #include "RtShader.h"
 #include "Utils/StringUtils.h"
-#include "../../../Externals/DXR/dxcapi.use.h"
+#include "dxcapi.use.h"
 
 static dxc::DxcDllSupport gDxrDllHelper;
 
@@ -109,4 +108,3 @@ namespace Falcor
         return pShader;
     }
 }
-#endif

@@ -31,9 +31,7 @@
 |*  the above Disclaimer (as applicable) and U.S. Government End Users Notice.                                                        *|
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
-#ifdef FALCOR_DXR
 #include "Framework.h"
-#include "DXR.h"
 #include "RtSample.h"
 
 namespace Falcor
@@ -45,5 +43,3 @@ namespace Falcor
         Sample::run(rtConfig, pRenderer);
     }
 }
-
-#endif

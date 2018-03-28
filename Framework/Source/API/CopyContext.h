@@ -27,9 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "API/Resource.h"
-#ifdef FALCOR_LOW_LEVEL_API
 #include "API/LowLevel/LowLevelContextData.h"
-#endif
 
 namespace Falcor
 {
@@ -96,7 +94,6 @@ namespace Falcor
         */
         void copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const Buffer* pSrc, uint64_t srcOffset, uint64_t numBytes);
 
-#ifdef FALCOR_LOW_LEVEL_API
         /** Get the low-level context data
         */
         virtual LowLevelContextData::SharedPtr getLowLevelData() const { return mpLowLevelData; }
@@ -104,13 +101,10 @@ namespace Falcor
         /** Override the low-level context data with a user provided object
         */
         void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = pLowLevelData; }
-#endif
     protected:
         void bindDescriptorHeaps();
         CopyContext() = default;
         bool mCommandsPending = false;
-#ifdef FALCOR_LOW_LEVEL_API
         LowLevelContextData::SharedPtr mpLowLevelData;
-#endif
     };
 }

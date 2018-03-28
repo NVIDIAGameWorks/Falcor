@@ -32,7 +32,6 @@
 |*                                                                                                                                    *|
  \************************************************************************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Graphics/Program/Program.h"
 #include "..\RtShader.h"
 #include "RtProgramVersion.h"
@@ -99,4 +98,3 @@ namespace Falcor
     using RayGenProgram = RtSingleShaderProgram<ShaderType::RayGeneration>;
     using MissProgram = RtSingleShaderProgram<ShaderType::Miss>;
 }
-#endif
