@@ -61,7 +61,7 @@ namespace Falcor
         const auto& pComputeVars = getComputeVars();
         setComputeVars(nullptr);
         ID3D12GraphicsCommandListPtr pCmdList = getLowLevelData()->getCommandList();
-        pCmdList->SetComputeRootSignature(RootSignature::getEmpty()->getApiHandle().GetInterfacePtr());
+        pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
         ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pCmdList;

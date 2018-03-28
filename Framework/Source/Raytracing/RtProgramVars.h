@@ -50,6 +50,7 @@ namespace Falcor
         VarsVector& getHitVars(uint32_t rayID) { return mHitVars[rayID]; }
         const GraphicsVars::SharedPtr& getRayGenVars() { return mRayGenVars; }
         const GraphicsVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID]; }
+        const GraphicsVars::SharedPtr& getGlobalVars() { return mpGlobalVars; }
 
         bool apply(RenderContext* pCtx, RtStateObject* pRtso);
 
@@ -61,6 +62,7 @@ namespace Falcor
         uint32_t getHitProgramsCount() const { return mHitProgCount; }
         uint32_t getMissProgramsCount() const { return mMissProgCount; }
 
+        
     private:
         static const uint32_t kRayGenSbtRecordIndex = 0;
         static const uint32_t kFirstMissSbtRecordIndex = 1;
@@ -81,6 +83,7 @@ namespace Falcor
 
         bool init();
 
+        GraphicsVars::SharedPtr mpGlobalVars;
         GraphicsVars::SharedPtr mRayGenVars;
         std::vector<VarsVector> mHitVars;
         std::vector<uint8_t> mSbtData;

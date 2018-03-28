@@ -70,7 +70,7 @@ namespace Falcor
         maxRootSigSize = max(pVersion->getLocalRootSignature()->getSizeInBytes(), maxRootSigSize);
         for(uint32_t i = 0 ; i < varCount ; i++)
         {
-            pVars[i] = GraphicsVars::create(pProg->getReflector(), true, pVersion->getLocalRootSignature());
+            pVars[i] = GraphicsVars::create(pProg->getLocalReflector(), true, pVersion->getLocalRootSignature());
         }
     }
 
@@ -116,6 +116,9 @@ namespace Falcor
         mpSBT = Buffer::create(numEntries * mRecordSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
         assert(mpSBT);
         mSbtData.resize(mpSBT->getSize());
+
+        // Create the global variables
+        mpGlobalVars = GraphicsVars::create(mpProgram->getGlobalReflector(), true, mpProgram->getGlobalRootSignature());
 
         return true;
     }
@@ -193,6 +196,8 @@ namespace Falcor
                 return false;
             }
         }
+
+        mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true);
 
         pCtx->updateBuffer(mpSBT.get(), mSbtData.data());
         return true;

@@ -55,6 +55,9 @@ namespace Falcor
         void addDefine(const std::string& name, const std::string& value = "");
         void removeDefine(const std::string& name);
 
+        const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { return mpGlobalRootSignature; }
+        const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { return mpGlobalReflector; }
+
     private:
         RtProgram(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms);
         HitProgramList mHitProgs;
