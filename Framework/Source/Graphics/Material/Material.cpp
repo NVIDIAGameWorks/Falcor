@@ -48,7 +48,7 @@ namespace Falcor
         if (spBlockReflection == nullptr)
         {
             GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
-            ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
+            ProgramReflection::SharedConstPtr pReflection = pProgram->getReflector();
             spBlockReflection = pReflection->getParameterBlock(kMaterialVarName);
             assert(spBlockReflection);
         }

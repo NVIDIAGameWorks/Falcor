@@ -70,7 +70,7 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
 
     mpPrePassProgram = GraphicsProgram::createFromFile("", appendShaderExtension("AOPrePass.ps"));
     mpPrePassState = GraphicsState::create();
-    mpPrePassVars = GraphicsVars::create(mpPrePassProgram->getActiveVersion()->getReflector());
+    mpPrePassVars = GraphicsVars::create(mpPrePassProgram->getReflector());
 
     RasterizerState::Desc rsDesc;
     rsDesc.setCullMode(RasterizerState::CullMode::Back);
@@ -95,7 +95,7 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
     mpLinearSampler = Sampler::create(linearDesc);
 
     mpCopyPass = FullScreenPass::create(appendShaderExtension("ApplyAO.ps"));
-    mpCopyVars = GraphicsVars::create(mpCopyPass->getProgram()->getActiveVersion()->getReflector());
+    mpCopyVars = GraphicsVars::create(mpCopyPass->getProgram()->getReflector());
 
     // Effects
     mpSSAO = SSAO::create(uvec2(1024));

@@ -98,7 +98,7 @@ void HelloDXR::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRender
 
     loadScene(kDefaultScene, pSample->getCurrentFbo().get());
 
-    mpProgramVars = GraphicsVars::create(mpRasterProgram->getActiveVersion()->getReflector());
+    mpProgramVars = GraphicsVars::create(mpRasterProgram->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpRasterProgram);
 

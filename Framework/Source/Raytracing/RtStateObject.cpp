@@ -86,7 +86,7 @@ namespace Falcor
 
             // Root signature
             const std::wstring& exportName = pProg->getExportName();
-            rtsoHelper.addLocalRootSignature(&exportName, 1, pProg->getRootSignature()->getApiHandle().GetInterfacePtr());
+            rtsoHelper.addLocalRootSignature(&exportName, 1, pProg->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
             // Payload size
             rtsoHelper.addShaderConfig(&exportName, 1, pProg->getMaxPayloadSize(), pProg->getMaxAttributesSize());
         }

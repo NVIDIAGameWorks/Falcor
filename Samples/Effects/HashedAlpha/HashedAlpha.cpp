@@ -115,7 +115,7 @@ void HashedAlpha::updateProgram()
 void HashedAlpha::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpProgram = GraphicsProgram::createFromFile("", appendShaderExtension("HashedAlpha.ps"));
-    mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+    mpVars = GraphicsVars::create(mpProgram->getReflector());
     updateProgram();
 
     mpState = GraphicsState::create();

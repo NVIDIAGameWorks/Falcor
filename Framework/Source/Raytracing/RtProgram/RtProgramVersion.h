@@ -50,13 +50,13 @@ namespace Falcor
             Miss,
         };
 
-        static SharedPtr createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        static SharedPtr createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        static SharedPtr createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        static SharedPtr createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        static SharedPtr createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        static SharedPtr createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
 
         RtShader::SharedConstPtr getShader(ShaderType type) const;
 
-        std::shared_ptr<RootSignature> getRootSignature() const { return mpRootSignature; }
+        std::shared_ptr<RootSignature> getLocalRootSignature() const { return mpLocalRootSignature; }
 
         const std::wstring& getExportName() const { return mExportName; }
 
@@ -66,11 +66,11 @@ namespace Falcor
         uint32_t getMaxAttributesSize() const { return mMaxAttributeSize; }
     private:
         template<ShaderType shaderType>
-        static SharedPtr createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        bool initCommon(std::string& log, ProgramReflection::SharedPtr pReflector);
+        static SharedPtr createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        bool initCommon(std::string& log, ProgramReflection::SharedPtr pLocalReflector);
 
         RtProgramVersion(Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        std::shared_ptr<RootSignature> mpRootSignature;
+        std::shared_ptr<RootSignature> mpLocalRootSignature;
         Type mType;
         std::wstring mExportName;
 

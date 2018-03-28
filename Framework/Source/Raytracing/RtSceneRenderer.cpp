@@ -169,7 +169,7 @@ namespace Falcor
         uint32_t hitCount = pRtVars->getHitProgramsCount();
         if (hitCount)
         {
-            initializeMeshBufferLocation(pState->getProgram()->getHitProgram(0)->getActiveVersion()->getReflector().get());
+            initializeMeshBufferLocation(pState->getProgram()->getHitProgram(0)->getReflector().get());
         }
 
         for(data.progId = 0 ; data.progId < hitCount ; data.progId++)

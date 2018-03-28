@@ -99,7 +99,7 @@ namespace Falcor
         mpFont = Font::create();
 
         // Create and initialize the program variables
-        mpProgramVars = GraphicsVars::create(pProgram->getActiveVersion()->getReflector(), true);
+        mpProgramVars = GraphicsVars::create(pProgram->getReflector(), true);
         // Initialize the buffer
         auto pCB = mpProgramVars["PerFrameCB"];
         mVarOffsets.vpTransform = pCB->getVariableOffset("gvpTransform");

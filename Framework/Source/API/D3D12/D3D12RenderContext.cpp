@@ -62,7 +62,7 @@ namespace Falcor
         if (gBlitData.pVars == nullptr)
         {
             gBlitData.pPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Framework/Shaders/Blit.ps.slang");
-            gBlitData.pVars = GraphicsVars::create(gBlitData.pPass->getProgram()->getActiveVersion()->getReflector());
+            gBlitData.pVars = GraphicsVars::create(gBlitData.pPass->getProgram()->getReflector());
             gBlitData.pState = GraphicsState::create();
 
             gBlitData.pSrcRectBuffer = gBlitData.pVars->getConstantBuffer("SrcRectCB");
@@ -76,7 +76,7 @@ namespace Falcor
             gBlitData.pLinearSampler = Sampler::create(desc);
             desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
             gBlitData.pPointSampler = Sampler::create(desc);
-            const auto& pDefaultBlockReflection = gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock();
+            const auto& pDefaultBlockReflection = gBlitData.pPass->getProgram()->getReflector()->getDefaultParameterBlock();
             gBlitData.texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
             gBlitData.samplerBindLoc = pDefaultBlockReflection->getResourceBinding("gSampler");
         }

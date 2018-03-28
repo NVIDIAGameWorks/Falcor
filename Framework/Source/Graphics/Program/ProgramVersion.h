@@ -57,7 +57,6 @@ namespace Falcor
             \return New object in case of success, otherwise nullptr
         */
         static SharedPtr create(
-            ProgramReflection::SharedPtr const& pReflector,
             const Shader::SharedPtr& pVS,
             const Shader::SharedPtr& pPS,
             const Shader::SharedPtr& pGS,
@@ -73,7 +72,6 @@ namespace Falcor
             \return New object in case of success, otherwise nullptr
         */
         static SharedPtr create(
-            ProgramReflection::SharedPtr const& pReflector,
             const Shader::SharedPtr& pCS,
             std::string& log,
             const std::string& name = "");
@@ -88,9 +86,6 @@ namespace Falcor
         */
         const std::string& getName() const {return mName;}
 
-        /** Get the reflection object
-        */
-        ProgramReflection::SharedConstPtr getReflector() const { return mpReflector; }
     protected:
         ProgramVersion(const Shader::SharedPtr& pVS,
             const Shader::SharedPtr& pPS,
@@ -108,7 +103,6 @@ namespace Falcor
         static const uint32_t kShaderCount = (uint32_t)ShaderType::Count;
         Shader::SharedConstPtr mpShaders[kShaderCount];
 
-        ProgramReflection::SharedPtr mpReflector;
         void* mpPrivateData;
     };
 }

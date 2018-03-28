@@ -241,6 +241,10 @@ namespace Falcor
         */
         static void reloadAllPrograms();
 
+        const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mpReflector; }
+        const ProgramReflection::SharedConstPtr getLocalReflector() const { getActiveVersion(); return mpLocalReflector; }
+        const ProgramReflection::SharedConstPtr getGlobalReflector() const { getActiveVersion(); return mpGlobalReflector; }
+
     protected:
         Program();
 
@@ -256,7 +260,9 @@ namespace Falcor
         // Shader strings after being preprocessed for a particular version
 
         // Reflector for a particular version
-        mutable ProgramReflection::SharedPtr mPreprocessedReflector;
+        mutable ProgramReflection::SharedPtr mpReflector;
+        mutable ProgramReflection::SharedPtr mpLocalReflector;
+        mutable ProgramReflection::SharedPtr mpGlobalReflector;
 
         DefineList mDefineList;
 

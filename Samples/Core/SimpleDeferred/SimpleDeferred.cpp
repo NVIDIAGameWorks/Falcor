@@ -211,8 +211,8 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mpDirLight = DirectionalLight::create();
     mpDirLight->setWorldDirection(glm::vec3(-0.5f, -0.2f, -1.0f));
 
-    mpDeferredVars = GraphicsVars::create(mpDeferredPassProgram->getActiveVersion()->getReflector());
-    mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getActiveVersion()->getReflector());
+    mpDeferredVars = GraphicsVars::create(mpDeferredPassProgram->getReflector());
+    mpLightingVars = GraphicsVars::create(mpLightingPass->getProgram()->getReflector());
 
     // Load default model
     loadModelFromFile(skDefaultModel, pSample->getCurrentFbo().get());

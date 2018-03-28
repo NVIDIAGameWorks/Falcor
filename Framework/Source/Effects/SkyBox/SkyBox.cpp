@@ -76,9 +76,9 @@ namespace Falcor
         }
 
         mpProgram = GraphicsProgram::createFromFile("Effects/SkyBox.vs.slang", "Effects/SkyBox.ps.slang", defines);
-        mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+        mpVars = GraphicsVars::create(mpProgram->getReflector());
 
-        const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getActiveVersion()->getReflector()->getDefaultParameterBlock().get();
+        const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getReflector()->getDefaultParameterBlock().get();
         mBindLocations.perFrameCB = pDefaultBlockReflection->getResourceBinding("PerFrameCB");
         mBindLocations.texture = pDefaultBlockReflection->getResourceBinding("gTexture");
         mBindLocations.sampler= pDefaultBlockReflection->getResourceBinding("gSampler");

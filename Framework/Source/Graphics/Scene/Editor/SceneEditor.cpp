@@ -474,7 +474,7 @@ namespace Falcor
 
         // Shader
         mpColorProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang");
-        mpColorProgramVars = GraphicsVars::create(mpColorProgram->getActiveVersion()->getReflector());
+        mpColorProgramVars = GraphicsVars::create(mpColorProgram->getReflector());
         mpSelectionGraphicsState->setProgram(mpColorProgram);
 
         // Selection Scene and Renderer
@@ -507,7 +507,7 @@ namespace Falcor
         GraphicsProgram::DefineList defines;
         defines.add("DEBUG_DRAW");
         mpDebugDrawProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang", defines);
-        mpDebugDrawProgramVars = GraphicsVars::create(mpDebugDrawProgram->getActiveVersion()->getReflector());
+        mpDebugDrawProgramVars = GraphicsVars::create(mpDebugDrawProgram->getReflector());
 
         mpPathGraphicsState = GraphicsState::create();
         mpPathGraphicsState->setProgram(mpDebugDrawProgram);

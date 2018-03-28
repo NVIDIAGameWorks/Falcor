@@ -48,7 +48,7 @@ void HDRToneMapping::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     
     //Program
     mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("HDRToneMapping.vs"), appendShaderExtension("HDRToneMapping.ps"));
-    mpProgramVars = GraphicsVars::create(mpMainProg->getActiveVersion()->getReflector());
+    mpProgramVars = GraphicsVars::create(mpMainProg->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setFbo(pSample->getCurrentFbo());
     

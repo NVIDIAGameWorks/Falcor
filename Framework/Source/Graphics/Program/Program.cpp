@@ -539,7 +539,9 @@ namespace Falcor
         }
 
         // Extract the reflection data
-        mPreprocessedReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), log);
+        mpReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::All, log);
+        mpLocalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Local, log);
+        mpGlobalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Global, log);
 
         // Extract list of files referenced, for dependency-tracking purposes
         int depFileCount = spGetDependencyFileCount(slangRequest);
@@ -571,14 +573,11 @@ namespace Falcor
 
         if (shaders[(uint32_t)ShaderType::Compute])
         {
-            return ProgramVersion::create(
-                mPreprocessedReflector,
-                shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
+            return ProgramVersion::create(shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
         }
         else
         {
             return ProgramVersion::create(
-                mPreprocessedReflector,
                 shaders[(uint32_t)ShaderType::Vertex],
                 shaders[(uint32_t)ShaderType::Pixel],
                 shaders[(uint32_t)ShaderType::Geometry],

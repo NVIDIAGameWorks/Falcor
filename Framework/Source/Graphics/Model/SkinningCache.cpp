@@ -97,13 +97,13 @@ namespace Falcor
         // Create shaders
         mSkinningPass.pProgram = ComputeProgram::createFromFile(kShaderFilenameSkinning);
         assert(mSkinningPass.pProgram);
-        mSkinningPass.pVars = ComputeVars::create(mSkinningPass.pProgram->getActiveVersion()->getReflector());
+        mSkinningPass.pVars = ComputeVars::create(mSkinningPass.pProgram->getReflector());
 
         // Create state
         mSkinningPass.pState = ComputeState::create();
         mSkinningPass.pState->setProgram(mSkinningPass.pProgram);
 
-        const ParameterBlockReflection* pBlock = mSkinningPass.pProgram->getActiveVersion()->getReflector()->getDefaultParameterBlock().get();
+        const ParameterBlockReflection* pBlock = mSkinningPass.pProgram->getReflector()->getDefaultParameterBlock().get();
         initVariableOffsets(pBlock);
         initMeshBufferLocations(pBlock);
 

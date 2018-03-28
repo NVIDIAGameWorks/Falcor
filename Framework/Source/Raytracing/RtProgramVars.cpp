@@ -67,10 +67,10 @@ namespace Falcor
     void getSigSizeAndCreateVars(ProgType pProg, uint32_t& maxRootSigSize, GraphicsVars::SharedPtr pVars[], uint32_t varCount)
     {
         RtProgramVersion::SharedConstPtr pVersion = pProg->getActiveVersion();
-        maxRootSigSize = max(pVersion->getRootSignature()->getSizeInBytes(), maxRootSigSize);
+        maxRootSigSize = max(pVersion->getLocalRootSignature()->getSizeInBytes(), maxRootSigSize);
         for(uint32_t i = 0 ; i < varCount ; i++)
         {
-            pVars[i] = GraphicsVars::create(pVersion->getReflector(), true, pVersion->getRootSignature());
+            pVars[i] = GraphicsVars::create(pProg->getReflector(), true, pVersion->getLocalRootSignature());
         }
     }
 
@@ -161,7 +161,7 @@ namespace Falcor
         ID3D12StateObjectPropertiesPrototypePtr pRtsoPtr = pRtso->getApiHandle();
         memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pProgVersion->getExportName().c_str()), progIdSize);
         pRecord += progIdSize;
-        pContext->getRtVarsCmdList()->setRootParams(pProgVersion->getRootSignature(), pRecord);
+        pContext->getRtVarsCmdList()->setRootParams(pProgVersion->getLocalRootSignature(), pRecord);
         return pVars->applyProgramVarsCommon<true>(pContext, true);
     }
 

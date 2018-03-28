@@ -71,7 +71,7 @@ namespace Falcor
         //get num sim threads, required as a define for emit cs
         uvec3 simThreads;
 
-        simThreads = pSimulateCs->getActiveVersion()->getReflector()->getThreadGroupSize();
+        simThreads = pSimulateCs->getReflector()->getThreadGroupSize();
         mSimulateThreads = simThreads.x * simThreads.y * simThreads.z;
 
         //Emit cs
@@ -112,13 +112,13 @@ namespace Falcor
 
         //Vars
         //emit
-        mEmitResources.pVars = ComputeVars::create(pEmitCs->getActiveVersion()->getReflector());
+        mEmitResources.pVars = ComputeVars::create(pEmitCs->getReflector());
         mEmitResources.pVars->setStructuredBuffer("deadList", mpDeadList);
         mEmitResources.pVars->setStructuredBuffer("particlePool", mpParticlePool);
         mEmitResources.pVars->setStructuredBuffer("emitList", mpEmitList);
         mEmitResources.pVars->setRawBuffer("numAlive", mpAliveList->getUAVCounter());
         //simulate
-        mSimulateResources.pVars = ComputeVars::create(pSimulateCs->getActiveVersion()->getReflector());
+        mSimulateResources.pVars = ComputeVars::create(pSimulateCs->getReflector());
         mSimulateResources.pVars->setStructuredBuffer("deadList", mpDeadList);
         mSimulateResources.pVars->setStructuredBuffer("particlePool", mpParticlePool);
         mSimulateResources.pVars->setStructuredBuffer("drawArgs", mpIndirectArgs);
@@ -133,7 +133,7 @@ namespace Falcor
         }
 
         //draw
-        mDrawResources.pVars = GraphicsVars::create(pDrawProgram->getActiveVersion()->getReflector());
+        mDrawResources.pVars = GraphicsVars::create(pDrawProgram->getReflector());
         mDrawResources.pVars->setStructuredBuffer("aliveList", mpAliveList);
         mDrawResources.pVars->setStructuredBuffer("particlePool", mpParticlePool);
 
@@ -152,9 +152,9 @@ namespace Falcor
         mDrawResources.pState->setVao(Vao::create(topology, pLayout, bufferVec));
 
         // Save bind locations for resourced updated during draw
-        mBindLocations.simulateCB = pSimulateCs->getActiveVersion()->getReflector()->getDefaultParameterBlock()->getResourceBinding("PerFrame");
-        mBindLocations.drawCB = pDrawProgram->getActiveVersion()->getReflector()->getDefaultParameterBlock()->getResourceBinding("PerFrame");
-        mBindLocations.emitCB = pEmitCs->getActiveVersion()->getReflector()->getDefaultParameterBlock()->getResourceBinding("PerEmit");
+        mBindLocations.simulateCB = pSimulateCs->getReflector()->getDefaultParameterBlock()->getResourceBinding("PerFrame");
+        mBindLocations.drawCB = pDrawProgram->getReflector()->getDefaultParameterBlock()->getResourceBinding("PerFrame");
+        mBindLocations.emitCB = pEmitCs->getReflector()->getDefaultParameterBlock()->getResourceBinding("PerEmit");
     }
 
     void ParticleSystem::emit(RenderContext* pCtx, uint32_t num)
@@ -306,7 +306,7 @@ namespace Falcor
         mSortDataReset.resize(mMaxParticles, resetData);
 
         //Vars and state
-        mSortResources.pVars = ComputeVars::create(pSortCs->getActiveVersion()->getReflector());
+        mSortResources.pVars = ComputeVars::create(pSortCs->getReflector());
         mSortResources.pState = ComputeState::create();
         mSortResources.pState->setProgram(pSortCs);
     }

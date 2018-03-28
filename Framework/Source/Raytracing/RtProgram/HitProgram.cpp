@@ -80,6 +80,6 @@ namespace Falcor
         create_shader(ShaderType::AnyHit, pAnyHit);
         create_shader(ShaderType::ClosestHit, pClosestHit);
 
-        return OK ? RtProgramVersion::createHit(pAnyHit, pClosestHit, pIntersect, log, getProgramDescString(), mPreprocessedReflector, mMaxPayloadSize, mMaxAttributeSize) : nullptr;
+        return OK ? RtProgramVersion::createHit(pAnyHit, pClosestHit, pIntersect, log, getProgramDescString(), mpLocalReflector, mMaxPayloadSize, mMaxAttributeSize) : nullptr;
     }
 }

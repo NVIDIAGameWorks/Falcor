@@ -223,7 +223,7 @@ namespace Falcor
         pProg->addDefine("_APPLY_PROJECTION");
         mDepthPass.pState = GraphicsState::create();
         mDepthPass.pState->setProgram(pProg);
-        mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getActiveVersion()->getReflector());
+        mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getReflector());
         createShadowPassResources(mapWidth, mapHeight);
 
         mpLightCamera = Camera::create();
@@ -332,7 +332,7 @@ namespace Falcor
         mShadowPass.pState->setProgram(pProg);
         mShadowPass.pState->setDepthStencilState(nullptr);
         mShadowPass.pState->setFbo(mShadowPass.pFbo);
-        const auto& pReflector = pProg->getActiveVersion()->getReflector();
+        const auto& pReflector = pProg->getReflector();
         mShadowPass.pGraphicsVars = GraphicsVars::create(pReflector);
 
         const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();

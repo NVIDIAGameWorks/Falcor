@@ -78,9 +78,9 @@ namespace Falcor
                 switch (shaderType)
                 {
                 case ShaderType::RayGeneration:
-                    return RtProgramVersion::createRayGen(pShader, log, getProgramDescString(), mPreprocessedReflector, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramVersion::createRayGen(pShader, log, getProgramDescString(), mpLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
                 case ShaderType::Miss:
-                    return RtProgramVersion::createMiss(pShader, log, getProgramDescString(), mPreprocessedReflector, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramVersion::createMiss(pShader, log, getProgramDescString(), mpLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
                 default:
                     should_not_get_here();
                 }

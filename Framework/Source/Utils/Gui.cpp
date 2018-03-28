@@ -75,7 +75,7 @@ namespace Falcor
 
         // Create the program
         mpProgram = GraphicsProgram::createFromFile("Framework/Shaders/Gui.vs.slang", "Framework/Shaders/Gui.ps.slang");
-        mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+        mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 
         // Create and set the texture

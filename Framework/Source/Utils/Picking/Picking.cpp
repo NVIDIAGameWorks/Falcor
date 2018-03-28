@@ -81,7 +81,7 @@ namespace Falcor
         Program::DefineList defines;
         defines.add("PICKING");
         mpProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang", defines);
-        mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+        mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
 
         defines.add("CULL_REAR_SECTION");
         mpRotGizmoProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang", defines);
