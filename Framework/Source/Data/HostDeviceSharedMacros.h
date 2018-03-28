@@ -67,7 +67,8 @@
 *******************************************************************/
 
 // Shading model
-#define ShadingModelSpecGloss 0
+#define ShadingModelMetalRough 0
+#define ShadingModelSpecGloss 1
 
 // Channel type
 #define ChannelTypeUnused    0

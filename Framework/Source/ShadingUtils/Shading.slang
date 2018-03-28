@@ -156,10 +156,9 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 #endif
 
     // Sample the diffuse texture and apply the alpha test
-    float4 diffuse = sampleTexture(m.resources.diffuse, m.resources.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
-    sd.diffuse = diffuse.rgb;
+    float4 baseColor = sampleTexture(m.resources.diffuse, m.resources.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
     sd.opacity = m.diffuse.a;
-    alphaTest(m.flags, diffuse.a, m.alphaThreshold, v.posW);
+    alphaTest(m.flags, baseColor.a, m.alphaThreshold, v.posW);
 
     sd.posW = v.posW;
     sd.uv = v.texC;
@@ -169,10 +168,25 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
     sd.B = normalize(v.bitangentW - sd.N * (dot(v.bitangentW, sd.N)));
     sd.T = normalize(cross(sd.B, sd.N));
 
-    // Sample the rest of the texture
+    // Sample the spec texture
     float4 spec = sampleTexture(m.resources.specular, m.resources.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags));
-    sd.specular = spec.rgb;
-    sd.linearRoughness = max(0.08, 1 - spec.a); // Clamp the roughness so that the BRDF won't explode
+    if(EXTRACT_SHADING_MODEL(m.flags) == ShadingModelMetalRough)
+    {
+        // R - Occlusion; G - Roughness; B - Metalness
+        sd.diffuse = lerp(baseColor.rgb, float3(0), spec.b);
+
+        // UE4 uses 0.08 multiplied by a default specular value of 0.5 as a base
+        sd.specular = lerp(float3(0.04f), baseColor.rgb, spec.b);
+        sd.linearRoughness = spec.g;
+    }
+    else // if (EXTRACT_SHADING_MODEL(m.flags) == ShadingModelSpecGloss)
+    {
+        sd.diffuse = baseColor.rgb;
+        sd.specular = spec.rgb;
+        sd.linearRoughness = 1 - spec.a;
+    }
+
+    sd.linearRoughness = max(0.08, sd.linearRoughness); // Clamp the roughness so that the BRDF won't explode
     sd.roughness = sd.linearRoughness * sd.linearRoughness;
     sd.emissive = sampleTexture(m.resources.emissive, m.resources.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
     sd.IoR = m.IoR;
