@@ -331,6 +331,24 @@ namespace Falcor
 #endif
     }
 
+    static ReflectionVar::Modifier getModifierFromPath(const ReflectionPath* pPath, SlangParameterCategory category)
+    {
+        ReflectionVar::Modifier mod = ReflectionVar::Modifier::None;
+        for (auto pp = pPath; pp; pp = pp->pParent)
+        {
+            if (pp->pVar)
+            {
+                const auto* pSlangMod = pp->pVar->findModifier(Modifier::ID::Shared);
+                if (pSlangMod)
+                {
+                    mod |= ReflectionVar::Modifier::Shared;
+                    break;
+                }
+            }
+        }
+        return mod;
+    }
+
     static size_t getRegisterIndexFromPath(const ReflectionPath* pPath, SlangParameterCategory category)
     {
         uint32_t offset = 0;
@@ -512,7 +530,8 @@ namespace Falcor
             uint32_t index = (uint32_t)getRegisterIndexFromPath(pPath, category);
             uint32_t space = getRegisterSpaceFromPath(pPath, category);
             uint32_t descOffset = getDescOffsetFromPath(pPath, max(1u, pType->getTotalArraySize()), category);
-            pVar = ReflectionVar::create(name, pType, index, descOffset, space);
+            ReflectionVar::Modifier modifier = getModifierFromPath(pPath, category);
+            pVar = ReflectionVar::create(name, pType, index, descOffset, space, modifier);
         }
         else
         {
@@ -726,15 +745,13 @@ namespace Falcor
         mNameToIndex[pVar->getName()] = mMembers.size() - 1;
     }
 
-    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace)
+    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace, Modifier modifier)
     {
-        return SharedPtr(new ReflectionVar(name, pType, offset, descOffset, regSpace));
+        return SharedPtr(new ReflectionVar(name, pType, offset, descOffset, regSpace, modifier));
     }
 
-    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace) : mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace), mDescOffset(descOffset)
-    {
-
-    }
+    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace, Modifier modifier) :
+        mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace), mDescOffset(descOffset), mModifier(modifier) {}
 
     ParameterBlockReflection::SharedPtr ParameterBlockReflection::create(const std::string& name)
     {

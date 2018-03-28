@@ -416,14 +416,21 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ReflectionVar>;
         static const uint32_t kInvalidOffset = ReflectionType::kInvalidOffset;
 
+        enum class Modifier
+        {
+            None        = 0x0,    ///< No modifier
+            Shared      = 0x1,  ///< Shared resource
+        };
+
         /** Create a new object
             \param[in] name The name of the variable
             \param[in] pType The type of the variable
             \param[in] offset The offset of the variable relative to the parent object
             \param[in] descOffset In case of a resource, the offset in descriptors relative to the base descriptor-set
             \param[in] regSpace In case of a resource, the register space
+            \param[in] isShared For resources, tells us if the 
         */
-        static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset = 0, uint32_t regSpace = kInvalidOffset);
+        static SharedPtr create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset = 0, uint32_t regSpace = kInvalidOffset, Modifier modifier = Modifier::None);
 
         /** Get the variable name
         */
@@ -449,17 +456,24 @@ namespace Falcor
         */
         uint32_t getDescOffset() const { return mDescOffset; }
 
+        /** Get the modifier
+        */
+        Modifier getModifier() const { return mModifier; }
+
         bool operator==(const ReflectionVar& other) const;
         bool operator!=(const ReflectionVar& other) const { return !(*this == other); }
     private:
-        ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace);
+        ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace, Modifier modifier);
         ReflectionType::SharedConstPtr mpType;
         size_t mOffset = kInvalidOffset;
         uint32_t mRegSpace = kInvalidOffset;
         std::string mName;
         size_t mSize = 0;
         uint32_t mDescOffset = 0;
+        Modifier mModifier;
     };
+
+    enum_class_operators(ReflectionVar::Modifier);
 
     class ProgramReflection;
 
