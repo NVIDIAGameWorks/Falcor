@@ -487,6 +487,45 @@
     <ClCompile Include="Graphics\LightProbe.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\DXR.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtModel.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgramVars.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgramVarsHelper.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtSample.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtScene.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtSceneRenderer.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtShader.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtState.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtStateObject.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgram\HitProgram.cpp">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgram\RtProgram.cpp">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgram\RtProgramVersion.cpp">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1597,6 +1636,51 @@
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h">
       <Filter>Utils\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\DXR.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtModel.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgramVars.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgramVarsHelper.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtSample.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtScene.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtSceneRenderer.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtShader.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtState.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtStateObject.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtStateObjectHelper.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgram\HitProgram.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgram\RtProgram.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgram\RtProgramVersion.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\FalcorRT\Framework\Source\API\DXR\RtProgram\SingleShaderProgram.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1775,6 +1859,12 @@
     </Filter>
     <Filter Include="Graphics\Program">
       <UniqueIdentifier>{a2a4ca1c-043f-4b99-8d25-5f413799c4c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Raytracing">
+      <UniqueIdentifier>{fd5e4329-273b-4802-ad4b-9720a882996e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Raytracing\RtProgram">
+      <UniqueIdentifier>{ff6f483f-cf0a-43c4-a3cb-fff34270dc44}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2227,6 +2317,9 @@
     </None>
     <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang">
       <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="ShadingUtils\Raytracing.slang">
+      <Filter>ShadingUtils</Filter>
     </None>
   </ItemGroup>
 </Project>
