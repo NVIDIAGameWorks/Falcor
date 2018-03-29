@@ -177,9 +177,9 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
 {
     mpCamera = Camera::create();
 
-	mpDeferredPassProgram = GraphicsProgram::createFromFile("", appendShaderExtension("DeferredPass.ps"));
+	mpDeferredPassProgram = GraphicsProgram::createFromFile("DeferredPass.ps.hlsl", "", "main");
 
-    mpLightingPass = FullScreenPass::create(appendShaderExtension("LightingPass.ps"));
+    mpLightingPass = FullScreenPass::create("LightingPass.ps.hlsl");
 
     // create rasterizer state
     RasterizerState::Desc rsDesc;

@@ -39,7 +39,51 @@ cbuffer PerImageCB
     uint gDebugMode;
 };
 
-#include "LightingPassCommon.h"
+// Debug modes
+#define ShowPos         1
+#define ShowNormals     2
+#define ShowAlbedo      3
+#define ShowLighting    4
+
+float3 shade(float3 posW, float3 normalW, float linearRoughness, float4 albedo)
+{
+    // Discard empty pixels
+    if (albedo.a <= 0)
+    {
+        discard;
+    }
+
+    /* Reconstruct the hit-point */
+    ShadingData sd = initShadingData();
+    sd.posW = posW;
+    sd.V = normalize(gCamera.posW - posW);
+    sd.N = normalW;
+    sd.NdotV = abs(dot(sd.V, sd.N));
+    sd.linearRoughness = linearRoughness;
+
+    /* Reconstruct layers (one diffuse layer) */
+    sd.diffuse = albedo.rgb;
+    sd.opacity = 0;
+
+    /* Do lighting */
+    ShadingResult dirResult = evalMaterial(sd, gDirLight, 1);
+    ShadingResult pointResult = evalMaterial(sd, gPointLight, 1);
+
+    float3 result;
+    // Debug vis
+    if (gDebugMode == ShowPos)
+        result = posW;
+    else if (gDebugMode == ShowNormals)
+        result = 0.5 * normalW + 0.5f;
+    else if (gDebugMode == ShowAlbedo)
+        result = albedo.rgb;
+    else if (gDebugMode == ShowLighting)
+        result = (dirResult.diffuseBrdf + pointResult.diffuseBrdf) / sd.diffuse.rgb;
+    else
+        result = dirResult.diffuse + pointResult.diffuse;
+
+    return result;
+}
 
 Texture2D gGBuf0;
 Texture2D gGBuf1;
