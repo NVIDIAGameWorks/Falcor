@@ -413,7 +413,7 @@ namespace Falcor
         for(auto pLibrary : mDesc.mShaderLibraries)
         {
             // If this is not an HLSL or a SLANG file, display a warning
-            if (!hasSuffix(pLibrary->getFilename(), ".hlsl", false) || !hasSuffix(pLibrary->getFilename(), ".slang", false))
+            if (!hasSuffix(pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(pLibrary->getFilename(), ".slang", false))
             {
                 logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
             }

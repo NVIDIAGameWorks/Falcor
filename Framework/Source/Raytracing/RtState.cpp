@@ -45,20 +45,23 @@ namespace Falcor
     RtStateObject::ProgramList RtState::createProgramList() const
     {
         RtStateObject::ProgramList programs;
-        if (mpProgram->getRayGenProgram())
-        {
-            programs.push_back(mpProgram->getRayGenProgram()->getActiveVersion());
-        }
+        assert(mpProgram->getRayGenProgram());
+        programs.push_back(mpProgram->getRayGenProgram()->getActiveVersion());
 
         for (uint32_t i = 0; i < mpProgram->getHitProgramCount(); i++)
         {
-            programs.push_back(mpProgram->getHitProgram(i)->getActiveVersion());
-
+            if(mpProgram->getHitProgram(i))
+            {
+                programs.push_back(mpProgram->getHitProgram(i)->getActiveVersion());
+            }
         }
 
         for (uint32_t i = 0; i < mpProgram->getMissProgramCount(); i++)
         {
-            programs.push_back(mpProgram->getMissProgram(i)->getActiveVersion());
+            if(mpProgram->getMissProgram(i))
+            {
+                programs.push_back(mpProgram->getMissProgram(i)->getActiveVersion());
+            }
         }
 
         return programs;

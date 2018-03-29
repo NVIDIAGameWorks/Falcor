@@ -89,13 +89,19 @@ namespace Falcor
 
         for (uint32_t i = 0 ; i < mHitProgCount; i++)
         {
-            mHitVars[i].resize(recordCountPerHit);
-            getSigSizeAndCreateVars(mpProgram->getHitProgram(i), maxRootSigSize, mHitVars[i].data(), recordCountPerHit);
+            if(mpProgram->getHitProgram(i))
+            {
+                mHitVars[i].resize(recordCountPerHit);
+                getSigSizeAndCreateVars(mpProgram->getHitProgram(i), maxRootSigSize, mHitVars[i].data(), recordCountPerHit);
+            }
         }
 
         for (uint32_t i = 0; i < mMissProgCount; i++)
         {
-            getSigSizeAndCreateVars(mpProgram->getMissProgram(i), maxRootSigSize, &mMissVars[i], 1);
+            if(mpProgram->getMissProgram(i))
+            {
+                getSigSizeAndCreateVars(mpProgram->getMissProgram(i), maxRootSigSize, &mMissVars[i], 1);
+            }
         }
 
 
@@ -178,22 +184,28 @@ namespace Falcor
         uint32_t hitCount = mpProgram->getHitProgramCount();
         for (uint32_t h = 0; h < hitCount; h++)
         {
-            for (uint32_t i = 0; i < mpScene->getGeometryCount(hitCount); i++)
+            if(mpProgram->getHitProgram(h))
             {
-                uint8_t* pHitRecord = getHitRecordPtr(h, i);
-                if(!applyRtProgramVars(pHitRecord, mpProgram->getHitProgram(h)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getHitVars(h)[i].get(), mpRtVarsHelper.get()))
+                for (uint32_t i = 0; i < mpScene->getGeometryCount(hitCount); i++)
                 {
-                    return false;
+                    uint8_t* pHitRecord = getHitRecordPtr(h, i);
+                    if (!applyRtProgramVars(pHitRecord, mpProgram->getHitProgram(h)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getHitVars(h)[i].get(), mpRtVarsHelper.get()))
+                    {
+                        return false;
+                    }
                 }
             }
         }
 
         for (uint32_t m = 0; m < mpProgram->getMissProgramCount(); m++)
         {
-            uint8_t* pMissRecord = getMissRecordPtr(m);
-            if(!applyRtProgramVars(pMissRecord, mpProgram->getMissProgram(m)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getMissVars(m).get(), mpRtVarsHelper.get()))
+            if(mpProgram->getMissProgram(m))
             {
-                return false;
+                uint8_t* pMissRecord = getMissRecordPtr(m);
+                if (!applyRtProgramVars(pMissRecord, mpProgram->getMissProgram(m)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getMissVars(m).get(), mpRtVarsHelper.get()))
+                {
+                    return false;
+                }
             }
         }
 

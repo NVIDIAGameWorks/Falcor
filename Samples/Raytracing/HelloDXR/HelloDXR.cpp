@@ -86,9 +86,9 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
 void HelloDXR::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     RtProgram::Desc rtProgDesc;
-    rtProgDesc.setShaderLibrary("HelloDXR.rt.hlsl").setRayGen("rayGen");
-    rtProgDesc.addHitGroup("primaryClosestHit", "").addMiss("primaryMiss");
-    rtProgDesc.addHitGroup("", "shadowAnyHit").addMiss("shadowMiss");
+    rtProgDesc.addShaderLibrary("HelloDXR.rt.hlsl").setRayGen("rayGen");
+    rtProgDesc.addHitGroup(0, "primaryClosestHit", "").addMiss(0, "primaryMiss");
+    rtProgDesc.addHitGroup(1, "", "shadowAnyHit").addMiss(1, "shadowMiss");
 
     mpRaytraceProgram = RtProgram::create(rtProgDesc);
 
