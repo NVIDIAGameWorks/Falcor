@@ -26,29 +26,22 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "MaterialExplorer.h"
+#include "Data/HostDeviceSharedMacros.h"
 
 //const std::string MaterialExplorer::kEnvMapName = "panorama_map.hdr";
 const std::string MaterialExplorer::kEnvMapName = "SunTemple_Reflection.hdr";
 const uint32_t MaterialExplorer::kDefaultSamples = 16  *1024;
 
-void metalToSpec(const vec3& baseColor, float metallic, vec3& diffuse, vec3& spec)
-{
-    diffuse = baseColor - baseColor * metallic;
-    spec = lerp(vec3(0.04f), baseColor, metallic);
-}
-
 Material::SharedPtr generateMaterial(const std::string& name, uint32_t roughI, uint32_t roughN, uint32_t metalI, uint32_t metalN)
 {
     Material::SharedPtr pMat = Material::create(name);
 
-    float roughness = min(0.99f, 1.0f - (float(roughI) / float(roughN - 1)));
+    float roughness = float(roughI) / float(roughN - 1);
     float metallic = float(metalI) / float(metalN - 1);
 
-    vec3 diffuse, spec;
-    metalToSpec(vec4(1), metallic, diffuse, spec);
-
-    pMat->setDiffuseColor(vec4(diffuse, 1));
-    pMat->setSpecularColor(vec4(spec, 1.0f - roughness));
+    pMat->setShadingModel(ShadingModelMetalRough);
+    pMat->setBaseColor(vec4(1));
+    pMat->setSpecularParams(vec4(0, roughness, metallic, 0));
 
     return pMat;
 }
