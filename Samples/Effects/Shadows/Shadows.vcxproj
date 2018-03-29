@@ -88,7 +88,7 @@
     <None Include="Data\Shadows.ps.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>
-    <None Include="Data\Shadows.vs.hlsl">
+    <None Include="Data\Shadows.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>
     <None Include="Data\VisualizeMap.ps.hlsl">

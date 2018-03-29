@@ -15,10 +15,10 @@
     <None Include="Data\Shadows.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Shadows.vs.hlsl">
+    <None Include="Data\VisualizeMap.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\VisualizeMap.ps.hlsl">
+    <None Include="Data\Shadows.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -44,7 +44,17 @@ struct ShadowsVSOut
     float shadowsDepthC : DEPTH;
 };
 
-float4 main(ShadowsVSOut pIn) : SV_TARGET0
+ShadowsVSOut vs(VertexIn vIn)
+{
+    VertexOut defaultOut = defaultVS(vIn);
+    ShadowsVSOut output;
+    output.vsData = defaultOut;
+
+    output.shadowsDepthC = mul(float4(defaultOut.posW, 1), camVpAtLastCsmUpdate).z;
+    return output;
+}
+
+float4 ps(ShadowsVSOut pIn) : SV_TARGET0
 {
     ShadingData sd = prepareShadingData(pIn.vsData, gMaterial, gCamera.posW);
     float4 color = float4(0,0,0,1);
