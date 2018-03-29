@@ -81,7 +81,7 @@ namespace Falcor
 
         //draw shader
         GraphicsProgram::Desc d(kVertexShader);
-        d.vsEntry("main").addShaderModule(drawPixelShader).psEntry("main");
+        d.vsEntry("main").addShaderLibrary(drawPixelShader).psEntry("main");
         GraphicsProgram::SharedPtr pDrawProgram = GraphicsProgram::create(d, defineList);
 
         //ParticlePool

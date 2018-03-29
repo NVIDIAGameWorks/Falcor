@@ -38,6 +38,7 @@
 #include "API/Sampler.h"
 #include "API/RenderContext.h"
 #include "Utils/StringUtils.h"
+#include "ShaderLibrary.h"
 
 namespace Falcor
 {
@@ -52,14 +53,13 @@ namespace Falcor
 
     Program::Desc::Desc(std::string const& path)
     {
-        addShaderModule(path);
+        addShaderLibrary(path);
     }
 
-    Program::Desc& Program::Desc::addShaderModule(std::string const& path)
+    Program::Desc& Program::Desc::addShaderLibrary(std::string const& path)
     {
-        ShaderModule::SharedPtr pModule = ShaderModule::create(path);
-        mActiveSourceIndex = (int) mModules.size();
-        mModules.emplace_back(pModule);
+        mActiveLibraryIndex = (int)mShaderLibraries.size();
+        mShaderLibraries.emplace_back(ShaderLibrary::create(path));
 
         return *this;
     }
@@ -70,16 +70,16 @@ namespace Falcor
         entryPoint.name = name;
         if (name.size() == 0)
         {
-            entryPoint.moduleIndex = -1;
+            entryPoint.libraryIndex = -1;
         }
         else
         {
-            assert(mActiveSourceIndex >= 0);
-            if (entryPoint.moduleIndex != -1)
+            assert(mActiveLibraryIndex >= 0);
+            if (entryPoint.libraryIndex != -1)
             {
                 logWarning("Trying to set a " + to_string(shaderType) + " entry-point when one already exists. Overriding previous entry-point");
             }
-            entryPoint.moduleIndex = mActiveSourceIndex;
+            entryPoint.libraryIndex = mActiveLibraryIndex;
             entryPoint.name = name;
         }
 
@@ -90,7 +90,7 @@ namespace Falcor
     {
         // Don't set default vertex shader if one was set already.
         if (mEntryPoints[int(ShaderType::Vertex)].isValid()) return *this;
-        return addShaderModule("DefaultVS.slang").entryPoint(ShaderType::Vertex, "defaultVS");        
+        return addShaderLibrary("DefaultVS.slang").entryPoint(ShaderType::Vertex, "defaultVS");        
     }
 
     const std::string& Program::Desc::getShaderEntryPoint(ShaderType shaderType) const
@@ -99,12 +99,12 @@ namespace Falcor
         return mEntryPoints[(uint32_t)shaderType].isValid() ? mEntryPoints[(uint32_t)shaderType].name : s;
     }
 
-    const ShaderModule::SharedPtr& Program::Desc::getShaderModule(ShaderType shaderType) const
+    const ShaderLibrary::SharedPtr& Program::Desc::getShaderLibrary(ShaderType shaderType) const
     {
-        static ShaderModule::SharedPtr pM;;
+        static ShaderLibrary::SharedPtr pM;;
         const auto& e = mEntryPoints[(uint32_t)shaderType];
 
-        return e.isValid() ? mModules[e.moduleIndex] : pM;
+        return e.isValid() ? mShaderLibraries[e.libraryIndex] : pM;
     }
 
     // Program
@@ -139,7 +139,7 @@ namespace Falcor
         std::string desc = "Program with Shaders:\n";
 
         int sourceCounter = 0;
-        for(auto pModule : mDesc.mModules)
+        for(auto pModule : mDesc.mShaderLibraries)
         {
             int sourceIndex = sourceCounter++;
 
@@ -147,7 +147,7 @@ namespace Falcor
 
             for( auto entryPoint : mDesc.mEntryPoints )
             {
-                if(entryPoint.moduleIndex != sourceIndex) continue;
+                if(entryPoint.libraryIndex != sourceIndex) continue;
                 desc += "/*" + entryPoint.name + "*/";
             }
             desc += "\n";
@@ -410,39 +410,22 @@ namespace Falcor
 
         // Now lets add all our input shader code, one-by-one
         int translationUnitsAdded = 0;
-        for(auto pModule : mDesc.mModules)
+        for(auto pLibrary : mDesc.mShaderLibraries)
         {
-            // In the case where the shader code is being loaded from a file,
-            // we may be able to use the file's extension to discover the
-            // language that the shader code is written in (rather than
-            // assuming it is a match for the target graphics API).
-            SlangSourceLanguage translationUnitSourceLanguage = sourceLanguage;
-            static const struct
+            // If this is not an HLSL or a SLANG file, display a warning
+            if (!hasSuffix(pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(pLibrary->getFilename(), ".slang", false))
             {
-                char const*         extension;
-                SlangSourceLanguage language;
-            } kInferLanguageFromExtension[] = {
-                { ".hlsl", SLANG_SOURCE_LANGUAGE_HLSL },
-                { ".slang", SLANG_SOURCE_LANGUAGE_SLANG },
-                { nullptr, SLANG_SOURCE_LANGUAGE_UNKNOWN },
-            };
-            for (auto ii = kInferLanguageFromExtension; ii->extension; ++ii)
-            {
-                if (hasSuffix(pModule->getFilename(), ii->extension))
-                {
-                    translationUnitSourceLanguage = ii->language;
-                    break;
-                }
+                logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
             }
 
             // Register the translation unit with Slang
-            int translationUnitIndex = spAddTranslationUnit(slangRequest, translationUnitSourceLanguage, nullptr);
+            int translationUnitIndex = spAddTranslationUnit(slangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
             assert(translationUnitIndex == translationUnitsAdded);
             translationUnitsAdded++;
 
             // Add source code to the translation unit
             std::string fullpath;
-            findFileInDataDirectories(pModule->getFilename(), fullpath);
+            findFileInDataDirectories(pLibrary->getFilename(), fullpath);
             spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
         }
 
@@ -455,12 +438,12 @@ namespace Falcor
             auto& entryPoint = mDesc.mEntryPoints[i];
 
             // Skip unused entry points
-            if(entryPoint.moduleIndex < 0)
+            if(entryPoint.libraryIndex < 0)
                 continue;
 
             spAddEntryPoint(
                 slangRequest,
-                entryPoint.moduleIndex,
+                entryPoint.libraryIndex,
                 entryPoint.name.c_str(),
                 getSlangStage(ShaderType(i)));
         }
@@ -482,7 +465,7 @@ namespace Falcor
             auto& entryPoint = mDesc.mEntryPoints[i];
 
             // Skip unused entry points
-            if(entryPoint.moduleIndex < 0)
+            if(entryPoint.libraryIndex < 0)
                 continue;
 
             int entryPointIndex = entryPointCounter++;

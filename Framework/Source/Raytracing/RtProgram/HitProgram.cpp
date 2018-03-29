@@ -29,6 +29,7 @@
 #include "HitProgram.h"
 #include "..\RtShader.h"
 #include "RtProgramVersion.h"
+#include "Graphics/Program/ShaderLibrary.h"
 
 namespace Falcor
 {
@@ -48,7 +49,7 @@ namespace Falcor
         }
         
         Program::Desc desc;
-        desc.addShaderModule(filename);
+        desc.addShaderLibrary(filename);
         if (closestHitEntry.size())     desc.entryPoint(ShaderType::ClosestHit,   closestHitEntry);
         if (anyHitEntry.size())         desc.entryPoint(ShaderType::AnyHit,       anyHitEntry);
         if (intersectionEntry.size())   desc.entryPoint(ShaderType::Intersection, intersectionEntry);
@@ -62,7 +63,7 @@ namespace Falcor
     if (shaderBlob[uint32_t(_type)].data.size())                \
     {                                                           \
         _pshader = createRtShaderFromBlob(                      \
-        mDesc.getShaderModule(_type)->getFilename(),            \
+        mDesc.getShaderLibrary(_type)->getFilename(),            \
         mDesc.getShaderEntryPoint(_type),                       \
             shaderBlob[uint32_t(_type)],                        \
             flags,                                              \

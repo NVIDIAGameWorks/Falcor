@@ -168,7 +168,10 @@ namespace Falcor
         // Set the miss-shader data
         for (data.progId = 0; data.progId < pRtVars->getMissProgramsCount(); data.progId++)
         {
-            setMissShaderData(pRtVars.get(), data);
+            if(pRtVars->getMissVars(data.progId))
+            {
+                setMissShaderData(pRtVars.get(), data);
+            }
         }
 
         // Set the hit-shader data
@@ -180,6 +183,7 @@ namespace Falcor
 
         for(data.progId = 0 ; data.progId < hitCount ; data.progId++)
         {
+            if(pRtVars->getHitVars(data.progId).empty()) continue;
             for (data.model = 0; data.model < mpScene->getModelCount(); data.model++)
             {
                 const Model* pModel = mpScene->getModel(data.model).get();

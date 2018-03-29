@@ -29,6 +29,7 @@
 #include "Graphics/Program/Program.h"
 #include "..\RtShader.h"
 #include "RtProgramVersion.h"
+#include "Graphics/Program/ShaderLibrary.h"
 
 namespace Falcor
 {
@@ -65,7 +66,7 @@ namespace Falcor
         ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const override
         {
             RtShader::SharedPtr pShader;
-            pShader = createRtShaderFromBlob(mDesc.getShaderModule(ShaderType(shaderType))->getFilename(), mDesc.getShaderEntryPoint(ShaderType(shaderType)), shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
+            pShader = createRtShaderFromBlob(mDesc.getShaderLibrary(ShaderType(shaderType))->getFilename(), mDesc.getShaderEntryPoint(ShaderType(shaderType)), shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
 
             if (pShader)
             {

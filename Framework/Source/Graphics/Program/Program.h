@@ -35,22 +35,7 @@ namespace Falcor
 {
     class Shader;
     class RenderContext;
-
-
-    class ShaderModule
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ShaderModule>;
-        static SharedPtr create(const std::string& filename)
-        {
-            return SharedPtr(new ShaderModule(filename));
-        }
-
-        const std::string& getFilename() const { return mFilename; }
-    private:
-        ShaderModule(const std::string& filename) : mFilename(filename) {}
-        std::string mFilename;
-    };
+    class ShaderLibrary;
 
     /** High-level abstraction of a program class.
         This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
@@ -83,7 +68,7 @@ namespace Falcor
             /** Add a file of course code to use.
             This also sets the given file as the "active" source for subsequent entry points.
             */
-            Desc& addShaderModule(const std::string& path);
+            Desc& addShaderLibrary(const std::string& path);
 
             /** Adds an entry point based on the "active" source.
             */
@@ -98,7 +83,7 @@ namespace Falcor
 
             /** Get the source string associated with a shader stage, or an empty string if no stage found
             */
-            const ShaderModule::SharedPtr& getShaderModule(ShaderType shaderType) const;
+            const std::shared_ptr<ShaderLibrary>& getShaderLibrary(ShaderType shaderType) const;
 
             /** Get the name of the shader entry point associated with a shader stage, or an empty string if no stage found
             */
@@ -125,13 +110,13 @@ namespace Falcor
             {
                 std::string name;
                 // The index of the shader module that this entry point will use, or `-1` to indicate that this entry point is disabled
-                int moduleIndex = -1;
-                bool isValid() const { return moduleIndex >= 0; }
+                int libraryIndex = -1;
+                bool isValid() const { return libraryIndex >= 0; }
             };
 
-            std::vector<ShaderModule::SharedPtr> mModules;
+            std::vector<std::shared_ptr<ShaderLibrary>> mShaderLibraries;
             EntryPoint mEntryPoints[kShaderCount];
-            int mActiveSourceIndex = -1;
+            int mActiveLibraryIndex = -1;
             Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
         };
 

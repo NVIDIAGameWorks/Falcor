@@ -31,6 +31,8 @@
 
 namespace Falcor
 {
+    class ShaderLibrary;
+
     class RtProgram : public std::enable_shared_from_this<RtProgram>
     {
     public:
@@ -42,30 +44,38 @@ namespace Falcor
         {
         public:
             Desc() = default;
-            Desc(const std::string& filename) { setFilename(filename); }
-            Desc(const ShaderModule::SharedPtr& pModule) { setShaderModule(pModule); }
+            Desc(const std::string& filename) { addShaderLibrary(filename); }
+            Desc(const std::shared_ptr<ShaderLibrary>& pLibrary) { addShaderLibrary(pLibrary); }
 
-            Desc& setShaderModule(const ShaderModule::SharedPtr& pModule);
-            Desc& setFilename(const std::string& filename);
+            Desc& addShaderLibrary(const std::shared_ptr<ShaderLibrary>& pLibrary);
+            Desc& addShaderLibrary(const std::string& filename);
             Desc& setRayGen(const std::string& raygen);
-            Desc& addMiss(const std::string& miss);
-            Desc& addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "");
+            Desc& addMiss(uint32_t missIndex, const std::string& miss);
+            Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "");
             Desc& addDefine(const std::string& define, const std::string& value);
         private:
             friend class RtProgram;
-            ShaderModule::SharedPtr mpModule;
+            std::vector<std::shared_ptr<ShaderLibrary>> mShaderLibraries;
             DefineList mDefineList;
 
-            std::string mRayGen;
-            std::vector<std::string> mMiss;
+            struct ShaderEntry
+            {
+                uint32_t libraryIndex = -1;
+                std::string entryPoint;
+            };
+
+            ShaderEntry mRayGen;
+            std::vector<ShaderEntry> mMiss;
 
             struct HitProgramEntry
             {
                 std::string intersection;
                 std::string anyHit;
                 std::string closestHit;
+                uint32_t libraryIndex = -1;
             };
             std::vector<HitProgramEntry> mHit;
+            uint32_t mActiveLibraryIndex = -1;
         };
 
         static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);

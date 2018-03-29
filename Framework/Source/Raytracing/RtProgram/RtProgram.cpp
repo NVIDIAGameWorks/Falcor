@@ -28,52 +28,87 @@
 #include "Framework.h"
 #include "RtProgram.h"
 #include "API/LowLevel/RootSignature.h"
+#include "Graphics/Program/ShaderLibrary.h"
 
 namespace Falcor
 {
-    RtProgram::Desc& RtProgram::Desc::setShaderModule(const ShaderModule::SharedPtr& pModule)
+    static bool checkValidLibrary(uint32_t activeIndex, const std::string& shader)
     {
-        if (mpModule)
+        if (activeIndex == -1)
         {
-            logWarning("RtProgram::Desc::setShaderModule() - a module already exists. Replacing the old module");
+            logWarning("Can't set " + shader + " entry-point. Please add a shader-library first");
+            return false;
         }
-        mpModule = pModule;
+        return true;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::addShaderLibrary(const ShaderLibrary::SharedPtr& pLibrary)
+    {
+        if (pLibrary == nullptr)
+        {
+            logWarning("Can't add a null library to RtProgram::Desc");
+            return *this;
+        }
+        mActiveLibraryIndex = (uint32_t)mShaderLibraries.size();
+        mShaderLibraries.emplace_back(pLibrary);
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::setFilename(const std::string& filename)
+    RtProgram::Desc& RtProgram::Desc::addShaderLibrary(const std::string& filename)
     {
-        if (mpModule)
-        {
-            logWarning("RtProgram::Desc::setFilename() - a module already exists. Replacing the old module");
-        }
-        mpModule = ShaderModule::create(filename);
-        return *this;
+        return addShaderLibrary(ShaderLibrary::create(filename));
     }
 
     RtProgram::Desc& RtProgram::Desc::setRayGen(const std::string& raygen)
     {
-        if (mRayGen.size())
+        if (!checkValidLibrary(mActiveLibraryIndex, "raygen")) return *this;
+        if (mRayGen.libraryIndex != -1)
         {
-            logWarning("RtProgram::Desc::setRayGen() - a ray-generation entry point is already set. Replacing the old entry entry-point");
+            logWarning("RtProgram::Desc::setRayGen() - a ray-generation entry point is already set. Replacing the old entry-point");
         }
-        mRayGen = raygen;
+        mRayGen.libraryIndex = mActiveLibraryIndex;
+        mRayGen.entryPoint = raygen;
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::addMiss(const std::string& miss)
+    RtProgram::Desc& RtProgram::Desc::addMiss(uint32_t missIndex, const std::string& miss)
     {
-        mMiss.push_back(miss);
+        if (!checkValidLibrary(mActiveLibraryIndex, "miss")) return *this;
+        if (mMiss.size() <= missIndex)
+        {
+            mMiss.resize(missIndex + 1);
+        }
+        else
+        {
+            if (mMiss[missIndex].libraryIndex != -1)
+            {
+                logWarning("RtProgram::Desc::addMiss() - a miss entry point already exists for index " + std::to_string(missIndex) + ". Replacing the old entry-point");
+            }
+        }
+        mMiss[missIndex].libraryIndex = mActiveLibraryIndex;
+        mMiss[missIndex].entryPoint = miss;
+
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection)
+    RtProgram::Desc& RtProgram::Desc::addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit, const std::string& intersection /* = "" */)
     {
-        HitProgramEntry entry;
-        entry.anyHit = anyHit;
-        entry.closestHit = closestHit;
-        entry.intersection = intersection;
-        mHit.push_back(entry);
+        if (!checkValidLibrary(mActiveLibraryIndex, "his")) return *this;
+        if (mHit.size() <= hitIndex)
+        {
+            mHit.resize(hitIndex + 1);
+        }
+        else
+        {
+            if (mHit[hitIndex].libraryIndex != -1)
+            {
+                logWarning("RtProgram::Desc::addHitGroup() - a hit-group already exists for index " + std::to_string(hitIndex) + ". Replacing the old group");
+            }
+        }
+        mHit[hitIndex].anyHit = anyHit;
+        mHit[hitIndex].closestHit = closestHit;
+        mHit[hitIndex].intersection = intersection;
+        mHit[hitIndex].libraryIndex = mActiveLibraryIndex;
         return *this;
     }
 
@@ -85,6 +120,12 @@ namespace Falcor
 
     RtProgram::SharedPtr RtProgram::create(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
     {
+        if (desc.mRayGen.libraryIndex == -1)
+        {
+            logError("Can't create an RtProgram without a ray-generation shader");
+            return nullptr;
+        }
+
         SharedPtr pProg = SharedPtr(new RtProgram(desc, maxPayloadSize, maxAttributesSize));
         pProg->addDefine("_MS_DISABLE_ALPHA_TEST");
 
@@ -92,21 +133,32 @@ namespace Falcor
     }
 
     RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
-    {
-        const std::string& filename = desc.mpModule->getFilename();
-        
+    {        
         // Create the programs
-        mpRayGenProgram = RayGenProgram::createFromFile(filename.c_str(), desc.mRayGen.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);
+        const std::string raygenFile = desc.mShaderLibraries[desc.mRayGen.libraryIndex]->getFilename();
+        mpRayGenProgram = RayGenProgram::createFromFile(raygenFile.c_str(), desc.mRayGen.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);
 
-        for (const auto& m : desc.mMiss)
+        mMissProgs.resize(desc.mMiss.size());
+        for (size_t i = 0 ; i < desc.mMiss.size() ; i++)
         {
-            mMissProgs.push_back(MissProgram::createFromFile(filename.c_str(), m.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize));
+            const auto& m = desc.mMiss[i];
+
+            if (m.libraryIndex != -1)
+            {
+                const std::string missFile = desc.mShaderLibraries[m.libraryIndex]->getFilename();
+                mMissProgs[i] = MissProgram::createFromFile(missFile.c_str(), m.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);
+            }
         }
 
-        for (const auto& h : desc.mHit)
+        mHitProgs.resize(desc.mHit.size());
+        for (size_t i = 0 ; i < desc.mHit.size() ; i++)
         {
-            HitProgram::SharedPtr pHit = HitProgram::createFromFile(filename.c_str(), h.closestHit, h.anyHit, h.intersection, desc.mDefineList, maxPayloadSize, maxAttributesSize);
-            mHitProgs.push_back(pHit);
+            const auto& h = desc.mHit[i];
+            if(h.libraryIndex != -1)
+            {
+                const std::string hitFile = desc.mShaderLibraries[h.libraryIndex]->getFilename();
+                mHitProgs[i] = HitProgram::createFromFile(hitFile.c_str(), h.closestHit, h.anyHit, h.intersection, desc.mDefineList, maxPayloadSize, maxAttributesSize);
+            }
         }
 
         // Create the global reflector and root-signature
@@ -115,12 +167,12 @@ namespace Falcor
 
         for (const auto m : mMissProgs)
         {
-            mpGlobalReflector->merge(m->getGlobalReflector().get());
+            if(m) mpGlobalReflector->merge(m->getGlobalReflector().get());
         }
 
         for (const auto& h : mHitProgs)
         {
-            mpGlobalReflector->merge(h->getGlobalReflector().get());
+            if(h) mpGlobalReflector->merge(h->getGlobalReflector().get());
         }
 
         mpGlobalRootSignature = RootSignature::create(mpGlobalReflector.get(), false);
@@ -135,12 +187,12 @@ namespace Falcor
 
         for (auto& pHit : mHitProgs)
         {
-            pHit->addDefine(name, value);
+            if(pHit) pHit->addDefine(name, value);
         }
 
         for (auto& pMiss : mMissProgs)
         {
-            pMiss->addDefine(name, value);
+            if(pMiss) pMiss->addDefine(name, value);
         }
     }
 
@@ -153,12 +205,12 @@ namespace Falcor
 
         for (auto& pHit : mHitProgs)
         {
-            pHit->addDefine(name);
+            if(pHit) pHit->addDefine(name);
         }
 
         for (auto& pMiss : mMissProgs)
         {
-            pMiss->addDefine(name);
+            if(pMiss) pMiss->addDefine(name);
         }
     }
 }
