@@ -51,34 +51,35 @@ namespace Falcor
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::setRayGen(const std::string& raygen, const DefineList& defineList)
+    RtProgram::Desc& RtProgram::Desc::setRayGen(const std::string& raygen)
     {
-        if (mRayGen.entryPoint.size())
+        if (mRayGen.size())
         {
             logWarning("RtProgram::Desc::setRayGen() - a ray-generation entry point is already set. Replacing the old entry entry-point");
         }
-        mRayGen.defineList = defineList;
-        mRayGen.entryPoint = raygen;
+        mRayGen = raygen;
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::addMiss(const std::string& miss, const DefineList& defineList)
+    RtProgram::Desc& RtProgram::Desc::addMiss(const std::string& miss)
     {
-        RayGenMissEntry entry;
-        entry.defineList = defineList;
-        entry.entryPoint = miss;
-        mMiss.push_back(entry);
+        mMiss.push_back(miss);
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection, const DefineList& defineList)
+    RtProgram::Desc& RtProgram::Desc::addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection)
     {
         HitProgramEntry entry;
-        entry.defineList = defineList;
         entry.anyHit = anyHit;
         entry.closestHit = closestHit;
         entry.intersection = intersection;
         mHit.push_back(entry);
+        return *this;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::addDefine(const std::string& name, const std::string& value)
+    {
+        mDefineList.add(name, value);
         return *this;
     }
 
@@ -93,17 +94,18 @@ namespace Falcor
     RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
     {
         const std::string& filename = desc.mpModule->getFilename();
+        
         // Create the programs
-        mpRayGenProgram = RayGenProgram::createFromFile(filename.c_str(), desc.mRayGen.entryPoint.c_str(), desc.mRayGen.defineList, maxPayloadSize, maxAttributesSize);
+        mpRayGenProgram = RayGenProgram::createFromFile(filename.c_str(), desc.mRayGen.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);
 
         for (const auto& m : desc.mMiss)
         {
-            mMissProgs.push_back(MissProgram::createFromFile(filename.c_str(), m.entryPoint.c_str(), m.defineList, maxPayloadSize, maxAttributesSize));
+            mMissProgs.push_back(MissProgram::createFromFile(filename.c_str(), m.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize));
         }
 
         for (const auto& h : desc.mHit)
         {
-            HitProgram::SharedPtr pHit = HitProgram::createFromFile(filename.c_str(), h.closestHit, h.anyHit, h.intersection, h.defineList, maxPayloadSize, maxAttributesSize);
+            HitProgram::SharedPtr pHit = HitProgram::createFromFile(filename.c_str(), h.closestHit, h.anyHit, h.intersection, desc.mDefineList, maxPayloadSize, maxAttributesSize);
             mHitProgs.push_back(pHit);
         }
 

@@ -62,27 +62,23 @@ namespace Falcor
 
             Desc& setShaderModule(const ShaderModule::SharedPtr& pModule);
             Desc& setFilename(const std::string& filename);
-            Desc& setRayGen(const std::string& raygen, const DefineList& defineList = DefineList());
-            Desc& addMiss(const std::string& miss, const DefineList& defineList = DefineList());
-            Desc& addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "", const DefineList& defineList = DefineList());
+            Desc& setRayGen(const std::string& raygen);
+            Desc& addMiss(const std::string& miss);
+            Desc& addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "");
+            Desc& addDefine(const std::string& define, const std::string& value);
         private:
             friend class RtProgram;
             ShaderModule::SharedPtr mpModule;
+            DefineList mDefineList;
 
-            struct RayGenMissEntry
-            {
-                std::string entryPoint;
-                DefineList defineList;
-            };
-            RayGenMissEntry mRayGen;
-            std::vector<RayGenMissEntry> mMiss;
+            std::string mRayGen;
+            std::vector<std::string> mMiss;
 
             struct HitProgramEntry
             {
                 std::string intersection;
                 std::string anyHit;
                 std::string closestHit;
-                DefineList defineList;
             };
             std::vector<HitProgramEntry> mHit;
         };
