@@ -52,3 +52,77 @@ struct DebugDrawVSOut
     float4 position : SV_POSITION;
     float3 color : COLOR;
 };
+
+DebugDrawVSOut debugDrawVs(DebugDrawVSIn vIn)
+{
+    DebugDrawVSOut vOut;
+
+    vOut.position =  mul(float4(vIn.position, 1), gCamera.viewProjMat);
+    vOut.color = vIn.color;
+
+    return vOut;
+}
+
+EditorVSOut editorVs(VertexIn vIn)
+{
+    EditorVSOut vOut;
+    vOut.vOut = defaultVS(vIn);
+
+#ifdef PICKING
+    vOut.drawID = gDrawId[vIn.instanceID];
+#endif
+
+#ifdef CULL_REAR_SECTION
+    // Get instance origin
+    float4x4 worldMtx = getWorldMat(vIn);
+    float3 instancePos = float3(worldMtx[3][0], worldMtx[3][1], worldMtx[3][2]);
+
+    // Direction to vertex
+    vOut.toVertex = normalize(vOut.vOut.posW - instancePos);
+#endif
+
+    return vOut;
+}
+
+float4 debugDrawPs(DebugDrawVSOut vOut) : SV_TARGET
+{
+    return float4(vOut.color, 1);
+}
+
+#ifndef PICKING
+cbuffer ConstColorCB : register(b0)
+{
+    float3 gColor;
+};
+#endif
+
+// PS Output
+#ifdef PICKING
+#define PSOut uint
+#else
+#define PSOut float4
+#endif
+
+PSOut editorPs(EditorVSOut vOut) : SV_TARGET
+{
+    float3 toCamera = normalize(gCamera.posW - vOut.vOut.posW);
+
+#ifdef CULL_REAR_SECTION
+if (dot(toCamera, vOut.toVertex) < -0.1)
+{
+    discard;
+}
+#endif
+
+#ifdef PICKING
+return vOut.drawID;
+#else
+#ifdef SHADING
+float shading = lerp(0.2f, 1.0f, dot(toCamera, normalize(vOut.vOut.normalW)));
+return float4(gColor * shading, 1);
+#else
+return float4(gColor, 1);
+#endif
+#endif
+}
+

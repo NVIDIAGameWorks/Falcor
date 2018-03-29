@@ -473,9 +473,7 @@ namespace Falcor
         mpSelectionGraphicsState->setDepthStencilState(depthTestDS);
 
         // Shader
-        GraphicsProgram::Desc d;
-        d.addShaderModule("Framework/Shaders/SceneEditorVS.slang").vsEntry("main").addShaderModule("Framework/Shaders/SceneEditorPS.slang").psEntry("main");
-        mpColorProgram = GraphicsProgram::create(d);
+        mpColorProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditor.slang", "editorVs", "editorPs");
         mpColorProgramVars = GraphicsVars::create(mpColorProgram->getReflector());
         mpSelectionGraphicsState->setProgram(mpColorProgram);
 
@@ -506,9 +504,7 @@ namespace Falcor
         RasterizerState::Desc lineRSDesc;
         lineRSDesc.setFillMode(RasterizerState::FillMode::Solid).setCullMode(RasterizerState::CullMode::None);
 
-        GraphicsProgram::DefineList defines;
-        defines.add("DEBUG_DRAW");
-        mpDebugDrawProgram = GraphicsProgram::create(d, defines);
+        mpDebugDrawProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditor.slang", "debugDrawVs", "debugDrawPs");
         mpDebugDrawProgramVars = GraphicsVars::create(mpDebugDrawProgram->getReflector());
 
         mpPathGraphicsState = GraphicsState::create();

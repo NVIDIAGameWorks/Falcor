@@ -29,7 +29,7 @@ __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
 
-float4 main(VertexOut vOut) : SV_TARGET
+float4 ps(VertexOut vOut) : SV_TARGET
 {
     ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 

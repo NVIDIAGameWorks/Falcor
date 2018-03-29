@@ -917,7 +917,6 @@
     <ClInclude Include="Data\Effects\LeanMapData.hlsli" />
     <ClInclude Include="Data\Effects\ParticleData.h" />
     <ClInclude Include="Data\Effects\SSAOData.h" />
-    <ClInclude Include="Data\Framework\Shaders\SceneEditorCommon.slang.h" />
     <ClInclude Include="Data\HlslGlslCommon.h" />
     <ClInclude Include="Data\HostDeviceData.h" />
     <ClInclude Include="Data\HostDeviceSharedCode.h" />
@@ -1302,8 +1301,7 @@
     <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang" />
     <None Include="Data\Framework\Shaders\MaterialBlock.slang" />
     <None Include="Data\Framework\Shaders\ParallelReduction.ps.slang" />
-    <None Include="Data\Framework\Shaders\SceneEditorPS.slang" />
-    <None Include="Data\Framework\Shaders\SceneEditorVS.slang" />
+    <None Include="Data\Framework\Shaders\SceneEditor.slang" />
     <None Include="Data\Framework\Shaders\TextRenderer.slang" />
     <None Include="Data\HostDeviceData.slang" />
     <None Include="Data\ShaderCommon.slang" />
