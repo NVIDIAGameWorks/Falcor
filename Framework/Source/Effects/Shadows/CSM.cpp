@@ -324,7 +324,7 @@ namespace Falcor
 
         // Create the shadows program
         GraphicsProgram::Desc d;
-        d.addShaderModule(kDepthPassVSFile).vsEntry("main").addShaderModule(kDepthPassGsFile).gsEntry("main").addShaderModule(kDepthPassPsFile).psEntry("main");
+        d.addShaderLibrary(kDepthPassVSFile).vsEntry("main").addShaderLibrary(kDepthPassGsFile).gsEntry("main").addShaderLibrary(kDepthPassPsFile).psEntry("main");
         GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(d, progDef);
 
         mShadowPass.pState = GraphicsState::create();

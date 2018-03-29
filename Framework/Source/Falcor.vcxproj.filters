@@ -526,6 +526,9 @@
     <ClCompile Include="Raytracing\RtRenderContext.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\Program\ShaderLibrary.cpp">
+      <Filter>Graphics\Program</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1680,6 +1683,9 @@
     </ClInclude>
     <ClInclude Include="Raytracing\RtShader.h">
       <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Program\ShaderLibrary.h">
+      <Filter>Graphics\Program</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

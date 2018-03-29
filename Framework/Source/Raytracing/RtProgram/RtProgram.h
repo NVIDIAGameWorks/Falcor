@@ -31,6 +31,8 @@
 
 namespace Falcor
 {
+    class ShaderLibrary;
+
     class RtProgram : public std::enable_shared_from_this<RtProgram>
     {
     public:
@@ -42,18 +44,18 @@ namespace Falcor
         {
         public:
             Desc() = default;
-            Desc(const std::string& filename) { setFilename(filename); }
-            Desc(const ShaderModule::SharedPtr& pModule) { setShaderModule(pModule); }
+            Desc(const std::string& filename) { setShaderLibrary(filename); }
+            Desc(const std::shared_ptr<ShaderLibrary>& pLibrary) { setShaderLibrary(pLibrary); }
 
-            Desc& setShaderModule(const ShaderModule::SharedPtr& pModule);
-            Desc& setFilename(const std::string& filename);
+            Desc& setShaderLibrary(const std::shared_ptr<ShaderLibrary>& pLibrary);
+            Desc& setShaderLibrary(const std::string& filename);
             Desc& setRayGen(const std::string& raygen);
             Desc& addMiss(const std::string& miss);
             Desc& addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "");
             Desc& addDefine(const std::string& define, const std::string& value);
         private:
             friend class RtProgram;
-            ShaderModule::SharedPtr mpModule;
+            std::shared_ptr<ShaderLibrary> mpShaderLibrary;
             DefineList mDefineList;
 
             std::string mRayGen;

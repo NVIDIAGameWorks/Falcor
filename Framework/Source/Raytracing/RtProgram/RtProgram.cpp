@@ -28,26 +28,27 @@
 #include "Framework.h"
 #include "RtProgram.h"
 #include "API/LowLevel/RootSignature.h"
+#include "Graphics/Program/ShaderLibrary.h"
 
 namespace Falcor
 {
-    RtProgram::Desc& RtProgram::Desc::setShaderModule(const ShaderModule::SharedPtr& pModule)
+    RtProgram::Desc& RtProgram::Desc::setShaderLibrary(const ShaderLibrary::SharedPtr& pLibrary)
     {
-        if (mpModule)
+        if (mpShaderLibrary)
         {
             logWarning("RtProgram::Desc::setShaderModule() - a module already exists. Replacing the old module");
         }
-        mpModule = pModule;
+        mpShaderLibrary = pLibrary;
         return *this;
     }
 
-    RtProgram::Desc& RtProgram::Desc::setFilename(const std::string& filename)
+    RtProgram::Desc& RtProgram::Desc::setShaderLibrary(const std::string& filename)
     {
-        if (mpModule)
+        if (mpShaderLibrary)
         {
             logWarning("RtProgram::Desc::setFilename() - a module already exists. Replacing the old module");
         }
-        mpModule = ShaderModule::create(filename);
+        mpShaderLibrary = ShaderLibrary::create(filename);
         return *this;
     }
 
@@ -93,7 +94,7 @@ namespace Falcor
 
     RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
     {
-        const std::string& filename = desc.mpModule->getFilename();
+        const std::string& filename = desc.mpShaderLibrary->getFilename();
         
         // Create the programs
         mpRayGenProgram = RayGenProgram::createFromFile(filename.c_str(), desc.mRayGen.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);

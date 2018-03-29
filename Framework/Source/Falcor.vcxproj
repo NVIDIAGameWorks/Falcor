@@ -409,6 +409,7 @@
     <ClCompile Include="Graphics\Program\ProgramReflection.cpp" />
     <ClCompile Include="Graphics\Program\ProgramVars.cpp" />
     <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
+    <ClCompile Include="Graphics\Program\ShaderLibrary.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
@@ -966,6 +967,7 @@
     <ClInclude Include="Graphics\Program\ProgramReflection.h" />
     <ClInclude Include="Graphics\Program\ProgramVars.h" />
     <ClInclude Include="Graphics\Program\ProgramVersion.h" />
+    <ClInclude Include="Graphics\Program\ShaderLibrary.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
