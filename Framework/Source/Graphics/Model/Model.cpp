@@ -171,7 +171,7 @@ namespace Falcor
             uniqueMaterials.insert(pMaterial);
 
             // Track all of the material's textures            
-            uniqueTextures.insert(pMaterial->getDiffuseTexture().get());
+            uniqueTextures.insert(pMaterial->getBaseColorTexture().get());
             uniqueTextures.insert(pMaterial->getSpecularTexture().get());
             uniqueTextures.insert(pMaterial->getEmissiveTexture().get());
             uniqueTextures.insert(pMaterial->getNormalMap().get());

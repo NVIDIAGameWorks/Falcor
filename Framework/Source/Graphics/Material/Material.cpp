@@ -116,10 +116,10 @@ namespace Falcor
         mData.resources.samplerState = pSampler;
     }
 
-    void Material::setDiffuseTexture(Texture::SharedPtr& pDiffuse)
+    void Material::setBaseColorTexture(Texture::SharedPtr& pDiffuse)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.diffuse != pDiffuse);
-        mData.resources.diffuse = pDiffuse;
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.baseColor != pDiffuse);
+        mData.resources.baseColor = pDiffuse;
         updateDiffuseType();
         bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
         setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
@@ -139,14 +139,14 @@ namespace Falcor
         updateEmissiveType();
     }
 
-    void Material::setDiffuseColor(const vec4& color)
+    void Material::setBaseColor(const vec4& color)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.diffuse != color);
-        mData.diffuse = color;
+        mParamBlockDirty = mParamBlockDirty || (mData.baseColor != color);
+        mData.baseColor = color;
         updateDiffuseType();
     }
 
-    void Material::setSpecularColor(const vec4& color)
+    void Material::setSpecularParams(const vec4& color)
     {
         mParamBlockDirty = mParamBlockDirty || (mData.specular != color);
         mData.specular = color;
@@ -170,7 +170,7 @@ namespace Falcor
 
     void Material::updateDiffuseType()
     {
-        mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.resources.diffuse != nullptr, mData.diffuse));
+        mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.resources.baseColor != nullptr, mData.baseColor));
     }
 
     void Material::updateSpecularType()
@@ -234,7 +234,7 @@ namespace Falcor
     bool Material::operator==(const Material& other) const 
     {
 #define compare_field(_a) if (mData._a != other.mData._a) return false
-        compare_field(diffuse);
+        compare_field(baseColor);
         compare_field(specular);
         compare_field(emissive);
         compare_field(alphaThreshold);
@@ -244,7 +244,7 @@ namespace Falcor
 #undef compare_field
 
 #define compare_texture(_a) if (mData.resources._a != other.mData.resources._a) return false
-        compare_texture(diffuse);
+        compare_texture(baseColor);
         compare_texture(specular);
         compare_texture(emissive);
         compare_texture(normalMap);
@@ -277,7 +277,7 @@ namespace Falcor
 
         // Now set the textures
 #define set_texture(texName) pBlock->setTexture(varName + "resources." #texName, data.resources.texName)
-        set_texture(diffuse);
+        set_texture(baseColor);
         set_texture(specular);
         set_texture(emissive);
         set_texture(normalMap);

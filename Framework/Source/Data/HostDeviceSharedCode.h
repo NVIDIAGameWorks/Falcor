@@ -103,7 +103,8 @@ struct CameraData
 *******************************************************************/
 struct MaterialResources
 {
-    Texture2D diffuse;          // RGB - diffuse color, A - transparency
+    // #TODO Update comments for different shading models
+    Texture2D baseColor;        // RGB - base color, A - transparency
     Texture2D specular;         // RGB - specular color, A - roughness
     Texture2D emissive;         // RGB - emissive color, A - unused
     Texture2D normalMap;        // 2 or 3 channel normal map, depending on the type
@@ -117,10 +118,10 @@ struct MaterialResources
 
 struct MaterialData
 {
-    float4 diffuse  DEFAULTS(float4(1));
-    float4 specular DEFAULTS(float4(1));
-    float3 emissive DEFAULTS(float3(1));
-    float padf      DEFAULTS(0);
+    float4 baseColor DEFAULTS(float4(1));
+    float4 specular  DEFAULTS(float4(1));
+    float3 emissive  DEFAULTS(float3(1));
+    float padf       DEFAULTS(0);
 
     float alphaThreshold DEFAULTS(0.5f); // Used in case the alpha mode is mask
     float IoR DEFAULTS(1);               // Index of refraction

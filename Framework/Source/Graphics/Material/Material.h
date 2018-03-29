@@ -76,13 +76,13 @@ namespace Falcor
         */
         static void resetGlobalIdCounter();
 
-        /** Set the diffuse texture
+        /** Set the base color texture
         */
-        void setDiffuseTexture(Texture::SharedPtr& pDiffuse);
+        void setBaseColorTexture(Texture::SharedPtr& pDiffuse);
 
-        /** Get the diffuse texture
+        /** Get the base color texture
         */
-        Texture::SharedPtr getDiffuseTexture() const { return mData.resources.diffuse; }
+        Texture::SharedPtr getBaseColorTexture() const { return mData.resources.baseColor; }
 
         /** Set the specular texture
         */
@@ -140,21 +140,21 @@ namespace Falcor
         */
         Texture::SharedPtr getHeightMap() const { return mData.resources.heightMap; }
 
-        /** Set the diffuse color
+        /** Set the base color
         */
-        void setDiffuseColor(const vec4& color);
+        void setBaseColor(const vec4& color);
 
-        /** Get the diffuse color
+        /** Get the base color
         */
-        const vec4& getDiffuseColor() const { return mData.diffuse; }
+        const vec4& getBaseColor() const { return mData.baseColor; }
 
-        /** Set the specular color
+        /** Set the specular parameters
         */
-        void setSpecularColor(const vec4& color);
+        void setSpecularParams(const vec4& color);
 
-        /** Get the specular color
+        /** Get the specular parameters
         */
-        const vec4& getSpecularColor() const { return mData.specular; }
+        const vec4& getSpecularParams() const { return mData.specular; }
 
         /** Set the emissive color
         */

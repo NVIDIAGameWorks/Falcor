@@ -156,8 +156,8 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 #endif
 
     // Sample the diffuse texture and apply the alpha test
-    float4 baseColor = sampleTexture(m.resources.diffuse, m.resources.samplerState, v.texC, m.diffuse, EXTRACT_DIFFUSE_TYPE(m.flags));
-    sd.opacity = m.diffuse.a;
+    float4 baseColor = sampleTexture(m.resources.baseColor, m.resources.samplerState, v.texC, m.baseColor, EXTRACT_DIFFUSE_TYPE(m.flags));
+    sd.opacity = m.baseColor.a;
     alphaTest(m.flags, baseColor.a, m.alphaThreshold, v.posW);
 
     sd.posW = v.posW;
