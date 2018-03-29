@@ -47,9 +47,17 @@ public:
     void renderScene(RenderContext* pContext) override;
 private:
     bool setPerMeshData(const CurrentWorkingData& currentData, const Mesh* pMesh) override;
+    bool setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial) override;
+    RasterizerState::SharedPtr getRasterizerState(const Material* pMaterial);
 	ForwardRendererSceneRenderer(const Scene::SharedPtr& pScene);
     std::vector<bool> mTransparentMeshes;
     Mode mRenderMode = Mode::All;
     bool mHasOpaqueObjects = false;
     bool mHasTransparentObject = false;
+
+    RasterizerState::SharedPtr mpDefaultRS;
+    RasterizerState::SharedPtr mpNoCullRS;
+    RasterizerState::SharedPtr mpLastSetRs;
+
+
 };
