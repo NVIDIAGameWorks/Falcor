@@ -42,6 +42,6 @@ namespace Falcor
     {
         Desc d(filename);
         d.vsEntry(vsEntry).psEntry(psEntry).addDefaultVertexShaderIfNeeded();
-        return create(d);
+        return create(d, programDefines);
     }
 }
