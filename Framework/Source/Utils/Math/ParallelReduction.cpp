@@ -73,7 +73,7 @@ namespace Falcor
         mpFirstIterProg = FullScreenPass::create(fsFilename, defines);
         mpFirstIterProg->getProgram()->addDefine("_FIRST_ITERATION");
         mpRestIterProg = FullScreenPass::create(fsFilename, defines);
-        mpVars = GraphicsVars::create(mpFirstIterProg->getProgram()->getActiveVersion()->getReflector());
+        mpVars = GraphicsVars::create(mpFirstIterProg->getProgram()->getReflector());
 
         // Calculate the number of reduction passes
         if(width > kTileSize || height > kTileSize)
@@ -94,7 +94,7 @@ namespace Falcor
 
         if (gBindLocations.inputSrv.rangeIndex == ProgramReflection::BindLocation::kInvalidLocation)
         {
-            const auto& pDefaultBlock = mpFirstIterProg->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock();
+            const auto& pDefaultBlock = mpFirstIterProg->getProgram()->getReflector()->getDefaultParameterBlock();
             gBindLocations.inputSrv = pDefaultBlock->getResourceBinding("gInputTex");
             gBindLocations.sampler = pDefaultBlock->getResourceBinding("gSampler");
         }

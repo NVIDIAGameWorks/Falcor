@@ -487,6 +487,45 @@
     <ClCompile Include="Graphics\LightProbe.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Raytracing\RtModel.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtProgramVars.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtSample.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtScene.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtSceneRenderer.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtState.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtStateObject.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtProgram\HitProgram.cpp">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtProgram\RtProgramVersion.cpp">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtShader.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtRenderContext.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1496,9 +1535,6 @@
     <ClInclude Include="API\Vulkan\VKState.h">
       <Filter>API\Vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="Data\Framework\Shaders\SceneEditorCommon.slang.h">
-      <Filter>Data\Framework\Shaders</Filter>
-    </ClInclude>
     <ClInclude Include="Data\Effects\CsmData.h">
       <Filter>Data\Effects</Filter>
     </ClInclude>
@@ -1596,6 +1632,54 @@
     </ClInclude>
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h">
       <Filter>Utils\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\dxcapi.use.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\DXR.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtModel.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtProgramVars.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtProgramVarsHelper.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtSample.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtScene.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtSceneRenderer.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtState.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtStateObject.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtStateObjectHelper.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtProgram\HitProgram.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtProgram\RtProgram.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtProgram\RtProgramVersion.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtProgram\SingleShaderProgram.h">
+      <Filter>Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtShader.h">
+      <Filter>Raytracing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1775,6 +1859,12 @@
     </Filter>
     <Filter Include="Graphics\Program">
       <UniqueIdentifier>{a2a4ca1c-043f-4b99-8d25-5f413799c4c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Raytracing">
+      <UniqueIdentifier>{fd5e4329-273b-4802-ad4b-9720a882996e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Raytracing\RtProgram">
+      <UniqueIdentifier>{e3b76813-257a-4b19-8517-03302aa9fe98}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2123,37 +2213,10 @@
     <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
-    <None Include="Data\Framework\Shaders\Gui.ps.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\Gui.vs.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\SceneEditorPS.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\SceneEditorVS.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\TextRenderer.vs.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
     <None Include="Data\Effects\GaussianBlur.ps.slang">
       <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Effects\ParticleConstColor.ps.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\ShadowPass.ps.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\ShadowPass.vs.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\SkyBox.ps.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\SkyBox.vs.slang">
       <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Effects\SSAO.ps.slang">
@@ -2201,17 +2264,8 @@
     <None Include="Data\Framework\Shaders\ParallelReduction.ps.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
-    <None Include="Data\Effects\ShadowPass.gs.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\FullScreenPass.gs.glsl">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
     <None Include="Data\Effects\TAA.ps.slang">
       <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\TextRenderer.ps.slang">
-      <Filter>Data\Framework\Shaders</Filter>
     </None>
     <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang">
       <Filter>Data\Framework\Shaders</Filter>
@@ -2229,6 +2283,30 @@
       <Filter>ShadingUtils</Filter>
     </None>
     <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="ShadingUtils\Raytracing.slang">
+      <Filter>ShadingUtils</Filter>
+    </None>
+    <None Include="Data\Framework\Shaders\Gui.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="Data\Framework\Shaders\TextRenderer.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="Data\Effects\ShadowPass.gs.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\ShadowPass.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\ShadowPass.vs.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\SkyBox.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Framework\Shaders\SceneEditor.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
   </ItemGroup>

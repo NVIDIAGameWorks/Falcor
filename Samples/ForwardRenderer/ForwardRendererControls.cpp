@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "ForwardRenderer.h"
 
-Gui::DropdownList kSampleCountList = 
+Gui::DropdownList kSampleCountList =
 {
     { 1, "1" },
     { 2, "2" },
@@ -35,7 +35,7 @@ Gui::DropdownList kSampleCountList =
     { 8, "8" },
 };
 
-const Gui::DropdownList aaModeList = 
+const Gui::DropdownList aaModeList =
 {
     { 0, "MSAA" },
     { 1, "TAA" }
@@ -53,7 +53,7 @@ void ForwardRenderer::initControls()
     mControls[ControlID::EnableSSAO] = { true, false, "" };
     mControls[ControlID::VisualizeCascades] = { false, false, "_VISUALIZE_CASCADES" };
 
-    for (uint32_t i = 0 ; i < ControlID::Count ; i++)
+    for (uint32_t i = 0; i < ControlID::Count; i++)
     {
         applyLightingProgramControl((ControlID)i);
     }
@@ -62,7 +62,7 @@ void ForwardRenderer::initControls()
 void ForwardRenderer::applyLightingProgramControl(ControlID controlId)
 {
     const ProgramControl control = mControls[controlId];
-    if(control.define.size())
+    if (control.define.size())
     {
         bool add = control.unsetOnEnabled ? !control.enabled : control.enabled;
         if (add)
@@ -155,7 +155,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             }
         }
 
-        if(pGui->beginGroup("Scene Settings"))
+        if (pGui->beginGroup("Scene Settings"))
         {
             Scene* pScene = mpSceneRenderer->getScene().get();
             float camSpeed = pScene->getCameraSpeed();
@@ -195,7 +195,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             pGui->endGroup();
         }
 
-        if(pGui->beginGroup("Renderer Settings"))
+        if (pGui->beginGroup("Renderer Settings"))
         {
             pGui->addCheckBox("Depth Pass", mEnableDepthPass);
             pGui->addTooltip("Run a depth-pass at the beginning of the frame");
@@ -273,7 +273,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
                 }
-                if(mControls[ControlID::EnableReflections].enabled)
+                if (mControls[ControlID::EnableReflections].enabled)
                 {
                     pGui->addSeparator();
                     pScene->getLightProbe(0)->renderUI(pGui);

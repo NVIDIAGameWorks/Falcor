@@ -27,9 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "API/Resource.h"
-#ifdef FALCOR_LOW_LEVEL_API
 #include "API/LowLevel/LowLevelContextData.h"
-#endif
 
 namespace Falcor
 {
@@ -84,6 +82,10 @@ namespace Falcor
         */
         virtual void resourceBarrier(const Resource* pResource, Resource::State newState);
 
+        /** Insert a UAV barrier
+        */
+        virtual void uavBarrier(const Resource* pResource);
+
         /** Copy an entire resource
         */
         void copyResource(const Resource* pDst, const Resource* pSrc);
@@ -96,7 +98,6 @@ namespace Falcor
         */
         void copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const Buffer* pSrc, uint64_t srcOffset, uint64_t numBytes);
 
-#ifdef FALCOR_LOW_LEVEL_API
         /** Get the low-level context data
         */
         virtual LowLevelContextData::SharedPtr getLowLevelData() const { return mpLowLevelData; }
@@ -104,13 +105,10 @@ namespace Falcor
         /** Override the low-level context data with a user provided object
         */
         void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = pLowLevelData; }
-#endif
     protected:
         void bindDescriptorHeaps();
         CopyContext() = default;
         bool mCommandsPending = false;
-#ifdef FALCOR_LOW_LEVEL_API
         LowLevelContextData::SharedPtr mpLowLevelData;
-#endif
     };
 }

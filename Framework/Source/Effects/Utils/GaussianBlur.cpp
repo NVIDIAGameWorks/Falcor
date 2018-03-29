@@ -143,7 +143,7 @@ namespace Falcor
         mpVerticalBlur = FullScreenPass::create(kShaderFilename, defines, true, true, layerMask);
         mpVerticalBlur->getProgram()->addDefine("_VERTICAL_BLUR");
 
-        ProgramReflection::SharedConstPtr pReflector = mpHorizontalBlur->getProgram()->getActiveVersion()->getReflector();
+        ProgramReflection::SharedConstPtr pReflector = mpHorizontalBlur->getProgram()->getReflector();
         mpVars = GraphicsVars::create(pReflector);
 
         mBindLocations.sampler = pReflector->getDefaultParameterBlock()->getResourceBinding("gSampler");

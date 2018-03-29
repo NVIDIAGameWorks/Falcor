@@ -12,22 +12,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Shadows.ps.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Data\Shadows.vs.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="Data\VisualizeMap.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\VisualizeMap.ps.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Data\Shadows.ps.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Data\Shadows.vs.glsl">
+    <None Include="Data\Shadows.hlsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

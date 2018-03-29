@@ -18,11 +18,5 @@
     <None Include="Data\Luminance.ps.hlsl">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\Blit.ps.glsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\Luminance.ps.glsl">
-      <Filter>Data</Filter>
-    </None>
   </ItemGroup>
 </Project>

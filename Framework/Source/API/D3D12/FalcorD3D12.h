@@ -27,7 +27,11 @@
 ***************************************************************************/
 #pragma once
 #define NOMINMAX
+#ifdef FALCOR_DXR
+#include "../../../Externals/DXR/include/d3d12_1.h"
+#else
 #include <d3d12.h>
+#endif
 #include <d3dcompiler.h>
 #include "API/Formats.h"
 #include <comdef.h>
@@ -181,8 +185,6 @@ namespace Falcor
     static const uint32_t kDefaultSwapChainBuffers = 3;
 
     inline constexpr uint32_t getMaxViewportCount() { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
-
-#define appendShaderExtension(_a)  _a ".hlsl"
     /*! @} */
 }
 
@@ -190,3 +192,7 @@ namespace Falcor
 #define DEFAULT_API_MINOR_VERSION 0
 
 #define UNSUPPORTED_IN_D3D12(msg_) {Falcor::logWarning(msg_ + std::string(" is not supported in D3D12. Ignoring call."));}
+
+#ifdef FALCOR_DXR
+#include "../../Raytracing/DXR.h"
+#endif

@@ -132,12 +132,15 @@ namespace Falcor
             const auto& set = mDesc.mSets[i];
             convertDescTable(mDesc.mSets[i], rootParams[i], d3dRanges[i]);
             mElementByteOffset[i] = mSizeInBytes;
-            mSizeInBytes += 4;
+            mSizeInBytes += 8;
         }
 
         // Create the root signature
         D3D12_ROOT_SIGNATURE_DESC desc;
         desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+#ifdef FALCOR_DXR
+        if (mDesc.mIsLocal) desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
+#endif
         desc.pParameters = rootParams.data();
         desc.NumParameters = (uint32_t)rootParams.size();
         desc.pStaticSamplers = nullptr;

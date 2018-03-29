@@ -44,6 +44,8 @@ float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint
     return t.Sample(s, uv);
 }
 
+/** Load data from a texture
+*/
 float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint mode, float lod)
 {
     if(mode == ChannelTypeUnused) return 0;
@@ -108,16 +110,6 @@ void applyNormalMap(MaterialData m, inout ShadingData sd)
     sd.N = sd.T * mapN.x + sd.B * mapN.y + sd.N * mapN.z;
     sd.B = normalize(sd.B - sd.N * dot(sd.B, sd.N));
     sd.T = normalize(cross(sd.B, sd.N));
-}
-
-/** Apply alpha-test
-*/
-void applyAlphaTest(MaterialData m, float alpha)
-{
-    if(EXTRACT_ALPHA_MODE(m.flags) == AlphaModeMask)
-    {
-        if(alpha < m.alphaThreshold) discard;
-    }
 }
 
 ShadingData initShadingData()

@@ -89,7 +89,7 @@ cbuffer InternalPerMaterialCB
 float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim)
 {
     float2 prevCrd = prevPosH.xy / prevPosH.w;
-#ifdef FALCOR_GLSL
+#ifdef FALCOR_VK
     prevCrd *= float2(0.5, 0.5);
 #else
     prevCrd *= float2(0.5, -0.5);

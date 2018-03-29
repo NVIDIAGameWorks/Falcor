@@ -27,14 +27,15 @@
 ***************************************************************************/
 SamplerState gSampler : register(s0);
 
+#ifdef _USE_2D_ARRAY
+Texture2DArray gTexture;
+#else
+texture2D gTexture;
+#endif
+
 cbuffer PerImageCB : register(b0)
 {
-#ifdef _USE_2D_ARRAY
-	Texture2DArray gTexture;
     int cascade;
-#else
-    texture2D gTexture;
-#endif
 };
 
 float4 calcColor(float2 texC)

@@ -85,15 +85,9 @@
     <ClInclude Include="Shadows.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Shadows.ps.glsl" />
-    <None Include="Data\Shadows.ps.hlsl">
+    <None Include="Data\Shadows.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>
-    <None Include="Data\Shadows.vs.glsl" />
-    <None Include="Data\Shadows.vs.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\VisualizeMap.ps.glsl" />
     <None Include="Data\VisualizeMap.ps.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>

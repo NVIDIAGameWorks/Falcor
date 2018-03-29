@@ -82,8 +82,8 @@ void SceneEditorApp::initNewScene()
 
 void SceneEditorApp::initShader()
 {
-    mpProgram = GraphicsProgram::createFromFile("", "SceneEditorApp.ps.slang");
-    mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+    mpProgram = GraphicsProgram::createFromFile("SceneEditorApp.slang", "", "ps");
+    mpVars = GraphicsVars::create(mpProgram->getReflector());
 }
 
 void SceneEditorApp::loadScene()
