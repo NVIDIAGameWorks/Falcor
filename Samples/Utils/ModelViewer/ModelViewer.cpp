@@ -233,7 +233,7 @@ void ModelViewer::renderModelUI(Gui* pGui)
 void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpCamera = Camera::create();
-    mpProgram = GraphicsProgram::createFromFile("", appendShaderExtension("ModelViewer.ps"));
+    mpProgram = GraphicsProgram::createFromFile("ModelViewer.ps.hlsl", "", "main");
 
     // create rasterizer state
     RasterizerState::Desc wireframeDesc;

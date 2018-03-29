@@ -26,10 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 __import Shading;
-<<<<<<< HEAD
 __import DefaultVS;
-=======
->>>>>>> FalcorDX12.1
 
 cbuffer PerFrameCB : register(b0)
 {
