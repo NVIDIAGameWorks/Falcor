@@ -6,10 +6,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Data\HDRToneMapping.ps.hlsl">
-      <Filter>Data</Filter>
-    </FxCompile>
-    <FxCompile Include="Data\HDRToneMapping.vs.hlsl">
+    <FxCompile Include="Data\HDRToneMapping.hlsl">
       <Filter>Data</Filter>
     </FxCompile>
   </ItemGroup>

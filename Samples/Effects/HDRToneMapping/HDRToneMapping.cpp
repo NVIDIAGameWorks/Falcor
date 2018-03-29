@@ -47,7 +47,7 @@ void HDRToneMapping::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     mCameraController.setModelParams(mpTeapot->getCenter(), mpTeapot->getRadius(), 2.0f);    
     
     //Program
-    mpMainProg = GraphicsProgram::createFromFile(appendShaderExtension("HDRToneMapping.vs"), appendShaderExtension("HDRToneMapping.ps"));
+    mpMainProg = GraphicsProgram::createFromFile("HDRToneMapping.hlsl", "vs", "ps");
     mpProgramVars = GraphicsVars::create(mpMainProg->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setFbo(pSample->getCurrentFbo());
