@@ -10,10 +10,7 @@
     <None Include="Data\ShaderBuffers.cs.hlsl">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\ShaderBuffers.ps.hlsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ShaderBuffers.vs.hlsl">
+    <None Include="Data\ShaderBuffers.hlsl">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

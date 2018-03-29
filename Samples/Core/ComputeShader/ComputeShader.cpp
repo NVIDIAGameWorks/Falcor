@@ -43,7 +43,7 @@ Texture::SharedPtr createTmpTex(const Fbo* pFbo)
 
 void ComputeShader::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
 {
-    mpProg = ComputeProgram::createFromFile(appendShaderExtension("compute"));
+    mpProg = ComputeProgram::createFromFile("compute.hlsl", "main");
     mpState = ComputeState::create();
     mpState->setProgram(mpProg);
     mpProgVars = ComputeVars::create(mpProg->getReflector());

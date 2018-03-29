@@ -49,7 +49,7 @@ void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::Shared
     mpCamera = Camera::create();
 
     // create the program
-    mpProgram = GraphicsProgram::createFromFile(appendShaderExtension("ShaderBuffers.vs"), appendShaderExtension("ShaderBuffers.ps"));
+    mpProgram = GraphicsProgram::createFromFile("ShaderBuffers.hlsl", "vs", "ps");
 
     // Load the model
     mpModel = Model::createFromFile(skDefaultModel.c_str());
@@ -96,7 +96,7 @@ void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::Shared
     mpGraphicsState->setProgram(mpProgram);
 
     // Compute
-    mpComputeProgram = ComputeProgram::createFromFile(appendShaderExtension("ShaderBuffers.cs"));
+    mpComputeProgram = ComputeProgram::createFromFile("ShaderBuffers.cs.hlsl", "main");
     mpComputeState = ComputeState::create();
     mpComputeState->setProgram(mpComputeProgram);
 

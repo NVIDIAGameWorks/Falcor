@@ -33,15 +33,38 @@ cbuffer PerFrameCB
     float4x4 gWvpMat;
 };
 
-struct VSOut
+struct LightCB
+{
+    float3 vec3Val; // We're using 2 values. [0]: worldDir [1]: intensity
+};
+
+RWStructuredBuffer<LightCB> gRWBuffer; // Only UAV counter used
+StructuredBuffer<LightCB> gLight[4];
+RWByteAddressBuffer gInvocationBuffer;
+Buffer<float3> gSurfaceColor[2];
+
+struct VsOut
 {
     float4 position : SV_POSITION;
     float3 normalW : NORMAL;
 };
 
-VSOut main(in float4 posL : POSITION, in float3 normalL : NORMAL)
+float4 ps(VsOut vsOut) : SV_TARGET
 {
-    VSOut vsOut;
+    float3 n = normalize(vsOut.normalW);
+    float nDotL = dot(n, -gLight[3][0].vec3Val);
+    nDotL = clamp(nDotL, 0, 1);
+    float4 color = float4(nDotL * gLight[3][1].vec3Val * gSurfaceColor[1][0], 1);
+
+    gInvocationBuffer.InterlockedAdd(0, 1);
+    gRWBuffer.IncrementCounter();
+
+    return color;
+}
+
+VsOut vs(in float4 posL : POSITION, in float3 normalL : NORMAL)
+{
+    VsOut vsOut;
 
     vsOut.position = mul(posL, gWvpMat);
     vsOut.normalW = (mul(float4(normalL, 0), gWorldMat)).xyz;

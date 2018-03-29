@@ -43,9 +43,9 @@ void MultiPassPostProcess::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
 void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
 {
-    mpLuminance = FullScreenPass::create(appendShaderExtension("Luminance.ps"));
+    mpLuminance = FullScreenPass::create("Luminance.ps.hlsl");
     mpGaussianBlur = GaussianBlur::create(5);
-    mpBlit = FullScreenPass::create(appendShaderExtension("Blit.ps"));
+    mpBlit = FullScreenPass::create("Blit.ps.hlsl");
     mpProgVars = GraphicsVars::create(mpBlit->getProgram()->getReflector());
 }
 
