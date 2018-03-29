@@ -25,14 +25,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
-layout(set = 0, binding = 1) cbuffer PerFrameCB : register(b0)
+cbuffer PerFrameCB : register(b0)
 {
 	float4x4 gvpTransform;
 	float3 gFontColor;
 };
 
-layout(set = 0, binding = 2) Texture2D gFontTex;
+Texture2D gFontTex : register(t2);
 
 float4 calcColor(float2 texC)
 {
@@ -41,7 +40,17 @@ float4 calcColor(float2 texC)
 	return color;
 }
 
-float4 main(float2 texC  : TEXCOORD) : SV_TARGET0
+float4 ps(float2 texC  : TEXCOORD) : SV_TARGET0
 {
 	return calcColor(texC);
+}
+
+float4 transform(float2 posS)
+{
+	return mul(float4(posS, 0.5f, 1), gvpTransform);
+}
+
+void vs(float2 posS : POSITION, inout float2 texC : TEXCOORD, out float4 posSV : SV_POSITION)
+{
+	posSV = transform(posS);
 }

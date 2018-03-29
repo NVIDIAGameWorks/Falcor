@@ -12,9 +12,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\Shadows.ps.hlsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="Data\VisualizeMap.ps.hlsl">
       <Filter>Shaders</Filter>
     </None>

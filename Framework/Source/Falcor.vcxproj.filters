@@ -2216,19 +2216,10 @@
     <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
-    <None Include="Data\Framework\Shaders\Gui.ps.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\Gui.vs.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
     <None Include="Data\Framework\Shaders\SceneEditorPS.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
     <None Include="Data\Framework\Shaders\SceneEditorVS.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Framework\Shaders\TextRenderer.vs.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
     <None Include="Data\Effects\GaussianBlur.ps.slang">
@@ -2291,9 +2282,6 @@
     <None Include="Data\Effects\TAA.ps.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\Framework\Shaders\TextRenderer.ps.slang">
-      <Filter>Data\Framework\Shaders</Filter>
-    </None>
     <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
@@ -2317,6 +2305,12 @@
     </None>
     <None Include="Data\Effects\ShadowPass.slang">
       <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Framework\Shaders\Gui.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="Data\Framework\Shaders\TextRenderer.slang">
+      <Filter>Data\Framework\Shaders</Filter>
     </None>
   </ItemGroup>
 </Project>

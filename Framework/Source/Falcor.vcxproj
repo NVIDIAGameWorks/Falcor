@@ -1297,15 +1297,13 @@
     <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang" />
     <None Include="Data\Framework\Shaders\FullScreenPass.gs.slang" />
     <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang" />
-    <None Include="Data\Framework\Shaders\Gui.ps.slang" />
-    <None Include="Data\Framework\Shaders\Gui.vs.slang" />
+    <None Include="Data\Framework\Shaders\Gui.slang" />
     <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang" />
     <None Include="Data\Framework\Shaders\MaterialBlock.slang" />
     <None Include="Data\Framework\Shaders\ParallelReduction.ps.slang" />
     <None Include="Data\Framework\Shaders\SceneEditorPS.slang" />
     <None Include="Data\Framework\Shaders\SceneEditorVS.slang" />
-    <None Include="Data\Framework\Shaders\TextRenderer.ps.slang" />
-    <None Include="Data\Framework\Shaders\TextRenderer.vs.slang" />
+    <None Include="Data\Framework\Shaders\TextRenderer.slang" />
     <None Include="Data\HostDeviceData.slang" />
     <None Include="Data\ShaderCommon.slang" />
     <None Include="ShadingUtils\BRDF.slang" />

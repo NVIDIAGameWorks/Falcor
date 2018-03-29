@@ -74,9 +74,7 @@ namespace Falcor
         mpPipelineState = GraphicsState::create();
 
         // Create the program
-        GraphicsProgram::Desc d;
-        d.addShaderModule("Framework/Shaders/Gui.vs.slang").vsEntry("main").addShaderModule("Framework/Shaders/Gui.ps.slang").psEntry("main");
-        mpProgram = GraphicsProgram::create(d);
+        mpProgram = GraphicsProgram::createFromFile("Framework/Shaders/Gui.slang", "vs", "ps");
         mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 

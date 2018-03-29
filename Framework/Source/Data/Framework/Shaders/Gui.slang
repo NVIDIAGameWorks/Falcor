@@ -25,17 +25,40 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 SamplerState gSampler;
 Texture2D gFont;
+
+cbuffer PerFrameCB : register(b0)
+{
+    float2 scale;
+    float2 offset;
+};
+
+struct VsIn
+{
+    float2 pos : POSITION;
+    float2 texC : TEXCOORD0;
+    float4 color : COLOR;
+};
 
 struct VsOut
 {
     float4 color : COLOR;
     float2 texC : TEXCOORD0;
+    float4 pos : SV_POSITION;
 };
 
-float4 main(VsOut vOut) : SV_TARGET
+VsOut vs(VsIn vIn)
+{
+    VsOut vOut;
+    vOut.color = vIn.color;
+    vOut.texC = vIn.texC;
+    vOut.pos.xy = vIn.pos.xy * scale + offset;
+    vOut.pos.zw = float2(0,1);
+    return vOut;
+}
+
+float4 ps(VsOut vOut) : SV_TARGET
 {
     float4 c = vOut.color;
     float fontMask = gFont.Sample(gSampler, vOut.texC).r;
