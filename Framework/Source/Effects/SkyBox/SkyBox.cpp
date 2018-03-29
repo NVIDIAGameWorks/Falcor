@@ -75,9 +75,7 @@ namespace Falcor
             defines.add("_SPHERICAL_MAP");
         }
 
-        GraphicsProgram::Desc d;
-        d.addShaderModule("Effects/SkyBox.vs.slang").vsEntry("main").addShaderModule("Effects/SkyBox.ps.slang").psEntry("main");
-        mpProgram = GraphicsProgram::create(d, defines);
+        mpProgram = GraphicsProgram::createFromFile("Effects/SkyBox.slang", "vs", "ps", defines);
         mpVars = GraphicsVars::create(mpProgram->getReflector());
 
         const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getReflector()->getDefaultParameterBlock().get();
