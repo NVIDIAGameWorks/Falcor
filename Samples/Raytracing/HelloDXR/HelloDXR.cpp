@@ -92,7 +92,7 @@ void HelloDXR::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRender
 
     mpRaytraceProgram = RtProgram::create(rtProgDesc);
 
-    mpRasterProgram = GraphicsProgram::createFromFile("", "HelloDXR.ps.hlsl");
+    mpRasterProgram = GraphicsProgram::createFromFile("HelloDXR.ps.hlsl", "", "main");
 
     loadScene(kDefaultScene, pSample->getCurrentFbo().get());
 

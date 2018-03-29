@@ -103,7 +103,9 @@ void Shadows::createScene(const std::string& filename)
     setLightIndex(0);
 
     // Create the main effect
-    mLightingPass.pProgram = GraphicsProgram::createFromFile(appendShaderExtension("Shadows.vs"), appendShaderExtension("Shadows.ps"));
+    GraphicsProgram::Desc d;
+    d.addShaderModule("Shadows.vs.hlsl").vsEntry("main").addShaderModule("Shadows.ps.hlsl").psEntry("main");
+    mLightingPass.pProgram = GraphicsProgram::create(d);
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpScene->getLightCount()));
     mLightingPass.pProgram->addDefine("_LIGHT_INDEX", std::to_string(mControls.lightIndex));
     mLightingPass.pProgramVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());

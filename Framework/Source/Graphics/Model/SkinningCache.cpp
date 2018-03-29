@@ -95,7 +95,7 @@ namespace Falcor
     bool SkinningCache::init()
     {
         // Create shaders
-        mSkinningPass.pProgram = ComputeProgram::createFromFile(kShaderFilenameSkinning);
+        mSkinningPass.pProgram = ComputeProgram::createFromFile(kShaderFilenameSkinning, "main");
         assert(mSkinningPass.pProgram);
         mSkinningPass.pVars = ComputeVars::create(mSkinningPass.pProgram->getReflector());
 

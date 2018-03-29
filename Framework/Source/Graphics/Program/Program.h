@@ -36,6 +36,22 @@ namespace Falcor
     class Shader;
     class RenderContext;
 
+
+    class ShaderModule
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ShaderModule>;
+        static SharedPtr create(const std::string& filename)
+        {
+            return SharedPtr(new ShaderModule(filename));
+        }
+
+        const std::string& getFilename() const { return mFilename; }
+    private:
+        ShaderModule(const std::string& filename) : mFilename(filename) {}
+        std::string mFilename;
+    };
+
     /** High-level abstraction of a program class.
         This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
     */
@@ -62,53 +78,27 @@ namespace Falcor
             /** Begin building a description, based on a single path for source code.
                 This is equivalent to: `Desc().sourceFile(path)`
             */
-            explicit Desc(std::string const& path);
+            explicit Desc(std::string const& filename);
 
             /** Add a file of course code to use.
             This also sets the given file as the "active" source for subsequent entry points.
             */
-            Desc& sourceFile(std::string const& path);
-
-            /** Add a string of course code to use.
-            This also sets the given file as the "active" source for subsequent entry points.
-            */
-            Desc& sourceString(std::string const& code);
+            Desc& addShaderModule(const std::string& path);
 
             /** Adds an entry point based on the "active" source.
             */
-            Desc& entryPoint(ShaderType shaderType, std::string const& name = "main");
+            Desc& entryPoint(ShaderType shaderType, const std::string& name);
 
-            inline Desc& vertexEntryPoint()     { return entryPoint(ShaderType::Vertex); }
-            inline Desc& hullEntryPoint()       { return entryPoint(ShaderType::Hull); }
-            inline Desc& domainEntryPoint()     { return entryPoint(ShaderType::Domain); }
-            inline Desc& geometryEntryPoint()   { return entryPoint(ShaderType::Geometry); }
-
-            inline Desc& fragmentEntryPoint()   { return entryPoint(ShaderType::Pixel); }
-            inline Desc& pixelEntryPoint()      { return entryPoint(ShaderType::Pixel); }
-
-            inline Desc& computeEntryPoint()    { return entryPoint(ShaderType::Compute); }
-
-            /** Convenience routine that optionally adds a source file and entry point.
-            If `path` is empty, this function does nothing.
-            Otherwise, is equivalent to:
-            sourceFile(path).entryPoint(shaderType)
-            */
-            Desc& maybeSourceFile(std::string const& path, ShaderType shaderType);
-
-            /** Convenience routine that optionally adds a source file and entry point.
-            If `code` is empty, this function does nothing.
-            Otherwise, is equivalent to:
-            sourceString(code).entryPoint(shaderType)
-            */
-            Desc& maybeSourceString(std::string const& code, ShaderType shaderType);
-
-            /** Add the default version shader if there is no vertex shader specified
-            */
-            Desc& addDefaultVertexShaderIfNeeded();
+            Desc& vsEntry(const std::string& name) { return entryPoint(ShaderType::Vertex, name); }
+            Desc& hsEntry(const std::string& name) { return entryPoint(ShaderType::Hull, name); }
+            Desc& dsEntry(const std::string& name) { return entryPoint(ShaderType::Domain, name); }
+            Desc& gsEntry(const std::string& name) { return entryPoint(ShaderType::Geometry, name); }
+            Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
+            Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
 
             /** Get the source string associated with a shader stage, or an empty string if no stage found
             */
-            const std::string& getShaderSource(ShaderType shaderType) const;
+            const ShaderModule::SharedPtr& getShaderModule(ShaderType shaderType) const;
 
             /** Get the name of the shader entry point associated with a shader stage, or an empty string if no stage found
             */
@@ -129,58 +119,19 @@ namespace Falcor
             friend class Program;
             friend class GraphicsProgram;
 
-            /** A chunk of course code, either from a file or a string
-            */
-            struct Source
-            {
-                enum class Kind { File, String };
-
-                /** The input path or source text
-                If `kind` is `File`, this is the path to the file.
-                If `kind` is `String`, this is the raw text.
-                */
-                std::string value;
-
-                /** The kind of input source code
-                */
-                Kind kind;
-            };
-
-            typedef std::vector<Source> SourceList;
-
-            /** An entry point to be compiled
-            */
+            Desc& addDefaultVertexShaderIfNeeded();
+            
             struct EntryPoint
             {
-                /** The name of the entry-point function
-                */
                 std::string name;
-
-                /** The index of the source file/string that
-                    this entry point will use, or `-1` to
-                    indicate that this entry point is disabled.
-                */
-                int sourceIndex = -1;
-
-                bool isValid() const { return sourceIndex >= 0; }
+                // The index of the shader module that this entry point will use, or `-1` to indicate that this entry point is disabled
+                int moduleIndex = -1;
+                bool isValid() const { return moduleIndex >= 0; }
             };
 
-            /** The input files/strings of source code that make up the program
-            */
-            SourceList mSources;
-
-            /** The entry points that need to be compiled
-            */
+            std::vector<ShaderModule::SharedPtr> mModules;
             EntryPoint mEntryPoints[kShaderCount];
-
-            /** Index of the "active" source file/string.
-            This is the file/string that will be used for subsequent entry points.
-            By default, this is invalid, as there are no sources at first.
-            */
-            int activeSourceIndex = -1;
-
-            /** The compiler flags to use when compiling shaders
-            */
+            int mActiveSourceIndex = -1;
             Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
         };
 

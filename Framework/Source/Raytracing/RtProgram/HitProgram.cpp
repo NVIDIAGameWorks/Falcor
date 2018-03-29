@@ -48,7 +48,7 @@ namespace Falcor
         }
         
         Program::Desc desc;
-        desc.sourceFile(filename);
+        desc.addShaderModule(filename);
         if (closestHitEntry.size())     desc.entryPoint(ShaderType::ClosestHit,   closestHitEntry);
         if (anyHitEntry.size())         desc.entryPoint(ShaderType::AnyHit,       anyHitEntry);
         if (intersectionEntry.size())   desc.entryPoint(ShaderType::Intersection, intersectionEntry);
@@ -62,7 +62,7 @@ namespace Falcor
     if (shaderBlob[uint32_t(_type)].data.size())                \
     {                                                           \
         _pshader = createRtShaderFromBlob(                      \
-        mDesc.getShaderSource(_type),                           \
+        mDesc.getShaderModule(_type)->getFilename(),            \
         mDesc.getShaderEntryPoint(_type),                       \
             shaderBlob[uint32_t(_type)],                        \
             flags,                                              \

@@ -42,12 +42,7 @@ namespace Falcor
 
         static SharedPtr createFromFile(const char* filename, const char* entryPoint, const DefineList& programDefines = DefineList(), uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES)
         {
-            return createCommon(filename, entryPoint, programDefines, maxPayloadSize, maxAttributesSize, true);
-        }
-
-        static SharedPtr createFromString(const char* shader, const DefineList& programDefines = DefineList(), uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES)
-        {
-            return createCommon(nullptr, shader, programDefines, maxPayloadSize, maxAttributesSize, false);
+            return createCommon(filename, entryPoint, programDefines, maxPayloadSize, maxAttributesSize);
         }
 
         RtProgramVersion::SharedConstPtr getActiveVersion() const { return std::dynamic_pointer_cast<const RtProgramVersion>(Program::getActiveVersion()); }
@@ -58,11 +53,10 @@ namespace Falcor
         uint32_t mMaxPayloadSize;
         uint32_t mMaxAttributesSize;
 
-        static SharedPtr createCommon(const char* str, const char* entryPoint, const DefineList& programDefines, uint32_t maxPayloadSize, uint32_t maxAttributesSize, bool fromFile)
+        static SharedPtr createCommon(const char* str, const char* entryPoint, const DefineList& programDefines, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
         {
             SharedPtr pProg = SharedPtr(new RtSingleShaderProgram(maxPayloadSize, maxAttributesSize));
-            Desc d;
-            fromFile ? d.sourceFile(str) : d.sourceString(str);
+            Desc d(str);
             d.entryPoint((ShaderType)shaderType, entryPoint);
             pProg->init(d, programDefines);
             return pProg;
@@ -71,7 +65,7 @@ namespace Falcor
         ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const override
         {
             RtShader::SharedPtr pShader;
-            pShader = createRtShaderFromBlob(mDesc.getShaderSource(ShaderType(shaderType)), mDesc.getShaderEntryPoint(ShaderType(shaderType)), shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
+            pShader = createRtShaderFromBlob(mDesc.getShaderModule(ShaderType(shaderType))->getFilename(), mDesc.getShaderEntryPoint(ShaderType(shaderType)), shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
 
             if (pShader)
             {

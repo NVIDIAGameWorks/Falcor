@@ -31,21 +31,6 @@
 
 namespace Falcor
 {
-    class ShaderModule
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ShaderModule>;
-        static SharedPtr create(const std::string& filename)
-        {
-            return SharedPtr(new ShaderModule(filename));
-        }
-        
-        const std::string& getFilename() const { return mFilename; }
-    private:
-        ShaderModule(const std::string& filename) : mFilename(filename) {}
-        std::string mFilename;
-    };
-
     class RtProgram : public std::enable_shared_from_this<RtProgram>
     {
     public:

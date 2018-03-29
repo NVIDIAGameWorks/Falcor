@@ -66,7 +66,7 @@ namespace Falcor
             mMaxParticles = maxParticles;
         }
         //compute cs
-        ComputeProgram::SharedPtr pSimulateCs = ComputeProgram::createFromFile(simulateComputeShader, defineList);
+        ComputeProgram::SharedPtr pSimulateCs = ComputeProgram::createFromFile(simulateComputeShader, "main", defineList);
   
         //get num sim threads, required as a define for emit cs
         uvec3 simThreads;
@@ -77,10 +77,12 @@ namespace Falcor
         //Emit cs
         Program::DefineList emitDefines;
         emitDefines.add("_SIMULATE_THREADS", std::to_string(mSimulateThreads));
-        ComputeProgram::SharedPtr pEmitCs = ComputeProgram::createFromFile(kEmitShader, emitDefines);
+        ComputeProgram::SharedPtr pEmitCs = ComputeProgram::createFromFile(kEmitShader, "main", emitDefines);
 
         //draw shader
-        GraphicsProgram::SharedPtr pDrawProgram = GraphicsProgram::createFromFile(kVertexShader, drawPixelShader, defineList);
+        GraphicsProgram::Desc d(kVertexShader);
+        d.vsEntry("main").addShaderModule(drawPixelShader).psEntry("main");
+        GraphicsProgram::SharedPtr pDrawProgram = GraphicsProgram::create(d, defineList);
 
         //ParticlePool
         mpParticlePool = StructuredBuffer::create(pEmitCs, "particlePool", mMaxParticles);
@@ -294,7 +296,7 @@ namespace Falcor
     void ParticleSystem::initSortResources()
     {
         //Shader
-        ComputeProgram::SharedPtr pSortCs = ComputeProgram::createFromFile(kSortShader);
+        ComputeProgram::SharedPtr pSortCs = ComputeProgram::createFromFile(kSortShader, "main");
 
         //iteration counter buffer
         mSortResources.pSortIterationCounter = StructuredBuffer::create(pSortCs, "iterationCounter", 2);

@@ -145,8 +145,10 @@ namespace Falcor
             }
         }
 
-        const std::string vs(vsFile.empty() ? "Framework/Shaders/FullScreenPass.vs.slang" : vsFile);
-        mpProgram = GraphicsProgram::createFromFile(vs, psFile, gs, "", "", defs);
+        GraphicsProgram::Desc d;
+        d.addShaderModule(vsFile.empty() ? "Framework/Shaders/FullScreenPass.vs.slang" : vsFile).vsEntry("main").addShaderModule(psFile).psEntry("main");
+        if (gs.size()) d.addShaderModule(gs).gsEntry("main");
+        mpProgram = GraphicsProgram::create(d, defs);
         mpPipelineState->setProgram(mpProgram);
 
         if (FullScreenPass::spVertexBuffer == nullptr)

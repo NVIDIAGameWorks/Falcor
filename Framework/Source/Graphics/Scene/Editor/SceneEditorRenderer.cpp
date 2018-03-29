@@ -71,11 +71,13 @@ namespace Falcor
         // Shader
         Program::DefineList defines;
         defines.add("SHADING");
-        mpProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang", defines);
+        GraphicsProgram::Desc d;
+        d.addShaderModule("Framework/Shaders/SceneEditorVS.slang").vsEntry("main").addShaderModule("Framework/Shaders/SceneEditorPS.slang").psEntry("main");
+        mpProgram = GraphicsProgram::create(d, defines);
         mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
 
         defines.add("CULL_REAR_SECTION");
-        mpRotGizmoProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang", defines);
+        mpRotGizmoProgram = GraphicsProgram::create(d, defines);
     }
 
     void SceneEditorRenderer::setPerFrameData(const CurrentWorkingData& currentData)
