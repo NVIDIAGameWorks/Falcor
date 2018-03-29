@@ -49,11 +49,9 @@ static vec3 iMouse = vec3(0, 0, 0);
 // ------------------------------------
 // Shader toy code goes inside toy.fs
 // ------------------------------------
-#include "toy.fs"
+#include "toy.hlsl"
 
-void main(
-	in float2 texC : TEXCOORD,
-	out float4 fragColor : SV_TARGET)
+float4 main(in float2 texC : TEXCOORD) : SV_TARGET
 {
-    fragColor = mainImage(texC * iResolution);   
+    return mainImage(texC * iResolution);
 }
