@@ -25,13 +25,41 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "ForwardRendererCommon.hlsli"
-
+__import ShaderCommon;
+__import DefaultVS;
+__import Effects.CascadedShadowMap;
 __import Shading;
 __import Helpers;
 __import BRDF;
 
+layout(binding = 0) cbuffer PerFrameCB : register(b0)
+{
+    CsmData gCsmData;
+    float4x4 camVpAtLastCsmUpdate;
+    float2 gRenderTargetDim;
+    float gOpacityScale;
+};
+
 layout(set = 1, binding = 1) SamplerState gSampler;
+
+struct MainVsOut
+{
+    VertexOut vsData;
+    float shadowsDepthC : DEPTH;
+};
+
+MainVsOut vs(VertexIn vIn)
+{
+    MainVsOut vsOut;
+    vsOut.vsData = defaultVS(vIn);
+
+#ifdef _OUTPUT_MOTION_VECTORS
+    vsOut.vsData.prevPosH.xy += vsOut.vsData.prevPosH.w * 2 * float2(gCamera.jitterX, gCamera.jitterY);
+#endif
+
+    vsOut.shadowsDepthC = mul(float4(vsOut.vsData.posW, 1), camVpAtLastCsmUpdate).z;
+    return vsOut;
+}
 
 struct PsOut
 {
@@ -42,7 +70,7 @@ struct PsOut
 #endif
 };
 
-PsOut main(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
+PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 

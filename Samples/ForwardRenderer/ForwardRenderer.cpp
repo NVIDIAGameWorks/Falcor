@@ -51,13 +51,13 @@ static const float kDX11SamplePattern[8][2] = { { 1.0f / 16.0f, -3.0f / 16.0f },
 
 void ForwardRenderer::initDepthPass()
 {
-    mDepthPass.pProgram = GraphicsProgram::createFromFile("", "DepthPass.ps.slang");
+    mDepthPass.pProgram = GraphicsProgram::createFromFile("DepthPass.ps.slang", "", "main");
     mDepthPass.pVars = GraphicsVars::create(mDepthPass.pProgram->getReflector());
 }
 
 void ForwardRenderer::initLightingPass()
 {
-    mLightingPass.pProgram = GraphicsProgram::createFromFile("ForwardRenderer.vs.slang", "ForwardRenderer.ps.slang");
+    mLightingPass.pProgram = GraphicsProgram::createFromFile("ForwardRenderer.slang", "vs", "ps");
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpSceneRenderer->getScene()->getLightCount()));
     initControls();
     mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
