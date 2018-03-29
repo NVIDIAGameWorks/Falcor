@@ -98,7 +98,7 @@ void Shadows::createScene(const std::string& filename)
     mpRenderer = SceneRenderer::create(mpScene);
     mpRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
     mpRenderer->toggleStaticMaterialCompilation(false);
-    if(mpScene->getPath(0))
+    if(mpScene->getPathCount() && mpScene->getPath(0))
     {
         mpScene->getPath(0)->detachObject(mpScene->getActiveCamera());
     }

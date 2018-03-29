@@ -62,7 +62,7 @@ float4 psMain(ShadowsVSOut pIn) : SV_TARGET0
     [unroll]
     for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
     {
-        float shadowFactor = gVisibilityBuffers[l].Load(int3(pIn.vsData.posH.xy, 0)).x;
+        float shadowFactor = gVisibilityBuffers[l].Load(int3(pIn.vsData.posH.xy, 0)).r;
         color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
     }
 

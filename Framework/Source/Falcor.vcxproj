@@ -1004,6 +1004,7 @@
     <None Include="..\Externals\GLM\glm\gtx\wrap.inl" />
     <None Include="Data\DefaultVS.slang" />
     <None Include="Data\Effects\CascadedShadowMap.slang" />
+    <None Include="Data\Effects\DepthPass.slang" />
     <None Include="Data\Effects\GaussianBlur.ps.slang" />
     <None Include="Data\Effects\LeanMapping.slang" />
     <None Include="Data\Effects\ParticleConstColor.ps.slang" />

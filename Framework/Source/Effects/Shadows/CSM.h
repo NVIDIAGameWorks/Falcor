@@ -212,9 +212,12 @@ namespace Falcor
         //Visibility pass
         struct
         {
+            FullScreenPass::UniquePtr pPass;
             GraphicsState::SharedPtr pState;
             GraphicsVars::SharedPtr pGraphicsVars;
             Texture::SharedPtr pVisibilityMap;
+            uint32_t mVisualizeCascadesOffset;
+            uint32_t mInvViewProjOffset;
         } mVisibilityPass;
 
         struct Controls
@@ -228,7 +231,6 @@ namespace Falcor
         };
 
         bool mShouldVisualizeCascades = false;
-        uint32_t mVisualizeCascadesOffset;
         int32_t renderCascade = 0;
         Controls mControls;
         CsmData mCsmData;

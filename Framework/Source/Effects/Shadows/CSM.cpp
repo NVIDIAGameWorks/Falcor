@@ -35,7 +35,8 @@
 
 namespace Falcor
 {
-    const char* kDepthPassFile = "Effects/ShadowPass.slang";
+    const char* kDepthPassFile = "Effects/DepthPass.slang";
+    const char* kShadowPassfile = "Effects/ShadowPass.slang";
     const char* kVisibilityPassFile = "Effects/VisibilityPass.slang";
 
     const Gui::DropdownList kFilterList = {
@@ -221,8 +222,11 @@ namespace Falcor
         GraphicsProgram::Desc depthPassDesc;
         depthPassDesc.sourceFile(kDepthPassFile);
         depthPassDesc.entryPoint(ShaderType::Vertex, "vsMain");
+        depthPassDesc.entryPoint(ShaderType::Pixel, "psMain");
         GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(depthPassDesc);
         pProg->addDefine("_APPLY_PROJECTION");
+        pProg->addDefine("TEST_ALPHA");
+        pProg->addDefine("_ALPHA_CHANNEL", "a");
         mDepthPass.pState = GraphicsState::create();
         mDepthPass.pState->setProgram(pProg);
         mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getActiveVersion()->getReflector());
@@ -327,7 +331,7 @@ namespace Falcor
 
         // Create the shadows program
         GraphicsProgram::Desc shadowPassProgDesc;
-        shadowPassProgDesc.sourceFile(kDepthPassFile);
+        shadowPassProgDesc.sourceFile(kShadowPassfile);
         shadowPassProgDesc.entryPoint(ShaderType::Vertex, "vsMain");
         shadowPassProgDesc.entryPoint(ShaderType::Geometry, "gsMain");
         shadowPassProgDesc.entryPoint(ShaderType::Pixel, "psMain");
@@ -353,18 +357,15 @@ namespace Falcor
     void CascadedShadowMaps::createVisibilityPassResources(uint32_t windowWidth, uint32_t windowHeight)
     {
         mVisibilityPass.pState = GraphicsState::create();
-        GraphicsProgram::Desc visProgDesc;
-        visProgDesc.sourceFile(kVisibilityPassFile);
-        visProgDesc.entryPoint(ShaderType::Vertex, "vsMain");
-        visProgDesc.entryPoint(ShaderType::Pixel, "psMain");
-        auto pVisProg = GraphicsProgram::create(visProgDesc);
-        mVisibilityPass.pState->setProgram(pVisProg);
+        mVisibilityPass.pPass = FullScreenPass::create(kVisibilityPassFile);
+
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
         fboDesc.setDepthStencilTarget(ResourceFormat::D32Float);
         mVisibilityPass.pState->setFbo(FboHelper::create2D(windowWidth, windowHeight, fboDesc));
-        mVisibilityPass.pGraphicsVars = GraphicsVars::create(pVisProg->getActiveVersion()->getReflector());
-        mVisualizeCascadesOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("visualizeCascades");
+        mVisibilityPass.pGraphicsVars = GraphicsVars::create(mVisibilityPass.pPass->getProgram()->getActiveVersion()->getReflector());
+        mVisibilityPass.mVisualizeCascadesOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("visualizeCascades");
+        mVisibilityPass.mInvViewProjOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("invViewProj");
     }
 
     void CascadedShadowMaps::setCascadeCount(uint32_t cascadeCount)
@@ -623,8 +624,16 @@ namespace Falcor
             nextCascadeStart -= blendCorrection;
 
             // Calculate the cascade distance in camera-clip space(Where the clip-space range is [0, farPlane])
-            mCsmData.cascadeRange[c].x = farPlane * cascadeStart;
-            mCsmData.cascadeRange[c].y = (farPlane * cascadeEnd) - mCsmData.cascadeRange[c].x;
+            float camClipSpaceCascadeStart = lerp(nearPlane, farPlane, cascadeStart);
+            float camClipSpaceCascadeEnd = lerp(nearPlane, farPlane, cascadeEnd);
+
+            //Convert to ndc space [0, 1]
+            float projTermA = farPlane / (nearPlane - farPlane);
+            float projTermB = (-farPlane * nearPlane) / (farPlane - nearPlane);
+            float ndcSpaceCascadeStart = (-camClipSpaceCascadeStart * projTermA + projTermB) / camClipSpaceCascadeStart;
+            float ndcSpaceCascadeEnd = (-camClipSpaceCascadeEnd * projTermA + projTermB) / camClipSpaceCascadeEnd;
+            mCsmData.cascadeRange[c].x = ndcSpaceCascadeStart;
+            mCsmData.cascadeRange[c].y = ndcSpaceCascadeEnd - ndcSpaceCascadeStart;
 
             // Calculate the cascade frustum
             glm::vec3 cascadeFrust[8];
@@ -710,7 +719,7 @@ namespace Falcor
         pCtx->clearFbo(pFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Depth);
         pCtx->pushGraphicsState(mDepthPass.pState);
         pCtx->pushGraphicsVars(mDepthPass.pGraphicsVars);
-        mpSceneRenderer->renderScene(pCtx, const_cast<Camera*>(pCamera));
+        mpCsmSceneRenderer->renderScene(pCtx, const_cast<Camera*>(pCamera));
         pCtx->popGraphicsVars();
         pCtx->popGraphicsState();
     }
@@ -728,11 +737,13 @@ namespace Falcor
     {
         if(pDepthBuffer == nullptr)
         {
+            PROFILE(shadowDepthPass)
             // Run a shadow pass
             executeDepthPass(pRenderCtx, pCamera);
             pDepthBuffer = mDepthPass.pState->getFbo()->getDepthStencilTexture();
         }
 
+        PROFILE(SDSM)
         createSdsmData(pDepthBuffer);
         vec2 distanceRange = glm::vec2(mSdsmData.minMaxReduction->reduce(pRenderCtx, pDepthBuffer));
 
@@ -781,33 +792,48 @@ namespace Falcor
         VP.height = mShadowPass.mapSize.x;
         VP.width = mShadowPass.mapSize.y;
 
-        //Set shadow pass state
-        mShadowPass.pState->setViewport(0, VP);
-        mpCsmSceneRenderer->setDepthClamp(mControls.depthClamp);
-        pRenderCtx->pushGraphicsState(mShadowPass.pState);
-        partitionCascades(pCamera, distanceRange);
-        renderScene(pRenderCtx);
+        //Shadow pass
+        {
+            PROFILE(internalShadowPass)
+            //Set shadow pass state
+            mShadowPass.pState->setViewport(0, VP);
+            mpCsmSceneRenderer->setDepthClamp(mControls.depthClamp);
+            pRenderCtx->pushGraphicsState(mShadowPass.pState);
+            partitionCascades(pCamera, distanceRange);
+            renderScene(pRenderCtx);
+        }
 
         if(mCsmData.filterMode == CsmFilterVsm || mCsmData.filterMode == CsmFilterEvsm2 || mCsmData.filterMode == CsmFilterEvsm4)
         {
+            PROFILE(blur)
             mpGaussianBlur->execute(pRenderCtx, mShadowPass.pFbo->getColorTexture(0), mShadowPass.pFbo);
             mShadowPass.pFbo->getColorTexture(0)->generateMips(pRenderCtx);
         }
 
         pRenderCtx->popGraphicsState();
 
-        //Clear visibility buffer
-        pRenderCtx->clearFbo(mVisibilityPass.pState->getFbo().get(), glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
-        //Update Vars
-        mVisibilityPass.pGraphicsVars->getConstantBuffer("VsPerFrame")->setBlob(&pCamera->getViewProjMatrix(), 0, sizeof(glm::mat4));
-        setDataIntoGraphicsVars(mVisibilityPass.pGraphicsVars, "gCsmData");
-        mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->setBlob(&mShouldVisualizeCascades, mVisualizeCascadesOffset, sizeof(bool));
-        //Render visibility buffer
-        pRenderCtx->pushGraphicsState(mVisibilityPass.pState);
-        pRenderCtx->pushGraphicsVars(mVisibilityPass.pGraphicsVars);
-        mpSceneRenderer->renderScene(pRenderCtx, pCamera);
-        pRenderCtx->popGraphicsVars();
-        pRenderCtx->popGraphicsState();
+        //Visibility pass
+        {
+            PROFILE(visibilityPass)
+            //Clear visibility buffer
+            auto pFbo = mVisibilityPass.pState->getFbo().get();
+            pRenderCtx->clearFbo(pFbo, glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
+            //Update Vars
+            mVisibilityPass.pGraphicsVars->setTexture("gDepth", mDepthPass.pState->getFbo()->getDepthStencilTexture());
+            setDataIntoGraphicsVars(mVisibilityPass.pGraphicsVars, "gCsmData");
+            auto pCb = mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB");
+            //TODO if works get cb once. or fix struct so can actually send as one blob
+            pCb->setBlob(&mShouldVisualizeCascades, mVisibilityPass.mVisualizeCascadesOffset, sizeof(bool));
+            pCb->setBlob(&pCamera->getInvViewProjMatrix(), mVisibilityPass.mInvViewProjOffset, sizeof(glm::mat4));
+            glm::uvec2 screenDim = glm::uvec2(pFbo->getWidth(), pFbo->getHeight());
+            pCb->setBlob(&screenDim, mVisibilityPass.mInvViewProjOffset + sizeof(glm::mat4), sizeof(glm::uvec2));
+            //Render visibility buffer
+            pRenderCtx->pushGraphicsState(mVisibilityPass.pState);
+            pRenderCtx->pushGraphicsVars(mVisibilityPass.pGraphicsVars);
+            mVisibilityPass.pPass->execute(pRenderCtx);
+            pRenderCtx->popGraphicsVars();
+            pRenderCtx->popGraphicsState();
+        }
     }
 
     void CascadedShadowMaps::setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName)

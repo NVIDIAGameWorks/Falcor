@@ -391,7 +391,7 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
         mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
-        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
+        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), nullptr);//, mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
         pContext->flush();
     }
 }

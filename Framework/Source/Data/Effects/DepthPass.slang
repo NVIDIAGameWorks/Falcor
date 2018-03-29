@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,68 +25,58 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "VertexAttrib.h"
 __import DefaultVS;
-__import Shading;
 __import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
-cbuffer VsPerFrame : register(b0)
+layout(binding = 0) SamplerState alphaSampler : register(s0);
+layout(binding = 1) texture2D alphaMap : register(t0);
+
+layout(binding = 2) cbuffer AlphaMapCB : register(b1)
 {
-    float4x4 camVpAtLastCsmUpdate;
+    float alphaThreshold;
 };
 
-cbuffer PerFrameCB : register(b1)
+layout(binding = 3) cbuffer PerLightCB : register(b0)
 {
     CsmData gCsmData;
-    bool visualizeCascades;
-    float4x4 invViewProj; 
-    uint2 screenDimension;
 };
 
-struct ShadowsVSOut
+struct ShadowPassVSOut
 {
-    float4 posH : SV_POSITION;
-    float3 posW : POSITION;
-    float shadowsDepthC : DEPTH;
+    float2 texC : TEXCOORD;
+#ifdef _APPLY_PROJECTION
+    float4 pos : SV_POSITION;
+#else
+    float4 pos : POSITION;
+#endif
 };
 
-Texture2D gDepth;
-
-ShadowsVSOut vsMain(VertexIn vIn)
+ShadowPassVSOut vsMain(VertexIn vIn)
 {
-    ShadowsVSOut vOut;
-    float4 posW = mul(vIn.pos, getWorldMat(vIn));
-    vOut.posW = posW.xyz;
-    vOut.posH = mul(posW, gCamera.viewProjMat);
-    vOut.shadowsDepthC = mul(float4(vOut.posW, 1), camVpAtLastCsmUpdate).z;
+    ShadowPassVSOut vOut; 
+    float4x4 worldMat = getWorldMat(vIn);
+    vOut.pos = mul(vIn.pos, worldMat);
+#ifdef _APPLY_PROJECTION
+    vOut.pos = mul(vOut.pos, gCamera.viewProjMat);
+#endif
+
+#ifdef HAS_TEXCRD
+    vOut.texC = vIn.texC;
+#else
+    vOut.texC = float2(0.5f, 0.5f);
+#endif
     return vOut;
 }
 
-float3 loadPosition(float2 UV, float depth)
+void psMain(ShadowPassVSOut pIn)
 {
-    float2 invSize = (1.0f / screenDimension.x, 1.0f / screenDimension.y);
-    // Recompute position by unprojecting the depth stored in the z-buffer 
-    float2 ndc = 2.0f * UV + invSize - 1; // y still value needs to be negated after this line
-    float4 wsPos = mul(float4(ndc.x, -ndc.y, depth, 1.f), invViewProj);
-    return wsPos.xyz / wsPos.w;
-}
-
-float4 main(float2 texC : TEXCOORD) : SV_TARGET0
-{
-    //[0, 1] -> [0, 2] -> [-1, 1]
-    float2 ndcXy = (texC * 2) - 1;
-    
-    float depth = gDepth[texC * screenDimension].x;
-    float3 posW = loadPosition(texC, depth);
-
-    float4 color = float4(0,0,0,1);
-    color.r = calcShadowFactor(gCsmData, depth, posW, ndcXy);
-
-    if(visualizeCascades)
+#ifdef TEST_ALPHA
+    float alpha = alphaMap.Sample(alphaSampler, pIn.texC)._ALPHA_CHANNEL;
+    if(alpha < alphaThreshold)
     {
-        color.gba = getBlendedCascadeColor(gCsmData, depth);
+        discard;
     }
-
-    return color;
+#endif
 }
-
