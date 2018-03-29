@@ -31,25 +31,92 @@
 
 namespace Falcor
 {
-    RtProgram::SharedPtr RtProgram::create(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms)
+    RtProgram::Desc& RtProgram::Desc::setShaderModule(const ShaderModule::SharedPtr& pModule)
     {
-        SharedPtr pProg = SharedPtr(new RtProgram(pRayGenProgram, missPrograms, hitPrograms));
+        if (mpModule)
+        {
+            logWarning("RtProgram::Desc::setShaderModule() - a module already exists. Replacing the old module");
+        }
+        mpModule = pModule;
+        return *this;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::setFilename(const std::string& filename)
+    {
+        if (mpModule)
+        {
+            logWarning("RtProgram::Desc::setFilename() - a module already exists. Replacing the old module");
+        }
+        mpModule = ShaderModule::create(filename);
+        return *this;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::setRayGen(const std::string& raygen, const DefineList& defineList)
+    {
+        if (mRayGen.entryPoint.size())
+        {
+            logWarning("RtProgram::Desc::setRayGen() - a ray-generation entry point is already set. Replacing the old entry entry-point");
+        }
+        mRayGen.defineList = defineList;
+        mRayGen.entryPoint = raygen;
+        return *this;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::addMiss(const std::string& miss, const DefineList& defineList)
+    {
+        RayGenMissEntry entry;
+        entry.defineList = defineList;
+        entry.entryPoint = miss;
+        mMiss.push_back(entry);
+        return *this;
+    }
+
+    RtProgram::Desc& RtProgram::Desc::addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection, const DefineList& defineList)
+    {
+        HitProgramEntry entry;
+        entry.defineList = defineList;
+        entry.anyHit = anyHit;
+        entry.closestHit = closestHit;
+        entry.intersection = intersection;
+        mHit.push_back(entry);
+        return *this;
+    }
+
+    RtProgram::SharedPtr RtProgram::create(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
+    {
+        SharedPtr pProg = SharedPtr(new RtProgram(desc, maxPayloadSize, maxAttributesSize));
         pProg->addDefine("_MS_DISABLE_ALPHA_TEST");
 
         return pProg;
     }
 
-    RtProgram::RtProgram(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms) : mHitProgs(hitPrograms), mMissProgs(missPrograms), mpRayGenProgram(pRayGenProgram)
+    RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
     {
-        mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
-        mpGlobalReflector->merge(pRayGenProgram->getGlobalReflector().get());
+        const std::string& filename = desc.mpModule->getFilename();
+        // Create the programs
+        mpRayGenProgram = RayGenProgram::createFromFile(filename.c_str(), desc.mRayGen.entryPoint.c_str(), desc.mRayGen.defineList, maxPayloadSize, maxAttributesSize);
 
-        for (const auto m : missPrograms)
+        for (const auto& m : desc.mMiss)
+        {
+            mMissProgs.push_back(MissProgram::createFromFile(filename.c_str(), m.entryPoint.c_str(), m.defineList, maxPayloadSize, maxAttributesSize));
+        }
+
+        for (const auto& h : desc.mHit)
+        {
+            HitProgram::SharedPtr pHit = HitProgram::createFromFile(filename.c_str(), h.closestHit, h.anyHit, h.intersection, h.defineList, maxPayloadSize, maxAttributesSize);
+            mHitProgs.push_back(pHit);
+        }
+
+        // Create the global reflector and root-signature
+        mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
+        mpGlobalReflector->merge(mpRayGenProgram->getGlobalReflector().get());
+
+        for (const auto m : mMissProgs)
         {
             mpGlobalReflector->merge(m->getGlobalReflector().get());
         }
 
-        for (const auto& h : hitPrograms)
+        for (const auto& h : mHitProgs)
         {
             mpGlobalReflector->merge(h->getGlobalReflector().get());
         }

@@ -31,15 +31,63 @@
 
 namespace Falcor
 {
+    class ShaderModule
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ShaderModule>;
+        static SharedPtr create(const std::string& filename)
+        {
+            return SharedPtr(new ShaderModule(filename));
+        }
+        
+        const std::string& getFilename() const { return mFilename; }
+    private:
+        ShaderModule(const std::string& filename) : mFilename(filename) {}
+        std::string mFilename;
+    };
+
     class RtProgram : public std::enable_shared_from_this<RtProgram>
     {
     public:
         using SharedPtr = std::shared_ptr<RtProgram>;
         using SharedConstPtr = std::shared_ptr<const RtProgram>;
-        using MissProgramList = std::vector<MissProgram::SharedPtr>;
-        using HitProgramList = std::vector<HitProgram::SharedPtr>;
+        using DefineList = Program::DefineList;
 
-        static RtProgram::SharedPtr create(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms);
+        class Desc
+        {
+        public:
+            Desc() = default;
+            Desc(const std::string& filename) { setFilename(filename); }
+            Desc(const ShaderModule::SharedPtr& pModule) { setShaderModule(pModule); }
+
+            Desc& setShaderModule(const ShaderModule::SharedPtr& pModule);
+            Desc& setFilename(const std::string& filename);
+            Desc& setRayGen(const std::string& raygen, const DefineList& defineList = DefineList());
+            Desc& addMiss(const std::string& miss, const DefineList& defineList = DefineList());
+            Desc& addHitGroup(const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "", const DefineList& defineList = DefineList());
+        private:
+            friend class RtProgram;
+            ShaderModule::SharedPtr mpModule;
+
+            struct RayGenMissEntry
+            {
+                std::string entryPoint;
+                DefineList defineList;
+            };
+            RayGenMissEntry mRayGen;
+            std::vector<RayGenMissEntry> mMiss;
+
+            struct HitProgramEntry
+            {
+                std::string intersection;
+                std::string anyHit;
+                std::string closestHit;
+                DefineList defineList;
+            };
+            std::vector<HitProgramEntry> mHit;
+        };
+
+        static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
 
         // Ray-gen
         RayGenProgram::SharedPtr getRayGenProgram() const { return mpRayGenProgram; }
@@ -59,7 +107,10 @@ namespace Falcor
         const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { return mpGlobalReflector; }
 
     private:
-        RtProgram(RayGenProgram::SharedPtr pRayGenProgram, const MissProgramList& missPrograms, const HitProgramList& hitPrograms);
+        using MissProgramList = std::vector<MissProgram::SharedPtr>;
+        using HitProgramList = std::vector<HitProgram::SharedPtr>;
+
+        RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
         HitProgramList mHitProgs;
         MissProgramList mMissProgs;
         RayGenProgram::SharedPtr mpRayGenProgram;

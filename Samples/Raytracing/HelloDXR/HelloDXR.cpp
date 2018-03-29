@@ -85,15 +85,13 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
 
 void HelloDXR::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
-    RtProgram::MissProgramList missProgs;
-    missProgs.push_back(MissProgram::createFromFile("HelloDXR.rt.hlsl", "primaryMiss"));
-    missProgs.push_back(MissProgram::createFromFile("HelloDXR.rt.hlsl", "shadowMiss"));
+    RtProgram::Desc rtProgDesc;
+    rtProgDesc.setFilename("HelloDXR.rt.hlsl").setRayGen("rayGen");
+    rtProgDesc.addHitGroup("primaryClosestHit", "").addMiss("primaryMiss");
+    rtProgDesc.addHitGroup("", "shadowAnyHit").addMiss("shadowMiss");
 
-    RtProgram::HitProgramList hitProgs;
-    hitProgs.push_back(HitProgram::createFromFile("HelloDXR.rt.hlsl", "primaryClosestHit", "", ""));
-    hitProgs.push_back(HitProgram::createFromFile("HelloDXR.rt.hlsl", "", "shadowAnyHit", ""));
-    RayGenProgram::SharedPtr pRayGen = RayGenProgram::createFromFile("HelloDxr.rt.hlsl", "rayGen");
-    mpRaytraceProgram = RtProgram::create(pRayGen, missProgs, hitProgs);
+    mpRaytraceProgram = RtProgram::create(rtProgDesc);
+
     mpRasterProgram = GraphicsProgram::createFromFile("", "HelloDXR.ps.hlsl");
 
     loadScene(kDefaultScene, pSample->getCurrentFbo().get());
