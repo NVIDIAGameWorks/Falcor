@@ -652,7 +652,6 @@ namespace Falcor
         for (uint32_t r = 0; r < pOtherStruct->getMemberCount(); r++)
         {
             const auto& pMember = pOtherStruct->getMember(r);
-            assert(pMember->getType()->asResourceType());
             const auto& memberName = pMember->getName();
             const auto& pMyMember = mpResourceVars->getMember(memberName);
             if (pMyMember == nullptr)

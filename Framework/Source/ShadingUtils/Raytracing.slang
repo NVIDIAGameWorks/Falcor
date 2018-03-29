@@ -44,7 +44,7 @@ struct BuiltinIntersectionAttribs
     float2 baryCrd;
 };
 
-cbuffer DxrPerFrame : register(b13)
+shared cbuffer DxrPerFrame : register(b13)
 {
     uint hitProgramCount;
 };

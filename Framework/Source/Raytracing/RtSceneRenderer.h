@@ -59,6 +59,7 @@ namespace Falcor
         virtual void setHitShaderData(RtProgramVars* pRtVars, InstanceData& data);
         virtual void setMissShaderData(RtProgramVars* pRtVars, InstanceData& data);
         virtual void setRayGenShaderData(RtProgramVars* pRtVars, InstanceData& data);
+        virtual void setGlobalData(RtProgramVars* pRtVars, InstanceData& data);
 
         void initializeMeshBufferLocation(const ProgramReflection* pReflection);
 

@@ -217,7 +217,8 @@ namespace Falcor
         mRtFlags |= RtBuildFlags::AllowUpdate;
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS dxrFlags = getDxrBuildFlags(mRtFlags);
-        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = gpDevice->getRenderContext()->getLowLevelData()->getCommandList();
+        RenderContext* pContext = gpDevice->getRenderContext().get();
+        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pContext->getLowLevelData()->getCommandList();
         ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDesc = createInstanceDesc(this, hitProgCount);
 
@@ -244,7 +245,7 @@ namespace Falcor
         }
         else
         {
-            gpDevice->getRenderContext()->uavBarrier(mpTopLevelAS.get());
+            pContext->uavBarrier(mpTopLevelAS.get());
         }
         Buffer::SharedPtr pInstanceData = Buffer::create(mInstanceCount * sizeof(D3D12_RAYTRACING_INSTANCE_DESC), Buffer::BindFlags::None, Buffer::CpuAccess::None, instanceDesc.data());
 
@@ -264,9 +265,10 @@ namespace Falcor
         asDesc.ScratchAccelerationStructureData.SizeInBytes = pScratchBuffer->getSize();
         asDesc.SourceAccelerationStructureData = isRefitPossible ? asDesc.DestAccelerationStructureData.StartAddress : 0;
 
+        pContext->resourceBarrier(pInstanceData.get(), Resource::State::NonPixelShader);
         asDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
         pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc);
-        gpDevice->getRenderContext()->uavBarrier(mpTopLevelAS.get());
+        pContext->uavBarrier(mpTopLevelAS.get());
 
         // Create the SRV
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

@@ -125,12 +125,6 @@ namespace Falcor
             pVars->getDefaultBlock()->setSrv(loc, 0, pRtScene->getTlasSrv(pRtVars->getHitProgramsCount()));
         }
 
-        ConstantBuffer::SharedPtr pSbtCB = pVars->getConstantBuffer("DxrPerFrame");
-        if (pSbtCB)
-        {
-            pSbtCB["hitProgramCount"] = pRtVars->getHitProgramsCount();
-        }
-
         SceneRenderer::setPerFrameData(data.currentData);
     }
 
@@ -138,6 +132,17 @@ namespace Falcor
     {
         data.currentData.pVars = pRtVars->getRayGenVars().get();
         setPerFrameData(pRtVars, data);
+    }
+
+    void RtSceneRenderer::setGlobalData(RtProgramVars* pRtVars, InstanceData& data)
+    {
+        data.currentData.pVars = pRtVars->getGlobalVars().get();
+        ConstantBuffer::SharedPtr pDxrPerFrame = data.currentData.pVars->getConstantBuffer("DxrPerFrame");
+        if (pDxrPerFrame)
+        {
+            pDxrPerFrame["hitProgramCount"] = pRtVars->getHitProgramsCount();
+        }
+        SceneRenderer::setPerFrameData(data.currentData);
     }
 
     void RtSceneRenderer::setMissShaderData(RtProgramVars* pRtVars, InstanceData& data)
@@ -158,6 +163,7 @@ namespace Falcor
             updateVariableOffsets(pRtVars->getMissVars(0)->getReflection().get());
         }
         setRayGenShaderData(pRtVars.get(), data);
+        setGlobalData(pRtVars.get(), data);
 
         // Set the miss-shader data
         for (data.progId = 0; data.progId < pRtVars->getMissProgramsCount(); data.progId++)
