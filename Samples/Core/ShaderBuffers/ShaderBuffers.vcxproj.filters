@@ -10,19 +10,7 @@
     <None Include="Data\ShaderBuffers.cs.hlsl">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\ShaderBuffers.ps.hlsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ShaderBuffers.vs.hlsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ShaderBuffers.vs.glsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ShaderBuffers.cs.glsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ShaderBuffers.ps.glsl">
+    <None Include="Data\ShaderBuffers.hlsl">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

@@ -127,7 +127,7 @@ namespace Falcor
                             mpWindow->shutdown();
                         }
                         break;
-                    case KeyboardEvent::Key::Equal:
+                    case KeyboardEvent::Key::Pause:
                         mFreezeTime = !mFreezeTime;
                         break;
                     }
@@ -306,7 +306,7 @@ namespace Falcor
             "  'V'       - Toggle VSync\n"
             "  'F12'     - Capture screenshot\n"
             "  'Shift+F12' - Video capture\n"
-            "  '='       - Pause\\resume timer\n"
+            "  'Pause'     - Pause\\resume timer\n"
             "  'Z'       - Zoom in on a pixel\n"
             "  'MouseWheel' - Change level of zoom\n"
 #if _PROFILING_ENABLED

@@ -147,7 +147,7 @@
 #define MAX_LIGHT_SOURCES 16
 
 // To bind area lights, use this macro to declare the constant buffer in your shader
-#define AREA_LIGHTS(n) cbuffer InternalAreaLightCB \
+#define AREA_LIGHTS(n) shared cbuffer InternalAreaLightCB \
 { \
     AreaLightData gAreaLights[n]; \
 };

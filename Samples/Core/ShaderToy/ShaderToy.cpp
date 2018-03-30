@@ -52,13 +52,13 @@ void ShaderToy::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRende
     mpLinearSampler = Sampler::create(samplerDesc);
 
     // Load shaders
-    mpMainPass = FullScreenPass::create(appendShaderExtension("toyContainer.ps"));
+    mpMainPass = FullScreenPass::create("toyContainer.hlsl");
 
     // Create Constant buffer
-    mpToyVars = GraphicsVars::create(mpMainPass->getProgram()->getActiveVersion()->getReflector());
+    mpToyVars = GraphicsVars::create(mpMainPass->getProgram()->getReflector());
 
     // Get buffer finding
-    mToyCBBinding = mpMainPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock()->getResourceBinding("ToyCB");
+    mToyCBBinding = mpMainPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("ToyCB");
 }
 
 void ShaderToy::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)

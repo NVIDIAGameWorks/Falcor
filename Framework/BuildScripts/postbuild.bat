@@ -7,7 +7,7 @@ rem %4 -> Platform Name.
 rem %5 -> Platform Short Name.
 rem %6 -> Configuration.
 rem %7 -> Output Directory
-
+rem %8 -> FALCOR_BACKEND
 
 rem echo "Falcor Core Directory Path:"
 rem echo %1
@@ -30,5 +30,8 @@ rem echo %6
 rem echo "Output Directory:"
 rem echo %7
 
+rem echo "Falcor Backend:"
+rem echo %8
+
 rem Call the Build Scripts to move the data.
-call %1BuildScripts\movedata.bat %1 %2 %3 %4 %5 %6 %7
+call %1BuildScripts\movedata.bat %1 %2 %3 %4 %5 %6 %7 %8

@@ -50,7 +50,10 @@ namespace Falcor
             UnorderedAccess = 0x20, ///< The resource will be bound as an UAV
             RenderTarget = 0x40,    ///< The resource will be bound as a render-target
             DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
-            IndirectArg = 0x100     ///< The resource will be bound as an indirect argument buffer
+            IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
+#ifdef FALCOR_DXR
+            AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
+#endif
         };
 
         /** Resource types. Notice there are no array types. Array are controlled using the array size parameter on texture creation.
@@ -88,6 +91,10 @@ namespace Falcor
             Present,
             GenericRead,
             Predication,
+            NonPixelShader,
+#ifdef FALCOR_DXR
+            AccelerationStructure,
+#endif
         };
 
         using SharedPtr = std::shared_ptr<Resource>;

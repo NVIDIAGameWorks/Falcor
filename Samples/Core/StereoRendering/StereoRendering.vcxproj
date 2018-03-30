@@ -22,8 +22,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\StereoRendering.gs.glsl" />
-    <None Include="Data\StereoRendering.ps.glsl" />
     <None Include="Data\StereoRendering.ps.hlsl" />
   </ItemGroup>
   <ItemGroup>
@@ -32,7 +30,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\StereoRendering.vs.glsl" />
     <None Include="Data\StereoRendering.vs.hlsl">
       <FileType>Document</FileType>
     </None>

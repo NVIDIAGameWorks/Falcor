@@ -51,7 +51,7 @@ namespace Falcor
             mpDFGPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
 
             // Shared
-            mpVars = GraphicsVars::create(mpDiffuseLDPass->getProgram()->getActiveVersion()->getReflector());
+            mpVars = GraphicsVars::create(mpDiffuseLDPass->getProgram()->getReflector());
             mpSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
             mpVars->getDefaultBlock()->setSampler("gSampler", mpSampler);
 

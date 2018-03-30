@@ -141,16 +141,14 @@ namespace Falcor
             else
             {
                 defs.add("_OUTPUT_VERTEX_COUNT", std::to_string(3 * popcount(viewportMask)));
-#ifdef FALCOR_VK
-                gs = "Framework/Shaders/FullScreenPass.gs.glsl";
-#else
                 gs = "Framework/Shaders/FullScreenPass.gs.slang";
-#endif
             }
         }
 
-        const std::string vs(vsFile.empty() ? "Framework/Shaders/FullScreenPass.vs.slang" : vsFile);
-        mpProgram = GraphicsProgram::createFromFile(vs, psFile, gs, "", "", defs);
+        GraphicsProgram::Desc d;
+        d.addShaderLibrary(vsFile.empty() ? "Framework/Shaders/FullScreenPass.vs.slang" : vsFile).vsEntry("main").addShaderLibrary(psFile).psEntry("main");
+        if (gs.size()) d.addShaderLibrary(gs).gsEntry("main");
+        mpProgram = GraphicsProgram::create(d, defs);
         mpPipelineState->setProgram(mpProgram);
 
         if (FullScreenPass::spVertexBuffer == nullptr)

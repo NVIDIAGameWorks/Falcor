@@ -331,6 +331,24 @@ namespace Falcor
 #endif
     }
 
+    static ReflectionVar::Modifier getModifierFromPath(const ReflectionPath* pPath, SlangParameterCategory category)
+    {
+        ReflectionVar::Modifier mod = ReflectionVar::Modifier::None;
+        for (auto pp = pPath; pp; pp = pp->pParent)
+        {
+            if (pp->pVar)
+            {
+                const auto* pSlangMod = pp->pVar->findModifier(Modifier::ID::Shared);
+                if (pSlangMod)
+                {
+                    mod |= ReflectionVar::Modifier::Shared;
+                    break;
+                }
+            }
+        }
+        return mod;
+    }
+
     static size_t getRegisterIndexFromPath(const ReflectionPath* pPath, SlangParameterCategory category)
     {
         uint32_t offset = 0;
@@ -512,7 +530,8 @@ namespace Falcor
             uint32_t index = (uint32_t)getRegisterIndexFromPath(pPath, category);
             uint32_t space = getRegisterSpaceFromPath(pPath, category);
             uint32_t descOffset = getDescOffsetFromPath(pPath, max(1u, pType->getTotalArraySize()), category);
-            pVar = ReflectionVar::create(name, pType, index, descOffset, space);
+            ReflectionVar::Modifier modifier = getModifierFromPath(pPath, category);
+            pVar = ReflectionVar::create(name, pType, index, descOffset, space, modifier);
         }
         else
         {
@@ -600,9 +619,9 @@ namespace Falcor
         }
     }
 
-    ProgramReflection::SharedPtr ProgramReflection::create(slang::ShaderReflection* pSlangReflector, std::string& log)
+    ProgramReflection::SharedPtr ProgramReflection::create(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log)
     {
-        return SharedPtr(new ProgramReflection(pSlangReflector, log));
+        return SharedPtr(new ProgramReflection(pSlangReflector, scopeToReflect, log));
     }
 
     ProgramReflection::BindType getBindTypeFromSetType(DescriptorSet::Type type)
@@ -627,8 +646,75 @@ namespace Falcor
         }
     }
 
-    ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, std::string& log)
+    bool ParameterBlockReflection::merge(const ParameterBlockReflection* pOther)
     {
+        const auto& pOtherStruct = pOther->mpResourceVars;
+        for (uint32_t r = 0; r < pOtherStruct->getMemberCount(); r++)
+        {
+            const auto& pMember = pOtherStruct->getMember(r);
+            const auto& memberName = pMember->getName();
+            const auto& pMyMember = mpResourceVars->getMember(memberName);
+            if (pMyMember == nullptr)
+            {
+                addResource(pMember);
+            }
+            else
+            {
+                if (*pMyMember != *pMember)
+                {
+                    logError("Can't merge ParameterBlockReflection, one of the members has a different definition");
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    bool ProgramReflection::merge(const ProgramReflection* pOther)
+    {
+        bool defaultChanged = false;
+        for (uint32_t b = 0; b < pOther->getParameterBlockCount(); b++)
+        {
+            ParameterBlockReflection::SharedConstPtr pBlock = pOther->getParameterBlock(b);
+            const std::string& blockName = pBlock->getName();
+            // See if this block exists
+            if (mParameterBlocksIndices.find(blockName) == mParameterBlocksIndices.end())
+            {
+                // New block, just add it
+                addParameterBlock(pBlock);
+            }
+            else if (blockName == "")
+            {
+                // Default block
+                ParameterBlockReflection* pDefault = const_cast<ParameterBlockReflection*>(mpDefaultBlock.get());
+                if (pDefault->merge(pBlock.get()) == false)
+                {
+                    return false;
+                }
+                defaultChanged = true;
+            }
+            else
+            {
+                // The block declaration must match
+                uint32_t index = getParameterBlockIndex(blockName);
+                ParameterBlockReflection::SharedConstPtr pMyBlock = getParameterBlock(index);
+                if (*pMyBlock != *pBlock)
+                {
+                    logError("Can't merge ProgramReflection objects. ParameterBlock mismatch. Something bad will probably happen");
+                    return false;
+                }
+            }
+        }
+
+        if (defaultChanged) std::const_pointer_cast<ParameterBlockReflection>(mpDefaultBlock)->finalize();
+
+        return true;
+    }
+
+    ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log)
+    {
+        if (!pSlangReflector) return;
+
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::create("");
         for (uint32_t i = 0; i < pSlangReflector->getParameterCount(); i++)
         {
@@ -637,6 +723,10 @@ namespace Falcor
 
             // In GLSL, the varying (in/out) variables are reflected as globals. Ignore them, we will reflect them later
             if (pVar->getType()->unwrapArray()->asResourceType() == nullptr) continue;
+            auto varMod = pVar->getModifier();
+            
+            bool storeVar = is_set(varMod, ReflectionVar::Modifier::Shared) ? is_set(scopeToReflect, ResourceScope::Global) : is_set(scopeToReflect, ResourceScope::Local);
+            if (storeVar == false) continue;
 
             if (pSlangLayout->getType()->unwrapArray()->getKind() == TypeReflection::Kind::ParameterBlock)
             {
@@ -726,15 +816,13 @@ namespace Falcor
         mNameToIndex[pVar->getName()] = mMembers.size() - 1;
     }
 
-    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace)
+    ReflectionVar::SharedPtr ReflectionVar::create(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace, Modifier modifier)
     {
-        return SharedPtr(new ReflectionVar(name, pType, offset, descOffset, regSpace));
+        return SharedPtr(new ReflectionVar(name, pType, offset, descOffset, regSpace, modifier));
     }
 
-    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace) : mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace), mDescOffset(descOffset)
-    {
-
-    }
+    ReflectionVar::ReflectionVar(const std::string& name, const ReflectionType::SharedConstPtr& pType, size_t offset, uint32_t descOffset, uint32_t regSpace, Modifier modifier) :
+        mName(name), mpType(pType), mOffset(offset), mRegSpace(regSpace), mDescOffset(descOffset), mModifier(modifier) {}
 
     ParameterBlockReflection::SharedPtr ParameterBlockReflection::create(const std::string& name)
     {
@@ -958,7 +1046,7 @@ namespace Falcor
             }
         }
 
-        mSetLayouts.resize(sets.size());
+        mSetLayouts = SetLayoutVec(sets.size());
         for (uint32_t s = 0; s < sets.size(); s++)
         {
             const auto& src = sets[s];
@@ -1115,6 +1203,13 @@ namespace Falcor
         auto it = mNameToIndex.find(name);
         if (it == mNameToIndex.end()) return kInvalidOffset;
         return it->second;
+    }
+
+    const ReflectionVar::SharedConstPtr& ReflectionStructType::getMember(const std::string& name) const
+    {
+        static ReflectionVar::SharedConstPtr pNull;
+        size_t index = getMemberIndex(name);
+        return (index == kInvalidOffset) ? pNull : getMember(index);
     }
 
     const ReflectionResourceType* ReflectionType::asResourceType() const

@@ -16,9 +16,4 @@
       <Filter>Data</Filter>
     </FxCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\compute.glsl">
-      <Filter>Data</Filter>
-    </None>
-  </ItemGroup>
 </Project>

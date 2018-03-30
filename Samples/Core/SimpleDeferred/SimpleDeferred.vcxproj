@@ -14,7 +14,6 @@
     <ClCompile Include="SimpleDeferred.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Data\LightingPassCommon.h" />
     <ClInclude Include="SimpleDeferred.h" />
   </ItemGroup>
   <ItemGroup>
@@ -23,9 +22,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\DeferredPass.ps.glsl" />
     <None Include="Data\DeferredPass.ps.hlsl" />
-    <None Include="Data\LightingPass.ps.glsl" />
     <None Include="Data\LightingPass.ps.hlsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -258,7 +258,7 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
     drvX = drvX * scale.xy;
     drvY = drvY * scale.xy;
 
-#ifdef FALCOR_HLSL
+#ifdef FALCOR_D3D
     shadowPos.y = 1 - shadowPos.y;
 #endif
 

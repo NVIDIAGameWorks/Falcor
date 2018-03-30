@@ -283,16 +283,15 @@ namespace Falcor
     void CascadedShadowMaps::createDepthPassResources()
     {
         GraphicsProgram::Desc depthPassDesc;
-        depthPassDesc.sourceFile(kDepthPassFile);
-        depthPassDesc.entryPoint(ShaderType::Vertex, "vsMain");
-        depthPassDesc.entryPoint(ShaderType::Pixel, "psMain");
+        depthPassDesc.addShaderLibrary(kDepthPassFile);
+        depthPassDesc.vsEntry("vsMain").psEntry("psMain");
         GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(depthPassDesc);
         pProg->addDefine("_APPLY_PROJECTION");
         pProg->addDefine("TEST_ALPHA");
         pProg->addDefine("_ALPHA_CHANNEL", "a");
         mDepthPass.pState = GraphicsState::create();
         mDepthPass.pState->setProgram(pProg);
-        mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getActiveVersion()->getReflector());
+        mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getReflector());
     }
 
     void CascadedShadowMaps::createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight)
@@ -337,16 +336,14 @@ namespace Falcor
 
         // Create the shadows program
         GraphicsProgram::Desc shadowPassProgDesc;
-        shadowPassProgDesc.sourceFile(kShadowPassfile);
-        shadowPassProgDesc.entryPoint(ShaderType::Vertex, "vsMain");
-        shadowPassProgDesc.entryPoint(ShaderType::Geometry, "gsMain");
-        shadowPassProgDesc.entryPoint(ShaderType::Pixel, "psMain");
+        shadowPassProgDesc.addShaderLibrary(kShadowPassfile);
+        shadowPassProgDesc.vsEntry("vsMain").gsEntry("gsMain").psEntry("psMain");
         GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(shadowPassProgDesc, progDef);
         mShadowPass.pState = GraphicsState::create();
         mShadowPass.pState->setProgram(pProg);
         mShadowPass.pState->setDepthStencilState(nullptr);
         mShadowPass.pState->setFbo(mShadowPass.pFbo);
-        const auto& pReflector = pProg->getActiveVersion()->getReflector();
+        const auto& pReflector = pProg->getReflector();
         mShadowPass.pGraphicsVars = GraphicsVars::create(pReflector);
 
         const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
@@ -368,9 +365,8 @@ namespace Falcor
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
         mVisibilityPass.pState->setFbo(FboHelper::create2D(windowWidth, windowHeight, fboDesc));
-        mVisibilityPass.pGraphicsVars = GraphicsVars::create(mVisibilityPass.pPass->getProgram()->getActiveVersion()->getReflector());
+        mVisibilityPass.pGraphicsVars = GraphicsVars::create(mVisibilityPass.pPass->getProgram()->getReflector());
         mVisibilityPass.mVisualizeCascadesOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("visualizeCascades");
-        mVisibilityPass.mInvViewProjOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("invViewProj");
     }
 
     void CascadedShadowMaps::setCascadeCount(uint32_t cascadeCount)

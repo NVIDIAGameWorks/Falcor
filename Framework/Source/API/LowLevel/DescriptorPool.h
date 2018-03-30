@@ -29,7 +29,7 @@
 #include "Framework.h"
 #include <queue>
 #include "API/LowLevel/GpuFence.h"
-#include <queue>
+#include <functional>
 
 namespace Falcor
 {
