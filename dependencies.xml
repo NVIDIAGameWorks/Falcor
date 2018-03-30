@@ -29,8 +29,8 @@
         <package name="rapidjson" version="0.1" />
     </dependency>
     <dependency name="slang" linkPath="Framework/Externals/Slang">
-        <package name="slang" version="0.10.4" remotes="github-slang" />
-        <package name="slang" version="0.10.4" remotes="github-slang-linux" platforms="linux" />
+        <package name="slang" version="0.10.3" remotes="github-slang" />
+        <package name="slang" version="0.10.3" remotes="github-slang-linux" platforms="linux" />
     </dependency>
     <dependency name="glfw" linkPath="Framework/Externals/GLFW">
         <package name="glfw" version="3.2.1" platforms="win" />
