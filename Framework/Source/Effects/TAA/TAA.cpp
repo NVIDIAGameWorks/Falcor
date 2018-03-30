@@ -31,7 +31,7 @@ namespace Falcor
     void TemporalAA::createProgram()
     {
         mpProgram = FullScreenPass::create(kShaderFilename);
-        ProgramReflection::SharedConstPtr pReflector = mpProgram->getProgram()->getActiveVersion()->getReflector();
+        ProgramReflection::SharedConstPtr pReflector = mpProgram->getProgram()->getReflector();
         mpProgVars = GraphicsVars::create(pReflector);
         mpCB = mpProgVars->getConstantBuffer("PerFrameCB");
 

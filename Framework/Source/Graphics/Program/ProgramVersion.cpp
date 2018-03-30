@@ -41,7 +41,6 @@ namespace Falcor
     }
 
     ProgramVersion::SharedPtr ProgramVersion::create(
-        ProgramReflection::SharedPtr const& pReflector,
         const Shader::SharedPtr& pVS,
         const Shader::SharedPtr& pPS,
         const Shader::SharedPtr& pGS,
@@ -63,16 +62,10 @@ namespace Falcor
             return nullptr;
         }
 
-        pProgram->mpReflector = pReflector;
-        if (pProgram->mpReflector == nullptr)
-        {
-            return nullptr;
-        }
         return pProgram;
     }
 
     ProgramVersion::SharedPtr ProgramVersion::create(
-        ProgramReflection::SharedPtr const& pReflector,
         const Shader::SharedPtr& pCS,
         std::string& log,
         const std::string& name)
@@ -86,11 +79,6 @@ namespace Falcor
         SharedPtr pProgram = SharedPtr(new ProgramVersion(nullptr, nullptr, nullptr, nullptr, nullptr, pCS, name));
 
         if (pProgram->init(log) == false)
-        {
-            return nullptr;
-        }
-        pProgram->mpReflector = pReflector;
-        if (pProgram->mpReflector == nullptr)
         {
             return nullptr;
         }

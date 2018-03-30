@@ -210,7 +210,6 @@ namespace Falcor
             GraphicsVars::SharedPtr pGraphicsVars;
             Texture::SharedPtr pVisibilityMap;
             uint32_t mVisualizeCascadesOffset;
-            uint32_t mInvViewProjOffset;
         } mVisibilityPass;
 
         struct

@@ -38,6 +38,7 @@
 #include "API/Sampler.h"
 #include "API/RenderContext.h"
 #include "Utils/StringUtils.h"
+#include "ShaderLibrary.h"
 
 namespace Falcor
 {
@@ -48,70 +49,48 @@ namespace Falcor
         return pShader;
     }
 
-    Program::Desc::Desc()
-    {}
+    Program::Desc::Desc() = default;
 
     Program::Desc::Desc(std::string const& path)
     {
-        sourceFile(path);
+        addShaderLibrary(path);
     }
 
-    Program::Desc& Program::Desc::sourceFile(std::string const& path)
+    Program::Desc& Program::Desc::addShaderLibrary(std::string const& path)
     {
-        Source source;
-        source.kind = Source::Kind::File;
-        source.value = path;
-
-        activeSourceIndex = (int) mSources.size();
-        mSources.emplace_back(source);
-
-        return *this;
-    }
-
-    Program::Desc& Program::Desc::sourceString(std::string const& code)
-    {
-        Source source;
-        source.kind = Source::Kind::String;
-        source.value = code;
-
-        activeSourceIndex = (int) mSources.size();
-        mSources.emplace_back(source);
+        mActiveLibraryIndex = (int)mShaderLibraries.size();
+        mShaderLibraries.emplace_back(ShaderLibrary::create(path));
 
         return *this;
     }
 
     Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, std::string const& name)
     {
-        assert(activeSourceIndex >= 0);
-
         auto& entryPoint = mEntryPoints[int(shaderType)];
-        entryPoint.sourceIndex = activeSourceIndex;
         entryPoint.name = name;
+        if (name.size() == 0)
+        {
+            entryPoint.libraryIndex = -1;
+        }
+        else
+        {
+            assert(mActiveLibraryIndex >= 0);
+            if (entryPoint.libraryIndex != -1)
+            {
+                logWarning("Trying to set a " + to_string(shaderType) + " entry-point when one already exists. Overriding previous entry-point");
+            }
+            entryPoint.libraryIndex = mActiveLibraryIndex;
+            entryPoint.name = name;
+        }
 
         return *this;
-    }
-
-    Program::Desc& Program::Desc::maybeSourceFile(std::string const& path, ShaderType shaderType)
-    {
-        if(path.empty()) return *this;
-
-        return sourceFile(path).entryPoint(shaderType);
-    }
-
-    Program::Desc& Program::Desc::maybeSourceString(std::string const& code, ShaderType shaderType)
-    {
-        if(code.empty()) return *this;
-
-        return sourceString(code).entryPoint(shaderType);
     }
 
     Program::Desc& Program::Desc::addDefaultVertexShaderIfNeeded()
     {
         // Don't set default vertex shader if one was set already.
-        if(mEntryPoints[int(ShaderType::Vertex)].isValid())
-            return *this;
-
-        return sourceFile("DefaultVS.slang").entryPoint(ShaderType::Vertex, "defaultVS");
+        if (mEntryPoints[int(ShaderType::Vertex)].isValid()) return *this;
+        return addShaderLibrary("DefaultVS.slang").entryPoint(ShaderType::Vertex, "defaultVS");        
     }
 
     const std::string& Program::Desc::getShaderEntryPoint(ShaderType shaderType) const
@@ -120,15 +99,15 @@ namespace Falcor
         return mEntryPoints[(uint32_t)shaderType].isValid() ? mEntryPoints[(uint32_t)shaderType].name : s;
     }
 
-    const std::string& Program::Desc::getShaderSource(ShaderType shaderType) const
+    const ShaderLibrary::SharedPtr& Program::Desc::getShaderLibrary(ShaderType shaderType) const
     {
-        static std::string s;
+        static ShaderLibrary::SharedPtr pM;;
         const auto& e = mEntryPoints[(uint32_t)shaderType];
 
-        return e.isValid() ? mSources[e.sourceIndex].value : s;
+        return e.isValid() ? mShaderLibraries[e.libraryIndex] : pM;
     }
-    // Program
 
+    // Program
     std::vector<Program*> Program::sPrograms;
 
     Program::Program()
@@ -160,17 +139,15 @@ namespace Falcor
         std::string desc = "Program with Shaders:\n";
 
         int sourceCounter = 0;
-        for(auto source : mDesc.mSources)
+        for(auto pModule : mDesc.mShaderLibraries)
         {
             int sourceIndex = sourceCounter++;
 
-            desc += source.value;
+            desc += pModule->getFilename();
 
             for( auto entryPoint : mDesc.mEntryPoints )
             {
-                if(entryPoint.sourceIndex != sourceIndex)
-                    continue;
-
+                if(entryPoint.libraryIndex != sourceIndex) continue;
                 desc += "/*" + entryPoint.name + "*/";
             }
             desc += "\n";
@@ -335,28 +312,40 @@ namespace Falcor
         spAddBuiltins(getSlangSession(), name, text);
     }
 
-    static const char* getSlangTargetString(ShaderType type)
+    // Translation a Faclor `ShaderType` to the corresponding `SlangStage`
+    SlangStage getSlangStage(ShaderType type)
     {
-        // TODO: either pick these based on target API,
-        // or invent some API-neutral target names
-        switch (type)
+        switch(type)
         {
-        case ShaderType::Vertex:
-            return "vs_5_0";
-        case ShaderType::Pixel:
-            return "ps_5_0";
-        case ShaderType::Hull:
-            return "hs_5_0";
-        case ShaderType::Domain:
-            return "ds_5_0";
-        case ShaderType::Geometry:
-            return "gs_5_0";
-        case ShaderType::Compute:
-            return "cs_5_0";
+        case ShaderType::Vertex:        return SLANG_STAGE_VERTEX;
+        case ShaderType::Pixel:         return SLANG_STAGE_PIXEL;
+        case ShaderType::Geometry:      return SLANG_STAGE_GEOMETRY;
+        case ShaderType::Hull:          return SLANG_STAGE_HULL;
+        case ShaderType::Domain:        return SLANG_STAGE_DOMAIN;
+        case ShaderType::Compute:       return SLANG_STAGE_COMPUTE;
+#ifdef FALCOR_DXR
+        case ShaderType::RayGeneration: return SLANG_STAGE_RAY_GENERATION;
+        case ShaderType::Intersection:  return SLANG_STAGE_INTERSECTION;
+        case ShaderType::AnyHit:        return SLANG_STAGE_ANY_HIT;
+        case ShaderType::ClosestHit:    return SLANG_STAGE_CLOSEST_HIT;
+        case ShaderType::Miss:          return SLANG_STAGE_MISS;
+        case ShaderType::Callable:      return SLANG_STAGE_CALLABLE;
+#endif
         default:
             should_not_get_here();
-            return "";
+            return SLANG_STAGE_NONE;
         }
+    }
+
+    static const char* getSlangProfileString()
+    {
+#if defined FALCOR_VK
+        return "glsl_450";
+#elif defined FALCOR_D3D12
+        return "sm_5_1";
+#else
+#error unknown shader compilation target
+#endif
     }
 
     ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const
@@ -397,17 +386,20 @@ namespace Falcor
         // Pick the right target based on the current graphics API
 #ifdef FALCOR_VK
         spSetCodeGenTarget(slangRequest, SLANG_SPIRV);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_GLSL", "1");
-        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_GLSL;
+        spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
 #elif defined FALCOR_D3D12
+        spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
         // Note: we could compile Slang directly to DXBC (by having Slang invoke the MS compiler for us,
         // but that path seems to have more issues at present, so let's just go to HLSL instead...)
         spSetCodeGenTarget(slangRequest, SLANG_HLSL);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_HLSL", "1");
-        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
 #else
 #error unknown shader compilation target
 #endif
+
+        spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString()));
+
+        // We will always work with HLSL input, even when targetting Vulkan/SPIR-V
+        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
 
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
@@ -418,56 +410,23 @@ namespace Falcor
 
         // Now lets add all our input shader code, one-by-one
         int translationUnitsAdded = 0;
-        for(auto source : mDesc.mSources)
+        for(auto pLibrary : mDesc.mShaderLibraries)
         {
-            // In the case where the shader code is being loaded from a file,
-            // we may be able to use the file's extension to discover the
-            // language that the shader code is written in (rather than
-            // assuming it is a match for the target graphics API).
-            SlangSourceLanguage translationUnitSourceLanguage = sourceLanguage;
-            if( source.kind == Desc::Source::Kind::File )
+            // If this is not an HLSL or a SLANG file, display a warning
+            if (!hasSuffix(pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(pLibrary->getFilename(), ".slang", false))
             {
-                static const struct
-                {
-                    char const*         extension;
-                    SlangSourceLanguage language;
-                } kInferLanguageFromExtension[] = {
-                    { ".hlsl", SLANG_SOURCE_LANGUAGE_HLSL },
-                    { ".glsl", SLANG_SOURCE_LANGUAGE_GLSL },
-                    { ".slang", SLANG_SOURCE_LANGUAGE_SLANG },
-                    { nullptr, SLANG_SOURCE_LANGUAGE_UNKNOWN },
-                };
-                for( auto ii = kInferLanguageFromExtension; ii->extension; ++ii )
-                {
-                    if( hasSuffix(source.value, ii->extension) )
-                    {
-                        translationUnitSourceLanguage = ii->language;
-                        break;
-                    }
-                }
+                logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
             }
 
             // Register the translation unit with Slang
-            int translationUnitIndex = spAddTranslationUnit(slangRequest, translationUnitSourceLanguage, nullptr);
+            int translationUnitIndex = spAddTranslationUnit(slangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
             assert(translationUnitIndex == translationUnitsAdded);
             translationUnitsAdded++;
 
             // Add source code to the translation unit
-            if ( source.kind == Desc::Source::Kind::File )
-            {
-                std::string fullpath;
-                findFileInDataDirectories(source.value, fullpath);
-                spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
-            }
-            else
-            {
-                assert(source.kind == Desc::Source::Kind::String);
-                // Note: Slang would *like* for us to specify a logical path
-                // for the code, even when loading from a string, but
-                // we don't have that info so we just provide an empty string.
-                //
-                spAddTranslationUnitSourceString(slangRequest, translationUnitIndex, "", source.value.c_str());
-            }
+            std::string fullpath;
+            findFileInDataDirectories(pLibrary->getFilename(), fullpath);
+            spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
         }
 
         // Now we make a separate pass and add the entry points.
@@ -479,14 +438,14 @@ namespace Falcor
             auto& entryPoint = mDesc.mEntryPoints[i];
 
             // Skip unused entry points
-            if(entryPoint.sourceIndex < 0)
+            if(entryPoint.libraryIndex < 0)
                 continue;
 
             spAddEntryPoint(
                 slangRequest,
-                entryPoint.sourceIndex,
+                entryPoint.libraryIndex,
                 entryPoint.name.c_str(),
-                spFindProfile(slangSession, getSlangTargetString(ShaderType(i))));
+                getSlangStage(ShaderType(i)));
         }
 
         int anySlangErrors = spCompile(slangRequest);
@@ -506,7 +465,7 @@ namespace Falcor
             auto& entryPoint = mDesc.mEntryPoints[i];
 
             // Skip unused entry points
-            if(entryPoint.sourceIndex < 0)
+            if(entryPoint.libraryIndex < 0)
                 continue;
 
             int entryPointIndex = entryPointCounter++;
@@ -524,7 +483,9 @@ namespace Falcor
         }
 
         // Extract the reflection data
-        mPreprocessedReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), log);
+        mpReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::All, log);
+        mpLocalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Local, log);
+        mpGlobalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Global, log);
 
         // Extract list of files referenced, for dependency-tracking purposes
         int depFileCount = spGetDependencyFileCount(slangRequest);
@@ -556,14 +517,11 @@ namespace Falcor
 
         if (shaders[(uint32_t)ShaderType::Compute])
         {
-            return ProgramVersion::create(
-                mPreprocessedReflector,
-                shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
+            return ProgramVersion::create(shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
         }
         else
         {
             return ProgramVersion::create(
-                mPreprocessedReflector,
                 shaders[(uint32_t)ShaderType::Vertex],
                 shaders[(uint32_t)ShaderType::Pixel],
                 shaders[(uint32_t)ShaderType::Geometry],

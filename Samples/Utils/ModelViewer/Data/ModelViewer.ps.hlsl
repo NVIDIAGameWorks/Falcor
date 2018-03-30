@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 __import Shading;
+__import DefaultVS;
 
 cbuffer PerFrameCB : register(b0)
 {

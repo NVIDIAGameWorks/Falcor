@@ -602,8 +602,12 @@ namespace Falcor
             }
         }
 
-        pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
-
+#ifdef FALCOR_DXR
+        if(is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false)
+        {
+            pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
+        }
+#endif
         if (isUav)
         {
             if (pTypedBuffer) pTypedBuffer->setGpuCopyDirty();

@@ -26,13 +26,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\DepthPass.ps.slang" />
-    <None Include="Data\ForwardRenderer.ps.slang">
-      <FileType>Document</FileType>
-    </None>
-    <None Include="Data\ForwardRendererCommon.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\ForwardRenderer.vs.slang">
+    <None Include="Data\ForwardRenderer.slang">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

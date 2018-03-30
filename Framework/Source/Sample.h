@@ -116,6 +116,8 @@ namespace Falcor
         ArgList getArgList() override { return mArgList; }
         void setFixedTimeDelta(float newFixedTimeDelta) override { mFixedTimeDelta = newFixedTimeDelta; }
         float getFixedTimeDelta() override  { return mFixedTimeDelta; }
+        void freezeTime(bool timeFrozen) override { mFreezeTime = timeFrozen; }
+        bool isTimeFrozen() override { return mFreezeTime; }
         std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
         void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
         

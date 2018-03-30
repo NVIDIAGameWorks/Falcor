@@ -118,13 +118,12 @@ void Shadows::createScene(const std::string& filename)
 
     // Create the main effect
     GraphicsProgram::Desc lightingPassProgDesc;
-    lightingPassProgDesc.sourceFile("Shadows.slang");
-    lightingPassProgDesc.entryPoint(ShaderType::Vertex, "vsMain");
-    lightingPassProgDesc.entryPoint(ShaderType::Pixel, "psMain");
+    lightingPassProgDesc.addShaderLibrary("Shadows.slang");
+    lightingPassProgDesc.vsEntry("vsMain").psEntry("psMain");
     mLightingPass.pProgram = GraphicsProgram::create(lightingPassProgDesc);
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpScene->getLightCount()));
     mLightingPass.pProgram->addDefine("_LIGHT_INDEX", std::to_string(mControls.lightIndex));
-    mLightingPass.pProgramVars = GraphicsVars::create(mLightingPass.pProgram->getActiveVersion()->getReflector());
+    mLightingPass.pProgramVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
     ConstantBuffer::SharedPtr pCB = mLightingPass.pProgramVars->getConstantBuffer(0, 0, 0);
     mOffsets.visualizeCascades = static_cast<uint32_t>(pCB->getVariableOffset("visualizeCascades"));
 }
@@ -251,17 +250,17 @@ void Shadows::createVisualizationProgram()
     if(mControls.cascadeCount > 1)
     {
         mShadowVisualizer.pShadowMapProgram->getProgram()->addDefine("_USE_2D_ARRAY");
-        mShadowVisualizer.pShadowMapProgramVars = GraphicsVars::create(mShadowVisualizer.pShadowMapProgram->getProgram()->getActiveVersion()->getReflector());
+        mShadowVisualizer.pShadowMapProgramVars = GraphicsVars::create(mShadowVisualizer.pShadowMapProgram->getProgram()->getReflector());
         mOffsets.displayedCascade = static_cast<uint32_t>(mShadowVisualizer.pShadowMapProgramVars->getConstantBuffer("PerImageCB")->getVariableOffset("cascade"));
     }
     else
     {
-        mShadowVisualizer.pShadowMapProgramVars = GraphicsVars::create(mShadowVisualizer.pShadowMapProgram->getProgram()->getActiveVersion()->getReflector());
+        mShadowVisualizer.pShadowMapProgramVars = GraphicsVars::create(mShadowVisualizer.pShadowMapProgram->getProgram()->getReflector());
     }
 
     // Create the shadow visualizer for visibility buffers
     mShadowVisualizer.pVisibilityBufferProgram = FullScreenPass::create(kVisPixelShaderFile);
-    mShadowVisualizer.pVisibilityBufferProgramVars = GraphicsVars::create(mShadowVisualizer.pVisibilityBufferProgram->getProgram()->getActiveVersion()->getReflector());
+    mShadowVisualizer.pVisibilityBufferProgramVars = GraphicsVars::create(mShadowVisualizer.pVisibilityBufferProgram->getProgram()->getReflector());
 }
 
  void Shadows::onInitializeTesting(SampleCallbacks* pSample)

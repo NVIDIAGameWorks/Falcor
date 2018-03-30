@@ -141,6 +141,21 @@
 #include "Effects/ParticleSystem/ParticleSystem.h"
 #include "Effects/TAA/TAA.h"
 
+#ifdef FALCOR_DXR
+#include "Raytracing/RtModel.h"
+#include "Raytracing/RtScene.h"
+#include "Raytracing/RtShader.h"
+#include "Raytracing/RtProgram/RtProgram.h"
+#include "Raytracing/RtProgram/RtProgramVersion.h"
+#include "Raytracing/RtProgram/SingleShaderProgram.h"
+#include "Raytracing/RtProgram/HitProgram.h"
+#include "Raytracing/RtProgramVars.h"
+#include "Raytracing/RtState.h"
+#include "Raytracing/RtStateObject.h"
+#include "Raytracing/RtSample.h"
+#include "Raytracing/RtSceneRenderer.h"
+#endif
+
 #define FALCOR_MAJOR_VERSION 3
 #define FALCOR_MINOR_VERSION 0
 #define FALCOR_DEV_STAGE ""

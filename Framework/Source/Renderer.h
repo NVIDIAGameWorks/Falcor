@@ -111,6 +111,14 @@ namespace Falcor
             early shutdown requested by testing
         */
         virtual void onTestShutdown() = 0;
+
+        /** Stop the timer
+        */
+        virtual void freezeTime(bool timeFrozen) = 0;
+
+        /** Check if the clock is ticking
+        */
+        virtual bool isTimeFrozen() = 0;
     };
 
     class Renderer : std::enable_shared_from_this<Renderer>

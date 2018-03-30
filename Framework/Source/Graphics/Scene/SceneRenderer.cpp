@@ -98,10 +98,10 @@ namespace Falcor
         if (sCameraDataOffset == ConstantBuffer::kInvalidOffset)
         {
             const ReflectionVar* pVar = pBlock->getResource(kPerFrameCbName).get();
-            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
             if (pVar != nullptr)
             {
+                assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
                 const ReflectionType* pType = pVar->getType().get();
                 sCameraDataOffset = pType->findMember("gCamera.viewMat")->getOffset();
                 const auto& pCountOffset = pType->findMember("gLightsCount");

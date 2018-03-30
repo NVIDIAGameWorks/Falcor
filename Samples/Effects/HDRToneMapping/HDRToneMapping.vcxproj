@@ -86,20 +86,12 @@
     <ClInclude Include="HDRToneMapping.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\HDRToneMapping.ps.glsl" />
-    <None Include="Data\HDRToneMapping.vs.glsl" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\..\Framework\Source\Falcor.vcxproj">
       <Project>{3b602f0e-3834-4f73-b97d-7dfc91597a98}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Data\HDRToneMapping.ps.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="Data\HDRToneMapping.vs.hlsl">
+    <FxCompile Include="Data\HDRToneMapping.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
