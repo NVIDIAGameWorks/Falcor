@@ -37,7 +37,7 @@ namespace Falcor
 {
     const char* kDepthPassFile = "Effects/DepthPass.slang";
     const char* kShadowPassfile = "Effects/ShadowPass.slang";
-    const char* kVisibilityPassFile = "Effects/VisibilityPass.slang";
+    const char* kVisibilityPassFile = "Effects/VisibilityPass.ps.slang";
 
     const Gui::DropdownList kFilterList = {
         { (uint32_t)CsmFilterPoint, "Point" },
@@ -779,7 +779,7 @@ namespace Falcor
         }
     }
 
-    void CascadedShadowMaps::setup(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
+    Texture::SharedPtr CascadedShadowMaps::generateVisibilityBuffer(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
     {
         const glm::vec4 clearColor(0);
         pRenderCtx->clearFbo(mShadowPass.pFbo.get(), clearColor, 1, 0, FboAttachmentType::All);
@@ -825,6 +825,8 @@ namespace Falcor
         mVisibilityPass.pPass->execute(pRenderCtx);
         pRenderCtx->popGraphicsVars();
         pRenderCtx->popGraphicsState();
+
+        return mVisibilityPass.pState->getFbo()->getColorTexture(0);
     }
 
     void CascadedShadowMaps::setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName)

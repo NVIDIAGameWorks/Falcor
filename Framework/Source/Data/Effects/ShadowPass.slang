@@ -77,8 +77,7 @@ ShadowPassVSOut vsMain(VertexIn vIn)
     return vOut;
 }
 
-//Depth pass uses only the vertex shader so it doesn't define a cascade count. However, even without gs entry point defined 
-//leaving the [instace()] tag with an undefined macro causes slang to get an access violation and crash on link
+//This is just so it wont crash on link if _CASCADE_COUNT is not defined. 
 #ifndef _CASCADE_COUNT 
 #define _CASCADE_COUNT 1
 #endif

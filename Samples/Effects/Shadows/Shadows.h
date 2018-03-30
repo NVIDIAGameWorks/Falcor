@@ -102,6 +102,7 @@ private:
 
     static const std::string skDefaultScene;
     glm::uvec2 mWindowDimensions;
+    std::vector<Texture::SharedPtr> mpVisibilityBuffers;
 
     //Testing 
     void onInitializeTesting(SampleCallbacks* pSample) override;

@@ -58,6 +58,4 @@ private:
     RasterizerState::SharedPtr mpDefaultRS;
     RasterizerState::SharedPtr mpNoCullRS;
     RasterizerState::SharedPtr mpLastSetRs;
-
-
 };

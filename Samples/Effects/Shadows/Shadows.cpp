@@ -105,8 +105,10 @@ void Shadows::createScene(const std::string& filename)
         mpScene->getPath(0)->detachObject(mpScene->getActiveCamera());
     }
 
-    mpCsmTech.resize(mpScene->getLightCount());
-    for(uint32_t i = 0; i < mpScene->getLightCount(); i++)
+    auto lightCount = mpScene->getLightCount();
+    mpCsmTech.resize(lightCount);
+    mpVisibilityBuffers.resize(lightCount);
+    for(uint32_t i = 0; i < lightCount; i++)
     {
         mpCsmTech[i] = CascadedShadowMaps::create(2048, 2048, mWindowDimensions.x, mWindowDimensions.y, mpScene->getLight(i), mpScene, mControls.cascadeCount);
         mpCsmTech[i]->setFilterMode(CsmFilterHwPcf);
@@ -165,7 +167,7 @@ void Shadows::displayShadowMap(RenderContext* pContext)
 
 void Shadows::displayVisibilityBuffer(RenderContext* pContext)
 {
-    mShadowVisualizer.pVisibilityBufferProgramVars->setSrv(0, 0, 0, mpCsmTech[mControls.lightIndex]->getVisibilityBuffer()->getSRV());
+    mShadowVisualizer.pVisibilityBufferProgramVars->setSrv(0, 0, 0, mpVisibilityBuffers[mControls.lightIndex]->getSRV());
     pContext->pushGraphicsVars(mShadowVisualizer.pVisibilityBufferProgramVars);
     mShadowVisualizer.pVisibilityBufferProgram->execute(pContext);
     pContext->popGraphicsVars();
@@ -187,7 +189,7 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
             mPerFrameCBData.camVpAtLastCsmUpdate = mpScene->getActiveCamera()->getViewProjMatrix();
             for(uint32_t i = 0; i < mpCsmTech.size(); i++)
             {
-                mpCsmTech[i]->setup(pRenderContext.get(), mpScene->getActiveCamera().get(), nullptr);
+                mpVisibilityBuffers[i] = mpCsmTech[i]->generateVisibilityBuffer(pRenderContext.get(), mpScene->getActiveCamera().get(), nullptr);
             }
         }
 
@@ -195,7 +197,7 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
         for(uint32_t i = 0; i < mpCsmTech.size(); i++)
         {
             std::string var = "gVisibilityBuffers[" + std::to_string(i) + "]";
-            mLightingPass.pProgramVars->setTexture(var, mpCsmTech[i]->getVisibilityBuffer());
+            mLightingPass.pProgramVars->setTexture(var, mpVisibilityBuffers[i]);
         }
 
         if(mControls.debugMode == (uint32_t)DebugMode::ShadowMap)

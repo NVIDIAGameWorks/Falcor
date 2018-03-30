@@ -2222,13 +2222,13 @@
     <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
-    <None Include="Data\Effects\VisibilityPass.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
     <None Include="Data\Effects\ShadowPass.slang">
       <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Effects\DepthPass.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\VisibilityPass.ps.slang">
       <Filter>Data\Effects</Filter>
     </None>
   </ItemGroup>

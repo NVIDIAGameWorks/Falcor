@@ -57,6 +57,7 @@ private:
     {
         bool updateShadowMap = true;
         CascadedShadowMaps::UniquePtr pCsm;
+        Texture::SharedPtr pVisibilityBuffer;
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     };
     ShadowPass mShadowPass;
@@ -185,7 +186,6 @@ private:
         VisualizeCascades,
         Count
     };
-
 
     enum class SamplePattern : uint32_t
     {

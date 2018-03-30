@@ -28,7 +28,6 @@
 __import DefaultVS;
 __import Shading;
 __import ShaderCommon;
-__import Effects.CascadedShadowMap;
 
 cbuffer PerFrameCB : register(b0)
 {

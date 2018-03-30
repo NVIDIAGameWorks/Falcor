@@ -25,12 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import DefaultVS;
-__import Shading;
-__import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
-cbuffer PerFrameCB : register(b1)
+cbuffer PerFrameCB : register(b0)
 {
     CsmData gCsmData;
     bool visualizeCascades;
@@ -57,7 +54,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
     float depth = gDepth[texC * screenDimension].x;
     float3 posW = loadPosition(texC, depth);
 
-    float4 color = float4(0,0,0,1);
+    float4 color = float4(0,0,0,0);
     color.r = calcShadowFactor(gCsmData, depth, posW, ndcXy);
 
     if(visualizeCascades)

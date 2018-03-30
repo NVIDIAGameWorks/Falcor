@@ -335,7 +335,7 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     if (mControls[ControlID::EnableShadows].enabled)
     {
         pCB["camVpAtLastCsmUpdate"] = mShadowPass.camVpAtLastCsmUpdate;
-        mLightingPass.pVars->setTexture("gVisibilityBuffer", mShadowPass.pCsm->getVisibilityBuffer());
+        mLightingPass.pVars->setTexture("gVisibilityBuffer", mShadowPass.pVisibilityBuffer);
     }
 
     if (mAAMode == AAMode::TAA)
@@ -407,7 +407,7 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
         {
             pDepth = mpDepthPassFbo->getDepthStencilTexture();
         }
-        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? pDepth : nullptr);
+        mShadowPass.pVisibilityBuffer = mShadowPass.pCsm->generateVisibilityBuffer(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? pDepth : nullptr);
         pContext->flush();
     }
 }

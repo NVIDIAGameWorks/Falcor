@@ -1019,7 +1019,7 @@
     <None Include="Data\Effects\SkyBox.vs.slang" />
     <None Include="Data\Effects\SSAO.ps.slang" />
     <None Include="Data\Effects\ToneMapping.ps.slang" />
-    <None Include="Data\Effects\VisibilityPass.slang" />
+    <None Include="Data\Effects\VisibilityPass.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.vs.slang" />
     <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang" />

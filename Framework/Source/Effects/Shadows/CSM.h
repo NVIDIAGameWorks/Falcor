@@ -72,12 +72,12 @@ namespace Falcor
         */
         void renderUi(Gui* pGui, const char* uiGroup = nullptr);
 
-        /** Run the shadow-map generation pass
+        /** Run the shadow-map generation pass and the visibility pass. Returns the visibility buffer
             \params[in] pScene The scene to render
             \params[in] pCamera The camera that will be used to render the scene
             \params[in] pSceneDepthBuffer Valid only when SDSM is enabled. The depth map to run SDSM analysis on. If this is nullptr, SDSM will run a depth pass
         */
-        void setup(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pSceneDepthBuffer);
+        Texture::SharedPtr generateVisibilityBuffer(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pSceneDepthBuffer);
 
         /** Get the shadow map texture.
         */
@@ -145,13 +145,9 @@ namespace Falcor
         */
         bool isMeshCullingEnabled() const;
 
-        /** Return the visibility buffer, an eye view buffer of the shadow factor
-        */
-        Texture::SharedPtr getVisibilityBuffer() { return mVisibilityPass.pState->getFbo()->getColorTexture(0); }
-
         /** Enable saving cascade info into the gba channels of the visibility buffer
         */
-        void toggleCascadeVisualization(bool shouldVisualze) { mShouldVisualizeCascades = shouldVisualze; }
+        void toggleCascadeVisualization(bool shouldVisualze) { mVisibilityPassData.shouldVisualizeCascades = shouldVisualze; }
 
         /** Call on window resize, re-creates the window-size fbo used for the visibility buffer
         */
@@ -223,8 +219,8 @@ namespace Falcor
 
         struct
         {
-            //Int rather than bool so it takes up proper space for cb->setBlob
-            bool shouldVisualizeCascades = false;
+            //This is effectively a bool, but bool only takes up 1 byte which messes up setBlob
+            uint32_t shouldVisualizeCascades = 0u;
             int3 padding;
             glm::mat4 camInvViewProj;
             glm::uvec2 screenDim;
@@ -240,7 +236,6 @@ namespace Falcor
             bool stabilizeCascades = false;
         };
 
-        bool mShouldVisualizeCascades = false;
         int32_t renderCascade = 0;
         Controls mControls;
         CsmData mCsmData;
