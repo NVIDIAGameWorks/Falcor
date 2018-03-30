@@ -83,12 +83,6 @@ namespace Falcor
         */
         Texture::SharedPtr getShadowMap() const;
 
-        /** Set shadow map generation parameters into a program.
-            \param[in] pVars GraphicsVars of the program to set data into
-            \param[in] varName Name of the CsmData variable in the program
-        */
-        void setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName);
-
         /** Set number of cascade partitions.
         */
         void setCascadeCount(uint32_t cascadeCount);
@@ -161,6 +155,8 @@ namespace Falcor
         std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;
         std::shared_ptr<SceneRenderer> mpSceneRenderer;
 
+        // Set shadow map generation parameters into a program.
+        void setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName);
         vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer);
         void createDepthPassResources();
         void createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight);

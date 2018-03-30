@@ -895,7 +895,6 @@ namespace Falcor
     {
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
-        fboDesc.setDepthStencilTarget(ResourceFormat::D32Float);
         mVisibilityPass.pState->setFbo(FboHelper::create2D(newWidth, newHeight, fboDesc));
     }
 }
