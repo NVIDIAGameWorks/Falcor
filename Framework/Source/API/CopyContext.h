@@ -52,9 +52,13 @@ namespace Falcor
             GpuFence::SharedPtr mpFence;
             Buffer::SharedPtr mpBuffer;
             CopyContext::SharedPtr mpContext;
-//            D3D12_PLACED_SUBRESOURCE_FOOTPRINT mFootprint;
+#ifdef FALCOR_D3D12
             uint32_t mRowCount;
             ResourceFormat mTextureFormat;
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT mFootprint;
+#elif defined(FALCOR_VK)
+            size_t mDataSize;
+#endif
         };
 
         static SharedPtr create(CommandQueueHandle queue);

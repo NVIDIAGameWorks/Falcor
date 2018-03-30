@@ -221,26 +221,33 @@ namespace Falcor
         vkCmdCopyBufferToImage(mpLowLevelData->getCommandList(), pStaging->getApiHandle(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &vkCopy);
     }
 
-    std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext::SharedPtr pCtx, const Texture* pTexture, uint32_t subresourceIndex)
     {
-        mCommandsPending = true;
+        SharedPtr pThis = SharedPtr(new ReadTextureTask);
+        pThis->mpContext = pCtx;
+
         VkBufferImageCopy vkCopy;
-        Buffer::SharedPtr pStaging;
-        size_t dataSize = 0;
-        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pStaging, nullptr, dataSize);
+        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, pThis->mDataSize);
 
         // Execute the copy
-        resourceBarrier(pTexture, Resource::State::CopySource);
-        resourceBarrier(pStaging.get(), Resource::State::CopyDest);
-        vkCmdCopyImageToBuffer(mpLowLevelData->getCommandList(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pStaging->getApiHandle(), 1, &vkCopy);
+        pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
+        pCtx->resourceBarrier(pThis->mpBuffer.get(), Resource::State::CopyDest);
+        vkCmdCopyImageToBuffer(pCtx->getLowLevelData()->getCommandList(), pTexture->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pThis->mpBuffer->getApiHandle(), 1, &vkCopy);
 
-        flush(true);
+        // Create a fence and signal
+        pThis->mpFence = GpuFence::create();
+        pCtx->flush(false);
+        pThis->mpFence->gpuSignal(pCtx->getLowLevelData()->getCommandQueue());
 
+        return pThis;
+    }
+
+    std::vector<uint8_t> CopyContext::ReadTextureTask::getData()
+    {
         // Map and read the results
-        std::vector<uint8> result(dataSize);
-        uint8* pData = reinterpret_cast<uint8*>(pStaging->map(Buffer::MapType::Read));
-        std::memcpy(result.data(), pData, dataSize);
-
+        std::vector<uint8> result(mDataSize);
+        uint8* pData = reinterpret_cast<uint8*>(mpBuffer->map(Buffer::MapType::Read));
+        std::memcpy(result.data(), pData, mDataSize);
         return result;
     }
 
