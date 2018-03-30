@@ -190,7 +190,7 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 
         if(sampleOcclusion)
         {
-            sd.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, sampleOcclusion ? ChannelTypeTexture : ChannelTypeUnused);
+            sd.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, ChannelTypeTexture);
         }
     }
 
