@@ -374,6 +374,14 @@ void ForwardRenderer::renderTransparentObjects(RenderContext* pContext)
     mpState->setRasterizerState(nullptr);
 }
 
+void ForwardRenderer::resolveDepthMSAA(RenderContext* pContext)
+{
+    if (mAAMode == AAMode::MSAA)
+    {
+        pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    }
+}
+
 void ForwardRenderer::resolveMSAA(RenderContext* pContext)
 {
     if(mAAMode == AAMode::MSAA)
@@ -381,7 +389,6 @@ void ForwardRenderer::resolveMSAA(RenderContext* pContext)
         PROFILE(resolveMSAA);
         pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
         pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-        pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
     }
 }
 
@@ -391,7 +398,16 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
         mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
-        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), nullptr);//, mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
+        Texture::SharedPtr pDepth;
+        if (mAAMode == AAMode::MSAA)
+        {
+            pDepth = mpResolveFbo->getColorTexture(2);
+        }
+        else
+        {
+            pDepth = mpDepthPassFbo->getDepthStencilTexture();
+        }
+        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? pDepth : nullptr);
         pContext->flush();
     }
 }
@@ -454,13 +470,13 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
     if (mpSceneRenderer)
     {
         beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
-
         {
             PROFILE(updateScene);
             mpSceneRenderer->update(pSample->getCurrentTime());
         }
 
         depthPass(pRenderContext.get());
+        resolveDepthMSAA(pRenderContext.get()); // Only runs in MSAA mode
         shadowPass(pRenderContext.get());
         mpState->setFbo(mpMainFbo);
         renderSkyBox(pRenderContext.get());

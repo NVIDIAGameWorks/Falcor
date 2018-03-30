@@ -165,7 +165,8 @@ namespace Falcor
         std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;
         std::shared_ptr<SceneRenderer> mpSceneRenderer;
 
-        vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer);
+        vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer);
+        void createDepthPassResources();
         void createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight);
         void createVisibilityPassResources(uint32_t windowWidth, uint32_t windowHeight);
         void partitionCascades(const Camera* pCamera, const glm::vec2& distanceRange);
@@ -196,7 +197,7 @@ namespace Falcor
         };
         SdsmData mSdsmData;
         void createSdsmData(Texture::SharedPtr pTexture);
-        void reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer);
+        void reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer);
         void createVsmSampleState(uint32_t maxAnisotropy);
 
         GaussianBlur::UniquePtr mpGaussianBlur;
@@ -219,6 +220,15 @@ namespace Falcor
             uint32_t mVisualizeCascadesOffset;
             uint32_t mInvViewProjOffset;
         } mVisibilityPass;
+
+        struct
+        {
+            //Int rather than bool so it takes up proper space for cb->setBlob
+            bool shouldVisualizeCascades = false;
+            int3 padding;
+            glm::mat4 camInvViewProj;
+            glm::uvec2 screenDim;
+        } mVisibilityPassData;
 
         struct Controls
         {

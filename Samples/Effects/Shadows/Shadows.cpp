@@ -33,6 +33,7 @@ const Gui::DropdownList Shadows::skDebugModeList = {
     { (uint32_t)Shadows::DebugMode::ShadowMap, "Shadow Map" },
     { (uint32_t)Shadows::DebugMode::VisibilityBuffer, "Visibility Buffer" }
 };
+const std::string kVisPixelShaderFile = "VisualizeMap.slang";
 
 void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
@@ -55,6 +56,7 @@ void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     pGui->addCheckBox("Visualize Cascades", visualizeCascades);
     for (auto it = mpCsmTech.begin(); it != mpCsmTech.end(); ++it)
     {
+        //Tell csm objects whether or not to store cascade info in their visibility buffers
         (*it)->toggleCascadeVisualization(visualizeCascades);
     }
     mPerFrameCBData.visualizeCascades = visualizeCascades;
@@ -189,7 +191,7 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr p
             }
         }
 
-        // Put shadow data in program vars
+        // Put visibility buffers in program vars
         for(uint32_t i = 0; i < mpCsmTech.size(); i++)
         {
             std::string var = "gVisibilityBuffers[" + std::to_string(i) + "]";
@@ -242,8 +244,6 @@ void Shadows::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32
 
 void Shadows::createVisualizationProgram()
 {
-    const std::string kVisPixelShaderFile = "VisualizeMap.slang";
-
     // Create the shadow visualizer for shadow maps
     mShadowVisualizer.pShadowMapProgram = FullScreenPass::create(kVisPixelShaderFile);
     if(mControls.cascadeCount > 1)

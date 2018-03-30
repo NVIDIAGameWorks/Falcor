@@ -130,6 +130,8 @@ private:
     void shadowPass(RenderContext* pContext);
     void renderSkyBox(RenderContext* pContext);
     void lightingPass(RenderContext* pContext, Fbo* pTargetFbo);
+    //Need to resolve depth first to pass resolved depth to shadow pass
+    void resolveDepthMSAA(RenderContext* pContext);
     void resolveMSAA(RenderContext* pContext);
     void runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo);
     void postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);

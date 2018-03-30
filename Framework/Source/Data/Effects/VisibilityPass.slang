@@ -30,11 +30,6 @@ __import Shading;
 __import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
-cbuffer VsPerFrame : register(b0)
-{
-    float4x4 camVpAtLastCsmUpdate;
-};
-
 cbuffer PerFrameCB : register(b1)
 {
     CsmData gCsmData;
@@ -43,24 +38,7 @@ cbuffer PerFrameCB : register(b1)
     uint2 screenDimension;
 };
 
-struct ShadowsVSOut
-{
-    float4 posH : SV_POSITION;
-    float3 posW : POSITION;
-    float shadowsDepthC : DEPTH;
-};
-
 Texture2D gDepth;
-
-ShadowsVSOut vsMain(VertexIn vIn)
-{
-    ShadowsVSOut vOut;
-    float4 posW = mul(vIn.pos, getWorldMat(vIn));
-    vOut.posW = posW.xyz;
-    vOut.posH = mul(posW, gCamera.viewProjMat);
-    vOut.shadowsDepthC = mul(float4(vOut.posW, 1), camVpAtLastCsmUpdate).z;
-    return vOut;
-}
 
 float3 loadPosition(float2 UV, float depth)
 {

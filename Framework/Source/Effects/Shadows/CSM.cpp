@@ -219,17 +219,8 @@ namespace Falcor
             cascadeCount = 1;
         }
         mCsmData.cascadeCount = cascadeCount;
-        GraphicsProgram::Desc depthPassDesc;
-        depthPassDesc.sourceFile(kDepthPassFile);
-        depthPassDesc.entryPoint(ShaderType::Vertex, "vsMain");
-        depthPassDesc.entryPoint(ShaderType::Pixel, "psMain");
-        GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(depthPassDesc);
-        pProg->addDefine("_APPLY_PROJECTION");
-        pProg->addDefine("TEST_ALPHA");
-        pProg->addDefine("_ALPHA_CHANNEL", "a");
-        mDepthPass.pState = GraphicsState::create();
-        mDepthPass.pState->setProgram(pProg);
-        mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getActiveVersion()->getReflector());
+
+        createDepthPassResources();
         createShadowPassResources(mapWidth, mapHeight);
         createVisibilityPassResources(windowWidth, windowHeight);
 
@@ -287,6 +278,21 @@ namespace Falcor
         mSdsmData.height = pTexture->getHeight();
         mSdsmData.sampleCount = pTexture->getSampleCount();
         mSdsmData.minMaxReduction = ParallelReduction::create(ParallelReduction::Type::MinMax, mSdsmData.readbackLatency, mSdsmData.width, mSdsmData.height, mSdsmData.sampleCount);
+    }
+
+    void CascadedShadowMaps::createDepthPassResources()
+    {
+        GraphicsProgram::Desc depthPassDesc;
+        depthPassDesc.sourceFile(kDepthPassFile);
+        depthPassDesc.entryPoint(ShaderType::Vertex, "vsMain");
+        depthPassDesc.entryPoint(ShaderType::Pixel, "psMain");
+        GraphicsProgram::SharedPtr pProg = GraphicsProgram::create(depthPassDesc);
+        pProg->addDefine("_APPLY_PROJECTION");
+        pProg->addDefine("TEST_ALPHA");
+        pProg->addDefine("_ALPHA_CHANNEL", "a");
+        mDepthPass.pState = GraphicsState::create();
+        mDepthPass.pState->setProgram(pProg);
+        mDepthPass.pGraphicsVars = GraphicsVars::create(pProg->getActiveVersion()->getReflector());
     }
 
     void CascadedShadowMaps::createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight)
@@ -361,7 +367,6 @@ namespace Falcor
 
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
-        fboDesc.setDepthStencilTarget(ResourceFormat::D32Float);
         mVisibilityPass.pState->setFbo(FboHelper::create2D(windowWidth, windowHeight, fboDesc));
         mVisibilityPass.pGraphicsVars = GraphicsVars::create(mVisibilityPass.pPass->getProgram()->getActiveVersion()->getReflector());
         mVisibilityPass.mVisualizeCascadesOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("visualizeCascades");
@@ -733,17 +738,15 @@ namespace Falcor
         mShadowPass.pVSMTrilinearSampler = Sampler::create(samplerDesc);
     }
 
-    void CascadedShadowMaps::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
+    void CascadedShadowMaps::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer)
     {
         if(pDepthBuffer == nullptr)
         {
-            PROFILE(shadowDepthPass)
             // Run a shadow pass
             executeDepthPass(pRenderCtx, pCamera);
             pDepthBuffer = mDepthPass.pState->getFbo()->getDepthStencilTexture();
         }
 
-        PROFILE(SDSM)
         createSdsmData(pDepthBuffer);
         vec2 distanceRange = glm::vec2(mSdsmData.minMaxReduction->reduce(pRenderCtx, pDepthBuffer));
 
@@ -763,7 +766,7 @@ namespace Falcor
         }
     }
 
-    vec2 CascadedShadowMaps::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
+    vec2 CascadedShadowMaps::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer)
     {
         if(mControls.useMinMaxSdsm)
         {
@@ -792,48 +795,36 @@ namespace Falcor
         VP.height = mShadowPass.mapSize.x;
         VP.width = mShadowPass.mapSize.y;
 
-        //Shadow pass
-        {
-            PROFILE(internalShadowPass)
-            //Set shadow pass state
-            mShadowPass.pState->setViewport(0, VP);
-            mpCsmSceneRenderer->setDepthClamp(mControls.depthClamp);
-            pRenderCtx->pushGraphicsState(mShadowPass.pState);
-            partitionCascades(pCamera, distanceRange);
-            renderScene(pRenderCtx);
-        }
-
+        //Set shadow pass state
+        mShadowPass.pState->setViewport(0, VP);
+        mpCsmSceneRenderer->setDepthClamp(mControls.depthClamp);
+        pRenderCtx->pushGraphicsState(mShadowPass.pState);
+        partitionCascades(pCamera, distanceRange);
+        renderScene(pRenderCtx);
+        
         if(mCsmData.filterMode == CsmFilterVsm || mCsmData.filterMode == CsmFilterEvsm2 || mCsmData.filterMode == CsmFilterEvsm4)
         {
-            PROFILE(blur)
             mpGaussianBlur->execute(pRenderCtx, mShadowPass.pFbo->getColorTexture(0), mShadowPass.pFbo);
             mShadowPass.pFbo->getColorTexture(0)->generateMips(pRenderCtx);
         }
-
         pRenderCtx->popGraphicsState();
 
-        //Visibility pass
-        {
-            PROFILE(visibilityPass)
-            //Clear visibility buffer
-            auto pFbo = mVisibilityPass.pState->getFbo().get();
-            pRenderCtx->clearFbo(pFbo, glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
-            //Update Vars
-            mVisibilityPass.pGraphicsVars->setTexture("gDepth", mDepthPass.pState->getFbo()->getDepthStencilTexture());
-            setDataIntoGraphicsVars(mVisibilityPass.pGraphicsVars, "gCsmData");
-            auto pCb = mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB");
-            //TODO if works get cb once. or fix struct so can actually send as one blob
-            pCb->setBlob(&mShouldVisualizeCascades, mVisibilityPass.mVisualizeCascadesOffset, sizeof(bool));
-            pCb->setBlob(&pCamera->getInvViewProjMatrix(), mVisibilityPass.mInvViewProjOffset, sizeof(glm::mat4));
-            glm::uvec2 screenDim = glm::uvec2(pFbo->getWidth(), pFbo->getHeight());
-            pCb->setBlob(&screenDim, mVisibilityPass.mInvViewProjOffset + sizeof(glm::mat4), sizeof(glm::uvec2));
-            //Render visibility buffer
-            pRenderCtx->pushGraphicsState(mVisibilityPass.pState);
-            pRenderCtx->pushGraphicsVars(mVisibilityPass.pGraphicsVars);
-            mVisibilityPass.pPass->execute(pRenderCtx);
-            pRenderCtx->popGraphicsVars();
-            pRenderCtx->popGraphicsState();
-        }
+        //Clear visibility buffer
+        auto pFbo = mVisibilityPass.pState->getFbo().get();
+        pRenderCtx->clearFbo(pFbo, glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
+        //Update Vars
+        mVisibilityPass.pGraphicsVars->setTexture("gDepth", pDepthBuffer);
+        setDataIntoGraphicsVars(mVisibilityPass.pGraphicsVars, "gCsmData");
+        auto pCb = mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB");            
+        mVisibilityPassData.camInvViewProj = pCamera->getInvViewProjMatrix();
+        mVisibilityPassData.screenDim = glm::uvec2(pFbo->getWidth(), pFbo->getHeight());
+        pCb->setBlob(&mVisibilityPassData, mVisibilityPass.mVisualizeCascadesOffset, sizeof(mVisibilityPassData));
+        //Render visibility buffer
+        pRenderCtx->pushGraphicsState(mVisibilityPass.pState);
+        pRenderCtx->pushGraphicsVars(mVisibilityPass.pGraphicsVars);
+        mVisibilityPass.pPass->execute(pRenderCtx);
+        pRenderCtx->popGraphicsVars();
+        pRenderCtx->popGraphicsState();
     }
 
     void CascadedShadowMaps::setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName)
