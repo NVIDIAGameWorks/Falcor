@@ -43,6 +43,36 @@ namespace Falcor
     class ProgramVars;
     class ConstantBuffer;
 
+
+    /** Channel Layout For Different Shading Models
+        (Options listed in HostDeviceSharedMacros.h)
+
+        ShadingModelMetalRough
+            BaseColor
+                - RGB - Base Color
+                - A   - Transparency
+            Specular
+                - R - Occlusion
+                - G - Metalness
+                - B - Roughness
+                - A - Reserved
+
+        ShadingModelSpecGloss
+            BaseColor
+                - RGB - Diffuse Color
+                - A   - Transparency
+            Specular
+                - RGB - Specular Color
+                - A   - Gloss
+
+        Common for all shading models
+            Emissive
+                - RGB - Emissive Color
+                - A   - Unused
+            Normal
+                - 3-Channel standard normal map, or 2-Channel BC5 format
+    */
+
     class Material : public std::enable_shared_from_this<Material>
     {
     public:

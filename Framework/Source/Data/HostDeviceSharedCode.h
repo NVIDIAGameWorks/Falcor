@@ -103,11 +103,11 @@ struct CameraData
 *******************************************************************/
 struct MaterialResources
 {
-    // #TODO Update comments for different shading models
-    Texture2D baseColor;        // RGB - base color, A - transparency
-    Texture2D specular;         // RGB - specular color, A - roughness
-    Texture2D emissive;         // RGB - emissive color, A - unused
-    Texture2D normalMap;        // 2 or 3 channel normal map, depending on the type
+    // See Material.h for channel layout
+    Texture2D baseColor;
+    Texture2D specular;
+    Texture2D emissive;
+    Texture2D normalMap;
 
     // The following maps are not yet used by the material system
     Texture2D occlusionMap;     // Ambient occlusion map
