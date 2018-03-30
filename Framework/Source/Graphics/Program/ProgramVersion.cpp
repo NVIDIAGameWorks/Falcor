@@ -30,7 +30,8 @@
 
 namespace Falcor
 {
-    ProgramVersion::ProgramVersion(const Shader::SharedPtr& pVS, const Shader::SharedPtr& pPS, const Shader::SharedPtr& pGS, const Shader::SharedPtr& pHS, const Shader::SharedPtr& pDS, const Shader::SharedPtr& pCS, const std::string& name) : mName(name)
+    ProgramVersion::ProgramVersion(const ProgramReflection::SharedPtr& pReflector, const Shader::SharedPtr& pVS, const Shader::SharedPtr& pPS, const Shader::SharedPtr& pGS, const Shader::SharedPtr& pHS, const Shader::SharedPtr& pDS, const Shader::SharedPtr& pCS, const std::string& name) 
+        : mName(name), mpReflector(pReflector)
     {
         mpShaders[(uint32_t)ShaderType::Vertex] = pVS;
         mpShaders[(uint32_t)ShaderType::Pixel] = pPS;
@@ -41,6 +42,7 @@ namespace Falcor
     }
 
     ProgramVersion::SharedPtr ProgramVersion::create(
+        const ProgramReflection::SharedPtr& pReflector,
         const Shader::SharedPtr& pVS,
         const Shader::SharedPtr& pPS,
         const Shader::SharedPtr& pGS,
@@ -55,7 +57,7 @@ namespace Falcor
             log = "Program " + name + " doesn't contain a vertex-shader. This is illegal.";
             return nullptr;
         }
-        SharedPtr pProgram = SharedPtr(new ProgramVersion(pVS, pPS, pGS, pHS, pDS, nullptr, name));
+        SharedPtr pProgram = SharedPtr(new ProgramVersion(pReflector, pVS, pPS, pGS, pHS, pDS, nullptr, name));
 
         if(pProgram->init(log) == false)
         {
@@ -66,6 +68,7 @@ namespace Falcor
     }
 
     ProgramVersion::SharedPtr ProgramVersion::create(
+        const ProgramReflection::SharedPtr& pReflector,
         const Shader::SharedPtr& pCS,
         std::string& log,
         const std::string& name)
@@ -76,7 +79,7 @@ namespace Falcor
             log = "Program " + name + " doesn't contain a compute-shader. This is illegal.";
             return nullptr;
         }
-        SharedPtr pProgram = SharedPtr(new ProgramVersion(nullptr, nullptr, nullptr, nullptr, nullptr, pCS, name));
+        SharedPtr pProgram = SharedPtr(new ProgramVersion(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, pCS, name));
 
         if (pProgram->init(log) == false)
         {

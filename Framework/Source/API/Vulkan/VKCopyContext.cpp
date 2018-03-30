@@ -244,6 +244,11 @@ namespace Falcor
         return result;
     }
 
+    void CopyContext::uavBarrier(const Resource* pResource)
+    {
+        UNSUPPORTED_IN_VULKAN("uavBarrier");
+    }
+
     void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState)
     {
         if (pResource->getState() != newState)
