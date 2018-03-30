@@ -108,7 +108,7 @@ namespace Falcor
 
         /** Set the base color texture
         */
-        void setBaseColorTexture(Texture::SharedPtr& pDiffuse);
+        void setBaseColorTexture(Texture::SharedPtr& pBaseColor);
 
         /** Get the base color texture
         */
@@ -153,6 +153,14 @@ namespace Falcor
         /** Get the occlusion map
         */
         Texture::SharedPtr getOcclusionMap() const { return mData.resources.occlusionMap; }
+
+        /** Enable/Disable the occlusion map
+        */
+        void enableOcclusionMap(bool enable);
+
+        /** Get whether the occlusion map is enabled
+        */
+        bool isOcclusionMapEnabled() const;
 
         /** Set the light map
         */
@@ -262,14 +270,16 @@ namespace Falcor
         */
         ParameterBlock::SharedConstPtr getParameterBlock() const;
     private:
-        void updateDiffuseType();
+        void updateBaseColorType();
         void updateSpecularType();
         void updateEmissiveType();
+        void updateOcclusionFlag();
         void setIntoParameterBlock(ParameterBlock* pBlock) const;
         
         Material(const std::string& name);
         std::string mName;
         MaterialData mData;
+        bool mOcclusionMapEnabled = false;
         mutable bool mParamBlockDirty = true;
         ParameterBlock::SharedPtr mpParameterBlock;
         static uint32_t sMaterialCounter;

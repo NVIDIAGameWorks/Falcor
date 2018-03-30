@@ -119,8 +119,8 @@ struct MaterialResources
 struct MaterialData
 {
     float4 baseColor DEFAULTS(float4(1));
-    float4 specular  DEFAULTS(float4(1));
-    float3 emissive  DEFAULTS(float3(1));
+    float4 specular  DEFAULTS(float4(0));
+    float3 emissive  DEFAULTS(float3(0));
     float padf       DEFAULTS(0);
 
     float alphaThreshold DEFAULTS(0.5f); // Used in case the alpha mode is mask

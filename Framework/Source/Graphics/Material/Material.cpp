@@ -116,12 +116,12 @@ namespace Falcor
         mData.resources.samplerState = pSampler;
     }
 
-    void Material::setBaseColorTexture(Texture::SharedPtr& pDiffuse)
+    void Material::setBaseColorTexture(Texture::SharedPtr& pBaseColor)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.baseColor != pDiffuse);
-        mData.resources.baseColor = pDiffuse;
-        updateDiffuseType();
-        bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.baseColor != pBaseColor);
+        mData.resources.baseColor = pBaseColor;
+        updateBaseColorType();
+        bool hasAlpha = pBaseColor && doesFormatHasAlpha(pBaseColor->getFormat());
         setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
     }
 
@@ -143,7 +143,7 @@ namespace Falcor
     {
         mParamBlockDirty = mParamBlockDirty || (mData.baseColor != color);
         mData.baseColor = color;
-        updateDiffuseType();
+        updateBaseColorType();
     }
 
     void Material::setSpecularParams(const vec4& color)
@@ -168,7 +168,7 @@ namespace Falcor
         return ChannelTypeConst;
     }
 
-    void Material::updateDiffuseType()
+    void Material::updateBaseColorType()
     {
         mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.resources.baseColor != nullptr, mData.baseColor));
     }
@@ -181,6 +181,13 @@ namespace Falcor
     void Material::updateEmissiveType()
     {
         mData.flags = PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mData.resources.emissive != nullptr, mData.emissive));
+    }
+
+    void Material::updateOcclusionFlag()
+    {
+        bool hasMap = (mData.resources.occlusionMap != nullptr) || (EXTRACT_SHADING_MODEL(mData.flags) == ShadingModelMetalRough);
+        bool shouldEnable = mOcclusionMapEnabled && hasMap;
+        mData.flags = PACK_OCCLUSION_MAP(mData.flags, shouldEnable ? 1 : 0);
     }
 
     void Material::setNormalMap(Texture::SharedPtr pNormalMap)
@@ -211,8 +218,19 @@ namespace Falcor
     {
         mParamBlockDirty = mParamBlockDirty || (mData.resources.occlusionMap != pOcclusionMap);
         mData.resources.occlusionMap = pOcclusionMap;
-        mData.flags = PACK_OCCLUSION_MAP(mData.flags, pOcclusionMap ? 1 : 0);
         mParamBlockDirty = true;
+        updateOcclusionFlag();
+    }
+
+    void Material::enableOcclusionMap(bool enable)
+    {
+        mOcclusionMapEnabled = enable;
+        updateOcclusionFlag();
+    }
+
+    bool Material::isOcclusionMapEnabled() const
+    {
+        return mOcclusionMapEnabled;
     }
 
     void Material::setLightMap(Texture::SharedPtr pLightMap)
