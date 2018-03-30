@@ -117,14 +117,6 @@ namespace Falcor
 
     void RtSceneRenderer::setPerFrameData(RtProgramVars* pRtVars, InstanceData& data)
     {
-        GraphicsVars* pVars = data.currentData.pVars;
-        ParameterBlockReflection::BindLocation loc = pVars->getReflection()->getDefaultParameterBlock()->getResourceBinding("gRtScene");
-        if (loc.setIndex != ProgramReflection::kInvalidLocation)
-        {
-            RtScene* pRtScene = dynamic_cast<RtScene*>(mpScene.get());
-            pVars->getDefaultBlock()->setSrv(loc, 0, pRtScene->getTlasSrv(pRtVars->getHitProgramsCount()));
-        }
-
         SceneRenderer::setPerFrameData(data.currentData);
     }
 
@@ -137,7 +129,17 @@ namespace Falcor
     void RtSceneRenderer::setGlobalData(RtProgramVars* pRtVars, InstanceData& data)
     {
         data.currentData.pVars = pRtVars->getGlobalVars().get();
-        ConstantBuffer::SharedPtr pDxrPerFrame = data.currentData.pVars->getConstantBuffer("DxrPerFrame");
+
+        GraphicsVars* pVars = data.currentData.pVars;
+        ParameterBlockReflection::BindLocation loc = pVars->getReflection()->getDefaultParameterBlock()->getResourceBinding("gRtScene");
+        if (loc.setIndex != ProgramReflection::kInvalidLocation)
+        {
+            RtScene* pRtScene = dynamic_cast<RtScene*>(mpScene.get());
+            pVars->getDefaultBlock()->setSrv(loc, 0, pRtScene->getTlasSrv(pRtVars->getHitProgramsCount()));
+        }
+
+
+        ConstantBuffer::SharedPtr pDxrPerFrame = pVars->getConstantBuffer("DxrPerFrame");
         if (pDxrPerFrame)
         {
             pDxrPerFrame["hitProgramCount"] = pRtVars->getHitProgramsCount();
