@@ -265,7 +265,8 @@ namespace Falcor
         mpWindow->msgLoop();
 
         mpRenderer->onShutdown(this);
-        mpRenderer.release();
+        gpDevice->flushAndSync();
+        mpRenderer = nullptr;
         Logger::shutdown();
     }
 
