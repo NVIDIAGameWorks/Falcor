@@ -533,8 +533,8 @@ namespace Falcor
         }
 
         // Depth. No need to attach if the texture is null
-        ResourceFormat format = fboDesc.getDepthStencilFormat();
-        if(format != ResourceFormat::Unknown)
+        bool hasDepth = (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown);
+        if(hasDepth)
         {
             VkAttachmentDescription& depthDesc = infoOut.attachmentDescs[rtCount];
             regToAttachmentIndex.back() = rtCount;
@@ -553,28 +553,36 @@ namespace Falcor
 
         // Init Subpass info
         infoOut.subpassDescs.resize(1);
-        infoOut.attachmentRefs.resize(infoOut.attachmentDescs.size());
+        infoOut.attachmentRefs.resize(rtCount);
         VkSubpassDescription& subpassDesc = infoOut.subpassDescs[0];
 
         subpassDesc = {};
-        subpassDesc.colorAttachmentCount = rtCount;
 
         // Color attachments. This is where we create the indirection between the attachment in the RenderPass and the shader output-register index
+        uint32_t refIndex = 0;
         for (size_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
         {
-            VkAttachmentReference& ref = infoOut.attachmentRefs[i];
-            ref.attachment = regToAttachmentIndex[i];
-            ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            if(regToAttachmentIndex[i] != VK_ATTACHMENT_UNUSED)
+            {
+                VkAttachmentReference& ref = infoOut.attachmentRefs[refIndex++];
+                ref.attachment = regToAttachmentIndex[i];
+                ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            }
         }
 
         // Depth
-        VkAttachmentReference& depthRef = infoOut.attachmentRefs.back();
-        depthRef.attachment = regToAttachmentIndex.back();
-        depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        if(hasDepth)
+        {
+            VkAttachmentReference& depthRef = infoOut.attachmentRefs[refIndex++];
+            depthRef.attachment = regToAttachmentIndex.back();
+            depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        }
+        assert(refIndex == rtCount);
 
-        subpassDesc.colorAttachmentCount = Fbo::getMaxColorTargetCount();
-        subpassDesc.pColorAttachments = infoOut.attachmentRefs.data();
-        subpassDesc.pDepthStencilAttachment = &infoOut.attachmentRefs.back();
+        uint32_t colorCount = hasDepth ? rtCount - 1 : rtCount;
+        subpassDesc.colorAttachmentCount = colorCount;
+        subpassDesc.pColorAttachments = colorCount ? infoOut.attachmentRefs.data() : nullptr;
+        subpassDesc.pDepthStencilAttachment = hasDepth ? &infoOut.attachmentRefs.back() : nullptr;
 
         // Assemble RenderPass info
         infoOut.info = {};

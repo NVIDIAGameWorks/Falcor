@@ -129,7 +129,7 @@ namespace Falcor
 }
 
 #define DEFAULT_API_MAJOR_VERSION 1
-#define DEFAULT_API_MINOR_VERSION 0
+#define DEFAULT_API_MINOR_VERSION 1
 
 #define VK_FAILED(res) (res != VK_SUCCESS)
 
