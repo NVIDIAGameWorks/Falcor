@@ -83,8 +83,9 @@ namespace Falcor
         void setPendingCommands(bool commandsPending) { mCommandsPending = commandsPending; }
 
         /** Insert a resource barrier
+            if pViewInfo is nullptr, will transition the entire resource. Otherwise, it will only transition the subresource in the view
         */
-        virtual void resourceBarrier(const Resource* pResource, Resource::State newState);
+        virtual void resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo = nullptr);
 
         /** Insert a UAV barrier
         */

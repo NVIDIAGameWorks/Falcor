@@ -256,7 +256,7 @@ namespace Falcor
         UNSUPPORTED_IN_VULKAN("uavBarrier");
     }
 
-    void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState)
+    void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
     {
         if (pResource->getState() != newState)
         {
@@ -269,10 +269,10 @@ namespace Falcor
                 barrier.oldLayout = getImageLayout(pResource->mState);
                 barrier.image = pResource->getApiHandle();
                 barrier.subresourceRange.aspectMask = getAspectFlagsFromFormat(pTexture->getFormat());
-                barrier.subresourceRange.baseArrayLayer = 0;
-                barrier.subresourceRange.baseMipLevel = 0;
-                barrier.subresourceRange.layerCount = pTexture->getArraySize();
-                barrier.subresourceRange.levelCount = pTexture->getMipCount();
+                barrier.subresourceRange.baseArrayLayer = pViewInfo ? pViewInfo->firstArraySlice  : 0;
+                barrier.subresourceRange.baseMipLevel   = pViewInfo ? pViewInfo->mostDetailedMip  : 0;
+                barrier.subresourceRange.layerCount     = pViewInfo ? pViewInfo->arraySize        : pTexture->getArraySize();
+                barrier.subresourceRange.levelCount     = pViewInfo ? pViewInfo->mipCount         : pTexture->getMipCount();   
                 barrier.srcAccessMask = getAccessMask(pResource->mState);
                 barrier.dstAccessMask = getAccessMask(newState);
 

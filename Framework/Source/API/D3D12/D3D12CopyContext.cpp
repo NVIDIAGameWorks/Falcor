@@ -186,7 +186,7 @@ namespace Falcor
         return result;
     }
     
-    void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState)
+    void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
     {
         // If the resource is a buffer with CPU access, no need to do anything
         const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);

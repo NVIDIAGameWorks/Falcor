@@ -276,8 +276,8 @@ namespace Falcor
     void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uvec4& srcRect, const uvec4& dstRect, Sampler::Filter filter)
     {
         const Texture* pTexture = dynamic_cast<const Texture*>(pSrc->getResource());
-        resourceBarrier(pSrc->getResource(), Resource::State::CopySource);
-        resourceBarrier(pDst->getResource(), Resource::State::CopyDest);
+        resourceBarrier(pSrc->getResource(), Resource::State::CopySource, &pSrc->getViewInfo());
+        resourceBarrier(pDst->getResource(), Resource::State::CopyDest, &pDst->getViewInfo());
 
         if (pTexture && pTexture->getSampleCount() > 1)
         {
