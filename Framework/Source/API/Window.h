@@ -112,7 +112,9 @@ namespace Falcor
 
     private:
         friend class ApiCallbacks;
-        Window(ICallbacks * pCallbacks, uint32_t width, uint32_t height);
+        Window(ICallbacks* pCallbacks, uint32_t width, uint32_t height);
+
+        void checkWindowSize();
 
         GLFWwindow* mpGLFWWindow;
         ApiHandle mApiHandle;

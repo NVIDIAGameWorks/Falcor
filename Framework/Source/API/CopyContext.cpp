@@ -49,6 +49,7 @@ namespace Falcor
             mpLowLevelData->flush();
             mCommandsPending = false;
         }
+
         bindDescriptorHeaps();
 
         if (wait)
@@ -66,5 +67,16 @@ namespace Falcor
             subresourceCount *= 6;
         }
         updateTextureSubresources(pTexture, 0, subresourceCount, pData);
+    }
+
+    CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    {
+        return CopyContext::ReadTextureTask::create(shared_from_this(), pTexture, subresourceIndex);
+    }
+
+    std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    {
+        CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
+        return pTask->getData();
     }
 }

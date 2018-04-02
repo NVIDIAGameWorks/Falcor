@@ -68,8 +68,8 @@ namespace Falcor
 
                     // Execute
                     // TODO: Using 1D dispatch for simplicity, which limits us to 64k x 256 = 16M vertices with 256 in group size. Fix if needed.
+                    assert(pMesh->getVertexCount() <= 16*1024*1024);
                     uint32_t numGroups = (pMesh->getVertexCount() + kGroupSize - 1) / kGroupSize;
-                    assert(numGroups > 0 && numGroups <= D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION);
                     pRenderContext->dispatch(numGroups, 1, 1);
 
                     changed = true;
