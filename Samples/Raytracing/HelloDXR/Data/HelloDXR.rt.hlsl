@@ -73,7 +73,7 @@ bool checkLightHit(uint lightIndex, float3 origin)
     RayDesc ray;
     ray.Origin = origin;
     ray.Direction = normalize(direction);
-    ray.TMin = 0.01;
+    ray.TMin = 0.001;
     ray.TMax = max(0.01, length(direction));
 
     ShadowRayData rayData;
@@ -92,7 +92,7 @@ float3 getReflectionColor(float3 worldOrigin, VertexOut v, float3 worldRayDir, u
         RayDesc ray;
         ray.Origin = worldOrigin;
         ray.Direction = reflect(worldRayDir, v.normalW);
-        ray.TMin = 0.01;
+        ray.TMin = 0.001;
         ray.TMax = 100000;
         TraceRay(gRtScene, 0 /*rayFlags*/, 0xFF, 0 /* ray index*/, hitProgramCount, 0, ray, secondaryRay);
         reflectColor = secondaryRay.hitT == -1 ? 0 : secondaryRay.color.rgb;
