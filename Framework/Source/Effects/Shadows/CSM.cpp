@@ -462,8 +462,6 @@ namespace Falcor
                 const char* vsmGroup = "VSM/EVSM";
                 if (pGui->beginGroup(vsmGroup))
                 {
-
-
                     uint32_t newMaxAniso = mShadowPass.pVSMTrilinearSampler->getMaxAnisotropy();
                     pGui->addDropdown("Max Aniso", kMaxAniso, newMaxAniso);
                     {
