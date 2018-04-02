@@ -29,7 +29,7 @@
 
 static bool isMaterialTransparent(const Material* pMaterial)
 {
-    return pMaterial->getDiffuseColor().a < 1.0f;
+    return pMaterial->getBaseColor().a < 1.0f;
 }
 
 ForwardRendererSceneRenderer::ForwardRendererSceneRenderer(const Scene::SharedPtr& pScene) : SceneRenderer(pScene)

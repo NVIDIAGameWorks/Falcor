@@ -2300,20 +2300,20 @@
     <None Include="Data\Framework\Shaders\TextRenderer.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
+    <None Include="Data\Effects\ShadowPass.gs.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\ShadowPass.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\ShadowPass.vs.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
     <None Include="Data\Effects\SkyBox.slang">
       <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Framework\Shaders\SceneEditor.slang">
       <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Effects\ShadowPass.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\DepthPass.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\VisibilityPass.ps.slang">
-      <Filter>Data\Effects</Filter>
     </None>
   </ItemGroup>
 </Project>

@@ -1279,7 +1279,6 @@
     <None Include="..\Externals\GLM\glm\gtx\wrap.inl" />
     <None Include="Data\DefaultVS.slang" />
     <None Include="Data\Effects\CascadedShadowMap.slang" />
-    <None Include="Data\Effects\DepthPass.slang" />
     <None Include="Data\Effects\GaussianBlur.ps.slang" />
     <None Include="Data\Effects\LeanMapping.slang" />
     <None Include="Data\Effects\ParticleConstColor.ps.slang" />
@@ -1289,11 +1288,12 @@
     <None Include="Data\Effects\ParticleSort.cs.slang" />
     <None Include="Data\Effects\ParticleTexture.ps.slang" />
     <None Include="Data\Effects\ParticleVertex.vs.slang" />
-    <None Include="Data\Effects\ShadowPass.slang" />
+    <None Include="Data\Effects\ShadowPass.gs.slang" />
+    <None Include="Data\Effects\ShadowPass.ps.slang" />
+    <None Include="Data\Effects\ShadowPass.vs.slang" />
     <None Include="Data\Effects\SkyBox.slang" />
     <None Include="Data\Effects\SSAO.ps.slang" />
     <None Include="Data\Effects\ToneMapping.ps.slang" />
-    <None Include="Data\Effects\VisibilityPass.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.vs.slang" />
     <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang" />

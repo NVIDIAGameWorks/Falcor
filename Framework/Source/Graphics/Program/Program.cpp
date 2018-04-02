@@ -517,11 +517,12 @@ namespace Falcor
 
         if (shaders[(uint32_t)ShaderType::Compute])
         {
-            return ProgramVersion::create(shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
+            return ProgramVersion::create(mpReflector, shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
         }
         else
         {
             return ProgramVersion::create(
+                mpReflector,
                 shaders[(uint32_t)ShaderType::Vertex],
                 shaders[(uint32_t)ShaderType::Pixel],
                 shaders[(uint32_t)ShaderType::Geometry],

@@ -41,7 +41,6 @@ layout(binding = 0) cbuffer PerFrameCB : register(b0)
 };
 
 layout(set = 1, binding = 1) SamplerState gSampler;
-
 Texture2D gVisibilityBuffer;
 
 struct MainVsOut

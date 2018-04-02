@@ -97,9 +97,9 @@ namespace Falcor
         Material::SharedPtr pMaterial = Material::create("");
         if ( diffuseTexture )
         {
-            pMaterial->setDiffuseTexture(diffuseTexture);
+            pMaterial->setBaseColorTexture(diffuseTexture);
         }
-        pMaterial->setDiffuseColor(vec4(1));
+        pMaterial->setBaseColor(vec4(1));
         pMaterial = modelImporter.checkForExistingMaterial(pMaterial);
 
         // Calculate a bounding-box for this model

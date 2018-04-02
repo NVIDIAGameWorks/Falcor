@@ -37,7 +37,7 @@ ByteAddressBuffer gNormals      : register(t52);
 ByteAddressBuffer gBitangents   : register(t53);
 ByteAddressBuffer gPositions    : register(t54);
 ByteAddressBuffer gLightMapUVs  : register(t55);
-RaytracingAccelerationStructure gRtScene : register(t56);
+shared RaytracingAccelerationStructure gRtScene : register(t56);
 
 struct BuiltinIntersectionAttribs
 {

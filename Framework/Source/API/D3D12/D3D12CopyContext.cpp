@@ -185,17 +185,6 @@ namespace Falcor
         mpBuffer->unmap();
         return result;
     }
-
-    CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
-    {
-        return CopyContext::ReadTextureTask::create(shared_from_this(), pTexture, subresourceIndex);
-    }
-
-    std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
-    {
-        CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
-        return pTask->getData();
-    }
     
     void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState)
     {

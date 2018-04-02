@@ -23,7 +23,7 @@
         <package name="freeimage" version="3.17.0" platforms="win" />
     </dependency>
     <dependency name="vulkansdk" linkPath="Framework/Externals/VulkanSDK">
-        <package name="vulkansdk" version="1.0.51.0" platforms="win"/>
+        <package name="vulkansdk" version="1.1.70.1" platforms="win"/>
     </dependency>
     <dependency name="rapidjson" linkPath="Framework/Externals/RapidJson">
         <package name="rapidjson" version="0.1" />
@@ -36,7 +36,7 @@
         <package name="glfw" version="3.2.1" platforms="win" />
     </dependency>
     <dependency name="falcor_media" linkPath="Media">
-        <package name="falcor_media" version="2.0" />
+        <package name="falcor_media" version="2.1" />
     </dependency>
     <dependency name="DXR" linkPath="Framework/Externals/DXR">
         <package name="DXR" version="0.09.01" />
