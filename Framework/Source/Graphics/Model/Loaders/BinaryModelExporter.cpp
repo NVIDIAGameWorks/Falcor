@@ -91,7 +91,7 @@ namespace Falcor
         switch(map)
         {
         case TextureType_Diffuse:
-            return pMaterial->getDiffuseTexture();
+            return pMaterial->getBaseColorTexture();
         case TextureType_Normal:
             return pMaterial->getNormalMap();
         case TextureType_Specular:
@@ -235,7 +235,7 @@ namespace Falcor
 
             // Write all material textures
             const auto& pMaterial = mpModel->getMesh(meshID)->getMaterial();
-            succeeded &= writeMaterialTexture(texID, pMaterial->getDiffuseTexture());
+            succeeded &= writeMaterialTexture(texID, pMaterial->getBaseColorTexture());
             succeeded &= writeMaterialTexture(texID, pMaterial->getSpecularTexture());
             succeeded &= writeMaterialTexture(texID, pMaterial->getEmissiveTexture());
             succeeded &= writeMaterialTexture(texID, pMaterial->getNormalMap());
@@ -316,9 +316,9 @@ namespace Falcor
         const auto pMaterial = pMesh->getMaterial();
 
         glm::vec3 ambient(0,0,0);
-        glm::vec4 diffuse = pMaterial->getDiffuseColor();
-        glm::vec3 specular = vec3(pMaterial->getSpecularColor());
-        float glossiness = pMaterial->getSpecularColor().a;
+        glm::vec4 diffuse = pMaterial->getBaseColor();
+        glm::vec3 specular = vec3(pMaterial->getSpecularParams());
+        float glossiness = pMaterial->getSpecularParams().a;
 
         mStream << ambient << diffuse << specular << glossiness;
 

@@ -36,7 +36,7 @@
         <package name="glfw" version="3.2.1" platforms="win" />
     </dependency>
     <dependency name="falcor_media" linkPath="Media">
-        <package name="falcor_media" version="2.0" />
+        <package name="falcor_media" version="2.1" />
     </dependency>
     <dependency name="DXR" linkPath="Framework/Externals/DXR">
         <package name="DXR" version="0.09.01" />

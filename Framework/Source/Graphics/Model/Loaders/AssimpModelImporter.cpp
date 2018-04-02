@@ -214,7 +214,7 @@ namespace Falcor
         switch (type)
         {
         case aiTextureType_DIFFUSE:
-            pMaterial->setDiffuseTexture(pTexture);
+            pMaterial->setBaseColorTexture(pTexture);
             break;
         case aiTextureType_SPECULAR:
             pMaterial->setSpecularTexture(pTexture);
@@ -337,9 +337,9 @@ namespace Falcor
         float opacity;
         if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
         {
-            vec4 diffuse = pMaterial->getDiffuseColor();
+            vec4 diffuse = pMaterial->getBaseColor();
             diffuse.a = opacity;
-            pMaterial->setDiffuseColor(diffuse);
+            pMaterial->setBaseColor(diffuse);
         }
 
         // Bump scaling
@@ -354,9 +354,9 @@ namespace Falcor
         float shininess;
         if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
         {
-            vec4 spec = pMaterial->getSpecularColor();
+            vec4 spec = pMaterial->getSpecularParams();
             spec.a = shininess;
-            pMaterial->setSpecularColor(spec);
+            pMaterial->setSpecularParams(spec);
         }
 
         // Refraction
@@ -367,15 +367,15 @@ namespace Falcor
         aiColor3D color;
         if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
         {
-            vec4 diffuse = vec4(color.r, color.g, color.b, pMaterial->getDiffuseColor().a);
-            pMaterial->setDiffuseColor(diffuse);
+            vec4 diffuse = vec4(color.r, color.g, color.b, pMaterial->getBaseColor().a);
+            pMaterial->setBaseColor(diffuse);
         }
 
         // Specular color
         if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS)
         {
-            vec4 specular = vec4(color.r, color.g, color.b, pMaterial->getSpecularColor().a);
-            pMaterial->setSpecularColor(specular);
+            vec4 specular = vec4(color.r, color.g, color.b, pMaterial->getSpecularParams().a);
+            pMaterial->setSpecularParams(specular);
         }
 
         // Emissive color
@@ -385,7 +385,7 @@ namespace Falcor
             pMaterial->setEmissiveColor(emissive);
             if (isObjFile && luminance(emissive) > 0)
             {
-                pMaterial->setEmissiveTexture(pMaterial->getDiffuseTexture());
+                pMaterial->setEmissiveTexture(pMaterial->getBaseColorTexture());
             }
         }
         // Double-Sided

@@ -140,9 +140,9 @@ namespace Falcor
                 float alphaThreshold = currentData.pMaterial->getAlphaThreshold();
                 auto& pDefaultBlock = currentData.pContext->getGraphicsVars()->getDefaultBlock();
                 pDefaultBlock->getConstantBuffer(mBindLocations.alphaCB, 0)->setBlob(&alphaThreshold, 0u, sizeof(float));
-                if(currentData.pMaterial->getDiffuseTexture())
+                if(currentData.pMaterial->getBaseColorTexture())
                 {
-                    pDefaultBlock->setSrv(mBindLocations.alphaMap, 0, currentData.pMaterial->getDiffuseTexture()->getSRV());
+                    pDefaultBlock->setSrv(mBindLocations.alphaMap, 0, currentData.pMaterial->getBaseColorTexture()->getSRV());
                 }
                 else
                 {
