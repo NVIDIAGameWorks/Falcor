@@ -86,7 +86,6 @@ private:
 
     struct ShadowOffsets
     {
-        uint32_t visualizeCascades;
         uint32_t displayedCascade;
     } mOffsets;  
 

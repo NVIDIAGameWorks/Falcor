@@ -125,7 +125,6 @@ void Shadows::createScene(const std::string& filename)
     mLightingPass.pProgram->addDefine("_LIGHT_INDEX", std::to_string(mControls.lightIndex));
     mLightingPass.pProgramVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
     ConstantBuffer::SharedPtr pCB = mLightingPass.pProgramVars->getConstantBuffer(0, 0, 0);
-    mOffsets.visualizeCascades = static_cast<uint32_t>(pCB->getVariableOffset("visualizeCascades"));
 }
 
 void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -144,7 +143,7 @@ void Shadows::runMainPass(RenderContext* pContext)
 
     //vars
     ConstantBuffer::SharedPtr pPerFrameCB = mLightingPass.pProgramVars->getConstantBuffer(0, 0, 0);
-    pPerFrameCB->setBlob(&mPerFrameCBData, mOffsets.visualizeCascades, sizeof(mPerFrameCBData));
+    pPerFrameCB->setBlob(&mPerFrameCBData, 0, sizeof(mPerFrameCBData));
     pContext->pushGraphicsVars(mLightingPass.pProgramVars);
     
     mpRenderer->renderScene(pContext);

@@ -1538,12 +1538,6 @@
     <ClInclude Include="API\Vulkan\VKState.h">
       <Filter>API\Vulkan</Filter>
     </ClInclude>
-    <ClInclude Include="Data\Effects\CsmData.h">
-      <Filter>Data\Effects</Filter>
-    </ClInclude>
-    <ClInclude Include="Data\Effects\SSAOData.h">
-      <Filter>Data\Effects</Filter>
-    </ClInclude>
     <ClInclude Include="Data\Effects\ParticleData.h">
       <Filter>Data\Effects\Particles</Filter>
     </ClInclude>
@@ -1558,9 +1552,6 @@
     </ClInclude>
     <ClInclude Include="API\QueryHeap.h">
       <Filter>API</Filter>
-    </ClInclude>
-    <ClInclude Include="Data\Effects\LeanMapData.hlsli">
-      <Filter>Data\Effects</Filter>
     </ClInclude>
     <ClInclude Include="Effects\TAA\TAA.h">
       <Filter>Effects\TAA</Filter>
@@ -1686,6 +1677,12 @@
     </ClInclude>
     <ClInclude Include="Graphics\Program\ShaderLibrary.h">
       <Filter>Graphics\Program</Filter>
+    </ClInclude>
+    <ClInclude Include="Data\Effects\CsmData.h">
+      <Filter>Data\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="Data\Effects\SSAOData.h">
+      <Filter>Data\Effects</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2219,18 +2216,6 @@
     <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
-    <None Include="Data\Effects\GaussianBlur.ps.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\ParticleConstColor.ps.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\SSAO.ps.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\ToneMapping.ps.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
     <None Include="Data\Effects\ParticleEmit.cs.slang">
       <Filter>Data\Effects\Particles</Filter>
     </None>
@@ -2261,17 +2246,8 @@
     <None Include="Data\HostDeviceData.slang">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\Effects\LeanMapping.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
-    <None Include="Data\Effects\CascadedShadowMap.slang">
-      <Filter>Data\Effects</Filter>
-    </None>
     <None Include="Data\Framework\Shaders\ParallelReduction.ps.slang">
       <Filter>Data\Framework\Shaders</Filter>
-    </None>
-    <None Include="Data\Effects\TAA.ps.slang">
-      <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang">
       <Filter>Data\Framework\Shaders</Filter>
@@ -2300,20 +2276,41 @@
     <None Include="Data\Framework\Shaders\TextRenderer.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>
-    <None Include="Data\Effects\ShadowPass.gs.slang">
+    <None Include="Data\Framework\Shaders\SceneEditor.slang">
+      <Filter>Data\Framework\Shaders</Filter>
+    </None>
+    <None Include="Data\Effects\CascadedShadowMap.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\Effects\ShadowPass.ps.slang">
+    <None Include="Data\Effects\DepthPass.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\Effects\ShadowPass.vs.slang">
+    <None Include="Data\Effects\GaussianBlur.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\LeanMapping.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\ParticleConstColor.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\ShadowPass.slang">
       <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Effects\SkyBox.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\Framework\Shaders\SceneEditor.slang">
-      <Filter>Data\Framework\Shaders</Filter>
+    <None Include="Data\Effects\SSAO.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\TAA.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\ToneMapping.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\VisibilityPass.ps.slang">
+      <Filter>Data\Effects</Filter>
     </None>
   </ItemGroup>
 </Project>

@@ -915,7 +915,6 @@
     <ClInclude Include="API\Window.h" />
     <ClInclude Include="ArgList.h" />
     <ClInclude Include="Data\Effects\CsmData.h" />
-    <ClInclude Include="Data\Effects\LeanMapData.hlsli" />
     <ClInclude Include="Data\Effects\ParticleData.h" />
     <ClInclude Include="Data\Effects\SSAOData.h" />
     <ClInclude Include="Data\HlslGlslCommon.h" />
@@ -1279,6 +1278,7 @@
     <None Include="..\Externals\GLM\glm\gtx\wrap.inl" />
     <None Include="Data\DefaultVS.slang" />
     <None Include="Data\Effects\CascadedShadowMap.slang" />
+    <None Include="Data\Effects\DepthPass.slang" />
     <None Include="Data\Effects\GaussianBlur.ps.slang" />
     <None Include="Data\Effects\LeanMapping.slang" />
     <None Include="Data\Effects\ParticleConstColor.ps.slang" />
@@ -1288,12 +1288,12 @@
     <None Include="Data\Effects\ParticleSort.cs.slang" />
     <None Include="Data\Effects\ParticleTexture.ps.slang" />
     <None Include="Data\Effects\ParticleVertex.vs.slang" />
-    <None Include="Data\Effects\ShadowPass.gs.slang" />
-    <None Include="Data\Effects\ShadowPass.ps.slang" />
-    <None Include="Data\Effects\ShadowPass.vs.slang" />
+    <None Include="Data\Effects\ShadowPass.slang" />
     <None Include="Data\Effects\SkyBox.slang" />
     <None Include="Data\Effects\SSAO.ps.slang" />
+    <None Include="Data\Effects\TAA.ps.slang" />
     <None Include="Data\Effects\ToneMapping.ps.slang" />
+    <None Include="Data\Effects\VisibilityPass.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.ps.slang" />
     <None Include="Data\Framework\Shaders\Blit.vs.slang" />
     <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang" />
@@ -1313,12 +1313,9 @@
     <None Include="ShadingUtils\Raytracing.slang" />
     <None Include="ShadingUtils\Shading.slang" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\Effects\TAA.ps.slang">
-      <FileType>Document</FileType>
-    </None>
-  </ItemGroup>
-  <PropertyGroup> <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck> </PropertyGroup>
+  <PropertyGroup>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+  </PropertyGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3B602F0E-3834-4F73-B97D-7DFC91597A98}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
