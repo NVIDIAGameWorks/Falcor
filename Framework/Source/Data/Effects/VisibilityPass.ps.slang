@@ -41,8 +41,12 @@ float3 loadPosition(float2 UV, float depth)
 {
     float2 invSize = 1.0f / screenDimension.xy;
     // Recompute position by unprojecting the depth stored in the z-buffer 
-    float2 ndc = 2.0f * UV + invSize - 1; // y still value needs to be negated after this line
-    float4 wsPos = mul(float4(ndc.x, -ndc.y, depth, 1.f), invViewProj);
+    float2 ndc = 2 * UV + invSize - 1;
+    // Need to invert the y. For Vulkan, the clip-space is inverted, so no need to do anything
+#ifdef FALCOR_D3D
+    ndc.y = -ndc.y;
+#endif
+    float4 wsPos = mul(float4(ndc.x, ndc.y, depth, 1.f), invViewProj);
     return wsPos.xyz / wsPos.w;
 }
 
