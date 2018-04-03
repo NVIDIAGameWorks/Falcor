@@ -70,7 +70,7 @@ namespace Falcor
         }
         IDxcOperationResultPtr pResult;
         std::wstring entryPoint = string_2_wstring(entryPointName);
-        d3d_call(pCompiler->Compile(pTextBlob, L"RT Shader", L"", L"lib_6_1", argv.size() ? argv.data() : nullptr, (uint32_t)argv.size(), nullptr, 0, nullptr, &pResult));
+        d3d_call(pCompiler->Compile(pTextBlob, L"RT Shader", L"", L"lib_6_3", argv.size() ? argv.data() : nullptr, (uint32_t)argv.size(), nullptr, 0, nullptr, &pResult));
 
         // Verify the result
         HRESULT resultCode;
