@@ -44,7 +44,7 @@ namespace Falcor
         mpLowLevelData = LowLevelContextData::create(LowLevelContextData::CommandQueueType::Direct, nullptr);
         mpList = RtVarsCmdList::create();
         ID3D12GraphicsCommandList* pList = mpList.get();
-//        mpLowLevelData->setCommandList(pList);
+        mpLowLevelData->setCommandList(pList);
     }
 
     RtVarsContext::~RtVarsContext()

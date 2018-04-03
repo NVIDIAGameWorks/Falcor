@@ -56,6 +56,9 @@ namespace Falcor
         GpuFence::SharedPtr getFence() const { return mpFence; }
         LowLevelContextApiData* getApiData() const { return mpApiData; }
 
+#ifdef FALCOR_DXR
+        void setCommandList(CommandListHandle pList) { mpList = pList; }
+#endif
     protected:
 
         LowLevelContextData() = default;
