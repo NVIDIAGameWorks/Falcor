@@ -35,7 +35,7 @@ namespace Falcor
 
     struct ResourceViewInfo
     {
-        ResourceViewInfo();
+        ResourceViewInfo() = default;
         ResourceViewInfo(uint32_t mostDetailedMip_, uint32_t mipCount_, uint32_t firstArraySlice_, uint32_t arraySize_) : mostDetailedMip(mostDetailedMip_), mipCount(mipCount_), firstArraySlice(firstArraySlice_), arraySize(arraySize_) {}
         uint32_t mostDetailedMip = 0;
         uint32_t mipCount = kMaxPossible;

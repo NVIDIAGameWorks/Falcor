@@ -51,7 +51,7 @@ namespace Falcor
         }
         mpLowLevelData->getCommandList()->SetDescriptorHeaps(heapCount, pHeaps);
     }
-    
+
     void copySubresourceData(const D3D12_SUBRESOURCE_DATA& srcData, const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& dstFootprint, uint8_t* pDstStart, uint64_t rowSize, uint64_t rowsToCopy)
     {
         const uint8_t* pSrc = (uint8_t*)srcData.pData;
@@ -71,7 +71,7 @@ namespace Falcor
             }
         }
     }
-    
+
     void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData)
     {
         mCommandsPending = true;
@@ -185,27 +185,48 @@ namespace Falcor
         mpBuffer->unmap();
         return result;
     }
-    
-    void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
+
+    static void d3d12ResourceBarrier(const Resource* pResource, Resource::State newState, Resource::State oldState, uint32_t subresourceIndex, CommandListHandle pCmdList)
     {
-        // If the resource is a buffer with CPU access, no need to do anything
-        const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);
-        if (pBuffer && pBuffer->getCpuAccess() != Buffer::CpuAccess::None) return;
+        D3D12_RESOURCE_BARRIER barrier;
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Transition.pResource = pResource->getApiHandle();
+        barrier.Transition.StateBefore = getD3D12ResourceState(pResource->getGlobalState());
+        barrier.Transition.StateAfter = getD3D12ResourceState(newState);
+        barrier.Transition.Subresource = subresourceIndex;
+        pCmdList->ResourceBarrier(1, &barrier);
+    }
 
-        if (pResource->getState() != newState)
+    static bool d3d12GlobalResourceBarrier(const Resource* pResource, Resource::State newState, CommandListHandle pCmdList)
+    {
+        if(pResource->getGlobalState() != newState)
         {
-            D3D12_RESOURCE_BARRIER barrier;
-            barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-            barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-            barrier.Transition.pResource = pResource->getApiHandle();
-            barrier.Transition.StateBefore = getD3D12ResourceState(pResource->getState());
-            barrier.Transition.StateAfter = getD3D12ResourceState(newState);
-            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;   // OPTME: Need to do that only for the subresources we will actually use
-
-            mpLowLevelData->getCommandList()->ResourceBarrier(1, &barrier);
-            mCommandsPending = true;
-            pResource->mState = newState;
+            d3d12ResourceBarrier(pResource, newState, pResource->getGlobalState(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, pCmdList);
+            return true;
         }
+        return false;
+    }
+
+    void CopyContext::textureBarrier(const Texture* pTexture, Resource::State newState)
+    {
+        bool recorded = d3d12GlobalResourceBarrier(pTexture, newState, mpLowLevelData->getCommandList());
+        pTexture->setGlobalState(newState);
+        mCommandsPending = mCommandsPending || recorded;
+    }
+
+    void CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState)
+    {
+        if (pBuffer && pBuffer->getCpuAccess() != Buffer::CpuAccess::None) return;
+        bool recorded = d3d12GlobalResourceBarrier(pBuffer, newState, mpLowLevelData->getCommandList());
+        pBuffer->setGlobalState(newState);
+        mCommandsPending = mCommandsPending || recorded;
+    }
+
+    void CopyContext::apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel)
+    {
+        uint32_t subresourceIndex = pTexture->getSubresourceIndex(arraySlice, mipLevel);
+        d3d12ResourceBarrier(pTexture, newState, oldState, subresourceIndex, mpLowLevelData->getCommandList());
     }
 
     void CopyContext::uavBarrier(const Resource* pResource)

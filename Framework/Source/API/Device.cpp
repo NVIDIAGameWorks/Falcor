@@ -224,12 +224,14 @@ namespace Falcor
         std::vector<Resource::State> fboDepthStates(mSwapChainBufferCount, Resource::State::Undefined);
         for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
         {
-            fboColorStates[i] = mpSwapChainFbos[i]->getColorTexture(0)->getState();
+            assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
+            fboColorStates[i] = mpSwapChainFbos[i]->getColorTexture(0)->getGlobalState();
 
             const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
             if (pSwapChainDepth != nullptr)
             {
-                fboDepthStates[i] = pSwapChainDepth->getState();
+                assert(pSwapChainDepth->isStateGlobal());
+                fboDepthStates[i] = pSwapChainDepth->getGlobalState();
             }
         }
 #endif
@@ -245,11 +247,13 @@ namespace Falcor
         // Restore FBO resource states
         for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
         {
-            mpSwapChainFbos[i]->getColorTexture(0)->mState = fboColorStates[i];
+            assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
+            mpSwapChainFbos[i]->getColorTexture(0)->setGlobalState(fboColorStates[i]);
             const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
             if (pSwapChainDepth != nullptr)
             {
-                pSwapChainDepth->mState = fboDepthStates[i];
+                assert(pSwapChainDepth->isStateGlobal());
+                pSwapChainDepth->setGlobalState(fboDepthStates[i]);
             }
         }
 #endif

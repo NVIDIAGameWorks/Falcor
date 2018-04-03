@@ -67,9 +67,9 @@ namespace Falcor
     private:
         template<ShaderType shaderType>
         static SharedPtr createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        bool initCommon(std::string& log, ProgramReflection::SharedPtr pLocalReflector);
+        bool initCommon(std::string& log);
 
-        RtProgramVersion(Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        RtProgramVersion(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
         std::shared_ptr<RootSignature> mpLocalRootSignature;
         Type mType;
         std::wstring mExportName;

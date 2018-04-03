@@ -93,6 +93,7 @@ namespace Falcor
             uint32_t dims = width | height | depth;
             mMipLevels = bitScanReverse(dims) + 1;
         }
+        mState.perSubresource.resize(mMipLevels * mArraySize, mState.global);
     }
 
     void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags) const

@@ -256,46 +256,67 @@ namespace Falcor
         UNSUPPORTED_IN_VULKAN("uavBarrier");
     }
 
-    void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
+    void CopyContext::apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel)
     {
-        if (pResource->getState() != newState)
+        VkImageMemoryBarrier barrier = {};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.newLayout = getImageLayout(newState);
+        barrier.oldLayout = getImageLayout(oldState);
+        barrier.image = pTexture->getApiHandle();
+        barrier.subresourceRange.aspectMask = getAspectFlagsFromFormat(pTexture->getFormat());
+        barrier.subresourceRange.baseArrayLayer = arraySlice;
+        barrier.subresourceRange.baseMipLevel = mipLevel;
+        barrier.subresourceRange.layerCount = 1;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.srcAccessMask = getAccessMask(oldState);
+        barrier.dstAccessMask = getAccessMask(newState);
+
+        vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(oldState, true), getShaderStageMask(newState, false), 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    }
+
+    void CopyContext::textureBarrier(const Texture* pTexture, Resource::State newState)
+    {
+        assert(pTexture->getApiHandle().getType() == VkResourceType::Image);
+
+        if(pTexture->getGlobalState() != newState)
         {
-            if(pResource->getApiHandle().getType() == VkResourceType::Image)
-            {
-                const Texture* pTexture = dynamic_cast<const Texture*>(pResource);
-                VkImageMemoryBarrier barrier = {};
-                barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                barrier.newLayout = getImageLayout(newState);
-                barrier.oldLayout = getImageLayout(pResource->mState);
-                barrier.image = pResource->getApiHandle();
-                barrier.subresourceRange.aspectMask = getAspectFlagsFromFormat(pTexture->getFormat());
-                barrier.subresourceRange.baseArrayLayer = pViewInfo ? pViewInfo->firstArraySlice  : 0;
-                barrier.subresourceRange.baseMipLevel   = pViewInfo ? pViewInfo->mostDetailedMip  : 0;
-                barrier.subresourceRange.layerCount     = pViewInfo ? pViewInfo->arraySize        : pTexture->getArraySize();
-                barrier.subresourceRange.levelCount     = pViewInfo ? pViewInfo->mipCount         : pTexture->getMipCount();   
-                barrier.srcAccessMask = getAccessMask(pResource->mState);
-                barrier.dstAccessMask = getAccessMask(newState);
+            VkImageMemoryBarrier barrier = {};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.newLayout = getImageLayout(newState);
+            barrier.oldLayout = getImageLayout(pTexture->getGlobalState());
+            barrier.image = pTexture->getApiHandle();
+            barrier.subresourceRange.aspectMask = getAspectFlagsFromFormat(pTexture->getFormat());
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.layerCount = pTexture->getArraySize();
+            barrier.subresourceRange.levelCount = pTexture->getMipCount();
+            barrier.srcAccessMask = getAccessMask(pTexture->getGlobalState());
+            barrier.dstAccessMask = getAccessMask(newState);
 
-                vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(pResource->mState, true), getShaderStageMask(newState, false), 0, 0, nullptr, 0, nullptr, 1, &barrier);
-            }
-            else
-            {
-                const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);
-                assert(pBuffer);
-                VkBufferMemoryBarrier barrier = {};
-                barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-                barrier.srcAccessMask = getAccessMask(pResource->mState);
-                barrier.dstAccessMask = getAccessMask(newState);
-                barrier.buffer = pBuffer->getApiHandle();
-                barrier.offset = pBuffer->getGpuAddressOffset();
-                barrier.size = pBuffer->getSize();
-
-                vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(pResource->mState, true), getShaderStageMask(newState, false), 0, 0, nullptr, 1, &barrier, 0, nullptr);
-            }
-
-
-            pResource->mState = newState;
+            vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(pTexture->getGlobalState(), true), getShaderStageMask(newState, false), 0, 0, nullptr, 0, nullptr, 1, &barrier);
+            pTexture->setGlobalState(newState);
             mCommandsPending = true;
+        }
+    }
+
+    void CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState)
+    {
+        assert(pBuffer->getApiHandle().getType() == VkResourceType::Buffer);
+
+        if (pBuffer->getGlobalState() != newState)
+        {
+            pBuffer->setGlobalState(newState);
+            mCommandsPending = true;
+            assert(pBuffer);
+            VkBufferMemoryBarrier barrier = {};
+            barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            barrier.srcAccessMask = getAccessMask(pBuffer->getGlobalState());
+            barrier.dstAccessMask = getAccessMask(newState);
+            barrier.buffer = pBuffer->getApiHandle();
+            barrier.offset = pBuffer->getGpuAddressOffset();
+            barrier.size = pBuffer->getSize();
+
+            vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(pBuffer->getGlobalState(), true), getShaderStageMask(newState, false), 0, 0, nullptr, 1, &barrier, 0, nullptr);
         }
     }
 

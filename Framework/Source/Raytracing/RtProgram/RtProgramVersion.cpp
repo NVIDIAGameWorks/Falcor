@@ -36,8 +36,8 @@ namespace Falcor
     uint64_t RtProgramVersion::sProgId = 0;
     ProgramReflection::SharedPtr createProgramReflection(const Shader::SharedConstPtr pShaders[], std::string& log);
 
-    RtProgramVersion::RtProgramVersion(Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
-        : ProgramVersion(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, name)
+    RtProgramVersion::RtProgramVersion(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+        : ProgramVersion(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, name)
         , mType(progType)
         , mMaxAttributeSize(maxAttributeSize)
         , mMaxPayloadSize(maxPayloadSize)
@@ -64,7 +64,7 @@ namespace Falcor
         }
     }
 
-    bool RtProgramVersion::initCommon(std::string& log, ProgramReflection::SharedPtr pLocalReflector)
+    bool RtProgramVersion::initCommon(std::string& log)
     {
         if (init(log) == false)
         {
@@ -72,7 +72,7 @@ namespace Falcor
         }
 
         // Create the root signature
-        mpLocalRootSignature = RootSignature::create(pLocalReflector.get(), true);
+        mpLocalRootSignature = RootSignature::create(mpReflector.get(), true);
         return true;
     }
 
@@ -101,8 +101,8 @@ namespace Falcor
             return nullptr;
         }
 
-        SharedPtr pProgram = SharedPtr(new RtProgramVersion(getProgTypeFromShader(shaderType), &pShader, 1, name, maxPayloadSize, maxAttributeSize));
-        if (pProgram->initCommon(log, pLocalReflector) == false)
+        SharedPtr pProgram = SharedPtr(new RtProgramVersion(pLocalReflector, getProgTypeFromShader(shaderType), &pShader, 1, name, maxPayloadSize, maxAttributeSize));
+        if (pProgram->initCommon(log) == false)
         {
             return nullptr;
         }
@@ -143,8 +143,8 @@ namespace Falcor
             return nullptr;
         }
 
-        SharedPtr pProgram = SharedPtr(new RtProgramVersion(Type::Hit, pShaders, shaderCount, name, maxPayloadSize, maxAttributeSize));
-        if (pProgram->initCommon(log, pReflector) == false)
+        SharedPtr pProgram = SharedPtr(new RtProgramVersion(pReflector, Type::Hit, pShaders, shaderCount, name, maxPayloadSize, maxAttributeSize));
+        if (pProgram->initCommon(log) == false)
         {
             return nullptr;
         }

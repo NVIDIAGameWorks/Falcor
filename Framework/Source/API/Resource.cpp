@@ -221,4 +221,54 @@ namespace Falcor
         mRtvs.clear();
         mDsvs.clear();
     }
+
+    Resource::State Resource::getGlobalState() const
+    {
+        if (mState.isGlobal == false)
+        {
+            logWarning("Resource::getGlobalState() - the resource doesn't have a global state. The subresoruces are in a different state, use getSubResourceState() instead");
+            return State::Undefined;
+        }
+        return mState.global;
+    }
+
+    Resource::State Resource::getSubresourceState(uint32_t arraySlice, uint32_t mipLevel) const
+    {
+        const Texture* pTexture = dynamic_cast<const Texture*>(this);
+        if (pTexture)
+        {
+            uint32_t subResource = pTexture->getSubresourceIndex(arraySlice, mipLevel);
+            return (mState.isGlobal) ? mState.global : mState.perSubresource[subResource];
+        }
+        else
+        {
+            logWarning("Calling Resource::getSubresourceState() on an object that is not a texture. This call is invalid, use Resource::getGlobalState() instead");
+            assert(mState.isGlobal);
+            return mState.global;
+        }
+    }
+
+    void Resource::setGlobalState(State newState) const
+    {
+        mState.isGlobal = true;
+        mState.global = newState;
+    }
+
+    void Resource::setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const
+    {
+        const Texture* pTexture = dynamic_cast<const Texture*>(this);
+        if (pTexture == nullptr)
+        {
+            logWarning("Calling Resource::setSubresourceState() on an object that is not a texture. This is invalid. Ignoring call");
+            return;
+        }
+
+        // If we are transitioning from a global to local state, initialize the subresource array
+        if (mState.isGlobal)
+        {
+            std::fill(mState.perSubresource.begin(), mState.perSubresource.end(), mState.global);
+        }
+        mState.isGlobal = false;
+        mState.perSubresource[pTexture->getSubresourceIndex(arraySlice, mipLevel)] = newState;
+    }
 }

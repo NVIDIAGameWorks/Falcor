@@ -110,9 +110,15 @@ namespace Falcor
         */
         BindFlags getBindFlags() const { return mBindFlags; }
 
-        /** Get the current state
+        bool isStateGlobal() const { return mState.isGlobal; }
+
+        /** Get the current state. This is only valid if isStateGlobal() returns true
         */
-        State getState() const { return mState; }
+        State getGlobalState() const;
+
+        /** Get a subresource state
+        */
+        State getSubresourceState(uint32_t arraySlice, uint32_t mipLevel) const;
 
         /** Get the resource type
         */
@@ -173,7 +179,16 @@ namespace Falcor
 
         Type mType;
         BindFlags mBindFlags;
-        mutable State mState = State::Undefined;
+        struct  
+        {
+            bool isGlobal = true;
+            State global = State::Undefined;
+            std::vector<State> perSubresource;
+        } mutable mState;
+
+        void setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const;
+        void setGlobalState(State newState) const;
+
         ApiHandle mApiHandle;
 
         mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;

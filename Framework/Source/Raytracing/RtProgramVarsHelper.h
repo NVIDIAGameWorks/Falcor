@@ -119,7 +119,7 @@ namespace Falcor
         static SharedPtr create(CopyContext::SharedPtr pRtContext);
 
         LowLevelContextData::SharedPtr getLowLevelData() const override { return mpLowLevelData; }
-        void resourceBarrier(const Resource* pResource, Resource::State newState) override { return mpRayTraceContext->resourceBarrier(pResource, newState); }
+        void resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo = nullptr) override { return mpRayTraceContext->resourceBarrier(pResource, newState, pViewInfo); }
         RtVarsCmdList::SharedPtr getRtVarsCmdList() const { return mpList; }
     private:
         RtVarsContext(CopyContext::SharedPtr pRtContext);

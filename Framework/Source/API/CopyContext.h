@@ -112,6 +112,10 @@ namespace Falcor
         void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = pLowLevelData; }
     protected:
         void bindDescriptorHeaps();
+        void textureBarrier(const Texture* pTexture, Resource::State newState);
+        void bufferBarrier(const Buffer* pBuffer, Resource::State newState);
+        void subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo);
+        void apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel);
         CopyContext() = default;
         bool mCommandsPending = false;
         LowLevelContextData::SharedPtr mpLowLevelData;
