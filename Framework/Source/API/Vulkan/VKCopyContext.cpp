@@ -33,11 +33,14 @@
 
 namespace Falcor
 {
-    VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format)
+    VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false)
     {
         VkImageAspectFlags flags = 0;
         if (isDepthFormat(format))      flags |= VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (isStencilFormat(format))    flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        if(ignoreStencil == false)
+        {
+            if (isStencilFormat(format))    flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
         if (isDepthStencilFormat(format) == false) flags |= VK_IMAGE_ASPECT_COLOR_BIT;
         return flags;
     }
