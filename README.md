@@ -15,7 +15,7 @@ Prerequisites
 - Windows 10 RS2 (1703 Creators Update) or newer, or Ubuntu 17.10
 
 On Windows:
-- Visual Studio 2015
+- Visual Studio 2017
 - [Microsoft Windows SDK ver 10.0.15063.468](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive)
 - Windows 10
 - GPU that supports DirectX 12 or Vulkan
