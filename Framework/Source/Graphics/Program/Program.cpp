@@ -398,9 +398,6 @@ namespace Falcor
 
         spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString()));
 
-        // We will always work with HLSL input, even when targetting Vulkan/SPIR-V
-        SlangSourceLanguage sourceLanguage = SLANG_SOURCE_LANGUAGE_HLSL;
-
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
 
