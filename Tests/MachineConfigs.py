@@ -1,12 +1,11 @@
 import os
 import json
 
-#only uses this if fails to find file
-default_json_data = {
+json_data = {
     'Windows':
     {   
         'Destination Target' : 'C:\\Falcor\\GitHub\\',
-        'Reference Target ' : '\\\\netapp-wa02\\public\\Falcor\\Github\\References\\',
+        'Reference Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\References\\',
         'Email List' : '\\\\netapp-wa02\\public\\Falcor\\email.txt',
         'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\Results\\',
         'Default Main Directory' : '..\\'
@@ -23,14 +22,6 @@ default_json_data = {
 
 machine_process_default_kill_time = 1200.0
 machine_relative_checkin_local_results_directory = os.path.join('TestsResults', 'local-results-directory')
-
-try:
-    json_filename = 'MachinePaths.json'
-    json_file = open(json_filename)
-    json_data = json.load(json_file)
-except: 
-    print('Failed to open ' + json_filename + ', attempting to use defaults specified in MachineConfigs.py')
-    json_data = default_json_data
 
 if os.name == 'nt':
     machine_name = os.environ['COMPUTERNAME']
