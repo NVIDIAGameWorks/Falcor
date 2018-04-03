@@ -26,54 +26,56 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 __import DefaultVS;
-__import Shading;
 __import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
-cbuffer PerFrameCB : register(b0)
+layout(binding = 0) SamplerState alphaSampler : register(s0);
+layout(binding = 1) texture2D alphaMap : register(t0);
+
+layout(binding = 2) cbuffer AlphaMapCB : register(b1)
 {
-    float3 gAmbient;
-    CsmData gCsmData[_LIGHT_COUNT];
-    bool visualizeCascades;
-    float4x4 camVpAtLastCsmUpdate;
+    float alphaThreshold;
 };
 
-struct ShadowsVSOut
+layout(binding = 3) cbuffer PerLightCB : register(b0)
 {
-    VertexOut vsData;
-    float shadowsDepthC : DEPTH;
+    CsmData gCsmData;
 };
 
-ShadowsVSOut vs(VertexIn vIn)
+struct ShadowPassVSOut
 {
-    VertexOut defaultOut = defaultVS(vIn);
-    ShadowsVSOut output;
-    output.vsData = defaultOut;
+    float2 texC : TEXCOORD;
+#ifdef _APPLY_PROJECTION
+    float4 pos : SV_POSITION;
+#else
+    float4 pos : POSITION;
+#endif
+};
 
-    output.shadowsDepthC = mul(float4(defaultOut.posW, 1), camVpAtLastCsmUpdate).z;
-    return output;
+ShadowPassVSOut vsMain(VertexIn vIn)
+{
+    ShadowPassVSOut vOut; 
+    float4x4 worldMat = getWorldMat(vIn);
+    vOut.pos = mul(vIn.pos, worldMat);
+#ifdef _APPLY_PROJECTION
+    vOut.pos = mul(vOut.pos, gCamera.viewProjMat);
+#endif
+
+#ifdef HAS_TEXCRD
+    vOut.texC = vIn.texC;
+#else
+    vOut.texC = float2(0.5f, 0.5f);
+#endif
+    return vOut;
 }
 
-float4 ps(ShadowsVSOut pIn) : SV_TARGET0
+void psMain(ShadowPassVSOut pIn)
 {
-    ShadingData sd = prepareShadingData(pIn.vsData, gMaterial, gCamera.posW);
-    float4 color = float4(0,0,0,1);
-    
-    [unroll]
-    for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
+#ifdef TEST_ALPHA
+    float alpha = alphaMap.Sample(alphaSampler, pIn.texC)._ALPHA_CHANNEL;
+    if(alpha < alphaThreshold)
     {
-        float shadowFactor = calcShadowFactor(gCsmData[l], pIn.shadowsDepthC, sd.posW, pIn.vsData.posH.xy/pIn.vsData.posH.w);
-        color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
+        discard;
     }
-
-    color.rgb += gAmbient * sd.diffuse * 0.1;
-    if(visualizeCascades)
-    {
-        //Ideally this would be light index so you can visualize the cascades of the 
-        //currently selected light. However, because csmData contains Textures, it doesn't
-        //like getting them with a non literal index.
-        color.rgb *= getBlendedCascadeColor(gCsmData[_LIGHT_INDEX], pIn.shadowsDepthC);
-    }
-
-    return color;
+#endif
 }

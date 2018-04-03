@@ -12,10 +12,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\VisualizeMap.ps.hlsl">
+    <None Include="Data\Shadows.slang">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Data\Shadows.hlsl">
+    <None Include="Data\VisualizeMap.slang">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

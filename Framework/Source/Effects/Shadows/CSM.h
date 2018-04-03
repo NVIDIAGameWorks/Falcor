@@ -59,12 +59,14 @@ namespace Falcor
         /** Create a new instance.
             \param[in] mapWidth Shadow map width
             \param[in] mapHeight Shadow map height
+            \param[in] visibilityBufferWidth Visibility buffer width
+            \param[in] visibilityBufferHeight Visibility buffer height
             \param[in] pLight Light to generate shadows for
             \param[in] pScene Scene to render when generating shadow maps
             \param[in] cascadeCount Number of cascades
             \param[in] shadowMapFormat Shadow map texture format
         */
-        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
+        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
 
         /** Render UI controls
             \param[in] pGui GUI instance to render UI elements with
@@ -72,22 +74,16 @@ namespace Falcor
         */
         void renderUi(Gui* pGui, const char* uiGroup = nullptr);
 
-        /** Run the shadow-map generation pass
+        /** Run the shadow-map generation pass and the visibility pass. Returns the visibility buffer
             \params[in] pScene The scene to render
             \params[in] pCamera The camera that will be used to render the scene
             \params[in] pSceneDepthBuffer Valid only when SDSM is enabled. The depth map to run SDSM analysis on. If this is nullptr, SDSM will run a depth pass
         */
-        void setup(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pSceneDepthBuffer);
+        Texture::SharedPtr generateVisibilityBuffer(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pSceneDepthBuffer);
 
         /** Get the shadow map texture.
         */
         Texture::SharedPtr getShadowMap() const;
-
-        /** Set shadow map generation parameters into a program.
-            \param[in] pVars GraphicsVars of the program to set data into
-            \param[in] varName Name of the CsmData variable in the program
-        */
-        void setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName);
 
         /** Set number of cascade partitions.
         */
@@ -144,16 +140,29 @@ namespace Falcor
         /** Check if mesh-culling is enabled
         */
         bool isMeshCullingEnabled() const;
+
+        /** Enable saving cascade info into the gba channels of the visibility buffer
+        */
+        void toggleCascadeVisualization(bool shouldVisualze);
+
+        /** Resize the visibility buffer
+        */
+        void resizeVisibilityBuffer(uint32_t width, uint32_t height);
+
     private:
-        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
+        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t windowWidth, uint32_t windowHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
         Light::SharedConstPtr mpLight;
         Scene::SharedConstPtr mpScene;
         Camera::SharedPtr mpLightCamera;
         std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;
         std::shared_ptr<SceneRenderer> mpSceneRenderer;
 
-        vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer);
+        // Set shadow map generation parameters into a program.
+        void setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName);
+        vec2 calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer);
+        void createDepthPassResources();
         void createShadowPassResources(uint32_t mapWidth, uint32_t mapHeight);
+        void createVisibilityPassResources(uint32_t width, uint32_t height);
         void partitionCascades(const Camera* pCamera, const glm::vec2& distanceRange);
         void renderScene(RenderContext* pCtx);
 
@@ -182,7 +191,7 @@ namespace Falcor
         };
         SdsmData mSdsmData;
         void createSdsmData(Texture::SharedPtr pTexture);
-        void reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer);
+        void reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer);
         void createVsmSampleState(uint32_t maxAnisotropy);
 
         GaussianBlur::UniquePtr mpGaussianBlur;
@@ -194,6 +203,24 @@ namespace Falcor
             GraphicsVars::SharedPtr pGraphicsVars;
         } mDepthPass;
         void executeDepthPass(RenderContext* pCtx, const Camera* pCamera);
+
+        //Visibility pass
+        struct
+        {
+            FullScreenPass::UniquePtr pPass;
+            GraphicsState::SharedPtr pState;
+            GraphicsVars::SharedPtr pGraphicsVars;
+            uint32_t mVisualizeCascadesOffset;
+        } mVisibilityPass;
+
+        struct
+        {
+            //This is effectively a bool, but bool only takes up 1 byte which messes up setBlob
+            uint32_t shouldVisualizeCascades = 0u;
+            int3 padding;
+            glm::mat4 camInvViewProj;
+            glm::uvec2 screenDim;
+        } mVisibilityPassData;
 
         struct Controls
         {

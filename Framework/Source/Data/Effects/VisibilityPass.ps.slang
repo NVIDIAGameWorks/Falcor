@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,46 +25,43 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "VertexAttrib.h"
-__import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
-layout(binding = 3) cbuffer PerLightCB : register(b0)
+cbuffer PerFrameCB : register(b0)
 {
     CsmData gCsmData;
+    bool visualizeCascades;
+    float4x4 invViewProj; 
+    uint2 screenDimension;
 };
 
-struct ShadowPassPSIn
-{
-    float2 texC : TexCoord;
-    float4 pos : SV_POSITION;
-    uint rtIndex : SV_RenderTargetArrayIndex;
-};
+Texture2D gDepth;
 
-struct ShadowPassVSOut
+float3 loadPosition(float2 UV, float depth)
 {
-    float2 texC : TEXCOORD;
-    float4 pos : POSITION;
-};
+    float2 invSize = 1.0f / screenDimension.xy;
+    // Recompute position by unprojecting the depth stored in the z-buffer 
+    float2 ndc = 2.0f * UV + invSize - 1; // y still value needs to be negated after this line
+    float4 wsPos = mul(float4(ndc.x, -ndc.y, depth, 1.f), invViewProj);
+    return wsPos.xyz / wsPos.w;
+}
 
-[instance(_CASCADE_COUNT)]
-[maxvertexcount(3)]
-void main(triangle ShadowPassVSOut input[3], uint InstanceID : SV_GSInstanceID, inout TriangleStream<ShadowPassPSIn> outStream)
+float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-    ShadowPassPSIn outputData;
+    //[0, 1] -> [0, 2] -> [-1, 1]
+    float2 ndcXy = (texC * 2) - 1;
+    
+    float depth = gDepth[texC * screenDimension].x;
+    float3 posW = loadPosition(texC, depth);
 
-    for(int i = 0 ; i < 3 ; i++)
+    float4 color = float4(0,0,0,0);
+    color.r = calcShadowFactor(gCsmData, depth, posW, ndcXy);
+
+    if(visualizeCascades)
     {
-        outputData.pos = mul(input[i].pos, gCsmData.globalMat);
-        outputData.pos.xyz /= input[i].pos.w;
-        outputData.pos.xyz *= gCsmData.cascadeScale[InstanceID].xyz;
-        outputData.pos.xyz += gCsmData.cascadeOffset[InstanceID].xyz;
-
-        outputData.texC = input[i].texC;
-        outputData.rtIndex = InstanceID;
-
-        outStream.Append(outputData);
+        color.gba = getBlendedCascadeColor(gCsmData, depth);
     }
 
-    outStream.RestartStrip();
+    return color;
 }
+

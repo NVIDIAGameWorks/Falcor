@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,31 +26,51 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 __import DefaultVS;
+__import Shading;
 __import ShaderCommon;
 
-struct ShadowPassVSOut
+cbuffer PerFrameCB : register(b0)
 {
-    float2 texC : TEXCOORD;
-#ifdef _APPLY_PROJECTION
-    float4 pos : SV_POSITION;
-#else
-    float4 pos : POSITION;
-#endif
+    float3 gAmbient;
+    Texture2D gVisibilityBuffers[_LIGHT_COUNT];
+    bool visualizeCascades;
+    float4x4 camVpAtLastCsmUpdate;
 };
 
-ShadowPassVSOut main(VertexIn vIn)
+struct ShadowsVSOut
 {
-    ShadowPassVSOut vOut; 
-    float4x4 worldMat = getWorldMat(vIn);
-    vOut.pos = mul(vIn.pos, worldMat);
-#ifdef _APPLY_PROJECTION
-    vOut.pos = mul(vOut.pos, gCamera.viewProjMat);
-#endif
+    VertexOut vsData;
+    float shadowsDepthC : DEPTH;
+};
 
-#ifdef HAS_TEXCRD
-    vOut.texC = vIn.texC;
-#else
-    vOut.texC = float2(0.5f, 0.5f);
-#endif
-    return vOut;
+ShadowsVSOut vsMain(VertexIn vIn)
+{
+    VertexOut defaultOut = defaultVS(vIn);
+    ShadowsVSOut output;
+    output.vsData = defaultOut;
+
+    output.shadowsDepthC = mul(float4(defaultOut.posW, 1), camVpAtLastCsmUpdate).z;
+    return output;
+}
+
+float4 psMain(ShadowsVSOut pIn) : SV_TARGET0
+{
+    ShadingData sd = prepareShadingData(pIn.vsData, gMaterial, gCamera.posW);
+    float4 color = float4(0,0,0,1);
+    
+    [unroll]
+    for(uint l = 0 ; l < _LIGHT_COUNT ; l++)
+    {
+        float shadowFactor = gVisibilityBuffers[l].Load(int3(pIn.vsData.posH.xy, 0)).r;
+        color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
+    }
+
+    color.rgb += gAmbient * sd.diffuse * 0.1;
+    if(visualizeCascades)
+    {
+        float3 cascadeColor = gVisibilityBuffers[_LIGHT_INDEX].Load(int3(pIn.vsData.posH.xy, 0)).gba;
+        color.rgb *= cascadeColor;
+    }
+
+    return color;
 }

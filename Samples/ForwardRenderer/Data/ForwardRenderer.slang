@@ -41,6 +41,7 @@ layout(binding = 0) cbuffer PerFrameCB : register(b0)
 };
 
 layout(set = 1, binding = 1) SamplerState gSampler;
+Texture2D gVisibilityBuffer;
 
 struct MainVsOut
 {
@@ -85,7 +86,7 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #ifdef _ENABLE_SHADOWS
         if (l == 0)
         {
-            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, sd.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
+            shadowFactor = gVisibilityBuffer.Load(int3(vOut.vsData.posH.xy, 0)).r;
             shadowFactor *= sd.opacity;
         }
 #endif
@@ -114,7 +115,8 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #endif
 
 #if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
-    psOut.color.rgb *= getBlendedCascadeColor(gCsmData, vOut.shadowsDepthC);
+    float3 cascadeColor = gVisibilityBuffer.Load(int3(vOut.vsData.posH.xy, 0)).gba;
+    psOut.color.rgb *= cascadeColor;
 #endif
     return psOut;
 }

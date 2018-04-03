@@ -75,9 +75,9 @@ void ForwardRenderer::initLightingPass()
     mLightingPass.pAlphaBlendBS = BlendState::create(bsDesc);
 }
 
-void ForwardRenderer::initShadowPass()
+void ForwardRenderer::initShadowPass(uint32_t windowWidth, uint32_t windowHeight)
 {
-    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
+    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, windowWidth, windowHeight, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
     mShadowPass.pCsm->setFilterMode(CsmFilterEvsm4);
     mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
     mShadowPass.pCsm->setVsmMaxAnisotropy(4);
@@ -160,7 +160,8 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
     setActiveCameraAspectRatio(pSample->getCurrentFbo()->getWidth(), pSample->getCurrentFbo()->getHeight());
     initDepthPass();
     initLightingPass();
-    initShadowPass();
+    auto pTargetFbo = pSample->getCurrentFbo();
+    initShadowPass(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     initSSAO();
     initTAA(pSample);
 
@@ -334,7 +335,7 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     if (mControls[ControlID::EnableShadows].enabled)
     {
         pCB["camVpAtLastCsmUpdate"] = mShadowPass.camVpAtLastCsmUpdate;
-        mShadowPass.pCsm->setDataIntoGraphicsVars(mLightingPass.pVars, "gCsmData");
+        mLightingPass.pVars->setTexture("gVisibilityBuffer", mShadowPass.pVisibilityBuffer);
     }
 
     if (mAAMode == AAMode::TAA)
@@ -373,6 +374,14 @@ void ForwardRenderer::renderTransparentObjects(RenderContext* pContext)
     mpState->setRasterizerState(nullptr);
 }
 
+void ForwardRenderer::resolveDepthMSAA(RenderContext* pContext)
+{
+    if (mAAMode == AAMode::MSAA)
+    {
+        pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    }
+}
+
 void ForwardRenderer::resolveMSAA(RenderContext* pContext)
 {
     if(mAAMode == AAMode::MSAA)
@@ -380,7 +389,6 @@ void ForwardRenderer::resolveMSAA(RenderContext* pContext)
         PROFILE(resolveMSAA);
         pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
         pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-        pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
     }
 }
 
@@ -390,7 +398,16 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
         mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
-        mShadowPass.pCsm->setup(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? mpDepthPassFbo->getDepthStencilTexture() : nullptr);
+        Texture::SharedPtr pDepth;
+        if (mAAMode == AAMode::MSAA)
+        {
+            pDepth = mpResolveFbo->getColorTexture(2);
+        }
+        else
+        {
+            pDepth = mpDepthPassFbo->getDepthStencilTexture();
+        }
+        mShadowPass.pVisibilityBuffer = mShadowPass.pCsm->generateVisibilityBuffer(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? pDepth : nullptr);
         pContext->flush();
     }
 }
@@ -453,13 +470,13 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
     if (mpSceneRenderer)
     {
         beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
-
         {
             PROFILE(updateScene);
             mpSceneRenderer->update(pSample->getCurrentTime());
         }
 
         depthPass(pRenderContext.get());
+        resolveDepthMSAA(pRenderContext.get()); // Only runs in MSAA mode
         shadowPass(pRenderContext.get());
         mpState->setFbo(mpMainFbo);
         renderSkyBox(pRenderContext.get());
@@ -540,7 +557,8 @@ void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width
     mpPostProcessFbo = FboHelper::create2D(width, height, fboDesc);
 
     applyAaMode(pSample);
-    
+    mShadowPass.pCsm->resizeVisibilityBuffer(width, height);
+
     if(mpSceneRenderer)
     {
         setActiveCameraAspectRatio(width, height);

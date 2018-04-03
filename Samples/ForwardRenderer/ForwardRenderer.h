@@ -57,6 +57,7 @@ private:
     {
         bool updateShadowMap = true;
         CascadedShadowMaps::UniquePtr pCsm;
+        Texture::SharedPtr pVisibilityBuffer;
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     };
     ShadowPass mShadowPass;
@@ -130,6 +131,8 @@ private:
     void shadowPass(RenderContext* pContext);
     void renderSkyBox(RenderContext* pContext);
     void lightingPass(RenderContext* pContext, Fbo* pTargetFbo);
+    //Need to resolve depth first to pass resolved depth to shadow pass
+    void resolveDepthMSAA(RenderContext* pContext);
     void resolveMSAA(RenderContext* pContext);
     void runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo);
     void postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
@@ -144,7 +147,7 @@ private:
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();
-    void initShadowPass();
+    void initShadowPass(uint32_t windowWidth, uint32_t windowHeight);
     void initSSAO();
     void updateLightProbe(const LightProbe::SharedPtr& pLight);
     void initTAA(SampleCallbacks* pSample);
@@ -183,7 +186,6 @@ private:
         VisualizeCascades,
         Count
     };
-
 
     enum class SamplePattern : uint32_t
     {

@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "VertexAttrib.h"
+__import DefaultVS;
 __import ShaderCommon;
 __import Effects.CascadedShadowMap;
 
@@ -48,12 +50,65 @@ struct ShadowPassPSIn
     uint rtIndex : SV_RenderTargetArrayIndex;
 };
 
-#if defined(_VSM) || defined(_EVSM2)
-float2 main(ShadowPassPSIn pIn) : SV_TARGET0
-#elif defined(_EVSM4)
-float4 main(ShadowPassPSIn pIn) : SV_TARGET0
+struct ShadowPassVSOut
+{
+    float2 texC : TEXCOORD;
+#ifdef _APPLY_PROJECTION
+    float4 pos : SV_POSITION;
 #else
-void main(ShadowPassPSIn pIn)
+    float4 pos : POSITION;
+#endif
+};
+
+ShadowPassVSOut vsMain(VertexIn vIn)
+{
+    ShadowPassVSOut vOut; 
+    float4x4 worldMat = getWorldMat(vIn);
+    vOut.pos = mul(vIn.pos, worldMat);
+#ifdef _APPLY_PROJECTION
+    vOut.pos = mul(vOut.pos, gCamera.viewProjMat);
+#endif
+
+#ifdef HAS_TEXCRD
+    vOut.texC = vIn.texC;
+#else
+    vOut.texC = float2(0.5f, 0.5f);
+#endif
+    return vOut;
+}
+
+//This is just so it wont crash on link if _CASCADE_COUNT is not defined. 
+#ifndef _CASCADE_COUNT 
+#define _CASCADE_COUNT 1
+#endif
+[instance(_CASCADE_COUNT)]
+[maxvertexcount(3)]
+void gsMain(triangle ShadowPassVSOut input[3], uint InstanceID : SV_GSInstanceID, inout TriangleStream<ShadowPassPSIn> outStream)
+{
+    ShadowPassPSIn outputData;
+
+    for(int i = 0 ; i < 3 ; i++)
+    {
+        outputData.pos = mul(input[i].pos, gCsmData.globalMat);
+        outputData.pos.xyz /= input[i].pos.w;
+        outputData.pos.xyz *= gCsmData.cascadeScale[InstanceID].xyz;
+        outputData.pos.xyz += gCsmData.cascadeOffset[InstanceID].xyz;
+
+        outputData.texC = input[i].texC;
+        outputData.rtIndex = InstanceID;
+
+        outStream.Append(outputData);
+    }
+
+    outStream.RestartStrip();
+}
+
+#if defined(_VSM) || defined(_EVSM2)
+float2 psMain(ShadowPassPSIn pIn) : SV_TARGET0
+#elif defined(_EVSM4)
+float4 psMain(ShadowPassPSIn pIn) : SV_TARGET0
+#else
+void psMain(ShadowPassPSIn pIn)
 #endif
 {
 #ifdef TEST_ALPHA

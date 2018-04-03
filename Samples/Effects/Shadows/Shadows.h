@@ -43,6 +43,7 @@ public:
 
 private:
     void displayShadowMap(RenderContext* pContext);
+    void displayVisibilityBuffer(RenderContext* pContext);
     void runMainPass(RenderContext* pContext);
     void createVisualizationProgram();
     void createScene(const std::string& filename);
@@ -54,8 +55,10 @@ private:
 
     struct
     {
-        FullScreenPass::UniquePtr pProgram;
-        GraphicsVars::SharedPtr pProgramVars;
+        FullScreenPass::UniquePtr pShadowMapProgram;
+        GraphicsVars::SharedPtr pShadowMapProgramVars;
+        FullScreenPass::UniquePtr pVisibilityBufferProgram;
+        GraphicsVars::SharedPtr pVisibilityBufferProgramVars;
     } mShadowVisualizer;
 
     struct
@@ -68,15 +71,18 @@ private:
 
     SceneRenderer::SharedPtr mpRenderer;
 
+    enum class DebugMode { None = 0, ShadowMap = 1, VisibilityBuffer = 2, Count = 3 };
+    static const Gui::DropdownList skDebugModeList;
     struct Controls
     {
         bool updateShadowMap = true;
-        bool showShadowMap = false;
+        uint32_t debugMode = (uint32_t)DebugMode::None;
         int32_t displayedCascade = 0;
         int32_t cascadeCount = 4;
         int32_t lightIndex = 0;
     };
     Controls mControls;
+
 
     struct ShadowOffsets
     {
@@ -95,6 +101,8 @@ private:
     } mPerFrameCBData;
 
     static const std::string skDefaultScene;
+    glm::uvec2 mWindowDimensions;
+    std::vector<Texture::SharedPtr> mpVisibilityBuffers;
 
     //Testing 
     void onInitializeTesting(SampleCallbacks* pSample) override;

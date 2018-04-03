@@ -378,7 +378,7 @@ namespace Falcor
         }
     }
 
-    void SceneRenderer::renderScene(RenderContext* pContext, Camera* pCamera)
+    void SceneRenderer::renderScene(RenderContext* pContext, const Camera* pCamera)
     {
         updateVariableOffsets(pContext->getGraphicsVars()->getReflection().get());
 
