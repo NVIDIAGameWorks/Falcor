@@ -354,7 +354,7 @@ def main():
         print('No Main directory supplied, assuming running from test dir, assuming default ' + str(machine_configs.default_main_dir))
         main_directory = machine_configs.default_main_dir
     else:
-        main_directory = args.md
+        main_directory = args.main_directory
     
     branch = ''
     if not args.branch:
