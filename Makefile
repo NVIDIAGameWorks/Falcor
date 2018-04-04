@@ -3,7 +3,7 @@ SAMPLE_CONFIG:=Release
 
 All : ForwardRenderer AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
-AllEffects : AmbientOcclusion SkyBoxRenderer HashedAlpha Particles HDRToneMapping Shadows
+AllEffects : AmbientOcclusion SkyBoxRenderer HashedAlpha HDRToneMapping Shadows
 AllUtils : ModelViewer SceneEditor
 
 # A sample demonstrating Falcor's effects library
@@ -44,9 +44,6 @@ SkyBoxRenderer : $(SAMPLE_CONFIG)
 
 HashedAlpha : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Effects/HashedAlpha/,HashedAlpha.cpp,HashedAlpha)
-
-Particles : $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/Effects/Particles/,Particles.cpp,Particles)
 
 HDRToneMapping : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Effects/HDRToneMapping/,HDRToneMapping.cpp,HDRToneMapping)
