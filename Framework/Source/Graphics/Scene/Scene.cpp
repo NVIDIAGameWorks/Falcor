@@ -123,7 +123,10 @@ namespace Falcor
 
         mExtentsDirty = mExtentsDirty || changed;
 
-        getActiveCamera()->beginFrame();
+        if (getCameraCount() > 0)
+        {
+            getActiveCamera()->beginFrame();
+        }
 
         // Ignore the elapsed time we got from the user. This will allow camera movement in cases where the time is frozen
         if (cameraController)
