@@ -247,6 +247,7 @@ namespace Falcor
 
     std::vector<uint8_t> CopyContext::ReadTextureTask::getData()
     {
+        mpFence->syncCpu();
         // Map and read the results
         std::vector<uint8> result(mDataSize);
         uint8* pData = reinterpret_cast<uint8*>(mpBuffer->map(Buffer::MapType::Read));

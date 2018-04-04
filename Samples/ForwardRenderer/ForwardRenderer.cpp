@@ -454,16 +454,16 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
     }
 }
 
- void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
- {
-     //  Already existing. Is this a problem?
-     auto nextTriggerType = pSampleTest->getNextTriggerType();
-     if (nextTriggerType == SampleTest::TriggerType::None)
-     {
-         SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
+void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
+{
+    //  Already existing. Is this a problem?
+    auto nextTriggerType = pSampleTest->getNextTriggerType();
+    if (nextTriggerType == SampleTest::TriggerType::None)
+    {
+        SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
         mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
-     }
- }
+    }
+}
 
 void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
