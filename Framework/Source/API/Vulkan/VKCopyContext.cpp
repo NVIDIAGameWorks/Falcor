@@ -282,7 +282,10 @@ namespace Falcor
     {
         assert(pTexture->getApiHandle().getType() == VkResourceType::Image);
 
-        if(pTexture->getGlobalState() != newState)
+        auto srcStageMask = getShaderStageMask(pTexture->getGlobalState(), true);
+        auto dstStageMask = getShaderStageMask(newState, false);
+
+        if(srcStageMask != dstStageMask)
         {
             VkImageMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -297,7 +300,7 @@ namespace Falcor
             barrier.srcAccessMask = getAccessMask(pTexture->getGlobalState());
             barrier.dstAccessMask = getAccessMask(newState);
 
-            vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(pTexture->getGlobalState(), true), getShaderStageMask(newState, false), 0, 0, nullptr, 0, nullptr, 1, &barrier);
+            vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &barrier);
             pTexture->setGlobalState(newState);
             mCommandsPending = true;
         }
@@ -307,7 +310,10 @@ namespace Falcor
     {
         assert(pBuffer->getApiHandle().getType() == VkResourceType::Buffer);
 
-        if (pBuffer->getGlobalState() != newState)
+        auto srcStageMask = getShaderStageMask(pBuffer->getGlobalState(), true);
+        auto dstStageMask = getShaderStageMask(newState, false);
+
+        if (srcStageMask != dstStageMask)
         {
             pBuffer->setGlobalState(newState);
             mCommandsPending = true;
@@ -320,7 +326,7 @@ namespace Falcor
             barrier.offset = pBuffer->getGpuAddressOffset();
             barrier.size = pBuffer->getSize();
 
-            vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), getShaderStageMask(pBuffer->getGlobalState(), true), getShaderStageMask(newState, false), 0, 0, nullptr, 1, &barrier, 0, nullptr);
+            vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), srcStageMask, dstStageMask, 0, 0, nullptr, 1, &barrier, 0, nullptr);
         }
     }
 
