@@ -63,7 +63,7 @@ void ForwardRenderer::initLightingPass()
     mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
     
     DepthStencilState::Desc dsDesc;
-    dsDesc.setDepthTest(true).setStencilTest(false).setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual);
+    dsDesc.setDepthTest(true).setStencilTest(false)./*setDepthWriteMask(false).*/setDepthFunc(DepthStencilState::Func::LessEqual);
     mLightingPass.pDsState = DepthStencilState::create(dsDesc);
 
     RasterizerState::Desc rsDesc;
