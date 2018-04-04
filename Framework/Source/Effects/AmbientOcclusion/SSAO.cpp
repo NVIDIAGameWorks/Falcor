@@ -113,7 +113,7 @@ namespace Falcor
     SSAO::SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution)
     {
         Fbo::Desc fboDesc;
-        fboDesc.setColorTarget(0, Falcor::ResourceFormat::RGBA8Unorm);
+        fboDesc.setColorTarget(0, Falcor::ResourceFormat::R8Unorm);
         mpAOFbo = FboHelper::create2D(aoMapSize.x, aoMapSize.y, fboDesc);
 
         initShader();
