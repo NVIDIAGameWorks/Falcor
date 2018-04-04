@@ -125,10 +125,11 @@ namespace Falcor
             \param[in] minVal Optional. The minimum allowed value for the float.
             \param[in] maxVal Optional. The maximum allowed value for the float.
             \param[in] step Optional. The step rate for the float.
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget.
+            \param[in] displayFormat Optional. Formatting string.
             \return true if the value changed, otherwise false
         */
-        bool addFloatVar(const char label[], float& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false);
+        bool addFloatVar(const char label[], float& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false, const char* displayFormat = "%.3f");
 
         /** Adds a 2-elements floating-point vector UI element.
             \param[in] label The name of the widget.
@@ -167,6 +168,14 @@ namespace Falcor
             \return true if the value changed, otherwise false
         */
         bool addCheckBox(const char label[], bool& pVar, bool sameLine = false);
+
+        /** Adds a checkbox.
+            \param[in] label The name of the checkbox.
+            \param[in] var A reference to an integer that will be updated directly when the checkbox state changes (0 = unchecked, 1 = checked).
+            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+            \return true if the value changed, otherwise false
+        */
+        bool addCheckBox(const char label[], int& pVar, bool sameLine = false);
 
         /** Adds an RGB color UI widget.
             \param[in] label The name of the widget.

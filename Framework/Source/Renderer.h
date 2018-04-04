@@ -45,6 +45,9 @@ namespace Falcor
         /** Get the current FBO*/
         virtual std::shared_ptr<Fbo> getCurrentFbo() = 0;
 
+        /** Get the window*/
+        virtual Window* getWindow() = 0;
+
         /** Get the default GUI*/
         virtual Gui* getGui() = 0;
 
@@ -84,6 +87,9 @@ namespace Falcor
         /** Set the default GUI size */
         virtual void setDefaultGuiSize(uint32_t width, uint32_t height) = 0;
 
+        /** Set the default GUI position*/
+        virtual void setDefaultGuiPosition(uint32_t x, uint32_t y) = 0;
+
         /** Get the object storing command line arguments */
         virtual ArgList getArgList() = 0;
 
@@ -105,6 +111,14 @@ namespace Falcor
             early shutdown requested by testing
         */
         virtual void onTestShutdown() = 0;
+
+        /** Stop the timer
+        */
+        virtual void freezeTime(bool timeFrozen) = 0;
+
+        /** Check if the clock is ticking
+        */
+        virtual bool isTimeFrozen() = 0;
     };
 
     class Renderer : std::enable_shared_from_this<Renderer>

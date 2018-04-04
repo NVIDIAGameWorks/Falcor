@@ -75,6 +75,7 @@ namespace Falcor
         mTextureCount = other.mTextureCount;
 
         mMeshes = other.mMeshes;
+        mpSkinningCache = other.mpSkinningCache;
         if(other.mpAnimationController)
         {
             mpAnimationController = AnimationController::create(*other.mpAnimationController);
@@ -170,7 +171,7 @@ namespace Falcor
             uniqueMaterials.insert(pMaterial);
 
             // Track all of the material's textures            
-            uniqueTextures.insert(pMaterial->getDiffuseTexture().get());
+            uniqueTextures.insert(pMaterial->getBaseColorTexture().get());
             uniqueTextures.insert(pMaterial->getSpecularTexture().get());
             uniqueTextures.insert(pMaterial->getEmissiveTexture().get());
             uniqueTextures.insert(pMaterial->getNormalMap().get());
@@ -219,12 +220,20 @@ namespace Falcor
         mRadius = glm::length(modelMin - modelMax) * 0.5f;
     }
 
-    void Model::animate(double currentTime)
+    bool Model::animate(double currentTime)
     {
+        bool changed = false;
         if(mpAnimationController)
         {
             mpAnimationController->animate(currentTime);
+            changed = true;     // TODO: AnimationController::animate should return changed status. For now just mark it as always changed.
+
+            if (update())
+            {
+                changed = true;
+            }
         }
+        return changed;
     }
 
     bool Model::hasAnimations() const
@@ -295,6 +304,42 @@ namespace Falcor
     void Model::setAnimationController(AnimationController::UniquePtr pAnimController)
     {
         mpAnimationController = std::move(pAnimController);
+    }
+
+    void Model::attachSkinningCache(SkinningCache::SharedPtr pSkinningCache)
+    {
+        mpSkinningCache = pSkinningCache;
+    }
+
+    SkinningCache::SharedPtr Model::getSkinningCache() const
+    {
+        return mpSkinningCache;
+    }
+
+    Vao::SharedPtr Model::getMeshVao(const Mesh* pMesh) const
+    {
+        assert(pMesh);
+        Vao::SharedPtr pVao = nullptr;
+        if (pMesh->hasBones())
+        {
+            assert(mpSkinningCache);
+            pVao = mpSkinningCache->getVao(pMesh);
+        }
+        else
+        {
+            pVao = pMesh->getVao();
+        }
+        assert(pVao);
+        return pVao;
+    }
+
+    bool Model::update()
+    {
+        if (mpSkinningCache)
+        {
+            return mpSkinningCache->update(this);
+        }
+        return false;
     }
 
     void Model::addMeshInstance(const Mesh::SharedPtr& pMesh, const glm::mat4& baseTransform)

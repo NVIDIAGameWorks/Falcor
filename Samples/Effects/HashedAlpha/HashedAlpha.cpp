@@ -114,13 +114,13 @@ void HashedAlpha::updateProgram()
 
 void HashedAlpha::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
-    mpProgram = GraphicsProgram::createFromFile("", appendShaderExtension("HashedAlpha.ps"));
-    mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+    mpProgram = GraphicsProgram::createFromFile("HashedAlpha.ps.hlsl", "", "main");
+    mpVars = GraphicsVars::create(mpProgram->getReflector());
     updateProgram();
 
     mpState = GraphicsState::create();
     mpState->setProgram(mpProgram);
-
+    
     mpCamera = Camera::create();
     mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
     mCameraController.attachCamera(mpCamera);
@@ -130,7 +130,7 @@ void HashedAlpha::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
 
 void HashedAlpha::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
+    const glm::vec4 clearColor(0.38f, 0.30f, 0.52f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpState->setFbo(pTargetFbo);
     mCameraController.update();

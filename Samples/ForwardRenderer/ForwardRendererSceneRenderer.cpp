@@ -29,7 +29,7 @@
 
 static bool isMaterialTransparent(const Material* pMaterial)
 {
-    return pMaterial->getDiffuseColor().a < 1.0f;
+    return pMaterial->getBaseColor().a < 1.0f;
 }
 
 ForwardRendererSceneRenderer::ForwardRendererSceneRenderer(const Scene::SharedPtr& pScene) : SceneRenderer(pScene)
@@ -48,6 +48,11 @@ ForwardRendererSceneRenderer::ForwardRendererSceneRenderer(const Scene::SharedPt
             mTransparentMeshes[id] = transparent;
         }
     }
+
+    RasterizerState::Desc rsDesc;
+    mpDefaultRS = RasterizerState::create(rsDesc);
+    rsDesc.setCullMode(RasterizerState::CullMode::None);
+    mpNoCullRS = RasterizerState::create(rsDesc);
 }
 
 ForwardRendererSceneRenderer::SharedPtr ForwardRendererSceneRenderer::create(const Scene::SharedPtr& pScene)
@@ -82,4 +87,28 @@ void ForwardRendererSceneRenderer::renderScene(RenderContext* pContext)
         if (mHasTransparentObject == false) return;
     }
     SceneRenderer::renderScene(pContext);
+}
+
+RasterizerState::SharedPtr ForwardRendererSceneRenderer::getRasterizerState(const Material* pMaterial)
+{
+    if (pMaterial->getAlphaMode() == AlphaModeMask)
+    {
+        return mpNoCullRS;
+    }
+    else
+    {
+        return mpDefaultRS;
+    }
+}
+
+bool ForwardRendererSceneRenderer::setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial)
+{
+    const auto& pRsState = getRasterizerState(currentData.pMaterial);
+    if (pRsState != mpLastSetRs)
+    {
+        currentData.pContext->getGraphicsState()->setRasterizerState(pRsState);
+        mpLastSetRs = pRsState;
+    }
+
+    return SceneRenderer::setPerMaterialData(currentData, pMaterial);
 }

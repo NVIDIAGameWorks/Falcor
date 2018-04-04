@@ -37,7 +37,7 @@ namespace Falcor
         pScene->addModelInstance(pModel, "");
 
         SceneRenderer::SharedPtr pSceneRenderer = SceneRenderer::create(pScene);
-        pSceneRenderer->setObjectCullState(frustumCulling);
+        pSceneRenderer->toggleMeshCulling(frustumCulling);
         pSceneRenderer->renderScene(pRenderContext, pCamera);
     }
 }

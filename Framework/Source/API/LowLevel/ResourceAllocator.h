@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#ifdef FALCOR_LOW_LEVEL_API
 #include <unordered_map>
 #include <queue>
 #include "GpuFence.h"
@@ -85,4 +84,3 @@ namespace Falcor
         static void initBasePageData(BaseData& data, size_t size);
     };
 }
-#endif // FALCOR_LOW_LEVEL_API

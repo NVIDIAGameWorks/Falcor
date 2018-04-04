@@ -121,12 +121,10 @@ LightSample evalAreaLight(in AreaLightData light, in float3 surfacePosW)
     return ls;
 }
 
-
 float linearRoughnessToLod(float linearRoughness, float mipCount)
 {
     return sqrt(linearRoughness) * (mipCount - 1);
 }
-
 
 /** Evaluate a light source intensity/direction at a shading point
 */
@@ -154,6 +152,53 @@ float3 getSpecularDominantDir(float3 N, float3 R, float roughness)
     return normalize(lerp(N, R, factor));
 }
 
+float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
+{
+    float3 N = getDiffuseDominantDir(sd.N, sd.V, sd.roughness);
+
+    // Interpret negative radius as global light probe with infinite distance
+    // Otherwise simulate the light probe as covering a finite spherical area
+    float2 uv;
+    if(probe.radius < 0.0f)
+    {
+        uv = dirToSphericalCrd(N);
+    }
+    else
+    {
+        float3 intersectPosW;
+        intersectRaySphere(sd.posW, N, probe.posW, probe.radius, intersectPosW);
+        uv = dirToSphericalCrd(normalize(intersectPosW));
+    }
+
+    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
+    float diffF = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(sd.NdotV, sd.roughness), 0).z;
+
+    return diffuseLighting * diffF;
+}
+
+float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
+{
+    float dfgWidth, dfgHeight;
+    gProbeShared.dfgTexture.GetDimensions(dfgWidth, dfgHeight);
+
+    float width, height, mipCount;
+    probe.resources.specularTexture.GetDimensions(0, width, height, mipCount);
+
+    float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.roughness);
+    float NdotV = max(sd.NdotV, 0.5 / dfgWidth);
+
+    // #TODO This looks a lot closer to reference when passing in roughness instead of linearRoughness. Why?
+    float mipLevel = linearRoughnessToLod(sd.roughness, mipCount);
+
+    float2 uv = dirToSphericalCrd(dominantDir);
+    float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.sampler, uv, mipLevel).rgb;
+
+    float2 dfg = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(NdotV, sd.roughness), 0).xy;
+    
+    // ld * (f0 * Gv * (1 - Fc)) + (f90 * Gv * Fc)
+    return ld * (sd.specular * dfg.x + dfg.y);
+}
+
 /** Evaluate a 2D light-probe filtered using linear-filtering
 */
 LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
@@ -163,19 +208,12 @@ LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
     // Calculate the reflection vector
     ls.L = reflect(-sd.V, sd.N);
 
-    // Get the mip-level count
-    uint h, w, mipCount;
-    probe.resources.origTexture.GetDimensions(0, h, w, mipCount);
-
-    // For the diffuse component, we use the last mip-level
-    ls.diffuse = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, 0, mipCount - 2).rgb;
+    // Evaluate diffuse component
+    ls.diffuse = evalLightProbeDiffuse(probe, sd);
 
     // Get the specular component
-    float3 specDir = getSpecularDominantDir(sd.N, ls.L, sd.roughness);
-    float2 specCrd = dirToSphericalCrd(specDir);
-    float lod = linearRoughnessToLod(sd.linearRoughness, mipCount);
-    ls.specular = probe.resources.origTexture.SampleLevel(probe.resources.samplerState, specCrd, lod).rgb;
-    
+    ls.specular = evalLightProbeSpecular(probe, sd, ls.L);
+
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
     ls.posW = probe.posW;

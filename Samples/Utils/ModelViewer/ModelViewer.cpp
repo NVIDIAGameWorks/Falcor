@@ -233,7 +233,7 @@ void ModelViewer::renderModelUI(Gui* pGui)
 void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpCamera = Camera::create();
-    mpProgram = GraphicsProgram::createFromFile("", appendShaderExtension("ModelViewer.ps"));
+    mpProgram = GraphicsProgram::createFromFile("ModelViewer.ps.hlsl", "", "main");
 
     // create rasterizer state
     RasterizerState::Desc wireframeDesc;
@@ -270,7 +270,7 @@ void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
     mpPointLight = PointLight::create();
     mpDirLight->setWorldDirection(glm::vec3(0.13f, 0.27f, -0.9f));
 
-    mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+    mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
     mpGraphicsState = GraphicsState::create();
     mpGraphicsState->setProgram(mpProgram);
 

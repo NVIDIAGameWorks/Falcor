@@ -49,6 +49,7 @@ namespace Falcor
             mpLowLevelData->flush();
             mCommandsPending = false;
         }
+
         bindDescriptorHeaps();
 
         if (wait)
@@ -66,5 +67,78 @@ namespace Falcor
             subresourceCount *= 6;
         }
         updateTextureSubresources(pTexture, 0, subresourceCount, pData);
+    }
+
+    CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    {
+        return CopyContext::ReadTextureTask::create(shared_from_this(), pTexture, subresourceIndex);
+    }
+
+    std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
+    {
+        CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
+        return pTask->getData();
+    }
+
+
+
+    void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
+    {
+        const Texture* pTexture = dynamic_cast<const Texture*>(pResource);
+        if (pTexture)
+        {
+            bool globalBarrier = pTexture->isStateGlobal();
+            if (pViewInfo)
+            {
+                globalBarrier = globalBarrier && pViewInfo->firstArraySlice == 0;
+                globalBarrier = globalBarrier && pViewInfo->mostDetailedMip == 0;
+                globalBarrier = globalBarrier && pViewInfo->mipCount == pTexture->getMipCount();
+                globalBarrier = globalBarrier && pViewInfo->arraySize == pTexture->getArraySize();
+            }
+
+            if (globalBarrier)
+            {
+                textureBarrier(pTexture, newState);
+            }
+            else
+            {
+                subresourceBarriers(pTexture, newState, pViewInfo);
+            }
+        }
+        else
+        {
+            const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);
+            bufferBarrier(pBuffer, newState);
+        }
+    }
+
+    void CopyContext::subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo)
+    {
+        ResourceViewInfo fullResource;
+        bool setGlobal = false;
+        if (pViewInfo == nullptr)
+        {
+            fullResource.arraySize = pTexture->getArraySize();
+            fullResource.firstArraySlice = 0;
+            fullResource.mipCount = pTexture->getMipCount();
+            fullResource.mostDetailedMip = 0;
+            setGlobal = true;
+            pViewInfo = &fullResource;
+        }
+
+        for (uint32_t a = pViewInfo->firstArraySlice; a < pViewInfo->firstArraySlice + pViewInfo->arraySize; a++)
+        {
+            for (uint32_t m = pViewInfo->mostDetailedMip; m < pViewInfo->mipCount + pViewInfo->mostDetailedMip; m++)
+            {
+                Resource::State oldState = pTexture->getSubresourceState(a, m);
+                if (oldState != newState)
+                {
+                    apiSubresourceBarrier(pTexture, newState, oldState, a, m);
+                    if (setGlobal == false) pTexture->setSubresourceState(a, m, newState);
+                    mCommandsPending = true;
+                }
+            }
+        }
+        if (setGlobal) pTexture->setGlobalState(newState);
     }
 }

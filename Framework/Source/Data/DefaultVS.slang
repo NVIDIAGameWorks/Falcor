@@ -50,6 +50,9 @@ struct VertexIn
     float4 boneWeights : BONE_WEIGHTS;
     uint4  boneIds     : BONE_IDS;
 #endif
+#ifdef HAS_PREV_POSITION
+    float4 prevPos     : PREV_POSITION;
+#endif
     uint instanceID : SV_INSTANCEID;
 };
 
@@ -133,7 +136,14 @@ VertexOut defaultVS(VertexIn vIn)
 #else
     vOut.lightmapC = 0;
 #endif
-    vOut.prevPosH = mul(posW, gCamera.prevViewProjMat);
+
+#ifdef HAS_PREV_POSITION
+    float4 prevPos = vIn.prevPos;
+#else
+    float4 prevPos = vIn.pos;
+#endif
+    float4 prevPosW = mul(prevPos, gPrevWorldMat[vIn.instanceID]);
+    vOut.prevPosH = mul(prevPosW, gCamera.prevViewProjMat);
 
 #ifdef _SINGLE_PASS_STEREO
     vOut.rightEyePosS = mul(posW, gCamera.rightEyeViewProjMat).x;

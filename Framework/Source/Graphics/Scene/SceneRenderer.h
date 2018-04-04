@@ -63,7 +63,7 @@ namespace Falcor
         /** Renders the full scene, overriding the internal camera.
             Call update() before using this function otherwise model animation will not work
         */
-        virtual void renderScene(RenderContext* pContext, Camera* pCamera);
+        virtual void renderScene(RenderContext* pContext, const Camera* pCamera);
 
         /** Update the camera and model animation.
             Should be called before renderScene(), unless not animations are used and you update the camera manually
@@ -75,7 +75,11 @@ namespace Falcor
 
         /** Enable/disable mesh culling. Culling does not always result in performance gain, especially when there are a lot of meshes to process with low rejection rate.
         */
-        void setObjectCullState(bool enable) { mCullEnabled = enable; }
+        void toggleMeshCulling(bool enable) { mCullEnabled = enable; }
+
+        /** Check if mesh culiing is enabled
+        */
+        bool isMeshCullingEnabled() const { return mCullEnabled; }
 
         /** Set the maximal number of mesh instance to dispatch in a single draw call.
         */
@@ -117,7 +121,8 @@ namespace Falcor
         static const char* kPerFrameCbName;
         static const char* kPerMeshCbName;
         static const char* kBoneCbName;
-        static const char* kLightProbeVarName;
+        static const char* kProbeVarName;
+        static const char* kProbeSharedVarName;
         static const char* kAreaLightCbName;
 
         static size_t sBonesOffset;
@@ -142,6 +147,7 @@ namespace Falcor
         virtual bool setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial);
         virtual void executeDraw(const CurrentWorkingData& currentData, uint32_t indexCount, uint32_t instanceCount);
         virtual void postFlushDraw(const CurrentWorkingData& currentData);
+        virtual bool cullMeshInstance(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, const Model::MeshInstance* pMeshInstance);
 
         void renderModelInstance(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance);
         void renderMeshInstances(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t meshID);

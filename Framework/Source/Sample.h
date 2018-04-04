@@ -68,7 +68,6 @@ namespace Falcor
         float timeScale = 1.0f;                                     ///< A scaling factor for the time elapsed between frames.
         float fixedTimeDelta = 0.0f;                                ///< If non-zero, specifies a fixed simulation time step per frame, which is further affected by time scale.
         bool freezeTimeOnStartup = false;                           ///< Control whether or not to start the clock when the sample start running.
-        std::function<void(void)> deviceCreatedCallback = nullptr;  ///< Callback function which will be called after the device is created
         Flags flags = Flags::None;                                  ///< Sample flags
         uint32_t argc = 0;                                          ///< Arg count 
         char** argv = nullptr;                                      ///< Arg values
@@ -99,6 +98,7 @@ namespace Falcor
         /************************************************************************/
         RenderContext::SharedPtr getRenderContext() override { return mpRenderContext; }
         Fbo::SharedPtr getCurrentFbo() override { return mpTargetFBO; }
+        Window* getWindow() override { return mpWindow.get(); }
         Gui* getGui() override { return mpGui.get(); }
         float getCurrentTime() override { return mCurrentTime; }
         void resizeSwapChain(uint32_t width, uint32_t height) override;
@@ -111,10 +111,13 @@ namespace Falcor
         void toggleText(bool showText) override { mShowText = showText && gpDevice; }
         void toggleUI(bool showUI) override { mShowUI = showUI && gpDevice; }
         void setDefaultGuiSize(uint32_t width, uint32_t height) override;
+        void setDefaultGuiPosition(uint32_t x, uint32_t y) override;
         void setCurrentTime(float time) override { mCurrentTime = time; }
         ArgList getArgList() override { return mArgList; }
         void setFixedTimeDelta(float newFixedTimeDelta) override { mFixedTimeDelta = newFixedTimeDelta; }
         float getFixedTimeDelta() override  { return mFixedTimeDelta; }
+        void freezeTime(bool timeFrozen) override { mFreezeTime = timeFrozen; }
+        bool isTimeFrozen() override { return mFreezeTime; }
         std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
         void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
         
@@ -186,15 +189,15 @@ namespace Falcor
         PixelZoom::SharedPtr mpPixelZoom;
         uint32_t mSampleGuiWidth = 250;
         uint32_t mSampleGuiHeight = 200;
+        uint32_t mSampleGuiPositionX = 20;
+        uint32_t mSampleGuiPositionY = 40;
 
         Sample(Renderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
         Sample(const Sample&) = delete;
         Sample& operator=(const Sample&) = delete;
-    private:
         Fbo::SharedPtr mpBackBufferFBO;     ///< The FBO for the back buffer
         //Testing
         SampleTest::UniquePtr mpSampleTest = nullptr;
-
     };
     enum_class_operators(SampleConfig::Flags);
 };

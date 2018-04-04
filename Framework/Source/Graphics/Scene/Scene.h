@@ -36,6 +36,7 @@
 #include "Graphics/Camera/CameraController.h"
 #include "Graphics/Paths/ObjectPath.h"
 #include "Graphics/Model/ObjectInstance.h"
+#include "Graphics/Model/SkinningCache.h"
 
 namespace Falcor
 {
@@ -182,8 +183,18 @@ namespace Falcor
 
         void merge(const Scene* pFrom);
 
+        /** Set scene unit.
+            \param[in] sceneUnit Size of scene unit in meters.
+        */
+        void setSceneUnit(float sceneUnit) { mSceneUnit = sceneUnit; }
+
+        /** Get scene unit.
+            \return Size of scene unit in meters.
+        */
+        float getSceneUnit() const { return mSceneUnit; }
+
         /**
-            Return scene extents
+            Return scene extents in scene units
         */
         const vec3& getCenter() { updateExtents(); return mCenter; }
         const float getRadius() { updateExtents(); return mRadius; }
@@ -198,6 +209,9 @@ namespace Falcor
         */
         void bindSampler(Sampler::SharedPtr pSampler);
 
+        /** Attach skinning cache to all models in scene.
+        */
+        void attachSkinningCacheToModels(SkinningCache::SharedPtr pSkinningCache);
     protected:
 
         Scene();
@@ -221,6 +235,7 @@ namespace Falcor
         float mCameraSpeed = 1;
         float mLightingScale = 1.0f;
         uint32_t mVersion = 1;
+        float mSceneUnit = 1.0f;            ///< Scene unit in meters (default 1 unit = 1 m)
 
         float mRadius = -1.f;
         vec3 mCenter = vec3(0, 0, 0);

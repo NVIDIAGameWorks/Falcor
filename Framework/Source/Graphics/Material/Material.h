@@ -43,6 +43,36 @@ namespace Falcor
     class ProgramVars;
     class ConstantBuffer;
 
+
+    /** Channel Layout For Different Shading Models
+        (Options listed in HostDeviceSharedMacros.h)
+
+        ShadingModelMetalRough
+            BaseColor
+                - RGB - Base Color
+                - A   - Transparency
+            Specular
+                - R - Occlusion
+                - G - Metalness
+                - B - Roughness
+                - A - Reserved
+
+        ShadingModelSpecGloss
+            BaseColor
+                - RGB - Diffuse Color
+                - A   - Transparency
+            Specular
+                - RGB - Specular Color
+                - A   - Gloss
+
+        Common for all shading models
+            Emissive
+                - RGB - Emissive Color
+                - A   - Unused
+            Normal
+                - 3-Channel standard normal map, or 2-Channel BC5 format
+    */
+
     class Material : public std::enable_shared_from_this<Material>
     {
     public:
@@ -76,13 +106,13 @@ namespace Falcor
         */
         static void resetGlobalIdCounter();
 
-        /** Set the diffuse texture
+        /** Set the base color texture
         */
-        void setDiffuseTexture(Texture::SharedPtr& pDiffuse);
+        void setBaseColorTexture(Texture::SharedPtr& pBaseColor);
 
-        /** Get the diffuse texture
+        /** Get the base color texture
         */
-        Texture::SharedPtr getDiffuseTexture() const { return mData.resources.diffuse; }
+        Texture::SharedPtr getBaseColorTexture() const { return mData.resources.baseColor; }
 
         /** Set the specular texture
         */
@@ -140,21 +170,21 @@ namespace Falcor
         */
         Texture::SharedPtr getHeightMap() const { return mData.resources.heightMap; }
 
-        /** Set the diffuse color
+        /** Set the base color
         */
-        void setDiffuseColor(const vec4& color);
+        void setBaseColor(const vec4& color);
 
-        /** Get the diffuse color
+        /** Get the base color
         */
-        const vec4& getDiffuseColor() const { return mData.diffuse; }
+        const vec4& getBaseColor() const { return mData.baseColor; }
 
-        /** Set the specular color
+        /** Set the specular parameters
         */
-        void setSpecularColor(const vec4& color);
+        void setSpecularParams(const vec4& color);
 
-        /** Get the specular color
+        /** Get the specular parameters
         */
-        const vec4& getSpecularColor() const { return mData.specular; }
+        const vec4& getSpecularParams() const { return mData.specular; }
 
         /** Set the emissive color
         */
@@ -232,14 +262,16 @@ namespace Falcor
         */
         ParameterBlock::SharedConstPtr getParameterBlock() const;
     private:
-        void updateDiffuseType();
+        void updateBaseColorType();
         void updateSpecularType();
         void updateEmissiveType();
+        void updateOcclusionFlag();
         void setIntoParameterBlock(ParameterBlock* pBlock) const;
         
         Material(const std::string& name);
         std::string mName;
         MaterialData mData;
+        bool mOcclusionMapEnabled = false;
         mutable bool mParamBlockDirty = true;
         ParameterBlock::SharedPtr mpParameterBlock;
         static uint32_t sMaterialCounter;

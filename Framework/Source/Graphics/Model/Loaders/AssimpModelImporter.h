@@ -39,6 +39,10 @@ struct aiNode;
 struct aiAnimation;
 struct aiMesh;
 struct aiMaterial;
+namespace Assimp 
+{ 
+    class Importer; 
+}
 
 namespace Falcor
 {

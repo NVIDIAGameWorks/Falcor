@@ -12,7 +12,7 @@
     <ClInclude Include="SceneEditorApp.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\SceneEditorApp.ps.slang">
+    <None Include="Data\SceneEditorApp.slang">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

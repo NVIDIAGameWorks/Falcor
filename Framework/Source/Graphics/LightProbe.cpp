@@ -30,37 +30,170 @@
 #include "API/Device.h"
 #include "TextureHelper.h"
 #include "Utils/Gui.h"
+#include "Graphics/FboHelper.h"
 
 namespace Falcor
 {
-    LightProbe::LightProbe(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
+    uint32_t LightProbe::sLightProbeCount = 0;
+    LightProbeSharedResources LightProbe::sSharedData;
+
+    class PreIntegration
     {
-        assert(filter == PreFilterMode::None);
-        mData.type = LightProbeLinear2D;
+    public:
+        const char* kShader = "Framework/Shaders/LightProbeIntegration.ps.slang";
+
+        bool isInitialized() const { return mInitialized; }
+
+        void init()
+        {
+            mpDiffuseLDPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_DIFFUSE_LD"));
+            mpSpecularLDPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_SPECULAR_LD"));
+            mpDFGPass = FullScreenPass::create(std::string(kShader), Program::DefineList().add("_INTEGRATE_DFG"));
+
+            // Shared
+            mpVars = GraphicsVars::create(mpDiffuseLDPass->getProgram()->getReflector());
+            mpSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear));
+            mpVars->getDefaultBlock()->setSampler("gSampler", mpSampler);
+
+            mInitialized = true;
+        }
+
+        void release()
+        {
+            mpDiffuseLDPass = nullptr;
+            mpSpecularLDPass = nullptr;
+            mpDFGPass = nullptr;
+            mpVars = nullptr;
+            mpSampler = nullptr;
+
+            mInitialized = false;
+        }
+
+        Texture::SharedPtr integrateDFG(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
+        {
+            return executeSingleMip(pContext, mpDFGPass, pTexture, size, format, sampleCount);
+        }
+
+        Texture::SharedPtr integrateDiffuseLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
+        {
+            return executeSingleMip(pContext, mpDiffuseLDPass, pTexture, size, format, sampleCount);
+        }
+
+        Texture::SharedPtr integrateSpecularLD(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
+        {
+            mpVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
+            mpVars["DataCB"]["gSampleCount"] = sampleCount;
+
+            Texture::SharedPtr pOutput = Texture::create2D(size, size, format, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
+
+            GraphicsState::SharedPtr pState = pContext->getGraphicsState();
+            pContext->pushGraphicsVars(mpVars);
+            // Execute on each mip level
+            uint32_t mipCount = pOutput->getMipCount();
+            for (uint32_t i = 0; i < mipCount; i++)
+            {
+                Fbo::SharedPtr pFbo = Fbo::create();
+                pFbo->attachColorTarget(pOutput, 0, i);
+
+                // Roughness to integrate for on current mip level
+                mpVars["DataCB"]["gRoughness"] = float(i) / float(mipCount - 1);
+
+                pState->pushFbo(pFbo);
+                mpSpecularLDPass->execute(pContext);
+                pState->popFbo();
+            }
+
+            pContext->popGraphicsVars();
+            return pOutput;
+        }
+
+    private:
+
+        Texture::SharedPtr executeSingleMip(RenderContext* pContext, const FullScreenPass::UniquePtr& pPass, const Texture::SharedPtr& pTexture, uint32_t size, ResourceFormat format, uint32_t sampleCount)
+        {
+            mpVars->getDefaultBlock()->setTexture("gInputTex", pTexture);
+            mpVars["DataCB"]["gSampleCount"] = sampleCount;
+
+            // Output texture
+            Fbo::SharedPtr pFbo = FboHelper::create2D(size, size, Fbo::Desc().setColorTarget(0, format));
+
+            // Execute
+            GraphicsState::SharedPtr pState = pContext->getGraphicsState();
+            pState->pushFbo(pFbo);
+            pContext->pushGraphicsVars(mpVars);
+            pPass->execute(pContext);
+            pContext->popGraphicsVars();
+            pState->popFbo();
+
+            return pFbo->getColorTexture(0);
+        }
+
+
+        bool mInitialized = false;
+        FullScreenPass::UniquePtr mpDiffuseLDPass;
+        FullScreenPass::UniquePtr mpSpecularLDPass;
+        FullScreenPass::UniquePtr mpDFGPass;
+        GraphicsVars::SharedPtr mpVars;
+        Sampler::SharedPtr mpSampler;
+    };
+
+    static PreIntegration sIntegration;
+
+    LightProbe::LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize, uint32_t specSize, uint32_t diffSamples, uint32_t specSamples, ResourceFormat preFilteredFormat)
+        : mDiffSampleCount(diffSamples)
+        , mSpecSampleCount(specSamples)
+    {
+        if (sIntegration.isInitialized() == false)
+        {
+            assert(sLightProbeCount == 0);
+            sIntegration.init();
+            sSharedData.dfgTexture = sIntegration.integrateDFG(pContext, pTexture, 128, ResourceFormat::RGBA16Float, 128);
+            sSharedData.dfgSampler = Sampler::create(Sampler::Desc().setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp));
+        }
+
         mData.resources.origTexture = pTexture;
+        mData.resources.diffuseTexture = sIntegration.integrateDiffuseLD(pContext, pTexture, diffSize, preFilteredFormat, diffSamples);
+        mData.resources.specularTexture = sIntegration.integrateSpecularLD(pContext, pTexture, specSize, preFilteredFormat, specSamples);
+        sLightProbeCount++;
     }
 
-    LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
+    LightProbe::~LightProbe()
+    {
+        sLightProbeCount--;
+        if (sLightProbeCount == 0)
+        {
+            sSharedData.dfgTexture = nullptr;
+            sSharedData.dfgSampler = nullptr;
+            sIntegration.release();
+        }
+    }
+
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSize, uint32_t specSize, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
     {
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown)
         {
             Texture::SharedPtr pOrigTex = createTextureFromFile(filename, false, loadAsSrgb);
-            pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, generateMips ? Texture::kMaxPossible : 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+            pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
             gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
             pTexture->generateMips(gpDevice->getRenderContext().get());
         }
         else
         {
-            pTexture = createTextureFromFile(filename, generateMips, loadAsSrgb);
+            pTexture = createTextureFromFile(filename, true, loadAsSrgb);
         }
-        
-        return create(pTexture, filter, size, preFilteredFormat);
+
+        return create(pContext, pTexture, diffSize, specSize, diffSampleCount, specSampleCount, preFilteredFormat);
     }
 
-    LightProbe::SharedPtr LightProbe::create(const Texture::SharedPtr& pTexture, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize, uint32_t specSize, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
     {
-        return SharedPtr(new LightProbe(pTexture, filter, size, preFilteredFormat));
+        if (pTexture->getMipCount() == 1)
+        {
+            logWarning("Source textures used for generating light probes should have a valid mip chain.");
+        }
+
+        return SharedPtr(new LightProbe(pContext, pTexture, diffSize, specSize, diffSampleCount, specSampleCount, preFilteredFormat));
     }
 
     void LightProbe::renderUI(Gui* pGui, const char* group)
@@ -74,6 +207,8 @@ namespace Falcor
             {
                 mData.intensity = vec3(intensity);
             }
+
+            pGui->addFloatVar("Radius", mData.radius, -1.0f);
 
             if (group != nullptr)
             {
@@ -110,7 +245,6 @@ namespace Falcor
         // Set the data into the constant buffer
         check_offset(posW);
         check_offset(intensity);
-        check_offset(type);
         static_assert(kDataSize % sizeof(float) * 4 == 0, "LightProbeData size should be a multiple of 16");
 
         if (offset == ConstantBuffer::kInvalidOffset)
@@ -121,11 +255,19 @@ namespace Falcor
 
         assert(offset + kDataSize <= pBuffer->getSize());
 
-        // Set everything except for the material
+        // Set everything except for the resources
         pBuffer->setBlob(&mData, offset, kDataSize);
 
         // Bind the textures
         pVars->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
-        pVars->setSampler(varName + ".resources.samplerState", mData.resources.samplerState);
+        pVars->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
+        pVars->setTexture(varName + ".resources.specularTexture", mData.resources.specularTexture);
+        pVars->setSampler(varName + ".resources.sampler", mData.resources.sampler);
+    }
+
+    void LightProbe::setCommonIntoProgramVars(ProgramVars* pVars, const std::string& varName)
+    {
+        pVars->setTexture(varName + ".dfgTexture", sSharedData.dfgTexture);
+        pVars->setSampler(varName + ".dfgSampler", sSharedData.dfgSampler);
     }
 }

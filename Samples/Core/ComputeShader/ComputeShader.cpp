@@ -36,19 +36,20 @@ void ComputeShader::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     pGui->addCheckBox("Pixelate", mbPixelate);
 }
 
-Texture::SharedPtr createTmpTex(const Fbo* pFbo)
+Texture::SharedPtr createTmpTex(uint32_t width, uint32_t height)
 {
-    return Texture::create2D(pFbo->getWidth(), pFbo->getHeight(), ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+    return Texture::create2D(width, height, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
 }
 
 void ComputeShader::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
 {
-    mpProg = ComputeProgram::createFromFile(appendShaderExtension("compute"));
+    mpProg = ComputeProgram::createFromFile("compute.hlsl", "main");
     mpState = ComputeState::create();
     mpState->setProgram(mpProg);
-    mpProgVars = ComputeVars::create(mpProg->getActiveVersion()->getReflector());
+    mpProgVars = ComputeVars::create(mpProg->getReflector());
 
-    mpTmpTexture = createTmpTex(pSample->getCurrentFbo().get());
+    Fbo::SharedPtr pFbo = pSample->getCurrentFbo();
+    mpTmpTexture = createTmpTex(pFbo->getWidth(), pFbo->getHeight());
 }
 
 void ComputeShader::loadImage(SampleCallbacks* pSample)
@@ -63,10 +64,10 @@ void ComputeShader::loadImage(SampleCallbacks* pSample)
 void ComputeShader::loadImageFromFile(SampleCallbacks* pSample, std::string filename)
 {
     mpImage = createTextureFromFile(filename, false, true);
+    mpProgVars->setTexture("gInput", mpImage);
+    mpTmpTexture = createTmpTex(mpImage->getWidth(), mpImage->getHeight());
 
     pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
-    mpProgVars->setTexture("gInput", mpImage);
-    mpTmpTexture = createTmpTex(pSample->getCurrentFbo().get());
 }
 
 void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)

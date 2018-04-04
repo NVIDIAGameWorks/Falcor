@@ -67,7 +67,9 @@
 *******************************************************************/
 
 // Shading model
-#define ShadingModelSpecGloss 0
+#define ShadingModelMetalRough 0
+//#define ShadingModelMetalAnisoRough 1 Reserved for future use
+#define ShadingModelSpecGloss 2
 
 // Channel type
 #define ChannelTypeUnused    0
@@ -147,7 +149,7 @@
 #define MAX_LIGHT_SOURCES 16
 
 // To bind area lights, use this macro to declare the constant buffer in your shader
-#define AREA_LIGHTS(n) cbuffer InternalAreaLightCB \
+#define AREA_LIGHTS(n) shared cbuffer InternalAreaLightCB \
 { \
     AreaLightData gAreaLights[n]; \
 };
@@ -162,9 +164,9 @@
 /*******************************************************************
                 Math
 *******************************************************************/
-#ifndef M_PI
-#define M_PI       3.14159265358979323846
-#endif
+#define M_PI     3.14159265358979323846
+#define M_PI2    6.28318530717958647692
+#define M_INV_PI 0.3183098861837906715
 
 #endif //_HOST_DEVICE_SHARED_MACROS_H
 

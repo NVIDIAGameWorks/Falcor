@@ -32,7 +32,6 @@
 #include "API/Buffer.h"
 #include "Utils/Platform/OS.h"
 #include "Utils/Math/FalcorMath.h"
-#include "MaterialSystem.h"
 #include "Graphics/Program/ProgramVars.h"
 #include "Graphics/Program/GraphicsProgram.h"
 
@@ -48,8 +47,8 @@ namespace Falcor
         sMaterialCounter++;
         if (spBlockReflection == nullptr)
         {
-            GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
-            ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
+            GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Framework/Shaders/MaterialBlock.slang", "", "main");
+            ProgramReflection::SharedConstPtr pReflection = pProgram->getReflector();
             spBlockReflection = pReflection->getParameterBlock(kMaterialVarName);
             assert(spBlockReflection);
         }
@@ -117,12 +116,12 @@ namespace Falcor
         mData.resources.samplerState = pSampler;
     }
 
-    void Material::setDiffuseTexture(Texture::SharedPtr& pDiffuse)
+    void Material::setBaseColorTexture(Texture::SharedPtr& pBaseColor)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.resources.diffuse != pDiffuse);
-        mData.resources.diffuse = pDiffuse;
-        updateDiffuseType();
-        bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
+        mParamBlockDirty = mParamBlockDirty || (mData.resources.baseColor != pBaseColor);
+        mData.resources.baseColor = pBaseColor;
+        updateBaseColorType();
+        bool hasAlpha = pBaseColor && doesFormatHasAlpha(pBaseColor->getFormat());
         setAlphaMode(hasAlpha ? AlphaModeMask : AlphaModeOpaque);
     }
 
@@ -140,14 +139,14 @@ namespace Falcor
         updateEmissiveType();
     }
 
-    void Material::setDiffuseColor(const vec4& color)
+    void Material::setBaseColor(const vec4& color)
     {
-        mParamBlockDirty = mParamBlockDirty || (mData.diffuse != color);
-        mData.diffuse = color;
-        updateDiffuseType();
+        mParamBlockDirty = mParamBlockDirty || (mData.baseColor != color);
+        mData.baseColor = color;
+        updateBaseColorType();
     }
 
-    void Material::setSpecularColor(const vec4& color)
+    void Material::setSpecularParams(const vec4& color)
     {
         mParamBlockDirty = mParamBlockDirty || (mData.specular != color);
         mData.specular = color;
@@ -169,9 +168,9 @@ namespace Falcor
         return ChannelTypeConst;
     }
 
-    void Material::updateDiffuseType()
+    void Material::updateBaseColorType()
     {
-        mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.resources.diffuse != nullptr, mData.diffuse));
+        mData.flags = PACK_DIFFUSE_TYPE(mData.flags, getChannelMode(mData.resources.baseColor != nullptr, mData.baseColor));
     }
 
     void Material::updateSpecularType()
@@ -182,6 +181,24 @@ namespace Falcor
     void Material::updateEmissiveType()
     {
         mData.flags = PACK_EMISSIVE_TYPE(mData.flags, getChannelMode(mData.resources.emissive != nullptr, mData.emissive));
+    }
+
+    void Material::updateOcclusionFlag()
+    {
+        bool hasMap = false;
+        switch (EXTRACT_SHADING_MODEL(mData.flags))
+        {
+        case ShadingModelMetalRough:
+            hasMap = (mData.resources.specular != nullptr);
+            break;
+        case ShadingModelSpecGloss:
+            hasMap = (mData.resources.occlusionMap != nullptr);
+            break;
+        default:
+            should_not_get_here();
+        }
+        bool shouldEnable = mOcclusionMapEnabled && hasMap;
+        mData.flags = PACK_OCCLUSION_MAP(mData.flags, shouldEnable ? 1 : 0);
     }
 
     void Material::setNormalMap(Texture::SharedPtr pNormalMap)
@@ -212,8 +229,8 @@ namespace Falcor
     {
         mParamBlockDirty = mParamBlockDirty || (mData.resources.occlusionMap != pOcclusionMap);
         mData.resources.occlusionMap = pOcclusionMap;
-        mData.flags = PACK_OCCLUSION_MAP(mData.flags, pOcclusionMap ? 1 : 0);
         mParamBlockDirty = true;
+        updateOcclusionFlag();
     }
 
     void Material::setLightMap(Texture::SharedPtr pLightMap)
@@ -235,7 +252,7 @@ namespace Falcor
     bool Material::operator==(const Material& other) const 
     {
 #define compare_field(_a) if (mData._a != other.mData._a) return false
-        compare_field(diffuse);
+        compare_field(baseColor);
         compare_field(specular);
         compare_field(emissive);
         compare_field(alphaThreshold);
@@ -245,7 +262,7 @@ namespace Falcor
 #undef compare_field
 
 #define compare_texture(_a) if (mData.resources._a != other.mData.resources._a) return false
-        compare_texture(diffuse);
+        compare_texture(baseColor);
         compare_texture(specular);
         compare_texture(emissive);
         compare_texture(normalMap);
@@ -278,7 +295,7 @@ namespace Falcor
 
         // Now set the textures
 #define set_texture(texName) pBlock->setTexture(varName + "resources." #texName, data.resources.texName)
-        set_texture(diffuse);
+        set_texture(baseColor);
         set_texture(specular);
         set_texture(emissive);
         set_texture(normalMap);

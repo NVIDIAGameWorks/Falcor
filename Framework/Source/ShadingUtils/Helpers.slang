@@ -34,12 +34,70 @@
 *******************************************************************/
 float2 dirToSphericalCrd(float3 direction)
 {
-    static const float PI = 3.14159265f;
     float3 p = normalize(direction);
     float2 uv;
-    uv.x = (1 + atan2(-p.z, p.x) / PI) * 0.5;
-    uv.y = 1 - (-acos(p.y) / PI);
+    uv.x = (1 + atan2(-p.z, p.x) / M_PI) * 0.5;
+    uv.y = 1 - (-acos(p.y) / M_PI);
     return uv;
+}
+
+float3 sphericalCrdToDir(float2 uv)
+{
+    float phi = M_PI * uv.y;
+    float theta = M_PI2 * uv.x - (M_PI / 2.0f);
+
+    float3 dir;
+    dir.x = sin(phi) * sin(theta);
+    dir.y = cos(phi);
+    dir.z = sin(phi) * cos(theta);
+
+    return normalize(dir);
+}
+
+/*******************************************************************
+    Sample Patterns
+*******************************************************************/
+
+float radicalInverse(uint i)
+{
+    i = (i & 0x55555555) << 1 | (i & 0xAAAAAAAA) >> 1;
+    i = (i & 0x33333333) << 2 | (i & 0xCCCCCCCC) >> 2;
+    i = (i & 0x0F0F0F0F) << 4 | (i & 0xF0F0F0F0) >> 4;
+    i = (i & 0x00FF00FF) << 8 | (i & 0xFF00FF00) >> 8;
+    i = (i << 16) | (i >> 16);
+    return float(i) * 2.3283064365386963e-10f;
+}
+
+float2 getHammersley(uint i, uint N)
+{
+    return float2(float(i) / float(N), radicalInverse(i));
+}
+
+/*******************************************************************
+    Other
+*******************************************************************/
+
+bool intersectRaySphere(float3 rayPos, float3 rayDir, float3 spherePos, float sphereRadius, out float3 intersectionPos)
+{
+    float3 m = rayPos - spherePos;
+    float b = dot(m, rayDir);
+    float c = dot(m, m) - (sphereRadius * sphereRadius);
+
+    // If ray origin is outside sphere (c > 0) and ray is pointing away from sphere (b > 0)
+    // For now assume input always produces valid intersection
+    // if(c > 0.0f && b > 0.0f) return false;
+
+    float discr = b * b - c;
+    // Negative discriminant means ray missed sphere
+    // if(discr < 0.0f) return false;
+
+    float t = -b - sqrt(discr);
+
+    // t will be negative if origin is inside sphere, 
+    // take the abs since we want the position on the sphere's surface
+    intersectionPos = rayPos + abs(t) * rayDir;
+
+    return true;
 }
 
 float4 applyAmbientOcclusion(float4 color, Texture2D aoTex, SamplerState s, float2 texC)
@@ -65,7 +123,9 @@ float getMetallic(float diffuse, float spec)
 *******************************************************************/
 void basicAlphaTest(float alpha, float threshold)
 {
+#ifndef _MS_DISABLE_ALPHA_TEST
     if(alpha < threshold) discard;
+#endif
 }
 
 /*******************************************************************
@@ -74,7 +134,9 @@ void basicAlphaTest(float alpha, float threshold)
 void hashedAlphaTest(float alpha, float materialThreshold, float hashedThreshold)
 {
     float compareTo = hashedThreshold <= 0 ? materialThreshold : saturate(hashedThreshold);
+#ifndef _MS_DISABLE_ALPHA_TEST
     if(alpha < compareTo) discard;
+#endif
 }
 
 float sineHash(float2 p)
@@ -178,4 +240,30 @@ void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
 #endif
 }
 
+/*******************************************************************
+   	Random numbers based on Mersenne Twister
+*******************************************************************/  
+uint rand_init(uint val0, uint val1, uint backoff = 16)
+{
+    uint v0 = val0;
+    uint v1 = val1;
+    uint s0 = 0;
+
+    for(uint n = 0; n < backoff; n++)
+    {
+        s0 += 0x9e3779b9;
+        v0 += ((v1<<4)+0xa341316c)^(v1+s0)^((v1>>5)+0xc8013ea4);
+        v1 += ((v0<<4)+0xad90777d)^(v0+s0)^((v0>>5)+0x7e95761e);
+    }
+
+    return v0;
+}
+
+float rand_next(inout uint s)
+{
+    uint LCG_A = 1664525u;
+    uint LCG_C = 1013904223u;
+    s = (LCG_A * s + LCG_C);
+    return float(s & 0x00FFFFFF) / float(0x01000000);
+}
 #endif //_FALCOR_HELPERS_SLANG_

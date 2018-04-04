@@ -34,6 +34,7 @@
 #include "Graphics/Model/ObjectInstance.h"
 #include "API/Sampler.h"
 #include "Graphics/Model/AnimationController.h"
+#include "Graphics/Model/SkinningCache.h"
 
 namespace Falcor
 {
@@ -130,7 +131,7 @@ namespace Falcor
             \param[in] instanceID ID of the instance
             \return Mesh instance
         */
-        const MeshInstance::SharedPtr& getMeshInstance(uint_t meshID, uint_t instanceID) const { return mMeshes[meshID][instanceID]; }
+        const MeshInstance::SharedPtr& getMeshInstance(uint32_t meshID, uint32_t instanceID) const { return mMeshes[meshID][instanceID]; }
 
         /** Gets a mesh.
             \param[in] meshID ID of the mesh
@@ -160,8 +161,9 @@ namespace Falcor
 
         /** Animate the active animation. Use setActiveAnimation() to switch between different animations.
             \param[in] currentTime The current global time
+            \return true if model has changed
         */
-        void animate(double currentTime);
+        bool animate(double currentTime);
 
         /** Get the animation name from animation ID.
         */
@@ -182,6 +184,20 @@ namespace Falcor
         /** Set the animation controller for the model.
         */
         void setAnimationController(AnimationController::UniquePtr pAnimController);
+
+        /** Attach a skinning cache to the model, or nullptr to detach.
+            When a cache is attached, the model will use compute shader based skinning with caching of the resulting skinned vertex buffers.
+        */
+        void attachSkinningCache(SkinningCache::SharedPtr pSkinningCache);
+
+        /** Get the skinning cache for the model, or nullptr if none.
+        */
+        SkinningCache::SharedPtr getSkinningCache() const;
+
+        /** Returns a vertex array object with skinned vertex buffers for skinned models, or the original vertex buffers otherwise.
+            This function requires a skinning cache to be attached to skinned models.
+        */
+        Vao::SharedPtr getMeshVao(const Mesh* pMesh) const;
 
         /** Check if the model has bones.
         */
@@ -235,6 +251,7 @@ namespace Falcor
         */
         static void resetGlobalIdCounter();
 
+
     protected:
         friend class SimpleModelImporter;
 
@@ -242,6 +259,7 @@ namespace Falcor
         Model(const Model& other);
         void sortMeshes();
         void deleteCulledMeshInstances(MeshInstanceList& meshInstances, const Camera *pCamera);
+        virtual bool update();
 
         BoundingBox mBoundingBox;
         float mRadius;
@@ -259,6 +277,7 @@ namespace Falcor
         std::vector<MeshInstanceList> mMeshes; // [Mesh][Instance]
 
         AnimationController::UniquePtr mpAnimationController;
+        SkinningCache::SharedPtr mpSkinningCache;
 
         std::string mName;
         std::string mFilename;

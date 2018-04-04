@@ -51,6 +51,17 @@ namespace Falcor
         return cmdBuf;
     }
 
+    void initCommandList(LowLevelContextApiData* pApiData, const CommandListHandle& list)
+    {
+        // Begin recording
+        VkCommandBufferBeginInfo beginInfo = {};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+        beginInfo.pInheritanceInfo = nullptr;
+        vk_call(vkBeginCommandBuffer(list, &beginInfo));
+        pApiData->recordingCmds = true;
+    }
+
     LowLevelContextData::SharedPtr LowLevelContextData::create(LowLevelContextData::CommandQueueType type, CommandQueueHandle queue)
     {
         SharedPtr pThis = SharedPtr(new LowLevelContextData);
@@ -72,6 +83,7 @@ namespace Falcor
         pThis->mpApiData = new LowLevelContextApiData;
         pThis->mpApiData->pCmdBufferAllocator = FencedPool<VkCommandBuffer>::create(pThis->mpFence, createCommandBuffer, pThis.get());
         pThis->mpList = pThis->mpApiData->pCmdBufferAllocator->newObject();
+        initCommandList(pThis->mpApiData, pThis->mpList);
 
         return pThis;
     }
@@ -80,7 +92,7 @@ namespace Falcor
     {
         safe_delete(mpApiData);
     }
-    
+
     // Submit the recorded command buffers here. 
     void LowLevelContextData::flush()
     {
@@ -96,13 +108,8 @@ namespace Falcor
         vk_call(vkQueueSubmit(mpQueue, 1, &submitInfo, nullptr));
         mpFence->gpuSignal(mpQueue);
 
-        // Reset the command list
-        VkCommandBufferBeginInfo beginInfo = {};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-        beginInfo.pInheritanceInfo = nullptr;
+        // Reset the command list: get a new one and begin recording
         mpList = mpApiData->pCmdBufferAllocator->newObject();
-        vk_call(vkBeginCommandBuffer(mpList, &beginInfo));
-        mpApiData->recordingCmds = true;
+        initCommandList(mpApiData, mpList);
     }
 }

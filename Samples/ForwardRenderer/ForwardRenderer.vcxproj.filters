@@ -21,13 +21,7 @@
     <None Include="Data\DepthPass.ps.slang">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\ForwardRenderer.ps.slang">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ForwardRenderer.vs.slang">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ForwardRendererCommon.hlsli">
+    <None Include="Data\ForwardRenderer.slang">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

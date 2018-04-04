@@ -1,4 +1,4 @@
-@set PM_PACKMAN_VERSION=5.1
+@set PM_PACKMAN_VERSION=5.2.4
 
 :: Specify where packman command is rooted
 @set PM_INSTALL_PATH=%~dp0..
@@ -45,22 +45,43 @@
 	@goto PACKMAN
 )
 
-@set PM_PYTHON_DIR=%PM_PACKAGES_ROOT%\python\2.7.6-windows-x86
+@set PM_PYTHON_VERSION=2.7.14-windows-x86_32
+@set PM_PYTHON_BASE_DIR=%PM_PACKAGES_ROOT%\python
+@set PM_PYTHON_DIR=%PM_PYTHON_BASE_DIR%\%PM_PYTHON_VERSION%
 @set PM_PYTHON=%PM_PYTHON_DIR%\python.exe
 
 @if exist "%PM_PYTHON%" goto PACKMAN
+@if not exist "%PM_PYTHON_BASE_DIR%" call :CREATE_PYTHON_BASE_DIR
 
-@set PM_PYTHON_PACKAGE=python@2.7.6-windows-x86.exe
+@set PM_PYTHON_PACKAGE=python@%PM_PYTHON_VERSION%.exe
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do @set TEMP_FILE_NAME=%%a
 @set TARGET=%TEMP_FILE_NAME%.exe
 @call "%~dp0fetch_file_from_s3.cmd" %PM_PYTHON_PACKAGE% "%TARGET%"
 @if errorlevel 1 goto ERROR
 
-@echo Unpacking ...
-@"%TARGET%" -o"%PM_PYTHON_DIR%" -y 1> nul
-@if errorlevel 1 goto ERROR
-
+@for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_folder.ps1" -parentPath "%PM_PACKAGES_ROOT%"') do @set TEMP_FOLDER_NAME=%%a
+@echo Unpacking Python interpreter ...
+@"%TARGET%" -o"%TEMP_FOLDER_NAME%" -y 1> nul
 @del "%TARGET%"
+:: Failure during extraction to temp folder name, need to clean up and abort
+@if errorlevel 1 (
+    @call :CLEAN_UP_TEMP_FOLDER
+    @goto ERROR
+)
+
+:: If python has now been installed by a concurrent process we need to clean up and then continue
+@if exist "%PM_PYTHON%" (
+    @call :CLEAN_UP_TEMP_FOLDER
+    @goto PACKMAN
+)
+
+:: Perform atomic rename
+@move /Y "%TEMP_FOLDER_NAME%" "%PM_PYTHON_DIR%" 1> nul
+:: Failure during move, need to clean up and abort
+@if errorlevel 1 (
+    @call :CLEAN_UP_TEMP_FOLDER
+    @goto ERROR
+)
 
 :PACKMAN
 :: The packman module may already be externally configured
@@ -87,7 +108,9 @@
 @del "%TARGET%"
 
 :ENSURE_7ZA
-@set PM_7Za_VERSION=16.02
+@set PM_7Za_VERSION=16.02.2
+@set PM_7Za_PATH=%PM_PACKAGES_ROOT%\7za\%PM_7ZA_VERSION%
+@if exist "%PM_7Za_PATH%" goto END
 @set PM_7Za_PATH=%PM_PACKAGES_ROOT%\chk\7za\%PM_7ZA_VERSION%
 @if exist "%PM_7Za_PATH%" goto END
 
@@ -108,5 +131,14 @@
 :ERROR
 @echo !!! Failure while configuring local machine :( !!!
 @exit /B 1
+
+:CLEAN_UP_TEMP_FOLDER
+@rd /S /Q "%TEMP_FOLDER_NAME%"
+@exit /B
+
+:CREATE_PYTHON_BASE_DIR
+:: We ignore errors and clean error state - if two processes create the directory one will fail which is fine
+@md "%PM_PYTHON_BASE_DIR%" > nul 2>&1
+@exit /B 0
 
 :END

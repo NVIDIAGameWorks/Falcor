@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "ForwardRenderer.h"
 
-Gui::DropdownList kSampleCountList = 
+Gui::DropdownList kSampleCountList =
 {
     { 1, "1" },
     { 2, "2" },
@@ -35,7 +35,7 @@ Gui::DropdownList kSampleCountList =
     { 8, "8" },
 };
 
-const Gui::DropdownList aaModeList = 
+const Gui::DropdownList aaModeList =
 {
     { 0, "MSAA" },
     { 1, "TAA" }
@@ -53,7 +53,7 @@ void ForwardRenderer::initControls()
     mControls[ControlID::EnableSSAO] = { true, false, "" };
     mControls[ControlID::VisualizeCascades] = { false, false, "_VISUALIZE_CASCADES" };
 
-    for (uint32_t i = 0 ; i < ControlID::Count ; i++)
+    for (uint32_t i = 0; i < ControlID::Count; i++)
     {
         applyLightingProgramControl((ControlID)i);
     }
@@ -62,7 +62,7 @@ void ForwardRenderer::initControls()
 void ForwardRenderer::applyLightingProgramControl(ControlID controlId)
 {
     const ProgramControl control = mControls[controlId];
-    if(control.define.size())
+    if (control.define.size())
     {
         bool add = control.unsetOnEnabled ? !control.enabled : control.enabled;
         if (add)
@@ -97,6 +97,10 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
         mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
         fboDesc.setSampleCount(mMSAASampleCount);
+
+        Fbo::Desc resolveDesc;
+        resolveDesc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
+        mpResolveFbo = FboHelper::create2D(w, h, resolveDesc);
     }
     else if (mAAMode == AAMode::TAA)
     {
@@ -105,13 +109,18 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
         fboDesc.setColorTarget(2, ResourceFormat::RG16Float);
 
         Fbo::Desc taaFboDesc;
-        taaFboDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
+        taaFboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
         mTAA.createFbos(w, h, taaFboDesc);
     }
 
     mpMainFbo = FboHelper::create2D(w, h, fboDesc);
     mpDepthPassFbo = Fbo::create();
     mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
+
+    if (mAAMode == AAMode::TAA)
+    {
+        mpResolveFbo = mpMainFbo;
+    }
 }
 
 void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
@@ -146,7 +155,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             }
         }
 
-        if(pGui->beginGroup("Scene Settings"))
+        if (pGui->beginGroup("Scene Settings"))
         {
             Scene* pScene = mpSceneRenderer->getScene().get();
             float camSpeed = pScene->getCameraSpeed();
@@ -178,15 +187,20 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
                 pGui->endGroup();
             }
+
+            if (pGui->addCheckBox("Use CS for Skinning", mUseCsSkinning))
+            {
+                applyCsSkinningMode();
+            }
             pGui->endGroup();
         }
 
-        if(pGui->beginGroup("Renderer Settings"))
+        if (pGui->beginGroup("Renderer Settings"))
         {
             pGui->addCheckBox("Depth Pass", mEnableDepthPass);
             pGui->addTooltip("Run a depth-pass at the beginning of the frame");
 
-            if (pGui->addCheckBox("Per-Material Shaders", mPerMaterialShader))
+            if (pGui->addCheckBox("Specialize Material Shaders", mPerMaterialShader))
             {
                 mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
             }
@@ -248,7 +262,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string filename;
                 if (openFileDialog(kImageFileString, filename))
                 {
-                    initLightProbe(filename);
+                    updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float));
                 }
             }
 
@@ -259,10 +273,13 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 {
                     applyLightingProgramControl(ControlID::EnableReflections);
                 }
-                pGui->addSeparator();
-                pScene->getLightProbe(0)->renderUI(pGui);
+                if (mControls[ControlID::EnableReflections].enabled)
+                {
+                    pGui->addSeparator();
+                    pScene->getLightProbe(0)->renderUI(pGui);
+                }
             }
-            
+
             pGui->endGroup();
         }
 
@@ -278,7 +295,11 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             {
                 pGui->addCheckBox("Update Map", mShadowPass.updateShadowMap);
                 mShadowPass.pCsm->renderUi(pGui);
-                if (pGui->addCheckBox("Visualize Cascades", mControls[ControlID::VisualizeCascades].enabled)) applyLightingProgramControl(ControlID::VisualizeCascades);
+                if (pGui->addCheckBox("Visualize Cascades", mControls[ControlID::VisualizeCascades].enabled))
+                {
+                    applyLightingProgramControl(ControlID::VisualizeCascades);
+                    mShadowPass.pCsm->toggleCascadeVisualization(mControls[ControlID::VisualizeCascades].enabled);
+                }
             }
             pGui->endGroup();
         }

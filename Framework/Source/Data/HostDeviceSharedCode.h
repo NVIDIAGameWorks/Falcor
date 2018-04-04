@@ -72,7 +72,7 @@ struct CameraData
     float4x4 projMat;               ///< Camera projection matrix.
     float4x4 viewProjMat;           ///< Camera view-projection matrix.
     float4x4 invViewProj;           ///< Camera inverse view-projection matrix.
-    float4x4 prevViewProjMat;       ///< Camera view-projection matrix associated to previous frame.
+    float4x4 prevViewProjMat;       ///< Camera view-projection matrix associated to previous frame. No jittering is applied!
 
     float3   posW;                                              ///< Camera world-space position.
     float    focalLength            DEFAULTS(21.0f);            ///< Camera focal length in mm. Default is 59 degree vertical, 90 horizontal FOV at 16:9 aspect ratio.
@@ -80,12 +80,17 @@ struct CameraData
     float    aspectRatio            DEFAULTS(1.7777f);          ///< 16:9 aspect-ratio
     float3   target                 DEFAULTS(float3(0, 0, -1)); ///< Camera target point in world-space.
     float    nearZ                  DEFAULTS(0.1f);             ///< Camera near plane.
-    float3   cameraU                DEFAULTS(float3(0, 0, 1));  ///< Camera base vector U. normalized it indicates the left image plane vector. The length is dependent on the FOV. 
+    float3   cameraU                DEFAULTS(float3(0, 0, 1));  ///< Camera base vector U. Normalized it indicates the right image plane vector. The length is dependent on the FOV.
     float    farZ                   DEFAULTS(1000.0f);          ///< Camera far plane.
-    float3   cameraV                DEFAULTS(float3(0, 1, 0));  ///< Camera base vector V. normalized it indicates the up image plane vector. The length is dependent on the FOV. 
+    float3   cameraV                DEFAULTS(float3(0, 1, 0));  ///< Camera base vector V. Normalized it indicates the up image plane vector. The length is dependent on the FOV.
     float    jitterX                DEFAULTS(0.0f);             ///< Eventual camera jitter in the x coordinate
-    float3   cameraW                DEFAULTS(float3(1, 0, 0));  ///< Camera base vector U. normalized it indicates the forward direction. The length is the camera focal distance.
+    float3   cameraW                DEFAULTS(float3(1, 0, 0));  ///< Camera base vector W. Normalized it indicates the forward direction. The length is the camera focal distance.
     float    jitterY                DEFAULTS(0.0f);             ///< Eventual camera jitter in the y coordinate
+
+    float    frameHeight            DEFAULTS(24.0f);            ///< Camera film plane height in mm.
+    float    focalDistance          DEFAULTS(10000.0f);         ///< Camera focal distance in scene units.
+    float    apertureRadius         DEFAULTS(0.0f);             ///< Camera aperture radius in scene units.  
+    float    _padding;
 
     float4x4 rightEyeViewMat;
     float4x4 rightEyeProjMat;
@@ -98,10 +103,11 @@ struct CameraData
 *******************************************************************/
 struct MaterialResources
 {
-    Texture2D diffuse;          // RGB - diffuse color, A - transparency
-    Texture2D specular;         // RGB - specular color, A - roughness
-    Texture2D emissive;         // RGB - emissive color, A - unused
-    Texture2D normalMap;        // 2 or 3 channel normal map, depending on the type
+    // See Material.h for channel layout
+    Texture2D baseColor;
+    Texture2D specular;
+    Texture2D emissive;
+    Texture2D normalMap;
 
     // The following maps are not yet used by the material system
     Texture2D occlusionMap;     // Ambient occlusion map
@@ -112,10 +118,10 @@ struct MaterialResources
 
 struct MaterialData
 {
-    float4 diffuse  DEFAULTS(float4(1));
-    float4 specular DEFAULTS(float4(1));
-    float3 emissive DEFAULTS(float3(1));
-    float padf      DEFAULTS(0);
+    float4 baseColor DEFAULTS(float4(1));
+    float4 specular  DEFAULTS(float4(0));
+    float3 emissive  DEFAULTS(float3(0));
+    float padf       DEFAULTS(0);
 
     float alphaThreshold DEFAULTS(0.5f); // Used in case the alpha mode is mask
     float IoR DEFAULTS(1);               // Index of refraction
@@ -139,16 +145,24 @@ struct MaterialData
 struct LightProbeResources
 {
     Texture2D origTexture;      ///< The original texture
-    SamplerState samplerState;
+    Texture2D diffuseTexture;   ///< Texture containing pre-integrated diffuse (LD) term
+    Texture2D specularTexture;  ///< Texture containing pre-integrated specular (LD) term
+    SamplerState sampler;
 };
 
 struct LightProbeData
 {
     float3 posW         DEFAULTS(float3(0));
-    uint32_t type       DEFAULTS(LightProbeLinear2D);
+    float radius        DEFAULTS(-1.0f);
     float3 intensity    DEFAULTS(float3(1.0f));
 
     LightProbeResources resources;
+};
+
+struct LightProbeSharedResources
+{
+    Texture2D dfgTexture;       ///< Texture containing shared pre-integrated (DFG) term
+    SamplerState dfgSampler;
 };
 
 struct AreaLightResources

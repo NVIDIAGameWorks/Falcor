@@ -179,7 +179,7 @@ namespace Falcor
         switch(texType)
         {
         case TextureType_Diffuse:
-            pMaterial->setDiffuseTexture(pTexture);
+            pMaterial->setBaseColorTexture(pTexture);
             break;
         case TextureType_Normal:
             pMaterial->setNormalMap(pTexture);
@@ -828,8 +828,8 @@ namespace Falcor
 
                 mStream >> ambient >> diffuse >> specular >> glossiness;
                 diffuse.w = 1 - diffuse.w;
-                pMaterial->setDiffuseColor(diffuse);
-                pMaterial->setSpecularColor(vec4(specular, glossiness));
+                pMaterial->setBaseColor(diffuse);
+                pMaterial->setSpecularParams(vec4(specular, glossiness));
 
                 if(version >= 3)
                 {

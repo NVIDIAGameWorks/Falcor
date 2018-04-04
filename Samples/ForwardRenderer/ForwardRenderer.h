@@ -42,6 +42,7 @@ public:
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) override;
+
     //Testing
     void onInitializeTesting(SampleCallbacks* pSample) override;
     void onBeginTestFrame(SampleTest* pSampleTest) override;
@@ -56,6 +57,7 @@ private:
     {
         bool updateShadowMap = true;
         CascadedShadowMaps::UniquePtr pCsm;
+        Texture::SharedPtr pVisibilityBuffer;
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     };
     ShadowPass mShadowPass;
@@ -129,9 +131,10 @@ private:
     void shadowPass(RenderContext* pContext);
     void renderSkyBox(RenderContext* pContext);
     void lightingPass(RenderContext* pContext, Fbo* pTargetFbo);
-    void antiAliasing(RenderContext* pContext);
+    //Need to resolve depth first to pass resolved depth to shadow pass
+    void resolveDepthMSAA(RenderContext* pContext);
     void resolveMSAA(RenderContext* pContext);
-    void runTAA(RenderContext* pContext);
+    void runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo);
     void postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
     void ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
 
@@ -144,9 +147,9 @@ private:
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();
-    void initShadowPass();
+    void initShadowPass(uint32_t windowWidth, uint32_t windowHeight);
     void initSSAO();
-    void initLightProbe(const std::string& name);
+    void updateLightProbe(const LightProbe::SharedPtr& pLight);
     void initTAA(SampleCallbacks* pSample);
 
     void initControls();
@@ -184,7 +187,6 @@ private:
         Count
     };
 
-
     enum class SamplePattern : uint32_t
     {
         Halton,
@@ -209,7 +211,7 @@ private:
     void applyCameraPathState();
     bool mPerMaterialShader = false;
     bool mEnableDepthPass = true;
-
+    bool mUseCsSkinning = false;
+    void applyCsSkinningMode();
     static const std::string skDefaultScene;
-
 };

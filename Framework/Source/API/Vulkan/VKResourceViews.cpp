@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format);
+    VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false);
 
     template<typename ApiHandleType>
     ResourceView<ApiHandleType>::~ResourceView()
@@ -82,7 +82,7 @@ namespace Falcor
         outInfo.image = pTexture->getApiHandle();
         outInfo.viewType = getViewType(pTexture->getType(), pTexture->getArraySize() > 1);
         outInfo.format = getVkFormat(texFormat);
-        outInfo.subresourceRange.aspectMask = getAspectFlagsFromFormat(texFormat);
+        outInfo.subresourceRange.aspectMask = getAspectFlagsFromFormat(texFormat, true);
         outInfo.subresourceRange.baseMipLevel = mostDetailedMip;
         outInfo.subresourceRange.levelCount = mipCount;
         if (pTexture->getType() == Resource::Type::TextureCube)

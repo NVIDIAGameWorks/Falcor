@@ -276,8 +276,8 @@ namespace Falcor
     void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uvec4& srcRect, const uvec4& dstRect, Sampler::Filter filter)
     {
         const Texture* pTexture = dynamic_cast<const Texture*>(pSrc->getResource());
-        resourceBarrier(pSrc->getResource(), Resource::State::CopySource);
-        resourceBarrier(pDst->getResource(), Resource::State::CopyDest);
+        resourceBarrier(pSrc->getResource(), Resource::State::CopySource, &pSrc->getViewInfo());
+        resourceBarrier(pDst->getResource(), Resource::State::CopyDest, &pDst->getViewInfo());
 
         if (pTexture && pTexture->getSampleCount() > 1)
         {
@@ -298,7 +298,9 @@ namespace Falcor
             initBlitData<2>(pSrc.get(), srcRect, blt.srcSubresource, blt.srcOffsets);
             initBlitData<2>(pDst.get(), dstRect, blt.dstSubresource, blt.dstOffsets);
 
-            vkCmdBlitImage(mpLowLevelData->getCommandList(), pSrc->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDst->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blt, getVkFilter(filter));
+            // Vulkan spec requires VK_FILTER_NEAREST if blit source is a depth and/or stencil format
+            VkFilter vkFilter = isDepthStencilFormat(pTexture->getFormat()) ? VK_FILTER_NEAREST : getVkFilter(filter);
+            vkCmdBlitImage(mpLowLevelData->getCommandList(), pSrc->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDst->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blt, vkFilter);
         }
     }
 }

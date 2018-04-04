@@ -150,9 +150,9 @@ namespace Falcor
     void SSAO::initShader()
     {
         mpSSAOPass = FullScreenPass::create("Effects/SSAO.ps.slang");
-        mpSSAOVars = GraphicsVars::create(mpSSAOPass->getProgram()->getActiveVersion()->getReflector());
+        mpSSAOVars = GraphicsVars::create(mpSSAOPass->getProgram()->getReflector());
 
-        const ParameterBlockReflection* pReflector = mpSSAOPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock().get();
+        const ParameterBlockReflection* pReflector = mpSSAOPass->getProgram()->getReflector()->getDefaultParameterBlock().get();
         mBindLocations.internalPerFrameCB = pReflector->getResourceBinding("InternalPerFrameCB");
         mBindLocations.ssaoCB = pReflector->getResourceBinding("SSAOCB");
         mBindLocations.noiseSampler = pReflector->getResourceBinding("gNoiseSampler");

@@ -38,9 +38,19 @@ namespace Falcor
         return UniquePtr(new Animation(name, animationSets, duration, ticksPerSecond));
     }
 
+    Animation::UniquePtr Animation::create(const Animation& other)
+    {
+        return UniquePtr(new Animation(other));
+    }
+
     Animation::Animation(const std::string& name, const std::vector<AnimationSet>& animationSets, float duration, float ticksPerSecond) : mName(name), mAnimationSets(animationSets), mDuration(duration), mTicksPerSecond(ticksPerSecond)
     {
 
+    }
+
+    Animation::Animation(const Animation& other) : mName(other.mName), mDuration(other.mDuration), mTicksPerSecond(other.mTicksPerSecond)
+    {
+        mAnimationSets = other.mAnimationSets;
     }
 
     Animation::~Animation() = default;

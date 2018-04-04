@@ -66,18 +66,22 @@ namespace Falcor
         uint32_t totalDescCount = 0;
         VkDescriptorPoolSize poolSizeForType[kTypeCount];
 
+        uint32_t usedSlots = 0;
         for (uint32_t i = 0; i < kTypeCount; i++)
         {
-            poolSizeForType[i].type = falcorToVkDescType((DescriptorPool::Type)i);
-            poolSizeForType[i].descriptorCount = mDesc.mDescCount[i];
-
-            totalDescCount += mDesc.mDescCount[i];
+            if(mDesc.mDescCount[i])
+            {
+                poolSizeForType[usedSlots].type = falcorToVkDescType((DescriptorPool::Type)i);
+                poolSizeForType[usedSlots].descriptorCount = mDesc.mDescCount[i];
+                totalDescCount += mDesc.mDescCount[usedSlots];
+                usedSlots++;
+            }
         }
 
         VkDescriptorPoolCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         info.maxSets = totalDescCount;
-        info.poolSizeCount = kTypeCount;
+        info.poolSizeCount = usedSlots;
         info.pPoolSizes = poolSizeForType;
         info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
