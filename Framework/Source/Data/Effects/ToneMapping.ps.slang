@@ -130,6 +130,12 @@ float4 calcColor(float2 texC)
 #ifdef _LUMINANCE
     float luminance = calcLuminance(color.xyz);
     luminance = log2(max(0.0001, luminance));
+
+    // Workaround for some Vulkan drivers rasterizing INF values in certain scenes.
+#ifdef FALCOR_VK
+    luminance = min(luminance, 10000);
+#endif
+
     return float4(luminance, 0, 0, 1);
 #elif defined _CLAMP
     return color;
