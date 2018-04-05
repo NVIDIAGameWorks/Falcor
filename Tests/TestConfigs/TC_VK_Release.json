@@ -1,9 +1,9 @@
 {
-    "Tests Collections Name" : "CoreTestsVK",
+    "Tests Collections Name" : "VK_Release",
 
     "Tests Collections" : 
     {
-        "CoreTestsVK" :
+        "VK_Release" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Source Branch Target" : "dev-3.0",
