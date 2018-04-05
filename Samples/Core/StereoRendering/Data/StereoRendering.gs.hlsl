@@ -54,7 +54,7 @@ void main(triangle VertexOut input[3], inout TriangleStream<GeometryOut> outStre
     outStream.RestartStrip();
 
     // Right Eye
-    for (i = 0; i < 3; i++) 
+    for (int i = 0; i < 3; i++) 
     {
         gsOut.rtIndex = 1;
         gsOut.vsOut = input[i];

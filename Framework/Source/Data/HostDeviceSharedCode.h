@@ -204,8 +204,8 @@ struct LightData
     float    openingAngle       DEFAULTS(3.14159265f);      ///< For point (spot) light: Opening angle of a spot light cut-off, pi by default - full-sphere point light
     float3   intensity          DEFAULTS(float3(1, 1, 1));  ///< Emitted radiance of th light source
     float    cosOpeningAngle    DEFAULTS(-1.f);             ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
-    float    penumbraAngle      DEFAULTS(0.f);              ///< For point (spot) light: Opening angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
     float3   pad;
+    float    penumbraAngle      DEFAULTS(0.f);              ///< For point (spot) light: Opening angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
 };
 
 /*******************************************************************
