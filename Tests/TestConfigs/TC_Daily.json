@@ -13,8 +13,11 @@
             "Tests":
             [
                 {
-                    "Tests Set" : "TS_ReleaseD3D12.json"
-                }
+                    "Tests Set" : "TS_D3D12_Release.json"
+                },
+				{
+					"Tests Set" : "TS_VK_Release.json"
+				}
             ]
         }
     }

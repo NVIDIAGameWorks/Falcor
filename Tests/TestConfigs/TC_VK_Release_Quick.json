@@ -13,7 +13,7 @@
             "Tests":
             [
                 {
-                    "Tests Set" : "TS_ReleaseVK_Quick.json"
+                    "Tests Set" : "TS_VK_Release_Quick.json"
                 }
             ]
         }

@@ -1,1 +1,0 @@
-python3 RunGenerateReferences.py -tc TestConfigs/TC_CoreTestsVK.json

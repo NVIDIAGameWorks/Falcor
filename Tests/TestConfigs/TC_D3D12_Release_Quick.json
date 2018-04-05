@@ -1,9 +1,9 @@
 {
-    "Tests Collections Name" : "CoreTestsD3D12",
+    "Tests Collections Name" : "CoreTestsD3D12_Quick",
 
     "Tests Collections" : 
     {
-        "CoreTestsD3D12" :
+        "CoreTestsD3D12_Quick" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Source Branch Target" : "dev-3.0",
@@ -13,11 +13,7 @@
             "Tests":
             [
                 {
-                    "Tests Set" : "TS_ReleaseD3D12.json"
-                },
-        
-                {
-                    "Tests Set" : "TS_DebugD3D12.json"
+                    "Tests Set" : "TS_D3D12_Release_Quick.json"
                 }
             ]
         }
