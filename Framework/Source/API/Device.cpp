@@ -166,6 +166,7 @@ namespace Falcor
 
     void Device::cleanup()
     {
+        toggleFullScreen(false);
         mpRenderContext->flush(true);
         // Release all the bound resources. Need to do that before deleting the RenderContext
         mpRenderContext->setGraphicsState(nullptr);

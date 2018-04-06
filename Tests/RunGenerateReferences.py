@@ -47,14 +47,16 @@ def main():
 
     if verify_result['Success'] is True :
         for current_test_collections in json_data['Tests Collections']:
-            destination_reference_directory = os.path.join(machine_configs.machine_reference_directory, machine_configs.machine_name)
-            destination_reference_directory = os.path.join(destination_reference_directory, json_data['Tests Collections'][current_test_collections]['Source Branch Target'])
-            destination_reference_directory = os.path.join(destination_reference_directory, current_test_collections)
-            helpers.directory_clean_or_make(destination_reference_directory)
+            destination_reference_directory = os.path.join(machine_configs.machine_reference_directory, machine_configs.machine_name, json_data['Tests Collections'][current_test_collections]['Source Branch Target'])
+            #Act on subdirectories so a machine's vulkan refrences aren't deleted by generating d3d12 references for example
             fullDir = os.path.join(os.getcwd(), 'TestsResults', json_data['Tests Collections'][current_test_collections]['Source Branch Target'], current_test_collections)
-            print(fullDir)
-            print(destination_reference_directory)
-            helpers.directory_copy(fullDir, destination_reference_directory)
+            for item in os.listdir(fullDir):
+                subDir = os.path.join(destination_reference_directory, item)
+                if not os.path.isfile(subDir):
+                    helpers.directory_clean_or_make(subDir)
+                    print('Moving FROM: ' + fullDir)
+                    print('Moving TO: ' + subDir)
+                    helpers.directory_copy(fullDir, destination_reference_directory)
 
     else:
         print("All tests did not run successfully. No references were generated.")

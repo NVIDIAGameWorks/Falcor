@@ -199,6 +199,7 @@ namespace Falcor
         bool apiInit(const Desc& desc);
         bool createSwapChain(ResourceFormat colorFormat);
         void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
+        void toggleFullScreen(bool fullscreen);
     };
 
     extern Device::SharedPtr gpDevice;

@@ -49,19 +49,19 @@ struct ShadowRayData
 };
 
 [shader("miss")]
-void shadowMiss(inout ShadowRayData hitData : SV_RayPayload)
+void shadowMiss(inout ShadowRayData hitData)
 {
     hitData.hit = false;
 }
 
 [shader("anyhit")]
-void shadowAnyHit(inout ShadowRayData hitData : SV_RayPayload, BuiltinIntersectionAttribs attribs : SV_IntersectionAttributes)
+void shadowAnyHit(inout ShadowRayData hitData, in BuiltinIntersectionAttribs attribs)
 {
     hitData.hit = true;
 }
 
 [shader("miss")]
-void primaryMiss(inout PrimaryRayData hitData : SV_RayPayload)
+void primaryMiss(inout PrimaryRayData hitData)
 {
     hitData.color = float4(0.38f, 0.52f, 0.10f, 1);
     hitData.hitT = -1;
@@ -103,7 +103,7 @@ float3 getReflectionColor(float3 worldOrigin, VertexOut v, float3 worldRayDir, u
 }
 
 [shader("closesthit")]
-void primaryClosestHit(inout PrimaryRayData hitData : SV_RayPayload, BuiltinIntersectionAttribs attribs : SV_IntersectionAttributes)
+void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttribs attribs)
 {
     // Get the hit-point data
     float3 rayOrigW = WorldRayOrigin();

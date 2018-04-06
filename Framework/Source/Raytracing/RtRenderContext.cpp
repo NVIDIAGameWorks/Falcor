@@ -34,28 +34,28 @@ namespace Falcor
 {
     void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
     {
-        resourceBarrier(pVars->getSBT().get(), Resource::State::NonPixelShader);
+        resourceBarrier(pVars->getShaderTable().get(), Resource::State::NonPixelShader);
 
-        Buffer* pSBT = pVars->getSBT().get();
-        uint32_t sbtRecordSize = pVars->getRecordSize();
-        D3D12_GPU_VIRTUAL_ADDRESS sbtStartAddress = pSBT->getGpuAddress();
+        Buffer* pShaderTable = pVars->getShaderTable().get();
+        uint32_t recordSize = pVars->getRecordSize();
+        D3D12_GPU_VIRTUAL_ADDRESS startAddress = pShaderTable->getGpuAddress();
 
         D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
         raytraceDesc.Width = width;
         raytraceDesc.Height = height;
 
-        // RayGen is the first entry in the SBT
-        raytraceDesc.RayGenerationShaderRecord.StartAddress = sbtStartAddress + pVars->getRayGenSbtRecordIndex() * sbtRecordSize;
-        raytraceDesc.RayGenerationShaderRecord.SizeInBytes = sbtRecordSize;
+        // RayGen is the first entry in the shader-table
+        raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress + pVars->getRayGenRecordIndex() * recordSize;
+        raytraceDesc.RayGenerationShaderRecord.SizeInBytes = recordSize;
 
-        // Miss is the second entry in the SBT
-        raytraceDesc.MissShaderTable.StartAddress = sbtStartAddress + pVars->getFirstMissSbtRecordIndex() * sbtRecordSize;
-        raytraceDesc.MissShaderTable.StrideInBytes = sbtRecordSize;
-        raytraceDesc.MissShaderTable.SizeInBytes = sbtRecordSize * pVars->getMissProgramsCount();
+        // Miss is the second entry in the shader-table
+        raytraceDesc.MissShaderTable.StartAddress = startAddress + pVars->getFirstMissRecordIndex() * recordSize;
+        raytraceDesc.MissShaderTable.StrideInBytes = recordSize;
+        raytraceDesc.MissShaderTable.SizeInBytes = recordSize * pVars->getMissProgramsCount();
 
-        raytraceDesc.HitGroupTable.StartAddress = sbtStartAddress + pVars->getFirstHitSbtRecordIndex() * sbtRecordSize;
-        raytraceDesc.HitGroupTable.StrideInBytes = sbtRecordSize;
-        raytraceDesc.HitGroupTable.SizeInBytes = pVars->getSBT()->getSize() - (pVars->getFirstHitSbtRecordIndex() * sbtRecordSize);
+        raytraceDesc.HitGroupTable.StartAddress = startAddress + pVars->getFirstHitRecordIndex() * recordSize;
+        raytraceDesc.HitGroupTable.StrideInBytes = recordSize;
+        raytraceDesc.HitGroupTable.SizeInBytes = pVars->getShaderTable()->getSize() - (pVars->getFirstHitRecordIndex() * recordSize);
 
         // Currently, we need to set an empty root-signature. Some wizardry is required to make sure we restore the state
         const auto& pComputeVars = getComputeVars();

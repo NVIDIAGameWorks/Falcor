@@ -54,18 +54,18 @@ namespace Falcor
 
         bool apply(RenderContext* pCtx, RtStateObject* pRtso);
 
-        Buffer::SharedPtr getSBT() const { return mpSBT; }
+        Buffer::SharedPtr getShaderTable() const { return mpShaderTable; }
         uint32_t getRecordSize() const { return mRecordSize; }
-        uint32_t getRayGenSbtRecordIndex() const { return kRayGenSbtRecordIndex; }
-        uint32_t getFirstMissSbtRecordIndex() const { return kFirstMissSbtRecordIndex; }
-        uint32_t getFirstHitSbtRecordIndex() const { return mFirstHitVarEntry; }
+        uint32_t getRayGenRecordIndex() const { return kRayGenRecordIndex; }
+        uint32_t getFirstMissRecordIndex() const { return kFirstMissRecordIndex; }
+        uint32_t getFirstHitRecordIndex() const { return mFirstHitVarEntry; }
         uint32_t getHitProgramsCount() const { return mHitProgCount; }
         uint32_t getMissProgramsCount() const { return mMissProgCount; }
 
         
     private:
-        static const uint32_t kRayGenSbtRecordIndex = 0;
-        static const uint32_t kFirstMissSbtRecordIndex = 1;
+        static const uint32_t kRayGenRecordIndex = 0;
+        static const uint32_t kFirstMissRecordIndex = 1;
         uint32_t mMissProgCount = 0;
         uint32_t mHitProgCount = 0;
         uint32_t mFirstHitVarEntry = 0;
@@ -75,7 +75,7 @@ namespace Falcor
         RtScene::SharedPtr mpScene;
         uint32_t mRecordSize;
         uint32_t mProgramIdentifierSize;
-        Buffer::SharedPtr mpSBT;
+        Buffer::SharedPtr mpShaderTable;
 
         uint8_t* getRayGenRecordPtr();
         uint8_t* getMissRecordPtr(uint32_t missId);
@@ -86,7 +86,7 @@ namespace Falcor
         GraphicsVars::SharedPtr mpGlobalVars;
         GraphicsVars::SharedPtr mRayGenVars;
         std::vector<VarsVector> mHitVars;
-        std::vector<uint8_t> mSbtData;
+        std::vector<uint8_t> mShaderTableData;
         VarsVector mMissVars;
         RtVarsContext::SharedPtr mpRtVarsHelper;
     };
