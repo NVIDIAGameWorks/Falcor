@@ -45,6 +45,14 @@ namespace fs = std::experimental::filesystem;
 
 namespace Falcor
 {
+    enum class MsgResponseId
+    {
+        Cancel,
+        Retry,
+        Abort,
+        Ignore
+    };
+
     MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType)
     {
         if (!gtk_init_check(0, nullptr))
@@ -52,7 +60,7 @@ namespace Falcor
             should_not_get_here();
         }
 
-        GtkButtonsType buttonType = GTK_BUTTONS_OK;
+        GtkButtonsType buttonType = GTK_BUTTONS_NONE;
         switch (mbType)
         {
         case MsgBoxType::Ok:
@@ -62,7 +70,8 @@ namespace Falcor
             buttonType = GTK_BUTTONS_OK_CANCEL;
             break;
         case MsgBoxType::RetryCancel:
-            buttonType = GTK_BUTTONS_YES_NO;
+        case MsgBoxType::AbortRetryIgnore:
+            buttonType = GTK_BUTTONS_NONE;
             break;
         default:
             should_not_get_here();
@@ -79,23 +88,43 @@ namespace Falcor
             msg.c_str()
         );
 
+        // If custom button layout needed
+        if (buttonType == GTK_BUTTONS_NONE)
+        {
+            if (mbType == MsgBoxType::RetryCancel)
+            {
+                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Retry", gint(MsgResponseId::Retry));
+                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Cancel", gint(MsgResponseId::Cancel));
+            }
+            else if (mbType == MsgBoxType::AbortRetryIgnore)
+            {
+                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Abort", gint(MsgResponseId::Abort));
+                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Retry", gint(MsgResponseId::Retry));
+                gtk_dialog_add_button(GTK_DIALOG(pDialog), "Ignore", gint(MsgResponseId::Ignore));
+            }
+        }
+
         gtk_window_set_title(GTK_WINDOW(pDialog), "Falcor");
         gint result = gtk_dialog_run(GTK_DIALOG(pDialog));
         gtk_widget_destroy(pDialog);
         gtk_widget_destroy(pParent);
-        while(gtk_events_pending())
+        while (gtk_events_pending())
         {
             gtk_main_iteration();
         }
 
         switch (result)
         {
-        case GTK_RESPONSE_OK: 
+        case GTK_RESPONSE_OK:
             return MsgBoxButton::Ok;
         case GTK_RESPONSE_CANCEL:
             return MsgBoxButton::Cancel;
-        case GTK_RESPONSE_YES:
+        case gint(MsgResponseId::Retry):
             return MsgBoxButton::Retry;
+        case gint(MsgResponseId::Abort):
+            return MsgBoxButton::Abort;
+        case gint(MsgResponseId::Ignore):
+            return MsgBoxButton::Ignore;
         default:
             should_not_get_here();
             return MsgBoxButton::Cancel;
@@ -173,7 +202,7 @@ namespace Falcor
         gint result = 0;
 
         bool success = false;
-        if(bOpen)
+        if (bOpen)
         {
             pDialog = gtk_file_chooser_dialog_new(
                 "Open File",
@@ -223,7 +252,7 @@ namespace Falcor
 
         gtk_widget_destroy(pDialog);
         gtk_widget_destroy(pParent);
-        while(gtk_events_pending())
+        while (gtk_events_pending())
         {
             gtk_main_iteration();
         }
@@ -249,9 +278,9 @@ namespace Falcor
 #ifdef _DEBUG
         static bool debuggerAttached = false;
         static bool isChecked = false;
-        if(isChecked == false)
+        if (isChecked == false)
         {
-            if(ptrace(PTRACE_TRACEME, 0, 1, 0) < 0)
+            if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0)
             {
                 debuggerAttached = true;
             }
@@ -281,13 +310,13 @@ namespace Falcor
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
     {
         DIR* pDir = opendir(searchString.c_str());
-        if(pDir != nullptr)
+        if (pDir != nullptr)
         {
             struct dirent* pDirEntry = readdir(pDir);
-            while(pDirEntry != nullptr)
+            while (pDirEntry != nullptr)
             {
                 // Only add files, no subdirectories, symlinks, or other objects
-                if(pDirEntry->d_type == DT_REG)
+                if (pDirEntry->d_type == DT_REG)
                 {
                     filenames.push_back(pDirEntry->d_name);
                 }
@@ -306,14 +335,14 @@ namespace Falcor
     {
         // Error details can vary depending on what function returned it,
         // just convert error id to string for easy lookup.
-        switch(error)
+        switch (error)
         {
-            case EFAULT: return "EFAULT";
-            case ENOTSUP: return "ENOTSUP";
-            case EINVAL: return "EINVAL";
-            case EPERM: return "EPERM";
-            case ESRCH: return "ESRCH";
-            default: return std::to_string(error);
+        case EFAULT: return "EFAULT";
+        case ENOTSUP: return "ENOTSUP";
+        case EINVAL: return "EINVAL";
+        case EPERM: return "EPERM";
+        case ESRCH: return "ESRCH";
+        default: return std::to_string(error);
         }
     }
 
@@ -323,16 +352,16 @@ namespace Falcor
         CPU_ZERO(&cpuMask);
 
         uint32_t bitCount = min(sizeof(cpu_set_t), sizeof(uint32_t)) * 8;
-        for(uint32_t i = 0; i < bitCount; i++)
+        for (uint32_t i = 0; i < bitCount; i++)
         {
-            if((affinityMask & (1 << i)) > 0)
+            if ((affinityMask & (1 << i)) > 0)
             {
                 CPU_SET(i, &cpuMask);
             }
         }
 
         int32_t result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuMask);
-        if(result != 0)
+        if (result != 0)
         {
             logError("setThreadAffinity() - pthread_setaffinity_np() failed with error code " + threadErrorToString(result));
         }
@@ -361,7 +390,7 @@ namespace Falcor
             should_not_get_here();
         }
 
-        if(result != 0)
+        if (result != 0)
         {
             logError("setThreadPriority() - pthread_setschedprio() failed with error code " + threadErrorToString(result));
         }
