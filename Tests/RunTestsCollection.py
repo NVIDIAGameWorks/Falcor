@@ -123,10 +123,10 @@ def run_tests_collections(json_data):
             # Get the Results and Reference Directory.
             common_directory_path = os.path.join(tests_collection_results[name]['Source Branch Target'], name)
             results_directory = os.path.join('TestsResults', common_directory_path)
-            reference_directory = os.path.join(machine_configs.machine_reference_directory, machine_configs.machine_name, tests_collection_results[name]['Compare Branch Target'], name)
+            reference_directory = os.path.join(machine_configs.machine_reference_directory, machine_configs.machine_name, tests_collection_results[name]['Compare Branch Target'])
 
             # Run the Tests Set.
-            test_results = rTS.run_tests_set(clone_directory, False, tests_collection_results[name]['Tests Configs Target'] + current_tests_set['Tests Set'], results_directory, reference_directory)
+            test_results = rTS.run_tests_set(clone_directory, False, tests_collection_results[name]['Tests Configs Target'] + current_tests_set['Tests Set'], results_directory, reference_directory, True)
 
             current_tests_collection_results.append(test_results);
 
@@ -216,6 +216,9 @@ def main():
 
     # Add the Argument for which Test Collection to use.
     parser.add_argument('-ne', '--no_email', action='store_true', help='Whether or not to email.')
+    
+    #whether or not to copy results to network for daily email
+    parser.add_argument('-nc', '--no_copy', action='store_true', help='Whether or not to copy html results to directory scanned for daily email')
 
     # Parse the Arguments.
     args = parser.parse_args()
@@ -234,7 +237,8 @@ def main():
     if not args.no_email:
         prepare_and_dispatch_email(all_tests_succeeded(tests_collection_results), html_outputs)
     
-    copy_results_to_target(html_outputs)
+    if not args.no_copy:
+        copy_results_to_target(html_outputs)
 
 if __name__ == '__main__':
     main()

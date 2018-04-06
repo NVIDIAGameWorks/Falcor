@@ -1,9 +1,9 @@
 {
-    "Tests Collections Name" : "TC_DailyTests",
+    "Tests Collections Name" : "DailyTests",
 
     "Tests Collections" :
     {
-        "GitHub_DailyTests" :
+        "DailyTests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
             "Source Branch Target" : "dev-3.0",
@@ -13,8 +13,11 @@
             "Tests":
             [
                 {
-                    "Tests Set" : "TS_ReleaseD3D12.json"
-                }
+                    "Tests Set" : "TS_D3D12_Release.json"
+                },
+				{
+					"Tests Set" : "TS_VK_Release.json"
+				}
             ]
         }
     }
