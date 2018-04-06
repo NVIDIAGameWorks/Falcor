@@ -102,6 +102,14 @@ void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::Share
     }
 }
 
+void ComputeShader::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
+{
+    if (mpTmpTexture)
+    {
+        mpTmpTexture = createTmpTex(width, height);
+    }
+}
+
  void ComputeShader::onInitializeTesting(SampleCallbacks* pSample)
  {
      auto argList = pSample->getArgList();

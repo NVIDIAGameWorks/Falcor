@@ -52,13 +52,13 @@ namespace Falcor
 
         //Recopy back buffer to recreate target fbo 
         mpTargetFBO = FboHelper::create2D(width, height, mpBackBufferFBO->getDesc());
-        mpDefaultPipelineState->setFbo(mpTargetFBO);
+        if(mpDefaultPipelineState) mpDefaultPipelineState->setFbo(mpTargetFBO);
 
         // Tell the GUI the swap-chain size changed
-        mpGui->onWindowResize(width, height);
+        if(mpGui) mpGui->onWindowResize(width, height);
 
         // Call the user callback
-        mpRenderer->onResizeSwapChain(this, width, height);
+        if(mpRenderer) mpRenderer->onResizeSwapChain(this, width, height);
     }
 
     void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent)

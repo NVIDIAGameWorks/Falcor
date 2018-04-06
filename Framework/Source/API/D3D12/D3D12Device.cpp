@@ -194,6 +194,11 @@ namespace Falcor
         return true;
     }
 
+    void Device::toggleFullScreen(bool fullscreen)
+    {
+        mpApiData->pSwapChain->SetFullscreenState(fullscreen, nullptr);
+    }
+
     void Device::destroyApiObjects()
     {
         safe_delete(mpApiData);

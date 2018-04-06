@@ -324,6 +324,11 @@ namespace Falcor
         return instance;
     }
 
+    void Device::toggleFullScreen(bool fullscreen)
+    {
+
+    }
+
     /** Select best physical device based on memory
     */
     VkPhysicalDevice selectPhysicalDevice(const std::vector<VkPhysicalDevice>& devices)
