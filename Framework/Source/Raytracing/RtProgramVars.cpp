@@ -82,7 +82,7 @@ namespace Falcor
 
         mHitProgCount = mpProgram->getHitProgramCount();
         mMissProgCount = mpProgram->getMissProgramCount();
-        mFirstHitVarEntry = kFirstMissSbtRecordIndex + mMissProgCount;
+        mFirstHitVarEntry = kFirstMissRecordIndex + mMissProgCount;
         mMissVars.resize(mMissProgCount);
         mHitVars.resize(mHitProgCount);
         uint32_t recordCountPerHit = mpScene->getGeometryCount(mHitProgCount);
@@ -109,7 +109,7 @@ namespace Falcor
         ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
         mProgramIdentifierSize = pRtDevice->GetShaderIdentifierSize();
 
-        // Create the SBT buffer
+        // Create the shader-table buffer
         uint32_t hitEntries = recordCountPerHit * mHitProgCount;
         uint32_t numEntries = mMissProgCount + hitEntries + 1; // 1 is for the ray-gen
 
@@ -119,9 +119,9 @@ namespace Falcor
         assert(mRecordSize != 0);
 
         // Create the buffer and allocate the temporary storage
-        mpSBT = Buffer::create(numEntries * mRecordSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
-        assert(mpSBT);
-        mSbtData.resize(mpSBT->getSize());
+        mpShaderTable = Buffer::create(numEntries * mRecordSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
+        assert(mpShaderTable);
+        mShaderTableData.resize(mpShaderTable->getSize());
 
         // Create the global variables
         mpGlobalVars = GraphicsVars::create(mpProgram->getGlobalReflector(), true, mpProgram->getGlobalRootSignature());
@@ -129,7 +129,7 @@ namespace Falcor
         return true;
     }
 
-    // We are using the following layout for the SBT:
+    // We are using the following layout for the shader-table:
     //
     // +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
     // |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        |
@@ -142,18 +142,18 @@ namespace Falcor
     // For each mesh we have N hit records, N == number of mesh instances in the model
     // The size of each record is mRecordSize
     // 
-    // If this layout changes, we also need to change the constants kRayGenSbtRecordIndex and kFirstMissSbtRecordIndex
+    // If this layout changes, we also need to change the constants kRayGenRecordIndex and kFirstMissRecordIndex
 
     uint8_t* RtProgramVars::getRayGenRecordPtr()
     {
-        return mSbtData.data() + (kRayGenSbtRecordIndex * mRecordSize);
+        return mShaderTableData.data() + (kRayGenRecordIndex * mRecordSize);
     }
 
     uint8_t* RtProgramVars::getMissRecordPtr(uint32_t missId)
     {
         assert(missId < mMissProgCount);
-        uint32_t offset = mRecordSize * (kFirstMissSbtRecordIndex + missId);
-        return mSbtData.data() + offset;
+        uint32_t offset = mRecordSize * (kFirstMissRecordIndex + missId);
+        return mShaderTableData.data() + offset;
     }
 
     uint8_t* RtProgramVars::getHitRecordPtr(uint32_t hitId, uint32_t meshId)
@@ -161,7 +161,7 @@ namespace Falcor
         assert(hitId < mHitProgCount);
         uint32_t meshIndex = mFirstHitVarEntry + mHitProgCount * meshId;    // base record of the requested mesh
         uint32_t recordIndex = meshIndex + hitId;
-        return mSbtData.data() + (recordIndex * mRecordSize);
+        return mShaderTableData.data() + (recordIndex * mRecordSize);
     }
 
     bool applyRtProgramVars(uint8_t* pRecord, const RtProgramVersion* pProgVersion, const RtStateObject* pRtso, uint32_t progIdSize, ProgramVars* pVars, RtVarsContext* pContext)
@@ -211,7 +211,7 @@ namespace Falcor
 
         mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true);
 
-        pCtx->updateBuffer(mpSBT.get(), mSbtData.data());
+        pCtx->updateBuffer(mpShaderTable.get(), mShaderTableData.data());
         return true;
     }
 }
