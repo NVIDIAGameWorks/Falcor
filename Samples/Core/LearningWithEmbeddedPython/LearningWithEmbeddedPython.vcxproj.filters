@@ -35,13 +35,7 @@
     <None Include="Data\demo_train.py">
       <Filter>Python Snippets</Filter>
     </None>
-    <None Include="Data\RenderForLearning.ps.slang">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\RenderForLearning.vs.slang">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\RenderForLearningCommon.hlsli">
+    <None Include="Data\RenderForLearning.slang">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

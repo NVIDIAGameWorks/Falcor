@@ -25,9 +25,39 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderForLearningCommon.hlsli"
+__import Shading;
+__import Effects.CascadedShadowMap;
+__import DefaultVS;
 
-MainVsOut main(VertexIn vIn)
+layout(binding = 0) cbuffer PerFrameCB : register(b0)
+{
+	float3 gAmbient;
+    float gEnvMapFactorScale;
+    CsmData gCsmData;
+    float4x4 camVpAtLastCsmUpdate;
+    float2 gRenderTargetDim;
+    float gOpacityScale;
+};
+
+struct MainVsOut
+{
+    VertexOut vsData;
+    float shadowsDepthC : DEPTH;
+};
+
+Texture2D gEnvMap;
+SamplerState gSampler;
+
+struct PsOut
+{
+    float4 color : SV_TARGET0;
+    float4 normal : SV_TARGET1;
+#ifdef _OUTPUT_MOTION_VECTORS
+    float2 motion : SV_TARGET2;
+#endif
+};
+
+MainVsOut vs(VertexIn vIn)
 {
     MainVsOut vsOut;
     vsOut.vsData = defaultVS(vIn);
@@ -38,4 +68,51 @@ MainVsOut main(VertexIn vIn)
 
     vsOut.shadowsDepthC = mul(float4(vsOut.vsData.posW, 1), camVpAtLastCsmUpdate).z;
     return vsOut;
+}
+
+PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
+{
+    PsOut psOut;
+
+    ShadingData shData = prepareShadingData(vOut.vsData, gMaterial, gCamera.posW);
+
+    ShadingResult result;
+    float4 finalColor = float4(0, 0, 0, 1);
+    float envMapFactor = 1;
+    float opacity = 1;
+
+    [unroll]
+    for (uint l = 0; l < _LIGHT_COUNT; l++)
+    {
+        float shadowFactor = 1;
+#ifdef _ENABLE_SHADOWS
+        if (l == 0)
+        {
+            shadowFactor = calcShadowFactor(gCsmData, vOut.shadowsDepthC, shData.posW, vOut.vsData.posH.xy / vOut.vsData.posH.w);
+            shadowFactor *= shData.opacity;
+            envMapFactor -= 1 - shadowFactor;
+        }
+#endif
+        finalColor.rgb += evalMaterial(shData, gLights[l], shadowFactor).color.rgb;
+    }
+
+#ifdef _ENABLE_TRANSPARENCY
+    finalColor.a = shData.opacity * gOpacityScale;
+#endif
+
+#ifdef _ENABLE_REFLECTIONS
+    finalColor.rgb += evalMaterial(shData, gLightProbe).color.rgb;
+#endif
+
+    psOut.color = finalColor;
+    psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);
+
+#ifdef _OUTPUT_MOTION_VECTORS
+    psOut.motion = calcMotionVector(pixelCrd.xy, vOut.vsData.prevPosH, gRenderTargetDim);
+#endif
+
+#if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
+    psOut.color.rgb *= getBlendedCascadeColor(gCsmData, vOut.shadowsDepthC);
+#endif
+    return psOut;
 }

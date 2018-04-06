@@ -433,7 +433,7 @@ void LiveTrainRenderer::lightingPass(RenderContext::SharedPtr pContext)
 
 void LiveTrainRenderer::initLightingPass()
 {
-    mLightingPass.pProgram = GraphicsProgram::createFromFile("RenderForLearning.vs.slang", "RenderForLearning.ps.slang");  
+    mLightingPass.pProgram = GraphicsProgram::createFromFile("RenderForLearning.slang", "vs", "ps");  
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpScene->getScene()->getLightCount()));
     initControls();
     mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
