@@ -17,8 +17,11 @@ if not defined config goto usage
 goto findVS
 
 :findVS
-if defined VS140COMNTOOLS goto act
-echo Can't find environment variable "VS140COMNTOOLS".  
+if defined VS_INSTALL_DIR goto act
+if "%VSWHERE%"=="" set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath`) do (
+  set VS_INSTALL_DIR=%%i
+)
 
 :act
 set solution=%2
@@ -27,11 +30,11 @@ set errFileSuffix=_BuildLog.txt
 if defined project (
     set errFile="%project%%errFileSuffix%"
     echo Starting %action% of %config% config of project %project% in solution %2
-    call "%VS140COMNTOOLS%\..\IDE\devenv.com" %solution% /%action% %config% /project %project% > !errFile!
+    call "%VS_INSTALL_DIR%\Common7\IDE\devenv.com" %solution% /%action% %config% /project %project% > !errFile!
 ) else (
     set errFile="Solution%errFileSuffix%"
     echo Starting %action% of %config% config of entire solution %2
-    call "%VS140COMNTOOLS%\..\IDE\devenv.com" %solution% /%action% %config% > !errFile!
+    call "%VS_INSTALL_DIR%\Common7\IDE\devenv.com" %solution% /%action% %config% > !errFile!
 )
 if not %errorlevel%==0 (
     goto buildFailed 
