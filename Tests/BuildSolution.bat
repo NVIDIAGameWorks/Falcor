@@ -19,6 +19,7 @@ goto findVS
 :findVS
 if defined VS_INSTALL_DIR goto act
 if "%VSWHERE%"=="" set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not EXIST "%VSWHERE%" goto cantFindVs
 for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath`) do (
   set VS_INSTALL_DIR=%%i
 )
@@ -46,6 +47,12 @@ exit /B 0
 
 :buildFailed
 echo Build Failed
+exit /B 1
+
+:cantFindVs
+echo Build Failed. Failed to find Visual Studio. 
+echo Set enviornment var VSWHERE to the location of vswhere.exe 
+echo Or Set VS_INSTALL_DIR to the location of your visual studio 2017 install 
 exit /B 1
 
 :usage
