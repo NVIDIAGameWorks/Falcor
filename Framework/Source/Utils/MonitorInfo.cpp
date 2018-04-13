@@ -137,7 +137,7 @@ namespace Falcor
         dd.cb = sizeof(dd);
         DWORD devIdx = 0; // device index
      
-        std::wstring DeviceID;
+        //std::wstring DeviceID;
         bool bFoundDevice = false;
         while (EnumDisplayDevices(0, devIdx, &dd, 0))
         {
@@ -183,7 +183,7 @@ namespace Falcor
             DisplayDeviceFromHMonitor(hMonitor, dev);
 
             std::wstring DeviceID(dev.DeviceID);
-            DeviceID = DeviceID.substr(8, DeviceID.find(L"\\", 9) - 8);
+            DeviceID = DeviceID.substr(8, DeviceID.find(L'\\', 9) - 8);
 
             short WidthMm, HeightMm;
 
