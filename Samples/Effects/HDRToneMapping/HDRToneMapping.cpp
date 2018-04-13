@@ -183,7 +183,7 @@ bool HDRToneMapping::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mo
 
  void HDRToneMapping::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
  {
-     uint32_t frameId = pSample->getFrameID();
+     uint64_t frameId = pSample->getFrameID();
      if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
      {
          ++mChangeModeIt;

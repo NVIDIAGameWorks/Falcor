@@ -291,7 +291,7 @@ void Shadows::createVisualizationProgram()
 
  void Shadows:: onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
  {
-     uint32_t frameId = pSample->getFrameID();
+     uint64_t frameId = pSample->getFrameID();
      if (mFilterFramesIt != mFilterFrames.end() && frameId >= *mFilterFramesIt)
      {
          ++mFilterFramesIt;
