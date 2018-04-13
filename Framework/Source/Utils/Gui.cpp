@@ -41,6 +41,7 @@ namespace Falcor
 {
     void Gui::init()
     {
+        ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
         io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)KeyboardEvent::Key::Left;
@@ -112,6 +113,11 @@ namespace Falcor
         pBufLayout->addElement("COLOR", offsetof(ImDrawVert, col), ResourceFormat::RGBA8Unorm, 1, 2);
         mpLayout = VertexLayout::create();
         mpLayout->addBufferLayout(0, pBufLayout);
+    }
+
+    Gui::~Gui()
+    {
+        ImGui::DestroyContext();
     }
 
     Gui::UniquePtr Gui::create(uint32_t width, uint32_t height)
@@ -446,8 +452,8 @@ namespace Falcor
     {
         ImVec2 pos{ float(x), float(y) };
         ImVec2 size{ float(width), float(height) };
-        ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
-        ImGui::SetNextWindowPos(pos, ImGuiSetCond_FirstUseEver);
+        ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(pos, ImGuiCond_FirstUseEver);
         int flags = 0;
         if (!showTitleBar)
         {
