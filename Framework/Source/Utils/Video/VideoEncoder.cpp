@@ -226,6 +226,10 @@ namespace Falcor
 
     bool VideoEncoder::init(const Desc& desc)
     {
+        // av_register_all() is deprecated since 58.9.100, but Linux repos may not get a newer version, so this call cannot be completely removed.
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 9, 100)
+        av_register_all();
+#endif
         // create the output context
         avformat_alloc_output_context2(&mpOutputContext, nullptr, nullptr, mFilename.c_str());
         if(mpOutputContext == nullptr)
