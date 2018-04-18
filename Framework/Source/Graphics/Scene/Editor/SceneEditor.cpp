@@ -452,8 +452,8 @@ namespace Falcor
     void SceneEditor::initializeEditorRendering()
     {
         auto backBufferFBO = gpDevice->getSwapChainFbo();
-        const float backBufferWidth = backBufferFBO->getWidth();
-        const float backBufferHeight = backBufferFBO->getHeight();
+        uint32_t backBufferWidth = backBufferFBO->getWidth();
+        uint32_t backBufferHeight = backBufferFBO->getHeight();
 
         //
         // Selection Wireframe Scene

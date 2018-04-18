@@ -72,6 +72,8 @@ namespace Falcor
         */
         static UniquePtr create(uint32_t width, uint32_t height);
 
+        ~Gui();
+
         /** Render the GUI
         */
         void render(RenderContext* pContext, float elapsedTime);

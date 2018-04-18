@@ -125,7 +125,7 @@ private:
         GraphicsVars::SharedPtr pVars;
     } mSSAO;
 
-    void beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint32_t frameId);
+    void beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint64_t frameId);
     void endFrame(RenderContext* pContext);
     void depthPass(RenderContext* pContext);
     void shadowPass(RenderContext* pContext);

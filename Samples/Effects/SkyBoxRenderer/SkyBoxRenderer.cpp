@@ -121,7 +121,7 @@ void SkyBoxRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width,
          vec3(-1, 0, 0) 
      };
  
-     uint32_t frameId = pSample->getFrameID();
+     uint64_t frameId = pSample->getFrameID();
      if (mChangeViewIt != mChangeViewFrames.end() && frameId >= *mChangeViewIt)
      {
          ++mChangeViewIt;

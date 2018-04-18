@@ -276,7 +276,7 @@ void ForwardRenderer::renderSkyBox(RenderContext* pContext)
     }
 }
 
-void ForwardRenderer::beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint32_t frameId)
+void ForwardRenderer::beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint64_t frameId)
 {
     pContext->pushGraphicsState(mpState);
     pContext->clearFbo(mpMainFbo.get(), glm::vec4(0.7f, 0.7f, 0.7f, 1.0f), 1, 0, FboAttachmentType::All);
@@ -290,7 +290,7 @@ void ForwardRenderer::beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint3
         //  Select the sample pattern and set the camera jitter
         const auto& samplePattern = (mTAASamplePattern == SamplePattern::Halton) ? kHaltonSamplePattern : kDX11SamplePattern;
         static_assert(arraysize(kHaltonSamplePattern) == arraysize(kDX11SamplePattern), "Mismatch in the array size of the sample patterns");
-        uint32_t patternIndex = frameId % arraysize(kHaltonSamplePattern);
+        uint32_t patternIndex = uint32_t(frameId % arraysize(kHaltonSamplePattern));
         mpSceneRenderer->getScene()->getActiveCamera()->setJitter(samplePattern[patternIndex][0] / targetResolution.x, samplePattern[patternIndex][1] / targetResolution.y);
     }
 }
