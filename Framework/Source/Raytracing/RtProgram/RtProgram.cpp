@@ -132,8 +132,32 @@ namespace Falcor
         return pProg;
     }
 
+    void RtProgram::updateReflection() const
+    {
+        if (mReflectionDirty)
+        {
+            // Create the global reflector and root-signature
+            mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
+            mpGlobalReflector->merge(mpRayGenProgram->getGlobalReflector().get());
+
+            for (const auto m : mMissProgs)
+            {
+                if (m) mpGlobalReflector->merge(m->getGlobalReflector().get());
+            }
+
+            for (const auto& h : mHitProgs)
+            {
+                if (h) mpGlobalReflector->merge(h->getGlobalReflector().get());
+            }
+
+            mpGlobalRootSignature = RootSignature::create(mpGlobalReflector.get(), false);
+
+            mReflectionDirty = false;
+        }
+    }
+
     RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
-    {        
+    {
         // Create the programs
         const std::string raygenFile = desc.mShaderLibraries[desc.mRayGen.libraryIndex]->getFilename();
         mpRayGenProgram = RayGenProgram::createFromFile(raygenFile.c_str(), desc.mRayGen.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);
@@ -160,22 +184,6 @@ namespace Falcor
                 mHitProgs[i] = HitProgram::createFromFile(hitFile.c_str(), h.closestHit, h.anyHit, h.intersection, desc.mDefineList, maxPayloadSize, maxAttributesSize);
             }
         }
-
-        // Create the global reflector and root-signature
-        mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
-        mpGlobalReflector->merge(mpRayGenProgram->getGlobalReflector().get());
-
-        for (const auto m : mMissProgs)
-        {
-            if(m) mpGlobalReflector->merge(m->getGlobalReflector().get());
-        }
-
-        for (const auto& h : mHitProgs)
-        {
-            if(h) mpGlobalReflector->merge(h->getGlobalReflector().get());
-        }
-
-        mpGlobalRootSignature = RootSignature::create(mpGlobalReflector.get(), false);
     }
 
     void RtProgram::addDefine(const std::string& name, const std::string& value /*= ""*/)
@@ -194,6 +202,8 @@ namespace Falcor
         {
             if(pMiss) pMiss->addDefine(name, value);
         }
+
+        mReflectionDirty = true;
     }
 
     void RtProgram::removeDefine(const std::string& name)
@@ -205,12 +215,14 @@ namespace Falcor
 
         for (auto& pHit : mHitProgs)
         {
-            if(pHit) pHit->addDefine(name);
+            if(pHit) pHit->removeDefine(name);
         }
 
         for (auto& pMiss : mMissProgs)
         {
-            if(pMiss) pMiss->addDefine(name);
+            if(pMiss) pMiss->removeDefine(name);
         }
+
+        mReflectionDirty = true;
     }
 }

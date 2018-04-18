@@ -163,14 +163,6 @@ namespace Falcor
         */
         void generateMips(RenderContext* pContext);
 
-        /** Name the texture
-        */
-        void setName(const std::string& name) { mName = name; }
-
-        /** Get the texture name
-        */
-        const std::string& getName() const { return mName; }
-
         /** In case the texture was loaded from a file, use this to set the filename
         */
         void setSourceFilename(const std::string& filename) { mSourceFilename = filename; }
@@ -193,6 +185,7 @@ namespace Falcor
     protected:
         friend class Device;
         void apinit(const void* pData, bool autoGenMips);
+        void apiSetName();
         void uploadInitData(const void* pData, bool autoGenMips);
 		bool mReleaseRtvsAfterGenMips = true;
         static RtvHandle spNullRTV;
@@ -200,7 +193,6 @@ namespace Falcor
 
         static uint32_t tempDefaultUint;
 
-        std::string mName;
         std::string mSourceFilename;
 
         Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type Type, BindFlags bindFlags);

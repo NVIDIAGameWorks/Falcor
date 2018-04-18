@@ -90,7 +90,7 @@ namespace Falcor
 
         /** Detach all objects from the path.
         */
-        void detachAllObjects() { mpObjects.clear(); }
+        void detachAllObjects();
 
         /** Get an object attached to the path.
         */

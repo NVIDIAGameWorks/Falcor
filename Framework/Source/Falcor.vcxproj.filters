@@ -529,6 +529,9 @@
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp">
       <Filter>Graphics\Program</Filter>
     </ClCompile>
+    <ClCompile Include="API\Vulkan\VkResource.cpp">
+      <Filter>API\Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">

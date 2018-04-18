@@ -27,6 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "D3D12Resource.h"
+#include "Utils/StringUtils.h"
 
 namespace Falcor
 {
@@ -135,5 +136,10 @@ namespace Falcor
             should_not_get_here();
             return D3D12_RESOURCE_STATE_GENERIC_READ;
         }
+    }
+    void Resource::apiSetName()
+    {
+        std::wstring ws = string_2_wstring(mName);
+        mApiHandle->SetName(ws.c_str());
     }
 }

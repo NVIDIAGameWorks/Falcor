@@ -177,35 +177,42 @@ namespace Falcor
         */
         static void reloadAllPrograms();
 
-        const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mpReflector; }
-        const ProgramReflection::SharedConstPtr getLocalReflector() const { getActiveVersion(); return mpLocalReflector; }
-        const ProgramReflection::SharedConstPtr getGlobalReflector() const { getActiveVersion(); return mpGlobalReflector; }
+        const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pReflector; }
+        const ProgramReflection::SharedConstPtr getLocalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pLocalReflector; }
+        const ProgramReflection::SharedConstPtr getGlobalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pGlobalReflector; }
 
     protected:
         Program();
 
         void init(Desc const& desc, DefineList const& programDefines);
 
+        struct ProgramReflectors
+        {
+            // Reflector for a particular version
+            ProgramReflection::SharedPtr pReflector;
+            ProgramReflection::SharedPtr pLocalReflector;
+            ProgramReflection::SharedPtr pGlobalReflector;
+        };
+
+        struct VersionData
+        {
+            ProgramVersion::SharedConstPtr pVersion;
+            ProgramReflectors reflectors;
+        };
+
         bool link() const;
-        ProgramVersion::SharedPtr preprocessAndCreateProgramVersion(std::string& log) const;
-        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const;
+        VersionData preprocessAndCreateProgramVersion(std::string& log) const;
+        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const;
 
         // The description used to create this program
         Desc mDesc;
-
-        // Shader strings after being preprocessed for a particular version
-
-        // Reflector for a particular version
-        mutable ProgramReflection::SharedPtr mpReflector;
-        mutable ProgramReflection::SharedPtr mpLocalReflector;
-        mutable ProgramReflection::SharedPtr mpGlobalReflector;
 
         DefineList mDefineList;
 
         // We are doing lazy compilation, so these are mutable
         mutable bool mLinkRequired = true;
-        mutable std::map<const DefineList, ProgramVersion::SharedConstPtr> mProgramVersions;
-        mutable ProgramVersion::SharedConstPtr mpActiveProgram = nullptr;
+        mutable std::map<const DefineList, VersionData> mProgramVersions;
+        mutable VersionData mActiveProgram;
 
         std::string getProgramDescString() const;
         static std::vector<Program*> sPrograms;

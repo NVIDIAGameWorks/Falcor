@@ -72,7 +72,7 @@ namespace Falcor
         OK = OK && (_pshader != nullptr);                       \
     }
 
-    ProgramVersion::SharedPtr HitProgram::createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const
+    ProgramVersion::SharedPtr HitProgram::createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const
     {
         RtShader::SharedPtr pAnyHit, pIntersect, pClosestHit;
         bool OK = true;
@@ -81,6 +81,6 @@ namespace Falcor
         create_shader(ShaderType::AnyHit, pAnyHit);
         create_shader(ShaderType::ClosestHit, pClosestHit);
 
-        return OK ? RtProgramVersion::createHit(pAnyHit, pClosestHit, pIntersect, log, getProgramDescString(), mpLocalReflector, mMaxPayloadSize, mMaxAttributeSize) : nullptr;
+        return OK ? RtProgramVersion::createHit(pAnyHit, pClosestHit, pIntersect, log, getProgramDescString(), reflectors.pLocalReflector, mMaxPayloadSize, mMaxAttributeSize) : nullptr;
     }
 }

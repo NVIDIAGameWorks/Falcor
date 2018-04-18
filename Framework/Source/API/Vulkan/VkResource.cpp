@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,25 +25,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "glm/vec3.hpp"
+#include "Framework.h"
+#include "API/Resource.h"
 
 namespace Falcor
 {
-    class ObjectPath;
-
-    class IMovableObject : public std::enable_shared_from_this<IMovableObject>
+    void Resource::apiSetName()
     {
-    public:
-        using SharedPtr = std::shared_ptr<IMovableObject>;
-        using SharedConstPtr = std::shared_ptr<const IMovableObject>;
-
-        virtual void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) = 0;
-        const ObjectPath* getAttachedPath() const { return mpPath; }
-
-    private:
-        friend class ObjectPath;
-        void attachPath(const ObjectPath* pPath) { mpPath = pPath; }
-        const ObjectPath* mpPath = nullptr;
-    };
+        // Vulkan doesn't support resource naming
+    }
 }

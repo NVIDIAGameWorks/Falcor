@@ -94,18 +94,23 @@ namespace Falcor
         void addDefine(const std::string& name, const std::string& value = "");
         void removeDefine(const std::string& name);
 
-        const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { return mpGlobalRootSignature; }
-        const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { return mpGlobalReflector; }
+        const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { updateReflection(); return mpGlobalRootSignature; }
+        const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { updateReflection(); return mpGlobalReflector; }
 
     private:
+
         using MissProgramList = std::vector<MissProgram::SharedPtr>;
         using HitProgramList = std::vector<HitProgram::SharedPtr>;
+
+        void updateReflection() const;
 
         RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
         HitProgramList mHitProgs;
         MissProgramList mMissProgs;
         RayGenProgram::SharedPtr mpRayGenProgram;
-        std::shared_ptr<RootSignature> mpGlobalRootSignature;
-        std::shared_ptr<ProgramReflection> mpGlobalReflector;
+
+        mutable bool mReflectionDirty = true;
+        mutable std::shared_ptr<RootSignature> mpGlobalRootSignature;
+        mutable std::shared_ptr<ProgramReflection> mpGlobalReflector;
     };
 }

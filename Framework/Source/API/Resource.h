@@ -172,6 +172,14 @@ namespace Falcor
         */
         void invalidateViews() const;
 
+        /** Set the resource name
+        */
+        void setName(const std::string& name) { mName = name; apiSetName(); }
+
+        /** Get the resource name
+        */
+        const std::string& getName() const { return mName; }
+
     protected:
         friend class CopyContext;
 
@@ -188,8 +196,10 @@ namespace Falcor
 
         void setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const;
         void setGlobalState(State newState) const;
+        void apiSetName();
 
         ApiHandle mApiHandle;
+        std::string mName;
 
         mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
         mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;

@@ -253,7 +253,7 @@ namespace Falcor
 
     bool Program::checkIfFilesChanged()
     {
-        if(mpActiveProgram == nullptr)
+        if(mActiveProgram.pVersion == nullptr)
         {
             // We never linked, so nothing really changed
             return false;
@@ -278,7 +278,6 @@ namespace Falcor
         if(mLinkRequired)
         {
             const auto& it = mProgramVersions.find(mDefineList);
-            ProgramVersion::SharedConstPtr pVersion = nullptr;
             if(it == mProgramVersions.end())
             {
                 if(link() == false)
@@ -287,16 +286,16 @@ namespace Falcor
                 }
                 else
                 {
-                    mProgramVersions[mDefineList] = mpActiveProgram;
+                    mProgramVersions[mDefineList] = mActiveProgram;
                 }
             }
             else
             {
-                mpActiveProgram = mProgramVersions[mDefineList];
+                mActiveProgram = mProgramVersions[mDefineList];
             }
         }
 
-        return mpActiveProgram;
+        return mActiveProgram.pVersion;
     }
 
     SlangSession* getSlangSession()
@@ -312,7 +311,7 @@ namespace Falcor
         spAddBuiltins(getSlangSession(), name, text);
     }
 
-    // Translation a Faclor `ShaderType` to the corresponding `SlangStage`
+    // Translation a Falcor `ShaderType` to the corresponding `SlangStage`
     SlangStage getSlangStage(ShaderType type)
     {
         switch(type)
@@ -348,7 +347,7 @@ namespace Falcor
 #endif
     }
 
-    ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const
+    Program::VersionData Program::preprocessAndCreateProgramVersion(std::string& log) const
     {
         mFileTimeMap.clear();
 
@@ -450,7 +449,7 @@ namespace Falcor
         if(anySlangErrors)
         {
             spDestroyCompileRequest(slangRequest);
-            return nullptr;
+            return VersionData();
         }
 
         // Extract the generated code for each stage
@@ -479,10 +478,12 @@ namespace Falcor
 #endif
         }
 
+        VersionData programVersion;
+
         // Extract the reflection data
-        mpReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::All, log);
-        mpLocalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Local, log);
-        mpGlobalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Global, log);
+        programVersion.reflectors.pReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::All, log);
+        programVersion.reflectors.pLocalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Local, log);
+        programVersion.reflectors.pGlobalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Global, log);
 
         // Extract list of files referenced, for dependency-tracking purposes
         int depFileCount = spGetDependencyFileCount(slangRequest);
@@ -496,10 +497,12 @@ namespace Falcor
 
         // Now that we've preprocessed things, dispatch to the actual program creation logic,
         // which may vary in subclasses of `Program`
-        return createProgramVersion(log, shaderBlob);
+        programVersion.pVersion = createProgramVersion(log, shaderBlob, programVersion.reflectors);
+
+        return programVersion;
     }
 
-    ProgramVersion::SharedPtr Program::createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const
+    ProgramVersion::SharedPtr Program::createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const
     {
         // create the shaders
         Shader::SharedPtr shaders[kShaderCount] = {};
@@ -509,17 +512,17 @@ namespace Falcor
             { 
                 shaders[i] = createShaderFromBlob(shaderBlob[i], ShaderType(i), mDesc.mEntryPoints[i].name, mDesc.getCompilerFlags(), log);
                 if (!shaders[i]) return nullptr;
-            }           
+            }
         }
 
         if (shaders[(uint32_t)ShaderType::Compute])
         {
-            return ProgramVersion::create(mpReflector, shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
+            return ProgramVersion::create(reflectors.pReflector, shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
         }
         else
         {
-            return ProgramVersion::create(
-                mpReflector,
+            return  ProgramVersion::create(
+                reflectors.pReflector,
                 shaders[(uint32_t)ShaderType::Vertex],
                 shaders[(uint32_t)ShaderType::Pixel],
                 shaders[(uint32_t)ShaderType::Geometry],
@@ -537,9 +540,9 @@ namespace Falcor
         {
             // create the program
             std::string log;
-            ProgramVersion::SharedConstPtr pProgram = preprocessAndCreateProgramVersion(log);
+            VersionData programVersion = preprocessAndCreateProgramVersion(log);
 
-            if(pProgram == nullptr)
+            if(programVersion.pVersion == nullptr)
             {
                 std::string error = std::string("Program Linkage failed.\n\n");
                 error += getProgramDescString() + "\n";
@@ -558,7 +561,7 @@ namespace Falcor
             }
             else
             {
-                mpActiveProgram = pProgram;
+                mActiveProgram = programVersion;
                 return true;
             }
         }
@@ -566,7 +569,7 @@ namespace Falcor
 
     void Program::reset()
     {
-        mpActiveProgram = nullptr;
+        mActiveProgram = VersionData();
         mProgramVersions.clear();
         mFileTimeMap.clear();
         mLinkRequired = true;

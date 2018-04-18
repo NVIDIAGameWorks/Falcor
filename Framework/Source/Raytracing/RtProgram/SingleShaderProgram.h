@@ -63,7 +63,7 @@ namespace Falcor
             return pProg;
         }
 
-        ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount]) const override
+        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const override
         {
             RtShader::SharedPtr pShader;
             pShader = createRtShaderFromBlob(mDesc.getShaderLibrary(ShaderType(shaderType))->getFilename(), mDesc.getShaderEntryPoint(ShaderType(shaderType)), shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
@@ -73,9 +73,9 @@ namespace Falcor
                 switch (shaderType)
                 {
                 case ShaderType::RayGeneration:
-                    return RtProgramVersion::createRayGen(pShader, log, getProgramDescString(), mpLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramVersion::createRayGen(pShader, log, getProgramDescString(), reflectors.pLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
                 case ShaderType::Miss:
-                    return RtProgramVersion::createMiss(pShader, log, getProgramDescString(), mpLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramVersion::createMiss(pShader, log, getProgramDescString(), reflectors.pLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
                 default:
                     should_not_get_here();
                 }
