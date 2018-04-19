@@ -115,10 +115,10 @@ void HelloDXR::renderRaster(RenderContext* pContext)
     mpSceneRenderer->renderScene(pContext, mpCamera.get());
 }
 
-void HelloDXR::setRayGenVars(const Fbo* pTargetFbo)
+void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 {
-    PROFILE(setRayGenVars);
-    GraphicsVars* pVars = mpRtVars->getRayGenVars().get();
+    PROFILE(setPerFrameVars);
+    GraphicsVars* pVars = mpRtVars->getGlobalVars().get();
     ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer(0, 0, 0);
     pCB["invView"] = glm::inverse(mpCamera->getViewMatrix());
     pCB["viewportDims"] = vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
@@ -129,7 +129,7 @@ void HelloDXR::setRayGenVars(const Fbo* pTargetFbo)
 void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
 {
     PROFILE(renderRT);
-    setRayGenVars(pTargetFbo);
+    setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
     mpRtVars->getRayGenVars()->setUav(0, 1, 0, mpRtOut->getUAV(0, 0, 1));
@@ -155,13 +155,6 @@ void HelloDXR::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr 
         {
             renderRaster(pRenderContext.get());
         }
-
-        std::string camprops = "CamPos:     " + to_string(mpCamera->getPosition()) + "\n";
-        camprops += "CamTarget:  " + to_string(mpCamera->getTarget()) + "\n";
-        camprops += "CamUp:      " + to_string(mpCamera->getUpVector()) + "\n";
-
-        camprops += "CamLookAt:  " + to_string(mpCamera->getTarget() - mpCamera->getPosition()) + "\n";
-        pSample->renderText(camprops, vec2(120, 200));
     }
 }
 

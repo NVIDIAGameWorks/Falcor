@@ -28,7 +28,7 @@
 RWTexture2D<float4> gOutput : register(u1);
 __import Raytracing;
 
-cbuffer PerFrameCB : register(b0)
+shared cbuffer PerFrameCB : register(b0)
 {
     float4x4 invView;
     float4x4 invModel;

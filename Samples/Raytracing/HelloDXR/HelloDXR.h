@@ -57,7 +57,7 @@ private:
     RtSceneRenderer::SharedPtr mpRtRenderer;
     Texture::SharedPtr mpRtOut;
 
-    void setRayGenVars(const Fbo* pTargetFbo);
+    void setPerFrameVars(const Fbo* pTargetFbo);
     void renderRT(RenderContext* pContext, const Fbo* pTargetFbo);
     void renderRaster(RenderContext* pContext);
     void loadScene(const std::string& filename, const Fbo* pTargetFbo);

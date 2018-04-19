@@ -30,7 +30,7 @@
 
 #include "HostDeviceData.h"
 
-cbuffer InternalPerFrameCB : register(b10)
+shared cbuffer InternalPerFrameCB : register(b10)
 {
     CameraData gCamera;
     uint32_t gLightsCount;

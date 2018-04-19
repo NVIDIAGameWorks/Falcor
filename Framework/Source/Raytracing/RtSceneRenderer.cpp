@@ -160,10 +160,13 @@ namespace Falcor
     {
         InstanceData data;
         data.currentData.pCamera = pCamera;
-        if(pRtVars->getMissProgramsCount())
-        {
-            updateVariableOffsets(pRtVars->getMissVars(0)->getReflection().get());
+        uint32_t hitCount = pRtVars->getHitProgramsCount();
+        if (hitCount)
+        {   
+            updateVariableOffsets(pState->getProgram()->getHitProgram(0)->getReflector().get()); // Using the local+global reflector, some resources are `shared`
+            initializeMeshBufferLocation(pState->getProgram()->getHitProgram(0)->getLocalReflector().get()); // Using the local reflector only
         }
+
         setRayGenShaderData(pRtVars.get(), data);
         setGlobalData(pRtVars.get(), data);
 
@@ -177,12 +180,6 @@ namespace Falcor
         }
 
         // Set the hit-shader data
-        uint32_t hitCount = pRtVars->getHitProgramsCount();
-        if (hitCount)
-        {
-            initializeMeshBufferLocation(pState->getProgram()->getHitProgram(0)->getReflector().get());
-        }
-
         for(data.progId = 0 ; data.progId < hitCount ; data.progId++)
         {
             if(pRtVars->getHitVars(data.progId).empty()) continue;

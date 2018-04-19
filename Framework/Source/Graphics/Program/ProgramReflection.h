@@ -652,6 +652,7 @@ namespace Falcor
     private:
         ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log);
         void addParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlock);
+        void updateDefaultBlockResourceBindings();
 
         std::vector<ParameterBlockReflection::SharedConstPtr> mpParameterBlocks;
         std::unordered_map<std::string, size_t> mParameterBlocksIndices;

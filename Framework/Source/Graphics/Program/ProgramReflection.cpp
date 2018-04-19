@@ -706,9 +706,31 @@ namespace Falcor
             }
         }
 
-        if (defaultChanged) std::const_pointer_cast<ParameterBlockReflection>(mpDefaultBlock)->finalize();
+        if (defaultChanged)
+        {
+            std::const_pointer_cast<ParameterBlockReflection>(mpDefaultBlock)->finalize();
+            updateDefaultBlockResourceBindings();
+        }
 
         return true;
+    }
+
+    void ProgramReflection::updateDefaultBlockResourceBindings()
+    {
+        mResourceBindMap.clear();
+        if (mpDefaultBlock->isEmpty() == false)
+        {
+            // Initialize the map from the default-block resources to the global resources
+            for (const auto& res : mpDefaultBlock->getResourceVec())
+            {
+                const auto& loc = mpDefaultBlock->getResourceBinding(res.name);
+                ResourceBinding bind;
+                bind.regIndex = res.regIndex;
+                bind.regSpace = res.regSpace;
+                bind.type = getBindTypeFromSetType(res.setType);
+                mResourceBindMap[bind] = loc;
+            }
+        }
     }
 
     ProgramReflection::ProgramReflection(slang::ShaderReflection* pSlangReflector, ResourceScope scopeToReflect, std::string& log)
@@ -744,20 +766,7 @@ namespace Falcor
 
         pDefaultBlock->finalize();
         addParameterBlock(pDefaultBlock);
-
-        if (pDefaultBlock->isEmpty() == false)
-        {            
-            // Initialize the map from the default-block resources to the global resources
-            for (const auto& res : mpDefaultBlock->getResourceVec())
-            {
-                const auto& loc = mpDefaultBlock->getResourceBinding(res.name);
-                ResourceBinding bind;
-                bind.regIndex = res.regIndex;
-                bind.regSpace = res.regSpace;
-                bind.type = getBindTypeFromSetType(res.setType);
-                mResourceBindMap[bind] = loc;
-            }
-        }
+        updateDefaultBlockResourceBindings();
 
         // Reflect per-stage parameters
         SlangUInt entryPointCount = pSlangReflector->getEntryPointCount();
