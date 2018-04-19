@@ -137,6 +137,7 @@ namespace Falcor
             return D3D12_RESOURCE_STATE_GENERIC_READ;
         }
     }
+
     void Resource::apiSetName()
     {
         std::wstring ws = string_2_wstring(mName);
