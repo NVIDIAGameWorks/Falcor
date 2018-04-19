@@ -76,7 +76,7 @@ namespace Falcor
         bool changed = Scene::update(currentTime, cameraController);
         mTlasHitProgCount = mExtentsDirty ? -1 : mTlasHitProgCount;
 
-        if(mEnableRefit)
+        if (mEnableRefit)
         {
             mRefit = true;
         }
@@ -94,7 +94,7 @@ namespace Falcor
         {
             // Check if we need to create a new model
             const auto& it = mModelToRtModel.find(pInstance->getObject().get());
-            if(it == mModelToRtModel.end())
+            if (it == mModelToRtModel.end())
             {
                 pRtModel = RtModel::createFromModel(*pInstance->getObject(), mRtFlags);
                 mModelToRtModel[pInstance->getObject().get()] = pRtModel;
@@ -115,7 +115,7 @@ namespace Falcor
         }
 
         // If we have skinned models, attach a skinning cache and animate the scene once to trigger a VB update
-        if(pRtModel->hasBones())
+        if (pRtModel->hasBones())
         {
             pRtModel->attachSkinningCache(mpSkinningCache);
             pRtModel->animate(0);
@@ -152,16 +152,16 @@ namespace Falcor
                     idesc.AccelerationStructure = blasData.pBlas->getGpuAddress();
 
                     // Set the meshes tlas offset
-                    uint32_t meshInstanceCount = pModel->getMeshInstanceCount(blasData.meshBaseIndex);
-                    assert(meshInstanceCount == 1 || blasData.meshCount == 1); // A BLAS shouldn't have multiple instanced meshes
-                    if (modelInstance == 0)                        
+                    if (modelInstance == 0)
                     {
-                        for(uint32_t i = 0 ; i < blasData.meshCount ; i++)
+                        for (uint32_t i = 0; i < blasData.meshCount; i++)
                         {
-                            modelInstanceData.meshBase[blasData.meshBaseIndex + i] = modelInstanceData.meshInstancesPerModelInstance + i * meshInstanceCount;
+                            assert(blasData.meshCount == 1 || pModel->getMeshInstanceCount(blasData.meshBaseIndex + i) == 1);   // A BLAS shouldn't have multiple instanced meshes
+                            modelInstanceData.meshBase[blasData.meshBaseIndex + i] = modelInstanceData.meshInstancesPerModelInstance + i;   // If i>0 each mesh has a single instance
                         }
                     }
 
+                    uint32_t meshInstanceCount = pModel->getMeshInstanceCount(blasData.meshBaseIndex);
                     for (uint32_t meshInstance = 0; meshInstance < meshInstanceCount; meshInstance++)
                     {
                         idesc.InstanceID = uint32_t(instanceDesc.size());

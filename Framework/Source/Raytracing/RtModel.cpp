@@ -33,7 +33,7 @@
 #include "API/VAO.h"
 
 namespace Falcor
-{ 
+{
     RtModel::RtModel(const Model& model, RtBuildFlags buildFlags) : mBuildFlags(buildFlags), Model(model)
     {
     }
@@ -43,12 +43,13 @@ namespace Falcor
         // The logic works as follows:
         //  - Static meshes come before dynamic meshes
         //  - Meshes that have a single instance and have the same matrix are contiguous
-        
+
         // Store the meshes into lists, grouped based on their transformation matrix
         std::list<MeshInstanceList> staticMeshes;
         std::list<MeshInstanceList> dynamicMeshes;
         for (const auto& instanceList : mMeshes)
         {
+            assert(instanceList.size() > 0);
             if (instanceList[0]->getObject()->hasBones())
             {
                 dynamicMeshes.push_back(instanceList);
@@ -64,9 +65,9 @@ namespace Falcor
             {
                 bool handled = false;
                 // Find the insert location. Should have a single instance and the matrix should match
-                for (auto& it = staticMeshes.begin() ; it != staticMeshes.end() ; it++)
+                for (auto& it = staticMeshes.begin(); it != staticMeshes.end(); it++)
                 {
-                    if(it->size() > 1) break;
+                    if (it->size() > 1) break;
                     if ((*it)[0]->getTransformMatrix() == instanceList[0]->getTransformMatrix())
                     {
                         handled = true;
@@ -83,7 +84,7 @@ namespace Falcor
         assert(staticMeshes.size() + dynamicMeshes.size() == count);
         mMeshes.clear();
         mMeshes.reserve(count);
-        
+
         auto insertFunc = [this](const auto& meshList, bool isStatic)
         {
             if (meshList.size())
@@ -93,35 +94,59 @@ namespace Falcor
                 mat4 transformation = (*meshList.begin())[0]->getTransformMatrix();
                 data.meshCount = 0;
                 data.meshBaseIndex = (uint32_t)mMeshes.size();
+                bool instanced = false;
                 for (auto& it : meshList)
                 {
+                    // The logic works as follows:
+                    //  - Dynamic meshes all go in the same group, as they don't have individual mesh-instance transforms. The skinning code computes their vertices.
+                    //  - Static non-instanced meshes are grouped per instance transform
+                    //  - Static instanced meshes all go in invididual groups, and come after non-instanced meshes in the list.
+
+                    if (isStatic)
+                    {
+                        // Validate that instanced meshes are last
+                        if (it.size() > 1) instanced = true;
+                        else assert(!instanced);
+
+                        // If mesh is instanced or the transform has changed, start a new mesh group
+                        if (it.size() > 1 || it[0]->getTransformMatrix() != transformation)
+                        {
+                            if (data.meshCount > 0) // The first mesh could be instanced...
+                            {
+                                mBottomLevelData.push_back(data);
+                            }
+
+                            transformation = it[0]->getTransformMatrix();
+                            data.meshBaseIndex = (uint32_t)mMeshes.size();
+                            data.meshCount = 0;
+                        }
+                    }
+                    else
+                    {
+                        // We don't handle dynamic instanced meshes
+                        assert(it.size() == 1);
+                    }
+
                     mMeshes.push_back(it);
                     data.meshCount++;
-
-                    // If mesh is instanced or the transform has changed, start a new mesh group
-                    if (it.size() > 1 || it[0]->getTransformMatrix() != transformation)
-                    {
-                        mBottomLevelData.push_back(data);
-                        data.meshBaseIndex = (uint32_t)mMeshes.size();
-                        data.meshCount = 0;
-                    }
                 }
-                if (data.meshCount > 0)
-                {
-                    mBottomLevelData.push_back(data);
-                }
+                mBottomLevelData.push_back(data);
             }
         };
 
         insertFunc(staticMeshes, true);
         insertFunc(dynamicMeshes, false);
 
-        // Validate that mBottomLevelData represents a contiguous range that includes all meshes
+        // Validate that mBottomLevelData represents a contiguous range that includes all meshes, and that grouped meshes are non-instanced
         uint32_t baseIdx = 0;
         for (auto& it : mBottomLevelData)
         {
             assert(it.meshCount > 0);
             assert(it.meshBaseIndex + it.meshCount <= mMeshes.size());
+            for (uint32_t idx = it.meshBaseIndex; idx < it.meshBaseIndex + it.meshCount; idx++)
+            {
+                assert(it.meshCount == 1 || mMeshes[idx].size() == 1);
+            }
             assert(it.meshBaseIndex == baseIdx);
             baseIdx += it.meshCount;
         }
@@ -161,7 +186,7 @@ namespace Falcor
         auto dxrFlags = getDxrBuildFlags(mBuildFlags);
 
         // Create an AS for each mesh-group
-        for(auto& blasData : mBottomLevelData)
+        for (auto& blasData : mBottomLevelData)
         {
             std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDesc(blasData.meshCount);
             for (size_t meshIndex = blasData.meshBaseIndex; meshIndex < blasData.meshBaseIndex + blasData.meshCount; meshIndex++)   // PETRIK: Fixed loop to loop over range [meshIndex...meshIndex + meshCount)

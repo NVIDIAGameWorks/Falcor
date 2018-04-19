@@ -65,7 +65,7 @@ namespace Falcor
         io.IniFilename = nullptr;
 
         ImGuiStyle& style = ImGui::GetStyle();
-        style.Colors[ImGuiCol_WindowBg].w = 0.85f;
+        style.Colors[ImGuiCol_WindowBg].w = 0.9f;
         style.Colors[ImGuiCol_FrameBg].x *= 0.1f;
         style.Colors[ImGuiCol_FrameBg].y *= 0.1f;
         style.Colors[ImGuiCol_FrameBg].z *= 0.1f;
