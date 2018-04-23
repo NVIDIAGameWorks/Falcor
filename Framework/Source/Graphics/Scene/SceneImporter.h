@@ -49,8 +49,8 @@ namespace Falcor
         bool parseVersion(const rapidjson::Value& jsonVal);
         bool parseModels(const rapidjson::Value& jsonVal);
         bool parseLights(const rapidjson::Value& jsonVal);
+        bool parseLightProbes(const rapidjson::Value& jsonVal);
         bool parseCameras(const rapidjson::Value& jsonVal);
-        bool parseMaterials(const rapidjson::Value& jsonVal);
         bool parseAmbientIntensity(const rapidjson::Value& jsonVal);
         bool parseActiveCamera(const rapidjson::Value& jsonVal);
         bool parseCameraSpeed(const rapidjson::Value& jsonVal);
@@ -65,23 +65,12 @@ namespace Falcor
         bool loadIncludeFile(const std::string& Include);
 
         bool createModel(const rapidjson::Value& jsonModel);
-        bool setMaterialOverrides(const rapidjson::Value& jsonVal, const Model::SharedPtr& pModel);
         bool createModelInstances(const rapidjson::Value& jsonVal, const Model::SharedPtr& pModel);
         bool createPointLight(const rapidjson::Value& jsonLight);
         bool createDirLight(const rapidjson::Value& jsonLight);
         ObjectPath::SharedPtr createPath(const rapidjson::Value& jsonPath);
         bool createPathFrames(ObjectPath* pPath, const rapidjson::Value& jsonFramesArray);
         bool createCamera(const rapidjson::Value& jsonCamera);
-
-        bool createMaterial(const rapidjson::Value& jsonMaterial);
-        bool createMaterialLayer(const rapidjson::Value& jsonLayer, Material::Layer& layerOut);
-        bool createAllMaterialLayers(const rapidjson::Value& jsonLayerArray, Material* pMaterial);
-
-        bool createMaterialLayerType(const rapidjson::Value& jsonValue, Material::Layer& layerOut);
-        bool createMaterialLayerNDF(const rapidjson::Value& jsonValue, Material::Layer& layerOut);
-        bool createMaterialLayerBlend(const rapidjson::Value& jsonValue, Material::Layer& layerOut);
-
-        bool createMaterialTexture(const rapidjson::Value& jsonValue, Texture::SharedPtr& pTexture, bool isSrgb);
 
         bool error(const std::string& msg);
 

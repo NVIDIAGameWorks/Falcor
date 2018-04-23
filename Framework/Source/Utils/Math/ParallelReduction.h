@@ -31,6 +31,7 @@
 #include "Graphics/Program/ProgramVars.h"
 #include "API/FBO.h"
 #include "API/Sampler.h"
+#include "API/CopyContext.h"
 
 namespace Falcor
 {
@@ -45,15 +46,22 @@ namespace Falcor
         {
             MinMax
         };
-        static UniquePtr create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height);
+        static UniquePtr create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount = 1);
         glm::vec4 reduce(RenderContext* pRenderCtx, Texture::SharedPtr pInput);
 
     private:
-        ParallelReduction(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height);
+        ParallelReduction(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount);
         FullScreenPass::UniquePtr mpFirstIterProg;
         FullScreenPass::UniquePtr mpRestIterProg;
-        GraphicsVars::SharedPtr pVars;
-        std::vector<Fbo::SharedPtr> mpResultFbo;
+        GraphicsVars::SharedPtr mpVars;
+
+        struct ResultData
+        {
+            CopyContext::ReadTextureTask::SharedPtr pReadTask;
+            Fbo::SharedPtr pFbo;
+        };
+        std::vector<ResultData> mResultData;
+
         uint32_t mCurFbo = 0;
         Type mReductionType;
         Sampler::SharedPtr mpPointSampler;

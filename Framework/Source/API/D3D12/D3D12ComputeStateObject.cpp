@@ -43,11 +43,11 @@ namespace Falcor
             logError("Failed to initialize NvApi", true);
         }
 
-        auto uav = desc.getProgramVersion()->getReflector()->getBufferBinding("g_NvidiaExt");
-        if (uav.baseRegIndex != ProgramReflection::kInvalidLocation)
+        ReflectionVar::SharedConstPtr pUav = desc.getProgramVersion()->getReflector()->getDefaultParameterBlock()->getResource("g_NvidiaExt");
+        if ((pUav != nullptr) && (pUav->getRegisterIndex() != ProgramReflection::kInvalidLocation))
         {
             nvApiPsoExDescs.push_back(NvApiPsoExDesc());
-            createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), uav.baseRegIndex);
+            createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), pUav->getRegisterIndex());
         }
     }
 
@@ -77,8 +77,8 @@ namespace Falcor
 
     bool getIsNvApiComputePsoRequired(const ComputeStateObject::Desc& desc)
     {
-        auto uav = desc.getProgramVersion()->getReflector()->getBufferBinding("g_NvidiaExt");
-        return uav.baseRegIndex != ProgramReflection::kInvalidLocation;
+        ReflectionVar::SharedConstPtr pUav = desc.getProgramVersion()->getReflector()->getDefaultParameterBlock()->getResource("g_NvidiaExt");
+        return (pUav != nullptr) && (pUav->getRegisterIndex() != ProgramReflection::kInvalidLocation);
     }
 
 #else

@@ -99,13 +99,7 @@ namespace Falcor
             assert(b);
         }
     }
-
-    void ComputeContext::reset()
-    {
-        CopyContext::reset();
-        mBindComputeRootSig = true;
-    }
-
+    
     void ComputeContext::flush(bool wait)
     {
         CopyContext::flush(wait);

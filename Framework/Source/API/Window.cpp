@@ -170,6 +170,18 @@ namespace Falcor
             logError(errorMsg.c_str());
         }
 
+        static void droppedFileCallback(GLFWwindow* pGlfwWindow, int count, const char** paths)
+        {
+            Window* pWindow = (Window*)glfwGetWindowUserPointer(pGlfwWindow);
+            if (pWindow)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    std::string filename(paths[i]);
+                    pWindow->mpCallbacks->handleDroppedFile(filename);
+                }
+            }
+        }
     private:
 
         static inline KeyboardEvent::Key glfwToFalcorKey(int glfwKey)
@@ -341,6 +353,18 @@ namespace Falcor
     {
     }
 
+    void Window::checkWindowSize()
+    {
+        // Actual window size may be clamped to slightly lower than monitor resolution
+        int32_t actualWidth, actualHeight;
+        glfwGetWindowSize(mpGLFWWindow, &actualWidth, &actualHeight);
+
+        mWidth = uint32_t(actualWidth);
+        mHeight = uint32_t(actualHeight);
+        mMouseScale.x = 1.0f / (float)mWidth;
+        mMouseScale.y = 1.0f / (float)mHeight;
+    }
+
     Window::~Window()
     {
         glfwDestroyWindow(mpGLFWWindow);
@@ -368,7 +392,7 @@ namespace Falcor
 
         // Create the window
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        GLFWmonitor* mon = desc.fullScreen ? glfwGetPrimaryMonitor() :nullptr;
+        GLFWmonitor* mon = desc.fullScreen ? glfwGetPrimaryMonitor() : nullptr;
         GLFWwindow* pGLFWWindow = glfwCreateWindow(desc.width, desc.height, desc.title.c_str(), mon, nullptr);
 
         if (pGLFWWindow == nullptr)
@@ -387,6 +411,7 @@ namespace Falcor
         pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
         assert(pWindow->mApiHandle.pDisplay != nullptr);
 #endif
+        pWindow->checkWindowSize();
 
         glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
 
@@ -397,6 +422,7 @@ namespace Falcor
         glfwSetCursorPosCallback(pGLFWWindow, ApiCallbacks::mouseMoveCallback);
         glfwSetScrollCallback(pGLFWWindow, ApiCallbacks::mouseWheelCallback);
         glfwSetCharCallback(pGLFWWindow, ApiCallbacks::charInputCallback);
+        glfwSetDropCallback(pGLFWWindow, ApiCallbacks::droppedFileCallback);
 
         return pWindow;
     }
@@ -404,12 +430,7 @@ namespace Falcor
     void Window::resize(uint32_t width, uint32_t height)
     {
         glfwSetWindowSize(mpGLFWWindow, width, height);
-
-        mWidth = width;
-        mHeight = height;
-
-        mMouseScale.x = 1 / float(width);
-        mMouseScale.y = 1 / float(height);
+        checkWindowSize();
 
         mpCallbacks->handleWindowSizeChange();
     }

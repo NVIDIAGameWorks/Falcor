@@ -164,13 +164,15 @@ namespace Falcor
         */
         void popGraphicsState();
         
-        /** Reset the context
-        */
-        void reset() override;
-
         /** Submit the command list
         */
         void flush(bool wait = false) override;
+
+#ifdef FALCOR_DXR
+        /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same
+        */
+        void raytrace(std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height);
+#endif
     private:
         RenderContext();
         GraphicsVars::SharedPtr mpGraphicsVars;

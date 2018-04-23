@@ -26,12 +26,26 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 SamplerState gSampler : register(s0);
-texture2D gInputTex : register(t1);
+#if defined(_FIRST_ITERATION) && _SAMPLE_COUNT > 1
+Texture2DMS gInputTex : register(t1);
+#else
+Texture2D gInputTex : register(t1);
+#endif
+
+#if _SAMPLE_COUNT <= 1 || !defined(_FIRST_ITERATION)
+float2 getNormalizedCrd(float2 crd)
+{
+    float2 dim;
+    gInputTex.GetDimensions(dim.x, dim.y);
+    return float2(crd)/float2(dim);
+}
+#endif
 
 #ifdef _FIRST_ITERATION
+#if _SAMPLE_COUNT <= 1
 float2 compareMinMax(float2 crd, float2 range)
 {
-    float4 d4 = gInputTex.GatherRed(gSampler, crd);
+    float4 d4 = gInputTex.GatherRed(gSampler, getNormalizedCrd(crd));
 
     for(int i = 0 ; i < 4 ; i++)
     {
@@ -43,11 +57,38 @@ float2 compareMinMax(float2 crd, float2 range)
     }
     return range;
 }
-#else
+#else   //_SAMPLE_COUNT <= 1
 float2 compareMinMax(float2 crd, float2 range)
 {
-    float4 min4 = gInputTex.GatherRed(gSampler, crd);
-    float4 max4 = gInputTex.GatherGreen(gSampler, crd);
+    uint3 dim;
+    gInputTex.GetDimensions(dim.x, dim.y, dim.z);
+
+    for(int s = 0 ; s < _SAMPLE_COUNT ; s++)
+    {
+        for(int x = 0 ; x < 2 ; x++)
+        {
+            for(int y = 0 ; y < 2 ; y++)
+            {
+                int2 icrd = int2(crd) + int2(x, y);
+                icrd = min(icrd, dim.xy - 1);
+                float d = gInputTex.Load(icrd, s).r;
+                if(d != 1.0f)
+                {
+                    range.x = min(range.x, d);
+                    range.y = max(range.y, d);
+                }
+            }
+        }
+    }
+    return range;
+}
+#endif  // _SAMPLE_COUNT <= 1
+#else // _FIRST_ITERATION
+float2 compareMinMax(float2 crd, float2 range)
+{
+    float2 normalizedCrd = getNormalizedCrd(crd);
+    float4 min4 = gInputTex.GatherRed(gSampler, normalizedCrd);
+    float4 max4 = gInputTex.GatherGreen(gSampler, normalizedCrd);
     float prevMin = min(min4.x, min(min4.y, min(min4.z, min4.w)));
     float prevMax = max(max4.x, max(max4.y, max(max4.z, max4.w)));
      
@@ -60,18 +101,14 @@ float2 compareMinMax(float2 crd, float2 range)
 float2 minMaxReduction(float2 posS)
 {
     float2 range = float2(1, 0);
-    float2 dim;
-    gInputTex.GetDimensions(dim.x, dim.y);
 
     // Using gather4, so need to skip 4 samples everytime
     for(int x = 0 ; x < _TILE_SIZE ; x+=2)
     {
         for(int y = 0 ; y < _TILE_SIZE ; y+=2)
         {
-            float2 crd = posS * _TILE_SIZE + float2(x, y);
-            float2 normalizedCrd = float2(crd)/float2(dim);
-
-            range = compareMinMax(normalizedCrd, range);
+            float2 crd = posS * _TILE_SIZE + float2(x, y);         
+            range = compareMinMax(crd, range);
         }
     }
     return range;

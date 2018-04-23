@@ -35,11 +35,11 @@ struct PSOut
     float4 normal: SV_TARGET1;
 };
 
-PSOut main(VS_OUT vsOut)
+PSOut main(VertexOut vsOut)
 {
     PSOut psOut;
 
-    psOut.color = 1.0.xxxx;
+    psOut.color = 1.0.rrrr;
     psOut.normal = float4(vsOut.normalW * 0.5f + 0.5f, 1.0f);
 
     return psOut;

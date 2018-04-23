@@ -76,6 +76,7 @@ namespace Falcor
 
     private:
         AnimationController(const std::vector<Bone>& bones);
+        AnimationController(const AnimationController& other);
 
         std::vector<Bone> mBones;
         std::vector<glm::mat4> mBoneTransforms;

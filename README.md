@@ -1,4 +1,4 @@
-Falcor 2.0
+Falcor 3.0
 =================
 
 Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.
@@ -12,20 +12,16 @@ This is a beta version. The interfaces are not final yet and there might be some
 Prerequisites
 ------------------------
 - GPU that supports DirectX 12 or Vulkan
-- Windows 10 RS1 (1607 Anniversary Update) or newer, or Ubuntu 17.10
+- Windows 10 RS2 (1703 Creators Update) or newer, or Ubuntu 17.10
 
 On Windows:
-- Visual Studio 2015
-- [Microsoft Windows SDK ver 10.0.14393.795](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive)
-
-NVAPI Support
---------------
-NVIDIA's NVAPI SDK exposes a set of GPU features that are not part of the DirectX spec.
-Using it with Falcor is not mandatory. However, Falcor does abstract some of those features. For example, the SceneRenderer VR mode relies on Single Pass Stereo support.
-If you want to use it:
-- Please download the [NVAPI SDK](https://developer.nvidia.com/nvapi)
-- Unzip the content of the package to Framework\Externals
-- Rename the folder to 'NVAPI'
+- Visual Studio 2017
+- [Microsoft Windows SDK ver 10.0.15063.468](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive)
+- Windows 10
+- GPU that supports DirectX 12 or Vulkan
+- To run DirectX 12 applications with the debug layer enabled, you need to install the Graphics Tools optional feature. The tools version must match the OS version you are using (not to be confused with the SDK version used for building Falcor). There are 2 ways to install it:
+    - Click the Windows button and type `Optional Features`, in the window that openes click `Add a feature` and select `Graphics Tools`.
+    - Download an offline pacakge from [here](https://docs.microsoft.com/en-us/windows-hardware/test/hlk/windows-hardware-lab-kit#supplemental-content-for-graphics-media-and-mean-time-between-failures-mtbf-tests). Choose a ZIP file that matches the OS version you are using. The ZIP includes a document which explains how to install the graphics tools.
 
 TensorFlow Support
 --------------
@@ -101,6 +97,13 @@ By default, Falcor looks for data files in the following locations:
 
 To search for a data file, call `findFileInDataDirectories()`.
 
+Shaders
+-------
+
+Falcor uses the [Slang](https://github.com/shader-slang/slang) shading language and compiler.
+Users can write HLSL/Slang shader code in `.hlsl` or `.slang` files.
+The framework handles cross-compilation to SPIR-V for you when targetting Vulkan; GLSL shaders are not supported.
+
 Deployment
 ----------
 The best practice is to create a directory called "Data/" next to your **project** file and place all your data files there (shaders/models).  If that directory exists, Falcor will copy it to the output directory, making the output directory self-contained (you can zip only the output directory and it should work).  If not, you will have to copy the data files yourself.
@@ -110,11 +113,14 @@ Citation
 If you use Falcor in a research project leading to a publication, please cite the project.
 The BibTex entry is
 
+```bibtex
 @Misc{Benty17,  
-   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Anton S. Kaplanyan and Conor Lavelle and Chris Wyman and Ashwin Vijay},  
+   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Conor Lavelle and Chris Wyman},  
    title =       {The {Falcor} Rendering Framework},  
    year =        {2017},  
    month =       {07},  
    url =         {https://github.com/NVIDIAGameWorks/Falcor},  
    note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}  
 }
+```
+

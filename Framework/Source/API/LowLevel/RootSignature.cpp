@@ -57,22 +57,23 @@ namespace Falcor
 
     RootSignature::SharedPtr RootSignature::getEmpty()
     {
-        if (spEmptySig == nullptr)
-        {
-            spEmptySig = create(Desc());
-        }
-        return spEmptySig;
+        if (spEmptySig) return spEmptySig;
+        return create(Desc());
     }
 
     RootSignature::SharedPtr RootSignature::create(const Desc& desc)
     {
-        if (desc.mSets.size() == 0) return getEmpty();
+        bool empty = desc.mSets.size() == 0;
+        if (empty && spEmptySig) return spEmptySig;
 
         SharedPtr pSig = SharedPtr(new RootSignature(desc));
         if (pSig->apiInit() == false)
         {
             pSig = nullptr;
         }
+
+        if (empty) spEmptySig = pSig;
+
         return pSig;
     }
 
@@ -105,19 +106,24 @@ namespace Falcor
         }
     }
 
-    RootSignature::Desc getRootDescFromReflector(const ProgramReflection* pReflector)
+    RootSignature::Desc getRootDescFromReflector(const ProgramReflection* pReflector, bool isLocal)
     {
         RootSignature::Desc d;
         for (uint32_t i = 0; i < pReflector->getParameterBlockCount(); i++)
         {
             addParamBlockSets(pReflector->getParameterBlock(i).get(), d);
         }
+#ifdef FALCOR_DXR
+        d.setLocal(isLocal);
+#else
+        if (isLocal) logWarning("local root-signatures are only supported when DXR is enabled. Make sure you are using the correct build configuration.");
+#endif
         return d;
     }
 
-    RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector)
+    RootSignature::SharedPtr RootSignature::create(const ProgramReflection* pReflector, bool isLocal)
     {
-        RootSignature::Desc d = getRootDescFromReflector(pReflector);
+        RootSignature::Desc d = getRootDescFromReflector(pReflector, isLocal);
         return RootSignature::create(d);
     }
 }

@@ -133,13 +133,13 @@ namespace Falcor
 			std::snprintf(event, 1000, "%*s%s %*.3f %36.3f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, pData->cpuTotal, gpuTime);
 #if _PROFILING_LOG == 1
 			pData->cpuMs[pData->stepNr] = pData->cpuTotal;
-			pData->gpuMs[pData->stepNr] = gpuTime;
+			pData->gpuMs[pData->stepNr] = (float)gpuTime;
 			pData->stepNr++;
 			if (pData->stepNr == _PROFILING_LOG_BATCH_SIZE)
 			{
 				std::ostringstream logOss, fileOss;
 				logOss << "dumping " << "profile_" << pData->name << "_" << pData->filesWritten;
-				Logger::log(Logger::Level::Info, logOss.str());
+				logInfo(logOss.str());
 				fileOss << "profile_" << pData->name << "_" << pData->filesWritten++;
 				std::ofstream out(fileOss.str().c_str());
 				for (int i = 0; i < _PROFILING_LOG_BATCH_SIZE; ++i)
@@ -163,7 +163,7 @@ namespace Falcor
 		{
 				std::ostringstream logOss, fileOss;
 				logOss << "dumping " << "profile_" << pData->name << "_" << pData->filesWritten;
-				Logger::log(Logger::Level::Info, logOss.str());
+				logInfo(logOss.str());
 				fileOss << "profile_" << pData->name << "_" << pData->filesWritten++;
 				std::ofstream out(fileOss.str().c_str());
 				for (int i = 0; i < pData->stepNr; ++i)

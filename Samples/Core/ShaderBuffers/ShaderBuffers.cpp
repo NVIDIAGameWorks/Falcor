@@ -27,12 +27,14 @@
 ***************************************************************************/
 #include "ShaderBuffers.h"
 
-void ShaderBuffersSample::onGuiRender()
+const std::string ShaderBuffersSample::skDefaultModel = "teapot.obj";
+
+void ShaderBuffersSample::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-     mpGui->addDirectionWidget("Light Direction", mLightData.worldDir);
-     mpGui->addRgbColor("Light intensity", mLightData.intensity);
-     mpGui->addRgbColor("Surface Color", mSurfaceColor);
-     mpGui->addCheckBox("Count FS invocations", mCountPixelShaderInvocations);
+    pGui->addDirectionWidget("Light Direction", mLightData.worldDir);
+    pGui->addRgbColor("Light intensity", mLightData.intensity);
+    pGui->addRgbColor("Surface Color", mSurfaceColor);
+    pGui->addCheckBox("Count FS invocations", mCountPixelShaderInvocations);
 }
 
 Vao::SharedConstPtr ShaderBuffersSample::getVao()
@@ -42,15 +44,15 @@ Vao::SharedConstPtr ShaderBuffersSample::getVao()
     return pVao;
 }
 
-void ShaderBuffersSample::onLoad()
+void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
 {
     mpCamera = Camera::create();
 
     // create the program
-    mpProgram = GraphicsProgram::createFromFile(appendShaderExtension("ShaderBuffers.vs"), appendShaderExtension("ShaderBuffers.ps"));
+    mpProgram = GraphicsProgram::createFromFile("ShaderBuffers.hlsl", "vs", "ps");
 
     // Load the model
-    mpModel = Model::createFromFile("teapot.obj");
+    mpModel = Model::createFromFile(skDefaultModel.c_str());
 
     // Plane has only one mesh, get the VAO now
     mpVao = getVao();
@@ -70,7 +72,7 @@ void ShaderBuffersSample::onLoad()
     mCameraController.setModelParams(center, radius, radius * 2.5f);
 
     // create the uniform buffers
-    mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+    mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
     mpSurfaceColorBuffer = TypedBuffer<vec3>::create(1);
     uint32_t z = 0;
     mpInvocationsBuffer = Buffer::create(sizeof(uint32_t), Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::Read, &z);
@@ -81,57 +83,53 @@ void ShaderBuffersSample::onLoad()
     mpProgramVars->setStructuredBuffer("gRWBuffer", mpRWBuffer);
 
     // create pipeline cache
+    mpGraphicsState = GraphicsState::create();
     RasterizerState::Desc rsDesc;
     rsDesc.setCullMode(RasterizerState::CullMode::Back);
-    mpDefaultPipelineState->setRasterizerState(RasterizerState::create(rsDesc));
+    mpGraphicsState->setRasterizerState(RasterizerState::create(rsDesc));
 
     // Depth test
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthTest(true);
-    mpDefaultPipelineState->setDepthStencilState(DepthStencilState::create(dsDesc));
-    mpDefaultPipelineState->setFbo(mpDefaultFBO);
-    mpDefaultPipelineState->setVao(mpVao);
-    mpDefaultPipelineState->setProgram(mpProgram);
+    mpGraphicsState->setDepthStencilState(DepthStencilState::create(dsDesc));
+    mpGraphicsState->setVao(mpVao);
+    mpGraphicsState->setProgram(mpProgram);
 
     // Compute
-    mpComputeProgram = ComputeProgram::createFromFile(appendShaderExtension("ShaderBuffers.cs"));
+    mpComputeProgram = ComputeProgram::createFromFile("ShaderBuffers.cs.hlsl", "main");
     mpComputeState = ComputeState::create();
     mpComputeState->setProgram(mpComputeProgram);
 
-    mpComputeVars = ComputeVars::create(mpComputeProgram->getActiveVersion()->getReflector());
+    mpComputeVars = ComputeVars::create(mpComputeProgram->getReflector());
     mpComputeVars->setStructuredBuffer("gLightIn", StructuredBuffer::create(mpComputeProgram, "gLightIn", 2));
 
     mpAppendLightData = StructuredBuffer::create(mpComputeProgram, "gLightOut", 2);
     mpComputeVars->setStructuredBuffer("gLightOut", mpAppendLightData);
-
-    initializeTesting();
 }
 
-void ShaderBuffersSample::onFrameRender()
+void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-    beginTestFrame();
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mCameraController.update();
 
     //
     // Compute
     //
 
-    mpRenderContext->clearUAV(mpAppendLightData->getUAV().get(), uvec4(0));
-    mpRenderContext->clearUAVCounter(mpAppendLightData, 0);
+    pContext->clearUAV(mpAppendLightData->getUAV().get(), uvec4(0));
+    pContext->clearUAVCounter(mpAppendLightData, 0);
 
     // Send lights to compute shader
     mpComputeVars->getStructuredBuffer("gLightIn")[0]["vec3Val"] = mLightData.worldDir;
     mpComputeVars->getStructuredBuffer("gLightIn")[1]["vec3Val"] = mLightData.intensity;
     mpComputeVars->setStructuredBuffer("gLightOut", mpAppendLightData);
 
-    mpRenderContext->setComputeState(mpComputeState);
-    mpRenderContext->setComputeVars(mpComputeVars);
+    pContext->setComputeState(mpComputeState);
+    pContext->setComputeVars(mpComputeVars);
 
     // Compute shader passes light data through an append buffer
-    mpRenderContext->dispatch(1, 1, 1);
+    pContext->dispatch(1, 1, 1);
 
     //
     // Render
@@ -139,7 +137,8 @@ void ShaderBuffersSample::onFrameRender()
 
     // Bind compute output
     mpProgramVars->setStructuredBuffer("gLight[3]", mpAppendLightData);
-    mpRenderContext->setGraphicsState(mpDefaultPipelineState);
+    mpGraphicsState->setFbo(pSample->getCurrentFbo());
+    pContext->setGraphicsState(mpGraphicsState);
 
     // Update uniform-buffers data
     mpProgramVars["PerFrameCB"]["gWorldMat"] = glm::mat4();
@@ -150,13 +149,13 @@ void ShaderBuffersSample::onFrameRender()
     mpSurfaceColorBuffer->uploadToGPU();
 
     // Set uniform buffers
-    mpRenderContext->setGraphicsVars(mpProgramVars);
-    mpRenderContext->drawIndexed(mIndexCount, 0, 0);
+    pContext->setGraphicsVars(mpProgramVars);
+    pContext->drawIndexed(mIndexCount, 0, 0);
 
     // Read UAV counter from append buffer
     uint32_t* pCounter = (uint32_t*)mpAppendLightData->getUAVCounter()->map(Buffer::MapType::Read);
     std::string msg = "Light Data append buffer count: " + std::to_string(*pCounter);
-    renderText(msg, vec2(600, 80));
+    pSample->renderText(msg, vec2(600, 80));
     mpAppendLightData->getUAVCounter()->unmap();
 
     if(mCountPixelShaderInvocations)
@@ -164,44 +163,39 @@ void ShaderBuffersSample::onFrameRender()
         // RWByteAddressBuffer
         uint32_t* pData = (uint32_t*)mpInvocationsBuffer->map(Buffer::MapType::Read);
         std::string msg = "PS was invoked " + std::to_string(*pData) + " times";
-        renderText(msg, vec2(600, 100));
+        pSample->renderText(msg, vec2(600, 100));
         mpInvocationsBuffer->unmap();
 
         // RWStructuredBuffer UAV Counter
         pData = (uint32_t*)mpRWBuffer->getUAVCounter()->map(Buffer::MapType::Read);
         msg = "UAV Counter counted " + std::to_string(*pData) + " times";
-        renderText(msg, vec2(600, 120));
+        pSample->renderText(msg, vec2(600, 120));
         mpRWBuffer->getUAVCounter()->unmap();
 
-        mpRenderContext->clearUAV(mpInvocationsBuffer->getUAV().get(), uvec4(0));
-        mpRenderContext->clearUAVCounter(mpRWBuffer, 0);
+        pContext->clearUAV(mpInvocationsBuffer->getUAV().get(), uvec4(0));
+        pContext->clearUAVCounter(mpRWBuffer, 0);
     }
-
-    endTestFrame();
 }
 
-void ShaderBuffersSample::onDataReload()
+void ShaderBuffersSample::onDataReload(SampleCallbacks* pSample)
 {
     mpVao = getVao();
 }
 
-bool ShaderBuffersSample::onKeyEvent(const KeyboardEvent& keyEvent)
+bool ShaderBuffersSample::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mCameraController.onKeyEvent(keyEvent);
 }
 
-bool ShaderBuffersSample::onMouseEvent(const MouseEvent& mouseEvent)
+bool ShaderBuffersSample::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCameraController.onMouseEvent(mouseEvent);
 }
 
-void ShaderBuffersSample::onResizeSwapChain()
+void ShaderBuffersSample::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    float height = (float)mpDefaultFBO->getHeight();
-    float width = (float)mpDefaultFBO->getWidth();
-
     mpCamera->setFocalLength(60.0f);
-    mpCamera->setAspectRatio(width / height);
+    mpCamera->setAspectRatio((float)width / (float)height);
 }
 
 #ifdef _WIN32
@@ -215,14 +209,17 @@ int main(int argc, char** argv)
     return 0;
 #endif
 
-    ShaderBuffersSample buffersSample;
+    ShaderBuffersSample::UniquePtr pRenderer = std::make_unique<ShaderBuffersSample>();
+
     SampleConfig config;
     config.windowDesc.title = "Shader Buffers";
     config.windowDesc.resizableWindow = true;
 #ifdef _WIN32
-    buffersSample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    buffersSample.run(config, (uint32_t)argc, argv);
+    config.argc = (uint32_t)argc;
+    config.argv = argv;
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 }

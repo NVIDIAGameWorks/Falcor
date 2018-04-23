@@ -144,8 +144,23 @@ namespace Falcor
         }
     }
 
-    void initVkBlendInfo(const BlendState* pState, ColorBlendStateCreateInfo& infoOut)
+    static bool hasColorAttachments(const Fbo::Desc& fboDesc)
     {
+        for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
+        {
+            if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown) return true;
+        }
+        return false;
+    }
+
+    void initVkBlendInfo(const Fbo::Desc& fboDesc, const BlendState* pState, ColorBlendStateCreateInfo& infoOut)
+    {
+        infoOut.info = {};
+        infoOut.info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+        infoOut.info.logicOpEnable = VK_FALSE;
+
+        if (hasColorAttachments(fboDesc) == false) return;
+
         // Fill out attachment blend info
         infoOut.attachmentStates.resize((uint32_t)pState->getRtCount());
 
@@ -168,9 +183,6 @@ namespace Falcor
         }
 
         // Fill out create info
-        infoOut.info = {};
-        infoOut.info.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        infoOut.info.logicOpEnable = VK_FALSE;
         infoOut.info.attachmentCount = (uint32_t)infoOut.attachmentStates.size();
         infoOut.info.pAttachments = infoOut.attachmentStates.data();
 
@@ -532,9 +544,11 @@ namespace Falcor
             }
         }
 
+        bool hasColor = rtCount > 0;
+
         // Depth. No need to attach if the texture is null
-        ResourceFormat format = fboDesc.getDepthStencilFormat();
-        if(format != ResourceFormat::Unknown)
+        bool hasDepth = fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown;
+        if(hasDepth)
         {
             VkAttachmentDescription& depthDesc = infoOut.attachmentDescs[rtCount];
             regToAttachmentIndex.back() = rtCount;
@@ -547,7 +561,7 @@ namespace Falcor
             depthDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             depthDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             depthDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-            depthDesc.initialLayout = (gpDevice->getDeviceVendorID() == 0x10DE) ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            depthDesc.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             depthDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         }
 
@@ -557,24 +571,29 @@ namespace Falcor
         VkSubpassDescription& subpassDesc = infoOut.subpassDescs[0];
 
         subpassDesc = {};
-        subpassDesc.colorAttachmentCount = rtCount;
-
-        // Color attachments. This is where we create the indirection between the attachment in the RenderPass and the shader output-register index
-        for (size_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
-        {
-            VkAttachmentReference& ref = infoOut.attachmentRefs[i];
-            ref.attachment = regToAttachmentIndex[i];
-            ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
 
         // Depth
-        VkAttachmentReference& depthRef = infoOut.attachmentRefs.back();
-        depthRef.attachment = regToAttachmentIndex.back();
-        depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        if(hasDepth)
+        {
+            VkAttachmentReference& depthRef = infoOut.attachmentRefs.back();
+            depthRef.attachment = regToAttachmentIndex.back();
+            depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            subpassDesc.pDepthStencilAttachment = &infoOut.attachmentRefs.back();
+        }
 
-        subpassDesc.colorAttachmentCount = Fbo::getMaxColorTargetCount();
-        subpassDesc.pColorAttachments = infoOut.attachmentRefs.data();
-        subpassDesc.pDepthStencilAttachment = &infoOut.attachmentRefs.back();
+        if(hasColor)
+        {
+            // Color attachments. This is where we create the indirection between the attachment in the RenderPass and the shader output-register index
+            for (size_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
+            {
+                VkAttachmentReference& ref = infoOut.attachmentRefs[i];
+                ref.attachment = regToAttachmentIndex[i];
+                ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            }
+
+            subpassDesc.colorAttachmentCount = Fbo::getMaxColorTargetCount();
+            subpassDesc.pColorAttachments = infoOut.attachmentRefs.data();
+        }
 
         // Assemble RenderPass info
         infoOut.info = {};

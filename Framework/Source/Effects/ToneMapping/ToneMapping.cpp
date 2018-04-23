@@ -104,7 +104,7 @@ namespace Falcor
         pRenderContext->setGraphicsVars(mpLuminanceVars);
         pState->setFbo(mpLuminanceFbo);
         mpLuminancePass->execute(pRenderContext);
-        mpLuminanceFbo->getColorTexture(0)->generateMips();
+        mpLuminanceFbo->getColorTexture(0)->generateMips(pRenderContext);
 
         //Set Tone map vars
         if (mOperator != Operator::Clamp)
@@ -152,7 +152,7 @@ namespace Falcor
             should_not_get_here();
         }
 
-        const auto& pReflector = mpToneMapPass->getProgram()->getActiveVersion()->getReflector();
+        const auto& pReflector = mpToneMapPass->getProgram()->getReflector();
         mpToneMapVars = GraphicsVars::create(pReflector);
         mpToneMapCBuffer = mpToneMapVars["PerImageCB"];
         const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
@@ -166,7 +166,7 @@ namespace Falcor
     {
         mpLuminancePass = FullScreenPass::create(kShaderFilename);
         mpLuminancePass->getProgram()->addDefine("_LUMINANCE");
-        const auto& pReflector = mpLuminancePass->getProgram()->getActiveVersion()->getReflector();
+        const auto& pReflector = mpLuminancePass->getProgram()->getReflector();
         mpLuminanceVars = GraphicsVars::create(pReflector);
     }
 

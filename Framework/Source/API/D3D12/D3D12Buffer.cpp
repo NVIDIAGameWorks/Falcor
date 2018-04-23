@@ -87,7 +87,7 @@ namespace Falcor
 
         if (mCpuAccess == CpuAccess::Write)
         {
-            mState = Resource::State::GenericRead;
+            mState.global = Resource::State::GenericRead;
             if(hasInitData == false) // Else the allocation will happen when updating the data
             {
                 mDynamicData = gpDevice->getResourceAllocator()->allocate(mSize, getBufferDataAlignment(this));
@@ -96,13 +96,16 @@ namespace Falcor
         }
         else if (mCpuAccess == CpuAccess::Read && mBindFlags == BindFlags::None)
         {
-            mState = Resource::State::CopyDest;
-            mApiHandle = createBuffer(mState, mSize, kReadbackHeapProps, mBindFlags);
+            mState.global = Resource::State::CopyDest;
+            mApiHandle = createBuffer(mState.global, mSize, kReadbackHeapProps, mBindFlags);
         }
         else
         {
-            mState = Resource::State::Common;
-            mApiHandle = createBuffer(mState, mSize, kDefaultHeapProps, mBindFlags);
+            mState.global = Resource::State::Common;
+#ifdef FALCOR_DXR
+            if (is_set(mBindFlags, BindFlags::AccelerationStructure)) mState.global = Resource::State::AccelerationStructure;
+#endif
+            mApiHandle = createBuffer(mState.global, mSize, kDefaultHeapProps, mBindFlags);
         }
 
         return true;

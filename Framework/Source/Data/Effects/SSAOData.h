@@ -35,8 +35,8 @@
 struct SSAOData
 {
     float4 sampleKernel[MAX_SAMPLES];
-    uint32_t kernelSize DEFAULTS(1);
     float2 noiseScale DEFAULTS(float2(1, 1));
+    uint32_t kernelSize DEFAULTS(1);
     float radius DEFAULTS(0.1f);
 };
 

@@ -49,15 +49,18 @@ namespace Falcor
         return SharedPtr(pCamera);
     }
 
+    void Camera::beginFrame()
+    {
+        mData.prevViewProjMat = mViewProjMatNoJitter;
+        mData.rightEyePrevViewProjMat = mData.rightEyeViewProjMat;
+    }
+
     void Camera::calculateCameraParameters() const
     {
         if (mDirty)
         {
             // Interpret focal length of 0 as 0 FOV. Technically 0 FOV should be focal length of infinity.
-            const float fovY = mData.focalLength == 0.0f ? 0.0f : focalLengthToFovY(mData.focalLength, kDefaultFrameHeight);
-
-            mData.prevViewProjMat = viewProjMatNoJitter;
-            mData.rightEyePrevViewProjMat = mData.rightEyeViewProjMat;
+            const float fovY = mData.focalLength == 0.0f ? 0.0f : focalLengthToFovY(mData.focalLength, mData.frameHeight);
 
             if (mEnablePersistentViewMat)
             {
@@ -65,7 +68,7 @@ namespace Falcor
             }
             else
             {
-                mData.viewMat = glm::lookAt(mData.position, mData.target, mData.up);
+                mData.viewMat = glm::lookAt(mData.posW, mData.target, mData.up);
             }
 
             // if camera projection is set to be persistent, don't override it.
@@ -82,7 +85,7 @@ namespace Falcor
                 else
                 {
                     // Take the length of look-at vector as half a viewport size
-                    const float halfLookAtLength = length(mData.position - mData.target) * 0.5f;
+                    const float halfLookAtLength = length(mData.posW - mData.target) * 0.5f;
                     mData.projMat = glm::ortho(-halfLookAtLength, halfLookAtLength, -halfLookAtLength, halfLookAtLength, mData.nearZ, mData.farZ);
                 }
             }
@@ -95,7 +98,7 @@ namespace Falcor
                 0.0f, 0.0f, 1.0f, 0.0f,
                 2.0f * mData.jitterX, 2.0f * mData.jitterY, 0.0f, 1.0f);
             // Apply jitter matrix to the projection matrix
-            viewProjMatNoJitter = mData.projMat * mData.viewMat;
+            mViewProjMatNoJitter = mData.projMat * mData.viewMat;
             mData.projMat = jitterMat * mData.projMat;
 
             mData.viewProjMat = mData.projMat * mData.viewMat;
@@ -118,13 +121,12 @@ namespace Falcor
             }
 
             // Ray tracing related vectors
-            mData.cameraW = mData.target - mData.position;
-            const float lookdir_len = length(mData.cameraW);
+            mData.cameraW = glm::normalize(mData.target - mData.posW) * mData.focalDistance;
             mData.cameraU = glm::normalize(glm::cross(mData.cameraW, mData.up));
             mData.cameraV = glm::normalize(glm::cross(mData.cameraU, mData.cameraW));
-            const float ulen = lookdir_len * tanf(fovY * 0.5f) * mData.aspectRatio;
+            const float ulen = mData.focalDistance * tanf(fovY * 0.5f) * mData.aspectRatio;
             mData.cameraU *= ulen;
-            const float vlen = lookdir_len * tanf(fovY * 0.5f);
+            const float vlen = mData.focalDistance * tanf(fovY * 0.5f);
             mData.cameraV *= vlen;
 
             mDirty = false;

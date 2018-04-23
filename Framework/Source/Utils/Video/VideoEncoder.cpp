@@ -115,7 +115,7 @@ namespace Falcor
         // Some formats want stream headers to be separate
         if(pCtx->oformat->flags & AVFMT_GLOBALHEADER)
         {
-            pCodecCtx->flags |= CODEC_FLAG_GLOBAL_HEADER;
+            pCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
         }
 
         return pCodecCtx;
@@ -226,9 +226,10 @@ namespace Falcor
 
     bool VideoEncoder::init(const Desc& desc)
     {
-        // Register the codecs
+        // av_register_all() is deprecated since 58.9.100, but Linux repos may not get a newer version, so this call cannot be completely removed.
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 9, 100)
         av_register_all();
-
+#endif
         // create the output context
         avformat_alloc_output_context2(&mpOutputContext, nullptr, nullptr, mFilename.c_str());
         if(mpOutputContext == nullptr)

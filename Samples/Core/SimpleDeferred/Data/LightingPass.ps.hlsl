@@ -32,14 +32,58 @@ cbuffer PerImageCB
 {
     // G-Buffer
     // Lighting params
-	LightData gDirLight;
-	LightData gPointLight;
-	float3 gAmbient;
+    LightData gDirLight;
+    LightData gPointLight;
+    float3 gAmbient;
     // Debug mode
-	uint gDebugMode;
+    uint gDebugMode;
 };
 
-#include "LightingPassCommon.h"
+// Debug modes
+#define ShowPos         1
+#define ShowNormals     2
+#define ShowAlbedo      3
+#define ShowLighting    4
+
+float3 shade(float3 posW, float3 normalW, float linearRoughness, float4 albedo)
+{
+    // Discard empty pixels
+    if (albedo.a <= 0)
+    {
+        discard;
+    }
+
+    /* Reconstruct the hit-point */
+    ShadingData sd = initShadingData();
+    sd.posW = posW;
+    sd.V = normalize(gCamera.posW - posW);
+    sd.N = normalW;
+    sd.NdotV = abs(dot(sd.V, sd.N));
+    sd.linearRoughness = linearRoughness;
+
+    /* Reconstruct layers (one diffuse layer) */
+    sd.diffuse = albedo.rgb;
+    sd.opacity = 0;
+
+    /* Do lighting */
+    ShadingResult dirResult = evalMaterial(sd, gDirLight, 1);
+    ShadingResult pointResult = evalMaterial(sd, gPointLight, 1);
+
+    float3 result;
+    // Debug vis
+    if (gDebugMode == ShowPos)
+        result = posW;
+    else if (gDebugMode == ShowNormals)
+        result = 0.5 * normalW + 0.5f;
+    else if (gDebugMode == ShowAlbedo)
+        result = albedo.rgb;
+    else if (gDebugMode == ShowLighting)
+        result = (dirResult.diffuseBrdf + pointResult.diffuseBrdf) / sd.diffuse.rgb;
+    else
+        result = dirResult.diffuse + pointResult.diffuse;
+
+    return result;
+}
 
 Texture2D gGBuf0;
 Texture2D gGBuf1;
@@ -48,11 +92,13 @@ Texture2D gGBuf2;
 float4 main(float2 texC : TEXCOORD, float4 pos : SV_POSITION) : SV_TARGET
 {
     // Fetch a G-Buffer
-    const float3 posW    = gGBuf0.Load(int3(pos.xy, 0)).rgb;
-    const float3 normalW = gGBuf1.Load(int3(pos.xy, 0)).rgb;
-    const float4 albedo  = gGBuf2.Load(int3(pos.xy, 0));
+    float3 posW    = gGBuf0.Load(int3(pos.xy, 0)).rgb;
+    float4 buf1Val = gGBuf1.Load(int3(pos.xy, 0));
+    float3 normalW = buf1Val.rgb;
+    float linearRoughness = buf1Val.a;
+    float4 albedo  = gGBuf2.Load(int3(pos.xy, 0));
 
-    float3 color = shade(posW, normalW, albedo);
+    float3 color = shade(posW, normalW, linearRoughness, albedo);
 
-	return float4(color, 1);
+    return float4(color, 1);
 }

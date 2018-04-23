@@ -78,9 +78,33 @@ namespace Falcor
         */
         float getFocalLength() const { return mData.focalLength; }
 
+        /** Set the camera's film plane height in mm.
+        */
+        void setFrameHeight(float height) { mData.frameHeight = height; mDirty = true; }
+
+        /** Get the camera's film plane height in mm.
+        */
+        float getFrameHeight() const { return mData.frameHeight; }
+
+        /** Set the camera's focal distance in scene units.  Used for depth-of-field.
+        */
+        void setFocalDistance(float distance) { mData.focalDistance = distance; mDirty = true; }
+
+        /** Get the camera's focal distance in scene units.
+        */
+        float getFocalDistance() const { return mData.focalDistance; }
+
+        /** Set camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
+        */
+        void setApertureRadius(float radius) { mData.apertureRadius = radius; mDirty = true; }
+
+        /** Get camera aperture radius in scene units. See FalcorMath.h for helper functions to convert between aperture f-number.
+        */
+        float getApertureRadius() const { return mData.apertureRadius; }
+
         /** Get the camera's world space position.
         */
-        const glm::vec3& getPosition() const { return mData.position; }
+        const glm::vec3& getPosition() const { return mData.posW; }
 
         /** Get the camera's world space up vector.
         */
@@ -92,7 +116,7 @@ namespace Falcor
 
         /** Set the camera's world space position.
         */
-        void setPosition(const glm::vec3& pos) { mData.position = pos; mDirty = true; }
+        void setPosition(const glm::vec3& posW) { mData.posW = posW; mDirty = true; }
 
         /** Set the camera's world space up vector.
         */
@@ -204,6 +228,9 @@ namespace Falcor
             return dataSize;
         }
 
+        /** Begin frame. Should be called once per-frame, this is where we store the previous frame matrices
+        */
+        void beginFrame();
     private:
         Camera();
 
@@ -217,7 +244,7 @@ namespace Falcor
 
         void calculateCameraParameters() const;
         mutable CameraData mData;
-        mutable glm::mat4 viewProjMatNoJitter;
+        mutable glm::mat4 mViewProjMatNoJitter;
 
         struct 
         {

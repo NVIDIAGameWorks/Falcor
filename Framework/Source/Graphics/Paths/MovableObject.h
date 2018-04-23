@@ -30,6 +30,8 @@
 
 namespace Falcor
 {
+    class ObjectPath;
+
     class IMovableObject : public std::enable_shared_from_this<IMovableObject>
     {
     public:
@@ -37,5 +39,11 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const IMovableObject>;
 
         virtual void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) = 0;
+        const ObjectPath* getAttachedPath() const { return mpPath; }
+
+    private:
+        friend class ObjectPath;
+        void attachPath(const ObjectPath* pPath) { mpPath = pPath; }
+        const ObjectPath* mpPath = nullptr;
     };
 }

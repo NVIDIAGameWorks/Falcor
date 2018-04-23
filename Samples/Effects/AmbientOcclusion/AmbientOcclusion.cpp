@@ -27,14 +27,17 @@
 ***************************************************************************/
 #include "AmbientOcclusion.h"
 
-void AmbientOcclusion::onGuiRender()
+const std::string AmbientOcclusion::skDefaultModel = "Arcade/Arcade.fbx";
+
+void AmbientOcclusion::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (mpSSAO != nullptr)
     {
-        mpGui->addCheckBox("Use Normal Map", mUseNormalMap);
-        mpGui->pushWindow("SSAO", 400, 160, 20, 300);
-        mpSSAO->renderGui(mpGui.get());
-        mpGui->popWindow();
+        if(pGui->beginGroup("SSAO"))
+        {
+            mpSSAO->renderGui(pGui);
+            pGui->endGroup();
+        }
     }
 }
 
@@ -59,15 +62,15 @@ void AmbientOcclusion::resetCamera()
     }
 }
 
-void AmbientOcclusion::onLoad()
+void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     //
     // "GBuffer" rendering
     //
 
-    mpPrePassProgram = GraphicsProgram::createFromFile("", appendShaderExtension("AOPrePass.ps"));
+    mpPrePassProgram = GraphicsProgram::createFromFile("AOPrePass.ps.hlsl", "", "main");
     mpPrePassState = GraphicsState::create();
-    mpPrePassVars = GraphicsVars::create(mpPrePassProgram->getActiveVersion()->getReflector());
+    mpPrePassVars = GraphicsVars::create(mpPrePassProgram->getReflector());
 
     RasterizerState::Desc rsDesc;
     rsDesc.setCullMode(RasterizerState::CullMode::Back);
@@ -91,75 +94,62 @@ void AmbientOcclusion::onLoad()
     linearDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpLinearSampler = Sampler::create(linearDesc);
 
-    mpCopyPass = FullScreenPass::create(appendShaderExtension("ApplyAO.ps"));
-    mpCopyVars = GraphicsVars::create(mpCopyPass->getProgram()->getActiveVersion()->getReflector());
+    mpCopyPass = FullScreenPass::create("ApplyAO.ps.hlsl");
+    mpCopyVars = GraphicsVars::create(mpCopyPass->getProgram()->getReflector());
 
     // Effects
     mpSSAO = SSAO::create(uvec2(1024));
 
     // Model
-    mpModel = Model::createFromFile("ogre/bs_smile.obj");
+    mpModel = Model::createFromFile(skDefaultModel.c_str());
 
     mpCamera = Camera::create();
-    mpCamera->setAspectRatio((float)mpDefaultFBO->getWidth() / (float)mpDefaultFBO->getHeight());
+    mpCamera->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
     mCameraController.attachCamera(mpCamera);
 
     resetCamera();
 }
 
-void AmbientOcclusion::onFrameRender()
+void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     mpCamera->setDepthRange(mNearZ, mFarZ);
     mCameraController.update();
 
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    mpRenderContext->clearFbo(mpGBufferFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(mpGBufferFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     // Render Scene
     mpPrePassState->setFbo(mpGBufferFbo);
 
-    mpRenderContext->setGraphicsState(mpPrePassState);
-    mpRenderContext->setGraphicsVars(mpPrePassVars);
-    ModelRenderer::render(mpRenderContext.get(), mpModel, mpCamera.get());
+    pRenderContext->setGraphicsState(mpPrePassState);
+    pRenderContext->setGraphicsVars(mpPrePassVars);
+    ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
 
     // Generate AO Map
-    Texture::SharedPtr pAOMap = mpSSAO->generateAOMap(mpRenderContext.get(), mpCamera.get(), mpGBufferFbo->getDepthStencilTexture(), mUseNormalMap ? mpGBufferFbo->getColorTexture(1) : nullptr);
+    Texture::SharedPtr pAOMap = mpSSAO->generateAOMap(pRenderContext.get(), mpCamera.get(), mpGBufferFbo->getDepthStencilTexture(), mpGBufferFbo->getColorTexture(1));
 
     // Apply AO Map to scene
     mpCopyVars->setSampler("gSampler", mpLinearSampler);
     mpCopyVars->setTexture("gColor", mpGBufferFbo->getColorTexture(0));
     mpCopyVars->setTexture("gAOMap", pAOMap);
-    mpRenderContext->setGraphicsVars(mpCopyVars);
-    mpRenderContext->getGraphicsState()->setFbo(mpDefaultFBO);
-    mpCopyPass->execute(mpRenderContext.get());
+    pRenderContext->setGraphicsVars(mpCopyVars);
+    pRenderContext->getGraphicsState()->setFbo(pTargetFbo);
+    mpCopyPass->execute(pRenderContext.get());
 }
 
-void AmbientOcclusion::onShutdown()
-{
-
-}
-
-bool AmbientOcclusion::onKeyEvent(const KeyboardEvent& keyEvent)
+bool AmbientOcclusion::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return false;
 }
 
-bool AmbientOcclusion::onMouseEvent(const MouseEvent& mouseEvent)
+bool AmbientOcclusion::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCameraController.onMouseEvent(mouseEvent);
 }
 
-void AmbientOcclusion::onDataReload()
+void AmbientOcclusion::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-
-}
-
-void AmbientOcclusion::onResizeSwapChain()
-{
-    uint32_t width = mpDefaultFBO->getWidth();
-    uint32_t height = mpDefaultFBO->getHeight();
-
     mpCamera->setFocalLength(21.0f);
     mpCamera->setAspectRatio((float)width / (float)height);
 
@@ -174,14 +164,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    AmbientOcclusion sample;
+    AmbientOcclusion::UniquePtr pRenderer = std::make_unique<AmbientOcclusion>();
     SampleConfig config;
     config.windowDesc.title = "Ambient Occlusion";
     config.windowDesc.resizableWindow = true;
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    config.argc = (uint32_t)argc;
+    config.argv = argv;
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 }

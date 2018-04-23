@@ -70,6 +70,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(handle);
         gpDevice->getApiHandle()->CreateShaderResourceView(pSharedPtr ? pSharedPtr->getApiHandle() : nullptr, &desc, handle->getCpuHandle(0));
 
         pObj = SharedPtr(new ShaderResourceView(pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize));
@@ -103,6 +104,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Dsv, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(handle);
         gpDevice->getApiHandle()->CreateDepthStencilView(resHandle, &desc, handle->getCpuHandle(0));
 
         pObj = SharedPtr(new DepthStencilView(pResource, handle, mipLevel, firstArraySlice, arraySize));
@@ -146,6 +148,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureUav, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(handle);
         gpDevice->getApiHandle()->CreateUnorderedAccessView(resHandle, counterHandle, &desc, handle->getCpuHandle(0));
 
         pObj = SharedPtr(new UnorderedAccessView(pResource, handle, mipLevel, firstArraySlice, arraySize));
@@ -181,6 +184,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Rtv, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(handle);
         gpDevice->getApiHandle()->CreateRenderTargetView(resHandle, &desc, handle->getCpuHandle(0));
 
         SharedPtr pNewObj;
@@ -216,6 +220,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Cbv, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(handle);
         gpDevice->getApiHandle()->CreateConstantBufferView(&desc, handle->getCpuHandle(0));
 
         SharedPtr pNewObj;

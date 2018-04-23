@@ -18,11 +18,5 @@
     <None Include="Data\ApplyAO.ps.hlsl">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\AOPrePass.ps.glsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\ApplyAO.ps.glsl">
-      <Filter>Data</Filter>
-    </None>
   </ItemGroup>
 </Project>

@@ -6,13 +6,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\toy.fs">
+    <None Include="Data\toyContainer.hlsl">
       <Filter>Data</Filter>
     </None>
-    <None Include="Data\toyContainer.ps.hlsl">
-      <Filter>Data</Filter>
-    </None>
-    <None Include="Data\toyContainer.ps.glsl">
+    <None Include="Data\toy.hlsl">
       <Filter>Data</Filter>
     </None>
   </ItemGroup>

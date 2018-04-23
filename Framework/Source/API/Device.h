@@ -65,14 +65,12 @@ namespace Falcor
             bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
             bool enableVR = false;                                          ///< Create a device matching OpenVR requirements
 
-            static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 0");
+            static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
             uint32_t cmdQueues[kQueueTypeCount] = { 0, 0, 1 };  ///< Command queues to create. If not direct-queues are created, mpRenderContext will not be initialized
 
-#ifdef FALCOR_D3D
-            /** The following callback allows the user to create its own device (for example, create a WARP device or choose a specific GPU in a multi-GPU machine)
-            */
-            using CreateDeviceFunc = std::function<DeviceHandle(IDXGIAdapter* pAdapter, D3D_FEATURE_LEVEL featureLevel)>;
-            CreateDeviceFunc createDeviceFunc;
+#ifdef FALCOR_D3D12
+            // GUID list for experimental features
+            std::vector<UUID> experimentalFeatures;
 #endif
         };
 
@@ -201,6 +199,7 @@ namespace Falcor
         bool apiInit(const Desc& desc);
         bool createSwapChain(ResourceFormat colorFormat);
         void apiResizeSwapChain(uint32_t width, uint32_t height, ResourceFormat colorFormat);
+        void toggleFullScreen(bool fullscreen);
     };
 
     extern Device::SharedPtr gpDevice;

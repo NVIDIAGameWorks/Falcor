@@ -39,6 +39,8 @@
 #include "API/Device.h"
 #include "ArgList.h"
 #include "Utils/PixelZoom.h"
+#include "Renderer.h"
+#include "SampleTest.h"
 
 namespace Falcor
 {
@@ -66,144 +68,88 @@ namespace Falcor
         float timeScale = 1.0f;                                     ///< A scaling factor for the time elapsed between frames.
         float fixedTimeDelta = 0.0f;                                ///< If non-zero, specifies a fixed simulation time step per frame, which is further affected by time scale.
         bool freezeTimeOnStartup = false;                           ///< Control whether or not to start the clock when the sample start running.
-        std::function<void(void)> deviceCreatedCallback = nullptr;  ///< Callback function which will be called after the device is created
         Flags flags = Flags::None;                                  ///< Sample flags
+        uint32_t argc = 0;                                          ///< Arg count 
+        char** argv = nullptr;                                      ///< Arg values
     };
 
-    /** Bootstrapper class for Falcor.
-        User should create a class which inherits from Sample, then call Sample::run() to start the sample.
-        The render loop will then call the user's overridden callback functions.
+    /** Bootstrapper class for Falcor
+        Call Sample::run() to start the sample.
+        The render loop will then call the user's Renderer object
     */
-    class Sample : public Window::ICallbacks
+    class Sample : public Window::ICallbacks, public SampleCallbacks
     {
     public:
-        Sample();
-        virtual ~Sample();
-        Sample(const Sample&) = delete;
-        Sample& operator=(const Sample&) = delete;
-
         /** Entry-point to Sample. User should call this to start processing.
             On Windows, command line args will be retrieved and parsed even if not passed through this function.
             On Linux, this function is the only way to feed the sample command line args.
 
             \param[in] config Requested sample configuration
+            \param[in] pRenderer The user's renderer
             \param[in] argc Optional. Number of command line arguments
             \param[in] argv Optional. Array of command line arguments
         */
-        virtual void run(const SampleConfig& config, uint32_t argc = 0, char** argv = nullptr);
+        static void run(const SampleConfig& config, Renderer::UniquePtr& pRenderer);
 
+        virtual ~Sample();
     protected:
-        // Callbacks
+        /************************************************************************/
+        /* Callback inherited from SampleCallbacks                                 */
+        /************************************************************************/
+        RenderContext::SharedPtr getRenderContext() override { return mpRenderContext; }
+        Fbo::SharedPtr getCurrentFbo() override { return mpTargetFBO; }
+        Window* getWindow() override { return mpWindow.get(); }
+        Gui* getGui() override { return mpGui.get(); }
+        float getCurrentTime() override { return mCurrentTime; }
+        void resizeSwapChain(uint32_t width, uint32_t height) override;
+        bool isKeyPressed(const KeyboardEvent::Key& key) override;
+        float getFrameRate() override { return mFrameRate.getAverageFrameTime(); }
+        float getLastFrameTime() override { return mFrameRate.getLastFrameTime();  }
+        uint64_t getFrameID() override { return mFrameRate.getFrameCount(); }
+        void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = vec2(1)) override;
+        std::string getFpsMsg() override;
+        void toggleText(bool showText) override { mShowText = showText && gpDevice; }
+        void toggleUI(bool showUI) override { mShowUI = showUI && gpDevice; }
+        void setDefaultGuiSize(uint32_t width, uint32_t height) override;
+        void setDefaultGuiPosition(uint32_t x, uint32_t y) override;
+        void setCurrentTime(float time) override { mCurrentTime = time; }
+        ArgList getArgList() override { return mArgList; }
+        void setFixedTimeDelta(float newFixedTimeDelta) override { mFixedTimeDelta = newFixedTimeDelta; }
+        float getFixedTimeDelta() override  { return mFixedTimeDelta; }
+        void freezeTime(bool timeFrozen) override { mFreezeTime = timeFrozen; }
+        bool isTimeFrozen() override { return mFreezeTime; }
+        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
+        void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
+        
+        //Any cleanup required by renderer if its being shut down early via testing 
+        void onTestShutdown() override { mpRenderer->onTestShutdown(mpSampleTest.get()); }
 
-        /** Called once right after context creation.
+        //Non inherited testing functions 
+        bool initializeTesting();
+        void beginTestFrame();
+        void endTestFrame();
+
+        /** Internal data structures
         */
-        virtual void onLoad() {}
-
-        /** Called on each frame render.
-        */
-        virtual void onFrameRender() {}
-
-        /** Called right before the context is destroyed.
-        */
-        virtual void onShutdown() {}
-
-        /** Called every time the swap-chain is resized. You can query the default FBO for the new size and sample count of the window.
-        */
-        virtual void onResizeSwapChain() {}
-
-        /** Called every time the user requests shader recompilation (by pressing F5)
-        */
-        virtual void onDataReload() {}
-
-        /** Called every time a key event occurred.
-            \param[in] keyEvent The keyboard event
-            \return true if the event was consumed by the callback, otherwise false
-        */
-        virtual bool onKeyEvent(const KeyboardEvent& keyEvent) { return false; }
-
-        /** Called every time a mouse event occurred.
-            \param[in] mouseEvent The mouse event
-            \return true if the event was consumed by the callback, otherwise false
-        */
-        virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
-
-        /** Called after onFrameRender().
-            It is highly recommended to use onGuiRender() exclusively for GUI handling. onGuiRender() will not be called when the GUI is hidden, which should help reduce CPU overhead.
-            You could also ignore this and render the GUI directly in your onFrameRender() function, but that is discouraged.
-        */
-        virtual void onGuiRender() {};
-
-        /** Resize the swap-chain buffers
-            \param[in] width Requested width
-            \param[in] height Requested height
-        */
-        void resizeSwapChain(uint32_t width, uint32_t height);
-
-        /** Get whether the given key is pressed
-            \param[in] key The key
-        */
-        bool isKeyPressed(const KeyboardEvent::Key& key) const;
-
-        /** Get information about the framerate
-        */
-        const FrameRate& frameRate() const { return mFrameRate; }
-
-        /** Render a text string.
-            \param[in] str The string to render
-            \param[in] position Window position of the string in pixels from the top-left corner
-            \param[in] shadowOffset Offset for an outline shadow. Disabled if zero.
-        */
-        void renderText(const std::string& str, const glm::vec2& position, const glm::vec2 shadowOffset = glm::vec2(1.f, 1.f)) const;
-
-        /** Get the FPS message string
-        */
-        const std::string getFpsMsg() const;
-
-        /** Close the window and exit the application
-        */
-        void shutdownApp();
-
-        /** Poll for window events (useful when running long pieces of code)
-        */
-        void pollForEvents();
-
-        /** Change the title of the window
-        */
-        void setWindowTitle(const std::string& title);
-
-        /** Show/hide the UI
-        */
-        void toggleUI(bool showUI) { mShowUI = showUI && gpDevice; }
-
-        /** Set the main GUI window size
-        */
-        void setSampleGuiWindowSize(uint32_t width, uint32_t height);
-
         Gui::UniquePtr mpGui;                               ///< Main sample GUI
         RenderContext::SharedPtr mpRenderContext;           ///< The rendering context
-        GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline state
-        Fbo::SharedPtr mpDefaultFBO;                        ///< The default FBO object
+        GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline 
+        Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
         bool mFreezeTime;                                   ///< Whether global time is frozen
         float mCurrentTime = 0;                             ///< Global time
         float mTimeScale;                                   ///< Global time scale
         ArgList mArgList;                                   ///< Arguments passed in by command line
         Window::SharedPtr mpWindow;                         ///< The application's window
 
-    protected:
         void renderFrame() override;
         void handleWindowSizeChange() override;
         void handleKeyboardEvent(const KeyboardEvent& keyEvent) override;
         void handleMouseEvent(const MouseEvent& mouseEvent) override;
+        void handleDroppedFile(const std::string& filename) override;
+
         virtual float getTimeScale() final { return mTimeScale; }
-        float getFixedTimeDelta() { return mFixedTimeDelta; }
-        void setFixedTimeDelta(float newFixedTimeDelta) { mFixedTimeDelta = newFixedTimeDelta; }
         void initVideoCapture();
 
-        std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "");
-
-        void toggleText(bool enabled);
-        uint32_t getFrameID() const { return mFrameRate.getFrameCount(); }
-    private:
         // Private functions
         void initUI();
         void printProfileData();
@@ -214,10 +160,15 @@ namespace Falcor
         void captureVideoFrame();
         void renderGUI();
 
+        void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
+
+
         bool mVsyncOn = false;
         bool mShowText = true;
         bool mShowUI = true;
         bool mCaptureScreen = false;
+
+        Renderer::UniquePtr mpRenderer;
 
         struct VideoCaptureData
         {
@@ -238,6 +189,15 @@ namespace Falcor
         PixelZoom::SharedPtr mpPixelZoom;
         uint32_t mSampleGuiWidth = 250;
         uint32_t mSampleGuiHeight = 200;
+        uint32_t mSampleGuiPositionX = 20;
+        uint32_t mSampleGuiPositionY = 40;
+
+        Sample(Renderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
+        Sample(const Sample&) = delete;
+        Sample& operator=(const Sample&) = delete;
+        Fbo::SharedPtr mpBackBufferFBO;     ///< The FBO for the back buffer
+        //Testing
+        SampleTest::UniquePtr mpSampleTest = nullptr;
     };
     enum_class_operators(SampleConfig::Flags);
 };

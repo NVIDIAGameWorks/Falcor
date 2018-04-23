@@ -31,6 +31,7 @@
 #include "Utils/UserInput.h"
 #include "Utils/CpuTimer.h"
 #include "Graphics/Camera/Camera.h"
+#include <bitset>
 
 namespace Falcor
 {
@@ -144,19 +145,20 @@ namespace Falcor
         glm::vec2 mMouseDelta;
 
         CpuTimer mTimer;
-        union
+
+        enum Direction
         {
-            struct
-            {
-                bool forward  : 1;
-                bool backward : 1;
-                bool right    : 1;
-                bool left     : 1;
-                bool up       : 1;
-                bool down     : 1;
-            };
-            bool b = false;
-        } mMovement;
+            Forward,
+            Backward,
+            Right,
+            Left,
+            Up,
+            Down,
+            Count
+        };
+
+        std::bitset<Direction::Count> mMovement;
+
         float mSpeedModifier = 1.0f;
     };
 
