@@ -70,11 +70,13 @@ A good place to start looking for examples would be the ModelViewer sample.
 
 Build Configurations
 --------------------
-Falcor has the following build configurations for DirectX 12 and Vulkan, respectively:
+Falcor has the following build configurations for DirectX 12, Vulkan and DXR, respectively:
 - `DebugD3D12`
 - `ReleaseD3D12`
 - `DebugVK`
 - `ReleaseVK`
+- `DebugDXR`
+- `ReleaseDXR`
 
 Debug builds enable file logging and message boxes by default, and there is a lot of runtime error checking. If debug layers for the selected API are installed, they will be loaded as well.
 
