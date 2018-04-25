@@ -30,16 +30,15 @@
 
 using namespace Falcor;
 
-class StereoRendering : public Sample
+class StereoRendering : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
-    void onDataReload() override;
-    void onGuiRender() override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
 
@@ -69,11 +68,13 @@ private:
     RenderMode mRenderMode = RenderMode::Mono;
     Gui::DropdownList mSubmitModeList;
 
-    void submitToScreen();
-    void initVR();
-    void blitTexture(Texture::SharedPtr pTexture, uint32_t xStart);
+    void submitToScreen(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
+    void initVR(Fbo* pTargetFbo);
+    void blitTexture(RenderContext* pContext, Fbo* pTargetFbo, Texture::SharedPtr pTexture, uint32_t xStart);
     VrFbo::UniquePtr mpVrFbo;
     bool mShowStereoViews = true;
-    void submitStereo(bool singlePassStereo);
+    void submitStereo(RenderContext* pContext, Fbo::SharedPtr pTargetFbo, bool singlePassStereo);
     void setRenderMode();
+
+    static const std::string skDefaultScene;
 };

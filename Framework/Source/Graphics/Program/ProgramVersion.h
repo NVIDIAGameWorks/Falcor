@@ -47,6 +47,7 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const ProgramVersion>;
 
         /** Create a new program object for graphics.
+            \param[in] The program reflection object
             \param[in] pVS Vertex shader object
             \param[in] pPS Fragment shader object
             \param[in] pGS Geometry shader object
@@ -57,7 +58,7 @@ namespace Falcor
             \return New object in case of success, otherwise nullptr
         */
         static SharedPtr create(
-            ProgramReflection::SharedPtr const& pReflector,
+            const ProgramReflection::SharedPtr& pReflector,
             const Shader::SharedPtr& pVS,
             const Shader::SharedPtr& pPS,
             const Shader::SharedPtr& pGS,
@@ -67,13 +68,14 @@ namespace Falcor
             const std::string& name = "");
 
         /** Create a new program object for compute.
+            \param[in] The program reflection object
             \param[in] pCs Compute shader object
             \param[out] Log In case of error, this will contain the error log string
             \param[in] DebugName Optional. A meaningful name to use with log messages
             \return New object in case of success, otherwise nullptr
         */
         static SharedPtr create(
-            ProgramReflection::SharedPtr const& pReflector,
+            const ProgramReflection::SharedPtr& pReflector,
             const Shader::SharedPtr& pCS,
             std::string& log,
             const std::string& name = "");
@@ -90,9 +92,10 @@ namespace Falcor
 
         /** Get the reflection object
         */
-        ProgramReflection::SharedConstPtr getReflector() const { return mpReflector; }
+        const ProgramReflection::SharedPtr& getReflector() const { return mpReflector; }
     protected:
-        ProgramVersion(const Shader::SharedPtr& pVS,
+        ProgramVersion(const ProgramReflection::SharedPtr& pReflector,
+            const Shader::SharedPtr& pVS,
             const Shader::SharedPtr& pPS,
             const Shader::SharedPtr& pGS,
             const Shader::SharedPtr& pHS,
@@ -108,7 +111,7 @@ namespace Falcor
         static const uint32_t kShaderCount = (uint32_t)ShaderType::Count;
         Shader::SharedConstPtr mpShaders[kShaderCount];
 
-        ProgramReflection::SharedPtr mpReflector;
         void* mpPrivateData;
+        const ProgramReflection::SharedPtr mpReflector;
     };
 }

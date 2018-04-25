@@ -64,12 +64,14 @@ namespace Falcor
         };
 
         static UniquePtr create(const std::string& name, const std::vector<AnimationSet>& animationSets, float duration, float ticksPerSecond);
+        static UniquePtr create(const Animation& other);
         ~Animation();
         void animate(double totalTime, AnimationController* pAnimationController);
         const std::string& getName() const { return mName; }
 
     private:
         Animation(const std::string& name, const std::vector<AnimationSet>& animationSets, float duration, float ticksPerSecond);
+        Animation(const Animation& other);
         
         const std::string mName;
         float mDuration;

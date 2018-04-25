@@ -49,6 +49,7 @@ namespace Falcor
             bool fullScreen = false;                ///< Set to true to run the sample in full-screen mode
             std::string title = "Falcor Sample";    ///< Window title
             bool resizableWindow = true;            ///< Allow the user to resize the window.
+            bool acceptDropFiles = false;           ///< Allow the user to drag-and-drop files into the window
         };
 
         /** Callbacks interface to be used when creating a new object
@@ -60,6 +61,7 @@ namespace Falcor
             virtual void renderFrame() = 0;
             virtual void handleKeyboardEvent(const KeyboardEvent& keyEvent) = 0;
             virtual void handleMouseEvent(const MouseEvent& mouseEvent) = 0;
+            virtual void handleDroppedFile(const std::string& filename) = 0;
         };
 
         /** Create a new window.
@@ -110,7 +112,9 @@ namespace Falcor
 
     private:
         friend class ApiCallbacks;
-        Window(ICallbacks * pCallbacks, uint32_t width, uint32_t height);
+        Window(ICallbacks* pCallbacks, uint32_t width, uint32_t height);
+
+        void checkWindowSize();
 
         GLFWwindow* mpGLFWWindow;
         ApiHandle mApiHandle;

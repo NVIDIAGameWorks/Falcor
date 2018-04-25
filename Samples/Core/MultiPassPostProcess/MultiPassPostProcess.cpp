@@ -27,94 +27,88 @@
 ***************************************************************************/
 #include "MultiPassPostProcess.h"
 
-void MultiPassPostProcess::onGuiRender()
+void MultiPassPostProcess::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (mpGui->addButton("Load Image"))
+    if (pGui->addButton("Load Image"))
     {
-        loadImage();
+        loadImage(pSample);
     }
-    mpGui->addCheckBox("Gaussian Blur", mEnableGaussianBlur);
+    pGui->addCheckBox("Gaussian Blur", mEnableGaussianBlur);
     if(mEnableGaussianBlur)
     {
-        mpGaussianBlur->renderUI(mpGui.get(), "Blur Settings");
-        mpGui->addCheckBox("Grayscale", mEnableGrayscale);
+        mpGaussianBlur->renderUI(pGui, "Blur Settings");
+        pGui->addCheckBox("Grayscale", mEnableGrayscale);
     }
 }
 
-void MultiPassPostProcess::onLoad()
+void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
 {
-    mpLuminance = FullScreenPass::create(appendShaderExtension("Luminance.ps"));
+    mpLuminance = FullScreenPass::create("Luminance.ps.hlsl");
     mpGaussianBlur = GaussianBlur::create(5);
-    mpBlit = FullScreenPass::create(appendShaderExtension("Blit.ps"));
-
-    initializeTesting();
+    mpBlit = FullScreenPass::create("Blit.ps.hlsl");
+    mpProgVars = GraphicsVars::create(mpBlit->getProgram()->getReflector());
 }
 
-void MultiPassPostProcess::loadImage()
+void MultiPassPostProcess::loadImage(SampleCallbacks* pSample)
 {
     std::string filename;
     if(openFileDialog("Supported Formats\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga\0\0", filename))
     {
-        loadImageFromFile(filename);
+        loadImageFromFile(pSample, filename);
     }
 }
 
-void MultiPassPostProcess::loadImageFromFile(std::string filename)
+void MultiPassPostProcess::loadImageFromFile(SampleCallbacks* pSample, std::string filename)
 {
-    auto fboFormat = mpDefaultFBO->getColorTexture(0)->getFormat();
+    auto fboFormat = pSample->getCurrentFbo()->getColorTexture(0)->getFormat();
     mpImage = createTextureFromFile(filename, false, isSrgbFormat(fboFormat));
 
     Fbo::Desc fboDesc;
     fboDesc.setColorTarget(0, mpImage->getFormat());
     mpTempFB = FboHelper::create2D(mpImage->getWidth(), mpImage->getHeight(), fboDesc);
 
-    resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
-    mpProgVars = GraphicsVars::create(mpBlit->getProgram()->getActiveVersion()->getReflector());
+    pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
 }
 
-void MultiPassPostProcess::onFrameRender()
+void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
 {
-    beginTestFrame();
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 0, 0, FboAttachmentType::Color);
+    pContext->clearFbo(pTargetFbo.get(), clearColor, 0, 0, FboAttachmentType::Color);
 
     if(mpImage)
     {
         // Grayscale is only with radial blur
         mEnableGrayscale = mEnableGaussianBlur && mEnableGrayscale;
 
-        mpRenderContext->setGraphicsVars(mpProgVars);
+        pContext->setGraphicsVars(mpProgVars);
 
         if(mEnableGaussianBlur)
         {
-            mpGaussianBlur->execute(mpRenderContext.get(), mpImage, mpTempFB);
+            mpGaussianBlur->execute(pContext.get(), mpImage, mpTempFB);
             mpProgVars->setTexture("gTexture", mpTempFB->getColorTexture(0));
             const FullScreenPass* pFinalPass = mEnableGrayscale ? mpLuminance.get() : mpBlit.get();
-            pFinalPass->execute(mpRenderContext.get());
+            pFinalPass->execute(pContext.get());
         }
         else
         {
             mpProgVars->setTexture("gTexture", mpImage);
-            mpBlit->execute(mpRenderContext.get());
+            mpBlit->execute(pContext.get());
         }
     }
-
-    endTestFrame();
 }
 
-void MultiPassPostProcess::onShutdown()
+void MultiPassPostProcess::onShutdown(SampleCallbacks* pSample)
 {
 }
 
-bool MultiPassPostProcess::onKeyEvent(const KeyboardEvent& keyEvent)
+bool MultiPassPostProcess::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
     {
         switch (keyEvent.key)
         {
         case KeyboardEvent::Key::L:
-            loadImage();
+            loadImage(pSample);
             return true;
         case KeyboardEvent::Key::G:
             mEnableGrayscale = true;
@@ -127,23 +121,24 @@ bool MultiPassPostProcess::onKeyEvent(const KeyboardEvent& keyEvent)
     return false;
 }
 
-void MultiPassPostProcess::onInitializeTesting()
-{
-    std::vector<ArgList::Arg> filenames = mArgList.getValues("loadimage");
-    if (!filenames.empty())
-    {
-        loadImageFromFile(filenames[0].asString());
-    }
-
-    if (mArgList.argExists("gaussianblur"))
-    {
-        mEnableGaussianBlur = true;
-        if (mArgList.argExists("grayscale"))
-        {
-            mEnableGrayscale = true;
-        }
-    }
-}
+ void MultiPassPostProcess::onInitializeTesting(SampleCallbacks* pSample)
+ {
+     auto argList = pSample->getArgList();
+     std::vector<ArgList::Arg> filenames = argList.getValues("loadimage");
+     if (!filenames.empty())
+     {
+         loadImageFromFile(pSample, filenames[0].asString());
+     }
+ 
+     if (argList.argExists("gaussianblur"))
+     {
+         mEnableGaussianBlur = true;
+         if (argList.argExists("grayscale"))
+         {
+             mEnableGrayscale = true;
+         }
+     }
+ }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
@@ -151,13 +146,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    MultiPassPostProcess multiPassPostProcess;
+    MultiPassPostProcess::UniquePtr pRenderer = std::make_unique<MultiPassPostProcess>();
+
     SampleConfig config;
     config.windowDesc.title = "Multi-pass post-processing";
 #ifdef _WIN32
-    multiPassPostProcess.run(config);
+    Sample::run(config, pRenderer);
 #else
-    multiPassPostProcess.run(config, (uint32_t)argc, argv);
+    config.argc = (uint32_t)argc;
+    config.argv = argv;
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 }

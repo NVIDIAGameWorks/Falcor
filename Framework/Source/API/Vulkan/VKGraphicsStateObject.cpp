@@ -70,7 +70,7 @@ namespace Falcor
 
         // Color Blend State
         ColorBlendStateCreateInfo blendInfo = {};
-        initVkBlendInfo(mDesc.getBlendState().get(), blendInfo);
+        initVkBlendInfo(mDesc.getFboDesc(), mDesc.getBlendState().get(), blendInfo);
 
         // Dynamic State
         VkPipelineDynamicStateCreateInfo dynamicInfo = {};

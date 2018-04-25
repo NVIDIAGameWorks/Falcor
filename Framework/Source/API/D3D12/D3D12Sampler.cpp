@@ -46,6 +46,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Sampler, 0, 1);
         pSampler->mApiHandle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(pSampler->mApiHandle);
         gpDevice->getApiHandle()->CreateSampler(&d3dDesc, pSampler->mApiHandle->getCpuHandle(0));
 
         return pSampler;

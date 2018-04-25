@@ -77,6 +77,7 @@
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/TextureHelper.h"
 #include "Graphics/Light.h"
+#include "Graphics/LightProbe.h"
 #include "Graphics/FboHelper.h"
 #include "Graphics/ComputeState.h"
 
@@ -91,9 +92,6 @@
 
 // Material
 #include "Graphics/Material/Material.h"
-#include "Graphics/Material/BasicMaterial.h"
-#include "Graphics/Material/MaterialSystem.h"
-#include "Graphics/Material/MaterialEditor.h"
 
 // Model
 #include "Graphics/Model/Mesh.h"
@@ -104,8 +102,6 @@
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/SceneRenderer.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
-#include "Graphics/Scene/SceneUtils.h"
-
 
 // Math
 #include "Utils/Math/FalcorMath.h"
@@ -145,8 +141,23 @@
 #include "Effects/ParticleSystem/ParticleSystem.h"
 #include "Effects/TAA/TAA.h"
 
-#define FALCOR_MAJOR_VERSION 2
+#ifdef FALCOR_DXR
+#include "Raytracing/RtModel.h"
+#include "Raytracing/RtScene.h"
+#include "Raytracing/RtShader.h"
+#include "Raytracing/RtProgram/RtProgram.h"
+#include "Raytracing/RtProgram/RtProgramVersion.h"
+#include "Raytracing/RtProgram/SingleShaderProgram.h"
+#include "Raytracing/RtProgram/HitProgram.h"
+#include "Raytracing/RtProgramVars.h"
+#include "Raytracing/RtState.h"
+#include "Raytracing/RtStateObject.h"
+#include "Raytracing/RtSample.h"
+#include "Raytracing/RtSceneRenderer.h"
+#endif
+
+#define FALCOR_MAJOR_VERSION 3
 #define FALCOR_MINOR_VERSION 0
-#define FALCOR_DEV_STAGE "rel"
-#define FALCOR_DEV_REVISION 2
-#define FALCOR_VERSION_STRING "2.0.2"
+#define FALCOR_DEV_STAGE ""
+#define FALCOR_DEV_REVISION 0
+#define FALCOR_VERSION_STRING "3.0.0"

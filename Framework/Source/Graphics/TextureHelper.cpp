@@ -545,7 +545,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logError(std::string("Can't find texture file ") + filename);
+            msgBox("Error when loading DDS file. Can't find texture file " + filename);
             //could not find file
             return;
         }

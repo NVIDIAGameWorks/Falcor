@@ -28,20 +28,20 @@
 
 cbuffer PerImageCB : register(b0)
 {
-	Texture2D		gTexture;
-	SamplerState	gSampler;
+    Texture2D       gTexture;
+    SamplerState    gSampler;
 };
 
 static const float3 gLuminance = float3(0.2126, 0.7152, 0.0722);
 
 float4 calcColor(float2 texC)
 {
-	float4 fragColor = gTexture.Sample(gSampler, texC);
-	fragColor.rgb = (dot(fragColor.rgb, gLuminance)).xxx;
-	return fragColor;
+    float4 fragColor = gTexture.Sample(gSampler, texC);
+    fragColor.rgb = (dot(fragColor.rgb, gLuminance)).xxx;
+    return fragColor;
 }
 
 float4 main(in float2 texC : TEXCOORD) : SV_TARGET
 {
-	return calcColor(texC);
+    return calcColor(texC);
 }

@@ -313,6 +313,30 @@ namespace Falcor
         }
     }
 
+    inline bool doesFormatHasAlpha(ResourceFormat format)
+    {
+        if (getFormatChannelCount(format) == 4)
+        {
+            switch (format)
+            {
+            case ResourceFormat::BGRX8Unorm:
+            case ResourceFormat::BGRX8UnormSrgb:
+                return false;
+            default:
+                return true;
+            }
+        }
+
+        switch (format)
+        {
+        case ResourceFormat::Alpha32Float:
+        case ResourceFormat::Alpha8Unorm:
+            return true;
+        default:
+            return false;
+        }
+    }
+
     inline const std::string& to_string(ResourceFormat format)
     {
         assert(kFormatDesc[(uint32_t)format].format == format);

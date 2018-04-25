@@ -1,18 +1,18 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
 SAMPLE_CONFIG:=Release
 
-All : FeatureDemo AllCore AllEffects AllUtils
+All : ForwardRenderer AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
-AllEffects : AmbientOcclusion EnvMap HashedAlpha NormalMapFiltering Particles PostProcess Shadows
+AllEffects : AmbientOcclusion SkyBoxRenderer HashedAlpha HDRToneMapping Shadows
 AllUtils : ModelViewer SceneEditor
 
 # A sample demonstrating Falcor's effects library
-FeatureDemo : $(SAMPLE_CONFIG)
-	$(eval DIR=Samples/FeatureDemo/)
-	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemo.cpp -o $(DIR)FeatureDemo.o
-	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemoControls.cpp -o $(DIR)FeatureDemoControls.o
-	@$(CC) $(CXXFLAGS) $(DIR)FeatureDemoSceneRenderer.cpp -o $(DIR)FeatureDemoSceneRenderer.o
-	@$(CC) -o $(OUT_DIR)FeatureDemo $(DIR)FeatureDemo.o $(DIR)FeatureDemoControls.o $(DIR)FeatureDemoSceneRenderer.o $(ADDITIONAL_LIB_DIRS) $(LIBS) $(RELATIVE_RPATH)
+ForwardRenderer : $(SAMPLE_CONFIG)
+	$(eval DIR=Samples/ForwardRenderer/)
+	@$(CC) $(CXXFLAGS) $(DIR)ForwardRenderer.cpp -o $(DIR)ForwardRenderer.o
+	@$(CC) $(CXXFLAGS) $(DIR)ForwardRendererControls.cpp -o $(DIR)ForwardRendererControls.o
+	@$(CC) $(CXXFLAGS) $(DIR)ForwardRendererSceneRenderer.cpp -o $(DIR)ForwardRendererSceneRenderer.o
+	@$(CC) -o $(OUT_DIR)ForwardRenderer $(DIR)ForwardRenderer.o $(DIR)ForwardRendererControls.o $(DIR)ForwardRendererSceneRenderer.o $(ADDITIONAL_LIB_DIRS) $(LIBS) $(RELATIVE_RPATH)
 	$(call MoveFalcorData,$(OUT_DIR))
 	$(call MoveProjectData,$(DIR), $(OUT_DIR))
 	@echo Built $@
@@ -39,20 +39,14 @@ StereoRendering : $(SAMPLE_CONFIG)
 AmbientOcclusion : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Effects/AmbientOcclusion/,AmbientOcclusion.cpp,AmbientOcclusion)
 
-EnvMap : $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/Effects/EnvMap/,EnvMap.cpp,EnvMap)
+SkyBoxRenderer : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/SkyBoxRenderer/,SkyBoxRenderer.cpp,SkyBoxRenderer)
 
 HashedAlpha : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Effects/HashedAlpha/,HashedAlpha.cpp,HashedAlpha)
 
-NormalMapFiltering : $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/Effects/NormalMapFiltering/,NormalMapFiltering.cpp,NormalMapFiltering)
-
-Particles : $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/Effects/Particles/,Particles.cpp,Particles)
-
-PostProcess : $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/Effects/PostProcess/,PostProcess.cpp,PostProcess)
+HDRToneMapping : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Effects/HDRToneMapping/,HDRToneMapping.cpp,HDRToneMapping)
 
 Shadows : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Effects/Shadows/,Shadows.cpp,Shadows)
@@ -63,7 +57,7 @@ ModelViewer : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/ModelViewer/,ModelViewer.cpp,ModelViewer)
 
 SceneEditor : $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorSample.cpp,SceneEditor)
+	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorApp.cpp,SceneEditor)
 
 CC:=g++
 

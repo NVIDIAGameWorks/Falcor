@@ -40,14 +40,14 @@ const char* kColorInterpPs = "Effects/ParticleInterpColor.ps.slang";
 const char* kTexturedPs = "Effects/ParticleTexture.ps.slang";
 const std::string kDefaultTexture = "smoke-puff.png";
 
-void Particles::onGuiRender()
+void Particles::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    CreateSystemGui();
-    mpGui->addSeparator();
-    EditPropertiesGui();
+    createSystemGui(pSample->getRenderContext().get(), pGui);
+    pGui->addSeparator();
+    editPropertiesGui(pGui);
 }
 
-void Particles::onLoad()
+void Particles::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpCamera = Camera::create();
     mpCamera->setPosition(mpCamera->getPosition() + glm::vec3(0, 5, 10));
@@ -59,59 +59,56 @@ void Particles::onLoad()
     blendDesc.setRtParams(0, BlendState::BlendOp::Add, BlendState::BlendOp::Add, BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha,
         BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha);
     BlendState::SharedPtr pBlend = BlendState::create(blendDesc);
-    mpRenderContext->getGraphicsState()->setBlendState(pBlend);
+    pRenderContext->getGraphicsState()->setBlendState(pBlend);
 }
 
-void Particles::onFrameRender()
+void Particles::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
- 	mpRenderContext->clearFbo(mpDefaultFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpCamController.update();
 
     for (auto it = mpParticleSystems.begin(); it != mpParticleSystems.end(); ++it)
     {
-        (*it)->update(mpRenderContext.get(), frameRate().getLastFrameTime(), mpCamera->getViewMatrix());
-        (*it)->render(mpRenderContext.get(), mpCamera->getViewMatrix(), mpCamera->getProjMatrix());
+        (*it)->update(pRenderContext.get(), pSample->getLastFrameTime(), mpCamera->getViewMatrix());
+        (*it)->render(pRenderContext.get(), mpCamera->getViewMatrix(), mpCamera->getProjMatrix());
     }
 }
 
-bool Particles::onKeyEvent(const KeyboardEvent& keyEvent)
+bool Particles::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     mpCamController.onKeyEvent(keyEvent);
     return false;
 }
 
-bool Particles::onMouseEvent(const MouseEvent& mouseEvent)
+bool Particles::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     mpCamController.onMouseEvent(mouseEvent);
     return false;
 }
 
-void Particles::onResizeSwapChain()
+void Particles::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    float height = (float)mpDefaultFBO->getHeight();
-    float width = (float)mpDefaultFBO->getWidth();
-
     mpCamera->setFocalLength(21.0f);
-    float aspectRatio = (width / height);
+    float aspectRatio = ((float)width / (float)height);
     mpCamera->setAspectRatio(aspectRatio);
 }
 
-void Particles::CreateSystemGui()
+void Particles::createSystemGui(RenderContext* pContext, Gui* pGui)
 {
-    if (mpGui->beginGroup("Create System"))
+    if (pGui->beginGroup("Create System"))
     {
-        mpGui->addIntVar("Max Particles", mGuiData.mMaxParticles, 0);
-        mpGui->addIntVar("Max Emit Per Frame", mGuiData.mMaxEmitPerFrame, 0);
-        mpGui->addCheckBox("Sorted", mGuiData.mSortSystem);
-        mpGui->addDropdown("PixelShader", kPixelShaders, mGuiData.mPixelShaderIndex);
-        if (mpGui->addButton("Create"))
+        pGui->addIntVar("Max Particles", mGuiData.mMaxParticles, 0);
+        pGui->addIntVar("Max Emit Per Frame", mGuiData.mMaxEmitPerFrame, 0);
+        pGui->addCheckBox("Sorted", mGuiData.mSortSystem);
+        pGui->addDropdown("PixelShader", kPixelShaders, mGuiData.mPixelShaderIndex);
+        if (pGui->addButton("Create"))
         {
             switch ((ExamplePixelShaders)mGuiData.mPixelShaderIndex)
             {
             case ExamplePixelShaders::ConstColor:
             {
-                ParticleSystem::SharedPtr pSys = ParticleSystem::create(mpRenderContext.get(), mGuiData.mMaxParticles,
+                ParticleSystem::SharedPtr pSys = ParticleSystem::create(pContext, mGuiData.mMaxParticles,
                     mGuiData.mMaxEmitPerFrame, kConstColorPs, ParticleSystem::kDefaultSimulateShader, mGuiData.mSortSystem);
                 mpParticleSystems.push_back(pSys);
                 mPsData.push_back(vec4(0.f, 0.f, 0.f, 1.f));
@@ -120,7 +117,7 @@ void Particles::CreateSystemGui()
             }
             case ExamplePixelShaders::ColorInterp:
             {
-                ParticleSystem::SharedPtr pSys = ParticleSystem::create(mpRenderContext.get(), mGuiData.mMaxParticles,
+                ParticleSystem::SharedPtr pSys = ParticleSystem::create(pContext, mGuiData.mMaxParticles,
                     mGuiData.mMaxEmitPerFrame, kColorInterpPs, ParticleSystem::kDefaultSimulateShader, mGuiData.mSortSystem);
                 mpParticleSystems.push_back(pSys);
                 ColorInterpPsPerFrame perFrame;
@@ -134,7 +131,7 @@ void Particles::CreateSystemGui()
             }
             case ExamplePixelShaders::Textured:
             {
-                ParticleSystem::SharedPtr pSys = ParticleSystem::create(mpRenderContext.get(), mGuiData.mMaxParticles,
+                ParticleSystem::SharedPtr pSys = ParticleSystem::create(pContext, mGuiData.mMaxParticles,
                     mGuiData.mMaxEmitPerFrame, kTexturedPs, ParticleSystem::kDefaultSimulateShader, mGuiData.mSortSystem);
                 mpParticleSystems.push_back(pSys);
                 ColorInterpPsPerFrame perFrame;
@@ -153,33 +150,33 @@ void Particles::CreateSystemGui()
             }
             }
         }
-        mpGui->endGroup();
+        pGui->endGroup();
     }
 }
 
-void Particles::EditPropertiesGui()
+void Particles::editPropertiesGui(Gui* pGui)
 {
-    mpGui->addIntVar("System index", mGuiData.mSystemIndex, 0, ((int32_t)mpParticleSystems.size()) - 1);
-    mpGui->addSeparator();
+    pGui->addIntVar("System index", mGuiData.mSystemIndex, 0, ((int32_t)mpParticleSystems.size()) - 1);
+    pGui->addSeparator();
 
     //If there are no systems yet, don't let user touch properties
     if (mGuiData.mSystemIndex < 0)
         return;
 
     //properties shared by all systems
-    if (mpGui->beginGroup("Common Properties"))
+    if (pGui->beginGroup("Common Properties"))
     {
-        mpParticleSystems[mGuiData.mSystemIndex]->renderUi(mpGui.get());
-        mpGui->endGroup();
+        mpParticleSystems[mGuiData.mSystemIndex]->renderUi(pGui);
+        pGui->endGroup();
     }
     //pixel shader specific properties
-    if (mpGui->beginGroup("Pixel Shader Properties"))
+    if (pGui->beginGroup("Pixel Shader Properties"))
     {
         switch ((ExamplePixelShaders)mPsData[mGuiData.mSystemIndex].type)
         {
         case ExamplePixelShaders::ConstColor:
         {
-            if (mpGui->addRgbaColor("Color", mPsData[mGuiData.mSystemIndex].colorData.color1))
+            if (pGui->addRgbaColor("Color", mPsData[mGuiData.mSystemIndex].colorData.color1))
             {
                 mpParticleSystems[mGuiData.mSystemIndex]->getDrawVars()->getConstantBuffer("PsPerFrame")->setBlob(&mPsData[mGuiData.mSystemIndex].colorData.color1, 0, sizeof(vec4));
             }
@@ -187,12 +184,12 @@ void Particles::EditPropertiesGui()
         }
         case ExamplePixelShaders::ColorInterp:
         {
-            UpdateColorInterpolation();
+            updateColorInterpolation(pGui);
             break;
         }
         case ExamplePixelShaders::Textured:
         {
-            if (mpGui->addButton("Add Texture"))
+            if (pGui->addButton("Add Texture"))
             {
                 std::string filename;
                 openFileDialog("Supported Formats\0*.png;*.dds;*.jpg;\0\0", filename);
@@ -201,29 +198,29 @@ void Particles::EditPropertiesGui()
             }
 
             uint32_t texIndex = mPsData[mGuiData.mSystemIndex].texIndex;
-            if (mpGui->addDropdown("Texture", mGuiData.mTexDropdown, texIndex))
+            if (pGui->addDropdown("Texture", mGuiData.mTexDropdown, texIndex))
             {
                 mpParticleSystems[mGuiData.mSystemIndex]->getDrawVars()->setTexture("gTex", mpTextures[texIndex]);
                 mPsData[mGuiData.mSystemIndex].texIndex = texIndex;
             }
 
-            UpdateColorInterpolation();
+            updateColorInterpolation(pGui);
             break;
         }
         default:
             should_not_get_here();
         }
 
-        mpGui->endGroup();
+        pGui->endGroup();
     }
 }
 
-void Particles::UpdateColorInterpolation()
+void Particles::updateColorInterpolation(Gui* pGui)
 {
-    bool dirty = mpGui->addRgbaColor("Color1", mPsData[mGuiData.mSystemIndex].colorData.color1);
-    dirty |= mpGui->addFloatVar("Color T1", mPsData[mGuiData.mSystemIndex].colorData.colorT1);
-    dirty |= mpGui->addRgbaColor("Color2", mPsData[mGuiData.mSystemIndex].colorData.color2);
-    dirty |= mpGui->addFloatVar("Color T2", mPsData[mGuiData.mSystemIndex].colorData.colorT2);
+    bool dirty = pGui->addRgbaColor("Color1", mPsData[mGuiData.mSystemIndex].colorData.color1);
+    dirty |= pGui->addFloatVar("Color T1", mPsData[mGuiData.mSystemIndex].colorData.colorT1);
+    dirty |= pGui->addRgbaColor("Color2", mPsData[mGuiData.mSystemIndex].colorData.color2);
+    dirty |= pGui->addFloatVar("Color T2", mPsData[mGuiData.mSystemIndex].colorData.colorT2);
 
     if (dirty)
     {
@@ -242,14 +239,17 @@ int main(int argc, char** argv)
     return 0 ;
 #endif
 
-    Particles sample;
+    Particles::UniquePtr pRenderer = std::make_unique<Particles>();
+
     SampleConfig config;
     config.windowDesc.title = "Particles";
     config.windowDesc.resizableWindow = true;
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    config.argc = (uint32_t)argc;
+    config.argv = argv;
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 }

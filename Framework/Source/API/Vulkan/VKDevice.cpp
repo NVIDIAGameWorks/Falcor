@@ -269,7 +269,6 @@ namespace Falcor
         if (desc.enableDebugLayer)
         {
             enableLayerIfPresent("VK_LAYER_LUNARG_standard_validation", layerProperties, requiredLayers);
-            enableLayerIfPresent("VK_LAYER_NV_nsight", layerProperties, requiredLayers);
         }
 
         // Initialize the extensions
@@ -322,6 +321,11 @@ namespace Falcor
         }
 
         return instance;
+    }
+
+    void Device::toggleFullScreen(bool fullscreen)
+    {
+
     }
 
     /** Select best physical device based on memory

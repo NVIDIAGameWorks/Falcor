@@ -50,7 +50,10 @@ namespace Falcor
             UnorderedAccess = 0x20, ///< The resource will be bound as an UAV
             RenderTarget = 0x40,    ///< The resource will be bound as a render-target
             DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
-            IndirectArg = 0x100     ///< The resource will be bound as an indirect argument buffer
+            IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
+#ifdef FALCOR_DXR
+            AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
+#endif
         };
 
         /** Resource types. Notice there are no array types. Array are controlled using the array size parameter on texture creation.
@@ -88,6 +91,10 @@ namespace Falcor
             Present,
             GenericRead,
             Predication,
+            NonPixelShader,
+#ifdef FALCOR_DXR
+            AccelerationStructure,
+#endif
         };
 
         using SharedPtr = std::shared_ptr<Resource>;
@@ -103,9 +110,15 @@ namespace Falcor
         */
         BindFlags getBindFlags() const { return mBindFlags; }
 
-        /** Get the current state
+        bool isStateGlobal() const { return mState.isGlobal; }
+
+        /** Get the current state. This is only valid if isStateGlobal() returns true
         */
-        State getState() const { return mState; }
+        State getGlobalState() const;
+
+        /** Get a subresource state
+        */
+        State getSubresourceState(uint32_t arraySlice, uint32_t mipLevel) const;
 
         /** Get the resource type
         */
@@ -116,10 +129,10 @@ namespace Falcor
         ApiHandle getApiHandle() const { return mApiHandle; }
 
         /** Get a shader-resource view.
-            \param[in] firstArraySlice The first array slice of the view
-            \param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the texture's array size
             \param[in] mostDetailedMip The most detailed mip level of the view
             \param[in] mipCount The number of mip-levels to bind. If this is equal to Texture#kMaxPossible, will create a view ranging from mostDetailedMip to the texture's mip levels count
+            \param[in] firstArraySlice The first array slice of the view
+            \param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the texture's array size
         */
         ShaderResourceView::SharedPtr getSRV(uint32_t mostDetailedMip = 0, uint32_t mipCount = kMaxPossible, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible) const;
 
@@ -159,6 +172,14 @@ namespace Falcor
         */
         void invalidateViews() const;
 
+        /** Set the resource name
+        */
+        void setName(const std::string& name) { mName = name; apiSetName(); }
+
+        /** Get the resource name
+        */
+        const std::string& getName() const { return mName; }
+
     protected:
         friend class CopyContext;
 
@@ -166,8 +187,19 @@ namespace Falcor
 
         Type mType;
         BindFlags mBindFlags;
-        mutable State mState = State::Undefined;
+        struct  
+        {
+            bool isGlobal = true;
+            State global = State::Undefined;
+            std::vector<State> perSubresource;
+        } mutable mState;
+
+        void setSubresourceState(uint32_t arraySlice, uint32_t mipLevel, State newState) const;
+        void setGlobalState(State newState) const;
+        void apiSetName();
+
         ApiHandle mApiHandle;
+        std::string mName;
 
         mutable std::unordered_map<ResourceViewInfo, ShaderResourceView::SharedPtr, ViewInfoHashFunc> mSrvs;
         mutable std::unordered_map<ResourceViewInfo, RenderTargetView::SharedPtr, ViewInfoHashFunc> mRtvs;

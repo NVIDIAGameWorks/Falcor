@@ -28,16 +28,16 @@
 __import ShaderCommon;
 __import DefaultVS;
 
-struct GS_OUT
+struct GeometryOut
 {
-    VS_OUT vsOut;
+    VertexOut vsOut;
     uint rtIndex : SV_RenderTargetArrayIndex;
 };
 
 [maxvertexcount(6)]
-void main(triangle VS_OUT input[3], inout TriangleStream<GS_OUT> outStream)
+void main(triangle VertexOut input[3], inout TriangleStream<GeometryOut> outStream)
 {
-    GS_OUT gsOut;
+    GeometryOut gsOut;
 
     // Left Eye
     for (int i = 0; i < 3; i++)
@@ -46,22 +46,22 @@ void main(triangle VS_OUT input[3], inout TriangleStream<GS_OUT> outStream)
         gsOut.vsOut = input[i];
 
         float4 posW = float4(input[i].posW, 1.0f);
-        gsOut.vsOut.posH = mul(posW, gCam.viewProjMat);
-        gsOut.vsOut.prevPosH = mul(posW, gCam.prevViewProjMat);
+        gsOut.vsOut.posH = mul(posW, gCamera.viewProjMat);
+        gsOut.vsOut.prevPosH = mul(posW, gCamera.prevViewProjMat);
 
         outStream.Append(gsOut);
     }
     outStream.RestartStrip();
 
     // Right Eye
-    for (i = 0; i < 3; i++) 
+    for (int i = 0; i < 3; i++) 
     {
         gsOut.rtIndex = 1;
         gsOut.vsOut = input[i];
 
         float4 posW = float4(input[i].posW, 1.0f);
-        gsOut.vsOut.posH = mul(posW, gCam.rightEyeViewProjMat);
-        gsOut.vsOut.prevPosH = mul(posW, gCam.rightEyePrevViewProjMat);
+        gsOut.vsOut.posH = mul(posW, gCamera.rightEyeViewProjMat);
+        gsOut.vsOut.prevPosH = mul(posW, gCamera.rightEyePrevViewProjMat);
 
         outStream.Append(gsOut);
     }

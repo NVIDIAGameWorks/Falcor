@@ -36,7 +36,6 @@
 #include "glm/common.hpp"
 #include "API/Formats.h"
 #include "API/Texture.h"
-#include "Graphics/Material/BasicMaterial.h"
 #include "glm/geometric.hpp"
 
 namespace Falcor
@@ -95,14 +94,13 @@ namespace Falcor
         uint32_t numIndicies = idxBufSz / (sizeof( uint32_t ));
 
         // Create a really simple, dumb material for this mesh
-        BasicMaterial basicMat;
+        Material::SharedPtr pMaterial = Material::create("");
         if ( diffuseTexture )
         {
-            basicMat.pTextures[BasicMaterial::MapType::DiffuseMap] = diffuseTexture;
+            pMaterial->setBaseColorTexture(diffuseTexture);
         }
-        basicMat.diffuseColor = vec3( 1.0f );
-        Material::SharedPtr pSimpleMaterial = basicMat.convertToMaterial();
-        pSimpleMaterial = modelImporter.checkForExistingMaterial( pSimpleMaterial );
+        pMaterial->setBaseColor(vec4(1));
+        pMaterial = modelImporter.checkForExistingMaterial(pMaterial);
 
         // Calculate a bounding-box for this model
         glm::vec3 posMax, posMin;
@@ -120,7 +118,7 @@ namespace Falcor
         BoundingBox box = BoundingBox::fromMinMax( posMin, posMax );
 
         // create a mesh containing this index & vertex data.
-        Mesh::SharedPtr pMesh = Mesh::create({ pBuffer }, numVertices, pIB, numIndicies, pLayout, geomTopology, pSimpleMaterial, box, false);
+        Mesh::SharedPtr pMesh = Mesh::create({ pBuffer }, numVertices, pIB, numIndicies, pLayout, geomTopology, pMaterial, box, false);
         pModel->addMeshInstance(pMesh, glm::mat4()); // Add this mesh to the model
 
         // Do internal computations on model properties

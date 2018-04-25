@@ -26,10 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "VertexAttrib.h"
-
 __import ShaderCommon;
 
-struct VS_IN
+struct VertexIn
 {
     float4 pos         : POSITION;
 #ifdef HAS_NORMAL
@@ -51,6 +50,9 @@ struct VS_IN
     float4 boneWeights : BONE_WEIGHTS;
     uint4  boneIds     : BONE_IDS;
 #endif
+#ifdef HAS_PREV_POSITION
+    float4 prevPos     : PREV_POSITION;
+#endif
     uint instanceID : SV_INSTANCEID;
 };
 
@@ -58,7 +60,7 @@ struct VS_IN
 #define INTERPOLATION_MODE linear
 #endif
 
-struct VS_OUT
+struct VertexOut
 {
     INTERPOLATION_MODE float3 normalW    : NORMAL;
     INTERPOLATION_MODE float3 bitangentW : BITANGENT;
@@ -75,7 +77,7 @@ struct VS_OUT
 #endif
 };
 
-float4x4 getWorldMat(VS_IN vIn)
+float4x4 getWorldMat(VertexIn vIn)
 {
     float4x4 worldMat = gWorldMat[vIn.instanceID];
 
@@ -86,7 +88,7 @@ float4x4 getWorldMat(VS_IN vIn)
     return worldMat;
 }
 
-float3x3 getWorldInvTransposeMat(VS_IN vIn)
+float3x3 getWorldInvTransposeMat(VertexIn vIn)
 {
     float3x3 worldInvTransposeMat = (float3x3)gWorldInvTransposeMat[vIn.instanceID];
 
@@ -97,13 +99,13 @@ float3x3 getWorldInvTransposeMat(VS_IN vIn)
     return worldInvTransposeMat;
 }
 
-VS_OUT defaultVS(VS_IN vIn)
+VertexOut defaultVS(VertexIn vIn)
 {
-    VS_OUT vOut;
+    VertexOut vOut;
     float4x4 worldMat = getWorldMat(vIn);
     float4 posW = mul(vIn.pos, worldMat);
     vOut.posW = posW.xyz;
-    vOut.posH = mul(posW, gCam.viewProjMat);
+    vOut.posH = mul(posW, gCamera.viewProjMat);
 
 #ifdef HAS_TEXCRD
     vOut.texC = vIn.texC;
@@ -124,7 +126,7 @@ VS_OUT defaultVS(VS_IN vIn)
 #endif
 
 #ifdef HAS_BITANGENT
-    vOut.bitangentW = mul(vIn.bitangent, (float3x3)worldMat).xyz;
+    vOut.bitangentW = mul(vIn.bitangent, (float3x3)getWorldMat(vIn));
 #else
     vOut.bitangentW = 0;
 #endif
@@ -134,10 +136,17 @@ VS_OUT defaultVS(VS_IN vIn)
 #else
     vOut.lightmapC = 0;
 #endif
-    vOut.prevPosH = mul(posW, gCam.prevViewProjMat);
+
+#ifdef HAS_PREV_POSITION
+    float4 prevPos = vIn.prevPos;
+#else
+    float4 prevPos = vIn.pos;
+#endif
+    float4 prevPosW = mul(prevPos, gPrevWorldMat[vIn.instanceID]);
+    vOut.prevPosH = mul(prevPosW, gCamera.prevViewProjMat);
 
 #ifdef _SINGLE_PASS_STEREO
-    vOut.rightEyePosS = mul(posW, gCam.rightEyeViewProjMat).x;
+    vOut.rightEyePosS = mul(posW, gCamera.rightEyeViewProjMat).x;
     vOut.viewportMask = 0x00000001;
     vOut.renderTargetIndex = 0;
 #endif

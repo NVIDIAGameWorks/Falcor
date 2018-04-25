@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Data">
+      <UniqueIdentifier>{2f55c824-8939-4b78-a0f4-4773d89165a2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Data\HDRToneMapping.hlsl">
+      <Filter>Data</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="HDRToneMapping.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="HDRToneMapping.h" />
+  </ItemGroup>
+</Project>

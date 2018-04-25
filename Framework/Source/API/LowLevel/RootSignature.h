@@ -48,15 +48,21 @@ namespace Falcor
         {
         public:
             Desc& addDescriptorSet(const DescriptorSetLayout& setLayout);
+#ifdef FALCOR_DXR
+            Desc& setLocal(bool isLocal) { mIsLocal = isLocal; return *this; }
+#endif
         private:
             friend class RootSignature;
             std::vector<DescriptorSetLayout> mSets;
+#ifdef FALCOR_DXR
+            bool mIsLocal = false;
+#endif
         };
 
         ~RootSignature();
         static SharedPtr getEmpty();
         static SharedPtr create(const Desc& desc);
-        static SharedPtr create(const ProgramReflection* pReflection);
+        static SharedPtr create(const ProgramReflection* pReflection, bool isLocal = false);
 
         ApiHandle getApiHandle() const { return mApiHandle; }
 

@@ -55,9 +55,10 @@ namespace Falcor
     */
     enum class MsgBoxType
     {
-        Ok,          ///< Single 'OK' button
-        RetryCancel, ///< Retry/Cancel buttons
-        OkCancel,    ///< OK/Cancel buttons
+        Ok,                 ///< Single 'OK' button
+        OkCancel,           ///< OK/Cancel buttons
+        RetryCancel,        ///< Retry/Cancel buttons
+        AbortRetryIgnore,   ///< Abort/Retry/Ignore buttons
     };
 
     /** Types of buttons
@@ -66,7 +67,9 @@ namespace Falcor
     {
         Ok,     ///< 'OK' Button
         Retry,  ///< Retry button
-        Cancel  ///< Cancel Button
+        Cancel, ///< Cancel Button
+        Abort,  ///< Abort Button
+        Ignore, ///< Ignore Button
     };
 
     /** Display a message box. By default, shows a message box with a single 'OK' button.

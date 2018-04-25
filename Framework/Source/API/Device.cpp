@@ -56,7 +56,8 @@ namespace Falcor
         // Create the descriptor pools
         DescriptorPool::Desc poolDesc;
         // For DX12 there is no difference between the different SRV/UAV types. For Vulkan it matters, hence the #ifdef
-        poolDesc.setDescCount(DescriptorPool::Type::TextureSrv, 16 * 1024).setDescCount(DescriptorPool::Type::Sampler, 2048).setShaderVisible(true);
+        // DX12 guarantees at least 1,000,000 descriptors
+        poolDesc.setDescCount(DescriptorPool::Type::TextureSrv, 1000000).setDescCount(DescriptorPool::Type::Sampler, 2048).setShaderVisible(true);
 #ifndef FALCOR_D3D12
         poolDesc.setDescCount(DescriptorPool::Type::Cbv, 16 * 1024).setDescCount(DescriptorPool::Type::TextureUav, 16 * 1024);
         poolDesc.setDescCount(DescriptorPool::Type::StructuredBufferSrv, 2 * 1024).setDescCount(DescriptorPool::Type::StructuredBufferUav, 2 * 1024).setDescCount(DescriptorPool::Type::TypedBufferSrv, 2 * 1024).setDescCount(DescriptorPool::Type::TypedBufferUav, 2 * 1024);
@@ -65,11 +66,10 @@ namespace Falcor
         poolDesc.setShaderVisible(false).setDescCount(DescriptorPool::Type::Rtv, 16 * 1024).setDescCount(DescriptorPool::Type::Dsv, 1024);
         mpCpuDescPool = DescriptorPool::create(poolDesc, mpRenderContext->getLowLevelData()->getFence());
 
-        if(mpRenderContext) mpRenderContext->reset();
+        if (mpRenderContext) mpRenderContext->flush();  // This will bind the descriptor heaps
 
         mVsyncOn = desc.enableVsync;
 
-        // Create the swap-chain
         mpResourceAllocator = ResourceAllocator::create(1024 * 1024 * 2, mpRenderContext->getLowLevelData()->getFence());
 
         mpFrameFence = GpuFence::create();
@@ -82,7 +82,7 @@ namespace Falcor
 
         if (desc.enableVR && VRSystem::instance()) VRSystem::instance()->initDisplayAndController(mpRenderContext);
         gpDevice->mTimestampQueryHeap = QueryHeap::create(QueryHeap::Type::Timestamp, 128 * 1024 * 1024);
-
+        
         return true;
     }
 
@@ -166,6 +166,7 @@ namespace Falcor
 
     void Device::cleanup()
     {
+        toggleFullScreen(false);
         mpRenderContext->flush(true);
         // Release all the bound resources. Need to do that before deleting the RenderContext
         mpRenderContext->setGraphicsState(nullptr);
@@ -194,7 +195,6 @@ namespace Falcor
         apiPresent();
         mpFrameFence->gpuSignal(mpRenderContext->getLowLevelData()->getCommandQueue());
         executeDeferredReleases();
-        mpRenderContext->reset();
         mFrameID++;
     }
 
@@ -213,12 +213,55 @@ namespace Falcor
         ResourceFormat colorFormat = mpSwapChainFbos[0]->getColorTexture(0)->getFormat();
         const auto& pDepth = mpSwapChainFbos[0]->getDepthStencilTexture();
         ResourceFormat depthFormat = pDepth ? pDepth->getFormat() : ResourceFormat::Unknown;
+
+        // updateDefaultFBO() attaches the resized swapchain to new Texture objects, with Undefined resource state.
+        // This is fine in Vulkan because a new swapchain is created, but D3D12 can resize without changing
+        // internal resource state, so we must cache the Falcor resource state to track it correctly in the new Texture object.
+        // #TODO Is there a better place to cache state within D3D12 implementation instead of #ifdef-ing here?
+
+#ifdef FALCOR_D3D12
+        // Save FBO resource states
+        std::vector<Resource::State> fboColorStates(mSwapChainBufferCount, Resource::State::Undefined);
+        std::vector<Resource::State> fboDepthStates(mSwapChainBufferCount, Resource::State::Undefined);
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
+        {
+            assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
+            fboColorStates[i] = mpSwapChainFbos[i]->getColorTexture(0)->getGlobalState();
+
+            const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
+            if (pSwapChainDepth != nullptr)
+            {
+                assert(pSwapChainDepth->isStateGlobal());
+                fboDepthStates[i] = pSwapChainDepth->getGlobalState();
+            }
+        }
+#endif
+
         assert(mpSwapChainFbos[0]->getSampleCount() == 1);
 
         // Delete all the FBOs
         releaseFboData();
         apiResizeSwapChain(width, height, colorFormat);
         updateDefaultFBO(width, height, colorFormat, depthFormat);
+
+#ifdef FALCOR_D3D12
+        // Restore FBO resource states
+        for (uint32_t i = 0; i < mSwapChainBufferCount; i++)
+        {
+            assert(mpSwapChainFbos[i]->getColorTexture(0)->isStateGlobal());
+            mpSwapChainFbos[i]->getColorTexture(0)->setGlobalState(fboColorStates[i]);
+            const auto& pSwapChainDepth = mpSwapChainFbos[i]->getDepthStencilTexture();
+            if (pSwapChainDepth != nullptr)
+            {
+                assert(pSwapChainDepth->isStateGlobal());
+                pSwapChainDepth->setGlobalState(fboDepthStates[i]);
+            }
+        }
+#endif
+
+#if !defined(FALCOR_D3D12) && !defined(FALCOR_VK)
+#error Verify state handling on swapchain resize for this API
+#endif
 
         return getSwapChainFbo();
     }

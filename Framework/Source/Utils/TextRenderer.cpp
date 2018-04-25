@@ -63,8 +63,7 @@ namespace Falcor
 
     TextRenderer::TextRenderer()
     {
-        static const std::string kVsFile("Framework/Shaders/TextRenderer.vs.slang");
-        static const std::string kFsFile("Framework/Shaders/TextRenderer.ps.slang");
+        static const std::string kShaderFile("Framework/Shaders/TextRenderer.slang");
 
         // Create a vertex buffer
         const uint32_t vbSize = (uint32_t)(sizeof(Vertex)*kMaxBatchSize*arraysize(kVertexPos));
@@ -72,7 +71,7 @@ namespace Falcor
 
         // Create the RenderState
         mpPipelineState = GraphicsState::create();
-        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(kVsFile, kFsFile);
+        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile(kShaderFile, "vs", "ps");
         mpPipelineState->setProgram(pProgram);
         mpPipelineState->setVao(createVAO(mpVertexBuffer));
 
@@ -99,7 +98,7 @@ namespace Falcor
         mpFont = Font::create();
 
         // Create and initialize the program variables
-        mpProgramVars = GraphicsVars::create(pProgram->getActiveVersion()->getReflector(), true);
+        mpProgramVars = GraphicsVars::create(pProgram->getReflector(), true);
         // Initialize the buffer
         auto pCB = mpProgramVars["PerFrameCB"];
         mVarOffsets.vpTransform = pCB->getVariableOffset("gvpTransform");

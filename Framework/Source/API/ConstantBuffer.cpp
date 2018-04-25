@@ -52,7 +52,7 @@ namespace Falcor
 
     ConstantBuffer::SharedPtr ConstantBuffer::create(Program::SharedPtr& pProgram, const std::string& name, size_t overrideSize)
     {
-        const auto& pProgReflector = pProgram->getActiveVersion()->getReflector();
+        const auto& pProgReflector = pProgram->getReflector();
         const auto& pParamBlockReflection = pProgReflector->getDefaultParameterBlock();
         ReflectionVar::SharedConstPtr pBufferReflector = pParamBlockReflection ? pParamBlockReflection->getResource(name) : nullptr;
 

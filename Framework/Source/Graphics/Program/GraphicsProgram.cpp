@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    GraphicsProgram::SharedPtr GraphicsProgram::create(Desc const& desc, const Program::DefineList& programDefines)
+    GraphicsProgram::SharedPtr GraphicsProgram::create(const Desc& desc, const Program::DefineList& programDefines)
     {
         SharedPtr pProg = SharedPtr(new GraphicsProgram);
         pProg->init(desc, programDefines);
@@ -38,45 +38,10 @@ namespace Falcor
 
     }
 
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(const std::string& vertexFile, const std::string& fragmentFile, const Program::DefineList& programDefines)
+    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(const std::string& filename, const std::string& vsEntry, const std::string& psEntry, const DefineList& programDefines)
     {
-        return create(Desc()
-            .maybeSourceFile(vertexFile, ShaderType::Vertex)
-            .maybeSourceFile(fragmentFile, ShaderType::Pixel)
-            .addDefaultVertexShaderIfNeeded(),
-            programDefines);
-    }
-
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromFile(const std::string& vertexFile, const std::string& fragmentFile, const std::string& geometryFile, const std::string& hullFile, const std::string& domainFile, const DefineList& programDefines)
-    {
-        return create(Desc()
-            .maybeSourceFile(vertexFile, ShaderType::Vertex)
-            .maybeSourceFile(hullFile, ShaderType::Hull)
-            .maybeSourceFile(domainFile, ShaderType::Domain)
-            .maybeSourceFile(geometryFile, ShaderType::Geometry)
-            .maybeSourceFile(fragmentFile, ShaderType::Pixel)
-            .addDefaultVertexShaderIfNeeded(),
-            programDefines);
-    }
-
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromString(const std::string& vertexShader, const std::string& fragmentShader, const DefineList& programDefines)
-    {
-        return create(Desc()
-            .maybeSourceString(vertexShader, ShaderType::Vertex)
-            .maybeSourceString(fragmentShader, ShaderType::Pixel)
-            .addDefaultVertexShaderIfNeeded(),
-            programDefines);
-    }
-
-    GraphicsProgram::SharedPtr GraphicsProgram::createFromString(const std::string& vertexShader, const std::string& fragmentShader, const std::string& geometryShader, const std::string& hullShader, const std::string& domainShader, const DefineList& programDefines)
-    {
-        return create(Desc()
-            .maybeSourceString(vertexShader, ShaderType::Vertex)
-            .maybeSourceString(hullShader, ShaderType::Hull)
-            .maybeSourceString(domainShader, ShaderType::Domain)
-            .maybeSourceString(geometryShader, ShaderType::Geometry)
-            .maybeSourceString(fragmentShader, ShaderType::Pixel)
-            .addDefaultVertexShaderIfNeeded(),
-            programDefines);
+        Desc d(filename);
+        d.vsEntry(vsEntry).psEntry(psEntry).addDefaultVertexShaderIfNeeded();
+        return create(d, programDefines);
     }
 }

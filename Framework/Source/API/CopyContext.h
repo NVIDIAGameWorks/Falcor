@@ -27,9 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "API/Resource.h"
-#ifdef FALCOR_LOW_LEVEL_API
 #include "API/LowLevel/LowLevelContextData.h"
-#endif
 
 namespace Falcor
 {
@@ -43,16 +41,33 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const CopyContext>;
         virtual ~CopyContext();
 
+        class ReadTextureTask
+        {
+        public:
+            using SharedPtr = std::shared_ptr<ReadTextureTask>;
+            static SharedPtr create(CopyContext::SharedPtr pCtx, const Texture* pTexture, uint32_t subresourceIndex);
+            std::vector<uint8> getData();
+        private:
+            ReadTextureTask() = default;
+            GpuFence::SharedPtr mpFence;
+            Buffer::SharedPtr mpBuffer;
+            CopyContext::SharedPtr mpContext;
+#ifdef FALCOR_D3D12
+            uint32_t mRowCount;
+            ResourceFormat mTextureFormat;
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT mFootprint;
+#elif defined(FALCOR_VK)
+            size_t mDataSize;
+#endif
+        };
+
         static SharedPtr create(CommandQueueHandle queue);
         void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);
         void updateTexture(const Texture* pTexture, const void* pData);
         void updateTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, const void* pData);
         void updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData);
+        ReadTextureTask::SharedPtr asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
         std::vector<uint8> readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex);
-
-        /** Reset
-        */
-        virtual void reset();
 
         /** Flush the command list. This doesn't reset the command allocator, just submits the commands
             \param[in] wait If true, will block execution until the GPU finished processing the commands
@@ -68,8 +83,13 @@ namespace Falcor
         void setPendingCommands(bool commandsPending) { mCommandsPending = commandsPending; }
 
         /** Insert a resource barrier
+            if pViewInfo is nullptr, will transition the entire resource. Otherwise, it will only transition the subresource in the view
         */
-        virtual void resourceBarrier(const Resource* pResource, Resource::State newState);
+        virtual void resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo = nullptr);
+
+        /** Insert a UAV barrier
+        */
+        virtual void uavBarrier(const Resource* pResource);
 
         /** Copy an entire resource
         */
@@ -83,7 +103,6 @@ namespace Falcor
         */
         void copyBufferRegion(const Buffer* pDst, uint64_t dstOffset, const Buffer* pSrc, uint64_t srcOffset, uint64_t numBytes);
 
-#ifdef FALCOR_LOW_LEVEL_API
         /** Get the low-level context data
         */
         virtual LowLevelContextData::SharedPtr getLowLevelData() const { return mpLowLevelData; }
@@ -91,13 +110,14 @@ namespace Falcor
         /** Override the low-level context data with a user provided object
         */
         void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = pLowLevelData; }
-#endif
     protected:
         void bindDescriptorHeaps();
+        void textureBarrier(const Texture* pTexture, Resource::State newState);
+        void bufferBarrier(const Buffer* pBuffer, Resource::State newState);
+        void subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo);
+        void apiSubresourceBarrier(const Texture* pTexture, Resource::State newState, Resource::State oldState, uint32_t arraySlice, uint32_t mipLevel);
         CopyContext() = default;
         bool mCommandsPending = false;
-#ifdef FALCOR_LOW_LEVEL_API
         LowLevelContextData::SharedPtr mpLowLevelData;
-#endif
     };
 }

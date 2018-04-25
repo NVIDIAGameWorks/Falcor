@@ -122,6 +122,9 @@ namespace Falcor
 
         static const uint32_t kMaxBonesPerVertex = 4; ///> Max supported bones per vertex
 
+        // TODO: Get mesh ID in file mesh was loaded from (temporary, fix better solution later)
+        const uint32_t getLoadId() const { return mLoadId; }
+
     protected:
         friend AssimpModelImporter;
         friend BinaryModelImporter;
@@ -141,6 +144,7 @@ namespace Falcor
         static uint32_t sMeshCounter;
 
         uint32_t mId;
+        uint32_t mLoadId = 0;
         uint32_t mIndexCount = 0;
         uint32_t mVertexCount = 0;
         uint32_t mPrimitiveCount = 0;

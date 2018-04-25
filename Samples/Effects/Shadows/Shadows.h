@@ -31,20 +31,20 @@
 
 using namespace Falcor;
 
-class Shadows : public SampleTest
+class Shadows : public Renderer
 {
 public:
-    void onLoad() override;
-    void onFrameRender() override;
-    void onShutdown() override;
-    void onResizeSwapChain() override;
-    bool onKeyEvent(const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(const MouseEvent& mouseEvent) override;
+    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
-    void onGuiRender() override;
-    void displayShadowMap();
-    void runMainPass();
+    void displayShadowMap(RenderContext* pContext);
+    void displayVisibilityBuffer(RenderContext* pContext);
+    void runMainPass(RenderContext* pContext);
     void createVisualizationProgram();
     void createScene(const std::string& filename);
     void displayLoadSceneDialog();
@@ -55,8 +55,10 @@ private:
 
     struct
     {
-        FullScreenPass::UniquePtr pProgram;
-        GraphicsVars::SharedPtr pProgramVars;
+        FullScreenPass::UniquePtr pShadowMapProgram;
+        GraphicsVars::SharedPtr pShadowMapProgramVars;
+        FullScreenPass::UniquePtr pVisibilityBufferProgram;
+        GraphicsVars::SharedPtr pVisibilityBufferProgramVars;
     } mShadowVisualizer;
 
     struct
@@ -67,22 +69,23 @@ private:
 
     Sampler::SharedPtr mpLinearSampler = nullptr;
 
-    glm::vec3 mAmbientIntensity = glm::vec3(0.1f, 0.1f, 0.1f);
     SceneRenderer::SharedPtr mpRenderer;
 
+    enum class DebugMode { None = 0, ShadowMap = 1, VisibilityBuffer = 2, Count = 3 };
+    static const Gui::DropdownList skDebugModeList;
     struct Controls
     {
         bool updateShadowMap = true;
-        bool showShadowMap = false;
+        uint32_t debugMode = (uint32_t)DebugMode::None;
         int32_t displayedCascade = 0;
         int32_t cascadeCount = 4;
         int32_t lightIndex = 0;
     };
     Controls mControls;
 
+
     struct ShadowOffsets
     {
-        uint32_t visualizeCascades;
         uint32_t displayedCascade;
     } mOffsets;  
 
@@ -96,9 +99,13 @@ private:
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     } mPerFrameCBData;
 
+    static const std::string skDefaultScene;
+    glm::uvec2 mWindowDimensions;
+    std::vector<Texture::SharedPtr> mpVisibilityBuffers;
+
     //Testing 
-    void onInitializeTesting() override;
-    void onEndTestFrame() override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
     std::vector<uint32_t> mFilterFrames;
     std::vector<uint32_t>::iterator mFilterFramesIt;
 };

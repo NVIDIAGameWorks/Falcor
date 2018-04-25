@@ -41,6 +41,9 @@ if /I "%6"=="ReleaseD3D12" set falcor_backend=FALCOR_D3D12
 if /I "%6"=="DebugVK" set falcor_backend=FALCOR_VK
 if /I "%6"=="ReleaseVK" set falcor_backend=FALCOR_VK
 
+if /I "%6"=="DebugDXR" set falcor_backend=FALCOR_DXR
+if /I "%6"=="ReleaseDXR" set falcor_backend=FALCOR_DXR
+
 rem Change the Props File to Align with the Backend.
 rem This also changes the FALCOR_CORE_DIRECTORY
 start /wait /b %1BuildScripts\PatchFalcorProps\PatchFalcorPropertySheet.exe %1 %2 %falcor_backend%
