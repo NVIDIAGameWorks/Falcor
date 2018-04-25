@@ -22,6 +22,18 @@ On Windows:
 - To run DirectX 12 applications with the debug layer enabled, you need to install the Graphics Tools optional feature. The tools version must match the OS version you are using (not to be confused with the SDK version used for building Falcor). There are 2 ways to install it:
     - Click the Windows button and type `Optional Features`, in the window that openes click `Add a feature` and select `Graphics Tools`.
     - Download an offline pacakge from [here](https://docs.microsoft.com/en-us/windows-hardware/test/hlk/windows-hardware-lab-kit#supplemental-content-for-graphics-media-and-mean-time-between-failures-mtbf-tests). Choose a ZIP file that matches the OS version you are using. The ZIP includes a document which explains how to install the graphics tools.
+   
+DirectX Raytracing 
+-------------------------
+Falcor 3.0 adds support to DirectX Raytracing. It adds 2 new build configurations - `ReleaseDXR` and `DebugDXR`. These are the only configurations which will build the DXR abstraction layer.
+The HelloDXR sample demonstrates how to use Falcor’s DXR abstraction layer.
+Requirements:
+-	Windows RS4 - Follow the instructions on http://forums.directxtech.com/index.php?topic=5860.0.
+-	You do not need to download the DXR SDK yourself, it is packaged with Falcor.
+-	A GPU which supports DirectX Raytracing, such as GeForce Titan-V (make sure you have the latest driver)
+
+Currently, Falcor doesn’t support the DXR fallback layer. We will add support for it in the near future.  
+Please note that the DXR abstraction layer is considererd an experimental feature, just like DXR itself. The interfaces and features might change in future releases.
 
 TensorFlow Support
 --------------
