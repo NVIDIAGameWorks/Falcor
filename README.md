@@ -6,8 +6,7 @@ Its features include:
 * Abstracting many common graphics operations, such as shader compilation, model loading and scene rendering
 * VR support using OpenVR
 * Common rendering effects such as shadows and post-processing effects
-
-This is a beta version. The interfaces are not final yet and there might be some performance/stability issues.
+* DirectX Raytracing abstraction 
 
 Prerequisites
 ------------------------
