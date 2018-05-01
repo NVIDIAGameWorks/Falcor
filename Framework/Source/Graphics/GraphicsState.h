@@ -224,7 +224,7 @@ namespace Falcor
 
         /** Get the active graphics state object.
         */
-        GraphicsStateObject::SharedPtr getGSO(const GraphicsVars* pVars);
+        virtual GraphicsStateObject::SharedPtr getGSO(const GraphicsVars* pVars);
 
         /** Enable/disable single-pass-stereo.
         */
@@ -233,6 +233,10 @@ namespace Falcor
         /** Get the status of single-pass-stereo.
         */
         bool isSinglePassStereoEnabled() const { return mEnableSinglePassStereo; }
+
+        /** Get the desc
+        */
+        const GraphicsStateObject::Desc& getDesc() const { return mDesc; }
 
     private:
         GraphicsState();
