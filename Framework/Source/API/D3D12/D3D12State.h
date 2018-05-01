@@ -51,6 +51,7 @@ namespace Falcor
     void initD3DDepthStencilDesc(const DepthStencilState* pState, D3D12_DEPTH_STENCIL_DESC& desc);
     void initD3D12VertexLayout(const VertexLayout* pLayout, InputLayoutDesc& inputDesc);
     void initD3D12SamplerDesc(const Sampler* pSampler, D3D12_SAMPLER_DESC& desc);
+    void initD3D12GraphicsStateDesc(const GraphicsStateObject::Desc& gsoDesc, D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc, InputLayoutDesc& layoutDesc);
 
     struct RootSignatureParams
     {

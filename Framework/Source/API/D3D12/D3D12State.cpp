@@ -468,4 +468,45 @@ namespace Falcor
             params.signatureSizeInBytes += 8;
         }
     }
+
+    void initD3D12GraphicsStateDesc(const GraphicsStateObject::Desc& gsoDesc, D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc, InputLayoutDesc& layoutDesc)
+    {
+        desc = {};
+        assert(gsoDesc.getProgramVersion());
+#define get_shader_handle(_type) gsoDesc.getProgramVersion()->getShader(_type) ? gsoDesc.getProgramVersion()->getShader(_type)->getApiHandle() : D3D12_SHADER_BYTECODE{}
+        desc.VS = get_shader_handle(ShaderType::Vertex);
+        desc.PS = get_shader_handle(ShaderType::Pixel);
+        desc.GS = get_shader_handle(ShaderType::Geometry);
+        desc.HS = get_shader_handle(ShaderType::Hull);
+        desc.DS = get_shader_handle(ShaderType::Domain);
+#undef get_shader_handle
+
+        initD3D12BlendDesc(gsoDesc.getBlendState().get(), desc.BlendState);
+        initD3D12RasterizerDesc(gsoDesc.getRasterizerState().get(), desc.RasterizerState);
+        initD3DDepthStencilDesc(gsoDesc.getDepthStencilState().get(), desc.DepthStencilState);
+
+        if (gsoDesc.getVertexLayout())
+        {
+            initD3D12VertexLayout(gsoDesc.getVertexLayout().get(), layoutDesc);
+            desc.InputLayout.NumElements = (uint32_t)layoutDesc.elements.size();
+            desc.InputLayout.pInputElementDescs = layoutDesc.elements.data();
+        }
+        desc.SampleMask = gsoDesc.getSampleMask();
+        desc.pRootSignature = gsoDesc.getRootSignature() ? gsoDesc.getRootSignature()->getApiHandle() : nullptr;
+
+        uint32_t numRtvs = 0;
+        for (uint32_t rt = 0; rt < Fbo::getMaxColorTargetCount(); rt++)
+        {
+            desc.RTVFormats[rt] = getDxgiFormat(gsoDesc.getFboDesc().getColorTargetFormat(rt));
+            if (desc.RTVFormats[rt] != DXGI_FORMAT_UNKNOWN)
+            {
+                numRtvs = rt + 1;
+            }
+        }
+        desc.NumRenderTargets = numRtvs;
+        desc.DSVFormat = getDxgiFormat(gsoDesc.getFboDesc().getDepthStencilFormat());
+        desc.SampleDesc.Count = gsoDesc.getFboDesc().getSampleCount();
+
+        desc.PrimitiveTopologyType = getD3DPrimitiveType(gsoDesc.getPrimitiveType());
+    }
 }
