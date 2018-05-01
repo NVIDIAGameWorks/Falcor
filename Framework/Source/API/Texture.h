@@ -90,6 +90,10 @@ namespace Falcor
         */
         ResourceFormat getFormat() const { return mFormat; }
 
+        /** Create a resource from an existing API-handle
+        */
+        static SharedPtr createFromApiHandle(ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags = BindFlags::ShaderResource);
+
         /** Create a 1D texture
             \param Width The width of the texture.
             \param Format The format of the texture.

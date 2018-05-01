@@ -45,6 +45,34 @@ namespace Falcor
         return flags;
     }
 
+    Texture::SharedPtr Texture::createFromApiHandle(ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags)
+    {
+        switch (type)
+        {
+            case Resource::Type::Texture1D:
+                assert(height == 1 && depth == 1 && sampleCount == 1);
+                break;
+            case Resource::Type::Texture2D:
+                assert(depth == 1 && sampleCount == 1);
+                break;
+            case Resource::Type::Texture2DMultisample:
+                assert(depth == 1);
+                break;
+            case Resource::Type::Texture3D:
+                assert(sampleCount == 1);
+                break;
+            case Resource::Type::TextureCube:
+                assert(depth == 1 && sampleCount == 1);
+                break;
+        }
+        Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
+        pTexture->mApiHandle = handle;
+
+        pTexture->mState.global = initState;
+        pTexture->mState.isGlobal = true;
+        return pTexture->mApiHandle ? pTexture : nullptr;
+    }
+
     Texture::SharedPtr Texture::create1D(uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags)
     {
         bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels);
