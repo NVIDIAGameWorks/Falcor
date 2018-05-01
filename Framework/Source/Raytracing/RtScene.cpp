@@ -168,7 +168,13 @@ namespace Falcor
                         idesc.InstanceContributionToHitGroupIndex = instanceContributionToHitGroupIndex;
                         instanceContributionToHitGroupIndex += hitProgCount * blasData.meshCount;
                         idesc.InstanceMask = 0xff;
+                        const auto& pMaterial = pModel->getMeshInstance(blasData.meshBaseIndex, meshInstance)->getObject()->getMaterial();
                         idesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+                        if (pMaterial->getDoubleSided())
+                        {
+                            idesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
+                        }
+
                         // Only apply mesh-instance transform on non-skinned meshes
                         mat4 transform = pModelInstance->getTransformMatrix();
                         if (blasData.isStatic)
