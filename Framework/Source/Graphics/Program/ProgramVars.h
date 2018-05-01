@@ -54,6 +54,7 @@ namespace Falcor
         public:
             SharedPtrT() : std::shared_ptr<T>() {}
             SharedPtrT(T* pProgVars) : std::shared_ptr<T>(pProgVars) {}
+            SharedPtrT(const std::shared_ptr<T>& other) : std::shared_ptr<T>(other) {}
             ConstantBuffer::SharedPtr operator[](const std::string& cbName) { return std::shared_ptr<T>::get()->getConstantBuffer(cbName); }
             ConstantBuffer::SharedPtr operator[](uint32_t index) = delete; // No set by index. This is here because if we didn't explicitly delete it, the compiler will try to convert to int into a string, resulting in runtime error
         };
@@ -276,9 +277,12 @@ namespace Falcor
         BlockData mDefaultBlock;
         std::vector<BlockData> mParameterBlocks; // First element is the global block
         ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers);
+
+        template<bool forGraphics>
+        bool bindRootSetsCommon(CopyContext* pContext, bool bindRootSig);
     };
 
-    class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>
+    class GraphicsVars : public ProgramVars, public std::enable_shared_from_this<GraphicsVars>
     {
     public:
         using SharedPtr = SharedPtrT<GraphicsVars>;
@@ -290,13 +294,13 @@ namespace Falcor
             \param[in] pRootSignature A root-signature describing how to bind resources into the shader. If this parameter is nullptr, a root-signature object will be created from the program reflection object
         */
         static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true, const RootSignature::SharedPtr& pRootSig = nullptr);
-        bool apply(RenderContext* pContext, bool bindRootSig);
-    private:
+        virtual bool apply(RenderContext* pContext, bool bindRootSig);
+    protected:
         GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
             ProgramVars(pReflector, createBuffers, pRootSig) {}
     };
 
-    class ComputeVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>
+    class ComputeVars : public ProgramVars, public std::enable_shared_from_this<ComputeVars>
     {
     public:
         using SharedPtr = SharedPtrT<ComputeVars>;
@@ -308,8 +312,8 @@ namespace Falcor
             \param[in] pRootSignature A root-signature describing how to bind resources into the shader. If this parameter is nullptr, a root-signature object will be created from the program reflection object
         */
         static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true, const RootSignature::SharedPtr& pRootSig = nullptr);
-        bool apply(ComputeContext* pContext, bool bindRootSig);
-    private:
+        virtual bool apply(ComputeContext* pContext, bool bindRootSig);
+    protected:
         ComputeVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
             ProgramVars(pReflector, createBuffers, pRootSig) {}
     };

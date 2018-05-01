@@ -110,8 +110,12 @@ namespace Falcor
         /** Override the low-level context data with a user provided object
         */
         void setLowLevelContextData(LowLevelContextData::SharedPtr pLowLevelData) { mpLowLevelData = pLowLevelData; }
-    protected:
+
+        /** Bind the descriptor heaps from the device into the command-list
+        */
         void bindDescriptorHeaps();
+
+    protected:
         void textureBarrier(const Texture* pTexture, Resource::State newState);
         void bufferBarrier(const Buffer* pBuffer, Resource::State newState);
         void subresourceBarriers(const Texture* pTexture, Resource::State newState, const ResourceViewInfo* pViewInfo);
