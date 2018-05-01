@@ -50,6 +50,17 @@ namespace Falcor
     void initD3D12VertexLayout(const VertexLayout* pLayout, InputLayoutDesc& inputDesc);
     void initD3D12SamplerDesc(const Sampler* pSampler, D3D12_SAMPLER_DESC& desc);
 
+    struct RootSignatureParams
+    {
+        using RootParameterVec = std::vector<D3D12_ROOT_PARAMETER>;
+        RootParameterVec rootParams;
+        std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> d3dRanges;
+        uint32_t signatureSizeInBytes;
+        std::vector<uint32_t> elementByteOffset;
+    };
+
+    void initD3D12RootParams(const RootSignature::Desc& desc, RootSignatureParams& params);
+
     inline D3D_PRIMITIVE_TOPOLOGY getD3DPrimitiveTopology(Vao::Topology topology)
     {
         switch (topology)

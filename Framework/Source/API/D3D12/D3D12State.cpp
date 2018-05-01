@@ -368,4 +368,104 @@ namespace Falcor
         const glm::vec4& borderColor = pSampler->getBorderColor();
         memcpy(desc.BorderColor, glm::value_ptr(borderColor), sizeof(borderColor));
     }
+
+    D3D12_SHADER_VISIBILITY getShaderVisibility(ShaderVisibility visibility)
+    {
+        // D3D12 doesn't support a combination of flags, it's either ALL or a single stage
+        if (isPowerOf2(visibility) == false)
+        {
+            return D3D12_SHADER_VISIBILITY_ALL;
+        }
+        else if ((visibility & ShaderVisibility::Vertex) != ShaderVisibility::None)
+        {
+            return D3D12_SHADER_VISIBILITY_VERTEX;
+        }
+        else if ((visibility & ShaderVisibility::Pixel) != ShaderVisibility::None)
+        {
+            return D3D12_SHADER_VISIBILITY_PIXEL;
+        }
+        else if ((visibility & ShaderVisibility::Geometry) != ShaderVisibility::None)
+        {
+            return D3D12_SHADER_VISIBILITY_GEOMETRY;
+        }
+        else if ((visibility & ShaderVisibility::Domain) != ShaderVisibility::None)
+        {
+            return D3D12_SHADER_VISIBILITY_DOMAIN;
+        }
+        else if ((visibility & ShaderVisibility::Hull) != ShaderVisibility::None)
+        {
+            return D3D12_SHADER_VISIBILITY_HULL;
+        }
+        // If it was compute, it can't be anything else and so the first `if` would have handled it
+        should_not_get_here();
+        return (D3D12_SHADER_VISIBILITY)-1;
+    }
+
+    D3D12_DESCRIPTOR_RANGE_TYPE getRootDescRangeType(RootSignature::DescType type)
+    {
+        switch (type)
+        {
+        case RootSignature::DescType::TextureSrv:
+        case RootSignature::DescType::TypedBufferSrv:
+        case RootSignature::DescType::StructuredBufferSrv:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        case RootSignature::DescType::TextureUav:
+        case RootSignature::DescType::TypedBufferUav:
+        case RootSignature::DescType::StructuredBufferUav:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        case RootSignature::DescType::Cbv:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+        case RootSignature::DescType::Sampler:
+            return D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+        default:
+            should_not_get_here();
+            return (D3D12_DESCRIPTOR_RANGE_TYPE)-1;
+        }
+    }
+
+    void convertRootCbvSet(const RootSignature::DescriptorSetLayout& set, D3D12_ROOT_PARAMETER& desc)
+    {
+        assert(set.getRangeCount() == 1);
+        const auto& range = set.getRange(0);
+        assert(range.type == RootSignature::DescType::Cbv && range.descCount == 1);
+
+        desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        desc.Descriptor.RegisterSpace = range.regSpace;
+        desc.Descriptor.ShaderRegister = range.baseRegIndex;
+        desc.ShaderVisibility = getShaderVisibility(set.getVisibility());
+    }
+
+    void convertRootDescTable(const RootSignature::DescriptorSetLayout& falcorSet, D3D12_ROOT_PARAMETER& desc, std::vector<D3D12_DESCRIPTOR_RANGE>& d3dRange)
+    {
+        desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        desc.ShaderVisibility = getShaderVisibility(falcorSet.getVisibility());
+        d3dRange.resize(falcorSet.getRangeCount());
+        desc.DescriptorTable.NumDescriptorRanges = (uint32_t)falcorSet.getRangeCount();
+        desc.DescriptorTable.pDescriptorRanges = d3dRange.data();
+
+        for (size_t i = 0; i < falcorSet.getRangeCount(); i++)
+        {
+            const auto& falcorRange = falcorSet.getRange(i);
+            d3dRange[i].BaseShaderRegister = falcorRange.baseRegIndex;
+            d3dRange[i].NumDescriptors = falcorRange.descCount;
+            d3dRange[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+            d3dRange[i].RangeType = getRootDescRangeType(falcorRange.type);
+            d3dRange[i].RegisterSpace = falcorRange.regSpace;
+        }
+    }
+
+    void initD3D12RootParams(const RootSignature::Desc& desc, RootSignatureParams& params)
+    {
+        params.signatureSizeInBytes = 0;
+        params.d3dRanges.resize(desc.getSetsCount());
+        params.rootParams.resize(desc.getSetsCount());
+        params.elementByteOffset.resize(desc.getSetsCount());
+        for (size_t i = 0; i < desc.getSetsCount(); i++)
+        {
+            const auto& set = desc.getSet(i);
+            convertRootDescTable(set, params.rootParams[i], params.d3dRanges[i]);
+            params.elementByteOffset[i] = params.signatureSizeInBytes;
+            params.signatureSizeInBytes += 8;
+        }
+    }
 }
