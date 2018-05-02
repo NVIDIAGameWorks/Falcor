@@ -52,7 +52,7 @@ exit /B 1
 
 :cantFindVs
 echo Build Failed. Failed to find Visual Studio. 
-echo Set enviornment var VSWHERE to the location of vswhere.exe 
+echo Set environment var VSWHERE to the location of vswhere.exe 
 echo Or Set VS_INSTALL_DIR to the location of your visual studio 2017 install 
 exit /B 1
 

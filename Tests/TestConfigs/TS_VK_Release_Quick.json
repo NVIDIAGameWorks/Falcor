@@ -32,7 +32,6 @@
             },
             "Project Tests Args" :
             [
-                "-test -fixedtimedelta 0.03333 -loadscene san-miguel/SanMiguel.fscene -sstimes 10 20 30 -shutdowntime 31",
                 "-test -fixedtimedelta 0.03333 -loadscene SunTemple/SunTemple.fscene -sstimes 10 27 50 -shutdowntime 51"
             ]
         }
