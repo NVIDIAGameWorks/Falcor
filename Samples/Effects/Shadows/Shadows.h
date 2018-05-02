@@ -93,10 +93,8 @@ private:
     struct PerFrameCBData
     {
         //This is effectively a bool, but bool only takes up 1 byte which messes up setBlob
-        uint32_t visualizeCascades = 0u;
-        uint32_t padding1 = 0;
-        uint64_t padding2 = 0;
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
+        uint32_t visualizeCascades = 0u;
     } mPerFrameCBData;
 
     static const std::string skDefaultScene;

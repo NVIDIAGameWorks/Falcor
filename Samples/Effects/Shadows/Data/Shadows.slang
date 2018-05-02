@@ -31,10 +31,9 @@ __import ShaderCommon;
 
 cbuffer PerFrameCB : register(b0)
 {
-    float3 gAmbient;
-    Texture2D gVisibilityBuffers[_LIGHT_COUNT];
-    bool visualizeCascades;
     float4x4 camVpAtLastCsmUpdate;
+    bool visualizeCascades;
+    Texture2D gVisibilityBuffers[_LIGHT_COUNT];
 };
 
 struct ShadowsVSOut
@@ -65,7 +64,6 @@ float4 psMain(ShadowsVSOut pIn) : SV_TARGET0
         color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
     }
 
-    color.rgb += gAmbient * sd.diffuse * 0.1;
     if(visualizeCascades)
     {
         float3 cascadeColor = gVisibilityBuffers[_LIGHT_INDEX].Load(int3(pIn.vsData.posH.xy, 0)).gba;
