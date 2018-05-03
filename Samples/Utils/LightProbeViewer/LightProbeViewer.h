@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 
 using namespace Falcor;
 
-class MaterialExplorer : public Renderer
+class LightProbeViewer : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
@@ -46,12 +46,11 @@ public:
 private:
     void resetCamera();
 
-    void updateLightProbe(const LightProbe::SharedPtr pLightProbe);
+    void updateLightProbe(LightProbe::SharedPtr pLightProbe);
 
     static const std::string kEnvMapName;
-    static const uint32_t kDefaultSamples;
 
-    uint32_t mDiffuseSamples = 4 * LightProbe::kDefaultDiffSamples;
+    uint32_t mDiffuseSamples = LightProbe::kDefaultDiffSamples;
     uint32_t mSpecSamples = LightProbe::kDefaultSpecSamples;
     int32_t mSpecMip = 0;
 

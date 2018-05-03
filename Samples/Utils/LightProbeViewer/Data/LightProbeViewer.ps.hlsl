@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,23 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
 __import DefaultVS;
 __import Shading;
-__import Helpers;
 
 float4 main(VertexOut vOut) : SV_TARGET
 {
     ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
-
-    float4 finalColor = float4(0, 0, 0, 1);
-
-    for (uint l = 0; l < gLightsCount; l++)
-    {
-        //finalColor.rgb += evalMaterial(sd, gLights[l], 1).color.rgb;
-    }
-
-    finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
-
-    return finalColor;
+    return float4(evalMaterial(sd, gLightProbe).color.rgb, 1);
 }

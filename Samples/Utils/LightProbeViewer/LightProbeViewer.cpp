@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,12 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "MaterialExplorer.h"
+#include "LightProbeViewer.h"
 #include "Data/HostDeviceSharedMacros.h"
 
-//const std::string MaterialExplorer::kEnvMapName = "panorama_map.hdr";
-const std::string MaterialExplorer::kEnvMapName = "SunTemple_Reflection.hdr";
-const uint32_t MaterialExplorer::kDefaultSamples = 16  *1024;
+const std::string LightProbeViewer::kEnvMapName = "LightProbes/10-Shiodome_Stairs_3k.dds";
 
 Material::SharedPtr generateMaterial(const std::string& name, uint32_t roughI, uint32_t roughN, uint32_t metalI, uint32_t metalN)
 {
@@ -75,89 +73,14 @@ void fillScene(Scene::SharedPtr pScene, const std::string& modelName, uint32_t w
     }
 }
 
-void MaterialExplorer::updateLightProbe(const LightProbe::SharedPtr pLightProbe)
-{
-    if (mpScene->getLightProbeCount() > 0)
-    {
-        assert(mpScene->getLightProbeCount() == 1);
-        mpScene->deleteLightProbe(0);
-    }
-
-    mpLightProbe = pLightProbe;
-    mpLightProbe->setRadius(mpScene->getRadius());
-    mpLightProbe->setSampler(mpLinearSampler);
-
-    mpScene->addLightProbe(mpLightProbe);
-}
-
-void MaterialExplorer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
-{
-    if (pGui->addButton("Load Light Probe"))
-    {
-        std::string filename;
-        if (openFileDialog("Image files\0*.hdr;*.exr\0\0", filename))
-        {
-            updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float, mDiffuseSamples, mSpecSamples));
-            mpSkyBox = SkyBox::createFromTexture(filename);
-        }
-    }
-    if (mpLightProbe != nullptr)
-    {
-        std::string diffText = "Diffuse Sample Count: " + std::to_string(mpLightProbe->getDiffSampleCount());
-        pGui->addText(diffText.c_str());
-        int32_t diffSamples = int32_t(mDiffuseSamples);
-        if (pGui->addIntVar("Diffuse##Samples", diffSamples, 1, 128 * 1024))
-        {
-            mDiffuseSamples = uint32_t(diffSamples);
-        }
-
-        std::string specText = "Spec Sample Count: " + std::to_string(mpLightProbe->getSpecSampleCount());
-        pGui->addText(specText.c_str());
-        int32_t specSamples = int32_t(mSpecSamples);
-        if (pGui->addIntVar("Specular##Samples", specSamples, 1, 128 * 1024))
-        {
-            mSpecSamples = uint32_t(specSamples);
-        }
-
-        if (pGui->addButton("Apply"))
-        {
-            if (mDiffuseSamples != mpLightProbe->getDiffSampleCount() || mSpecSamples != mpLightProbe->getSpecSampleCount())
-            {
-                LightProbe::SharedPtr pProbe = LightProbe::create(pSample->getRenderContext().get(), mpLightProbe->getOrigTexture(), mDiffuseSamples, mSpecSamples);
-                updateLightProbe(pProbe);
-            }
-        }
-
-        pGui->addText("Specular Mip Level");
-        pGui->addIntVar("##SpecMip", mSpecMip, 0, mpLightProbe->getSpecularTexture()->getMipCount() - 1);
-    }
-}
-
-void MaterialExplorer::onDataReload(SampleCallbacks* pSample)
-{
-}
-
-void MaterialExplorer::onDroppedFile(SampleCallbacks* pSample, const std::string& filename)
-{
-    if (hasSuffix(filename, ".hdr", false) || hasSuffix(filename, ".exr", false))
-    {
-        LightProbe::SharedPtr pProbe = LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float, mDiffuseSamples, mSpecSamples);
-        updateLightProbe(pProbe);
-    }
-    else
-    {
-        msgBox("Please load a .hdr or .exr file.");
-    }
-}
-
-void MaterialExplorer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void LightProbeViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpCamera = Camera::create();
     mCameraController.attachCamera(mpCamera);
 
     mpState = GraphicsState::create();
 
-    mpProgram = GraphicsProgram::createFromFile("", appendShaderExtension("MaterialExplorer.ps"));
+    mpProgram = GraphicsProgram::createFromFile("LightProbeViewer.ps.hlsl", "", "main");
     mpState->setProgram(mpProgram);
 
     // States
@@ -177,14 +100,79 @@ void MaterialExplorer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
 
     pSample->setDefaultGuiSize(250, 250);
 
-    //mpLightProbe = LightProbe::create(pRenderContext.get(), kEnvMapName, true, ResourceFormat::RGBA16Float);
-    //mpLightProbe->setAttenuationRadius(vec2(mpScene->getRadius() * 5.0f));
-    //mpLightProbe->setSampler(mpLinearSampler);
-    //mpSkyBox = SkyBox::createFromTexture(kEnvMapName);
-    //mpScene->addLightProbe(mpLightProbe);
+    updateLightProbe(LightProbe::create(pRenderContext.get(), kEnvMapName, true, ResourceFormat::RGBA16Float, mDiffuseSamples, mSpecSamples));
 }
 
-void MaterialExplorer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void LightProbeViewer::updateLightProbe(LightProbe::SharedPtr pLightProbe)
+{
+    mpLightProbe = pLightProbe;
+    mpLightProbe->setSampler(mpLinearSampler);
+
+    if (mpScene->getLightProbeCount() > 0)
+    {
+        assert(mpScene->getLightProbeCount() == 1);
+        mpScene->deleteLightProbe(0);
+    }
+
+    mpScene->addLightProbe(mpLightProbe);
+
+    if (mpSkyBox == nullptr || pLightProbe->getOrigTexture()->getSourceFilename() != mpSkyBox->getTexture()->getSourceFilename())
+    {
+        mpSkyBox = SkyBox::createFromTexture(pLightProbe->getOrigTexture()->getSourceFilename());
+    }
+}
+
+void LightProbeViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+{
+    if (pGui->addButton("Load Light Probe"))
+    {
+        std::string filename;
+        if (openFileDialog("Image files\0*.hdr;*.exr\0\0", filename))
+        {
+            updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float, mDiffuseSamples, mSpecSamples));
+        }
+    }
+    if (mpLightProbe != nullptr)
+    {
+        std::string diffText = "Diffuse Sample Count: " + std::to_string(mpLightProbe->getDiffSampleCount());
+        pGui->addText(diffText.c_str());
+        int32_t diffSamples = int32_t(mDiffuseSamples);
+        if (pGui->addIntVar("Diffuse##Samples", diffSamples, 1, 128 * 1024))
+        {
+            mDiffuseSamples = uint32_t(diffSamples);
+        }
+
+        std::string specText = "Spec Sample Count: " + std::to_string(mpLightProbe->getSpecSampleCount());
+        pGui->addText(specText.c_str());
+        int32_t specSamples = int32_t(mSpecSamples);
+        if (pGui->addIntVar("Specular##Samples", specSamples, 1, 32 * 1024))
+        {
+            mSpecSamples = uint32_t(specSamples);
+        }
+
+        if (pGui->addButton("Apply"))
+        {
+            if (mDiffuseSamples != mpLightProbe->getDiffSampleCount() || mSpecSamples != mpLightProbe->getSpecSampleCount())
+            {
+                updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), mpLightProbe->getOrigTexture(), mDiffuseSamples, mSpecSamples));
+            }
+        }
+
+        pGui->addText("Specular Mip Level");
+        pGui->addIntVar("##SpecMip", mSpecMip, 0, mpLightProbe->getSpecularTexture()->getMipCount() - 1);
+    }
+}
+
+void LightProbeViewer::onDataReload(SampleCallbacks* pSample)
+{
+}
+
+void LightProbeViewer::onDroppedFile(SampleCallbacks* pSample, const std::string& filename)
+{
+    updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float, mDiffuseSamples, mSpecSamples));
+}
+
+void LightProbeViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
@@ -210,7 +198,7 @@ void MaterialExplorer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sh
     }
 }
 
-bool MaterialExplorer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
+bool LightProbeViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     bool bHandled = mCameraController.onKeyEvent(keyEvent);
     if(bHandled == false)
@@ -229,12 +217,12 @@ bool MaterialExplorer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent&
     return bHandled;
 }
 
-bool MaterialExplorer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
+bool LightProbeViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCameraController.onMouseEvent(mouseEvent);
 }
 
-void MaterialExplorer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
+void LightProbeViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     float h = (float)height;
     float w = (float)width;
@@ -252,7 +240,7 @@ void MaterialExplorer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t widt
     mBotRect = uvec4(left, viewportSize * 2, width, height);
 }
 
-void MaterialExplorer::resetCamera()
+void LightProbeViewer::resetCamera()
 {
     if(mpScene)
     {
@@ -274,10 +262,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    MaterialExplorer::UniquePtr pRenderer = std::make_unique<MaterialExplorer>();
+    LightProbeViewer::UniquePtr pRenderer = std::make_unique<LightProbeViewer>();
 
     SampleConfig config;
-    config.windowDesc.title = "Material Explorer";
+    config.windowDesc.title = "Light Probe Viewer";
     config.windowDesc.resizableWindow = true;
 #ifdef _WIN32
     Sample::run(config, pRenderer);
