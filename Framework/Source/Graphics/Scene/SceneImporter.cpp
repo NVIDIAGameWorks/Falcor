@@ -548,7 +548,7 @@ namespace Falcor
                 }
             }
 
-            LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext().get(), actualPath, true, ResourceFormat::RGBA16Float, LightProbe::kDefaultDiffSize, LightProbe::kDefaultSpecSize, diffuseSamples, specSamples);
+            LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext().get(), actualPath, true, ResourceFormat::RGBA16Float, diffuseSamples, specSamples);
             pLightProbe->setPosW(position);
             pLightProbe->setIntensity(intensity);
             mScene.addLightProbe(pLightProbe);
