@@ -54,10 +54,19 @@ private:
     uint32_t mSpecSamples = LightProbe::kDefaultSpecSamples;
     int32_t mSpecMip = 0;
 
-    // Blit targets for debug viewports
-    uvec4 mTopRect;
-    uvec4 mMidRect;
-    uvec4 mBotRect;
+    enum class Viewport
+    {
+        Scene,
+        Orig,
+        Diffuse,
+        Specular,
+        Count
+    };
+
+    // Viewport coordinates
+    uvec4 mMainRect;
+    std::array<uvec4, (uint32_t)Viewport::Count> mRects;
+    Viewport mSelectedView;
 
     Camera::SharedPtr mpCamera;
     Model::SharedPtr mpModel = nullptr;

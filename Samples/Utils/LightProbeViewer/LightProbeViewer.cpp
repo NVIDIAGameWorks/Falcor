@@ -179,9 +179,14 @@ void LightProbeViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sh
 
     if (mpLightProbe != nullptr)
     {
+        mCameraController.update();
         mpState->setFbo(pTargetFbo);
 
-        mCameraController.update();
+        // Where to render the scene to
+        uvec4 destRect = (mSelectedView == Viewport::Scene) ? mMainRect : mRects[(uint32_t)Viewport::Scene];
+        float w = (float)destRect.z - (float)destRect.x;
+        float h = (float)destRect.w - (float)destRect.y;
+        mpState->setViewport(0, GraphicsState::Viewport((float)destRect.x, (float)destRect.y, w, h, 0.0f, 1.0f));
 
         pRenderContext->pushGraphicsVars(mpVars);
         pRenderContext->pushGraphicsState(mpState);
@@ -192,20 +197,29 @@ void LightProbeViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sh
         pRenderContext->popGraphicsVars();
         pRenderContext->popGraphicsState();
 
-        pRenderContext->blit(mpLightProbe->getOrigTexture()->getSRV(0, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), mTopRect);
-        pRenderContext->blit(mpLightProbe->getDiffuseTexture()->getSRV(0, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), mMidRect);
-        pRenderContext->blit(mpLightProbe->getSpecularTexture()->getSRV(mSpecMip, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), mBotRect, Sampler::Filter::Point);
+        pRenderContext->blit(mpLightProbe->getOrigTexture()->getSRV(0, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), (mSelectedView == Viewport::Orig) ? mMainRect : mRects[(uint32_t)Viewport::Orig]);
+        pRenderContext->blit(mpLightProbe->getDiffuseTexture()->getSRV(0, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), (mSelectedView == Viewport::Diffuse) ? mMainRect : mRects[(uint32_t)Viewport::Diffuse]);
+        pRenderContext->blit(mpLightProbe->getSpecularTexture()->getSRV(mSpecMip, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), (mSelectedView == Viewport::Specular) ? mMainRect : mRects[(uint32_t)Viewport::Specular], Sampler::Filter::Point);
+
+        // Render viewport text
+        pSample->renderText("Click a viewport to expand", vec2(mMainRect.z + 5, 5));
+
+        static const char* kLabels[(uint32_t)Viewport::Count] = { "Scene", "Original", "Diffuse", "Specular" };
+        for (uint32_t i = 0; i < (uint32_t)Viewport::Count; i++)
+        {
+            pSample->renderText(kLabels[i], vec2(mRects[i].x + 5, mRects[i].w - 20));
+        }
     }
 }
 
 bool LightProbeViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     bool bHandled = mCameraController.onKeyEvent(keyEvent);
-    if(bHandled == false)
+    if (bHandled == false)
     {
-        if(keyEvent.type == KeyboardEvent::Type::KeyPressed)
+        if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
         {
-            switch(keyEvent.key)
+            switch (keyEvent.key)
             {
             case KeyboardEvent::Key::R:
                 resetCamera();
@@ -219,7 +233,41 @@ bool LightProbeViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent&
 
 bool LightProbeViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
-    return mCameraController.onMouseEvent(mouseEvent);
+    Fbo::SharedPtr pFbo = pSample->getCurrentFbo();
+    uvec2 pos(mouseEvent.pos * vec2(pFbo->getWidth(), pFbo->getHeight()));
+
+    // If clicked to the right of main viewport (i.e. the sidebar)
+    if (pos.x > mMainRect.z && (mouseEvent.type == MouseEvent::Type::LeftButtonUp || mouseEvent.type == MouseEvent::Type::LeftButtonDown))
+    {
+        // Find clicked region
+        Viewport selected = Viewport::Count;
+        for (uint32_t i = 0; i < (uint32_t)Viewport::Count; i++)
+        {
+            uvec4 curr = mRects[i];
+            if (pos.x > curr.x && pos.x < curr.z && pos.y > curr.y && pos.y < curr.w)
+            {
+                selected = (Viewport)i;
+                break;
+            }
+        }
+
+        if (selected != Viewport::Count)
+        {
+            if (mouseEvent.type == MouseEvent::Type::LeftButtonUp)
+            {
+                mSelectedView = selected;
+                mpCamera->setAspectRatio(mSelectedView == Viewport::Scene ? ((float)mMainRect.z / (float)mMainRect.w) : 1.0f);
+            }
+
+            return true;
+        }
+    }
+    else if (mSelectedView == Viewport::Scene)
+    {
+        return mCameraController.onMouseEvent(mouseEvent);
+    }
+
+    return false;    
 }
 
 void LightProbeViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
@@ -228,21 +276,27 @@ void LightProbeViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t widt
     float w = (float)width;
 
     mpCamera->setFocalLength(21.0f);
-    float aspectRatio = (w / h);
-    mpCamera->setAspectRatio(aspectRatio);
 
-
-    uint32_t viewportSize = height / 3;
+    uint32_t viewportSize = height / (uint32_t)Viewport::Count;
     uint32_t left = width - viewportSize;
+    uint32_t top = 0;
 
-    mTopRect = uvec4(left, 0, width, viewportSize);
-    mMidRect = uvec4(left, viewportSize, width, viewportSize * 2);
-    mBotRect = uvec4(left, viewportSize * 2, width, height);
+    // Left, Top, Right, Down
+    for (uint32_t i = 0; i < (uint32_t)Viewport::Count; i++)
+    {
+        mRects[i] = uvec4(left, top, width, top + viewportSize);
+        top += viewportSize;
+    }
+
+    mMainRect = uvec4(0, 0, left, height);
+
+    float aspectRatio = (mSelectedView == Viewport::Scene) ? (float)left / (float)height : 1.0f;
+    mpCamera->setAspectRatio(aspectRatio);
 }
 
 void LightProbeViewer::resetCamera()
 {
-    if(mpScene)
+    if (mpScene)
     {
         // update the camera position
         float radius = mpScene->getRadius();
