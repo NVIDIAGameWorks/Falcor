@@ -124,6 +124,8 @@ void LightProbeViewer::updateLightProbe(LightProbe::SharedPtr pLightProbe)
 
 void LightProbeViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
+    pGui->addText("Press 'R' to reset scene camera");
+
     if (pGui->addButton("Load Light Probe"))
     {
         std::string filename;
@@ -158,7 +160,7 @@ void LightProbeViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             }
         }
 
-        pGui->addText("Specular Mip Level");
+        pGui->addText("Specular Viewport Mip Level");
         pGui->addIntVar("##SpecMip", mSpecMip, 0, mpLightProbe->getSpecularTexture()->getMipCount() - 1);
     }
 }
@@ -201,15 +203,24 @@ void LightProbeViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sh
         pRenderContext->blit(mpLightProbe->getDiffuseTexture()->getSRV(0, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), (mSelectedView == Viewport::Diffuse) ? mMainRect : mRects[(uint32_t)Viewport::Diffuse]);
         pRenderContext->blit(mpLightProbe->getSpecularTexture()->getSRV(mSpecMip, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), (mSelectedView == Viewport::Specular) ? mMainRect : mRects[(uint32_t)Viewport::Specular], Sampler::Filter::Point);
 
-        // Render viewport text
-        pSample->renderText("Click a viewport to expand", vec2(mMainRect.z + 5, 5));
-
-        static const char* kLabels[(uint32_t)Viewport::Count] = { "Scene", "Original", "Diffuse", "Specular" };
-        for (uint32_t i = 0; i < (uint32_t)Viewport::Count; i++)
-        {
-            pSample->renderText(kLabels[i], vec2(mRects[i].x + 5, mRects[i].w - 20));
-        }
+        renderInfoText(pSample);
     }
+}
+
+void LightProbeViewer::renderInfoText(SampleCallbacks* pSample)
+{
+    pSample->renderText("Click a viewport to expand", vec2(mMainRect.z + 5, 5));
+
+#define bottom_left(viewport) vec2(mRects[(uint32_t)viewport].x, mRects[(uint32_t)viewport].w) + vec2(5.0f, -20.0f) // bottom left plus offset
+#define dim_to_string(texture) std::string(std::to_string(texture->getWidth()) + " x " + std::to_string(texture->getHeight()))
+
+    pSample->renderText("Scene",                                                           bottom_left(Viewport::Scene));
+    pSample->renderText("Original - " + dim_to_string(mpLightProbe->getOrigTexture()),     bottom_left(Viewport::Orig));
+    pSample->renderText("Diffuse - "  + dim_to_string(mpLightProbe->getDiffuseTexture()),  bottom_left(Viewport::Diffuse));
+    pSample->renderText("Specular - " + dim_to_string(mpLightProbe->getSpecularTexture()), bottom_left(Viewport::Specular));
+
+#undef bottom_left
+#undef dim_to_string
 }
 
 bool LightProbeViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

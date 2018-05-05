@@ -45,8 +45,8 @@ public:
 
 private:
     void resetCamera();
-
     void updateLightProbe(LightProbe::SharedPtr pLightProbe);
+    void renderInfoText(SampleCallbacks* pSample);
 
     static const std::string kEnvMapName;
 
