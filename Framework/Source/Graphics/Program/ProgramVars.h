@@ -222,7 +222,8 @@ namespace Falcor
 
         /** Get the root signature object
         */
-        RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
+        // SLANG-INTEGRATION
+        //RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
 
         /** Get the number of parameter-blocks
         */
@@ -230,7 +231,8 @@ namespace Falcor
         
         /** Get a list of indices translating a parameter-block's set index to the root-signature entry index
         */
-        const std::vector<uint32_t>& getParameterBlockRootIndices(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].rootIndex; }
+        // SLANG-INTEGRATION: no longer needed
+        //const std::vector<uint32_t>& getParameterBlockRootIndices(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].rootIndex; }
 
         /** Get parameter-block by index. You can translate a name to an index using the ProgramReflection object
         */
@@ -259,18 +261,21 @@ namespace Falcor
         ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
 
         template<bool forGraphics>
-        bool applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig);
+        bool applyProgramVarsCommon(CopyContext* pContext, bool rootSigChanged, RootSignature* rootSignature);
 
     protected:
-        ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
+        ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers);
         
-        RootSignature::SharedPtr mpRootSignature;
+        // SLANG-INTEGRATION
+        //RootSignature::SharedPtr mpRootSignature;
+
         ProgramReflection::SharedConstPtr mpReflector;
 
         struct BlockData
         {
             ParameterBlock::SharedPtr pBlock;
-            std::vector<uint32_t> rootIndex;        // Maps the block's set-index to the root-signature entry
+            // SLANG-INTEGRATION - should not need this
+            //std::vector<uint32_t> rootIndex;        // Maps the block's set-index to the root-signature entry
             bool bind = true;
         };
         BlockData mDefaultBlock;
@@ -289,11 +294,11 @@ namespace Falcor
             \param[in] createBuffers If true, will create the ConstantBuffer objects. Otherwise, the user will have to bind the CBs himself
             \param[in] pRootSignature A root-signature describing how to bind resources into the shader. If this parameter is nullptr, a root-signature object will be created from the program reflection object
         */
-        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true, const RootSignature::SharedPtr& pRootSig = nullptr);
-        bool apply(RenderContext* pContext, bool bindRootSig);
+        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true);
+        bool apply(RenderContext* pContext, bool rootSignatureChanged, RootSignature* rootSignature);
     private:
-        GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
-            ProgramVars(pReflector, createBuffers, pRootSig) {}
+        GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers) :
+            ProgramVars(pReflector, createBuffers) {}
     };
 
     class ComputeVars : public ProgramVars, public std::enable_shared_from_this<ProgramVars>
@@ -307,10 +312,10 @@ namespace Falcor
             \param[in] createBuffers If true, will create the ConstantBuffer objects. Otherwise, the user will have to bind the CBs himself
             \param[in] pRootSignature A root-signature describing how to bind resources into the shader. If this parameter is nullptr, a root-signature object will be created from the program reflection object
         */
-        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true, const RootSignature::SharedPtr& pRootSig = nullptr);
-        bool apply(ComputeContext* pContext, bool bindRootSig);
+        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true);
+        bool apply(ComputeContext* pContext, bool rootSignatureChanged, RootSignature* rootSignature);
     private:
-        ComputeVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
-            ProgramVars(pReflector, createBuffers, pRootSig) {}
+        ComputeVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers) :
+            ProgramVars(pReflector, createBuffers) {}
     };
 }

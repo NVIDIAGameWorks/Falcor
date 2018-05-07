@@ -40,7 +40,16 @@ namespace Falcor
     */
     class ParameterBlock : public std::enable_shared_from_this<ParameterBlock>
     {
+    private:
+        std::string mTypeName;
+        int mTypeId = 0;
     public:
+        // SLANG-INTEGRATION:
+        // A ParameterBlock should hold a type name of the shader component
+        std::string genericTypeParamName, genericTypeArgumentName;
+        void setTypeName(std::string name);
+        std::string getTypeName() const;
+        int getTypeId() const { return mTypeId; }
         template<typename T>
         class SharedPtrT : public std::shared_ptr<T>
         {
@@ -201,7 +210,6 @@ namespace Falcor
         ParameterBlockReflection::SharedConstPtr getReflection() const { return mpReflector; }
 
         /** Prepare the block for draw. This call updates the descriptor-sets
-            \return Returns true if successful, false otherwise
         */
         bool prepareForDraw(CopyContext* pContext);
        

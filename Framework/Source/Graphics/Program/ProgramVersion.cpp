@@ -26,11 +26,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
+#include "Graphics/Program/Program.h"
 #include "Graphics/Program/ProgramVersion.h"
+#include "ProgramVars.h"
 
 namespace Falcor
 {
-    ProgramVersion::ProgramVersion(const ProgramReflection::SharedPtr& pReflector, const Shader::SharedPtr& pVS, const Shader::SharedPtr& pPS, const Shader::SharedPtr& pGS, const Shader::SharedPtr& pHS, const Shader::SharedPtr& pDS, const Shader::SharedPtr& pCS, const std::string& name) 
+    ProgramKernels::ProgramKernels(const ProgramReflection::SharedPtr& pReflector,  const Shader::SharedPtr& pVS, const Shader::SharedPtr& pPS, const Shader::SharedPtr& pGS, const Shader::SharedPtr& pHS, const Shader::SharedPtr& pDS, const Shader::SharedPtr& pCS, const RootSignature::SharedPtr& pRootSignature, const std::string& name) 
         : mName(name), mpReflector(pReflector)
     {
         mpShaders[(uint32_t)ShaderType::Vertex] = pVS;
@@ -39,15 +41,17 @@ namespace Falcor
         mpShaders[(uint32_t)ShaderType::Domain] = pDS;
         mpShaders[(uint32_t)ShaderType::Hull] = pHS;
         mpShaders[(uint32_t)ShaderType::Compute] = pCS;
+        mpRootSignature = pRootSignature;
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::create(
-        const ProgramReflection::SharedPtr& pReflector,
+    ProgramKernels::SharedPtr ProgramKernels::create(
+        ProgramReflection::SharedPtr const& pReflector,
         const Shader::SharedPtr& pVS,
         const Shader::SharedPtr& pPS,
         const Shader::SharedPtr& pGS,
         const Shader::SharedPtr& pHS,
         const Shader::SharedPtr& pDS,
+        const RootSignature::SharedPtr& pRootSignature,
         std::string& log,
         const std::string& name)
     {
@@ -57,7 +61,7 @@ namespace Falcor
             log = "Program " + name + " doesn't contain a vertex-shader. This is illegal.";
             return nullptr;
         }
-        SharedPtr pProgram = SharedPtr(new ProgramVersion(pReflector, pVS, pPS, pGS, pHS, pDS, nullptr, name));
+        SharedPtr pProgram = SharedPtr(new ProgramKernels(pReflector, pVS, pPS, pGS, pHS, pDS, nullptr, pRootSignature, name));
 
         if(pProgram->init(log) == false)
         {
@@ -67,9 +71,10 @@ namespace Falcor
         return pProgram;
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::create(
+    ProgramKernels::SharedPtr ProgramKernels::create(
         const ProgramReflection::SharedPtr& pReflector,
         const Shader::SharedPtr& pCS,
+        const RootSignature::SharedPtr& pRootSignature,
         std::string& log,
         const std::string& name)
     {
@@ -79,7 +84,7 @@ namespace Falcor
             log = "Program " + name + " doesn't contain a compute-shader. This is illegal.";
             return nullptr;
         }
-        SharedPtr pProgram = SharedPtr(new ProgramVersion(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, pCS, name));
+        SharedPtr pProgram = SharedPtr(new ProgramKernels(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, pCS, pRootSignature, name));
 
         if (pProgram->init(log) == false)
         {
@@ -88,8 +93,83 @@ namespace Falcor
         return pProgram;
     }
 
-    ProgramVersion::~ProgramVersion()
+    ProgramKernels::~ProgramKernels()
     {
         deleteApiHandle();
+    }
+
+    ProgramVersion::SharedPtr ProgramVersion::create(
+        std::shared_ptr<Program>     const& pProgram,
+        DefineList                   const& defines,
+        ProgramReflection::SharedPtr const& pReflector,
+        std::string                  const& name,
+        SlangCompileRequest * compileReq)
+    {
+        return SharedPtr(new ProgramVersion(pProgram, defines, pReflector, name, compileReq));
+    }
+
+    ProgramVersion::ProgramVersion(
+        std::shared_ptr<Program>     const& pProgram,
+        DefineList                   const& defines,
+        ProgramReflection::SharedPtr const& pReflector,
+        std::string                  const& name,
+        SlangCompileRequest*         compileReq)
+        : mpProgram(pProgram)
+        , mDefines(defines)
+        , mpReflector(pReflector)
+        , mName(name)
+        , slangRequest(compileReq)
+    {}
+
+    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const
+    {
+        // TODO: need a caching layer here, which takes into account:
+        //
+        // - The types of any shader components bound to `pVars`
+        // - Any active `#define`s set on `pVars`
+        //
+        // For now we just cache one copy of things, since specialization
+        // based on `ProgramVars` isn't implemented yet.
+        //
+        int programKey = 0;
+        for (uint32_t i = 0; i < pVars->getParameterBlockCount(); i++)
+        {
+            programKey ^= pVars->getParameterBlock(i)->getTypeId();
+            programKey <<= 8;
+        }
+        auto findRs = mpKernels.find(programKey);
+        if( findRs != mpKernels.end() )
+        {
+            return findRs->second;
+        }
+
+        // Loop so that user can trigger recompilation on error
+        for(;;)
+        {
+            std::string log;
+            auto kernels = mpProgram->preprocessAndCreateProgramKernels(this, pVars, log);
+            if( kernels )
+            {
+                // Success.
+                mpKernels[programKey] = kernels;
+                return kernels;
+            }
+            else
+            {
+                // Failure
+                std::string error = std::string("Program Linkage failed.\n\n");
+                error += getName() + "\n";
+                error += log;
+                 
+                if(msgBox(error, MsgBoxType::RetryCancel) == MsgBoxButton::Cancel)
+                {
+                    // User has chosen not to retry
+                    logError(error);
+                    return nullptr;
+                }
+
+                // Continue loop to keep trying...
+            }
+        }
     }
 }
