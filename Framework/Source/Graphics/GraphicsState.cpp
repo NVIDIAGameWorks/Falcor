@@ -74,15 +74,15 @@ namespace Falcor
         {
             mpVao->getVertexLayout()->addVertexAttribDclToProg(mpProgram.get());
         }
-        const ProgramVersion::SharedConstPtr pProgVersion = mpProgram ? mpProgram->getActiveVersion() : nullptr;
-        bool newProgVersion = pProgVersion.get() != mCachedData.pProgramVersion;
+        const ProgramKernels::SharedConstPtr pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(pVars) : nullptr;
+        bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
         if (newProgVersion)
         {
-            mCachedData.pProgramVersion = pProgVersion.get();
-            mpGsoGraph->walk((void*)pProgVersion.get());
+            mCachedData.pProgramKernels = pProgramKernels.get();
+            mpGsoGraph->walk((void*)pProgramKernels.get());
         }
     
-        RootSignature::SharedPtr pRoot = pVars ? pVars->getRootSignature() : RootSignature::getEmpty();
+        RootSignature::SharedPtr pRoot = pProgramKernels ? pProgramKernels->getRootSignature() : RootSignature::getEmpty();
 
         if (mCachedData.pRootSig != pRoot.get())
         {
@@ -100,7 +100,7 @@ namespace Falcor
         GraphicsStateObject::SharedPtr pGso = mpGsoGraph->getCurrentNode();
         if(pGso == nullptr)
         {
-            mDesc.setProgramVersion(pProgVersion);
+            mDesc.setProgramKernels(pProgramKernels);
             mDesc.setFboFormats(mpFbo ? mpFbo->getDesc() : Fbo::Desc());
 #ifdef FALCOR_VK
             mDesc.setRenderPass(mpFbo ? (VkRenderPass)mpFbo->getApiHandle() : VK_NULL_HANDLE);

@@ -67,6 +67,26 @@ namespace Falcor
         return true;
     }
 
+    std::unordered_map<std::string, int> typeNameRegistry;
+
+    void ParameterBlock::setTypeName(std::string name)
+    {
+        mTypeName = name;
+        auto findRs = typeNameRegistry.find(name);
+        if (findRs != typeNameRegistry.end())
+            mTypeId = findRs->second;
+        else
+        {
+            mTypeId = (int)typeNameRegistry.size();
+            typeNameRegistry[name] = mTypeId;
+        }
+    }
+
+    std::string ParameterBlock::getTypeName() const
+    {
+        return mTypeName;
+    }
+
     ParameterBlock::~ParameterBlock() = default;
 
     ParameterBlock::AssignedResource::AssignedResource() : pResource(nullptr), type(DescriptorSet::Type::Count), pCB(nullptr)
@@ -135,8 +155,18 @@ namespace Falcor
         return SharedPtr(new ParameterBlock(pReflection, createBuffers));
     }
 
-    ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers) : mpReflector(pReflection)
+    ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers)
     {
+        mpReflector = pReflection;
+        // when creating parameter blocks, we also store the element type of the parameter block
+        auto paramBlockType = pReflection->getType();
+        if (paramBlockType)
+        {
+            if (auto structType = paramBlockType->asStructType())
+                mTypeName = structType->getName();
+            else if (auto genericType = paramBlockType->asGenericType())
+                mTypeName = genericType->name;
+        }
         // Initialize the resource vectors
         const auto& setLayouts = pReflection->getDescriptorSetLayouts();
         mAssignedResources.resize(setLayouts.size());
@@ -601,7 +631,7 @@ namespace Falcor
                 pContext->resourceBarrier(pStructured->getUAVCounter().get(), Resource::State::UnorderedAccess);
             }
         }
-        
+
         bool insertBarrier = true;
 #ifdef FALCOR_DXR
         insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);

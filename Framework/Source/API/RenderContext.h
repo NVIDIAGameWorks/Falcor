@@ -163,6 +163,8 @@ namespace Falcor
         /** Pops the last graphics state from the stack and sets it
         */
         void popGraphicsState();
+
+        void enableStablePowerState();
         
         /** Submit the command list
         */
@@ -178,6 +180,7 @@ namespace Falcor
         GraphicsVars::SharedPtr mpGraphicsVars;
         GraphicsState::SharedPtr mpGraphicsState;
         bool mBindGraphicsRootSig = true;
+        RootSignature* mLastRootSig = nullptr;
 
         std::stack<GraphicsState::SharedPtr> mPipelineStateStack;
         std::stack<GraphicsVars::SharedPtr> mpGraphicsVarsStack;
@@ -189,7 +192,7 @@ namespace Falcor
         compute context's initDispatchCommandSignature() to create command signature for dispatchIndirect
         */
         static void initDrawCommandSignatures();
-        void applyGraphicsVars();
+        void applyGraphicsVars(RootSignature* rootSignature);
 
         // Internal functions used by the API layers
         void prepareForDraw();

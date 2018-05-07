@@ -62,7 +62,7 @@ namespace Falcor
         if (gBlitData.pVars == nullptr)
         {
             gBlitData.pPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Framework/Shaders/Blit.ps.slang");
-            gBlitData.pVars = GraphicsVars::create(gBlitData.pPass->getProgram()->getReflector());
+            gBlitData.pVars = GraphicsVars::create(gBlitData.pPass->getProgram()->getActiveVersion()->getReflector());
             gBlitData.pState = GraphicsState::create();
 
             gBlitData.pSrcRectBuffer = gBlitData.pVars->getConstantBuffer("SrcRectCB");
@@ -76,7 +76,7 @@ namespace Falcor
             gBlitData.pLinearSampler = Sampler::create(desc);
             desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
             gBlitData.pPointSampler = Sampler::create(desc);
-            const auto& pDefaultBlockReflection = gBlitData.pPass->getProgram()->getReflector()->getDefaultParameterBlock();
+            const auto& pDefaultBlockReflection = gBlitData.pPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock();
             gBlitData.texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
             gBlitData.samplerBindLoc = pDefaultBlockReflection->getResourceBinding("gSampler");
         }
@@ -220,10 +220,18 @@ namespace Falcor
         // Vao must be valid so at least primitive topology is known
         assert(mpGraphicsState->getVao().get());
 
+        auto gso = mpGraphicsState->getGSO(mpGraphicsVars.get());
+        auto rootSignature = gso->getDesc().getProgramKernels()->getRootSignature();
+        mBindGraphicsRootSig = mBindGraphicsRootSig || rootSignature.get() != mLastRootSig;
+        if (mBindGraphicsRootSig)
+        {
+            rootSignature->bindForGraphics(this);
+            mLastRootSig = rootSignature.get();
+        }
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if (mpGraphicsVars)
         {
-            applyGraphicsVars();
+            applyGraphicsVars(rootSignature.get());
         }
         else
         {
@@ -248,7 +256,7 @@ namespace Falcor
         D3D12SetFbo(this, mpGraphicsState->getFbo().get());
         D3D12SetViewports(pList, &mpGraphicsState->getViewport(0));
         D3D12SetScissors(pList, &mpGraphicsState->getScissors(0));
-        pList->SetPipelineState(mpGraphicsState->getGSO(mpGraphicsVars.get())->getApiHandle());
+        pList->SetPipelineState(gso->getApiHandle());
         BlendState::SharedPtr blendState = mpGraphicsState->getBlendState();
         if (blendState != nullptr)
         {

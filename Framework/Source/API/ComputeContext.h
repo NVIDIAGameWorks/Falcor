@@ -98,14 +98,14 @@ namespace Falcor
         /** Executes a dispatch call. Args to the dispatch call are contained in argbuffer 
         */
         void dispatchIndirect(const Buffer* argBuffer, uint64_t argBufferOffset);
-        
+
         /** Submit the command list
         */
         virtual void flush(bool wait = false) override;
     protected:
         ComputeContext();
         void prepareForDispatch();
-        void applyComputeVars();
+        void applyComputeVars(RootSignature* rootSignature);
 
         std::stack<ComputeState::SharedPtr> mpComputeStateStack;
         std::stack<ComputeVars::SharedPtr> mpComputeVarsStack;

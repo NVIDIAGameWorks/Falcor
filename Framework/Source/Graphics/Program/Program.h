@@ -31,14 +31,21 @@
 #include <vector>
 #include "Graphics/Program//ProgramVersion.h"
 
+struct SlangCompileRequest;
+
 namespace Falcor
 {
     class Shader;
     class RenderContext;
     class ShaderLibrary;
 
+    enum class CompilePurpose
+    {
+        ReflectionOnly, CodeGen
+    };
+
     /** High-level abstraction of a program class.
-        This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
+    This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
     */
     class Program : public std::enable_shared_from_this<Program>
     {
@@ -61,7 +68,7 @@ namespace Falcor
             Desc();
 
             /** Begin building a description, based on a single path for source code.
-                This is equivalent to: `Desc().sourceFile(path)`
+            This is equivalent to: `Desc().sourceFile(path)`
             */
             explicit Desc(std::string const& filename);
 
@@ -105,7 +112,7 @@ namespace Falcor
             friend class GraphicsProgram;
 
             Desc& addDefaultVertexShaderIfNeeded();
-            
+
             struct EntryPoint
             {
                 std::string name;
@@ -127,45 +134,45 @@ namespace Falcor
         ProgramVersion::SharedConstPtr getActiveVersion() const;
 
         /** Adds a macro definition to the program. If the macro already exists, it will be replaced.
-            \param[in] name The name of define.
-            \param[in] value Optional. The value of the define string.
-            \return True if any macro definitions were modified.
+        \param[in] name The name of define.
+        \param[in] value Optional. The value of the define string.
+        \return True if any macro definitions were modified.
         */
         bool addDefine(const std::string& name, const std::string& value = "");
 
         /** Add a list of macro definitions to the program. If a macro already exists, it will be replaced.
-            \param[in] dl List of macro definitions to add.
-            \return True if any macro definitions were modified.
+        \param[in] dl List of macro definitions to add.
+        \return True if any macro definitions were modified.
         */
         bool addDefines(const DefineList& dl);
 
         /** Remove a macro definition from the program. If the definition doesn't exist, the function call will be silently ignored.
-            \param[in] name The name of define.
-            \return True if any macro definitions were modified.
+        \param[in] name The name of define.
+        \return True if any macro definitions were modified.
         */
         bool removeDefine(const std::string& name);
 
         /** Removes a list of macro definitions from the program. If a macro doesn't exist, it is silently ignored.
-            \param[in] dl List of macro definitions to remove.
-            \return True if any macro definitions were modified.
+        \param[in] dl List of macro definitions to remove.
+        \return True if any macro definitions were modified.
         */
         bool removeDefines(const DefineList& dl);
 
         /** Removes all macro definitions that matches string comparison from the program.
-            \param[in] pos Position of the first character in macro name. If this is greater than the string length, the macro will be silently kept.
-            \param[in] len Length of compared macro name (if the string is shorter, as many characters as possible). A value of string::npos indicates all characters.
-            \param[in] str The comparing string that is matched against macro names.
-            \return True if any macro definitions were modified.
+        \param[in] pos Position of the first character in macro name. If this is greater than the string length, the macro will be silently kept.
+        \param[in] len Length of compared macro name (if the string is shorter, as many characters as possible). A value of string::npos indicates all characters.
+        \param[in] str The comparing string that is matched against macro names.
+        \return True if any macro definitions were modified.
         */
         bool removeDefines(size_t pos, size_t len, const std::string& str);
 
         /** Clear the macro definition list
-            \return True if any macro definitions were modified.
+        \return True if any macro definitions were modified.
         */
         bool clearDefines();
-    
+
         /** Update define list
-            \return True if any macro definitions were modified.
+        \return True if any macro definitions were modified.
         */
         bool replaceAllDefines(const DefineList& dl);
 
@@ -182,6 +189,8 @@ namespace Falcor
         const ProgramReflection::SharedConstPtr getGlobalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pGlobalReflector; }
 
     protected:
+        friend class ProgramVersion;
+
         Program();
 
         void init(Desc const& desc, DefineList const& programDefines);
@@ -196,14 +205,20 @@ namespace Falcor
 
         struct VersionData
         {
-            ProgramVersion::SharedConstPtr pVersion;
+            ProgramVersion::SharedPtr pVersion;
             ProgramReflectors reflectors;
         };
 
         bool link() const;
+        SlangCompileRequest* createSlangCompileRequest(DefineList const& defines, CompilePurpose purpose, const std::vector<std::string> & typeArgs) const;
+        int Program::doSlangCompilation(SlangCompileRequest* slangRequest, std::string& log) const;
         VersionData preprocessAndCreateProgramVersion(std::string& log) const;
-        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const;
-
+        ProgramKernels::SharedPtr preprocessAndCreateProgramKernels(
+            ProgramVersion const* pVersion,
+            ProgramVars    const* pVars,
+            std::string         & log) const;
+        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr pReflector) const;
+        
         // The description used to create this program
         Desc mDesc;
 
