@@ -442,7 +442,8 @@ namespace Falcor
 
     ReflectionType::SharedPtr reflectStructType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath)
     {
-        ReflectionStructType::SharedPtr pType = ReflectionStructType::create(getUniformOffset(pPath), pSlangType->getSize(), "");
+        auto name = pSlangType->getName();
+        ReflectionStructType::SharedPtr pType = ReflectionStructType::create(getUniformOffset(pPath), pSlangType->getSize(), name?name:"");
         for (uint32_t i = 0; i < pSlangType->getFieldCount(); i++)
         {
             ReflectionPath fieldPath;
@@ -471,11 +472,22 @@ namespace Falcor
         return pArrayType;
     }
 
+    ReflectionType::SharedPtr reflectGenericTypeParameterType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath)
+    {
+        ReflectionGenericType::SharedPtr result = ReflectionGenericType::create(pSlangType->getName());
+        return result;
+    }
+
     ReflectionType::SharedPtr reflectBasicType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath)
     {
         ReflectionBasicType::Type type = getVariableType(pSlangType->getScalarType(), pSlangType->getRowCount(), pSlangType->getColumnCount());
         ReflectionType::SharedPtr pType = ReflectionBasicType::create(getUniformOffset(pPath), type, false, pSlangType->getSize());
         return pType;
+    }
+
+    ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType)
+    {
+        return reflectType(pSlangType, nullptr);
     }
 
     ReflectionType::SharedPtr reflectType(TypeLayoutReflection* pSlangType, const ReflectionPath* pPath)
@@ -494,6 +506,8 @@ namespace Falcor
             return reflectStructType(pSlangType, pPath);
         case TypeReflection::Kind::Array:
             return reflectArrayType(pSlangType, pPath);
+        case TypeReflection::Kind::GenericTypeParameter:
+            return reflectGenericTypeParameterType(pSlangType, pPath);
         default:
             return reflectBasicType(pSlangType, pPath);
         }
@@ -738,6 +752,14 @@ namespace Falcor
         if (!pSlangReflector) return;
 
         ParameterBlockReflection::SharedPtr pDefaultBlock = ParameterBlockReflection::create("");
+
+        // retrieve generic type argument index 
+        for (uint32_t i = 0; i < pSlangReflector->getTypeParameterCount(); i++)
+        {
+            auto typeParam = pSlangReflector->getTypeParameterByIndex(i);
+            this->typeParameterIndexMap[typeParam->getName()] = typeParam->getIndex();
+        }
+
         for (uint32_t i = 0; i < pSlangReflector->getParameterCount(); i++)
         {
             VariableLayoutReflection* pSlangLayout = pSlangReflector->getParameterByIndex(i);
@@ -756,6 +778,8 @@ namespace Falcor
                 ParameterBlockReflection::SharedPtr pBlock = ParameterBlockReflection::create(name);
                 pBlock->addResource(pVar);
                 pBlock->finalize();
+                auto paramBlockType = pVar->getType()->asResourceType();
+                pBlock->mType = paramBlockType->getStructType();
                 addParameterBlock(pBlock);
             }
             else
@@ -836,6 +860,14 @@ namespace Falcor
     ParameterBlockReflection::SharedPtr ParameterBlockReflection::create(const std::string& name)
     {
         return SharedPtr(new ParameterBlockReflection(name));
+    }
+
+    ParameterBlockReflection::SharedPtr ParameterBlockReflection::create(const std::string& name, ReflectionType::SharedPtr const& elementType)
+    {
+        auto pBlockReflector = ParameterBlockReflection::create(name);
+        pBlockReflector->setElementType(elementType);
+        pBlockReflector->finalize();
+        return pBlockReflector;
     }
 
     ParameterBlockReflection::ParameterBlockReflection(const std::string& name) : mName(name)
@@ -976,6 +1008,7 @@ namespace Falcor
 
         // If this is a constant-buffer, it might contain resources. Extract them.
         const ReflectionType* pType = pResourceType->getStructType().get();
+        this->mType = pResourceType->getStructType();
         const ReflectionStructType* pStruct = (pType != nullptr) ? pType->asStructType() : nullptr;
         if (pStruct)
         {
@@ -988,6 +1021,26 @@ namespace Falcor
             }
             flattenResources(pStruct, mResources);
         }
+    }
+
+    void ParameterBlockReflection::setElementType(const ReflectionType::SharedConstPtr & pType)
+    {
+        mType = pType;
+
+        auto resType = ReflectionResourceType::create(ReflectionResourceType::Type::ConstantBuffer,
+            ReflectionResourceType::Dimensions::Buffer,
+            ReflectionResourceType::StructuredType::Default,
+            ReflectionResourceType::ReturnType::Unknown,
+            ReflectionResourceType::ShaderAccess::Read);
+        resType->setStructType(pType);
+
+        // Note: `ParameterBlock::getDefaultConstantBuffer` determines if something
+        // is the default constant buffer based on whether its name matches the name
+        // of the reflector used to create it. We thus insert a dummy constant buffer
+        // variable into our parameter block that has the same name as the reflector.
+        //
+        auto pVar = ReflectionVar::create(mName, resType, 0, 0, 0);
+        addResource(pVar);
     }
 
     void ParameterBlockReflection::finalize()
@@ -1241,6 +1294,11 @@ namespace Falcor
         return dynamic_cast<const ReflectionArrayType*>(this);
     }
 
+    const ReflectionGenericType * ReflectionType::asGenericType() const
+    {
+        return dynamic_cast<const ReflectionGenericType*>(this);
+    }
+
     const ReflectionType* ReflectionType::unwrapArray() const
     {
         const ReflectionType* pType = this;
@@ -1288,6 +1346,12 @@ namespace Falcor
                 extractOffsets(pType, offset + i * pArrayType->getArrayStride(), count, offsetMap);
                 --count;
             }
+            return;
+        }
+
+        const ReflectionGenericType* pGenericType = pType->asGenericType();
+        if (pGenericType)
+        {
             return;
         }
 
@@ -1355,6 +1419,18 @@ namespace Falcor
         const ReflectionArrayType* pOther = other.asArrayType();
         if (!pOther) return false;
         return (*this == *pOther);
+    }
+    
+    ReflectionGenericType::SharedPtr ReflectionGenericType::create(std::string inName)
+    {
+        return SharedPtr(new ReflectionGenericType(inName));
+    }
+
+    bool ReflectionGenericType::operator==(const ReflectionType& other) const
+    {
+        const ReflectionGenericType* pOther = other.asGenericType();
+        if (!pOther) return false;
+        return (name == pOther->name);
     }
 
     bool ReflectionResourceType::operator==(const ReflectionType& other) const
@@ -1450,6 +1526,14 @@ namespace Falcor
     const ProgramReflection::ShaderVariable* ProgramReflection::getPixelShaderOutput(const std::string& name) const
     {
         return getShaderAttribute(name, mPsOut, "getPixelShaderOutput()");
+    }
+
+    uint32_t ProgramReflection::getTypeParameterIndexByName(const std::string & name) const
+    {
+        auto iter = typeParameterIndexMap.find(name);
+        if (iter != typeParameterIndexMap.end())
+            return iter->second;
+        return (uint32_t)-1;
     }
 
     const ReflectionResourceType::OffsetDesc& ReflectionResourceType::getOffsetDesc(size_t offset) const

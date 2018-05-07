@@ -53,7 +53,7 @@ namespace Falcor
         VkRenderPassCreateInfo info;
     };
 
-    void initVkShaderStageInfo(const ProgramVersion* pProgram, std::vector<VkPipelineShaderStageCreateInfo>& infosOut);
+    void initVkShaderStageInfo(const ProgramKernels* pProgram, std::vector<VkPipelineShaderStageCreateInfo>& infosOut);
     void initVkBlendInfo(const Fbo::Desc& fboDesc, const BlendState* pState, ColorBlendStateCreateInfo& infoOut);
     void initVkRasterizerInfo(const RasterizerState* pState, VkPipelineRasterizationStateCreateInfo& infoOut);
     void initVkDepthStencilInfo(const DepthStencilState* pState, VkPipelineDepthStencilStateCreateInfo& infoOut);

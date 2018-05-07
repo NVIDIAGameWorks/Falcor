@@ -28,6 +28,8 @@
 #include "Framework.h"
 #include "RtState.h"
 
+#include "RtProgramVars.h"
+
 namespace Falcor
 {
     RtState::SharedPtr RtState::create()
@@ -42,47 +44,108 @@ namespace Falcor
 
     RtState::~RtState() = default;
 
-    RtStateObject::ProgramList RtState::createProgramList() const
+    static RtProgramKernels::SharedConstPtr castToRtKernels(ProgramKernels::SharedConstPtr const& pKernels)
     {
-        RtStateObject::ProgramList programs;
-        assert(mpProgram->getRayGenProgram());
-        programs.push_back(mpProgram->getRayGenProgram()->getActiveVersion());
-
-        for (uint32_t i = 0; i < mpProgram->getHitProgramCount(); i++)
-        {
-            if(mpProgram->getHitProgram(i))
-            {
-                programs.push_back(mpProgram->getHitProgram(i)->getActiveVersion());
-            }
-        }
-
-        for (uint32_t i = 0; i < mpProgram->getMissProgramCount(); i++)
-        {
-            if(mpProgram->getMissProgram(i))
-            {
-                programs.push_back(mpProgram->getMissProgram(i)->getActiveVersion());
-            }
-        }
-
-        return programs;
+        auto pRtKernels = dynamic_cast<const RtProgramKernels*>(pKernels.get());
+        assert(pRtKernels);
+        return RtProgramKernels::SharedConstPtr(pKernels, pRtKernels);
     }
 
-    RtStateObject::SharedPtr RtState::getRtso()
+    RtPipelineKernels::SharedPtr RtPipelineVersion::getKernels(RtProgramVars* pVars) const
     {
-        RtStateObject::ProgramList programs = createProgramList();
-        // Walk
-        for (const auto& p : programs)
+        assert(mpRayGenProgram);
+        auto pRayGenKernels = castToRtKernels(mpRayGenProgram->getKernels(pVars->getRayGenVars().get()));
+
+        std::vector<RtProgramKernels::SharedConstPtr> hitKernels;
+        auto hitProgramCount = mHitPrograms.size();
+        for (uint32_t i = 0; i < hitProgramCount; i++)
         {
-            mpRtsoGraph->walk((void*)p.get());
+            if(auto pHitProgram = mHitPrograms[i])
+            {
+                hitKernels.push_back(castToRtKernels(pHitProgram->getKernels(pVars->getHitVars(i)[0].get())));
+            }
         }
+
+        std::vector<RtProgramKernels::SharedConstPtr> missKernels;
+        auto missProgramCount = mMissPrograms.size();
+        for (uint32_t i = 0; i < missProgramCount; i++)
+        {
+            if(auto pMissProgram = mMissPrograms[i])
+            {
+                missKernels.push_back(castToRtKernels(pMissProgram->getKernels(pVars->getMissVars(i).get())));
+            }
+        }
+
+        mpKernelGraph->walk((void*)pRayGenKernels.get());
+        for( auto pHitKernels : hitKernels )
+        {
+            mpKernelGraph->walk((void*)pHitKernels.get());
+        }
+        for( auto pMissKernels : missKernels )
+        {
+            mpKernelGraph->walk((void*)pMissKernels.get());
+        }
+
+        RtPipelineKernels::SharedPtr pKernels = mpKernelGraph->getCurrentNode();
+        if(pKernels)
+            return pKernels;
+
+        KernelGraph::CompareFunc cmpFunc = [&](RtPipelineKernels::SharedPtr pKernels) -> bool
+        {
+            if(!pKernels) return false;
+
+            //
+            if(pRayGenKernels != pKernels->getRayGenProgram()) return false;
+
+            auto hitProgramCount = hitKernels.size();
+            if(hitProgramCount != pKernels->getHitProgramCount()) return false;
+
+            auto missProgramCount = missKernels.size();
+            if(missProgramCount != pKernels->getMissProgramCount()) return false;
+
+            for( size_t i = 0; i < hitProgramCount; ++i )
+            {
+                if(hitKernels[i] != pKernels->getHitProgram(i)) return false;
+            }
+            for( size_t i = 0; i < missProgramCount; ++i )
+            {
+                if(missKernels[i] != pKernels->getMissProgram(i)) return false;
+            }
+
+            return true;
+        };
+
+        if( mpKernelGraph->scanForMatchingNode(cmpFunc) )
+        {
+            pKernels = mpKernelGraph->getCurrentNode();
+        }
+        else
+        {
+            pKernels = RtPipelineKernels::create(
+                mpGlobalKernels,
+                pRayGenKernels,
+                hitKernels,
+                missKernels);
+            mpKernelGraph->setCurrentNodeData(pKernels);
+        }
+
+        return pKernels;
+    }
+
+    RtStateObject::SharedPtr RtState::getRtso(RtProgramVars* pVars)
+    {
+        auto pKernels = mpProgram->getKernels(pVars);
+
+        // Walk
+        mpRtsoGraph->walk((void*)pKernels.get());
 
         RtStateObject::SharedPtr pRtso = mpRtsoGraph->getCurrentNode();
 
         if (pRtso == nullptr)
         {
             RtStateObject::Desc desc;
-            desc.setProgramList(programs).setMaxTraceRecursionDepth(mMaxTraceRecursionDepth);
-            desc.setGlobalRootSignature(mpProgram->getGlobalRootSignature());
+            desc.setKernels(pKernels).setMaxTraceRecursionDepth(mMaxTraceRecursionDepth);
+            desc.setGlobalRootSignature(pKernels->getGlobalRootSignature());
 
             StateGraph::CompareFunc cmpFunc = [&desc](RtStateObject::SharedPtr pRtso) -> bool
             {

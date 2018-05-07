@@ -41,22 +41,24 @@ namespace Falcor
         static SharedPtr create();
         ~RtState();
 
-        void setProgram(RtProgram::SharedPtr pProg) { mpProgram = pProg; }
-        RtProgram::SharedPtr getProgram() const { return mpProgram; }
+        void setProgram(RtPipelineVersion::SharedConstPtr pProg) { mpProgram = pProg; }
+        RtPipelineVersion::SharedConstPtr getProgram() const { return mpProgram; }
+
+        void setProgram(RtProgram::SharedPtr pProg) { setProgram(pProg->getActiveVersion()); }
 
         void setMaxTraceRecursionDepth(uint32_t maxDepth);
         uint32_t getMaxTraceRecursionDepth() const { return mMaxTraceRecursionDepth; }
 
         void setProgramStackSize(uint32_t stackSize);
 
-        RtStateObject::SharedPtr getRtso();
+        RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
     private:
         RtState();
-        RtProgram::SharedPtr mpProgram;
+        RtPipelineVersion::SharedConstPtr mpProgram;
         uint32_t mMaxTraceRecursionDepth = 1;
         using StateGraph = Graph<RtStateObject::SharedPtr, void*>;
         StateGraph::SharedPtr mpRtsoGraph;
 
-        RtStateObject::ProgramList createProgramList() const;
+//        RtStateObject::ProgramList createProgramList(RtProgramVars* pVars) const;
     };
 }

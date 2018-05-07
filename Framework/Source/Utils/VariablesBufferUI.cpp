@@ -284,9 +284,6 @@ namespace Falcor
             // begin recursion on first struct
             renderUIInternal(pGui, pStruct, "", 0, mVariablesBufferRef.mDirty);
 
-            // dirty flag for uploading will be set by GUI
-            mVariablesBufferRef.uploadToGPU();
-
             if(uiGroup != nullptr) pGui->endGroup();
         }
     }

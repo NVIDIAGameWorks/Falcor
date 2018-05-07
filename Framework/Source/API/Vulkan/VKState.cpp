@@ -59,7 +59,7 @@ namespace Falcor
         }
     }
 
-    void initVkShaderStageInfo(const ProgramVersion* pProgram, std::vector<VkPipelineShaderStageCreateInfo>& infosOut)
+    void initVkShaderStageInfo(const ProgramKernels* pProgram, std::vector<VkPipelineShaderStageCreateInfo>& infosOut)
     {
         infosOut.clear();
 

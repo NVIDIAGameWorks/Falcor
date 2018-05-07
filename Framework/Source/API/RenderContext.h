@@ -201,7 +201,7 @@ namespace Falcor
 #ifdef FALCOR_DXR
         /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same
         */
-        void raytrace(std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height);
+        void raytrace(std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtStateObject> pRtso, uint32_t width, uint32_t height);
 #endif
 
     private:
@@ -209,6 +209,7 @@ namespace Falcor
         GraphicsVars::SharedPtr mpGraphicsVars;
         GraphicsState::SharedPtr mpGraphicsState;
         bool mBindGraphicsRootSig = true;
+        RootSignature::SharedPtr mpGraphicsRootSignature;
 
         std::stack<GraphicsState::SharedPtr> mPipelineStateStack;
         std::stack<GraphicsVars::SharedPtr> mpGraphicsVarsStack;
@@ -220,7 +221,7 @@ namespace Falcor
         compute context's initDispatchCommandSignature() to create command signature for dispatchIndirect
         */
         static void initDrawCommandSignatures();
-        void applyGraphicsVars();
+        void applyGraphicsVars(const ProgramKernels* pKernels);
 
         // Internal functions used by the API layers
         void prepareForDraw();

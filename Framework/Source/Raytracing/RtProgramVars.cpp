@@ -64,21 +64,25 @@ namespace Falcor
     }
 
     template<typename ProgType>
-    void getSigSizeAndCreateVars(ProgType pProg, uint32_t& maxRootSigSize, GraphicsVars::SharedPtr pVars[], uint32_t varCount)
+    void createVars(ProgType pProg, GraphicsVars::SharedPtr pVars[], uint32_t varCount)
     {
-        RtProgramVersion::SharedConstPtr pVersion = pProg->getActiveVersion();
-        maxRootSigSize = max(pVersion->getLocalRootSignature()->getSizeInBytes(), maxRootSigSize);
+        ProgramVersion::SharedConstPtr pVersion = pProg->getActiveVersion();
         for(uint32_t i = 0 ; i < varCount ; i++)
         {
-            pVars[i] = GraphicsVars::create(pProg->getLocalReflector(), true, pVersion->getLocalRootSignature());
+            pVars[i] = GraphicsVars::create(pVersion->getLocalReflector(), true);
         }
+    }
+
+    template<typename ProgType>
+    void getSigSize(ProgType pProg, uint32_t& maxRootSigSize)
+    {
+        maxRootSigSize = max(pProg->getLocalRootSignature()->getSizeInBytes(), maxRootSigSize);
     }
 
     bool RtProgramVars::init()
     {
         // Find the max root-signature size and create the programVars
-        uint32_t maxRootSigSize = 0;
-        getSigSizeAndCreateVars(mpProgram->getRayGenProgram(), maxRootSigSize, &mRayGenVars, 1);
+        createVars(mpProgram->getRayGenProgram(), &mRayGenVars, 1);
 
         mHitProgCount = mpProgram->getHitProgramCount();
         mMissProgCount = mpProgram->getMissProgramCount();
@@ -86,13 +90,14 @@ namespace Falcor
         mMissVars.resize(mMissProgCount);
         mHitVars.resize(mHitProgCount);
         uint32_t recordCountPerHit = mpScene->getGeometryCount(mHitProgCount);
+        mRecordCountPerHit = recordCountPerHit;
 
         for (uint32_t i = 0 ; i < mHitProgCount; i++)
         {
             if(mpProgram->getHitProgram(i))
             {
                 mHitVars[i].resize(recordCountPerHit);
-                getSigSizeAndCreateVars(mpProgram->getHitProgram(i), maxRootSigSize, mHitVars[i].data(), recordCountPerHit);
+                createVars(mpProgram->getHitProgram(i), mHitVars[i].data(), recordCountPerHit);
             }
         }
 
@@ -100,7 +105,7 @@ namespace Falcor
         {
             if(mpProgram->getMissProgram(i))
             {
-                getSigSizeAndCreateVars(mpProgram->getMissProgram(i), maxRootSigSize, &mMissVars[i], 1);
+                createVars(mpProgram->getMissProgram(i), &mMissVars[i], 1);
             }
         }
 
@@ -114,17 +119,17 @@ namespace Falcor
         uint32_t numEntries = mMissProgCount + hitEntries + 1; // 1 is for the ray-gen
 
         // Calculate the record size
-        mRecordSize = mProgramIdentifierSize + maxRootSigSize;
-        mRecordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, mRecordSize);
-        assert(mRecordSize != 0);
+//        mRecordSize = mProgramIdentifierSize + maxRootSigSize;
+//        mRecordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, mRecordSize);
+//        assert(mRecordSize != 0);
 
         // Create the buffer and allocate the temporary storage
-        mpShaderTable = Buffer::create(numEntries * mRecordSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
-        assert(mpShaderTable);
-        mShaderTableData.resize(mpShaderTable->getSize());
+//        mpShaderTable = Buffer::create(numEntries * mRecordSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
+//        assert(mpShaderTable);
+//        mShaderTableData.resize(mpShaderTable->getSize());
 
         // Create the global variables
-        mpGlobalVars = GraphicsVars::create(mpProgram->getGlobalReflector(), true, mpProgram->getGlobalRootSignature());
+        mpGlobalVars = GraphicsVars::create(mpProgram->getGlobalReflector(), true);
 
         return true;
     }
@@ -143,42 +148,60 @@ namespace Falcor
     // The size of each record is mRecordSize
     // 
     // If this layout changes, we also need to change the constants kRayGenRecordIndex and kFirstMissRecordIndex
-
-    uint8_t* RtProgramVars::getRayGenRecordPtr()
-    {
-        return mShaderTableData.data() + (kRayGenRecordIndex * mRecordSize);
-    }
-
-    uint8_t* RtProgramVars::getMissRecordPtr(uint32_t missId)
-    {
-        assert(missId < mMissProgCount);
-        uint32_t offset = mRecordSize * (kFirstMissRecordIndex + missId);
-        return mShaderTableData.data() + offset;
-    }
-
-    uint8_t* RtProgramVars::getHitRecordPtr(uint32_t hitId, uint32_t meshId)
-    {   
-        assert(hitId < mHitProgCount);
-        uint32_t meshIndex = mFirstHitVarEntry + mHitProgCount * meshId;    // base record of the requested mesh
-        uint32_t recordIndex = meshIndex + hitId;
-        return mShaderTableData.data() + (recordIndex * mRecordSize);
-    }
-
-    bool applyRtProgramVars(uint8_t* pRecord, const RtProgramVersion* pProgVersion, const RtStateObject* pRtso, uint32_t progIdSize, ProgramVars* pVars, RtVarsContext* pContext)
+    
+    bool applyRtProgramVars(uint8_t* pRecord, const RtProgramKernels* pKernels, const RtStateObject* pRtso, uint32_t progIdSize, ProgramVars* pVars, RtVarsContext* pContext)
     {
         MAKE_SMART_COM_PTR(ID3D12StateObjectPropertiesPrototype);
         ID3D12StateObjectPropertiesPrototypePtr pRtsoPtr = pRtso->getApiHandle();
-        memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pProgVersion->getExportName().c_str()), progIdSize);
+        memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pKernels->getExportName().c_str()), progIdSize);
         pRecord += progIdSize;
-        pContext->getRtVarsCmdList()->setRootParams(pProgVersion->getLocalRootSignature(), pRecord);
-        return pVars->applyProgramVarsCommon<true>(pContext, true);
+        pContext->getRtVarsCmdList()->setRootParams(pKernels->getLocalRootSignature(), pRecord);
+        return pVars->applyProgramVarsCommon<true>(pContext, true, pKernels);
     }
 
     bool RtProgramVars::apply(RenderContext* pCtx, RtStateObject* pRtso)
     {
+        auto pPipelineKernels = pRtso->getKernels().get();
+
+        auto recordSize = pPipelineKernels->getRecordSize();
+
+        // Get the program identifier size
+        ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
+        mProgramIdentifierSize = pRtDevice->GetShaderIdentifierSize();
+
+        // Create the shader-table buffer
+        uint32_t hitEntries = mRecordCountPerHit * mHitProgCount;
+        uint32_t numEntries = mMissProgCount + hitEntries + 1; // 1 is for the ray-gen
+
+        auto shaderTableSize = numEntries * recordSize;
+        if(shaderTableSize != mShaderTableData.size() )
+        {
+            // Create the buffer and allocate the temporary storage
+            mpShaderTable = Buffer::create(shaderTableSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
+            assert(mpShaderTable);
+            mShaderTableData.resize(shaderTableSize);
+        }
+
+        uint8_t* pRayGenRecord = mShaderTableData.data() + (kRayGenRecordIndex * recordSize);
+
+        auto getMissRecordPtr = [&](uint32_t missId)
+        {
+            assert(missId < mMissProgCount);
+            uint32_t offset = recordSize * (kFirstMissRecordIndex + missId);
+            return mShaderTableData.data() + offset;
+        };
+
+        auto getHitRecordPtr = [&](uint32_t hitId, uint32_t meshId)
+        {   
+            assert(hitId < mHitProgCount);
+            uint32_t meshIndex = mFirstHitVarEntry + mHitProgCount * meshId;    // base record of the requested mesh
+            uint32_t recordIndex = meshIndex + hitId;
+            return mShaderTableData.data() + (recordIndex * recordSize);
+        };
+
+
         // We always have a ray-gen program, apply it first
-        uint8_t* pRayGenRecord = getRayGenRecordPtr();
-        applyRtProgramVars(pRayGenRecord, mpProgram->getRayGenProgram()->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getRayGenVars().get(), mpRtVarsHelper.get());
+        applyRtProgramVars(pRayGenRecord, pPipelineKernels->getRayGenProgram().get(), pRtso, mProgramIdentifierSize, getRayGenVars().get(), mpRtVarsHelper.get());
 
         // Loop over the rays
         uint32_t hitCount = mpProgram->getHitProgramCount();
@@ -189,7 +212,7 @@ namespace Falcor
                 for (uint32_t i = 0; i < mpScene->getGeometryCount(hitCount); i++)
                 {
                     uint8_t* pHitRecord = getHitRecordPtr(h, i);
-                    if (!applyRtProgramVars(pHitRecord, mpProgram->getHitProgram(h)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getHitVars(h)[i].get(), mpRtVarsHelper.get()))
+                    if (!applyRtProgramVars(pHitRecord, pPipelineKernels->getHitProgram(h).get(), pRtso, mProgramIdentifierSize, getHitVars(h)[i].get(), mpRtVarsHelper.get()))
                     {
                         return false;
                     }
@@ -202,14 +225,16 @@ namespace Falcor
             if(mpProgram->getMissProgram(m))
             {
                 uint8_t* pMissRecord = getMissRecordPtr(m);
-                if (!applyRtProgramVars(pMissRecord, mpProgram->getMissProgram(m)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getMissVars(m).get(), mpRtVarsHelper.get()))
+                if (!applyRtProgramVars(pMissRecord, pPipelineKernels->getMissProgram(m).get(), pRtso, mProgramIdentifierSize, getMissVars(m).get(), mpRtVarsHelper.get()))
                 {
                     return false;
                 }
             }
         }
 
-        mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true);
+        // TODO: need a version of the pipeline info to pass in...
+
+        mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true, pPipelineKernels->getGlobalProgram().get());
 
         pCtx->updateBuffer(mpShaderTable.get(), mShaderTableData.data());
         return true;

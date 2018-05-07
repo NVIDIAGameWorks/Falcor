@@ -55,7 +55,6 @@ namespace Falcor
         bool apply(RenderContext* pCtx, RtStateObject* pRtso);
 
         Buffer::SharedPtr getShaderTable() const { return mpShaderTable; }
-        uint32_t getRecordSize() const { return mRecordSize; }
         uint32_t getRayGenRecordIndex() const { return kRayGenRecordIndex; }
         uint32_t getFirstMissRecordIndex() const { return kFirstMissRecordIndex; }
         uint32_t getFirstHitRecordIndex() const { return mFirstHitVarEntry; }
@@ -73,13 +72,8 @@ namespace Falcor
         RtProgramVars(RtProgram::SharedPtr pProgram, RtScene::SharedPtr pScene);
         RtProgram::SharedPtr mpProgram;
         RtScene::SharedPtr mpScene;
-        uint32_t mRecordSize;
         uint32_t mProgramIdentifierSize;
         Buffer::SharedPtr mpShaderTable;
-
-        uint8_t* getRayGenRecordPtr();
-        uint8_t* getMissRecordPtr(uint32_t missId);
-        uint8_t* getHitRecordPtr(uint32_t hitId, uint32_t meshId);
 
         bool init();
 
@@ -89,5 +83,8 @@ namespace Falcor
         std::vector<uint8_t> mShaderTableData;
         VarsVector mMissVars;
         RtVarsContext::SharedPtr mpRtVarsHelper;
+
+//        uint32_t mRecordSize;
+        uint32_t mRecordCountPerHit;
     };
 }

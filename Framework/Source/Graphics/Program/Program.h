@@ -29,7 +29,9 @@
 #include <string>
 #include <map>
 #include <vector>
-#include "Graphics/Program//ProgramVersion.h"
+#include "Graphics/Program/ProgramVersion.h"
+
+struct SlangCompileRequest;
 
 namespace Falcor
 {
@@ -37,8 +39,16 @@ namespace Falcor
     class RenderContext;
     class ShaderLibrary;
 
+    /** Reason why a shader is being compiled.
+    */
+    enum class CompilePurpose
+    {
+        ReflectionOnly, ///< Compiling just to get reflection information.
+        CodeGen         ///< Compiling to generate executable code.
+    };
+
     /** High-level abstraction of a program class.
-        This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
+    This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
     */
     class Program : public std::enable_shared_from_this<Program>
     {
@@ -214,33 +224,46 @@ namespace Falcor
         */
         static void reloadAllPrograms();
 
-        const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pReflector; }
-        const ProgramReflection::SharedConstPtr getLocalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pLocalReflector; }
-        const ProgramReflection::SharedConstPtr getGlobalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pGlobalReflector; }
+        const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mActiveProgram->getReflector(); }
+        const ProgramReflection::SharedConstPtr getLocalReflector() const { getActiveVersion(); return mActiveProgram->getLocalReflector(); }
+        const ProgramReflection::SharedConstPtr getGlobalReflector() const { getActiveVersion(); return mActiveProgram->getGlobalReflector(); }
+
+        /** Get a reflector suitable for creating a parmaeter block the type with the given `name`.
+        */
+        ParameterBlockReflection::SharedConstPtr getParameterBlockReflectorForType(std::string const& name) const
+        {
+            return getActiveVersion()->getParameterBlockReflectorForType(name);
+        }
 
     protected:
+        friend class ProgramVersion;
+
         Program();
 
         void init(Desc const& desc, DefineList const& programDefines);
 
-        struct ProgramReflectors
-        {
-            // Reflector for a particular version
-            ProgramReflection::SharedPtr pReflector;
-            ProgramReflection::SharedPtr pLocalReflector;
-            ProgramReflection::SharedPtr pGlobalReflector;
-        };
-
+        /*
         struct VersionData
         {
-            ProgramVersion::SharedConstPtr pVersion;
+            ProgramVersion::SharedPtr pVersion;
             ProgramReflectors reflectors;
         };
+        */
 
         bool link() const;
-        VersionData preprocessAndCreateProgramVersion(std::string& log) const;
-        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const;
-
+        SlangCompileRequest* createSlangCompileRequest(
+            DefineList const&               defines,
+            CompilePurpose                  purpose,
+            const std::vector<std::string>& typeArgs,
+            int*                            outSlangTarget = nullptr) const;
+        int Program::doSlangCompilation(SlangCompileRequest* slangRequest, std::string& log) const;
+        ProgramVersion::SharedPtr preprocessAndCreateProgramVersion(std::string& log) const;
+        ProgramKernels::SharedPtr preprocessAndCreateProgramKernels(
+            ProgramVersion const* pVersion,
+            ProgramVars    const* pVars,
+            std::string         & log) const;
+        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const;
+        
         // The description used to create this program
         Desc mDesc;
 
@@ -248,8 +271,8 @@ namespace Falcor
 
         // We are doing lazy compilation, so these are mutable
         mutable bool mLinkRequired = true;
-        mutable std::map<const DefineList, VersionData> mProgramVersions;
-        mutable VersionData mActiveProgram;
+        mutable std::map<const DefineList, ProgramVersion::SharedPtr> mProgramVersions;
+        mutable ProgramVersion::SharedPtr mActiveProgram;
 
         std::string getProgramDescString() const;
         static std::vector<Program*> sPrograms;

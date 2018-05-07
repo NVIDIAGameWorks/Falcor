@@ -132,28 +132,62 @@ namespace Falcor
         return pProg;
     }
 
-    void RtProgram::updateReflection() const
+    bool RtProgram::link() const
     {
-        if (mReflectionDirty)
+        // Create the global reflector and root-signature
+        auto pGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
+        pGlobalReflector->merge(mpRayGenProgram->getGlobalReflector().get());
+
+        for (const auto& h : mHitProgs)
         {
-            // Create the global reflector and root-signature
-            mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
-            mpGlobalReflector->merge(mpRayGenProgram->getGlobalReflector().get());
-
-            for (const auto m : mMissProgs)
-            {
-                if (m) mpGlobalReflector->merge(m->getGlobalReflector().get());
-            }
-
-            for (const auto& h : mHitProgs)
-            {
-                if (h) mpGlobalReflector->merge(h->getGlobalReflector().get());
-            }
-
-            mpGlobalRootSignature = RootSignature::create(mpGlobalReflector.get(), false);
-
-            mReflectionDirty = false;
+            if (h) pGlobalReflector->merge(h->getGlobalReflector().get());
         }
+        for (const auto m : mMissProgs)
+        {
+            if (m) pGlobalReflector->merge(m->getGlobalReflector().get());
+        }
+
+        auto pRayGenVersion = mpRayGenProgram->getActiveVersion();
+        std::vector<ProgramVersion::SharedConstPtr> hitVersions;
+        std::vector<ProgramVersion::SharedConstPtr> missVersions;
+
+        for (const auto& h : mHitProgs)
+        {
+            if(h) hitVersions.push_back(h->getActiveVersion());
+        }
+        for (const auto m : mMissProgs)
+        {
+            if(m) missVersions.push_back(m->getActiveVersion());
+        }
+
+        auto pVersion = RtPipelineVersion::create(pGlobalReflector, pRayGenVersion, hitVersions, missVersions);
+
+        mActiveVersion = pVersion;
+        return true;
+    }
+
+    RtPipelineVersion::SharedConstPtr RtProgram::getActiveVersion() const
+    {
+        if (mLinkRequired)
+        {
+            const auto& it = mProgramVersions.find(mDefineList);
+            if(it == mProgramVersions.end())
+            {
+                if(link() == false)
+                {
+                    return nullptr;
+                }
+                else
+                {
+                    mProgramVersions[mDefineList] = mActiveVersion;
+                }
+            }
+            else
+            {
+                mActiveVersion = it->second;
+            }
+        }
+        return mActiveVersion;
     }
 
     RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
@@ -203,7 +237,8 @@ namespace Falcor
             if(pMiss) pMiss->addDefine(name, value);
         }
 
-        mReflectionDirty = true;
+        mDefineList.add(name, value);
+        mLinkRequired = true;
     }
 
     void RtProgram::removeDefine(const std::string& name)
@@ -223,6 +258,7 @@ namespace Falcor
             if(pMiss) pMiss->removeDefine(name);
         }
 
-        mReflectionDirty = true;
+        mDefineList.remove(name);
+        mLinkRequired = true;
     }
 }

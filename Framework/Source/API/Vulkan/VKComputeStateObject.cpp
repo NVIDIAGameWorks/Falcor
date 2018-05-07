@@ -35,7 +35,7 @@ namespace Falcor
     bool ComputeStateObject::apiInit()
     {
         std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
-        initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
+        initVkShaderStageInfo(mDesc.getProgramKernels().get(), shaderStageInfos);
         assert(shaderStageInfos.size() == 1);
 
         VkComputePipelineCreateInfo info = {};

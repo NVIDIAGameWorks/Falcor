@@ -38,15 +38,7 @@ namespace Falcor
     {
         bool b = true;
         b = b && (mMaxTraceRecursionDepth == other.mMaxTraceRecursionDepth);
-        b = b && (mProgList.size() == other.mProgList.size());
-
-        if (b)
-        {
-            for (size_t i = 0; i < mProgList.size(); i++)
-            {
-                b = b && (mProgList[i] == other.mProgList[i]);
-            }
-        }
+        b = b && (mpKernels == other.mpKernels);
         return b;
     }
     
@@ -59,9 +51,9 @@ namespace Falcor
         rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
 
         // Loop over the programs
-        for (const auto& pProg : pState->getProgramList())
+        for (const auto& pProg : desc.mpKernels->getProgramList())
         {
-            if (pProg->getType() == RtProgramVersion::Type::Hit)
+            if (pProg->getType() == RtProgramKernels::Type::Hit)
             {
                 const RtShader* pIntersection = pProg->getShader(ShaderType::Intersection).get();
                 const RtShader* pAhs = pProg->getShader(ShaderType::AnyHit).get();
@@ -80,7 +72,7 @@ namespace Falcor
             }
             else
             {
-                const RtShader* pShader = pProg->getShader(pProg->getType() == RtProgramVersion::Type::Miss ? ShaderType::Miss : ShaderType::RayGeneration).get();
+                const RtShader* pShader = pProg->getShader(pProg->getType() == RtProgramKernels::Type::Miss ? ShaderType::Miss : ShaderType::RayGeneration).get();
                 rtsoHelper.addProgramDesc(pShader->getD3DBlob(), pProg->getExportName());
             }
 

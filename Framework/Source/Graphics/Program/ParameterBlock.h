@@ -40,7 +40,14 @@ namespace Falcor
     */
     class ParameterBlock : public std::enable_shared_from_this<ParameterBlock>
     {
+    private:
+        std::string mTypeName;
+        uint32_t mTypeId = 0;
     public:
+        void setTypeName(std::string name);
+        std::string getTypeName() const;
+        int getTypeId() const { return mTypeId; }
+
         template<typename T>
         class SharedPtrT : public std::shared_ptr<T>
         {

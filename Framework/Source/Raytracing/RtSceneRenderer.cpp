@@ -201,11 +201,12 @@ namespace Falcor
             }
         }
 
-        if (!pRtVars->apply(pContext, pState->getRtso().get()))
+        auto pRtso = pState->getRtso(pRtVars.get());
+        if (!pRtVars->apply(pContext, pRtso.get()))
         {
             logError("RtSceneRenderer::renderScene() - applying RtProgramVars failed, most likely because we ran out of descriptors.", true);
             assert(false);
         }
-        pContext->raytrace(pRtVars, pState, targetDim.x, targetDim.y);
+        pContext->raytrace(pRtVars, pRtso, targetDim.x, targetDim.y);
     }
 }

@@ -28,6 +28,7 @@
 #pragma once
 #include "SingleShaderProgram.h"
 #include "HitProgram.h"
+#include "RtProgramVersion.h"
 
 namespace Falcor
 {
@@ -94,23 +95,26 @@ namespace Falcor
         void addDefine(const std::string& name, const std::string& value = "");
         void removeDefine(const std::string& name);
 
-        const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { updateReflection(); return mpGlobalRootSignature; }
-        const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { updateReflection(); return mpGlobalReflector; }
+        RtPipelineVersion::SharedConstPtr getActiveVersion() const;
+
+        const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { return getActiveVersion()->getGlobalReflector(); }
 
     private:
-
         using MissProgramList = std::vector<MissProgram::SharedPtr>;
         using HitProgramList = std::vector<HitProgram::SharedPtr>;
 
-        void updateReflection() const;
-
         RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+        bool link() const;
+
         HitProgramList mHitProgs;
         MissProgramList mMissProgs;
         RayGenProgram::SharedPtr mpRayGenProgram;
 
-        mutable bool mReflectionDirty = true;
-        mutable std::shared_ptr<RootSignature> mpGlobalRootSignature;
-        mutable std::shared_ptr<ProgramReflection> mpGlobalReflector;
+        DefineList mDefineList;
+
+        // We are doing lazy compilation, so these are mutable
+        mutable bool mLinkRequired = true;
+        mutable std::map<const DefineList, RtPipelineVersion::SharedPtr> mProgramVersions;
+        mutable RtPipelineVersion::SharedPtr mActiveVersion;
     };
 }

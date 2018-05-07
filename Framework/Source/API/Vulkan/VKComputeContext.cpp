@@ -36,11 +36,19 @@ namespace Falcor
     void ComputeContext::prepareForDispatch()
     {
         assert(mpComputeState);
-        if(mpComputeVars) applyComputeVars();
 
         ComputeStateObject::SharedPtr pCso = mpComputeState->getCSO(mpComputeVars.get());
+        auto pComputeKernels = pCso->getDesc().getProgramKernels();
+        auto pRootSignature = pComputeKernels->getRootSignature();
+        if( pRootSignature != mpComputeRootSignature )
+        {
+            mpComputeRootSignature = pRootSignature;
+            mBindComputeRootSig = true;
+        }
+
+        if(mpComputeVars) applyComputeVars(pComputeKernels.get());
+
         vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_COMPUTE, pCso->getApiHandle());
-        mBindComputeRootSig = false;
         mCommandsPending = true;
     }
 

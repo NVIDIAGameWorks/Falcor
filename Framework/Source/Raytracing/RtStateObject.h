@@ -37,18 +37,16 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const RtStateObject>;
         using ApiHandle = ID3D12StateObjectPrototypePtr;
 
-        using ProgramList = std::vector<RtProgramVersion::SharedConstPtr>;
-
         class Desc
         {
         public:
-            Desc& setProgramList(const ProgramList& list) { mProgList = list; return *this; }
+            Desc& setKernels(RtPipelineKernels::SharedConstPtr const& pKernels) { mpKernels = pKernels; return *this; }
             Desc& setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; return *this; }
             Desc& setGlobalRootSignature(const std::shared_ptr<RootSignature>& pRootSig) { mpGlobalRootSignature = pRootSig; return *this; }
             bool operator==(const Desc& other) const;
 
         private:
-            ProgramList mProgList;
+            RtPipelineKernels::SharedConstPtr mpKernels;
             std::shared_ptr<RootSignature> mpGlobalRootSignature;
             uint32_t mMaxTraceRecursionDepth = 1;
             friend RtStateObject;
@@ -57,7 +55,7 @@ namespace Falcor
         static SharedPtr create(const Desc& desc);
         const ApiHandle& getApiHandle() const { return mApiHandle; }
 
-        const ProgramList& getProgramList() const { return mDesc.mProgList; }
+        RtPipelineKernels::SharedConstPtr const& getKernels() const { return mDesc.mpKernels; }
         uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
         const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { return mDesc.mpGlobalRootSignature; }
         const Desc& getDesc() const { return mDesc; }

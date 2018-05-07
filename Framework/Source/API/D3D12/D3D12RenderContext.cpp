@@ -250,12 +250,20 @@ namespace Falcor
         // Vao must be valid so at least primitive topology is known
         assert(mpGraphicsState->getVao().get());
 
+        auto pGSO = mpGraphicsState->getGSO(mpGraphicsVars.get());
+        auto pGraphicsKernels = pGSO->getDesc().getProgramKernels();
+        auto pRootSignature = pGraphicsKernels->getRootSignature();
+        if( pRootSignature != mpGraphicsRootSignature )
+        {
+            mpGraphicsRootSignature = pRootSignature;
+            mBindGraphicsRootSig = true;
+        }
         if (is_set(StateBindFlags::Vars, mBindFlags))
         {
             // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
             if (mpGraphicsVars)
             {
-                applyGraphicsVars();
+                applyGraphicsVars(pGraphicsKernels.get());
             }
             else
             {
@@ -272,8 +280,6 @@ namespace Falcor
 #else
         assert(mpGraphicsState->isSinglePassStereoEnabled() == false);
 #endif
-
-        mBindGraphicsRootSig = false;
 
         ID3D12GraphicsCommandList* pList = mpLowLevelData->getCommandList();
         if (is_set(StateBindFlags::Topology, mBindFlags))
@@ -302,7 +308,7 @@ namespace Falcor
         }
         if (is_set(StateBindFlags::PipelineState, mBindFlags))
         {
-            pList->SetPipelineState(mpGraphicsState->getGSO(mpGraphicsVars.get())->getApiHandle());
+            pList->SetPipelineState(pGSO->getApiHandle());
         }
         if (is_set(StateBindFlags::SamplePositions, mBindFlags))
         {

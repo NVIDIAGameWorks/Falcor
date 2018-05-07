@@ -29,19 +29,20 @@
 #include "Graphics/Program/ProgramVersion.h"
 #include "../RtShader.h"
 #include "API/VAO.h"
+#include "Utils/Graph.h"
 
 namespace Falcor
 {
     class RootSignature;
 
     // The inheritence here is just so that we could work with Program. We're not actually using anything from ProgramVersion
-    class RtProgramVersion : public ProgramVersion, inherit_shared_from_this<ProgramVersion, RtProgramVersion>
+    class RtProgramKernels : public ProgramKernels, inherit_shared_from_this<ProgramKernels, RtProgramKernels>
     {
     public:
-        using SharedPtr = std::shared_ptr<RtProgramVersion>;
-        using SharedConstPtr = std::shared_ptr<const RtProgramVersion>;
+        using SharedPtr = std::shared_ptr<RtProgramKernels>;
+        using SharedConstPtr = std::shared_ptr<const RtProgramKernels>;
 
-        ~RtProgramVersion() = default;
+        ~RtProgramKernels() = default;
 
         enum class Type
         {
@@ -56,7 +57,7 @@ namespace Falcor
 
         RtShader::SharedConstPtr getShader(ShaderType type) const;
 
-        std::shared_ptr<RootSignature> getLocalRootSignature() const { return mpLocalRootSignature; }
+        std::shared_ptr<RootSignature> getLocalRootSignature() const { return getRootSignature(); }
 
         const std::wstring& getExportName() const { return mExportName; }
 
@@ -64,13 +65,13 @@ namespace Falcor
 
         uint32_t getMaxPayloadSize() const { return mMaxPayloadSize; }
         uint32_t getMaxAttributesSize() const { return mMaxAttributeSize; }
+
     private:
         template<ShaderType shaderType>
         static SharedPtr createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
         bool initCommon(std::string& log);
 
-        RtProgramVersion(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        std::shared_ptr<RootSignature> mpLocalRootSignature;
+        RtProgramKernels(std::shared_ptr<ProgramReflection> pReflector, Type progType, Shader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize, std::string const& exportName);
         Type mType;
         std::wstring mExportName;
 
@@ -79,19 +80,108 @@ namespace Falcor
         uint32_t mMaxAttributeSize;
     };
 
-    inline std::string to_string(RtProgramVersion::Type t)
+    inline std::string to_string(RtProgramKernels::Type t)
     {
         switch (t)
         {
-        case RtProgramVersion::Type::RayGeneration:
+        case RtProgramKernels::Type::RayGeneration:
             return "RayGen";
-        case RtProgramVersion::Type::Hit:
+        case RtProgramKernels::Type::Hit:
             return "Hit";
-        case RtProgramVersion::Type::Miss:
+        case RtProgramKernels::Type::Miss:
             return "Miss";
         default:
             should_not_get_here();
             return "";
         }
     }
+
+    class RtPipelineKernels : public std::enable_shared_from_this<RtPipelineKernels>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<RtPipelineKernels>;
+        using SharedConstPtr = std::shared_ptr<const RtPipelineKernels>;
+
+        using ProgramList = std::vector<RtProgramKernels::SharedConstPtr>;
+
+        ~RtPipelineKernels() = default;
+
+        static RtPipelineKernels::SharedPtr create(
+            ProgramKernels::SharedConstPtr const& pGlobalProgram,
+            RtProgramKernels::SharedConstPtr const& pRayGenProgram,
+            std::vector<RtProgramKernels::SharedConstPtr> const& hitPrograms,
+            std::vector<RtProgramKernels::SharedConstPtr> const& missPrograms);
+
+        const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { return mpGlobalProgram->getRootSignature(); }
+        ProgramList const& getProgramList() const { return mProgramList; }
+
+        size_t getHitProgramCount() const { return mHitPrograms.size(); }
+        size_t getMissProgramCount() const { return mMissPrograms.size(); }
+
+        ProgramKernels::SharedConstPtr getGlobalProgram() const { return mpGlobalProgram; }
+        RtProgramKernels::SharedConstPtr getRayGenProgram() const { return mpRayGenProgram; }
+        RtProgramKernels::SharedConstPtr getHitProgram(size_t i) const { return mHitPrograms[i]; }
+        RtProgramKernels::SharedConstPtr getMissProgram(size_t i) const { return mMissPrograms[i]; }
+
+        uint32_t getRecordSize() const { return mRecordSize; }
+
+    private:
+        RtPipelineKernels(
+            ProgramKernels::SharedConstPtr const& pGlobalProgram,
+            RtProgramKernels::SharedConstPtr const& pRayGenProgram,
+            std::vector<RtProgramKernels::SharedConstPtr> const& hitPrograms,
+            std::vector<RtProgramKernels::SharedConstPtr> const& missPrograms);
+
+        void init();
+
+        ProgramList mProgramList;
+
+        ProgramKernels::SharedConstPtr mpGlobalProgram;
+        RtProgramKernels::SharedConstPtr mpRayGenProgram;
+        std::vector<RtProgramKernels::SharedConstPtr> mHitPrograms;
+        std::vector<RtProgramKernels::SharedConstPtr> mMissPrograms;
+
+        uint32_t mRecordSize;
+    };
+
+    class RtPipelineVersion : public std::enable_shared_from_this<RtPipelineVersion>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<RtPipelineVersion>;
+        using SharedConstPtr = std::shared_ptr<const RtPipelineVersion>;
+
+        ~RtPipelineVersion() = default;
+
+        static RtPipelineVersion::SharedPtr create(
+            std::shared_ptr<ProgramReflection> pGlobalReflector,
+            ProgramVersion::SharedConstPtr pRayGenProgram,
+            std::vector<ProgramVersion::SharedConstPtr> hitPrograms,
+            std::vector<ProgramVersion::SharedConstPtr> missPrograms);
+
+        const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { return mpGlobalReflector; }
+
+        ProgramVersion::SharedConstPtr getRayGenProgram() const { return mpRayGenProgram; }
+        ProgramVersion::SharedConstPtr getHitProgram(size_t i) const { return mHitPrograms[i]; }
+        ProgramVersion::SharedConstPtr getMissProgram(size_t i) const { return mMissPrograms[i]; }
+
+        RtPipelineKernels::SharedPtr getKernels(RtProgramVars* pVars) const;
+
+    private:
+        RtPipelineVersion(
+            std::shared_ptr<ProgramReflection> pGlobalReflector,
+            ProgramVersion::SharedConstPtr pRayGenProgram,
+            std::vector<ProgramVersion::SharedConstPtr> hitPrograms,
+            std::vector<ProgramVersion::SharedConstPtr> missPrograms);
+        bool init();
+
+        std::shared_ptr<ProgramReflection> mpGlobalReflector;
+        ProgramKernels::SharedPtr mpGlobalKernels;
+
+        ProgramVersion::SharedConstPtr mpRayGenProgram;
+        std::vector<ProgramVersion::SharedConstPtr> mHitPrograms;
+        std::vector<ProgramVersion::SharedConstPtr> mMissPrograms;
+
+        using KernelGraph = Graph<RtPipelineKernels::SharedPtr, void*>;
+        KernelGraph::SharedPtr mpKernelGraph;
+    };
 }

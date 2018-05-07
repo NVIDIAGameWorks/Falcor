@@ -33,14 +33,15 @@
 
 namespace Falcor
 {
-    uint64_t RtProgramVersion::sProgId = 0;
+    uint64_t RtProgramKernels::sProgId = 0;
     ProgramReflection::SharedPtr createProgramReflection(const Shader::SharedConstPtr pShaders[], std::string& log);
 
-    RtProgramVersion::RtProgramVersion(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
-        : ProgramVersion(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, name)
+    RtProgramKernels::RtProgramKernels(std::shared_ptr<ProgramReflection> pReflector, Type progType, Shader::SharedPtr const* ppShaders, size_t shaderCount,  const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize, std::string const& exportName)
+        : ProgramKernels(pReflector, ppShaders, shaderCount, RootSignature::create(pReflector.get(), true), name)
         , mType(progType)
         , mMaxAttributeSize(maxAttributeSize)
         , mMaxPayloadSize(maxPayloadSize)
+        , mExportName(string_2_wstring(exportName))
     {
         for( size_t ii = 0; ii < shaderCount; ++ii )
         {
@@ -48,23 +49,25 @@ namespace Falcor
             mpShaders[uint32_t(pShader->getType())] = pShader;
         }
 
+#if 0
         switch (mType)
         {
-        case Falcor::RtProgramVersion::Type::RayGeneration:
+        case Falcor::RtProgramKernels::Type::RayGeneration:
             mExportName = string_2_wstring(ppShaders[0]->getEntryPoint());
             break;
-        case Falcor::RtProgramVersion::Type::Hit:
+        case Falcor::RtProgramKernels::Type::Hit:
             mExportName = L"RtProgramVersion" + std::to_wstring(sProgId++);
             break;
-        case Falcor::RtProgramVersion::Type::Miss:
+        case Falcor::RtProgramKernels::Type::Miss:
             mExportName = string_2_wstring(ppShaders[0]->getEntryPoint());
             break;
         default:
             should_not_get_here();
         }
+#endif
     }
 
-    bool RtProgramVersion::initCommon(std::string& log)
+    bool RtProgramKernels::initCommon(std::string& log)
     {
         if (init(log) == false)
         {
@@ -72,26 +75,26 @@ namespace Falcor
         }
 
         // Create the root signature
-        mpLocalRootSignature = RootSignature::create(mpReflector.get(), true);
+//        mpLocalRootSignature = RootSignature::create(mpReflector.get(), true);
         return true;
     }
 
-    RtProgramVersion::Type getProgTypeFromShader(ShaderType shaderType)
+    RtProgramKernels::Type getProgTypeFromShader(ShaderType shaderType)
     {
         switch (shaderType)
         {
         case ShaderType::Miss:
-            return RtProgramVersion::Type::Miss;
+            return RtProgramKernels::Type::Miss;
         case ShaderType::RayGeneration:
-            return RtProgramVersion::Type::RayGeneration;
+            return RtProgramKernels::Type::RayGeneration;
         default:
             should_not_get_here();
-            return RtProgramVersion::Type(-1);
+            return RtProgramKernels::Type(-1);
         }
     }
     
     template<ShaderType shaderType>
-    RtProgramVersion::SharedPtr RtProgramVersion::createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
         // We are using the RayGeneration structure in the union to avoid code duplication, these asserts make sure that our assumptions are correct
 
@@ -101,7 +104,10 @@ namespace Falcor
             return nullptr;
         }
 
-        SharedPtr pProgram = SharedPtr(new RtProgramVersion(pLocalReflector, getProgTypeFromShader(shaderType), &pShader, 1, name, maxPayloadSize, maxAttributeSize));
+        Shader::SharedPtr ppShaders[] = { pShader };
+
+        auto exportName = pShader->getEntryPoint();
+        SharedPtr pProgram = SharedPtr(new RtProgramKernels(pLocalReflector, getProgTypeFromShader(shaderType), ppShaders, 1, name, maxPayloadSize, maxAttributeSize, exportName));
         if (pProgram->initCommon(log) == false)
         {
             return nullptr;
@@ -110,7 +116,7 @@ namespace Falcor
         return pProgram;
     }
 
-    RtShader::SharedConstPtr RtProgramVersion::getShader(ShaderType type) const
+    RtShader::SharedConstPtr RtProgramKernels::getShader(ShaderType type) const
     {
         Shader::SharedConstPtr pShader = mpShaders[(uint32_t)type];
         RtShader::SharedConstPtr pRtShader = std::dynamic_pointer_cast<const RtShader>(pShader);
@@ -118,20 +124,20 @@ namespace Falcor
         return pRtShader;
     }
 
-    RtProgramVersion::SharedPtr RtProgramVersion::createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
         return createSingleShaderProgram<ShaderType::RayGeneration>(pRayGenShader, log, name, pLocalReflector, maxPayloadSize, maxAttributeSize);
     }
 
-    RtProgramVersion::SharedPtr RtProgramVersion::createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
         return createSingleShaderProgram<ShaderType::Miss>(pMissShader, log, name, pLocalReflector, maxPayloadSize, maxAttributeSize);
     }
     
-    RtProgramVersion::SharedPtr RtProgramVersion::createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
         size_t shaderCount = 0;
-        RtShader::SharedPtr pShaders[3];
+        Shader::SharedPtr pShaders[3];
 
         if(pAnyHit)         pShaders[shaderCount++] = pAnyHit;
         if(pClosestHit)     pShaders[shaderCount++] = pClosestHit;
@@ -143,12 +149,123 @@ namespace Falcor
             return nullptr;
         }
 
-        SharedPtr pProgram = SharedPtr(new RtProgramVersion(pReflector, Type::Hit, pShaders, shaderCount, name, maxPayloadSize, maxAttributeSize));
+        auto exportName = "RtHitGroup" + std::to_string(sProgId++);
+        SharedPtr pProgram = SharedPtr(new RtProgramKernels(pReflector, Type::Hit, pShaders, shaderCount, name, maxPayloadSize, maxAttributeSize, exportName));
         if (pProgram->initCommon(log) == false)
         {
             return nullptr;
         }
 
         return pProgram;
+    }
+
+    RtPipelineKernels::SharedPtr RtPipelineKernels::create(
+        ProgramKernels::SharedConstPtr const& pGlobalProgram,
+        RtProgramKernels::SharedConstPtr const& pRayGenProgram,
+        std::vector<RtProgramKernels::SharedConstPtr> const& hitPrograms,
+        std::vector<RtProgramKernels::SharedConstPtr> const& missPrograms)
+    {
+        auto pKernels = SharedPtr(new RtPipelineKernels(pGlobalProgram, pRayGenProgram, hitPrograms, missPrograms));
+        pKernels->init();
+        return pKernels;
+    }
+
+    RtPipelineKernels::RtPipelineKernels(
+        ProgramKernels::SharedConstPtr const& pGlobalProgram,
+        RtProgramKernels::SharedConstPtr const& pRayGenProgram,
+        std::vector<RtProgramKernels::SharedConstPtr> const& hitPrograms,
+        std::vector<RtProgramKernels::SharedConstPtr> const& missPrograms)
+        : mpGlobalProgram(pGlobalProgram)
+        , mRecordSize(0)
+        , mpRayGenProgram(pRayGenProgram)
+        , mHitPrograms(hitPrograms)
+        , mMissPrograms(missPrograms)
+    {}
+
+    void RtPipelineKernels::init()
+    {
+        uint32_t maxRootSigSize = 0;
+
+        auto addProgramAndComputeMaxSize = [&](RtProgramKernels::SharedConstPtr const& pProgram)
+        {
+            mProgramList.push_back(pProgram);
+            maxRootSigSize = std::max(maxRootSigSize, pProgram->getLocalRootSignature()->getSizeInBytes());
+        };
+
+        addProgramAndComputeMaxSize(mpRayGenProgram);
+
+        for( auto pHitProgram : mHitPrograms )
+        {
+            addProgramAndComputeMaxSize(pHitProgram);
+        }
+        for( auto pMissProgram : mMissPrograms )
+        {
+            addProgramAndComputeMaxSize(pMissProgram);
+        }
+
+        // Get the program identifier size
+        ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
+        uint32_t programIdentifierSize = pRtDevice->GetShaderIdentifierSize();
+
+        // Calculate the record size
+        uint32_t recordSize = programIdentifierSize + maxRootSigSize;
+        recordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, recordSize);
+        assert(recordSize != 0);
+
+        mRecordSize = recordSize;
+    }
+
+    RtPipelineVersion::SharedPtr RtPipelineVersion::create(
+        std::shared_ptr<ProgramReflection> pGlobalReflector,
+        ProgramVersion::SharedConstPtr pRayGenProgram,
+        std::vector<ProgramVersion::SharedConstPtr> hitPrograms,
+        std::vector<ProgramVersion::SharedConstPtr> missPrograms)
+    {
+        auto result = SharedPtr(new RtPipelineVersion(
+            pGlobalReflector,
+            pRayGenProgram,
+            hitPrograms,
+            missPrograms));
+
+        if( !result->init() )
+        {
+            return nullptr;
+        }
+        return result;
+    }
+
+    RtPipelineVersion::RtPipelineVersion(
+        std::shared_ptr<ProgramReflection> pGlobalReflector,
+        ProgramVersion::SharedConstPtr pRayGenProgram,
+        std::vector<ProgramVersion::SharedConstPtr> hitPrograms,
+        std::vector<ProgramVersion::SharedConstPtr> missPrograms)
+        : mpGlobalReflector(pGlobalReflector)
+        , mpRayGenProgram(pRayGenProgram)
+        , mHitPrograms(hitPrograms)
+        , mMissPrograms(missPrograms)
+    {}
+
+    bool RtPipelineVersion::init()
+    {
+        std::string log;
+        auto pGlobalReflector = mpGlobalReflector;
+        auto pGlobalRootSignature = RootSignature::create(pGlobalReflector.get());
+        if(!pGlobalRootSignature)
+            return false;
+
+        auto pGlobalKernels = ProgramKernels::create(
+            pGlobalReflector,
+            nullptr,
+            0,
+            pGlobalRootSignature,
+            log,
+            "ray tracing global parameters");
+        if(!pGlobalKernels)
+            return false;
+
+        mpGlobalKernels = pGlobalKernels;
+        mpKernelGraph = KernelGraph::create();
+
+        return true;
     }
 }

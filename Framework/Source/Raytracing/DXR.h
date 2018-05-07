@@ -68,5 +68,5 @@ namespace Falcor
     class RenderContext;
     class RtProgramVars;
     class RtState;
-
+    class RtStateObject;
 }

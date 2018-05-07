@@ -46,15 +46,12 @@ namespace Falcor
             uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES,
             uint32_t maxAttributeSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES 
             );
-
-        RtProgramVersion::SharedConstPtr getActiveVersion() const { return std::dynamic_pointer_cast<const RtProgramVersion>(Program::getActiveVersion()); }
-
     private:
         HitProgram(uint32_t maxPayloadSize, uint32_t maxAttributeSize) : mMaxPayloadSize(maxPayloadSize), mMaxAttributeSize(maxAttributeSize) {}
         uint32_t mMaxPayloadSize;
         uint32_t mMaxAttributeSize;
 
         static HitProgram::SharedPtr createCommon(const std::string& filename, const std::string& closestHitEntry, const std::string& anyHitEntry, const std::string& intersectionEntry, const DefineList& programDefines, bool fromFile, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const override;
+        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const override;
     };
 }

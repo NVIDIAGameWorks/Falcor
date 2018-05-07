@@ -105,11 +105,12 @@ namespace Falcor
     protected:
         ComputeContext();
         void prepareForDispatch();
-        void applyComputeVars();
+        void applyComputeVars(const ProgramKernels* pKernels);
 
         std::stack<ComputeState::SharedPtr> mpComputeStateStack;
         std::stack<ComputeVars::SharedPtr> mpComputeVarsStack;
         bool mBindComputeRootSig = true;
+        RootSignature::SharedPtr mpComputeRootSignature;
 
         ComputeVars::SharedPtr mpComputeVars;
         ComputeState::SharedPtr mpComputeState;

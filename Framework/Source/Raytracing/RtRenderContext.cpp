@@ -32,12 +32,12 @@
 
 namespace Falcor
 {
-    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
+    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtStateObject::SharedPtr pRtso, uint32_t width, uint32_t height)
     {
         resourceBarrier(pVars->getShaderTable().get(), Resource::State::NonPixelShader);
 
         Buffer* pShaderTable = pVars->getShaderTable().get();
-        uint32_t recordSize = pVars->getRecordSize();
+        uint32_t recordSize = pRtso->getKernels()->getRecordSize();
         D3D12_GPU_VIRTUAL_ADDRESS startAddress = pShaderTable->getGpuAddress();
 
         D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
@@ -58,16 +58,14 @@ namespace Falcor
         raytraceDesc.HitGroupTable.SizeInBytes = pVars->getShaderTable()->getSize() - (pVars->getFirstHitRecordIndex() * recordSize);
 
         // Currently, we need to set an empty root-signature. Some wizardry is required to make sure we restore the state
-        const auto& pComputeVars = getComputeVars();
-        setComputeVars(nullptr);
         ID3D12GraphicsCommandListPtr pCmdList = getLowLevelData()->getCommandList();
-        pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
+        pCmdList->SetComputeRootSignature(pRtso->getGlobalRootSignature()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
         ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pCmdList;
-        pRtCmdList->DispatchRays(pState->getRtso()->getApiHandle().GetInterfacePtr(), &raytraceDesc);
+        pRtCmdList->DispatchRays(pRtso->getApiHandle().GetInterfacePtr(), &raytraceDesc);
 
-        // Restore the vars
-        setComputeVars(pComputeVars);
+        // Restore the root signature
+        mBindComputeRootSig = true;
     }
 }

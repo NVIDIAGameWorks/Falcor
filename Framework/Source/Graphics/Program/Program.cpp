@@ -317,7 +317,7 @@ namespace Falcor
 
     bool Program::checkIfFilesChanged()
     {
-        if(mActiveProgram.pVersion == nullptr)
+        if(mActiveProgram == nullptr)
         {
             // We never linked, so nothing really changed
             return false;
@@ -359,7 +359,7 @@ namespace Falcor
             }
         }
 
-        return mActiveProgram.pVersion;
+        return mActiveProgram;
     }
 
     SlangSession* getSlangSession()
@@ -411,15 +411,19 @@ namespace Falcor
 #endif
     }
 
-    Program::VersionData Program::preprocessAndCreateProgramVersion(std::string& log) const
+    // Create a Slang compilat request suitable for a particular purpose.
+    //
+    // This function captures the common logic between invoking the Slang
+    // compiler to generate reflection information (without generating code),
+    // and invoking the compiler to generate final specialized code.
+    //
+    SlangCompileRequest* Program::createSlangCompileRequest(
+        DefineList const&               defines,
+        CompilePurpose                  purpose,
+        const std::vector<std::string>& typeArgs,
+        int*                            outSlangTarget) const
     {
         mFileTimeMap.clear();
-
-        // Run all of the shaders through Slang, so that we can get final code,
-        // reflection data, etc.
-        //
-        // Note that we provide all the shaders at once, so that automatically
-        // generated bindings can be made consistent across the stages.
 
         SlangSession* slangSession = getSlangSession();
 
@@ -427,9 +431,6 @@ namespace Falcor
         SlangCompileRequest* slangRequest = spCreateCompileRequest(slangSession);
 
         // Add our media search paths as `#include` search paths for Slang.
-        //
-        // TODO: Slang should probably support a callback API for all file I/O,
-        // rather than having us specify data directories to it...
         for (auto path : getDataDirectoriesList())
         {
             spAddSearchPath(slangRequest, path.c_str());
@@ -441,7 +442,7 @@ namespace Falcor
 
         // Pass any `#define` flags along to Slang, since we aren't doing our
         // own preprocessing any more.
-        for(auto shaderDefine : mDefineList)
+        for(auto shaderDefine : defines)
         {
             spAddPreprocessorDefine(slangRequest, shaderDefine.first.c_str(), shaderDefine.second.c_str());
         }
@@ -461,6 +462,9 @@ namespace Falcor
 #else
 #error unknown shader compilation target
 #endif
+        if(outSlangTarget)
+            *outSlangTarget = slangTarget;
+
         spSetCodeGenTarget(slangRequest, slangTarget);
         spAddPreprocessorDefine(slangRequest, preprocessorDefine, "1");
 
@@ -475,8 +479,11 @@ namespace Falcor
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
 
-        // Don't actually perform semantic checking: just pass through functions bodies to downstream compiler
-        slangFlags |= SLANG_COMPILE_FLAG_NO_CHECKING | SLANG_COMPILE_FLAG_SPLIT_MIXED_TYPES;
+        // If we are compiling for reflection data only, skip code generation step 
+        // so that the compiler does not complain about missing global type arguments 
+        if (purpose == CompilePurpose::ReflectionOnly)
+            slangFlags |= SLANG_COMPILE_FLAG_NO_CODEGEN;
+
         spSetCompileFlags(slangRequest, slangFlags);
 
         // Now lets add all our input shader code, one-by-one
@@ -508,6 +515,13 @@ namespace Falcor
             }
         }
 
+        std::vector<char const*> typeArgNames;
+        for (auto & name : typeArgs)
+            typeArgNames.push_back(name.c_str());
+        char const ** typeArgNamesPtr = nullptr;
+        if (typeArgNames.size())
+            typeArgNamesPtr = &typeArgNames[0];
+
         // Now we make a separate pass and add the entry points.
         // Each entry point references the index of the source
         // it uses, and luckily, the Slang API can use these
@@ -520,20 +534,106 @@ namespace Falcor
             if(entryPoint.index < 0)
                 continue;
 
-            spAddEntryPoint(
+            spAddEntryPointEx(
                 slangRequest,
                 entryPoint.index,
                 entryPoint.name.c_str(),
-                getSlangStage(ShaderType(i)));
+                getSlangStage(ShaderType(i)),
+                (int)typeArgs.size(),
+                typeArgNamesPtr);
         }
 
+        return slangRequest;
+    }
+
+    int Program::doSlangCompilation(SlangCompileRequest* slangRequest, std::string& log) const
+    {
         int anySlangErrors = spCompile(slangRequest);
         log += spGetDiagnosticOutput(slangRequest);
         if(anySlangErrors)
         {
             spDestroyCompileRequest(slangRequest);
-            return VersionData();
+            return 1;
         }
+
+        return 0;
+    }
+
+    ProgramVersion::SharedPtr Program::preprocessAndCreateProgramVersion(std::string& log) const
+    {
+        SlangCompileRequest* pSlangRequest = createSlangCompileRequest(mDefineList,
+            CompilePurpose::ReflectionOnly,
+            std::vector<std::string>());
+
+        int anySlangErrors = doSlangCompilation(pSlangRequest, log);
+        if(anySlangErrors)
+            return nullptr;
+
+
+        // Extract the reflection data
+        auto pSlangReflection = slang::ShaderReflection::get(pSlangRequest);
+        ProgramReflectors reflectors;
+        reflectors.pReflector = ProgramReflection::create(pSlangReflection, ProgramReflection::ResourceScope::All, log);
+        reflectors.pLocalReflector = ProgramReflection::create(pSlangReflection, ProgramReflection::ResourceScope::Local, log);
+        reflectors.pGlobalReflector = ProgramReflection::create(pSlangReflection, ProgramReflection::ResourceScope::Global, log);
+
+        // Extract list of files referenced, for dependency-tracking purposes
+        int depFileCount = spGetDependencyFileCount(pSlangRequest);
+        for(int ii = 0; ii < depFileCount; ++ii)
+        {
+            std::string depFilePath = spGetDependencyFilePath(pSlangRequest, ii);
+            mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
+        }
+
+        // Now that we've preprocessed things, dispatch to the actual program creation logic,
+        // which may vary in subclasses of `Program`
+
+        return ProgramVersion::create(const_cast<Program*>(this)->shared_from_this(), mDefineList, reflectors, getProgramDescString(), pSlangRequest);
+    }
+
+    ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
+        ProgramVersion const* pVersion,
+        ProgramVars    const* pVars,
+        std::string         & log) const
+    {
+        // TODO: bind type parameters as needed based on `pVars`
+        auto originalReflector = pVersion->getReflector();
+        auto paramBlockCount = originalReflector->getParameterBlockCount();
+        std::vector<std::string> typeArguments;
+        for (uint32_t i = 0; i < paramBlockCount; i++)
+        {
+            auto paramBlock = originalReflector->getParameterBlock(i);
+            if (auto genType = paramBlock->getType()->asGenericType())
+            {
+                auto index = originalReflector->getTypeParameterIndexByName(genType->name);
+                auto newParamBlock = pVars->getParameterBlock(i);
+                if (typeArguments.size() <= index)
+                    typeArguments.resize(index + 1);
+                typeArguments[index] = newParamBlock->getTypeName();
+            }
+        }
+
+        SlangCompileTarget slangTarget = SLANG_TARGET_UNKNOWN;
+        SlangCompileRequest* pSlangRequest = createSlangCompileRequest(pVersion->getDefines(),
+            CompilePurpose::CodeGen,
+            typeArguments,
+            &slangTarget);
+
+        // TODO: Eventually we should be compiling each entry point with a unique name,
+        // so that we can reference them all correctly in the DXR linkage model (e.g.,
+        // if we have two specializations of the same hit shader, we need them to
+        // have different names with the way the state creation API currently works).
+
+        int anyErrors = doSlangCompilation(pSlangRequest, log);
+        if(anyErrors)
+            return nullptr;
+
+        // Extract the reflection data
+        auto pSlangReflection = slang::ShaderReflection::get(pSlangRequest);
+        ProgramReflectors reflectors;
+        reflectors.pReflector = ProgramReflection::create(pSlangReflection, ProgramReflection::ResourceScope::All, log);
+        reflectors.pLocalReflector = ProgramReflection::create(pSlangReflection, ProgramReflection::ResourceScope::Local, log);
+        reflectors.pGlobalReflector = ProgramReflection::create(pSlangReflection, ProgramReflection::ResourceScope::Global, log);
 
         // Extract the generated code for each stage
         int entryPointCounter = 0;
@@ -542,6 +642,7 @@ namespace Falcor
         for (uint32_t i = 0; i < kShaderCount; i++)
         {
             auto& entryPoint = mDesc.mEntryPoints[i];
+
             // Skip unused entry points
             if(entryPoint.index < 0)
                 continue;
@@ -551,44 +652,25 @@ namespace Falcor
             if (slangTarget == SLANG_GLSL || slangTarget == SLANG_GLSL_VULKAN || slangTarget == SLANG_HLSL)
             {
                 shaderBlob[i].type = Shader::Blob::Type::String;
-                const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
+                const char* data = spGetEntryPointSource(pSlangRequest, entryPointIndex);
                 shaderBlob[i].data.assign(data, data + strlen(data));
             }
             else
             {
                 shaderBlob[i].type = Shader::Blob::Type::Bytecode;
                 size_t size = 0;
-                const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
+                const uint8_t* data = (uint8_t*)spGetEntryPointCode(pSlangRequest, entryPointIndex, &size);
                 shaderBlob[i].data.assign(data, data + size);
             }
             shaderBlob[i].shaderModel = mDesc.mShaderModel;
         }
 
-        VersionData programVersion;
+        spDestroyCompileRequest(pSlangRequest);
 
-        // Extract the reflection data
-        programVersion.reflectors.pReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::All, log);
-        programVersion.reflectors.pLocalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Local, log);
-        programVersion.reflectors.pGlobalReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::Global, log);
-
-        // Extract list of files referenced, for dependency-tracking purposes
-        int depFileCount = spGetDependencyFileCount(slangRequest);
-        for(int ii = 0; ii < depFileCount; ++ii)
-        {
-            std::string depFilePath = spGetDependencyFilePath(slangRequest, ii);
-            mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
-        }
-
-        spDestroyCompileRequest(slangRequest);
-
-        // Now that we've preprocessed things, dispatch to the actual program creation logic,
-        // which may vary in subclasses of `Program`
-        programVersion.pVersion = createProgramVersion(log, shaderBlob, programVersion.reflectors);
-
-        return programVersion;
+        return createProgramKernels(log, shaderBlob, reflectors);
     }
 
-    ProgramVersion::SharedPtr Program::createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const
+    ProgramKernels::SharedPtr Program::createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const
     {
         // create the shaders
         Shader::SharedPtr shaders[kShaderCount] = {};
@@ -601,24 +683,29 @@ namespace Falcor
             }
         }
 
+        auto pReflector = reflectors.pReflector;
+        auto pRootSignature = RootSignature::create(pReflector.get());
+
         if (shaders[(uint32_t)ShaderType::Compute])
         {
-            return ProgramVersion::create(reflectors.pReflector, shaders[(uint32_t)ShaderType::Compute], log, getProgramDescString());
+            return ProgramKernels::create(
+                pReflector,
+                shaders[(uint32_t)ShaderType::Compute], pRootSignature, log, getProgramDescString());
         }
         else
         {
-            return  ProgramVersion::create(
-                reflectors.pReflector,
+            return ProgramKernels::create(
+                pReflector,
                 shaders[(uint32_t)ShaderType::Vertex],
                 shaders[(uint32_t)ShaderType::Pixel],
                 shaders[(uint32_t)ShaderType::Geometry],
                 shaders[(uint32_t)ShaderType::Hull],
                 shaders[(uint32_t)ShaderType::Domain],
+                pRootSignature,
                 log,
                 getProgramDescString());
         }
     }
-
 
     bool Program::link() const
     {
@@ -626,9 +713,9 @@ namespace Falcor
         {
             // create the program
             std::string log;
-            VersionData programVersion = preprocessAndCreateProgramVersion(log);
+            auto pVersion = preprocessAndCreateProgramVersion(log);
 
-            if(programVersion.pVersion == nullptr)
+            if(pVersion == nullptr)
             {
                 std::string error = std::string("Program Linkage failed.\n\n");
                 error += getProgramDescString() + "\n";
@@ -647,7 +734,7 @@ namespace Falcor
             }
             else
             {
-                mActiveProgram = programVersion;
+                mActiveProgram = pVersion;
                 return true;
             }
         }
@@ -655,7 +742,7 @@ namespace Falcor
 
     void Program::reset()
     {
-        mActiveProgram = VersionData();
+        mActiveProgram = nullptr;
         mProgramVersions.clear();
         mFileTimeMap.clear();
         mLinkRequired = true;

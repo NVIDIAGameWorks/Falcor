@@ -89,15 +89,16 @@ namespace Falcor
         mpComputeStateStack.pop();
     }
 
-    void ComputeContext::applyComputeVars() 
+    void ComputeContext::applyComputeVars(const ProgramKernels* pKernels) 
     {
-        if (mpComputeVars->apply(const_cast<ComputeContext*>(this), mBindComputeRootSig) == false)
+        if (mpComputeVars->apply(const_cast<ComputeContext*>(this), mBindComputeRootSig, pKernels) == false)
         {
             logWarning("ComputeContext::prepareForDispatch() - applying ComputeVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
             flush(true);
-            bool b = mpComputeVars->apply(const_cast<ComputeContext*>(this), mBindComputeRootSig);
+            bool b = mpComputeVars->apply(const_cast<ComputeContext*>(this), true, pKernels);
             assert(b);
         }
+        mBindComputeRootSig = false;
     }
     
     void ComputeContext::flush(bool wait)

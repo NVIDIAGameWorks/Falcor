@@ -67,6 +67,28 @@ namespace Falcor
         return true;
     }
 
+    // Map parameter block type names to a dense space of
+    // integers to allow for efficient shader variant lookup.
+    static std::unordered_map<std::string, uint32_t> gTypeNameRegistry;
+
+    void ParameterBlock::setTypeName(std::string name)
+    {
+        mTypeName = name;
+        auto findRs = gTypeNameRegistry.find(name);
+        if (findRs != gTypeNameRegistry.end())
+            mTypeId = findRs->second;
+        else
+        {
+            mTypeId = (uint32_t)gTypeNameRegistry.size();
+            gTypeNameRegistry[name] = mTypeId;
+        }
+    }
+
+    std::string ParameterBlock::getTypeName() const
+    {
+        return mTypeName;
+    }
+
     ParameterBlock::~ParameterBlock() = default;
 
     ParameterBlock::AssignedResource::AssignedResource() : pResource(nullptr), type(DescriptorSet::Type::Count), pCB(nullptr)
@@ -137,6 +159,16 @@ namespace Falcor
 
     ParameterBlock::ParameterBlock(const ParameterBlockReflection::SharedConstPtr& pReflection, bool createBuffers) : mpReflector(pReflection)
     {
+        // When creating a parameter block, extract the name of the
+        // element type, to be used for shader variant lookup.
+        auto paramBlockType = pReflection->getType();
+        if (paramBlockType)
+        {
+            if (auto structType = paramBlockType->asStructType())
+                setTypeName(structType->getName());
+            else if (auto genericType = paramBlockType->asGenericType())
+                setTypeName(genericType->name);
+        }
         // Initialize the resource vectors
         const auto& setLayouts = pReflection->getDescriptorSetLayouts();
         mAssignedResources.resize(setLayouts.size());

@@ -38,11 +38,11 @@ namespace Falcor
     {
         // Shader Stages
         std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;
-        initVkShaderStageInfo(mDesc.getProgramVersion().get(), shaderStageInfos);
+        initVkShaderStageInfo(mDesc.getProgramKernels().get(), shaderStageInfos);
 
         // Vertex Input State
         VertexInputStateCreateInfo vertexInputInfo = {};
-        initVkVertexLayoutInfo(mDesc.getVertexLayout().get(), vertexInputInfo, mDesc.getProgramVersion()->getReflector().get());
+        initVkVertexLayoutInfo(mDesc.getVertexLayout().get(), vertexInputInfo, mDesc.getProgramKernels()->getReflector().get());
 
         // Input Assembly State
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
@@ -61,7 +61,7 @@ namespace Falcor
 
         // Multisample State
         VkPipelineMultisampleStateCreateInfo multisampleInfo = {};
-        bool enableSampleFrequency = mDesc.getProgramVersion() ? mDesc.getProgramVersion()->getReflector()->isSampleFrequency() : false;
+        bool enableSampleFrequency = mDesc.getProgramKernels() ? mDesc.getProgramKernels()->getReflector()->isSampleFrequency() : false;
         initVkMultiSampleInfo(mDesc.getBlendState().get(), mDesc.getFboDesc(), mDesc.getSampleMask(), multisampleInfo, enableSampleFrequency);
 
         // Depth Stencil State

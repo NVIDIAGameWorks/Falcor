@@ -190,18 +190,26 @@ namespace Falcor
         // Vao must be valid so at least primitive topology is known
         assert(mpGraphicsState->getVao().get());
 
+        GraphicsStateObject::SharedPtr pGSO = mpGraphicsState->getGSO(mpGraphicsVars.get());
+        auto pGraphicsKernels = pGSO->getDesc().getProgramKernels();
+        auto pRootSignature = pGraphicsKernels->getRootSignature();
+        if( pRootSignature != mpGraphicsRootSignature )
+        {
+            mpGraphicsRootSignature = pRootSignature;
+            mBindGraphicsRootSig = true;
+        }
+
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
         if (is_set(RenderContext::StateBindFlags::Vars, mBindFlags))
         {
             if (mpGraphicsVars)
             {
-                applyGraphicsVars();
+                applyGraphicsVars(pGraphicsKernels.get());
             }
         }
 
         if (is_set(RenderContext::StateBindFlags::PipelineState, mBindFlags))
         {
-            GraphicsStateObject::SharedPtr pGSO = mpGraphicsState->getGSO(mpGraphicsVars.get());
             vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_GRAPHICS, pGSO->getApiHandle());
         }
         if (is_set(RenderContext::StateBindFlags::Fbo, mBindFlags))

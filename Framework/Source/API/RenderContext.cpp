@@ -108,15 +108,16 @@ namespace Falcor
         }
     }
 
-    void RenderContext::applyGraphicsVars()
+    void RenderContext::applyGraphicsVars(const ProgramKernels* pKernels)
     {
-        if (mpGraphicsVars->apply(const_cast<RenderContext*>(this), mBindGraphicsRootSig) == false)
+        if (mpGraphicsVars->apply(const_cast<RenderContext*>(this), mBindGraphicsRootSig, pKernels) == false)
         {
             logWarning("RenderContext::prepareForDraw() - applying GraphicsVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
             flush(true);
-            bool b = mpGraphicsVars->apply(const_cast<RenderContext*>(this), mBindGraphicsRootSig);
+            bool b = mpGraphicsVars->apply(const_cast<RenderContext*>(this), true, pKernels);
             assert(b);
         }
+        mBindGraphicsRootSig = false;
     }
 
     void RenderContext::flush(bool wait)
