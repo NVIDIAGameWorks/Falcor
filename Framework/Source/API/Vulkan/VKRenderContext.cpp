@@ -190,18 +190,35 @@ namespace Falcor
         assert(mpGraphicsState->getVao().get());
 
         // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
-        if(mpGraphicsVars)
+        if (is_set(RenderContext::StateBindFlags::Vars, mBindFlags))
         {
-            applyGraphicsVars();
+            if (mpGraphicsVars)
+            {
+                applyGraphicsVars();
+            }
         }
 
-        GraphicsStateObject::SharedPtr pGSO = mpGraphicsState->getGSO(mpGraphicsVars.get());
-        vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_GRAPHICS, pGSO->getApiHandle());
-        
-        transitionFboResources(this, mpGraphicsState->getFbo().get());
-        setViewports(mpLowLevelData->getCommandList(), mpGraphicsState->getViewports());
-        setScissors(mpLowLevelData->getCommandList(), mpGraphicsState->getScissors());
-        setVao(this, mpGraphicsState->getVao().get());
+        if (is_set(RenderContext::StateBindFlags::PipelineState, mBindFlags))
+        {
+            GraphicsStateObject::SharedPtr pGSO = mpGraphicsState->getGSO(mpGraphicsVars.get());
+            vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_GRAPHICS, pGSO->getApiHandle());
+        }
+        if (is_set(RenderContext::StateBindFlags::Fbo, mBindFlags))
+        {
+            transitionFboResources(this, mpGraphicsState->getFbo().get());
+        }
+        if (is_set(RenderContext::StateBindFlags::Viewports, mBindFlags))
+        {
+            setViewports(mpLowLevelData->getCommandList(), mpGraphicsState->getViewports());
+        }
+        if (is_set(RenderContext::StateBindFlags::Scissors, mBindFlags))
+        {
+            setScissors(mpLowLevelData->getCommandList(), mpGraphicsState->getScissors());
+        }
+        if (is_set(RenderContext::StateBindFlags::Vao, mBindFlags))
+        {
+            setVao(this, mpGraphicsState->getVao().get());
+        }
         beginRenderPass(mpLowLevelData->getCommandList(), mpGraphicsState->getFbo().get());
     }
 

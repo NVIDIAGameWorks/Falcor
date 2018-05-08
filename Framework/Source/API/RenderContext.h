@@ -42,7 +42,6 @@
 
 namespace Falcor
 {
-
     /** The rendering context. Use it to bind state and dispatch calls to the GPU
     */
     class RenderContext : public ComputeContext, public inherit_shared_from_this<ComputeContext, RenderContext>
@@ -52,6 +51,23 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const RenderContext>;
 
         ~RenderContext();
+
+        /**
+            This flag control which aspects of the GraphicState will be bound into the pipeline before drawing.
+            It is useful in cases where the user wants to set a specific object using a raw-API call before calling one of the draw functions
+        */
+        enum class StateBindFlags : uint32_t
+        {
+            None            = 0x0,              ///<Bind Nothing
+            Vars            = 0x1,              ///<Bind Graphics Vars (root signature and sets)
+            Topology        = 0x2,              ///<Bind Primitive Topology
+            Vao             = 0x4,              ///<Bind Vao
+            Fbo             = 0x8,              ///<Bind Fbo
+            Viewports       = 0x10,             ///<Bind Viewport
+            Scissors        = 0x20,             ///<Bind scissors
+            PipelineState   = 0x40,             ///<Bind Pipeline State Object
+            All             = uint32_t(-1)
+        };
 
         /** Create a new object.
         */
@@ -168,6 +184,10 @@ namespace Falcor
         */
         void flush(bool wait = false) override;
 
+        /** Tell the render context what it should and shouldn't bind before drawing
+        */
+        void setBindFlags(StateBindFlags flags) { mBindFlags = flags; }
+
 #ifdef FALCOR_DXR
         /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same
         */
@@ -193,5 +213,8 @@ namespace Falcor
 
         // Internal functions used by the API layers
         void prepareForDraw();
+        StateBindFlags mBindFlags = StateBindFlags::All;
     };
+
+    enum_class_operators(RenderContext::StateBindFlags);
 }

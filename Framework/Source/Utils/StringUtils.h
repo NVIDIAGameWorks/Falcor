@@ -184,8 +184,8 @@ namespace Falcor
     */
     inline bool parseArrayIndex(const std::string& name, std::string& nonArray, uint32_t& index)
     {
-        size_t dot = name.find_last_of(".");
-        size_t bracket = name.find_last_of("[");
+        size_t dot = name.find_last_of('.');
+        size_t bracket = name.find_last_of('[');
 
         if(bracket != std::string::npos)
         {

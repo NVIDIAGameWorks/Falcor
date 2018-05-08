@@ -705,25 +705,31 @@ namespace Falcor
         logWarning("createTexture2DFromFile() warning. " + std::to_string(pBitmap->getBytesPerPixel()) + " channel images doesn't have a matching sRGB format. Loading in linear space.");  \
     }
 
+        Texture::SharedPtr pTex;
         if (hasSuffix(filename, ".dds"))
         {
-            return createTextureFromDDSFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
+            pTex = createTextureFromDDSFile(filename, generateMipLevels, loadAsSrgb, bindFlags);
+        }
+        else
+        {
+            Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(filename, kTopDown);
+            if(pBitmap)
+            {
+                ResourceFormat texFormat = pBitmap->getFormat();
+                if(loadAsSrgb)
+                {
+                    texFormat = linearToSrgbFormat(texFormat);
+                }
+
+                pTex = Texture::create2D(pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
+            }
         }
 
-        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(filename, kTopDown);
-        Texture::SharedPtr pTex;
-
-        if(pBitmap)
+        if (pTex != nullptr)
         {
-            ResourceFormat texFormat = pBitmap->getFormat();
-            if(loadAsSrgb)
-            {
-                texFormat = linearToSrgbFormat(texFormat);
-            }
-
-            pTex = Texture::create2D(pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1, pBitmap->getData(), bindFlags);
             pTex->setSourceFilename(stripDataDirectories(filename));
         }
+
         return pTex;
     }
 #undef no_srgb

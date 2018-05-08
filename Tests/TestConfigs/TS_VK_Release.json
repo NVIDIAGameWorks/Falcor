@@ -49,7 +49,6 @@
             },
             "Project Tests Args" :
             [
-                "-test -fixedtimedelta 0.03333 -loadscene san-miguel/SanMiguel.fscene -sstimes 10 20 30 -shutdowntime 31",
                 "-test -fixedtimedelta 0.03333 -loadscene classroom/Classroom.fscene -sstimes 7 15 -shutdowntime 16",
                 "-test -fixedtimedelta 0.03333 -loadscene pink_room/pink_room.fscene -sstimes 10 -shutdowntime 11",
                 "-test -fixedtimedelta 0.03333 -loadscene grey_and_white_room/grey_and_white_room.fscene -sstimes 10 20 32 -shutdowntime 33",

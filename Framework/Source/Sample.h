@@ -44,12 +44,6 @@
 
 namespace Falcor
 {
-#ifdef _DEBUG
-#define _SHOW_MB_BY_DEFAULT true
-#else
-#define _SHOW_MB_BY_DEFAULT false
-#endif
-
     /** Sample configuration.
     */
     struct SampleConfig
@@ -64,7 +58,7 @@ namespace Falcor
 
         Window::Desc windowDesc;                                    ///< Controls window creation
         Device::Desc deviceDesc;                                    ///< Controls device creation;
-        bool showMessageBoxOnError = _SHOW_MB_BY_DEFAULT;           ///< Show message box on framework/API errors.
+        bool showMessageBoxOnError = true;                          ///< Show message box on framework/API errors.
         float timeScale = 1.0f;                                     ///< A scaling factor for the time elapsed between frames.
         float fixedTimeDelta = 0.0f;                                ///< If non-zero, specifies a fixed simulation time step per frame, which is further affected by time scale.
         bool freezeTimeOnStartup = false;                           ///< Control whether or not to start the clock when the sample start running.

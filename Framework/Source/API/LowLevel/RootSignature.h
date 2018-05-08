@@ -40,7 +40,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<RootSignature>;
         using SharedConstPtr = std::shared_ptr<const RootSignature>;
         using ApiHandle = RootSignatureHandle;
-        
+
         using DescType = Falcor::DescriptorSet::Type;
         using DescriptorSetLayout = DescriptorSet::Layout;
         
@@ -51,6 +51,8 @@ namespace Falcor
 #ifdef FALCOR_DXR
             Desc& setLocal(bool isLocal) { mIsLocal = isLocal; return *this; }
 #endif
+            size_t getSetsCount() const { return mSets.size(); }
+            const DescriptorSetLayout getSet(size_t index) const { return mSets[index]; }
         private:
             friend class RootSignature;
             std::vector<DescriptorSetLayout> mSets;
@@ -74,6 +76,8 @@ namespace Falcor
 
         void bindForGraphics(CopyContext* pCtx);
         void bindForCompute(CopyContext* pCtx);
+
+        const Desc& getDesc() const { return mDesc; }
     protected:
         RootSignature(const Desc& desc);
         bool apiInit();

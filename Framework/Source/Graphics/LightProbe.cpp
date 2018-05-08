@@ -139,7 +139,7 @@ namespace Falcor
 
     static PreIntegration sIntegration;
 
-    LightProbe::LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize, uint32_t specSize, uint32_t diffSamples, uint32_t specSamples, ResourceFormat preFilteredFormat)
+    LightProbe::LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSamples, uint32_t specSamples, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
         : mDiffSampleCount(diffSamples)
         , mSpecSampleCount(specSamples)
     {
@@ -168,13 +168,14 @@ namespace Falcor
         }
     }
 
-    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSize, uint32_t specSize, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
     {
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown)
         {
             Texture::SharedPtr pOrigTex = createTextureFromFile(filename, false, loadAsSrgb);
             pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+            pTexture->setSourceFilename(pOrigTex->getSourceFilename());
             gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
             pTexture->generateMips(gpDevice->getRenderContext().get());
         }
@@ -183,17 +184,17 @@ namespace Falcor
             pTexture = createTextureFromFile(filename, true, loadAsSrgb);
         }
 
-        return create(pContext, pTexture, diffSize, specSize, diffSampleCount, specSampleCount, preFilteredFormat);
+        return create(pContext, pTexture, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat);
     }
 
-    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize, uint32_t specSize, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSampleCount, uint32_t specSampleCount, uint32_t diffSize, uint32_t specSize, ResourceFormat preFilteredFormat)
     {
         if (pTexture->getMipCount() == 1)
         {
             logWarning("Source textures used for generating light probes should have a valid mip chain.");
         }
 
-        return SharedPtr(new LightProbe(pContext, pTexture, diffSize, specSize, diffSampleCount, specSampleCount, preFilteredFormat));
+        return SharedPtr(new LightProbe(pContext, pTexture, diffSampleCount, specSampleCount, diffSize, specSize, preFilteredFormat));
     }
 
     void LightProbe::renderUI(Gui* pGui, const char* group)

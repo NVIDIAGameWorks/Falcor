@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 
 using namespace Falcor;
 
-class Shadows : public Renderer
+class LightProbeViewer : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
@@ -40,70 +40,49 @@ public:
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    void onDataReload(SampleCallbacks* pSample) override;
+    void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) override;
 
 private:
-    void displayShadowMap(RenderContext* pContext);
-    void displayVisibilityBuffer(RenderContext* pContext);
-    void runMainPass(RenderContext* pContext);
-    void createVisualizationProgram();
-    void createScene(const std::string& filename);
-    void displayLoadSceneDialog();
-    void setLightIndex(int32_t index);
+    void resetCamera();
+    void updateLightProbe(LightProbe::SharedPtr pLightProbe);
+    void renderInfoText(SampleCallbacks* pSample);
 
-    std::vector<CascadedShadowMaps::UniquePtr> mpCsmTech;
+    static const std::string kEnvMapName;
+
+    uint32_t mDiffuseSamples = LightProbe::kDefaultDiffSamples;
+    uint32_t mSpecSamples = LightProbe::kDefaultSpecSamples;
+    int32_t mSpecMip = 0;
+
+    enum class Viewport
+    {
+        Scene,
+        Orig,
+        Diffuse,
+        Specular,
+        Count
+    };
+
+    // Viewport coordinates
+    uvec4 mMainRect;
+    std::array<uvec4, (uint32_t)Viewport::Count> mRects;
+    Viewport mSelectedView;
+
+    Camera::SharedPtr mpCamera;
+    Model::SharedPtr mpModel = nullptr;
+    SixDoFCameraController mCameraController;
+
+    SkyBox::UniquePtr mpSkyBox;
+
     Scene::SharedPtr mpScene;
+    SceneRenderer::SharedPtr mpSceneRenderer;
+    LightProbe::SharedPtr mpLightProbe;
 
-    struct
-    {
-        FullScreenPass::UniquePtr pShadowMapProgram;
-        GraphicsVars::SharedPtr pShadowMapProgramVars;
-        FullScreenPass::UniquePtr pVisibilityBufferProgram;
-        GraphicsVars::SharedPtr pVisibilityBufferProgramVars;
-    } mShadowVisualizer;
-
-    struct
-    {
-        GraphicsProgram::SharedPtr pProgram;
-        GraphicsVars::SharedPtr pProgramVars;
-    } mLightingPass;
+    GraphicsProgram::SharedPtr mpProgram = nullptr;
+    GraphicsVars::SharedPtr mpVars = nullptr;
+    GraphicsState::SharedPtr mpState = nullptr;
 
     Sampler::SharedPtr mpLinearSampler = nullptr;
-
-    SceneRenderer::SharedPtr mpRenderer;
-
-    enum class DebugMode { None = 0, ShadowMap = 1, VisibilityBuffer = 2, Count = 3 };
-    static const Gui::DropdownList skDebugModeList;
-    struct Controls
-    {
-        bool updateShadowMap = true;
-        uint32_t debugMode = (uint32_t)DebugMode::None;
-        int32_t displayedCascade = 0;
-        int32_t cascadeCount = 4;
-        int32_t lightIndex = 0;
-    };
-    Controls mControls;
-
-
-    struct ShadowOffsets
-    {
-        uint32_t displayedCascade;
-    } mOffsets;  
-
-    //non csm data in this cb so it can be sent as a single blob
-    struct PerFrameCBData
-    {
-        //This is effectively a bool, but bool only takes up 1 byte which messes up setBlob
-        glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
-        uint32_t visualizeCascades = 0u;
-    } mPerFrameCBData;
-
-    static const std::string skDefaultScene;
-    glm::uvec2 mWindowDimensions;
-    std::vector<Texture::SharedPtr> mpVisibilityBuffers;
-
-    //Testing 
-    void onInitializeTesting(SampleCallbacks* pSample) override;
-    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
-    std::vector<uint32_t> mFilterFrames;
-    std::vector<uint32_t>::iterator mFilterFramesIt;
+    DepthStencilState::SharedPtr mpDepthState = nullptr;
+    RasterizerState::SharedPtr mpRasterizerState = nullptr;
 };

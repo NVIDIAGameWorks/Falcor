@@ -147,6 +147,8 @@ namespace Falcor
         pCB->setVariable(mScaleOffset, mScale);
 
         mpState->setFbo(pRenderCtx->getGraphicsState()->getFbo());
+        mpState->setViewport(0, pRenderCtx->getGraphicsState()->getViewport(0));
+        mpState->setScissors(0, pRenderCtx->getGraphicsState()->getScissors(0));
         pRenderCtx->pushGraphicsVars(mpVars);
         pRenderCtx->pushGraphicsState(mpState);
 
