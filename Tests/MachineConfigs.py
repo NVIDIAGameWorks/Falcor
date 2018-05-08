@@ -37,6 +37,6 @@ destination_target = platform_data['Destination Target']
 machine_email_recipients = platform_data['Email List']
 machine_results_summary_target = platform_data['Results Summary Target']
 #for running test sets, not collections. Like check in tests
-default_reference_machine_name = 'clavelle-dt'
+default_reference_machine_name = 'default'
 default_reference_branch_name = 'master'
 default_main_dir = platform_data['Default Main Directory']
