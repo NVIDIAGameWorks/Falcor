@@ -76,15 +76,15 @@ namespace Falcor
             Desc& setPrimitiveType(PrimitiveType type) { mPrimType = type; return *this; }
             Desc& setSinglePassStereoEnable(bool sps) { mSinglePassStereoEnabled = sps; return *this; }
 
-            const BlendState::SharedPtr& getBlendState() const { return mpBlendState; }
-            const RasterizerState::SharedPtr& getRasterizerState() const { return mpRasterizerState; }
-            const DepthStencilState::SharedPtr& getDepthStencilState() const { return mpDepthStencilState; }
+            BlendState::SharedPtr getBlendState() const { return mpBlendState; }
+            RasterizerState::SharedPtr getRasterizerState() const { return mpRasterizerState; }
+            DepthStencilState::SharedPtr getDepthStencilState() const { return mpDepthStencilState; }
             uint32_t getSampleMask() const { return mSampleMask; }
             GraphicsStateObject::PrimitiveType getPrimitiveType() const { return mPrimType; }
-            const VertexLayout::SharedConstPtr& getVertexLayout() const { return mpLayout; }
-            const Fbo::Desc& getFboDesc() const { return mFboDesc; }
-            const ProgramVersion::SharedConstPtr& getProgramVersion() const { return mpProgram; }
-            const RootSignature::SharedPtr& getRootSignature() const { return mpRootSignature; }
+            VertexLayout::SharedConstPtr getVertexLayout() const { return mpLayout; }
+            Fbo::Desc getFboDesc() const { return mFboDesc; }
+            ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram; }
+            RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
 
             bool getSinglePassStereoEnabled() const { return mSinglePassStereoEnabled; }
 
