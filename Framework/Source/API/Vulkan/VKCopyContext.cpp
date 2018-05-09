@@ -315,8 +315,6 @@ namespace Falcor
 
         if (srcStageMask != dstStageMask)
         {
-            pBuffer->setGlobalState(newState);
-            mCommandsPending = true;
             assert(pBuffer);
             VkBufferMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -327,6 +325,8 @@ namespace Falcor
             barrier.size = pBuffer->getSize();
 
             vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), srcStageMask, dstStageMask, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+            pBuffer->setGlobalState(newState);
+            mCommandsPending = true;
         }
     }
 
