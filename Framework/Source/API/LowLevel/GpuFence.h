@@ -49,7 +49,7 @@ namespace Falcor
 
         /** Get the internal API handle
         */
-        ApiHandle getApiHandle() const;
+        const ApiHandle& getApiHandle() const;
 
         /** Get the last value the GPU has signaled
         */

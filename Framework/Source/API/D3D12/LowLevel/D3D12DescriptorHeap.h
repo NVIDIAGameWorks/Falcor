@@ -70,7 +70,7 @@ namespace Falcor
         };
         
         Allocation::SharedPtr allocateDescriptors(uint32_t count);
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
         D3D12_DESCRIPTOR_HEAP_TYPE getType() const { return mType; }
 
         uint32_t getReservedChunkCount() const { return mChunkCount; }

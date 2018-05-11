@@ -81,7 +81,7 @@ namespace Falcor
 
     Fbo::~Fbo() = default;
 
-    Fbo::ApiHandle Fbo::getApiHandle() const
+    const Fbo::ApiHandle& Fbo::getApiHandle() const
     {
         UNSUPPORTED_IN_D3D12("Fbo::getApiHandle()");
         return mApiHandle;

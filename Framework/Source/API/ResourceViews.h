@@ -64,7 +64,7 @@ namespace Falcor
 
         /** Get the raw API handle.
         */
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         /** Get information about the view.
         */

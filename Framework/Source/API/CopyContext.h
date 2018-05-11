@@ -105,7 +105,7 @@ namespace Falcor
 
         /** Get the low-level context data
         */
-        virtual LowLevelContextData::SharedPtr getLowLevelData() const { return mpLowLevelData; }
+        virtual const LowLevelContextData::SharedPtr& getLowLevelData() const { return mpLowLevelData; }
 
         /** Override the low-level context data with a user provided object
         */

@@ -55,7 +55,7 @@ namespace Falcor
         };
 
         static SharedPtr create(const Desc& desc);
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         const ProgramList& getProgramList() const { return mDesc.mProgList; }
         uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
