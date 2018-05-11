@@ -157,7 +157,7 @@ namespace Falcor
 
         /** Get the API handle
         */
-        RasterizerStateHandle getApiHandle() const;
+        const RasterizerStateHandle& getApiHandle() const;
     private:
         RasterizerStateHandle mApiHandle;
         RasterizerState(const Desc& Desc) : mDesc(Desc) {}

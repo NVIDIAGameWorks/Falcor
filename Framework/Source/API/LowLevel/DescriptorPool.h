@@ -92,7 +92,7 @@ namespace Falcor
         uint32_t getDescCount(Type type) const { return mDesc.mDescCount[(uint32_t)type]; }
         uint32_t getTotalDescCount() const { return mDesc.mTotalDescCount; }
         bool isShaderVisible() const { return mDesc.mShaderVisible; }
-        ApiHandle getApiHandle(uint32_t heapIndex) const;
+        const ApiHandle& getApiHandle(uint32_t heapIndex) const;
         const ApiData* getApiData() const { return mpApiData.get(); }
         void executeDeferredReleases();
     private:

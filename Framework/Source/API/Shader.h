@@ -84,7 +84,7 @@ namespace Falcor
 
         /** Get the API handle.
         */
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         /** Get the shader Type
         */

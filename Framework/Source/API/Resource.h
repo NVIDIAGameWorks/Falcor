@@ -126,7 +126,7 @@ namespace Falcor
 
         /** Get the API handle
         */
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         /** Get a shader-resource view.
             \param[in] mostDetailedMip The most detailed mip level of the view

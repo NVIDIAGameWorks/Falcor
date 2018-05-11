@@ -79,7 +79,7 @@ namespace Falcor
     }
 
     template<bool forGraphics>
-    static void bindRootSigCommon(CopyContext* pCtx, RootSignature::ApiHandle rootSig)
+    static void bindRootSigCommon(CopyContext* pCtx, const RootSignature::ApiHandle& rootSig)
     {
         if (forGraphics)
         {

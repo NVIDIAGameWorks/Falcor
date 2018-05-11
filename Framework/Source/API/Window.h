@@ -100,7 +100,7 @@ namespace Falcor
 
         /** Get the native window handle
         */
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         /** Get the width of the window's client area
         */

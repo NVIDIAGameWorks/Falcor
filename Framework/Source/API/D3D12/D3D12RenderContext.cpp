@@ -124,7 +124,7 @@ namespace Falcor
         mCommandsPending = true;
     }
 
-    static void D3D12SetVao(RenderContext* pCtx, CommandListHandle pList, const Vao* pVao)
+    static void D3D12SetVao(RenderContext* pCtx, ID3D12GraphicsCommandList* pList, const Vao* pVao)
     {
         D3D12_VERTEX_BUFFER_VIEW vb[D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT] = {};
         D3D12_INDEX_BUFFER_VIEW ib = {};
@@ -192,7 +192,7 @@ namespace Falcor
         pCtx->getLowLevelData()->getCommandList()->OMSetRenderTargets(colorTargets, pRTV.data(), FALSE, &pDSV);
     }
 
-    static void D3D12SetViewports(CommandListHandle pList, const GraphicsState::Viewport* vp)
+    static void D3D12SetViewports(ID3D12GraphicsCommandList* pList, const GraphicsState::Viewport* vp)
     {
         static_assert(offsetof(GraphicsState::Viewport, originX) == offsetof(D3D12_VIEWPORT, TopLeftX), "VP originX offset");
         static_assert(offsetof(GraphicsState::Viewport, originY) == offsetof(D3D12_VIEWPORT, TopLeftY), "VP originY offset");
@@ -204,7 +204,7 @@ namespace Falcor
         pList->RSSetViewports(D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE, (D3D12_VIEWPORT*)vp);
     }
 
-    static void D3D12SetScissors(CommandListHandle pList, const GraphicsState::Scissor* sc)
+    static void D3D12SetScissors(ID3D12GraphicsCommandList* pList, const GraphicsState::Scissor* sc)
     {
         static_assert(offsetof(GraphicsState::Scissor, left) == offsetof(D3D12_RECT, left), "Scissor.left offset");
         static_assert(offsetof(GraphicsState::Scissor, top) == offsetof(D3D12_RECT, top), "Scissor.top offset");
@@ -245,7 +245,7 @@ namespace Falcor
 
         mBindGraphicsRootSig = false;
 
-        CommandListHandle pList = mpLowLevelData->getCommandList();
+        ID3D12GraphicsCommandList* pList = mpLowLevelData->getCommandList();
         if (is_set(StateBindFlags::Topology, mBindFlags))
         {
             pList->IASetPrimitiveTopology(getD3DPrimitiveTopology(mpGraphicsState->getVao()->getPrimitiveTopology()));

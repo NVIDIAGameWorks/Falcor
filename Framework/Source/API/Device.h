@@ -118,7 +118,7 @@ namespace Falcor
 
         /** Get the native API handle
         */
-        DeviceHandle getApiHandle() { return mApiHandle; }
+        const DeviceHandle& getApiHandle() { return mApiHandle; }
 
         /** Present the back-buffer to the window
         */

@@ -187,7 +187,7 @@ namespace Falcor
 
         /** Get the API handle
         */
-        DepthStencilStateHandle getApiHandle() const;
+        const DepthStencilStateHandle& getApiHandle() const;
 
     private:
         DepthStencilStateHandle mApiHandle;
