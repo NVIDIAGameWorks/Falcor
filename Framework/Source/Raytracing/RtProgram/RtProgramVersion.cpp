@@ -33,11 +33,11 @@
 
 namespace Falcor
 {
-    uint64_t RtProgramVersion::sProgId = 0;
+    uint64_t RtProgramKernels::sProgId = 0;
     ProgramReflection::SharedPtr createProgramReflection(const Shader::SharedConstPtr pShaders[], std::string& log);
 
-    RtProgramVersion::RtProgramVersion(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
-        : ProgramVersion(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, name)
+    RtProgramKernels::RtProgramKernels(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, RootSignature::SharedPtr rootSignature, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+        : ProgramKernels(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, rootSignature, name)
         , mType(progType)
         , mMaxAttributeSize(maxAttributeSize)
         , mMaxPayloadSize(maxPayloadSize)
@@ -50,13 +50,13 @@ namespace Falcor
 
         switch (mType)
         {
-        case Falcor::RtProgramVersion::Type::RayGeneration:
+        case Falcor::RtProgramKernels::Type::RayGeneration:
             mExportName = string_2_wstring(ppShaders[0]->getEntryPoint());
             break;
-        case Falcor::RtProgramVersion::Type::Hit:
+        case Falcor::RtProgramKernels::Type::Hit:
             mExportName = L"RtProgramVersion" + std::to_wstring(sProgId++);
             break;
-        case Falcor::RtProgramVersion::Type::Miss:
+        case Falcor::RtProgramKernels::Type::Miss:
             mExportName = string_2_wstring(ppShaders[0]->getEntryPoint());
             break;
         default:
@@ -64,7 +64,7 @@ namespace Falcor
         }
     }
 
-    bool RtProgramVersion::initCommon(std::string& log)
+    bool RtProgramKernels::initCommon(std::string& log)
     {
         if (init(log) == false)
         {
@@ -76,22 +76,22 @@ namespace Falcor
         return true;
     }
 
-    RtProgramVersion::Type getProgTypeFromShader(ShaderType shaderType)
+    RtProgramKernels::Type getProgTypeFromShader(ShaderType shaderType)
     {
         switch (shaderType)
         {
         case ShaderType::Miss:
-            return RtProgramVersion::Type::Miss;
+            return RtProgramKernels::Type::Miss;
         case ShaderType::RayGeneration:
-            return RtProgramVersion::Type::RayGeneration;
+            return RtProgramKernels::Type::RayGeneration;
         default:
             should_not_get_here();
-            return RtProgramVersion::Type(-1);
+            return RtProgramKernels::Type(-1);
         }
     }
     
     template<ShaderType shaderType>
-    RtProgramVersion::SharedPtr RtProgramVersion::createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
         // We are using the RayGeneration structure in the union to avoid code duplication, these asserts make sure that our assumptions are correct
 
@@ -101,7 +101,7 @@ namespace Falcor
             return nullptr;
         }
 
-        SharedPtr pProgram = SharedPtr(new RtProgramVersion(pLocalReflector, getProgTypeFromShader(shaderType), &pShader, 1, name, maxPayloadSize, maxAttributeSize));
+        SharedPtr pProgram = SharedPtr(new RtProgramKernels(pLocalReflector, getProgTypeFromShader(shaderType), &pShader, 1, rootSignature, name, maxPayloadSize, maxAttributeSize));
         if (pProgram->initCommon(log) == false)
         {
             return nullptr;
@@ -110,7 +110,7 @@ namespace Falcor
         return pProgram;
     }
 
-    RtShader::SharedConstPtr RtProgramVersion::getShader(ShaderType type) const
+    RtShader::SharedConstPtr RtProgramKernels::getShader(ShaderType type) const
     {
         Shader::SharedConstPtr pShader = mpShaders[(uint32_t)type];
         RtShader::SharedConstPtr pRtShader = std::dynamic_pointer_cast<const RtShader>(pShader);
@@ -118,17 +118,17 @@ namespace Falcor
         return pRtShader;
     }
 
-    RtProgramVersion::SharedPtr RtProgramVersion::createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
-        return createSingleShaderProgram<ShaderType::RayGeneration>(pRayGenShader, log, name, pLocalReflector, maxPayloadSize, maxAttributeSize);
+        return createSingleShaderProgram<ShaderType::RayGeneration>(pRayGenShader, log, name, pLocalReflector, rootSignature, maxPayloadSize, maxAttributeSize);
     }
 
-    RtProgramVersion::SharedPtr RtProgramVersion::createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
-        return createSingleShaderProgram<ShaderType::Miss>(pMissShader, log, name, pLocalReflector, maxPayloadSize, maxAttributeSize);
+        return createSingleShaderProgram<ShaderType::Miss>(pMissShader, log, name, pLocalReflector, rootSignature, maxPayloadSize, maxAttributeSize);
     }
     
-    RtProgramVersion::SharedPtr RtProgramVersion::createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    RtProgramKernels::SharedPtr RtProgramKernels::createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
     {
         size_t shaderCount = 0;
         RtShader::SharedPtr pShaders[3];
@@ -143,7 +143,7 @@ namespace Falcor
             return nullptr;
         }
 
-        SharedPtr pProgram = SharedPtr(new RtProgramVersion(pReflector, Type::Hit, pShaders, shaderCount, name, maxPayloadSize, maxAttributeSize));
+        SharedPtr pProgram = SharedPtr(new RtProgramKernels(pReflector, Type::Hit, pShaders, shaderCount, rootSignature, name, maxPayloadSize, maxAttributeSize));
         if (pProgram->initCommon(log) == false)
         {
             return nullptr;

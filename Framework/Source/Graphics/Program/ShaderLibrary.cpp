@@ -30,5 +30,6 @@
 
 namespace Falcor
 {
-
+    void getToCompile1()
+    {}
 }

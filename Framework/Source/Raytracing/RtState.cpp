@@ -46,7 +46,7 @@ namespace Falcor
     {
         RtStateObject::ProgramList programs;
         assert(mpProgram->getRayGenProgram());
-        programs.push_back(mpProgram->getRayGenProgram()->getActiveVersion());
+        programs.push_back(mpProgram->getRayGenProgram()->getActiveVersion()->getKernels(this->va));
 
         for (uint32_t i = 0; i < mpProgram->getHitProgramCount(); i++)
         {

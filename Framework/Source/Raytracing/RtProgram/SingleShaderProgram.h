@@ -46,8 +46,6 @@ namespace Falcor
             return createCommon(filename, entryPoint, programDefines, maxPayloadSize, maxAttributesSize);
         }
 
-        RtProgramVersion::SharedConstPtr getActiveVersion() const { return std::dynamic_pointer_cast<const RtProgramVersion>(Program::getActiveVersion()); }
-
     private:
         RtSingleShaderProgram(uint32_t maxPayloadSize, uint32_t maxAttributesSize) : mMaxPayloadSize(maxPayloadSize), mMaxAttributesSize(maxAttributesSize) {}
 
@@ -63,19 +61,20 @@ namespace Falcor
             return pProg;
         }
 
-        virtual ProgramVersion::SharedPtr createProgramVersion(std::string& log, const Shader::Blob shaderBlob[kShaderCount], const ProgramReflectors& reflectors) const override
+        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr pReflector) const override
         {
             RtShader::SharedPtr pShader;
             pShader = createRtShaderFromBlob(mDesc.getShaderLibrary(ShaderType(shaderType))->getFilename(), mDesc.getShaderEntryPoint(ShaderType(shaderType)), shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
+            auto rootSignature = RootSignature::create(pReflector.get());
 
             if (pShader)
             {
                 switch (shaderType)
                 {
                 case ShaderType::RayGeneration:
-                    return RtProgramVersion::createRayGen(pShader, log, getProgramDescString(), reflectors.pLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramKernels::createRayGen(pShader, log, getProgramDescString(), reflectors.pLocalReflector, rootSignature, mMaxPayloadSize, mMaxAttributesSize);
                 case ShaderType::Miss:
-                    return RtProgramVersion::createMiss(pShader, log, getProgramDescString(), reflectors.pLocalReflector, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramKernels::createMiss(pShader, log, getProgramDescString(), reflectors.pLocalReflector, rootSignature, mMaxPayloadSize, mMaxAttributesSize);
                 default:
                     should_not_get_here();
                 }

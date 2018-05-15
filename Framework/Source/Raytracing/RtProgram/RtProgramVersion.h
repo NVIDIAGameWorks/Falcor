@@ -35,13 +35,13 @@ namespace Falcor
     class RootSignature;
 
     // The inheritence here is just so that we could work with Program. We're not actually using anything from ProgramVersion
-    class RtProgramVersion : public ProgramVersion, inherit_shared_from_this<ProgramVersion, RtProgramVersion>
+    class RtProgramKernels : public ProgramKernels, inherit_shared_from_this<ProgramVersion, RtProgramKernels>
     {
     public:
-        using SharedPtr = std::shared_ptr<RtProgramVersion>;
-        using SharedConstPtr = std::shared_ptr<const RtProgramVersion>;
+        using SharedPtr = std::shared_ptr<RtProgramKernels>;
+        using SharedConstPtr = std::shared_ptr<const RtProgramKernels>;
 
-        ~RtProgramVersion() = default;
+        ~RtProgramKernels() = default;
 
         enum class Type
         {
@@ -50,9 +50,9 @@ namespace Falcor
             Miss,
         };
 
-        static SharedPtr createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        static SharedPtr createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
-        static SharedPtr createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        static SharedPtr createRayGen(RtShader::SharedPtr pRayGenShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        static SharedPtr createMiss(RtShader::SharedPtr pMissShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        static SharedPtr createHit(RtShader::SharedPtr pAnyHit, RtShader::SharedPtr pClosestHit, RtShader::SharedPtr pIntersection, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
 
         RtShader::SharedConstPtr getShader(ShaderType type) const;
 
@@ -66,10 +66,10 @@ namespace Falcor
         uint32_t getMaxAttributesSize() const { return mMaxAttributeSize; }
     private:
         template<ShaderType shaderType>
-        static SharedPtr createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        static SharedPtr createSingleShaderProgram(RtShader::SharedPtr pShader, std::string& log, const std::string& name, ProgramReflection::SharedPtr pLocalReflector, RootSignature::SharedPtr rootSignature, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
         bool initCommon(std::string& log);
 
-        RtProgramVersion(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
+        RtProgramKernels(std::shared_ptr<ProgramReflection> pReflector, Type progType, RtShader::SharedPtr const* ppShaders, size_t shaderCount, RootSignature::SharedPtr rootSignature, const std::string& name, uint32_t maxPayloadSize, uint32_t maxAttributeSize);
         std::shared_ptr<RootSignature> mpLocalRootSignature;
         Type mType;
         std::wstring mExportName;
@@ -79,15 +79,15 @@ namespace Falcor
         uint32_t mMaxAttributeSize;
     };
 
-    inline std::string to_string(RtProgramVersion::Type t)
+    inline std::string to_string(RtProgramKernels::Type t)
     {
         switch (t)
         {
-        case RtProgramVersion::Type::RayGeneration:
+        case RtProgramKernels::Type::RayGeneration:
             return "RayGen";
-        case RtProgramVersion::Type::Hit:
+        case RtProgramKernels::Type::Hit:
             return "Hit";
-        case RtProgramVersion::Type::Miss:
+        case RtProgramKernels::Type::Miss:
             return "Miss";
         default:
             should_not_get_here();

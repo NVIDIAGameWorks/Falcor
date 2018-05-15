@@ -268,3 +268,6 @@ namespace Falcor
 
 } // End namespace Falcor
 #endif
+
+void getToCompile()
+{}
