@@ -32,7 +32,7 @@ namespace Falcor
 {
     RasterizerState::~RasterizerState() = default;
 
-    RasterizerStateHandle RasterizerState::getApiHandle() const
+    const RasterizerStateHandle& RasterizerState::getApiHandle() const
     {
         UNSUPPORTED_IN_VULKAN("RasterizerState::getApiHandle()");
         return mApiHandle;

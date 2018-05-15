@@ -39,7 +39,7 @@ namespace Falcor
     {
     }
 
-    VaoHandle Vao::getApiHandle() const
+    const VaoHandle& Vao::getApiHandle() const
     {
         return mApiHandle;
     }

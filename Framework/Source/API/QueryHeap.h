@@ -44,7 +44,7 @@ namespace Falcor
 
         static SharedPtr create(Type type, uint32_t count) { return SharedPtr(new QueryHeap(type, count)); }
 
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
         uint32_t getQueryCount() const { return mCount; }
         Type getType() const { return mType; }
 

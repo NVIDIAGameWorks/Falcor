@@ -93,7 +93,7 @@ namespace Falcor
 
         CpuHandle getCpuHandle(uint32_t rangeIndex, uint32_t descInRange = 0) const;
         GpuHandle getGpuHandle(uint32_t rangeIndex, uint32_t descInRange = 0) const;
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         void setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv);
         void setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav);

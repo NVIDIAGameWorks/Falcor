@@ -81,7 +81,7 @@ namespace Falcor
         return true;
     }
 
-    DescriptorPool::ApiHandle DescriptorPool::getApiHandle(uint32_t heapIndex) const
+    const DescriptorPool::ApiHandle& DescriptorPool::getApiHandle(uint32_t heapIndex) const
     {
         assert(heapIndex < arraysize(mpApiData->pHeaps));
         return mpApiData->pHeaps[heapIndex]->getApiHandle();

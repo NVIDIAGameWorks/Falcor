@@ -66,7 +66,7 @@ namespace Falcor
         static SharedPtr create(const Desc& desc);
         static SharedPtr create(const ProgramReflection* pReflection, bool isLocal = false);
 
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         size_t getDescriptorSetCount() const { return mDesc.mSets.size(); }
         const DescriptorSetLayout& getDescriptorSet(size_t index) const { return mDesc.mSets[index]; }

@@ -282,15 +282,15 @@ namespace Falcor
     {
         assert(pTexture->getApiHandle().getType() == VkResourceType::Image);
 
-        auto srcStageMask = getShaderStageMask(pTexture->getGlobalState(), true);
-        auto dstStageMask = getShaderStageMask(newState, false);
+        VkImageLayout srcLayout = getImageLayout(pTexture->getGlobalState());
+        VkImageLayout dstLayout = getImageLayout(newState);
 
-        if(srcStageMask != dstStageMask)
+        if(srcLayout != dstLayout)
         {
             VkImageMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            barrier.newLayout = getImageLayout(newState);
-            barrier.oldLayout = getImageLayout(pTexture->getGlobalState());
+            barrier.oldLayout = srcLayout;
+            barrier.newLayout = dstLayout;
             barrier.image = pTexture->getApiHandle();
             barrier.subresourceRange.aspectMask = getAspectFlagsFromFormat(pTexture->getFormat());
             barrier.subresourceRange.baseArrayLayer = 0;
@@ -300,7 +300,10 @@ namespace Falcor
             barrier.srcAccessMask = getAccessMask(pTexture->getGlobalState());
             barrier.dstAccessMask = getAccessMask(newState);
 
+            VkPipelineStageFlags srcStageMask = getShaderStageMask(pTexture->getGlobalState(), true);
+            VkPipelineStageFlags dstStageMask = getShaderStageMask(newState, false);
             vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
             pTexture->setGlobalState(newState);
             mCommandsPending = true;
         }
@@ -308,16 +311,14 @@ namespace Falcor
 
     void CopyContext::bufferBarrier(const Buffer* pBuffer, Resource::State newState)
     {
+        assert(pBuffer);
         assert(pBuffer->getApiHandle().getType() == VkResourceType::Buffer);
 
-        auto srcStageMask = getShaderStageMask(pBuffer->getGlobalState(), true);
-        auto dstStageMask = getShaderStageMask(newState, false);
+        VkPipelineStageFlags srcStageMask = getShaderStageMask(pBuffer->getGlobalState(), true);
+        VkPipelineStageFlags dstStageMask = getShaderStageMask(newState, false);
 
         if (srcStageMask != dstStageMask)
         {
-            pBuffer->setGlobalState(newState);
-            mCommandsPending = true;
-            assert(pBuffer);
             VkBufferMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
             barrier.srcAccessMask = getAccessMask(pBuffer->getGlobalState());
@@ -327,6 +328,9 @@ namespace Falcor
             barrier.size = pBuffer->getSize();
 
             vkCmdPipelineBarrier(mpLowLevelData->getCommandList(), srcStageMask, dstStageMask, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+
+            pBuffer->setGlobalState(newState);
+            mCommandsPending = true;
         }
     }
 

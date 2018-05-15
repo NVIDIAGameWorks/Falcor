@@ -117,7 +117,7 @@ namespace Falcor
 
         static SharedPtr create(const Desc& desc);
 
-        ApiHandle getApiHandle() { return mApiHandle; }
+        const ApiHandle& getApiHandle() { return mApiHandle; }
 
         const Desc& getDesc() const { return mDesc; }
 

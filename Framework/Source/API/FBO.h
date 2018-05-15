@@ -144,7 +144,7 @@ namespace Falcor
 
         /** Get the object's API handle.      
         */
-        ApiHandle getApiHandle() const;
+        const ApiHandle& getApiHandle() const;
 
         /** Get the maximum number of color targets
         */

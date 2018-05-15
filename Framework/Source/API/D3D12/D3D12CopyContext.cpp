@@ -186,7 +186,7 @@ namespace Falcor
         return result;
     }
 
-    static void d3d12ResourceBarrier(const Resource* pResource, Resource::State newState, Resource::State oldState, uint32_t subresourceIndex, CommandListHandle pCmdList)
+    static void d3d12ResourceBarrier(const Resource* pResource, Resource::State newState, Resource::State oldState, uint32_t subresourceIndex, ID3D12GraphicsCommandList* pCmdList)
     {
         D3D12_RESOURCE_BARRIER barrier;
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -198,7 +198,7 @@ namespace Falcor
         pCmdList->ResourceBarrier(1, &barrier);
     }
 
-    static bool d3d12GlobalResourceBarrier(const Resource* pResource, Resource::State newState, CommandListHandle pCmdList)
+    static bool d3d12GlobalResourceBarrier(const Resource* pResource, Resource::State newState, ID3D12GraphicsCommandList* pCmdList)
     {
         if(pResource->getGlobalState() != newState)
         {
