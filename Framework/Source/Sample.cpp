@@ -115,7 +115,7 @@ namespace Falcor
                         break;
                     case KeyboardEvent::Key::F5:
                         Program::reloadAllPrograms();
-                        mpRenderer->onDataReload(this);
+                        if(mpRenderer) mpRenderer->onDataReload(this);
                         break;
                     case KeyboardEvent::Key::Escape:
                         if (mVideoCapture.pVideoCapture)
@@ -136,12 +136,18 @@ namespace Falcor
         }
 
         // If we got here, this is a user specific message
-        mpRenderer->onKeyEvent(this, keyEvent);
+        if(mpRenderer)
+        {
+            mpRenderer->onKeyEvent(this, keyEvent);
+        }
     }
 
     void Sample::handleDroppedFile(const std::string& filename)
     {
-        mpRenderer->onDroppedFile(this, filename);
+        if(mpRenderer)
+        {
+            mpRenderer->onDroppedFile(this, filename);
+        }
     }
 
     void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
@@ -151,7 +157,10 @@ namespace Falcor
             if (mpGui->onMouseEvent(mouseEvent)) return;
             if (mpPixelZoom->onMouseEvent(mouseEvent)) return;
         }
-        mpRenderer->onMouseEvent(this, mouseEvent);
+        if(mpRenderer)
+        {
+            mpRenderer->onMouseEvent(this, mouseEvent);
+        }
     }
 
     // Sample functions
