@@ -5,17 +5,17 @@ json_data = {
     'Windows':
     {   
         'Destination Target' : 'C:\\Falcor\\GitHub\\',
-        'Reference Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\References\\',
+        'Reference Target' : '\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\',
         'Email List' : '\\\\netapp-wa02\\public\\Falcor\\email.txt',
-        'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\Github\\Results\\',
+        'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\GitHub\\Results\\',
         'Default Main Directory' : '..\\'
     },
     'Linux':
     {   
         'Destination Target' : '/home/nvrgfxtest/Desktop/FalcorGitHub/',
-        'Reference Target' : 'media/netapp/Falcor/Github/References/',
+        'Reference Target' : '/media/netapp/Falcor/GitHub/References/',
         'Email List' : '/media/netapp/Falcor/email.txt',
-        'Results Summary Target' : '/media/netapp/Falcor/Github/Results/',
+        'Results Summary Target' : '/media/netapp/Falcor/GitHub/Results/',
         'Default Main Directory' : '../'
     }
 }
