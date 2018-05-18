@@ -25,31 +25,28 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#ifndef _FALCOR_LIGHTS_SLANG_
-#define _FALCOR_LIGHTS_SLANG_
 #include "HostDeviceData.h"
-__import ShaderCommon;
-__import Helpers;
 
-struct LightSample
-{
-    float3 diffuse;   // The light intensity at the surface location used for the diffuse term
-    float3 specular;  // The light intensity at the surface location used for the specular term. For light probes, the diffuse and specular components are different
-    float3 L;         // The direction from the surface to the light source
-    float3 posW;      // The world-space position of the light 
-    float NdotH;      // Unclamped, can be negative
-    float NdotL;      // Unclamped, can be negative
-    float LdotH;      // Unclamped, can be negative
-    float distance;   // Distance from the light-source to the surface
-};
+import Helpers;
+import Interfaces;
+import Effects.CascadedShadowMap;
 
-void calcCommonLightProperties(ShadingData sd, inout LightSample ls)
+// work around compiler issue
+#define calcCommonLightProperties(geom, ls) \
+    { float3 H = normalize(geom.V + ls.L); \
+      ls.NdotH = dot(geom.N, H); \
+      ls.NdotL = dot(geom.N, ls.L); \
+      ls.LdotH = dot(ls.L, H);   }
+
+/*
+void calcCommonLightProperties(SurfaceGeometry geom, inout LightSample ls)
 {
-    float3 H = normalize(sd.V + ls.L);
-    ls.NdotH = dot(sd.N, H);
-    ls.NdotL = dot(sd.N, ls.L);
+    float3 H = normalize(geom.V + ls.L);
+    ls.NdotH = dot(geom.N, H);
+    ls.NdotL = dot(geom.N, ls.L);
     ls.LdotH = dot(ls.L, H);
 };
+*/
 
 float getDistanceFalloff(float distSquared)
 {
@@ -128,12 +125,12 @@ float linearRoughnessToLod(float linearRoughness, float mipCount)
 
 /** Evaluate a light source intensity/direction at a shading point
 */
-LightSample evalLight(LightData light, ShadingData sd)
+LightSample evalLight(LightData light, SurfaceGeometry geom)
 {
     LightSample ls;
-    if(light.type == LightDirectional) ls = evalDirectionalLight(light, sd.posW);
-    else if(light.type == LightPoint)  ls = evalPointLight(light, sd.posW);
-    calcCommonLightProperties(sd, ls);
+    if(light.type == LightDirectional) ls = evalDirectionalLight(light, geom.posW);
+    else if(light.type == LightPoint)  ls = evalPointLight(light, geom.posW);
+    calcCommonLightProperties(geom, ls);
     return ls;
 };
 
@@ -152,9 +149,9 @@ float3 getSpecularDominantDir(float3 N, float3 R, float roughness)
     return normalize(lerp(N, R, factor));
 }
 
-float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
+float3 evalLightProbeDiffuse(LightProbeData probe, SurfaceGeometry sd, float roughness)
 {
-    float3 N = getDiffuseDominantDir(sd.N, sd.V, sd.roughness);
+    float3 N = getDiffuseDominantDir(sd.N, sd.V, roughness);
 
     // Interpret negative radius as global light probe with infinite distance
     // Otherwise simulate the light probe as covering a finite spherical area
@@ -171,12 +168,12 @@ float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
     }
 
     float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
-    float diffF = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(sd.NdotV, sd.roughness), 0).z;
+    float diffF = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(sd.NdotV, roughness), 0).z;
 
     return diffuseLighting * diffF;
 }
 
-float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
+float3 evalLightProbeSpecular(LightProbeData probe, SurfaceGeometry sd, float3 L, float roughness, float3 specular)
 {
     float dfgWidth, dfgHeight;
     gProbeShared.dfgTexture.GetDimensions(dfgWidth, dfgHeight);
@@ -184,50 +181,153 @@ float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
     float width, height, mipCount;
     probe.resources.specularTexture.GetDimensions(0, width, height, mipCount);
 
-    float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.roughness);
+    float3 dominantDir = getSpecularDominantDir(sd.N, L, roughness);
     float NdotV = max(sd.NdotV, 0.5 / dfgWidth);
 
     // #TODO This looks a lot closer to reference when passing in roughness instead of linearRoughness. Why?
-    float mipLevel = linearRoughnessToLod(sd.roughness, mipCount);
+    float mipLevel = linearRoughnessToLod(roughness, mipCount);
 
     float2 uv = dirToSphericalCrd(dominantDir);
     float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.sampler, uv, mipLevel).rgb;
 
-    float2 dfg = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(NdotV, sd.roughness), 0).xy;
+    float2 dfg = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(NdotV, roughness), 0).xy;
     
     // ld * (f0 * Gv * (1 - Fc)) + (f90 * Gv * Fc)
-    return ld * (sd.specular * dfg.x + dfg.y);
+    return ld * (specular * dfg.x + dfg.y);
 }
 
 /** Evaluate a 2D light-probe filtered using linear-filtering
 */
-LightSample evalLightProbeLinear2D(LightProbeData probe, ShadingData sd)
+LightSample evalLightProbeLinear2D(SurfaceGeometry geom, LightProbeData probe, SamplerState lightProbeSampler, float roughness, float linearRoughness, float3 specular)
 {
     LightSample ls;
 
     // Calculate the reflection vector
-    ls.L = reflect(-sd.V, sd.N);
+    ls.L = reflect(-geom.V, geom.N);
 
     // Evaluate diffuse component
-    ls.diffuse = evalLightProbeDiffuse(probe, sd);
+    ls.diffuse = evalLightProbeDiffuse(probe, geom);
 
     // Get the specular component
-    ls.specular = evalLightProbeSpecular(probe, sd, ls.L);
+    ls.specular = evalLightProbeSpecular(probe, geom, ls.L, roughness, specular);
 
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;
     ls.posW = probe.posW;
-    ls.distance = length(probe.posW - sd.posW);
-    calcCommonLightProperties(sd, ls);
+    ls.distance = length(probe.posW - geom.posW);
+    calcCommonLightProperties(geom, ls);
 
     return ls;
 }
 
 /** Evaluate the properties of a light-probe
 */
-LightSample evalLightProbe(LightProbeData probe, ShadingData sd)
+LightSample evalLightProbe(SurfaceGeometry geom, LightProbeData probe, SamplerState lightProbeSampler, float roughness, float linearRoughness, float3 specular)
 {
-    return evalLightProbeLinear2D(probe, sd);
+    return evalLightProbeLinear2D(geom, probe, lightProbeSampler, roughness, linearRoughness, specular);
 }
 
-#endif	// _FALCOR_LIGHTS_SLANG_
+interface IShadow
+{
+    float getShadowFactor(SurfaceGeometry geom);
+}
+
+struct NoShadow : IShadow
+{
+    float getShadowFactor(SurfaceGeometry geom)
+    {
+        return 1.0;
+    }
+};
+
+struct CsmShadow : IShadow
+{
+    CsmData csm;
+    float getShadowFactor(SurfaceGeometry geom)
+    {
+        return calcShadowFactor(csm, geom.shadowDepthC, geom.posW, geom.posH.xy/geom.posH.w);
+    }
+};
+
+
+struct PointLight<TShadow : IShadow> : ILight
+{
+    LightData light;
+    TShadow shadow;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
+    {
+        LightSample ls = evalPointLight(light, p.geom.posW);
+        calcCommonLightProperties(p.geom, ls);
+        float shadowFactor = shadow.getShadowFactor(p.geom);
+        /* Evaluate material with lighting attributes */
+        return p.bxdf.eval(p.geom, ls, shadowFactor);
+    }
+};
+
+struct DirectionalLight<TShadow : IShadow> : ILight
+{
+    LightData light;
+    TShadow shadow;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
+    {
+        LightSample ls = evalDirectionalLight(light, p.geom.posW);
+        calcCommonLightProperties(p.geom, ls);
+        float shadowFactor = shadow.getShadowFactor(p.geom);
+        /* Evaluate material with lighting attributes */
+        return p.bxdf.eval(p.geom, ls, shadowFactor);
+    }
+};
+
+struct ProbeLight : ILight
+{
+    LightProbeData probeData;
+
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
+    {
+        return p.bxdf.evalProbe(p.geom, probeData, gParams);
+    }
+};
+
+struct AmbientLight : ILight
+{
+    float3 ambientLight;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
+    {
+        return p.bxdf.evalAmbient(ambientLight);
+    }
+};
+
+struct LightArray<TLight:ILight, let N:int> : ILight
+{   
+    TLight lights[N];
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, GlobalLightParams gParams)
+    {
+        ShadingResult rs = initShadingResult();
+        for (int i = 0; i < N; i++)
+        {
+            ShadingResult r = lights[i].evalLighting(shAttr, gParams);
+            rs.diffuse += r.diffuse;
+            rs.specular += r.specular;
+            rs.color += r.color;
+            rs.color.a = r.color.a;
+        }
+        return rs;
+    }
+};
+
+struct LightPair<TLight1 : ILight, TLight2 : ILight> : ILight
+{
+    TLight1 light1;
+    TLight2 light2;
+    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, GlobalLightParams gParams)
+    {
+        ShadingResult rs = initShadingResult();
+        ShadingResult r1 = light1.evalLighting(shAttr, gParams);
+        ShadingResult r2 = light2.evalLighting(shAttr, gParams);
+        rs.diffuse = r1.diffuse + r2.diffuse;
+        rs.specular = r1.specular + r2.specular;
+        rs.color = r1.color + r2.color;
+        rs.color.a = r1.color.a;
+        return rs;
+    }
+};

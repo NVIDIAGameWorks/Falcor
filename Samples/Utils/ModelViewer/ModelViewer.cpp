@@ -102,6 +102,7 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
     setModelString(false, timer.getElapsedTime());
 
     mpModel->bindSamplerToMaterials(mUseTriLinearFiltering ? mpLinearSampler : mpPointSampler);
+    mModelRenderer.init(mpModel);
 }
 
 void ModelViewer::loadModel(ResourceFormat fboFormat)
@@ -317,7 +318,7 @@ void ModelViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedP
         mpGraphicsState->setProgram(mpProgram);
         pRenderContext->setGraphicsState(mpGraphicsState);
         pRenderContext->setGraphicsVars(mpProgramVars);
-        ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
+        mModelRenderer.render(pRenderContext.get(), mpCamera.get());
     }
 
     pSample->renderText(mModelString, glm::vec2(10, 30));

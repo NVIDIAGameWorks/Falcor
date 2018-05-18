@@ -31,14 +31,13 @@ __import DefaultVS;
 
 float4 ps(VertexOut vOut) : SV_TARGET
 {
-    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData<TMaterial>(vOut.vsData, gMaterial, gCamera.posW);
 
-    float3 color = 0;
+    float4 finalColor = float4(0, 0, 0, 1);
 
-    for (uint l = 0; l < gLightsCount; l++)
-    {
-        color += evalMaterial(sd, gLights[l], 1).color.rgb;
-    }
+    finalColor.rgb += gLightEnv.evalLighting(sd, 1.0).color.rgb;
 
-    return float4(color, 1.f);
+    // Add light-map and/or the emissive component
+    finalColor.rgb += sd.bxdf.getIntrinsicLighting();
+    return finalColor;
 }

@@ -212,6 +212,7 @@ namespace Falcor
     {
         addString(jsonLight, allocator, SceneKeys::kName, pLight->getName());
         addString(jsonLight, allocator, SceneKeys::kType, SceneKeys::kPointLight);
+        addString(jsonLight, allocator, SceneKeys::kLightShadow, pLight->getShadowed()? "true" : "false");
         addVector(jsonLight, allocator, SceneKeys::kLightIntensity, pLight->getIntensity());
         addVector(jsonLight, allocator, SceneKeys::kLightPos, pLight->getWorldPosition());
         addVector(jsonLight, allocator, SceneKeys::kLightDirection, pLight->getWorldDirection());
@@ -223,6 +224,7 @@ namespace Falcor
     {
         addString(jsonLight, allocator, SceneKeys::kName, pLight->getName());
         addString(jsonLight, allocator, SceneKeys::kType, SceneKeys::kDirLight);
+        addString(jsonLight, allocator, SceneKeys::kLightShadow, pLight->getShadowed() ? "true" : "false");
         addVector(jsonLight, allocator, SceneKeys::kLightIntensity, pLight->getIntensity());
         addVector(jsonLight, allocator, SceneKeys::kLightDirection, pLight->getWorldDirection());
     }

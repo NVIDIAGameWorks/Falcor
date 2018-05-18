@@ -67,7 +67,7 @@ namespace Falcor
     {
     public:
         using UniquePtr = std::unique_ptr<CsmSceneRenderer>;
-        static UniquePtr create(const Scene::SharedConstPtr& pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
+        static UniquePtr create(Scene* pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
         { 
             return UniquePtr(new CsmSceneRenderer(pScene, alphaMapCbLoc, alphaMapLoc, alphaMapSamplerLoc)); 
         }
@@ -82,8 +82,8 @@ namespace Falcor
         }
 
     protected:
-        CsmSceneRenderer(const Scene::SharedConstPtr& pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
-            : SceneRenderer(std::const_pointer_cast<Scene>(pScene))
+        CsmSceneRenderer(Scene* pScene, const ProgramReflection::BindLocation& alphaMapCbLoc, const ProgramReflection::BindLocation& alphaMapLoc, const ProgramReflection::BindLocation& alphaMapSamplerLoc)
+            : SceneRenderer(pScene)
         { 
             mBindLocations.alphaCB = alphaMapCbLoc;
             mBindLocations.alphaMap = alphaMapLoc;
@@ -122,7 +122,7 @@ namespace Falcor
 
         RasterizerState::SharedPtr getRasterizerState(const Material* pMaterial)
         {
-            if (pMaterial->getAlphaMode() == AlphaModeMask)
+            if (pMaterial->getAlphaTestMode() != AlphaTestMode::Disabled)
             {
                 return mDepthClamp ? mpDepthClampNoCullRS : mpNoCullRS;
             }
@@ -135,7 +135,8 @@ namespace Falcor
         bool setPerMaterialData(const CurrentWorkingData& currentData, const Material* pMaterial) override
         {
             mMaterialChanged = true;
-            if (currentData.pMaterial->getAlphaMode() == AlphaModeMask)
+            currentData.pVars->setParameterBlock("gMaterial", pMaterial->getParameterBlock());
+            if (pMaterial->getAlphaTestMode() != AlphaTestMode::Disabled)
             {
                 float alphaThreshold = currentData.pMaterial->getAlphaThreshold();
                 auto& pDefaultBlock = currentData.pContext->getGraphicsVars()->getDefaultBlock();
@@ -208,7 +209,7 @@ namespace Falcor
 
     CascadedShadowMaps::~CascadedShadowMaps() = default;
 
-    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat) : mpLight(pLight), mpScene(pScene)
+    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat) : mpLight(pLight), mpScene(pScene)
     {
         if(mpLight->getType() != LightDirectional)
         {
@@ -243,7 +244,7 @@ namespace Falcor
         mpGaussianBlur->setKernelWidth(5);
     }
 
-    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
+    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
     {
         if(isDepthFormat(shadowMapFormat) == false)
         {
@@ -578,7 +579,7 @@ namespace Falcor
         camClipSpaceToWorldSpace(pCamera, camFrustum.crd, camFrustum.center, camFrustum.radius);
 
         // Create the global shadow space
-        createShadowMatrix(mpLight.get(), camFrustum.center, camFrustum.radius, mShadowPass.fboAspectRatio, mCsmData.globalMat);
+        createShadowMatrix(mpLight, camFrustum.center, camFrustum.radius, mShadowPass.fboAspectRatio, mCsmData.globalMat);
 
         if(mCsmData.cascadeCount == 1)
         {
@@ -822,30 +823,42 @@ namespace Falcor
 
     void CascadedShadowMaps::setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName)
     {
+        ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
+        size_t offset = pCB->getVariableOffset(varName);
+        setDataIntoParameterBlock(pVars->getDefaultBlock().get(), pVars->getConstantBuffer("PerFrameCB"), offset, varName);
+    }
+
+    void CascadedShadowMaps::setDataIntoParameterBlock(ParameterBlock* pBlock, ConstantBuffer::SharedPtr pCB, size_t offset, const std::string & varName)
+    {
         switch (mCsmData.filterMode)
         {
         case CsmFilterPoint:
-            pVars->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
-            pVars->setSampler("gCsmCompareSampler", mShadowPass.pPointCmpSampler);
+            pBlock->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
+            pBlock->setSampler(varName + ".csmComparisonSampler", mShadowPass.pPointCmpSampler);
             break;
         case CsmFilterHwPcf:
         case CsmFilterFixedPcf:
         case CsmFilterStochasticPcf:
-            pVars->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
-            pVars->setSampler("gCsmCompareSampler", mShadowPass.pLinearCmpSampler);
+            pBlock->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getDepthStencilTexture());
+            pBlock->setSampler(varName + ".csmComparisonSampler", mShadowPass.pLinearCmpSampler);
             break;
         case CsmFilterVsm:
         case CsmFilterEvsm2:
         case CsmFilterEvsm4:
-            pVars->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getColorTexture(0));
-            pVars->setSampler(varName + ".csmSampler", mShadowPass.pVSMTrilinearSampler);
+            pBlock->setTexture(varName + ".shadowMap", mShadowPass.pFbo->getColorTexture(0));
+            pBlock->setSampler(varName + ".csmSampler", mShadowPass.pVSMTrilinearSampler);
             break;
-        }    
+        }
 
-        mCsmData.lightDir = glm::normalize(((DirectionalLight*)mpLight.get())->getWorldDirection());
-        ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
-        size_t offset = pCB->getVariableOffset(varName);
+        mCsmData.lightDir = glm::normalize(((InfinitesimalLight*)mpLight)->getWorldDirection());
         pCB->setBlob(&mCsmData, offset, sizeof(mCsmData));
+    }
+
+    void CascadedShadowMaps::setDataIntoParameterBlock(ParameterBlock* pBlock, const std::string & varName)
+    {
+        ConstantBuffer::SharedPtr pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName());
+        size_t offset = pCB->getVariableOffset(varName);
+        setDataIntoParameterBlock(pBlock, pCB, offset, varName);
     }
     
     Texture::SharedPtr CascadedShadowMaps::getShadowMap() const

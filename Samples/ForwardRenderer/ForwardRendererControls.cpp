@@ -157,7 +157,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (pGui->beginGroup("Scene Settings"))
         {
-            Scene* pScene = mpSceneRenderer->getScene().get();
+            Scene* pScene = mpSceneRenderer->getScene();
             float camSpeed = pScene->getCameraSpeed();
             if (pGui->addFloatVar("Camera Speed", camSpeed))
             {
@@ -266,7 +266,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
-            Scene::SharedPtr pScene = mpSceneRenderer->getScene();
+            auto pScene = mpSceneRenderer->getScene();
             if (pScene->getLightProbeCount() > 0)
             {
                 if (pGui->addCheckBox("Enable", mControls[ControlID::EnableReflections].enabled))
@@ -294,11 +294,12 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             if (mControls[ControlID::EnableShadows].enabled)
             {
                 pGui->addCheckBox("Update Map", mShadowPass.updateShadowMap);
-                mShadowPass.pCsm->renderUi(pGui);
+                // refactor!!!
+                //mShadowPass.pCsm->renderUi(pGui);
                 if (pGui->addCheckBox("Visualize Cascades", mControls[ControlID::VisualizeCascades].enabled))
                 {
                     applyLightingProgramControl(ControlID::VisualizeCascades);
-                    mShadowPass.pCsm->toggleCascadeVisualization(mControls[ControlID::VisualizeCascades].enabled);
+                    //mShadowPass.pCsm->toggleCascadeVisualization(mControls[ControlID::VisualizeCascades].enabled);
                 }
             }
             pGui->endGroup();

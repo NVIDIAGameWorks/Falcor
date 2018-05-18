@@ -38,6 +38,7 @@
 #include "Utils/Video/VideoEncoderUI.h"
 #include "API/Device.h"
 #include "ArgList.h"
+#include "API/GpuTimer.h"
 #include "Utils/PixelZoom.h"
 #include "Renderer.h"
 #include "SampleTest.h"
@@ -131,12 +132,16 @@ namespace Falcor
 
         /** Internal data structures
         */
+        GpuTimer::SharedPtr mGpuTimer;
         Gui::UniquePtr mpGui;                               ///< Main sample GUI
         RenderContext::SharedPtr mpRenderContext;           ///< The rendering context
         GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline 
         Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
         bool mFreezeTime;                                   ///< Whether global time is frozen
+        bool mEnableProfiling = true;
         float mCurrentTime = 0;                             ///< Global time
+        float mGpuElapsedTime = 0.0f;
+        float mCpuElapsedTime = 0.0f;
         float mTimeScale;                                   ///< Global time scale
         ArgList mArgList;                                   ///< Arguments passed in by command line
         Window::SharedPtr mpWindow;                         ///< The application's window

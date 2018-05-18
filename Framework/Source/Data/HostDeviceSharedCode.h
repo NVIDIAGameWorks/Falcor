@@ -101,28 +101,8 @@ struct CameraData
 /*******************************************************************
                     Material
 *******************************************************************/
-struct MaterialResources
-{
-    // See Material.h for channel layout
-    Texture2D baseColor;
-    Texture2D specular;
-    Texture2D emissive;
-    Texture2D normalMap;
-
-    // The following maps are not yet used by the material system
-    Texture2D occlusionMap;     // Ambient occlusion map
-    Texture2D lightMap;         // Light map
-    Texture2D heightMap;        // Height map
-    SamplerState samplerState;
-};
-
 struct MaterialData
 {
-    float4 baseColor DEFAULTS(float4(1));
-    float4 specular  DEFAULTS(float4(0));
-    float3 emissive  DEFAULTS(float3(0));
-    float padf       DEFAULTS(0);
-
     float alphaThreshold DEFAULTS(0.5f); // Used in case the alpha mode is mask
     float IoR DEFAULTS(1);               // Index of refraction
     uint32_t id;
@@ -130,8 +110,6 @@ struct MaterialData
 
     float2 heightScaleOffset  DEFAULTS(float2(1, 0));
     float2 pad                DEFAULTS(float2(0));
-
-    MaterialResources resources;
 };
 
 /*******************************************************************
@@ -147,7 +125,7 @@ struct LightProbeResources
     Texture2D origTexture;      ///< The original texture
     Texture2D diffuseTexture;   ///< Texture containing pre-integrated diffuse (LD) term
     Texture2D specularTexture;  ///< Texture containing pre-integrated specular (LD) term
-    SamplerState sampler;
+    //SamplerState sampler;
 };
 
 struct LightProbeData

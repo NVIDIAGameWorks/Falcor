@@ -494,7 +494,7 @@ namespace Falcor
         mpEditorScene = Scene::create();
         mpEditorScene->addCamera(Camera::create());
         mpEditorScene->getActiveCamera()->setAspectRatio((float)backBufferWidth/(float)backBufferHeight);
-        mpEditorSceneRenderer = SceneEditorRenderer::create(mpEditorScene);
+        mpEditorSceneRenderer = SceneEditorRenderer::create(mpEditorScene.get());
         mpEditorPicker = Picking::create(mpEditorScene, backBufferWidth, backBufferHeight);
 
         //
@@ -663,7 +663,7 @@ namespace Falcor
             {
                 const auto& pLight = mpScene->getLight(mLightIDEditorToScene[i]);
                 auto& pModelInstance = mpEditorScene->getModelInstance(mEditorLightModelID, i);
-                pModelInstance->setTranslation(pLight->getData().posW, true);
+                pModelInstance->setTranslation(pLight->getPosW(), true);
             }
         }
 

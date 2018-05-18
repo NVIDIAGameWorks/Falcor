@@ -36,6 +36,9 @@
 #include "VR/OpenVR/VRSystem.h"
 #include "API/Device.h"
 #include "glm/matrix.hpp"
+#include "Graphics/Material/MaterialSystem.h"
+#include "Graphics/Light.h"
+#include "Effects/Shadows/CSM.h"
 
 namespace Falcor
 {
@@ -48,24 +51,26 @@ namespace Falcor
     size_t SceneRenderer::sWorldInvTransposeMatOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sMeshIdOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sDrawIDOffset = ConstantBuffer::kInvalidOffset;
-    size_t SceneRenderer::sLightCountOffset = ConstantBuffer::kInvalidOffset;
-    size_t SceneRenderer::sLightArrayOffset = ConstantBuffer::kInvalidOffset;
 
     const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
-    const char* SceneRenderer::kProbeVarName = "gLightProbe";
     const char* SceneRenderer::kProbeSharedVarName = "gProbeShared";
     const char* SceneRenderer::kAreaLightCbName = "InternalAreaLightCB";
 
 
-    SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
+    SceneRenderer::SharedPtr SceneRenderer::create(Scene* pScene)
     {
         return SharedPtr(new SceneRenderer(pScene));
     }
 
-    SceneRenderer::SceneRenderer(const Scene::SharedPtr& pScene) : mpScene(pScene)
+    SceneRenderer::SharedPtr SceneRenderer::create(Scene::SharedPtr pScene)
+    {
+        return SharedPtr(new SceneRenderer(pScene.get()));
+    }
+
+    SceneRenderer::SceneRenderer(Scene* pScene) : mpScene(pScene)
     {
         setCameraControllerType(CameraControllerType::SixDof);
     }
@@ -104,10 +109,6 @@ namespace Falcor
                 assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
                 const ReflectionType* pType = pVar->getType().get();
                 sCameraDataOffset = pType->findMember("gCamera.viewMat")->getOffset();
-                const auto& pCountOffset = pType->findMember("gLightsCount");
-                sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pType->findMember("gLights");
-                sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }
@@ -122,27 +123,10 @@ namespace Falcor
             {
                 currentData.pCamera->setIntoConstantBuffer(pCB, sCameraDataOffset);
             }
-
-            // Set lights
-            if (sLightArrayOffset != ConstantBuffer::kInvalidOffset)
-            {
-                assert(mpScene->getLightCount() <= MAX_LIGHT_SOURCES);  // Max array size in the shader
-                for (uint_t i = 0; i < mpScene->getLightCount(); i++)
-                {
-                    mpScene->getLight(i)->setIntoProgramVars(currentData.pVars, pCB, sLightArrayOffset + (i * Light::getShaderStructSize()));
-                }
-            }
-            if (sLightCountOffset != ConstantBuffer::kInvalidOffset)
-            {
-                pCB->setVariable(sLightCountOffset, mpScene->getLightCount());
-            }
-            if (mpScene->getLightProbeCount() > 0)
-            {
-                // #TODO Support multiple light probes
-                LightProbe::setCommonIntoProgramVars(currentData.pVars, kProbeSharedVarName);
-                mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kProbeVarName);
-            }
+            pCB->setVariable("gCamVpAtLastCsmUpdate", camVpAtLastCsmUpdate);
         }
+        
+        currentData.pVars->setParameterBlock("gLightEnv", currentData.pLightEnv->getParameterBlock());
 
         if (mpScene->getAreaLightCount() > 0)
         {
@@ -252,16 +236,10 @@ namespace Falcor
                 return;
             }
             mpLastMaterial = pMesh->getMaterial().get();
-
-            if(mCompileMaterialWithProgram)
-            {
-                currentData.pState->getProgram()->addDefine("_MS_STATIC_MATERIAL_FLAGS", std::to_string(mpLastMaterial->getFlags()));
-            }
         }
 
         executeDraw(currentData, pMesh->getIndexCount(), instanceCount);
         postFlushDraw(currentData);
-        currentData.pState->getProgram()->removeDefine("_MS_STATIC_MATERIAL_FLAGS");
     }
 
     void SceneRenderer::postFlushDraw(const CurrentWorkingData& currentData)
@@ -355,6 +333,7 @@ namespace Falcor
 
     void SceneRenderer::renderScene(CurrentWorkingData& currentData)
     {
+        currentData.pLightEnv = mpScene->getLightEnv().get();
         setPerFrameData(currentData);
 
         for (uint32_t modelID = 0; modelID < mpScene->getModelCount(); modelID++)
@@ -391,6 +370,20 @@ namespace Falcor
         currentData.pModel = nullptr;
         currentData.drawID = 0;
         renderScene(currentData);
+    }
+
+    void SceneRenderer::runShadowPass(RenderContext * pContext, Camera * pCamera, Texture::SharedPtr pDepthBuffer)
+    {
+        camVpAtLastCsmUpdate = pCamera->getViewProjMatrix();
+        for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
+        {
+            auto light = mpScene->getLight(i);
+            if (light->getTypeId() & LightType_ShadowBit)
+            {
+                auto infLight = dynamic_cast<InfinitesimalLight*>(light.get());
+                infLight->getCsm()->setup(pContext, mpScene->getActiveCamera().get(), pDepthBuffer);
+            }
+        }
     }
 
     void SceneRenderer::setCameraControllerType(CameraControllerType type)

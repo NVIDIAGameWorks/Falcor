@@ -56,6 +56,7 @@ private:
     ModelViewCameraController mModelViewCameraController;
     FirstPersonCameraController mFirstPersonCameraController;
     SixDoFCameraController m6DoFCameraController;
+    ModelRenderer mModelRenderer;
 
     bool mUseTriLinearFiltering = true;
     Sampler::SharedPtr mpPointSampler = nullptr;

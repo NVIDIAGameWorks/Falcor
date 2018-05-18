@@ -40,6 +40,8 @@
 
 namespace Falcor
 {
+    class RenderContext;
+
     class Scene : public std::enable_shared_from_this<Scene>
     {
     public:
@@ -123,16 +125,17 @@ namespace Falcor
         // Light Sources
         uint32_t addLight(const Light::SharedPtr& pLight);
         void deleteLight(uint32_t lightID);
-        uint32_t getLightCount() const { return (uint32_t)mpLights.size(); }
-        const Light::SharedPtr& getLight(uint32_t index) const { return mpLights[index]; }
-        const std::vector<Light::SharedPtr>& getLights() const { return mpLights; }
+        uint32_t getLightCount() const { return (uint32_t)mpLightEnv->getLightCount(); }
+        const Light::SharedPtr& getLight(uint32_t index) const { return mpLightEnv->getLight(index); }
+        const std::vector<Light::SharedPtr>& getLights() const { return mpLightEnv->getLights(); }
+        LightEnv::SharedPtr const& getLightEnv() const { return mpLightEnv; }
 
         // Light Probes
-        uint32_t addLightProbe(const LightProbe::SharedPtr& pLightProbe);
-        void deleteLightProbe(uint32_t lightID);
         uint32_t getLightProbeCount() const { return (uint32_t)mpLightProbes.size(); }
-        const LightProbe::SharedPtr& getLightProbe(uint32_t index) const { return mpLightProbes[index]; }
-        const std::vector<LightProbe::SharedPtr>& getLightProbes() const { return mpLightProbes; }
+        void deleteLightProbes() { mpLightEnv->deleteLightProbes(); }
+        // Note that the index parameter here is not the same as the lightID returned by addLight
+        LightProbe* getLightProbe(uint32_t index) const { return mpLightProbes[index]; }
+        const std::vector<LightProbe*>& getLightProbes() const { return mpLightProbes; }
 
         // Area Lights
         uint32_t addAreaLight(const AreaLight::SharedPtr& pAreaLight);
@@ -225,10 +228,10 @@ namespace Falcor
         uint32_t mId;
 
         std::vector<ModelInstanceList> mModels;
-        std::vector<Light::SharedPtr> mpLights;
+        LightEnv::SharedPtr mpLightEnv;
         std::vector<Camera::SharedPtr> mCameras;
         std::vector<ObjectPath::SharedPtr> mpPaths;
-        std::vector<LightProbe::SharedPtr> mpLightProbes;
+        std::vector<LightProbe*> mpLightProbes;
         std::vector<AreaLight::SharedPtr> mpAreaLights;
 
         uint32_t mActiveCameraID = 0;

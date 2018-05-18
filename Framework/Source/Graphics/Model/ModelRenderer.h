@@ -27,7 +27,8 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/Model/Model.h"
-
+#include "Graphics/Scene/Scene.h"
+#include "Graphics/Scene/SceneRenderer.h"
 namespace Falcor
 {
     class RenderContext;
@@ -38,6 +39,9 @@ namespace Falcor
     **/
     class ModelRenderer
     {
+    private:
+        Scene::SharedPtr pScene;
+        SceneRenderer::SharedPtr pSceneRenderer;
     public:
         /** Render a model.  Uses frustum culling, if enabled.
             \param[in] pRenderContext The render context
@@ -45,8 +49,8 @@ namespace Falcor
             \param[in] pCamera The camera to use
             \param[in] frustumCulling Enable/disable per-mesh frustum culling
         */
-        static void render(RenderContext* pRenderContext, Model::SharedPtr pModel, Camera* pCamera, bool frustumCulling = true);
-
+        void init(Model::SharedPtr pModel);
+        void render(RenderContext* pRenderContext, Camera* pCamera, bool frustumCulling = true);
     private:
     };
 }

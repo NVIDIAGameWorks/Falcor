@@ -2243,9 +2243,6 @@
     <None Include="ShadingUtils\Shading.slang">
       <Filter>ShadingUtils</Filter>
     </None>
-    <None Include="Data\ShaderCommon.slang">
-      <Filter>Data</Filter>
-    </None>
     <None Include="Data\HostDeviceData.slang">
       <Filter>Data</Filter>
     </None>

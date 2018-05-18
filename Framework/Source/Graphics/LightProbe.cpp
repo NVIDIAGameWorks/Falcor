@@ -169,6 +169,13 @@ namespace Falcor
     }
 
     LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSize, uint32_t specSize, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
+    glm::vec3 dummyIntensityData;
+    glm::vec3 & LightProbe::getIntensityData()
+    {
+        return dummyIntensityData;
+    }
+
+    LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
     {
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown)
@@ -217,6 +224,11 @@ namespace Falcor
         }
     }
 
+    uint32_t LightProbe::getTypeId() const
+    {
+        return mData.type;
+    }
+
     void LightProbe::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
     {
         logWarning("Light probes don't support paths. Expect absolutely nothing to happen");
@@ -238,10 +250,9 @@ namespace Falcor
 #define check_offset(_a)
 #endif
 
-    void LightProbe::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName)
+    void LightProbe::setIntoParameterBlock(ParameterBlock * pBlock, ConstantBuffer * pBuffer, size_t offset, const std::string& lightVarName)
     {
-        size_t offset = pBuffer->getVariableOffset(varName);
-
+        auto varName = lightVarName + ".probeData";
         // Set the data into the constant buffer
         check_offset(posW);
         check_offset(intensity);
@@ -259,10 +270,22 @@ namespace Falcor
         pBuffer->setBlob(&mData, offset, kDataSize);
 
         // Bind the textures
-        pVars->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
-        pVars->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
-        pVars->setTexture(varName + ".resources.specularTexture", mData.resources.specularTexture);
-        pVars->setSampler(varName + ".resources.sampler", mData.resources.sampler);
+        pBlock->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
+        pBlock->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
+        pBlock->setTexture(varName + ".resources.specularTexture", mData.resources.specularTexture);
+        pBlock->setSampler(varName + ".resources.sampler", mData.resources.sampler);
+    }
+    
+    void LightProbe::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName)
+    {
+        size_t offset = pBuffer->getVariableOffset(varName);
+        setIntoParameterBlock(pVars->getDefaultBlock().get(), pBuffer, offset, varName);
+    }
+
+    void LightProbe::setIntoParameterBlock(ParameterBlock * pBlock, size_t offset, const std::string & varName)
+    {
+        auto pBuffer = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
+        setIntoParameterBlock(pBlock, pBuffer, offset, varName);
     }
 
     void LightProbe::setCommonIntoProgramVars(ProgramVars* pVars, const std::string& varName)

@@ -69,7 +69,7 @@ namespace Falcor
     }
 
     Picking::Picking(const Scene::SharedPtr& pScene, uint32_t fboWidth, uint32_t fboHeight)
-        : SceneRenderer(pScene)
+        : SceneRenderer(pScene.get())
     {
         mpGraphicsState = GraphicsState::create();
 

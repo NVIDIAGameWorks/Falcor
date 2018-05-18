@@ -30,6 +30,7 @@
 #include "API/Texture.h"
 #include "Data/HostDeviceData.h"
 #include "API/Sampler.h"
+#include "Graphics/Light.h"
 
 namespace Falcor
 {
@@ -37,7 +38,7 @@ namespace Falcor
     class ConstantBuffer;
     class Gui;
 
-    class LightProbe : public IMovableObject, std::enable_shared_from_this<LightProbe>
+    class LightProbe : public Light, std::enable_shared_from_this<LightProbe>
     {
     public:
         using SharedPtr = std::shared_ptr<LightProbe>;
@@ -87,7 +88,7 @@ namespace Falcor
 
         /** Get the light probe's world-space position
         */
-        const vec3& getPosW() const { return mData.posW; }
+        vec3 getPosW() const { return vec3(mData.posW.x, mData.posW.y, mData.posW.z); }
 
         /** Set the spherical radius the light probe encompasses. Set radius to negative to sample as an infinite-distance global light probe.
         */
@@ -145,6 +146,16 @@ namespace Falcor
         */
         static void setCommonIntoProgramVars(ProgramVars* pVars, const std::string& varName);
 
+        void setIntoParameterBlock(ParameterBlock * pBlock, ConstantBuffer* pBuffer, size_t offset, const std::string & varName);
+
+        virtual void setIntoParameterBlock(ParameterBlock* pBlock, size_t offset, const std::string& varName) override;
+
+        static uint32_t getShaderStructSize() { return sizeof(LightProbeData); }
+
+        virtual const char * getShaderTypeName() override { return "ProbeLight"; };
+        virtual uint32_t getTypeId() const override;
+        virtual void * getRawData() override { return &mData; }
+
     private:
         static uint32_t sLightProbeCount;
         static LightProbeSharedResources sSharedData;
@@ -153,6 +164,9 @@ namespace Falcor
         uint32_t mDiffSampleCount;
         uint32_t mSpecSampleCount;
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
+        LightProbeData mData;
+    protected:
+        glm::vec3& getIntensityData();
         LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize, uint32_t specSize, uint32_t diffSamples, uint32_t specSamples, ResourceFormat preFilteredFormat);
     };
 }

@@ -31,13 +31,15 @@
 
 namespace Falcor
 {
-    void ModelRenderer::render(RenderContext* pRenderContext, Model::SharedPtr pModel, Camera* pCamera, bool frustumCulling)
+    void ModelRenderer::init(Model::SharedPtr pModel)
     {
-        Scene::SharedPtr pScene = Scene::create();
+        pScene = Scene::create();
         pScene->addModelInstance(pModel, "");
-
-        SceneRenderer::SharedPtr pSceneRenderer = SceneRenderer::create(pScene);
-        pSceneRenderer->toggleMeshCulling(frustumCulling);
+        pSceneRenderer = SceneRenderer::create(pScene);
+    }
+    void ModelRenderer::render(RenderContext* pRenderContext, Camera* pCamera, bool frustumCulling)
+    {
+        pSceneRenderer->setObjectCullState(frustumCulling);
         pSceneRenderer->renderScene(pRenderContext, pCamera);
     }
 }

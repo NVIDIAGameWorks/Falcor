@@ -75,37 +75,13 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
-    ShadingData sd = prepareShadingData(vOut.vsData, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData<TMaterial>(vOut.vsData, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
 
-    [unroll]
-    for (uint l = 0; l < _LIGHT_COUNT; l++)
-    {
-        float shadowFactor = 1;
-#ifdef _ENABLE_SHADOWS
-        if (l == 0)
-        {
-            shadowFactor = gVisibilityBuffer.Load(int3(vOut.vsData.posH.xy, 0)).r;
-            shadowFactor *= sd.opacity;
-        }
-#endif
-        finalColor.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
-    }
-
-    // Add the emissive component
-    finalColor.rgb += sd.emissive;
-
-#ifdef _ENABLE_TRANSPARENCY
-    finalColor.a = sd.opacity * gOpacityScale;
-#endif
-
-#ifdef _ENABLE_REFLECTIONS
-    finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
-#endif
-
-    // Add light-map
-    finalColor.rgb += sd.diffuse * sd.lightMap.rgb;
+    finalColor.rgb += evalMaterial<TMaterial.BxDF, TLightCollection>(sd, gLightEnv).color.rgb;
+    // Add light-map and/or the emissive component
+    finalColor.rgb += sd.bxdf.getIntrinsicLighting();
 
     psOut.color = finalColor;
     psOut.normal = float4(vOut.vsData.normalW * 0.5f + 0.5f, 1.0f);

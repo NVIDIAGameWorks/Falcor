@@ -28,8 +28,10 @@
 __import DefaultVS;
 __import ShaderCommon;
 __import Shading;
+import Interfaces;
+import Material;
 
 void main(VertexOut vOut)
 {
-    prepareShadingData(vOut, gMaterial, gCamera.posW);
+    prepareShadingData<TMaterial>(vOut, gMaterial, gCamera.posW);
 }

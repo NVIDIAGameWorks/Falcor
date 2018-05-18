@@ -58,9 +58,13 @@ namespace Falcor
     {
         // Reset all global id counters recursively
         Model::resetGlobalIdCounter();
+        mpLightEnv = LightEnv::create();
     }
 
-    Scene::~Scene() = default;
+    Scene::~Scene()
+    {
+        printf("break");
+    }
 
     void Scene::updateExtents()
     {
@@ -91,11 +95,11 @@ namespace Falcor
             }
 
             // Update light extents
-            for (auto& pLight : mpLights)
+            for (auto& light : getLights())
             {
                 if (pLight->getType() == LightDirectional)
                 {
-                    auto pDirLight = std::dynamic_pointer_cast<DirectionalLight>(pLight);
+                    auto pDirLight = std::dynamic_pointer_cast<DirectionalLight>(light);
                     pDirLight->setWorldParams(getCenter(), getRadius());
                 }
             }
@@ -238,34 +242,25 @@ namespace Falcor
 
     uint32_t Scene::addLight(const Light::SharedPtr& pLight)
     {
-        if (pLight->getType() == LightArea)
-        {
-            logWarning("Use Scene::addAreaLight() for area lights.");
-            return uint32(-1);
-        }
-
-        mpLights.push_back(pLight);
         mExtentsDirty = true;
-        return (uint32_t)mpLights.size() - 1;
+        if (pLight->getType() >= LightProbeTypeStart && pLight->getType() < LightProbeTypeEnd)
+        {
+            mpLightProbes.push_back(dynamic_cast<LightProbe*>(pLight.get()));
+        }
+        return mpLightEnv->addLight(pLight);
     }
 
     void Scene::deleteLight(uint32_t lightID)
     {
-        mpLights.erase(mpLights.begin() + lightID);
+        auto pLight = mpLightEnv->getLight(lightID);
+        if (pLight->getType() >= LightProbeTypeStart && pLight->getType() < LightProbeTypeEnd)
+        {
+            mpLightProbes.erase(std::find(mpLightProbes.begin(), mpLightProbes.end(), pLight.get()));
+        }
+        mpLightEnv->deleteLight(lightID);
         mExtentsDirty = true;
     }
-
-    uint32_t Scene::addLightProbe(const LightProbe::SharedPtr& pLightProbe)
-    {
-        mpLightProbes.push_back(pLightProbe);
-        return (uint32_t)mpLightProbes.size() - 1;
-    }
-
-    void Scene::deleteLightProbe(uint32_t lightID)
-    {
-        mpLightProbes.erase(mpLightProbes.begin() + lightID);
-    }
-
+    
     uint32_t Scene::addAreaLight(const AreaLight::SharedPtr& pAreaLight)
     {
         mpAreaLights.push_back(pAreaLight);
@@ -314,10 +309,10 @@ namespace Falcor
 #define merge(name_) name_.insert(name_.end(), pFrom->name_.begin(), pFrom->name_.end());
 
         merge(mModels);
-        merge(mpLights);
         merge(mpPaths);
         merge(mCameras);
 #undef merge
+        mpLightEnv->merge(pFrom->mpLightEnv.get());
         mUserVars.insert(pFrom->mUserVars.begin(), pFrom->mUserVars.end());
         mExtentsDirty = true;
     }
@@ -345,10 +340,10 @@ namespace Falcor
         {
             model[0]->getObject()->bindSamplerToMaterials(pSampler);
         }
-
-        for (auto& probe : mpLightProbes)
+        mpLightEnv->bindSampler(pSampler);
+        for (auto& light : mpLightEnv->getLights())
         {
-            probe->setSampler(pSampler);
+            light->setSampler(pSampler);
         }
     }
 

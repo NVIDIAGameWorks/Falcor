@@ -323,6 +323,13 @@ namespace Falcor
                 }
                 pDirLight->setWorldDirection(direction);
             }
+            else if (key == SceneKeys::kLightShadow)
+            {
+                if (strcmp(value.GetString(), "true") == 0)
+                {
+                    pDirLight->enableShadowMap(&mScene, 2048, 2048, 4);
+                }
+            }
             else
             {
                 return error("Invalid key found in directional light object. Key == " + key + ".");
@@ -387,6 +394,13 @@ namespace Falcor
                     return false;
                 }
                 pPointLight->setIntensity(intensity);
+            }
+            else if (key == SceneKeys::kLightShadow)
+            {
+                if (strcmp(value.GetString(), "true") == 0)
+                {
+                    pPointLight->enableShadowMap(&mScene, 2048, 2048, 1);
+                }
             }
             else if(key == SceneKeys::kLightPos)
             {
@@ -551,7 +565,7 @@ namespace Falcor
             LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext().get(), actualPath, true, ResourceFormat::RGBA16Float, LightProbe::kDefaultDiffSize, LightProbe::kDefaultSpecSize, diffuseSamples, specSamples);
             pLightProbe->setPosW(position);
             pLightProbe->setIntensity(intensity);
-            mScene.addLightProbe(pLightProbe);
+            mScene.addLight(pLightProbe);
         }
 
         return true;

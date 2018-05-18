@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "API/LowLevel/GpuFence.h"
 #include "API/Device.h"
-
+#include "Utils/Profiler.h"
 namespace Falcor
 {
     struct FenceApiData
@@ -69,11 +69,13 @@ namespace Falcor
 
     void GpuFence::syncGpu(CommandQueueHandle pQueue)
     {
+        gEventCounter.numGpuSyncs++;
         d3d_call(pQueue->Wait(mApiHandle, mCpuValue - 1));
     }
 
     void GpuFence::syncCpu()
     {
+        gEventCounter.numCpuSyncs++;
         uint64_t gpuVal = getGpuValue();
         if (gpuVal < mCpuValue - 1)
         {

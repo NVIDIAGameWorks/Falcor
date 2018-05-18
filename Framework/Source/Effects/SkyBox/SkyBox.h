@@ -35,6 +35,7 @@
 #include "API/DepthStencilState.h"
 #include "API/RasterizerState.h"
 #include "API/BlendState.h"
+#include "Graphics/Model/ModelRenderer.h"
 
 namespace Falcor
 {
@@ -42,6 +43,8 @@ namespace Falcor
 
     class SkyBox
     {
+    private:
+        ModelRenderer modelRenderer;
     public:
         using UniquePtr = std::unique_ptr<SkyBox>;
 

@@ -170,6 +170,7 @@ namespace Falcor
         mpTargetFBO.reset();
         mpTextRenderer.reset();
         mpPixelZoom.reset();
+        mGpuTimer.reset();
         mpRenderContext.reset();
         if(gpDevice) gpDevice->cleanup();
         gpDevice.reset();
@@ -256,6 +257,10 @@ namespace Falcor
             mArgList.parseCommandLine(concatCommandLine(argc, argv));
         }
 
+        if (mEnableProfiling)
+            mpRenderContext->enableStablePowerState();
+        mGpuTimer = GpuTimer::create();
+        
         // Load and run
         mpRenderer->onLoad(this, mpRenderContext);
         initializeTesting();
@@ -405,7 +410,7 @@ namespace Falcor
         {
             return;
         }
-
+        gEventCounter.Clear();
         mFrameRate.newFrame();
         beginTestFrame();
         {
@@ -420,7 +425,20 @@ namespace Falcor
                 mpRenderContext->setGraphicsState(mpDefaultPipelineState);
             }
             calculateTime();
+            
+            if (mEnableProfiling)
+                mGpuTimer->begin();
+            
+            auto cpuStartTime = CpuTimer::getCurrentTimePoint();
             mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
+            auto cpuEndTime = CpuTimer::getCurrentTimePoint();
+            mCpuElapsedTime = CpuTimer::calcDuration(cpuStartTime, cpuEndTime);
+            
+            if (mEnableProfiling)
+            {
+                mGpuTimer->end();
+                mGpuElapsedTime = (float)mGpuTimer->getElapsedTime();
+            }
         }
 
         if (gpDevice)
@@ -502,6 +520,15 @@ namespace Falcor
             std::string msStr = std::to_string(msPerFrame);
             s = std::to_string(int(ceil(1000 / msPerFrame))) + " FPS (" + msStr.erase(msStr.size() - 4) + " ms/frame)";
             if (mVsyncOn) s += std::string(", VSync");
+            std::string msCpuTimeStr = std::to_string(mCpuElapsedTime);
+            s += std::string("\nCPU time: ") + msCpuTimeStr.erase(msCpuTimeStr.size() - 4) + "ms";
+            if (mEnableProfiling)
+            {
+                std::string msGpuTimeStr = std::to_string(mGpuElapsedTime);
+                s += std::string("\nGPU time: ") + msGpuTimeStr.erase(msGpuTimeStr.size() - 4) + "ms";
+            }
+            s += std::string("\nSyncs(G/C): ") + std::to_string(gEventCounter.numGpuSyncs) + "/" + std::to_string(gEventCounter.numCpuSyncs);
+            s += std::string("\nFlushes: ") + std::to_string(gEventCounter.numFlushes);
         }
         return s;
     }

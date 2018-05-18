@@ -41,7 +41,7 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<SceneEditorRenderer>;
         using UniqueConstPtr = std::unique_ptr<const SceneEditorRenderer>;
 
-        static UniquePtr create(const Scene::SharedPtr& pScene);
+        static UniquePtr create(Scene* pScene);
 
         void renderScene(RenderContext* pContext, Camera* pCamera);
 
@@ -50,7 +50,7 @@ namespace Falcor
         void registerGizmos(const Gizmo::Gizmos& gizmos);
 
     private:
-        SceneEditorRenderer(const Scene::SharedPtr& pScene);
+        SceneEditorRenderer(Scene* pScene);
 
         virtual void setPerFrameData(const CurrentWorkingData& currentData) override;
         virtual bool setPerModelInstanceData(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t instanceID);

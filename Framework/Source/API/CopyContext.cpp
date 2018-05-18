@@ -41,7 +41,7 @@ namespace Falcor
         pCtx->mpLowLevelData = LowLevelContextData::create(LowLevelContextData::CommandQueueType::Copy, queue);
         return pCtx->mpLowLevelData ? pCtx : nullptr;
     }
-    
+
     void CopyContext::flush(bool wait)
     {
         if (mCommandsPending)
@@ -56,6 +56,7 @@ namespace Falcor
         {
             mpLowLevelData->getFence()->syncCpu();
         }
+        gEventCounter.numFlushes++;
     }
     
     void CopyContext::updateTexture(const Texture* pTexture, const void* pData)

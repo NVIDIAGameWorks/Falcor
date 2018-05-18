@@ -85,6 +85,11 @@
 #define AlphaModeOpaque      0
 #define AlphaModeMask        1
 
+// Diffuse BRDFs
+#define DiffuseBrdfLambert      0
+#define DiffuseBrdfDisney       1
+#define DiffuseBrdfFrostbite    2
+
 // Bit count
 #define SHADING_MODEL_BITS   (3)
 #define DIFFUSE_TYPE_BITS    (3)
@@ -145,7 +150,7 @@
 #define LightPoint                  0    ///< Point light source, can be a spot light if its opening angle is < 2pi
 #define LightDirectional            1    ///< Directional light source
 #define LightArea                   2    ///< Area light source, potentially with arbitrary geometry
-
+#define LightType_ShadowBit         128
 #define MAX_LIGHT_SOURCES 16
 
 // To bind area lights, use this macro to declare the constant buffer in your shader
@@ -156,11 +161,12 @@
 
 /** Light probe types
 */
-#define LightProbeLinear2D          0    ///< Light probe filtered with linear-filtering, 2D texture
-#define LightProbePreIntegrated2D   1    ///< Pre-integrated light probe, 2D texture
-#define LightProbeLinearCube        2    ///< Light probe filtered with linear-filtering, texture-cube
-#define LightProbePreIntegratedCube 3    ///< Pre-integrated light probe, texture-cube
-
+#define LightProbeTypeStart         32
+#define LightProbeLinear2D          32    ///< Light probe filtered with linear-filtering, 2D texture
+#define LightProbePreIntegrated2D   33    ///< Pre-integrated light probe, 2D texture
+#define LightProbeLinearCube        34    ///< Light probe filtered with linear-filtering, texture-cube
+#define LightProbePreIntegratedCube 35    ///< Pre-integrated light probe, texture-cube
+#define LightProbeTypeEnd           36
 /*******************************************************************
                 Math
 *******************************************************************/

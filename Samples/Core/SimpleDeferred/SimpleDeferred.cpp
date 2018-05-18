@@ -65,7 +65,7 @@ void SimpleDeferred::loadModelFromFile(const std::string& filename, Fbo* pTarget
         return;
     }
     resetCamera();
-
+    mModelRenderer.init(mpModel);
     float Radius = mpModel->getRadius();
     mpPointLight->setWorldPosition(glm::vec3(0, Radius*1.25f, 0));
 }
@@ -249,7 +249,7 @@ void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::Shar
         mpModel->bindSamplerToMaterials(mpLinearSampler);
         pRenderContext->setGraphicsVars(mpDeferredVars);
         pState->setProgram(mpDeferredPassProgram);
-        ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
+        mModelRenderer.render(pRenderContext.get(), mpCamera.get());
     }
 
     // Lighting pass (fullscreen quad)

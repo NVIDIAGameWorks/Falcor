@@ -1314,7 +1314,10 @@
     <None Include="Data\Framework\Shaders\SceneEditor.slang" />
     <None Include="Data\Framework\Shaders\TextRenderer.slang" />
     <None Include="Data\HostDeviceData.slang" />
+    <None Include="Data\Interfaces.slang" />
+    <None Include="Data\Material.slang" />
     <None Include="Data\ShaderCommon.slang" />
+    <None Include="Data\ShaderCommonImpl.slang" />
     <None Include="ShadingUtils\BRDF.slang" />
     <None Include="ShadingUtils\Helpers.slang" />
     <None Include="ShadingUtils\Lights.slang" />

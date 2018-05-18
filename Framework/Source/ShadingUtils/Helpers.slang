@@ -29,6 +29,7 @@
 #define _FALCOR_HELPERS_SLANG_
 #include "HostDeviceData.h"
 
+import Interfaces;
 /*******************************************************************
     Spherical map sampling
 *******************************************************************/
@@ -123,9 +124,7 @@ float getMetallic(float diffuse, float spec)
 *******************************************************************/
 void basicAlphaTest(float alpha, float threshold)
 {
-#ifndef _MS_DISABLE_ALPHA_TEST
     if(alpha < threshold) discard;
-#endif
 }
 
 /*******************************************************************
@@ -134,9 +133,7 @@ void basicAlphaTest(float alpha, float threshold)
 void hashedAlphaTest(float alpha, float materialThreshold, float hashedThreshold)
 {
     float compareTo = hashedThreshold <= 0 ? materialThreshold : saturate(hashedThreshold);
-#ifndef _MS_DISABLE_ALPHA_TEST
     if(alpha < compareTo) discard;
-#endif
 }
 
 float sineHash(float2 p)
@@ -239,6 +236,31 @@ void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
     hashedAlphaTest(alpha, threshold, hashedThreshold);
 #endif
 }
+
+struct NoAlphaTest : IAlphaTest
+{
+    void run(float alpha, float threshold, float3 posW)
+    {
+    }
+};
+
+struct BasicAlphaTest : IAlphaTest
+{
+    void run(float alpha, float threshold, float3 posW)
+    {
+        basicAlphaTest(alpha, threshold);
+    }
+};
+
+struct HashedAlphaTest<let IsAnisotropic : int> : IAlphaTest
+{
+    float hashedAlphaScale;
+    void run(float alpha, float threshold, float3 posW)
+    {
+        float hashedThreshold = calculateHashedAlpha(posW, hashedAlphaScale, IsAnisotropic == 1);
+        hashedAlphaTest(alpha, threshold, hashedThreshold);
+    }
+};
 
 /*******************************************************************
    	Random numbers based on Mersenne Twister

@@ -27,6 +27,7 @@
 ***************************************************************************/
 #include "VertexAttrib.h"
 __import ShaderCommon;
+import Interfaces;
 
 struct VertexIn
 {
@@ -54,27 +55,6 @@ struct VertexIn
     float4 prevPos     : PREV_POSITION;
 #endif
     uint instanceID : SV_INSTANCEID;
-};
-
-#ifndef INTERPOLATION_MODE
-#define INTERPOLATION_MODE linear
-#endif
-
-struct VertexOut
-{
-    INTERPOLATION_MODE float3 normalW    : NORMAL;
-    INTERPOLATION_MODE float3 bitangentW : BITANGENT;
-    INTERPOLATION_MODE float2 texC       : TEXCRD;
-    INTERPOLATION_MODE float3 posW       : POSW;
-    INTERPOLATION_MODE float3 colorV     : COLOR;
-    INTERPOLATION_MODE float4 prevPosH   : PREVPOSH;
-    INTERPOLATION_MODE float2 lightmapC  : LIGHTMAPUV;
-    float4 posH : SV_POSITION;
-#ifdef _SINGLE_PASS_STEREO
-    INTERPOLATION_MODE float4 rightEyePosS : NV_X_RIGHT;
-    uint4 viewportMask : NV_VIEWPORT_MASK;
-    uint renderTargetIndex : SV_RenderTargetArrayIndex;
-#endif
 };
 
 float4x4 getWorldMat(VertexIn vIn)
@@ -150,6 +130,6 @@ VertexOut defaultVS(VertexIn vIn)
     vOut.viewportMask = 0x00000001;
     vOut.renderTargetIndex = 0;
 #endif
-
+    vOut.shadowsDepthC = mul(float4(vOut.posW, 1), gCamVpAtLastCsmUpdate).z;
   return vOut;
 }

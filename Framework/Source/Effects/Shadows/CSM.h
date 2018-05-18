@@ -66,7 +66,7 @@ namespace Falcor
             \param[in] cascadeCount Number of cascades
             \param[in] shadowMapFormat Shadow map texture format
         */
-        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
+        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount = 4, ResourceFormat shadowMapFormat = ResourceFormat::D32Float);
 
         /** Render UI controls
             \param[in] pGui GUI instance to render UI elements with
@@ -84,6 +84,14 @@ namespace Falcor
         /** Get the shadow map texture.
         */
         Texture::SharedPtr getShadowMap() const;
+
+        /** Set shadow map generation parameters into a program.
+            \param[in] pVars GraphicsVars of the program to set data into
+            \param[in] varName Name of the CsmData variable in the program
+        */
+        void setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName);
+        void setDataIntoParameterBlock(ParameterBlock* pBlock, ConstantBuffer::SharedPtr pCb, size_t offset, const std::string & varName);
+        void setDataIntoParameterBlock(ParameterBlock* pBlock, const std::string& varName);
 
         /** Set number of cascade partitions.
         */
@@ -150,9 +158,9 @@ namespace Falcor
         void resizeVisibilityBuffer(uint32_t width, uint32_t height);
 
     private:
-        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t windowWidth, uint32_t windowHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
-        Light::SharedConstPtr mpLight;
-        Scene::SharedConstPtr mpScene;
+        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t windowWidth, uint32_t windowHeight, Light* pLight, Scene* pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat);
+        Light* mpLight;
+        Scene* mpScene;
         Camera::SharedPtr mpLightCamera;
         std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;
         std::shared_ptr<SceneRenderer> mpSceneRenderer;
@@ -225,10 +233,10 @@ namespace Falcor
         struct Controls
         {
             bool depthClamp = true;
-            bool useMinMaxSdsm = true;
+            bool useMinMaxSdsm = false;
             glm::vec2 distanceRange = glm::vec2(0, 1);
-            float pssmLambda = 0.5f;
-            PartitionMode partitionMode = PartitionMode::Logarithmic;
+            float pssmLambda = 0.8f;
+            PartitionMode partitionMode = PartitionMode::PSSM;
             bool stabilizeCascades = false;
         };
 

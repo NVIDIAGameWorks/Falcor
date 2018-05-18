@@ -75,14 +75,14 @@ void ForwardRenderer::initLightingPass()
     mLightingPass.pAlphaBlendBS = BlendState::create(bsDesc);
 }
 
-void ForwardRenderer::initShadowPass(uint32_t windowWidth, uint32_t windowHeight)
-{
-    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, windowWidth, windowHeight, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
-    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm4);
-    mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
-    mShadowPass.pCsm->setVsmMaxAnisotropy(4);
-    mShadowPass.pCsm->setEvsmBlur(7, 3);
-}
+//void ForwardRenderer::initShadowPass()
+//{
+//    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
+//    mShadowPass.pCsm->setFilterMode(CsmFilterEvsm2);
+//    mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
+//    mShadowPass.pCsm->setVsmMaxAnisotropy(4);
+//    mShadowPass.pCsm->setEvsmBlur(7, 3);
+//}
 
 void ForwardRenderer::initSSAO()
 {
@@ -97,7 +97,7 @@ void ForwardRenderer::initSSAO()
 
 void ForwardRenderer::setSceneSampler(uint32_t maxAniso)
 {
-    Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene().get());
+    Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene());
     Sampler::Desc samplerDesc;
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
@@ -142,6 +142,7 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
         pDirLight->setWorldDirection(vec3(-0.189f, -0.861f, -0.471f));
         pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
         pDirLight->setName("DirLight");
+        pDirLight->enableShadowMap(pScene.get(), 2048, 2048, 6);
         pScene->addLight(pDirLight);
     }
 
@@ -160,8 +161,6 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
     setActiveCameraAspectRatio(pSample->getCurrentFbo()->getWidth(), pSample->getCurrentFbo()->getHeight());
     initDepthPass();
     initLightingPass();
-    auto pTargetFbo = pSample->getCurrentFbo();
-    initShadowPass(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     initSSAO();
     initTAA(pSample);
 
@@ -207,9 +206,9 @@ void ForwardRenderer::loadScene(SampleCallbacks* pSample, const std::string& fil
         pBar = ProgressBar::create("Loading Scene", 100);
     }
 
-    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
+    scene = Scene::loadFromFile(filename);
 
-    if (pScene != nullptr)
+    if (scene != nullptr)
     {
         initScene(pSample, pScene);
         applyCustomSceneVars(pScene.get(), filename);
@@ -230,18 +229,18 @@ void ForwardRenderer::initSkyBox(const std::string& name)
 
 void ForwardRenderer::updateLightProbe(const LightProbe::SharedPtr& pLight)
 {
-    Scene::SharedPtr pScene = mpSceneRenderer->getScene();
+    auto pScene = mpSceneRenderer->getScene();
 
     // Remove existing light probes
-    while (pScene->getLightProbeCount() > 0)
+    if (pScene->getLightProbeCount() > 0)
     {
-        pScene->deleteLightProbe(0);
+        pScene->deleteLightProbes();
     }
 
     pLight->setRadius(pScene->getRadius());
     pLight->setPosW(pScene->getCenter());
     pLight->setSampler(mpSceneSampler);
-    pScene->addLightProbe(pLight);
+    pScene->addLight(pLight);
 
     mControls[EnableReflections].enabled = true;
     applyLightingProgramControl(ControlID::EnableReflections);
@@ -262,7 +261,11 @@ void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
 {
     mpState = GraphicsState::create();
     initPostProcess();
-    loadScene(pSample, skDefaultScene, true);
+    auto sceneFile = pSample->getArgList().getValues("scene");
+    if (sceneFile.size() > 0)
+        loadScene(pSample, sceneFile.front().asString(), true);
+    else
+        loadScene(pSample, skDefaultScene, true);
 }
 
 void ForwardRenderer::renderSkyBox(RenderContext* pContext)
@@ -332,12 +335,6 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
     pCB["gOpacityScale"] = mOpacityScale;
 
-    if (mControls[ControlID::EnableShadows].enabled)
-    {
-        pCB["camVpAtLastCsmUpdate"] = mShadowPass.camVpAtLastCsmUpdate;
-        mLightingPass.pVars->setTexture("gVisibilityBuffer", mShadowPass.pVisibilityBuffer);
-    }
-
     if (mAAMode == AAMode::TAA)
     {
         pContext->clearFbo(mTAA.getActiveFbo().get(), vec4(0.0, 0.0, 0.0, 0.0), 1, 0, FboAttachmentType::Color);
@@ -354,7 +351,6 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
         mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::All);
         mpSceneRenderer->renderScene(pContext);
     }
-    pContext->flush();
     mpState->setDepthStencilState(nullptr);
 }
 
@@ -397,18 +393,7 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
     PROFILE(shadowPass);
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
-        mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
-        Texture::SharedPtr pDepth;
-        if (mAAMode == AAMode::MSAA)
-        {
-            pDepth = mpResolveFbo->getColorTexture(2);
-        }
-        else
-        {
-            pDepth = mpDepthPassFbo->getDepthStencilTexture();
-        }
-        mShadowPass.pVisibilityBuffer = mShadowPass.pCsm->generateVisibilityBuffer(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mEnableDepthPass ? pDepth : nullptr);
-        pContext->flush();
+        mpSceneRenderer->runShadowPass(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mpDepthPassFbo->getDepthStencilTexture());
     }
 }
 
@@ -499,7 +484,7 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
 
 void ForwardRenderer::applyCameraPathState()
 {
-    const Scene* pScene = mpSceneRenderer->getScene().get();
+    const Scene* pScene = mpSceneRenderer->getScene();
     if(pScene->getPathCount())
     {
         mUseCameraPath = mUseCameraPath;

@@ -147,7 +147,6 @@ private:
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();
-    void initShadowPass(uint32_t windowWidth, uint32_t windowHeight);
     void initSSAO();
     void updateLightProbe(const LightProbe::SharedPtr& pLight);
     void initTAA(SampleCallbacks* pSample);
@@ -203,6 +202,7 @@ private:
     AAMode mAAMode = AAMode::TAA;
     uint32_t mMSAASampleCount = 4;
     SamplePattern mTAASamplePattern = SamplePattern::Halton;
+    Scene::SharedPtr scene;
     void applyAaMode(SampleCallbacks* pSample);
     std::vector<ProgramControl> mControls;
     void applyLightingProgramControl(ControlID controlID);
