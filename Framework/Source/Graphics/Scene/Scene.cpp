@@ -97,7 +97,7 @@ namespace Falcor
             // Update light extents
             for (auto& light : getLights())
             {
-                if (pLight->getType() == LightDirectional)
+                if (light->getTypeId() == LightDirectional)
                 {
                     auto pDirLight = std::dynamic_pointer_cast<DirectionalLight>(light);
                     pDirLight->setWorldParams(getCenter(), getRadius());

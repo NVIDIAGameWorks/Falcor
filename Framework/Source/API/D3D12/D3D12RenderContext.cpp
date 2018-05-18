@@ -305,6 +305,11 @@ namespace Falcor
         mpLowLevelData->getCommandList()->ExecuteIndirect(spDrawIndexCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
     }
 
+    void RenderContext::enableStablePowerState()
+    {
+        gpDevice->getApiHandle()->SetStablePowerState(true);
+    }
+
     void RenderContext::initDrawCommandSignatures()
     {
         //Common properties

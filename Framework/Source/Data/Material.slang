@@ -130,7 +130,7 @@ struct StandardBxDF<let DiffuseBrdf : int> : IBxDF
     ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData probe, GlobalLightParams gParams)
     {
         ShadingResult sr = initShadingResult();
-        LightSample ls = evalLightProbe(geom, probe, gParams.probeSampler, roughness, linearRoughness);
+        LightSample ls = evalLightProbe(geom, probe, gParams.probeSampler, roughness, linearRoughness, specular);
 
         sr.diffuse = this.diffuse.rgb * ls.diffuse;
         sr.color.rgb = sr.diffuse;

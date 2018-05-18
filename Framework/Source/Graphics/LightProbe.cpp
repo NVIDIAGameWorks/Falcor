@@ -168,14 +168,13 @@ namespace Falcor
         }
     }
 
-    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSize, uint32_t specSize, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
     glm::vec3 dummyIntensityData;
     glm::vec3 & LightProbe::getIntensityData()
     {
         return dummyIntensityData;
     }
 
-    LightProbe::SharedPtr LightProbe::create(const std::string& filename, bool loadAsSrgb, bool generateMips, ResourceFormat overrideFormat, PreFilterMode filter, uint32_t size, ResourceFormat preFilteredFormat)
+    LightProbe::SharedPtr LightProbe::create(RenderContext* pContext, const std::string& filename, bool loadAsSrgb, ResourceFormat overrideFormat, uint32_t diffSize, uint32_t specSize, uint32_t diffSampleCount, uint32_t specSampleCount, ResourceFormat preFilteredFormat)
     {
         Texture::SharedPtr pTexture;
         if (overrideFormat != ResourceFormat::Unknown)
@@ -226,7 +225,7 @@ namespace Falcor
 
     uint32_t LightProbe::getTypeId() const
     {
-        return mData.type;
+        return LightProbeLinear2D;
     }
 
     void LightProbe::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
@@ -273,7 +272,7 @@ namespace Falcor
         pBlock->setTexture(varName + ".resources.origTexture", mData.resources.origTexture);
         pBlock->setTexture(varName + ".resources.diffuseTexture", mData.resources.diffuseTexture);
         pBlock->setTexture(varName + ".resources.specularTexture", mData.resources.specularTexture);
-        pBlock->setSampler(varName + ".resources.sampler", mData.resources.sampler);
+        //pBlock->setSampler(varName + ".resources.sampler", mData.resources.sampler);
     }
     
     void LightProbe::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pBuffer, const std::string& varName)

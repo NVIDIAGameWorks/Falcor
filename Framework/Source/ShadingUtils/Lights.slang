@@ -31,6 +31,11 @@ import Helpers;
 import Interfaces;
 import Effects.CascadedShadowMap;
 
+cbuffer InternalLightingParams : register(b21)
+{
+    LightProbeSharedResources gProbeShared;
+};
+
 // work around compiler issue
 #define calcCommonLightProperties(geom, ls) \
     { float3 H = normalize(geom.V + ls.L); \
@@ -149,7 +154,7 @@ float3 getSpecularDominantDir(float3 N, float3 R, float roughness)
     return normalize(lerp(N, R, factor));
 }
 
-float3 evalLightProbeDiffuse(LightProbeData probe, SurfaceGeometry sd, float roughness)
+float3 evalLightProbeDiffuse(LightProbeData probe, SurfaceGeometry sd, SamplerState lightProbeSampler, float roughness)
 {
     float3 N = getDiffuseDominantDir(sd.N, sd.V, roughness);
 
@@ -167,13 +172,13 @@ float3 evalLightProbeDiffuse(LightProbeData probe, SurfaceGeometry sd, float rou
         uv = dirToSphericalCrd(normalize(intersectPosW));
     }
 
-    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
+    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(lightProbeSampler, uv, 0).rgb;
     float diffF = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(sd.NdotV, roughness), 0).z;
 
     return diffuseLighting * diffF;
 }
 
-float3 evalLightProbeSpecular(LightProbeData probe, SurfaceGeometry sd, float3 L, float roughness, float3 specular)
+float3 evalLightProbeSpecular(LightProbeData probe, SurfaceGeometry sd, SamplerState lightProbeSampler, float3 L, float roughness, float3 specular)
 {
     float dfgWidth, dfgHeight;
     gProbeShared.dfgTexture.GetDimensions(dfgWidth, dfgHeight);
@@ -188,7 +193,7 @@ float3 evalLightProbeSpecular(LightProbeData probe, SurfaceGeometry sd, float3 L
     float mipLevel = linearRoughnessToLod(roughness, mipCount);
 
     float2 uv = dirToSphericalCrd(dominantDir);
-    float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.sampler, uv, mipLevel).rgb;
+    float3 ld = probe.resources.specularTexture.SampleLevel(lightProbeSampler, uv, mipLevel).rgb;
 
     float2 dfg = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(NdotV, roughness), 0).xy;
     
@@ -206,10 +211,10 @@ LightSample evalLightProbeLinear2D(SurfaceGeometry geom, LightProbeData probe, S
     ls.L = reflect(-geom.V, geom.N);
 
     // Evaluate diffuse component
-    ls.diffuse = evalLightProbeDiffuse(probe, geom);
+    ls.diffuse = evalLightProbeDiffuse(probe, geom, lightProbeSampler, roughness);
 
     // Get the specular component
-    ls.specular = evalLightProbeSpecular(probe, geom, ls.L, roughness, specular);
+    ls.specular = evalLightProbeSpecular(probe, geom, lightProbeSampler, ls.L, roughness, specular);
 
     ls.diffuse *= probe.intensity;
     ls.specular *= probe.intensity;

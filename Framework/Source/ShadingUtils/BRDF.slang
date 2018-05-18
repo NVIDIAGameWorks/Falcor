@@ -39,16 +39,15 @@ float3 fresnelSchlick(float3 f0, float3 f90, float u)
 
 /** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
 */
-float3 evalDiffuseLambertBrdf(ShadingData sd, LightSample ls)
+float3 evalDiffuseLambertBrdf(float3 diffuse)
 {
-    return sd.diffuse.rgb * (1 / M_PI);
+    return diffuse * (1 / M_PI);
 }
 
 /** Disney's diffuse term. Based on https://disney-animation.s3.amazonaws.com/library/s2012_pbs_disney_brdf_notes_v2.pdf
 */
 float3 evalDiffuseDisneyBrdf(float3 diffuse, float NdotV, float linearRoughness, LightSample ls)
 {
-    return sd.diffuse.rgb * (1 / M_PI);
     float fd90 = 0.5 + 2 * ls.LdotH * ls.LdotH * linearRoughness;
     float fd0 = 1;
     float lightScatter = fresnelSchlick(fd0, fd90, ls.NdotL).r;

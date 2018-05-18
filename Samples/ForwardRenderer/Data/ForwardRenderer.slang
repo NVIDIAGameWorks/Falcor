@@ -25,12 +25,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
-__import DefaultVS;
-__import Effects.CascadedShadowMap;
-__import Shading;
-__import Helpers;
-__import BRDF;
+import ShaderCommon;
+import DefaultVS;
+import Effects.CascadedShadowMap;
+import Shading;
+import Helpers;
+import BRDF;
+import Interfaces;
 
 layout(binding = 0) cbuffer PerFrameCB : register(b0)
 {

@@ -122,9 +122,9 @@ namespace Falcor
 
     void Material::setBaseColorTexture(Texture::SharedPtr& pBaseColor)
     {
-        mParamBlockDirty = mParamBlockDirty || (diffuseChannel != pDiffuse);
-        diffuseChannel = pDiffuse;
-        bool hasAlpha = pDiffuse && doesFormatHasAlpha(pDiffuse->getFormat());
+        mParamBlockDirty = mParamBlockDirty || (diffuseChannel != pBaseColor);
+        diffuseChannel = pBaseColor;
+        bool hasAlpha = pBaseColor && doesFormatHasAlpha(pBaseColor->getFormat());
         setAlphaTestMode(hasAlpha ? AlphaTestMode::HashedIsotropic : AlphaTestMode::Disabled);
     }
 
@@ -164,10 +164,10 @@ namespace Falcor
         switch (EXTRACT_SHADING_MODEL(mData.flags))
         {
         case ShadingModelMetalRough:
-            hasMap = (mData.resources.specular != nullptr);
+            hasMap = (specularChannel.type != MaterialChannel::Type::Unused);
             break;
         case ShadingModelSpecGloss:
-            hasMap = (mData.resources.occlusionMap != nullptr);
+            hasMap = (occlusionChannel.type != MaterialChannel::Type::Unused);
             break;
         default:
             should_not_get_here();
@@ -373,7 +373,7 @@ namespace Falcor
             if (mpParameterBlock == nullptr || spBlockReflection == nullptr 
                 || reflectionTypeName != shaderTypeName)
             {
-                GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
+                GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Framework/Shaders/MaterialBlock.slang", "", "main");
                 ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
                 auto slangReq = pProgram->getActiveVersion()->slangRequest;
                 auto reflection = spGetReflection(slangReq);
@@ -381,9 +381,7 @@ namespace Falcor
                 auto materialType = spReflection_FindTypeByName(reflection, shaderTypeName.c_str());
                 auto layout = spReflection_GetTypeLayout(reflection, materialType, SLANG_LAYOUT_RULES_DEFAULT);
                 auto blockType = reflectType((slang::TypeLayoutReflection*)layout);
-                auto blockReflection = ParameterBlockReflection::create("");
-                blockReflection->setElementType(blockType);
-                blockReflection->finalize();
+                auto blockReflection = ParameterBlockReflection::create(blockType);
                 spBlockReflection = blockReflection;
                 reflectionTypeName = shaderTypeName;
                 assert(spBlockReflection);

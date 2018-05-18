@@ -148,7 +148,7 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
 
     if (pScene->getLightProbeCount() > 0)
     {
-        const LightProbe::SharedPtr& pProbe = pScene->getLightProbe(0);
+        auto pProbe = pScene->getLightProbe(0);
         pProbe->setRadius(pScene->getRadius());
         pProbe->setPosW(pScene->getCenter());
         pProbe->setSampler(mpSceneSampler);
@@ -210,8 +210,8 @@ void ForwardRenderer::loadScene(SampleCallbacks* pSample, const std::string& fil
 
     if (scene != nullptr)
     {
-        initScene(pSample, pScene);
-        applyCustomSceneVars(pScene.get(), filename);
+        initScene(pSample, scene);
+        applyCustomSceneVars(scene.get(), filename);
         applyCsSkinningMode();
     }
 }
@@ -393,7 +393,7 @@ void ForwardRenderer::shadowPass(RenderContext* pContext)
     PROFILE(shadowPass);
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
-        mpSceneRenderer->runShadowPass(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mpDepthPassFbo->getDepthStencilTexture());
+        mpVisibilityBuffer = mpSceneRenderer->runShadowPass(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), mpDepthPassFbo->getDepthStencilTexture(), 0);
     }
 }
 
@@ -542,7 +542,7 @@ void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width
     mpPostProcessFbo = FboHelper::create2D(width, height, fboDesc);
 
     applyAaMode(pSample);
-    mShadowPass.pCsm->resizeVisibilityBuffer(width, height);
+    scene->getLightEnv()->resizeVisibilityBuffer(width, height);
 
     if(mpSceneRenderer)
     {

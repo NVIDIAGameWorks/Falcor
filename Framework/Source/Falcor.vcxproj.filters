@@ -2312,5 +2312,13 @@
     <None Include="Data\Effects\VisibilityPass.ps.slang">
       <Filter>Data\Effects</Filter>
     </None>
+    <None Include="Data\ShaderCommon.slang" />
+    <None Include="Data\ShaderCommonImpl.slang" />
+    <None Include="Data\Interfaces.slang">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="Data\Material.slang">
+      <Filter>Data</Filter>
+    </None>
   </ItemGroup>
 </Project>

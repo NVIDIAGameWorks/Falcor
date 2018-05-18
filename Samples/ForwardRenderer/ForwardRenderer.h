@@ -52,6 +52,7 @@ private:
     Fbo::SharedPtr mpDepthPassFbo;
     Fbo::SharedPtr mpResolveFbo;
     Fbo::SharedPtr mpPostProcessFbo;
+    Texture::SharedPtr mpVisibilityBuffer;
 
     struct ShadowPass
     {

@@ -36,7 +36,6 @@
 #include "VR/OpenVR/VRSystem.h"
 #include "API/Device.h"
 #include "glm/matrix.hpp"
-#include "Graphics/Material/MaterialSystem.h"
 #include "Graphics/Light.h"
 #include "Effects/Shadows/CSM.h"
 
@@ -128,10 +127,16 @@ namespace Falcor
         
         currentData.pVars->setParameterBlock("gLightEnv", currentData.pLightEnv->getParameterBlock());
 
+        if (mpScene->getLightProbeCount() > 0)
+        {
+            // #TODO Support multiple light probes
+            LightProbe::setCommonIntoProgramVars(currentData.pVars, kProbeSharedVarName);
+        }
+
         if (mpScene->getAreaLightCount() > 0)
         {
             const ParameterBlockReflection* pBlock = currentData.pVars->getReflection()->getDefaultParameterBlock().get();
-
+            
             // If area lights have been declared
             const ReflectionVar* pVar = pBlock->getResource(kAreaLightCbName).get();
             if (pVar != nullptr)
@@ -372,18 +377,23 @@ namespace Falcor
         renderScene(currentData);
     }
 
-    void SceneRenderer::runShadowPass(RenderContext * pContext, Camera * pCamera, Texture::SharedPtr pDepthBuffer)
+    Texture::SharedPtr SceneRenderer::runShadowPass(RenderContext * pContext, Camera * pCamera, Texture::SharedPtr pDepthBuffer, uint32_t lightIdForShadowMapVisualization)
     {
+        Texture::SharedPtr result;
         camVpAtLastCsmUpdate = pCamera->getViewProjMatrix();
+
         for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
         {
             auto light = mpScene->getLight(i);
             if (light->getTypeId() & LightType_ShadowBit)
             {
                 auto infLight = dynamic_cast<InfinitesimalLight*>(light.get());
-                infLight->getCsm()->setup(pContext, mpScene->getActiveCamera().get(), pDepthBuffer);
+                auto rs = infLight->getCsm()->generateVisibilityBuffer(pContext, mpScene->getActiveCamera().get(), pDepthBuffer);
+                if (i == lightIdForShadowMapVisualization)
+                    result = rs;
             }
         }
+        return result;
     }
 
     void SceneRenderer::setCameraControllerType(CameraControllerType type)

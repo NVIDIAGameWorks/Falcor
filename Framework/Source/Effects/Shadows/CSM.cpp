@@ -354,7 +354,7 @@ namespace Falcor
         mPerLightCbLoc = pDefaultBlock->getResourceBinding("PerLightCB");
 
         mpCsmSceneRenderer = CsmSceneRenderer::create(mpScene, alphaMapCB, alphaMap, alphaSampler);
-        mpSceneRenderer = SceneRenderer::create(std::const_pointer_cast<Scene>(mpScene));
+        mpSceneRenderer = SceneRenderer::create(mpScene);
         mpSceneRenderer->toggleMeshCulling(true);
     }
 

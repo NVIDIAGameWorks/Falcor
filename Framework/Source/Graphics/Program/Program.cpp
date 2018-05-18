@@ -439,23 +439,25 @@ namespace Falcor
         // Each entry point references the index of the source
         // it uses, and luckily, the Slang API can use these
         // indices directly.
-        for (uint32_t i = 0; i < kShaderCount; ++i)
+        if (purpose != CompilePurpose::ReflectionOnly)
         {
-            auto& entryPoint = mDesc.mEntryPoints[i];
+            for (uint32_t i = 0; i < kShaderCount; ++i)
+            {
+                auto& entryPoint = mDesc.mEntryPoints[i];
 
-            // Skip unused entry points
-            if (entryPoint.libraryIndex < 0)
-                continue;
+                // Skip unused entry points
+                if (entryPoint.libraryIndex < 0)
+                    continue;
 
-            spAddEntryPointEx(
-                slangRequest,
-                entryPoint.libraryIndex,
-                entryPoint.name.c_str(),
-                getSlangStage(ShaderType(i)),
-                (int)typeArgs.size(),
-                typeArgNamesPtr);
+                spAddEntryPointEx(
+                    slangRequest,
+                    entryPoint.libraryIndex,
+                    entryPoint.name.c_str(),
+                    getSlangStage(ShaderType(i)),
+                    (int)typeArgs.size(),
+                    typeArgNamesPtr);
+            }
         }
-
         return slangRequest;
     }
 
@@ -478,8 +480,7 @@ namespace Falcor
             std::vector<std::string>());
         int anyErrors = doSlangCompilation(slangRequest, log);
         if (anyErrors)
-            VersionData();
-
+            return VersionData();
 
         VersionData programVersion;
 
@@ -495,8 +496,6 @@ namespace Falcor
             std::string depFilePath = spGetDependencyFilePath(slangRequest, ii);
             mFileTimeMap[depFilePath] = getFileModifiedTime(depFilePath);
         }
-
-        spDestroyCompileRequest(slangRequest);
 
         // Now that we've preprocessed things, dispatch to the actual program creation logic,
         // which may vary in subclasses of `Program`
@@ -516,13 +515,13 @@ namespace Falcor
         for (uint32_t i = 0; i < paramBlockCount; i++)
         {
             auto paramBlock = originalReflector->getParameterBlock(i);
-            if (auto genType = paramBlock->getType()->asGenericType())
+            auto newParamBlock = pVars->getParameterBlock(i);
+            if (newParamBlock->genericTypeParamName.length())
             {
-                auto index = originalReflector->getTypeParameterIndexByName(genType->name);
-                auto newParamBlock = pVars->getParameterBlock(i);
+                auto index = originalReflector->getTypeParameterIndexByName(newParamBlock->genericTypeParamName);
                 if (typeArguments.size() <= index)
                     typeArguments.resize(index + 1);
-                typeArguments[index] = newParamBlock->getTypeName();
+                typeArguments[index] = newParamBlock->genericTypeArgumentName;
             }
         }
         SlangCompileRequest* slangRequest = createSlangCompileRequest(pVersion->getDefines(),
@@ -558,7 +557,9 @@ namespace Falcor
             shaderBlob[i].type = Shader::Blob::Type::String;
 #endif
         }
-        return createProgramKernels(log, shaderBlob, pVersion->getReflector());
+        // Extract the reflection data
+        auto kernelReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::All, log);
+        return createProgramKernels(log, shaderBlob, kernelReflector);
     }
 
     ProgramKernels::SharedPtr Program::createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr reflector) const

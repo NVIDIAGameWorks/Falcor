@@ -864,6 +864,14 @@ namespace Falcor
         return SharedPtr(new ParameterBlockReflection(name));
     }
 
+    ParameterBlockReflection::SharedPtr ParameterBlockReflection::create(const ReflectionType::SharedConstPtr & reflectionType)
+    {
+        auto rs = SharedPtr(new ParameterBlockReflection(""));
+        rs->setElementType(reflectionType);
+        rs->finalize();
+        return rs;
+    }
+
     ParameterBlockReflection::ParameterBlockReflection(const std::string& name) : mName(name)
     {
         mpResourceVars = ReflectionStructType::create(0, 0);

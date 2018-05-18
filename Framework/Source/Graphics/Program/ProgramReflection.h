@@ -547,6 +547,7 @@ namespace Falcor
         /** Create a new object
         */
         static SharedPtr create(const std::string& name);
+        static SharedPtr create(const ReflectionType::SharedConstPtr& reflectionType);
 
         /** Get the name of the parameter block
         */

@@ -39,7 +39,7 @@ namespace Falcor
     }
     void ModelRenderer::render(RenderContext* pRenderContext, Camera* pCamera, bool frustumCulling)
     {
-        pSceneRenderer->setObjectCullState(frustumCulling);
+        pSceneRenderer->toggleMeshCulling(frustumCulling);
         pSceneRenderer->renderScene(pRenderContext, pCamera);
     }
 }

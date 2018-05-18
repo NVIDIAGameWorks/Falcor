@@ -82,6 +82,8 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* group = nullptr);
 
+        float getPower() const override { return 0.0f; }
+
         /** Set the light probe's world-space position
         */
         void setPosW(const vec3& posW) { mData.posW = posW; }
@@ -116,11 +118,11 @@ namespace Falcor
 
         /** Attach a sampler to the light probe
         */
-        void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.sampler = pSampler; }
+        //void setSampler(const Sampler::SharedPtr& pSampler) { mData.resources.sampler = pSampler; }
 
         /** Get the sampler state
         */
-        const Sampler::SharedPtr& getSampler() const { return mData.resources.sampler; }
+        //const Sampler::SharedPtr& getSampler() const { return mData.resources.sampler; }
 
         /** Get the light probe's source texture.
         */
@@ -164,7 +166,6 @@ namespace Falcor
         uint32_t mDiffSampleCount;
         uint32_t mSpecSampleCount;
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
-        LightProbeData mData;
     protected:
         glm::vec3& getIntensityData();
         LightProbe(RenderContext* pContext, const Texture::SharedPtr& pTexture, uint32_t diffSize, uint32_t specSize, uint32_t diffSamples, uint32_t specSamples, ResourceFormat preFilteredFormat);

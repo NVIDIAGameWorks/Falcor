@@ -689,7 +689,7 @@ namespace Falcor
                 env->lightCollectionTypeName = strStream.str();
                 env->shaderTypeName = "LightEnv<" + env->lightCollectionTypeName + " >";
 
-                GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("", "Framework/Shaders/MaterialBlock.slang");
+                GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Framework/Shaders/MaterialBlock.slang", "", "main");
                 ProgramReflection::SharedConstPtr pReflection = pProgram->getActiveVersion()->getReflector();
                 auto slangReq = pProgram->getActiveVersion()->slangRequest;
                 auto reflection = spGetReflection(slangReq);
@@ -697,9 +697,7 @@ namespace Falcor
                 auto materialType = spReflection_FindTypeByName(reflection, env->shaderTypeName.c_str());
                 auto layout = spReflection_GetTypeLayout(reflection, materialType, SLANG_LAYOUT_RULES_DEFAULT);
                 auto blockType = reflectType((slang::TypeLayoutReflection*)layout);
-                auto blockReflection = ParameterBlockReflection::create("");
-                blockReflection->setElementType(blockType);
-                blockReflection->finalize();
+                auto blockReflection = ParameterBlockReflection::create(blockType);
                 spBlockReflection = blockReflection;
                 assert(spBlockReflection);
                 for (auto & lt : env->lightTypes)
@@ -775,6 +773,22 @@ namespace Falcor
         mVersionID++;
     }
 
+
+    void LightEnv::resizeVisibilityBuffer(uint32_t w, uint32_t h)
+    {
+        for (auto & lt : lightTypes)
+        {
+            for (auto & l : lt.second.lights)
+            {
+                if (auto infL = dynamic_cast<InfinitesimalLight*>(l.get()))
+                {
+                    if (infL->getCsm())
+                        infL->getCsm()->resizeVisibilityBuffer(w, h);
+                }
+            }
+        }
+    }
+
     VersionID LightEnv::getVersionID() const
     {
         // check if any light has been modified
@@ -806,7 +820,7 @@ namespace Falcor
     void InfinitesimalLight::enableShadowMap(Scene* pScene, int width, int height, int numCascades)
     {
         isShadowed = true;
-        mCsm = CascadedShadowMaps::create(width, height, this, pScene, numCascades);
+        mCsm = CascadedShadowMaps::create(width, height, 1920, 1080, this, pScene, numCascades);
 
     }
     void InfinitesimalLight::disableShadowMap()

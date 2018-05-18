@@ -69,7 +69,7 @@ namespace Falcor
         */
         virtual void renderScene(RenderContext* pContext, const Camera* pCamera);
 
-        virtual void runShadowPass(RenderContext* pContext, Camera* pCamera, Texture::SharedPtr pDepthBuffer);
+        virtual Texture::SharedPtr runShadowPass(RenderContext* pContext, Camera* pCamera, Texture::SharedPtr pDepthBuffer, uint32_t lightIdForShadowMapVisualization);
 
         /** Update the camera and model animation.
             Should be called before renderScene(), unless not animations are used and you update the camera manually

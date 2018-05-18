@@ -467,6 +467,7 @@ namespace Falcor
         ParameterBlock::SharedConstPtr getParameterBlock() const;
         void setIntoProgramVars(ProgramVars* vars);
         void bindSampler(Sampler::SharedPtr sampler);
+        void resizeVisibilityBuffer(uint32_t w, uint32_t h);
     private:
         LightEnv();
         LightEnv(LightEnv const&) = delete;

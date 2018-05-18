@@ -91,7 +91,8 @@ void ForwardRendererSceneRenderer::renderScene(RenderContext* pContext)
 
 RasterizerState::SharedPtr ForwardRendererSceneRenderer::getRasterizerState(const Material* pMaterial)
 {
-    if (pMaterial->getAlphaMode() == AlphaModeMask)
+    if (pMaterial->getAlphaTestMode() == AlphaTestMode::HashedAnisotropic ||
+        pMaterial->getAlphaTestMode() == AlphaTestMode::HashedIsotropic)
     {
         return mpNoCullRS;
     }
