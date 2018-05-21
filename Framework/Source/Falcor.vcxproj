@@ -380,6 +380,7 @@
     <ClCompile Include="API\Window.cpp" />
     <ClCompile Include="ArgList.cpp" />
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp" />
+    <ClCompile Include="Effects\FXAA\FXAA.cpp" />
     <ClCompile Include="Effects\NormalMap\LeanMap.cpp" />
     <ClCompile Include="Effects\ParticleSystem\ParticleSystem.cpp" />
     <ClCompile Include="Effects\Shadows\CSM.cpp" />
@@ -931,6 +932,7 @@
     <ClInclude Include="Data\HostDeviceSharedMacros.h" />
     <ClInclude Include="Data\VertexAttrib.h" />
     <ClInclude Include="Effects\AmbientOcclusion\SSAO.h" />
+    <ClInclude Include="Effects\FXAA\FXAA.h" />
     <ClInclude Include="Effects\NormalMap\LeanMap.h" />
     <ClInclude Include="Effects\ParticleSystem\ParticleSystem.h" />
     <ClInclude Include="Effects\Shadows\CSM.h" />
@@ -1287,6 +1289,7 @@
     <None Include="Data\DefaultVS.slang" />
     <None Include="Data\Effects\CascadedShadowMap.slang" />
     <None Include="Data\Effects\DepthPass.slang" />
+    <None Include="Data\Effects\FXAA.slang" />
     <None Include="Data\Effects\GaussianBlur.ps.slang" />
     <None Include="Data\Effects\LeanMapping.slang" />
     <None Include="Data\Effects\ParticleConstColor.ps.slang" />
