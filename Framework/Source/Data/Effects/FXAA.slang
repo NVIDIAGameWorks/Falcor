@@ -243,6 +243,7 @@ cbuffer PerFrameCB
     float qualitySubPix;
     float qualityEdgeThreshold;
     float qualityEdgeThresholdMin;
+    bool earlyOut;
 };
 
 SamplerState gSampler;
@@ -272,7 +273,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET
     float rangeMaxClamped = max(qualityEdgeThresholdMin, rangeMaxScaled);
     bool earlyExit = range < rangeMaxClamped;
 
-    if (earlyExit)
+    if (earlyOut && earlyExit)
         return color;
 
     float lumaNW = luminance(gSrc.SampleLevel(gSampler, posM, 0, int2(-1, -1)).rgb);

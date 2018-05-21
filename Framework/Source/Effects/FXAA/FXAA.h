@@ -50,7 +50,7 @@ namespace Falcor
         /** Render UI controls for this effect.
             \param[in] pGui GUI object to render UI elements with
         */
-        void renderUI(Gui* pGui);
+        void renderUI(Gui* pGui, const char* uiGroup);
 
         /** Run the effect
             \param[in] pRenderContext Render context with the destination FBO already set
@@ -66,5 +66,10 @@ namespace Falcor
         FullScreenPass::UniquePtr mpPass;
         GraphicsVars::SharedPtr mpGraphicsVars;
         Sampler::SharedPtr mpLinearSampler;
+
+        float mQualitySubPix = 0.75f;
+        float mQualityEdgeThreshold = 0.166f;
+        float mQualityEdgeThresholdMin = 0.0833f;
+        bool mEarlyOut = true;
     };
 }

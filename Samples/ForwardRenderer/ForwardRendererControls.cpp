@@ -262,6 +262,11 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
+            if (mAAMode == AAMode::FXAA)
+            {
+                mpFXAA->renderUI(pGui, "FXAA");
+            }
+
             if (reapply) applyAaMode(pSample);
 
             pGui->endGroup();

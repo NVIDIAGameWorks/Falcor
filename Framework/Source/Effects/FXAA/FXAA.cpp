@@ -32,18 +32,29 @@ namespace Falcor
         }
     }
 
-    void FXAA::renderUI(Gui* pGui)
+    void FXAA::renderUI(Gui* pGui, const char* uiGroup)
     {
+        if (!uiGroup || pGui->beginGroup(uiGroup))
+        {
+            pGui->addFloatVar("Sub-Pixel Quality", mQualitySubPix, 0, 1);
+            pGui->addFloatVar("Edge Threshold", mQualityEdgeThreshold, 0, 1);
+            pGui->addFloatVar("Edge Threhold Min", mQualityEdgeThresholdMin, 0, 1);
+            pGui->addCheckBox("Early out", mEarlyOut);
+            if (uiGroup) pGui->endGroup();
+        }
     }
 
     void FXAA::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Fbo::SharedPtr& pDstFbo)
     {
         mpGraphicsVars->setTexture("gSrc", pSrcTex);
         float2 rcpFrame = 1.0f / float2(pSrcTex->getWidth(), pSrcTex->getHeight());
-        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["rcpTexDim"] = rcpFrame;
-        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["qualitySubPix"] = 0.75f;
-        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["qualityEdgeThreshold"] = 0.166f;
-        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["qualityEdgeThresholdMin"] = 0.0833f;
+        auto& pCB = mpGraphicsVars->getDefaultBlock()["PerFrameCB"];
+        pCB["rcpTexDim"] = rcpFrame;
+        pCB["qualitySubPix"] = mQualitySubPix;
+        pCB["qualityEdgeThreshold"] = mQualityEdgeThreshold;
+        pCB["qualityEdgeThresholdMin"] = mQualityEdgeThresholdMin;
+        pCB["earlyOut"] = mEarlyOut;
+
         mpGraphicsVars->setSampler("gSampler", mpLinearSampler);
 
         pRenderContext->pushGraphicsVars(mpGraphicsVars);
