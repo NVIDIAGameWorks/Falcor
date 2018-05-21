@@ -532,6 +532,9 @@
     <ClCompile Include="API\Vulkan\VkResource.cpp">
       <Filter>API\Vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\FXAA\FXAA.cpp">
+      <Filter>Effects\FXAA</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1687,6 +1690,9 @@
     <ClInclude Include="Data\Effects\SSAOData.h">
       <Filter>Data\Effects</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\FXAA\FXAA.h">
+      <Filter>Effects\FXAA</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1871,6 +1877,9 @@
     </Filter>
     <Filter Include="Raytracing\RtProgram">
       <UniqueIdentifier>{e3b76813-257a-4b19-8517-03302aa9fe98}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\FXAA">
+      <UniqueIdentifier>{51b693f1-34da-4d5e-a6d5-925944c92c79}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2313,6 +2322,9 @@
       <Filter>Data\Effects</Filter>
     </None>
     <None Include="Data\Effects\VisibilityPass.ps.slang">
+      <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\Effects\FXAA.slang">
       <Filter>Data\Effects</Filter>
     </None>
   </ItemGroup>

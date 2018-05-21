@@ -163,7 +163,7 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
     auto pTargetFbo = pSample->getCurrentFbo();
     initShadowPass(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     initSSAO();
-    initTAA(pSample);
+    initAA(pSample);
 
     mControls[EnableReflections].enabled = pScene->getLightProbeCount() > 0;
     applyLightingProgramControl(ControlID::EnableReflections);
@@ -247,9 +247,10 @@ void ForwardRenderer::updateLightProbe(const LightProbe::SharedPtr& pLight)
     applyLightingProgramControl(ControlID::EnableReflections);
 }
 
-void ForwardRenderer::initTAA(SampleCallbacks* pSample)
+void ForwardRenderer::initAA(SampleCallbacks* pSample)
 {
     mTAA.pTAA = TemporalAA::create();
+    mpFXAA = FXAA::create();
     applyAaMode(pSample);
 }
 
@@ -442,7 +443,7 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
     PROFILE(ssao);
     if (mControls[EnableSSAO].enabled)
     {
-        Texture::SharedPtr pDepth = (mAAMode == AAMode::TAA) ? mpResolveFbo->getDepthStencilTexture() : mpResolveFbo->getColorTexture(2);
+        Texture::SharedPtr pDepth = (mAAMode == AAMode::MSAA) ? mpResolveFbo->getColorTexture(2) : mpResolveFbo->getDepthStencilTexture();
         Texture::SharedPtr pAOMap = mSSAO.pSSAO->generateAOMap(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), pDepth, mpResolveFbo->getColorTexture(1));
         mSSAO.pVars->setTexture("gColor", mpPostProcessFbo->getColorTexture(0));
         mSSAO.pVars->setTexture("gAOMap", pAOMap);
@@ -451,6 +452,16 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
         pContext->setGraphicsVars(mSSAO.pVars);
 
         mSSAO.pApplySSAOPass->execute(pContext);
+    }
+}
+
+void ForwardRenderer::executeFXAA(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
+{
+    PROFILE(fxaa);
+    if(mAAMode == AAMode::FXAA)
+    {
+        pContext->blit(pTargetFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
+        mpFXAA->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo);
     }
 }
 
@@ -487,6 +498,7 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
         postProcess(pRenderContext.get(), pPostProcessDst);
         runTAA(pRenderContext.get(), pPostProcessDst); // This will only run if we are in TAA mode
         ambientOcclusion(pRenderContext.get(), pTargetFbo);
+        executeFXAA(pRenderContext.get(), pTargetFbo);
 
         endFrame(pRenderContext.get());
     }

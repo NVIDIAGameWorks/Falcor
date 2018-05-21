@@ -140,6 +140,7 @@
 #include "Effects/AmbientOcclusion/SSAO.h"
 #include "Effects/ParticleSystem/ParticleSystem.h"
 #include "Effects/TAA/TAA.h"
+#include "Effects/FXAA/FXAA.h"
 
 #ifdef FALCOR_DXR
 #include "Raytracing/RtModel.h"
