@@ -65,6 +65,6 @@ namespace Falcor
 
         FullScreenPass::UniquePtr mpPass;
         GraphicsVars::SharedPtr mpGraphicsVars;
-        Sampler::SharedPtr mpPointSampler;
+        Sampler::SharedPtr mpLinearSampler;
     };
 }

@@ -13,8 +13,10 @@ namespace Falcor
     {
         mpPass = FullScreenPass::create(kShaderFilename);
         mpGraphicsVars = GraphicsVars::create(mpPass->getProgram()->getReflector());
-        mpPointSampler = Sampler::create({});
-        mpGraphicsVars->setSampler("gSampler", mpPointSampler);
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
+        mpLinearSampler = Sampler::create(samplerDesc);
+        mpGraphicsVars->setSampler("gSampler", mpLinearSampler);
     }
 
     FXAA::UniquePtr FXAA::create()
@@ -37,6 +39,12 @@ namespace Falcor
     void FXAA::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Fbo::SharedPtr& pDstFbo)
     {
         mpGraphicsVars->setTexture("gSrc", pSrcTex);
+        float2 rcpFrame = 1.0f / float2(pSrcTex->getWidth(), pSrcTex->getHeight());
+        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["rcpTexDim"] = rcpFrame;
+        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["qualitySubPix"] = 0.75f;
+        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["qualityEdgeThreshold"] = 0.166f;
+        mpGraphicsVars->getDefaultBlock()["PerFrameCB"]["qualityEdgeThresholdMin"] = 0.0833f;
+
         pRenderContext->pushGraphicsVars(mpGraphicsVars);
         pRenderContext->getGraphicsState()->pushFbo(pDstFbo);
 
