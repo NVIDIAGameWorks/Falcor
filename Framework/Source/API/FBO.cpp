@@ -272,6 +272,17 @@ namespace Falcor
         // Check depth
         if (verifyAttachment(mDepthStencil) == false) return false;
 
+        // In case there are sample positions, make sure they are valid
+        if (mSamplePositions.size())
+        {
+            uint32_t expectedCount = mSamplePositionsPixelCount * mTempDesc.getSampleCount();
+            if (expectedCount != mSamplePositions.size())
+            {
+                logError("Error when validating FBO. The sample-positions array-size has the wrong size.\n");
+                return false;
+            }
+        }
+
         // Insert the attachment into the static array and initialize the address
         mpDesc = &(*(sDescs.insert(mTempDesc).first));
 
@@ -302,5 +313,11 @@ namespace Falcor
             return true;
         }
         return true;
+    }
+
+    void Fbo::setSamplePositions(uint32_t numPixels, const SamplePosition positions[], uint32_t count)
+    {
+        mSamplePositions = std::vector<SamplePosition>(positions, positions + count);
+        mSamplePositionsPixelCount = numPixels;
     }
 }

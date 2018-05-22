@@ -188,8 +188,26 @@ namespace Falcor
                 }
             }
         }
+        ID3D12GraphicsCommandList* pCmdList = pCtx->getLowLevelData()->getCommandList().GetInterfacePtr();
+        pCmdList->OMSetRenderTargets(colorTargets, pRTV.data(), FALSE, &pDSV);
 
-        pCtx->getLowLevelData()->getCommandList()->OMSetRenderTargets(colorTargets, pRTV.data(), FALSE, &pDSV);
+        ID3D12GraphicsCommandList1* pList1;
+        pCmdList->QueryInterface(IID_PPV_ARGS(&pList1));
+        const auto& samplePos = pFbo->getSamplePositions();
+        if (!pList1)
+        {
+            if(samplePos.size())
+            {
+                logError("The FBO specifies programmable sample positions, but the hardware doesn't support it");
+            }
+        }
+        else
+        {
+            static_assert(offsetof(Fbo::SamplePosition, xOffset) == offsetof(D3D12_SAMPLE_POSITION, X), "SamplePosition.X");
+            static_assert(offsetof(Fbo::SamplePosition, yOffset) == offsetof(D3D12_SAMPLE_POSITION, Y), "SamplePosition.Y");
+            uint32_t sampleCount = samplePos.size() ? pFbo->getSampleCount() : 0;
+            pList1->SetSamplePositions(sampleCount, pFbo->getSamplePositionsPixelCount(), (D3D12_SAMPLE_POSITION*)samplePos.data());
+        }
     }
 
     static void D3D12SetViewports(ID3D12GraphicsCommandList* pList, const GraphicsState::Viewport* vp)

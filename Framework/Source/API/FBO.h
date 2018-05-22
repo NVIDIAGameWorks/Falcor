@@ -190,6 +190,27 @@ namespace Falcor
         */
         RenderTargetView::SharedPtr getRenderTargetView(uint32_t rtIndex) const;
 
+
+        struct SamplePosition
+        {
+            int8 xOffset = 0;
+            int8 yOffset = 0;
+        };
+
+        /**  Configure the sample positions used by multi-sampled buffers.
+        The size of the positions array should be samplesPerPixel*numPixels
+        To reset the positions to their original location pass nullptr for positions
+        */
+        void setSamplePositions(uint32_t numPixels, const SamplePosition positions[], uint32_t count);
+
+        /** Get the sample positions
+        */
+        const std::vector<SamplePosition> getSamplePositions() const { return mSamplePositions; }
+
+        /** Get the number of pixels the sample positions are configured for
+        */
+        uint32_t getSamplePositionsPixelCount() const { return mSamplePositionsPixelCount; }
+
         struct Attachment
         {
             Texture::SharedPtr pTexture = nullptr;
@@ -215,6 +236,9 @@ namespace Falcor
 
         Fbo();
         std::vector<Attachment> mColorAttachments;
+        std::vector<SamplePosition> mSamplePositions;
+        uint32_t mSamplePositionsPixelCount = 0;
+
         Attachment mDepthStencil;
 
         mutable Desc mTempDesc;
