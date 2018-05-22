@@ -48,7 +48,7 @@ namespace Falcor
     {
         mpGraphicsVars->setTexture("gSrc", pSrcTex);
         float2 rcpFrame = 1.0f / float2(pSrcTex->getWidth(), pSrcTex->getHeight());
-        auto& pCB = mpGraphicsVars->getDefaultBlock()["PerFrameCB"];
+        auto pCB = mpGraphicsVars->getDefaultBlock()["PerFrameCB"];
         pCB["rcpTexDim"] = rcpFrame;
         pCB["qualitySubPix"] = mQualitySubPix;
         pCB["qualityEdgeThreshold"] = mQualityEdgeThreshold;
