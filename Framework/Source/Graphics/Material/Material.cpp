@@ -308,7 +308,7 @@ namespace Falcor
 
     void Material::setIntoParameterBlock(ParameterBlock* pBlock) const
     {
-        ConstantBuffer* pCB = pBlock->getConstantBuffer(pBlock->getReflection()->getName()).get();
+        ConstantBuffer* pCB = pBlock->getDefaultConstantBuffer().get();
         setMaterialIntoBlockCommon(pBlock, pCB, 0, "", mData);
     }
 
