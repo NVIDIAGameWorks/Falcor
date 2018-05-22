@@ -198,10 +198,12 @@ namespace Falcor
         };
 
         /**  Configure the sample positions used by multi-sampled buffers.
-        The size of the positions array should be samplesPerPixel*numPixels
-        To reset the positions to their original location pass nullptr for positions
+            \param[in] samplesPerPixel The number of samples-per-pixel. This value has to match the FBO's sample count
+            \param[in] pixelCount the number if pixels the sample pattern is specified for
+            \param[in] positions The sample positions. (0,0) is a pixel's center. The size of this array should be samplesPerPixel*pixelCount
+            To reset the positions to their original location pass `nullptr` for positions
         */
-        void setSamplePositions(uint32_t numPixels, const SamplePosition positions[], uint32_t count);
+        void setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[]);
 
         /** Get the sample positions
         */

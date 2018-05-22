@@ -315,9 +315,17 @@ namespace Falcor
         return true;
     }
 
-    void Fbo::setSamplePositions(uint32_t numPixels, const SamplePosition positions[], uint32_t count)
+    void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[])
     {
-        mSamplePositions = std::vector<SamplePosition>(positions, positions + count);
-        mSamplePositionsPixelCount = numPixels;
+        if (positions)
+        {
+            mSamplePositions = std::vector<SamplePosition>(positions, positions + (samplesPerPixel * pixelCount));
+            mSamplePositionsPixelCount = pixelCount;
+        }
+        else
+        {
+            mSamplePositionsPixelCount = 0;
+            mSamplePositions.clear();
+        }
     }
 }

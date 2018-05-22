@@ -190,13 +190,18 @@ namespace Falcor
         }
         ID3D12GraphicsCommandList* pCmdList = pCtx->getLowLevelData()->getCommandList().GetInterfacePtr();
         pCmdList->OMSetRenderTargets(colorTargets, pRTV.data(), FALSE, &pDSV);
+    }
 
+    static void D3D12SetSamplePositions(ID3D12GraphicsCommandList* pList, const Fbo* pFbo)
+    {
+        if (!pFbo) return;
         ID3D12GraphicsCommandList1* pList1;
-        pCmdList->QueryInterface(IID_PPV_ARGS(&pList1));
+        pList->QueryInterface(IID_PPV_ARGS(&pList1));
         const auto& samplePos = pFbo->getSamplePositions();
+
         if (!pList1)
         {
-            if(samplePos.size())
+            if (samplePos.size())
             {
                 logError("The FBO specifies programmable sample positions, but the hardware doesn't support it");
             }
@@ -205,8 +210,15 @@ namespace Falcor
         {
             static_assert(offsetof(Fbo::SamplePosition, xOffset) == offsetof(D3D12_SAMPLE_POSITION, X), "SamplePosition.X");
             static_assert(offsetof(Fbo::SamplePosition, yOffset) == offsetof(D3D12_SAMPLE_POSITION, Y), "SamplePosition.Y");
-            uint32_t sampleCount = samplePos.size() ? pFbo->getSampleCount() : 0;
-            pList1->SetSamplePositions(sampleCount, pFbo->getSamplePositionsPixelCount(), (D3D12_SAMPLE_POSITION*)samplePos.data());
+
+            if (samplePos.size())
+            {
+                pList1->SetSamplePositions(pFbo->getSampleCount(), pFbo->getSamplePositionsPixelCount(), (D3D12_SAMPLE_POSITION*)samplePos.data());
+            }
+            else
+            {
+                pList1->SetSamplePositions(0, 0, nullptr);
+            }
         }
     }
 
@@ -275,6 +287,10 @@ namespace Falcor
         if (is_set(StateBindFlags::Fbo, mBindFlags))
         {
             D3D12SetFbo(this, mpGraphicsState->getFbo().get());
+        }
+        if (is_set(StateBindFlags::SamplePositions, mBindFlags))
+        {
+            D3D12SetSamplePositions(pList, mpGraphicsState->getFbo().get());
         }
         if (is_set(StateBindFlags::Viewports, mBindFlags))
         {
