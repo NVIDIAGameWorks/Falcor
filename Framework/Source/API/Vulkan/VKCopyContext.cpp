@@ -64,7 +64,7 @@ namespace Falcor
         return size;
     }
 
-    static VkImageLayout getImageLayout(Resource::State state)
+    VkImageLayout getImageLayout(Resource::State state)
     {
         switch (state)
         {
@@ -76,15 +76,15 @@ namespace Falcor
         case Resource::State::UnorderedAccess:
             return VK_IMAGE_LAYOUT_GENERAL;
         case Resource::State::RenderTarget:
-        case Resource::State::ResolveDest:
             return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;            
         case Resource::State::DepthStencil:
             return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         case Resource::State::ShaderResource:
-        case Resource::State::ResolveSource:
             return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        case Resource::State::ResolveDest:
         case Resource::State::CopyDest:
             return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        case Resource::State::ResolveSource:
         case Resource::State::CopySource:
             return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
             break;
@@ -121,14 +121,12 @@ namespace Falcor
             return VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
         case Resource::State::IndirectArg:
             return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+        case Resource::State::ResolveDest:
         case Resource::State::CopyDest:
             return VK_ACCESS_TRANSFER_WRITE_BIT;
+        case Resource::State::ResolveSource:
         case Resource::State::CopySource:
             return VK_ACCESS_TRANSFER_READ_BIT;
-        case Resource::State::ResolveDest:
-            return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        case Resource::State::ResolveSource:
-            return VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
         default:
             should_not_get_here();
             return VkAccessFlagBits(-1);

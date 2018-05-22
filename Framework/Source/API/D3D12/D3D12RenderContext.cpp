@@ -460,4 +460,31 @@ namespace Falcor
         popGraphicsState();
         popGraphicsVars();
     }
+
+    void RenderContext::resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource)
+    {
+        DXGI_FORMAT format = getDxgiFormat(pDst->getFormat());
+        mpLowLevelData->getCommandList()->ResolveSubresource(pDst->getApiHandle(), dstSubresource, pSrc->getApiHandle(), srcSubresource, format);
+        mCommandsPending = true;
+    }
+
+    void RenderContext::resolveResource(const Texture* pSrc, const Texture* pDst)
+    {
+        bool match = true;
+        match = match && (pSrc->getMipCount() == pDst->getMipCount());
+        match = match && (pSrc->getArraySize() == pDst->getArraySize());
+        if (!match)
+        {
+            logWarning("Can't resolve a resource. The src and dst textures have a different array-size or mip-count");
+        }
+
+        resourceBarrier(pSrc, Resource::State::ResolveSource);
+        resourceBarrier(pDst, Resource::State::ResolveDest);
+
+        uint32_t subresourceCount = pSrc->getMipCount() * pSrc->getArraySize();
+        for (uint32_t s = 0; s < subresourceCount; s++)
+        {
+            resolveSubresource(pSrc, s, pDst, s);
+        }
+    }
 }

@@ -379,7 +379,7 @@ void ForwardRenderer::resolveDepthMSAA(RenderContext* pContext)
 {
     if (mAAMode == AAMode::MSAA)
     {
-        pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+        pContext->resolveResource(mpMainFbo->getDepthStencilTexture().get(), mpResolveFbo->getColorTexture(2).get());
     }
 }
 
@@ -388,8 +388,8 @@ void ForwardRenderer::resolveMSAA(RenderContext* pContext)
     if(mAAMode == AAMode::MSAA)
     {
         PROFILE(resolveMSAA);
-        pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
-        pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
+        pContext->resolveResource(mpMainFbo->getColorTexture(0).get(), mpResolveFbo->getColorTexture(0).get());
+        pContext->resolveResource(mpMainFbo->getColorTexture(1).get(), mpResolveFbo->getColorTexture(1).get());
     }
 }
 

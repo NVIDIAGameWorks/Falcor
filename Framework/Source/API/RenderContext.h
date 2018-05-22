@@ -189,6 +189,15 @@ namespace Falcor
         */
         void setBindFlags(StateBindFlags flags) { mBindFlags = flags; }
 
+        /** Resolve an entire multi-sampled resource. The dst and src resources must have the same dimensions, array-size, mip-count and format.
+            If any of these properties don't match, you'll have to use `resolveSubresource`
+        */
+        void resolveResource(const Texture* pSrc, const Texture* pDst);
+
+        /** Resolve a multi-sampled sub-resource
+        */
+        void resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource);
+
 #ifdef FALCOR_DXR
         /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same
         */

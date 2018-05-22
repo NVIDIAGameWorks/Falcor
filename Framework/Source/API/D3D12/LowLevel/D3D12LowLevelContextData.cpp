@@ -79,7 +79,9 @@ namespace Falcor
 
         // Create a command list. Try to create the latest version the device supports
         ID3D12Device* pDevice = gpDevice->getApiHandle().GetInterfacePtr();
+#ifdef FALCOR_DXR
         pThis->mpList = createCommandList<ID3D12GraphicsCommandList2*>(pDevice, cmdListType, pThis->mpAllocator);
+#endif
         if(!pThis->mpList) createCommandList<ID3D12GraphicsCommandList1*>(pDevice, cmdListType, pThis->mpAllocator);
         if (!pThis->mpList) createCommandList<ID3D12GraphicsCommandList*>(pDevice, cmdListType, pThis->mpAllocator);
 
