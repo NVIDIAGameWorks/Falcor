@@ -304,6 +304,13 @@ namespace Falcor
         {
             pList->SetPipelineState(mpGraphicsState->getGSO(mpGraphicsVars.get())->getApiHandle());
         }
+        if (is_set(StateBindFlags::SamplePositions, mBindFlags))
+        {
+            if (mpGraphicsState->getFbo() && mpGraphicsState->getFbo()->getSamplePositions().size())
+            {
+                logWarning("The Vulkan backend doesn't support programmable sample positions");
+            }
+        }
 
         BlendState::SharedPtr blendState = mpGraphicsState->getBlendState();
         if (blendState != nullptr)
