@@ -82,8 +82,8 @@ namespace Falcor
 #ifdef FALCOR_DXR
         pThis->mpList = createCommandList<ID3D12GraphicsCommandList2*>(pDevice, cmdListType, pThis->mpAllocator);
 #endif
-        if(!pThis->mpList) createCommandList<ID3D12GraphicsCommandList1*>(pDevice, cmdListType, pThis->mpAllocator);
-        if (!pThis->mpList) createCommandList<ID3D12GraphicsCommandList*>(pDevice, cmdListType, pThis->mpAllocator);
+        if (!pThis->mpList) pThis->mpList = createCommandList<ID3D12GraphicsCommandList1*>(pDevice, cmdListType, pThis->mpAllocator);
+        if (!pThis->mpList) pThis->mpList = createCommandList<ID3D12GraphicsCommandList*>(pDevice, cmdListType, pThis->mpAllocator);
 
         if (pThis->mpList == nullptr)
         {
