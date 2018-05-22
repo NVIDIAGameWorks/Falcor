@@ -66,6 +66,7 @@ namespace Falcor
             Viewports       = 0x10,             ///<Bind Viewport
             Scissors        = 0x20,             ///<Bind scissors
             PipelineState   = 0x40,             ///<Bind Pipeline State Object
+            SamplePositions = 0x80,             ///<Set the programmable sample positions
             All             = uint32_t(-1)
         };
 
@@ -193,6 +194,7 @@ namespace Falcor
         */
         void raytrace(std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height);
 #endif
+
     private:
         RenderContext();
         GraphicsVars::SharedPtr mpGraphicsVars;
