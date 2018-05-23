@@ -535,6 +535,12 @@
     <ClCompile Include="Effects\FXAA\FXAA.cpp">
       <Filter>Effects\FXAA</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderPass.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1693,6 +1699,12 @@
     <ClInclude Include="Effects\FXAA\FXAA.h">
       <Filter>Effects\FXAA</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraph.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderPass.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1880,6 +1892,9 @@
     </Filter>
     <Filter Include="Effects\FXAA">
       <UniqueIdentifier>{51b693f1-34da-4d5e-a6d5-925944c92c79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\RenderGraph">
+      <UniqueIdentifier>{60443751-4f7a-4361-adb2-d3e6edabecf8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
