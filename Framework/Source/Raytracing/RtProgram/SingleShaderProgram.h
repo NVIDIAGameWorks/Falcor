@@ -28,7 +28,7 @@
 #pragma once
 #include "Graphics/Program/Program.h"
 #include "..\RtShader.h"
-#include "RtProgramVersion.h"
+#include "RtProgramKernels.h"
 #include "Graphics/Program/ShaderLibrary.h"
 
 namespace Falcor
@@ -72,9 +72,9 @@ namespace Falcor
                 switch (shaderType)
                 {
                 case ShaderType::RayGeneration:
-                    return RtProgramKernels::createRayGen(pShader, log, getProgramDescString(), reflectors.pLocalReflector, rootSignature, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramKernels::createRayGen(pShader, log, getProgramDescString(), pReflector, rootSignature, mMaxPayloadSize, mMaxAttributesSize);
                 case ShaderType::Miss:
-                    return RtProgramKernels::createMiss(pShader, log, getProgramDescString(), reflectors.pLocalReflector, rootSignature, mMaxPayloadSize, mMaxAttributesSize);
+                    return RtProgramKernels::createMiss(pShader, log, getProgramDescString(), pReflector, rootSignature, mMaxPayloadSize, mMaxAttributesSize);
                 default:
                     should_not_get_here();
                 }

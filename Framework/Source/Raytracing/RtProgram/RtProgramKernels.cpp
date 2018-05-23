@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "RtProgramVersion.h"
+#include "RtProgramKernels.h"
 #include "API/Device.h"
 #include "API/D3D12/D3D12State.h"
 #include "Utils/StringUtils.h"

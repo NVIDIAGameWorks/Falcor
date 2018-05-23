@@ -58,14 +58,15 @@ namespace Falcor
         raytraceDesc.HitGroupTable.SizeInBytes = pVars->getShaderTable()->getSize() - (pVars->getFirstHitRecordIndex() * recordSize);
 
         // Currently, we need to set an empty root-signature. Some wizardry is required to make sure we restore the state
+        auto rtso = pState->getRtso(pVars.get());
         const auto& pComputeVars = getComputeVars();
         setComputeVars(nullptr);
         ID3D12GraphicsCommandListPtr pCmdList = getLowLevelData()->getCommandList();
-        pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
+        pCmdList->SetComputeRootSignature(rtso->getGlobalRootSignature()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
         ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pCmdList;
-        pRtCmdList->DispatchRays(pState->getRtso()->getApiHandle().GetInterfacePtr(), &raytraceDesc);
+        pRtCmdList->DispatchRays(rtso->getApiHandle().GetInterfacePtr(), &raytraceDesc);
 
         // Restore the vars
         setComputeVars(pComputeVars);

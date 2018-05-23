@@ -27,6 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "RtState.h"
+#include "RtProgramVars.h"
 
 namespace Falcor
 {
@@ -42,17 +43,20 @@ namespace Falcor
 
     RtState::~RtState() = default;
 
-    RtStateObject::ProgramList RtState::createProgramList() const
+    RtStateObject::ProgramList RtState::createProgramList(RtProgramVars * pVars) const
     {
         RtStateObject::ProgramList programs;
         assert(mpProgram->getRayGenProgram());
-        programs.push_back(mpProgram->getRayGenProgram()->getActiveVersion()->getKernels(this->va));
+        
+        programs.push_back(std::dynamic_pointer_cast<const RtProgramKernels>(mpProgram->getRayGenProgram()->getActiveVersion()->getKernels(pVars->getRayGenVars().get())));
 
         for (uint32_t i = 0; i < mpProgram->getHitProgramCount(); i++)
         {
             if(mpProgram->getHitProgram(i))
             {
-                programs.push_back(mpProgram->getHitProgram(i)->getActiveVersion());
+                auto & vars = pVars->getHitVars(i);
+                for (uint32_t j = 0; j < vars.size(); j++)
+                    programs.push_back(std::dynamic_pointer_cast<const RtProgramKernels>(mpProgram->getHitProgram(i)->getActiveVersion()->getKernels(vars[j].get())));
             }
         }
 
@@ -60,16 +64,17 @@ namespace Falcor
         {
             if(mpProgram->getMissProgram(i))
             {
-                programs.push_back(mpProgram->getMissProgram(i)->getActiveVersion());
+                auto & vars = pVars->getMissVars(i);
+                programs.push_back(std::dynamic_pointer_cast<const RtProgramKernels>(mpProgram->getMissProgram(i)->getActiveVersion()->getKernels(vars.get())));
             }
         }
 
         return programs;
     }
 
-    RtStateObject::SharedPtr RtState::getRtso()
+    RtStateObject::SharedPtr RtState::getRtso(RtProgramVars* pVars)
     {
-        RtStateObject::ProgramList programs = createProgramList();
+        RtStateObject::ProgramList programs = createProgramList(pVars);
         // Walk
         for (const auto& p : programs)
         {

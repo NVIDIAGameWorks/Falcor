@@ -217,7 +217,7 @@ namespace Falcor
                 desc.Triangles.IndexFormat = getDxgiFormat(pVao->getIndexBufferFormat());
 
                 // If this is an opaque mesh, set the opaque flag
-                if (pMesh->getMaterial()->getAlphaMode() == AlphaModeOpaque)
+                if (pMesh->getMaterial()->getAlphaTestMode() == AlphaTestMode::Disabled)
                 {
                     desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
                 }

@@ -73,7 +73,7 @@ namespace Falcor
         RtProgramVars(RtProgram::SharedPtr pProgram, RtScene::SharedPtr pScene);
         RtProgram::SharedPtr mpProgram;
         RtScene::SharedPtr mpScene;
-        uint32_t mRecordSize;
+        uint32_t mRecordSize = 0;
         uint32_t mProgramIdentifierSize;
         Buffer::SharedPtr mpShaderTable;
 
@@ -89,5 +89,6 @@ namespace Falcor
         std::vector<uint8_t> mShaderTableData;
         VarsVector mMissVars;
         RtVarsContext::SharedPtr mpRtVarsHelper;
+        void updateShaderTableRecordSize(int newSize);
     };
 }

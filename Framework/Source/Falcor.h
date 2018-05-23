@@ -146,7 +146,7 @@
 #include "Raytracing/RtScene.h"
 #include "Raytracing/RtShader.h"
 #include "Raytracing/RtProgram/RtProgram.h"
-#include "Raytracing/RtProgram/RtProgramVersion.h"
+#include "Raytracing/RtProgram/RtProgramKernels.h"
 #include "Raytracing/RtProgram/SingleShaderProgram.h"
 #include "Raytracing/RtProgram/HitProgram.h"
 #include "Raytracing/RtProgramVars.h"

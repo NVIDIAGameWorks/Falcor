@@ -49,7 +49,7 @@ namespace Falcor
 
         void setProgramStackSize(uint32_t stackSize);
 
-        RtStateObject::SharedPtr getRtso();
+        RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
     private:
         RtState();
         RtProgram::SharedPtr mpProgram;
@@ -57,6 +57,6 @@ namespace Falcor
         using StateGraph = Graph<RtStateObject::SharedPtr, void*>;
         StateGraph::SharedPtr mpRtsoGraph;
 
-        RtStateObject::ProgramList createProgramList() const;
+        RtStateObject::ProgramList createProgramList(RtProgramVars * pVars) const;
     };
 }

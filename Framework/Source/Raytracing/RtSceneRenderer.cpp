@@ -39,7 +39,7 @@ namespace Falcor
 
     void RtSceneRenderer::setHitShaderData(RtProgramVars* pRtVars, InstanceData& data)
     {
-        const RtScene* pScene = dynamic_cast<RtScene*>(mpScene.get());
+        const RtScene* pScene = dynamic_cast<RtScene*>(mpScene);
         uint32_t instanceId = pScene->getInstanceId(data.model, data.modelInstance, data.mesh, data.meshInstance);
         data.currentData.pVars = pRtVars->getHitVars(data.progId)[instanceId].get();
         if(data.currentData.pVars)
@@ -134,7 +134,7 @@ namespace Falcor
         ParameterBlockReflection::BindLocation loc = pVars->getReflection()->getDefaultParameterBlock()->getResourceBinding("gRtScene");
         if (loc.setIndex != ProgramReflection::kInvalidLocation)
         {
-            RtScene* pRtScene = dynamic_cast<RtScene*>(mpScene.get());
+            RtScene* pRtScene = dynamic_cast<RtScene*>(mpScene);
             pVars->getDefaultBlock()->setSrv(loc, 0, pRtScene->getTlasSrv(pRtVars->getHitProgramsCount()));
         }
 
@@ -201,7 +201,7 @@ namespace Falcor
             }
         }
 
-        if (!pRtVars->apply(pContext, pState->getRtso().get()))
+        if (!pRtVars->apply(pContext, pState->getRtso(pRtVars.get()).get()))
         {
             logError("RtSceneRenderer::renderScene() - applying RtProgramVars failed, most likely because we ran out of descriptors.", true);
             assert(false);

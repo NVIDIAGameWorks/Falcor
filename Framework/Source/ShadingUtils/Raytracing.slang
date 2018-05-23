@@ -30,6 +30,7 @@
 
 __exported __import Shading;
 __exported __import DefaultVS;
+__exported import Interfaces;
 
 ByteAddressBuffer gIndices      : register(t50);
 ByteAddressBuffer gTexCrds      : register(t51);

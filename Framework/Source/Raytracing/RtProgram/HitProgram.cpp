@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "HitProgram.h"
 #include "..\RtShader.h"
-#include "RtProgramVersion.h"
+#include "RtProgramKernels.h"
 #include "Graphics/Program/ShaderLibrary.h"
 
 namespace Falcor

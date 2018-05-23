@@ -517,9 +517,6 @@
     <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp">
       <Filter>Raytracing\RtProgram</Filter>
     </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\RtProgramVersion.cpp">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClCompile>
     <ClCompile Include="Raytracing\RtShader.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
@@ -531,6 +528,9 @@
     </ClCompile>
     <ClCompile Include="API\Vulkan\VkResource.cpp">
       <Filter>API\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Raytracing\RtProgram\RtProgramKernels.cpp">
+      <Filter>Raytracing\RtProgram</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1669,9 +1669,6 @@
     <ClInclude Include="Raytracing\RtProgram\RtProgram.h">
       <Filter>Raytracing\RtProgram</Filter>
     </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\RtProgramVersion.h">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClInclude>
     <ClInclude Include="Raytracing\RtProgram\SingleShaderProgram.h">
       <Filter>Raytracing\RtProgram</Filter>
     </ClInclude>
@@ -1686,6 +1683,9 @@
     </ClInclude>
     <ClInclude Include="Data\Effects\SSAOData.h">
       <Filter>Data\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="Raytracing\RtProgram\RtProgramKernels.h">
+      <Filter>Raytracing\RtProgram</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "RtProgram/RtProgramVersion.h"
+#include "RtProgram/RtProgramKernels.h"
 
 namespace Falcor
 {
