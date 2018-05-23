@@ -130,11 +130,11 @@ namespace Falcor
 
         /** Called once right after context creation.
         */
-        virtual void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) {}
+        virtual void onLoad(SampleCallbacks* pSample, const std::shared_ptr<RenderContext>& pRenderContext) {}
 
         /** Called on each frame render.
         */
-        virtual void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) {}
+        virtual void onFrameRender(SampleCallbacks* pSample, const std::shared_ptr<RenderContext>&  pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
 
         /** Called right before the context is destroyed.
         */

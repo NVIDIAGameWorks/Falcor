@@ -26,25 +26,82 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "Graphics/Program/ProgramReflection.h"
+#include "Renderer.h"
 
 namespace Falcor
 {
     class Scene;
-    class RenderGraphResourceManager;
+    class Resource;
+    class Gui;
 
-    class RenderPass
+    /** Base class for render-passes. The class inherits from Renderer
+    */
+    class RenderPass : public Renderer, inherit_shared_from_this<Renderer, RenderPass>
     {
     public:
         using SharedPtr = std::shared_ptr<RenderPass>;
+        using RenderDataChangedFunc = std::function<void(void)>;
+
         virtual ~RenderPass() = 0;
-        virtual void setScene(const std::shared_ptr<Scene>& pScene) { mpScene = pScene; }
+
+        /** This struct describes the available input/output resources fields by the render-pass
+        */
+        struct RenderPassData
+        {
+            struct Field
+            {
+                std::string name;                        ///< The field's name
+                ReflectionResourceType::SharedPtr pType; ///< The resource type
+                uint32_t width = 0;         ///< 0 means don't care. For buffers this is the size in bytes
+                uint32_t height = 0;        ///< 0 means don't care
+                uint32_t depth = 0;         ///< 0 means don't care
+                uint32_t sampleCount = 0;   ///< 0 means don't care
+                ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means don't care
+                bool required = true;      ///< If this is true, then the render-pass will not work if this field is not set. Otherwise, this field is optional
+            };
+
+            std::vector<Field> inputs;
+            std::vector<Field> outputs;
+        };
+
+        /** Get the render-pass data
+        */
+        virtual RenderPassData getRenderPassData() const = 0;
+
+        /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
+        */
+        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) = 0;
+
+        /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
+        */
+        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) = 0;
+
+        /** Call this after the input/output resources are set to make sure the render-pass is ready for execution
+        */
+        virtual bool isValid() const = 0;
+
+        /** Set a scene into the render-pass
+        */
+        void setScene(const std::shared_ptr<Scene>& pScene);
+
+        /** Get the currently bound scene
+        */
+        const std::shared_ptr<Scene>& getScene() const { return mpScene; }
+
+        /** Optional callback function which will be invoked whenever a scene is set
+        */
+        virtual void sceneChangedCB() {};
+
+        /** Optional serialization function. Use this to export custom data into the json file
+        */
         virtual void serializeJson() const {}
 
     protected:
-        RenderPass(const std::shared_ptr<RenderGraphResourceManager>& pResourceManager, const std::string& name);
+        RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB = nullptr);
         
         std::string mName;
         std::shared_ptr<Scene> mpScene;
-        std::shared_ptr<RenderGraphResourceManager> mpResourceManager;
+        RenderDataChangedFunc mpRenderDataChangedCallback;
     };
 }

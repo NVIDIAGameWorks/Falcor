@@ -30,5 +30,16 @@
 
 namespace Falcor
 {
+    RenderPass::RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB) : mName(name), mpRenderDataChangedCallback(pDataChangedCB)
+    {
+        setScene(pScene);
+    }
+
     RenderPass::~RenderPass() = default;
+
+    void RenderPass::setScene(const std::shared_ptr<Scene>& pScene)
+    {
+        mpScene = pScene;
+        sceneChangedCB();
+    }
 }
