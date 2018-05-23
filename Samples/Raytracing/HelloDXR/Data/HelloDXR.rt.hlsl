@@ -67,9 +67,12 @@ void primaryMiss(inout PrimaryRayData hitData)
     hitData.hitT = -1;
 }
 
-bool checkLightHit(uint lightIndex, float3 origin)
+bool checkLightHit<TLight:ILight>(TLight light, float3 origin)
 {
-    float3 direction = gLights[lightIndex].posW - origin;
+    float3 direction = light.getLightDir(origin);
+    if (length(direction) < 0.00001)
+        return false;
+
     RayDesc ray;
     ray.Origin = origin;
     ray.Direction = normalize(direction);
@@ -102,6 +105,28 @@ float3 getReflectionColor(float3 worldOrigin, VertexOut v, float3 worldRayDir, u
     return reflectColor;
 }
 
+struct RtLightIntegrator<TBxDF : IBxDF> : ILightIntegrator
+{
+    ShadingPoint<TBxDF> p;
+    GlobalLightParams globalLightParams;
+
+    typedef ShadingResult AggregateResult;
+
+    ShadingResult processLight<TLight:ILight>(ShadingResult prev, TLight light)
+    {
+        ShadingResult rs = prev;
+        if (checkLightHit(light, p.geom.posW) == false)
+        {
+            ShadingResult lrs = light.evalLighting(p, globalLightParams);
+            rs.diffuse += lrs.diffuse;
+            rs.specular += lrs.specular;
+            rs.color += lrs.color;
+            rs.color.a = lrs.color.a;
+        }
+        return rs;
+    }
+};
+
 [shader("closesthit")]
 void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttribs attribs)
 {
@@ -120,21 +145,17 @@ void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttri
     float3 reflectColor = getReflectionColor(posW, v, rayDirW, hitData.depth.r);
     float3 color = 0;
 
-    [unroll]
-    for (int i = 0; i < gLightsCount; i++)
-    {        
-        if (checkLightHit(i, posW) == false)
-        {
-            color += evalMaterial(sd, gLights[i], 1).color.xyz;
-        }
-    }
+    RtLightIntegrator<TMaterial.BxDF> integrator;
+    integrator.p = sd;
+    integrator.globalLightParams = gLightEnv.params;
+    color = gLightEnv.lights.integrateAll(integrator, initShadingResult()).color.xyz;
 
     hitData.color.rgb = color;
     hitData.hitT = hitT;
     // A very non-PBR inaccurate way to do reflections
-    float roughness = min(0.5, max(1e-8, sd.roughness));
-    hitData.color.rgb += sd.specular * reflectColor * (roughness * roughness);
-    hitData.color.rgb += sd.emissive;
+    float roughness = min(0.5, max(1e-8, sd.bxdf.getRoughness()));
+    hitData.color.rgb += sd.bxdf.getSpecular() * reflectColor * (roughness * roughness);
+    hitData.color.rgb += sd.bxdf.getIntrinsicLighting();
     hitData.color.a = 1;
 }
 

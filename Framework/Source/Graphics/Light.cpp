@@ -682,7 +682,7 @@ namespace Falcor
                     lt.second.variableName = varNameSb.str() + "light1";
                     varNameSb << "light2.";
                 }
-                strStream << "AmbientLight";
+                strStream << "LightSingleton<AmbientLight> ";
                 for (size_t i = 0u; i < env->lightTypes.size(); i++)
                     strStream << "> ";
                 

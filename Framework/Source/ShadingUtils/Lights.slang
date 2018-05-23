@@ -259,6 +259,10 @@ struct PointLight<TShadow : IShadow> : ILight
 {
     LightData light;
     TShadow shadow;
+    float3 getLightDir(float3 p)
+    {
+        return light.posW - p;
+    }
     ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         LightSample ls = evalPointLight(light, p.geom.posW);
@@ -273,6 +277,10 @@ struct DirectionalLight<TShadow : IShadow> : ILight
 {
     LightData light;
     TShadow shadow;
+    float3 getLightDir(float3 p)
+    {
+        return light.dirW;
+    }
     ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         LightSample ls = evalDirectionalLight(light, p.geom.posW);
@@ -286,7 +294,10 @@ struct DirectionalLight<TShadow : IShadow> : ILight
 struct ProbeLight : ILight
 {
     LightProbeData probeData;
-
+    float3 getLightDir(float3 p)
+    {
+        return float3(0,0,0);
+    }
     ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         return p.bxdf.evalProbe(p.geom, probeData, gParams);
@@ -296,43 +307,121 @@ struct ProbeLight : ILight
 struct AmbientLight : ILight
 {
     float3 ambientLight;
+    float3 getLightDir(float3 p)
+    {
+        return float3(0,0,0);
+    }
     ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams gParams)
     {
         return p.bxdf.evalAmbient(ambientLight);
     }
 };
 
-struct LightArray<TLight:ILight, let N:int> : ILight
+struct LightArray<TLight:ILight, let N:int> : ILightCollection
 {   
     TLight lights[N];
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, GlobalLightParams gParams)
+    int getLightCount()
     {
-        ShadingResult rs = initShadingResult();
+        return N;
+    }
+    int filter<TLightFilter:ILightFilter>(int i0, TLightFilter filter, RWStructuredBuffer<int> indexRange, int indexStart)
+    {
+        int count = 0;
         for (int i = 0; i < N; i++)
         {
-            ShadingResult r = lights[i].evalLighting(shAttr, gParams);
-            rs.diffuse += r.diffuse;
-            rs.specular += r.specular;
-            rs.color += r.color;
-            rs.color.a = r.color.a;
+            if (filter.filter(lights[i]))
+            {
+                indexRange[indexStart + count] = i0 + i;
+                count++;
+            }
+        }
+        return count;
+    }
+
+    TLightIntegrator.AggregateResult integrateRanged<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal, int i0, StructuredBuffer<int> range, inout int indexStart, int indexEnd)
+    {
+        TLightIntegrator.AggregateResult rs = initVal;
+        for (; indexStart < indexEnd; indexStart++)
+        {
+            int index = range[indexStart] - i0;
+            if (index >= N)
+                break;
+            rs = integrator.processLight(rs, lights[index]);
+        }
+        return rs;
+    }
+
+    TLightIntegrator.AggregateResult integrateAll<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal)
+    {
+        TLightIntegrator.AggregateResult rs = initVal;
+        for (int i = 0; i < N; i++)
+        {
+            rs = integrator.processLight(rs, lights[i]);
         }
         return rs;
     }
 };
 
-struct LightPair<TLight1 : ILight, TLight2 : ILight> : ILight
+struct LightSingleton<TLight : ILight> : ILightCollection
+{
+    TLight light;
+    int getLightCount() { return 1; }
+    int filter<TLightFilter:ILightFilter>(int i0, TLightFilter filter, RWStructuredBuffer<int> indexRange, int indexStart)
+    {
+        if (filter.filter(light))
+        {
+            indexRange[indexStart] = i0;
+            return 1;
+        }
+        return 0;
+    }
+
+    TLightIntegrator.AggregateResult integrateRanged<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal, int i0, StructuredBuffer<int> range, inout int indexStart, int indexEnd)
+    {
+        TLightIntegrator.AggregateResult rs = initVal;
+        if (range[indexStart] == i0)
+        {
+            rs = integrator.processLight(rs, light);
+            indexStart++;
+        }
+        return rs;
+    }
+    TLightIntegrator.AggregateResult integrateAll<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal)
+    {
+        TLightIntegrator.AggregateResult rs = integrator.processLight(initVal, light);
+        return rs;
+    }
+
+};
+
+struct LightPair<TLight1 : ILightCollection, TLight2 : ILightCollection> : ILightCollection
 {
     TLight1 light1;
     TLight2 light2;
-    ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> shAttr, GlobalLightParams gParams)
+
+    int getLightCount() { return light1.getLightCount() + light2.getLightCount(); }
+
+    int filter<TLightFilter:ILightFilter>(int i0, TLightFilter filter, RWStructuredBuffer<int> indexRange, int indexStart)
     {
-        ShadingResult rs = initShadingResult();
-        ShadingResult r1 = light1.evalLighting(shAttr, gParams);
-        ShadingResult r2 = light2.evalLighting(shAttr, gParams);
-        rs.diffuse = r1.diffuse + r2.diffuse;
-        rs.specular = r1.specular + r2.specular;
-        rs.color = r1.color + r2.color;
-        rs.color.a = r1.color.a;
+        int count1 = light1.filter(i0, filter, indexRange, indexStart);
+        indexStart += count1;
+        int count2 = light2.filter(i0 + light1.getLightCount(), filter, indexRange, indexStart);
+        return count1 + count2;
+    }
+
+    TLightIntegrator.AggregateResult integrateRanged<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal, int i0, StructuredBuffer<int> range, inout int indexStart, int indexEnd)
+    {
+        TLightIntegrator.AggregateResult rs = initVal;
+        rs = light1.integrateRanged(integrator, rs, i0, range, indexStart, indexEnd);
+        rs = light2.integrateRanged(integrator, rs, i0, range, indexStart, indexEnd);
+        return rs;
+    }
+
+    TLightIntegrator.AggregateResult integrateAll<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal)
+    {
+        TLightIntegrator.AggregateResult rs = initVal;
+        rs = light1.integrateAll(integrator, rs);
+        rs = light2.integrateAll(integrator, rs);
         return rs;
     }
 };

@@ -33,6 +33,28 @@ struct ShadingResult
     float4 color;                   // The final color. Alpha holds the opacity valua
 };
 
+struct GBufferElement
+{
+    float3 position;
+    float3 normal;
+    float3 baseColor;
+    float3 specular;
+    float roughness;
+    float3 intrinsicLighting;
+};
+
+GBufferElement initGBufferElem()
+{
+    GBufferElement rs;
+    rs.position = 0;
+    rs.normal = 0;
+    rs.baseColor = 0;
+    rs.specular = 0;
+    rs.roughness = 0;
+    rs.intrinsicLighting = 0;
+    return rs;
+}
+
 ShadingResult initShadingResult()
 {
     ShadingResult sr;
@@ -56,18 +78,40 @@ struct SurfaceGeometry
     float3    B;            ///< Shading bitangent at shading hit
     float2    uv;           ///< Texture mapping coordinates
     float     shadowDepthC;
+    void packGBuffer(inout GBufferElement elem)
+    {
+        elem.position = posW;
+        elem.normal = N;
+    }
 };
 
 SurfaceGeometry initSurfaceGeometry()
 {
     SurfaceGeometry rs;
     rs.posW = 0;
+    rs.posH = 0;
     rs.V = 0;
     rs.N = 0;
     rs.T = 0;
     rs.B = 0;
     rs.uv = 0;
     rs.NdotV = 0;
+    rs.shadowDepthC = 0;
+    return rs;
+}
+
+SurfaceGeometry surfaceGeometryLoadFromGBuffer(GBufferElement elem, CameraData cam)
+{
+    SurfaceGeometry rs;
+    rs.posW = elem.position;
+    rs.posH = mul(float4(rs.posW, 1.0), cam.viewProjMat);
+    rs.V = normalize(cam.posW - rs.posW);
+    rs.N = elem.normal;
+    rs.T = 0;
+    rs.B = 0;
+    rs.uv = 0;
+    rs.NdotV = dot(rs.N, rs.V);
+    rs.shadowDepthC = 0;
     return rs;
 }
 
@@ -95,6 +139,9 @@ interface IBxDF
     ShadingResult evalProbe(SurfaceGeometry geom, LightProbeData lightProbe, GlobalLightParams gParams);
     float3 getIntrinsicLighting();
     float getOpacity();
+    float getRoughness();
+    float3 getSpecular();
+    void packGBuffer(inout GBufferElement);
 }
 
 interface IAlphaTest
@@ -106,7 +153,17 @@ struct ShadingPoint<TBxDF:IBxDF>
 {
     SurfaceGeometry geom;
     TBxDF bxdf;
+    
 };
+
+// slang bug: this function cannot be member of ShadingPoint<TBxDF>
+GBufferElement packGBuffer<TBxDF:IBxDF>(ShadingPoint<TBxDF> shadingPoint)
+{
+    GBufferElement rs = initGBufferElem();
+    shadingPoint.bxdf.packGBuffer(rs);
+    shadingPoint.geom.packGBuffer(rs);
+    return rs;
+}
 
 interface IMaterial
 {
@@ -114,26 +171,70 @@ interface IMaterial
     ShadingPoint<BxDF> evalShadingPoint(VertexOut v, float3 camPosW);
 }
 
+interface ILightFilter
+{
+    bool filter<TLight:ILight>(TLight light);
+};
+
+interface ILightIntegrator
+{
+    associatedtype AggregateResult;
+    AggregateResult processLight<TLight:ILight>(AggregateResult prev, TLight light);
+};
+
+interface ILightCollection
+{
+    int getLightCount();
+    int filter<TLightFilter:ILightFilter>(int i0, TLightFilter filter, RWStructuredBuffer<int> indexRange, int indexStart);
+    TLightIntegrator.AggregateResult integrateRanged<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal, int i0, StructuredBuffer<int> range, inout int indexStart, int indexEnd);
+    TLightIntegrator.AggregateResult integrateAll<TLightIntegrator:ILightIntegrator>(TLightIntegrator integrator, TLightIntegrator.AggregateResult initVal);
+};
+
 interface ILight
 {
     ShadingResult evalLighting<TBxDF:IBxDF>(ShadingPoint<TBxDF> p, GlobalLightParams globalLightParams);
+    float3 getLightDir(float3 p);
 }
 
-struct LightEnv<TLight : ILight>
+struct LightEnv<TLight : ILightCollection>
 {
     TLight lights;
     GlobalLightParams params;
 };
 
-ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILight>(ShadingPoint<TBxDF> p, LightEnv<TLight> lEnv)
+struct LightIntegrator<TBxDF : IBxDF> : ILightIntegrator
 {
-    return lEnv.lights.evalLighting(p, lEnv.params);
+    ShadingPoint<TBxDF> p;
+    GlobalLightParams globalLightParams;
+
+    typedef ShadingResult AggregateResult;
+    
+    ShadingResult processLight<TLight:ILight>(ShadingResult prev, TLight light)
+    {
+        ShadingResult rs = light.evalLighting(p, globalLightParams);
+        rs.diffuse += prev.diffuse;
+        rs.specular += prev.specular;
+        rs.color += prev.color;
+        rs.color.a = prev.color.a;
+        return rs;
+    }
+};
+
+ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILightCollection>(ShadingPoint<TBxDF> p, LightEnv<TLight> lEnv)
+{
+    LightIntegrator<TBxDF> integrator;
+    integrator.p = p;
+    integrator.globalLightParams = lEnv.params;
+    return lEnv.lights.integrateAll(integrator, initShadingResult());
 }
 
 // deprecated
-ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILight>(ShadingPoint<TBxDF> p, float shadowFactor, LightEnv<TLight> lEnv)
+ShadingResult evalMaterial<TBxDF : IBxDF, TLight : ILightCollection>(ShadingPoint<TBxDF> p, float shadowFactor, LightEnv<TLight> lEnv)
 {
-    return lEnv.lights.evalLighting(p, lEnv.params);
+    LightIntegrator<TBxDF> integrator;
+    integrator.p = p;
+    integrator.globalLightParams = lEnv.params;
+    return lEnv.lights.integrateAll(integrator, initShadingResult());
 }
 
 ShadingPoint<TMaterial.BxDF> prepareShadingData<TMaterial : IMaterial>(VertexOut v, TMaterial mat, float3 camPosW)

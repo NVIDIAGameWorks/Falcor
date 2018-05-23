@@ -6,7 +6,7 @@ import Material;
 
 type_param TMaterial : IMaterial;
 
-type_param TLightCollection : ILight;
+type_param TLightCollection : ILightCollection;
 
 typedef ShadingPoint<TMaterial.BxDF> ShadingData;
 
