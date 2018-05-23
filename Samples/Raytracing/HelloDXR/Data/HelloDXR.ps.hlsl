@@ -28,18 +28,17 @@
 __import ShaderCommon;
 __import Shading;
 __import DefaultVS;
+import Interfaces;
 
 float4 main(VertexOut vOut) : SV_TARGET
 {
-    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
-    float4 color = 0;
-    color.a = 1;
+    ShadingData sd = prepareShadingData<TMaterial>(vOut, gMaterial, gCamera.posW);
+    
+    float4 color = float4(0, 0, 0, 1);
 
-    [unroll]
-    for (uint i = 0; i < 3; i++)
-    {
-        color += evalMaterial(sd, gLights[i], 1).color;
-    }
-    color.rgb += sd.emissive;
+    color.rgb += evalMaterial<TMaterial.BxDF, TLightCollection>(sd, gLightEnv).color.rgb;
+    
+    color.rgb += sd.bxdf.getIntrinsicLighting();
+
     return color;
 }
