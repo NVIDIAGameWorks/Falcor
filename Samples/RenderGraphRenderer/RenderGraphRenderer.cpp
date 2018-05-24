@@ -27,20 +27,47 @@
 ***************************************************************************/
 #include "RenderGraphRenderer.h"
 
+const std::string gkDefaultScene = "Arcade/Arcade.fscene";
+
 void RenderGraphRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
+    if (pGui->addButton("Load Scene"))
+    {
+        std::string filename;
+        if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true);
+    }
+}
 
+void RenderGraphRenderer::loadScene(const std::string& filename, bool showProgressBar)
+{
+    ProgressBar::SharedPtr pBar;
+    if (showProgressBar)
+    {
+        pBar = ProgressBar::create("Loading Scene", 100);
+    }
+
+    mpGraph->setScene(nullptr);
+    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
+    mpGraph->setScene(pScene);
 }
 
 void RenderGraphRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
+    mpGraph = RenderGraph::create();
+    mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
+    mpGraph->autoAllocateOutput("SceneRenderer.color");
 
+    loadScene(gkDefaultScene, false);
 }
 
 void RenderGraphRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+    mpGraph->execute(pRenderContext.get());
+
+    Texture* pColor = dynamic_cast<Texture*>(mpGraph->getOutput("SceneRenderer.color").get());
+    pRenderContext->blit(pColor->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
 bool RenderGraphRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

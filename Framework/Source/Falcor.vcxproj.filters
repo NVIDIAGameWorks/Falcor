@@ -541,6 +541,9 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPasses\SceneRenderPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1705,6 +1708,9 @@
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
+    <ClInclude Include="RenderPasses\SceneRenderPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1895,6 +1901,9 @@
     </Filter>
     <Filter Include="Graphics\RenderGraph">
       <UniqueIdentifier>{60443751-4f7a-4361-adb2-d3e6edabecf8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderPasses">
+      <UniqueIdentifier>{c211a7c2-a22a-4745-9a23-42e98dbff40c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

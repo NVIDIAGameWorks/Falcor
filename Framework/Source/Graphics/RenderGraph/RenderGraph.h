@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "RenderGraph.h"
+#include "RenderPass.h"
 
 namespace Falcor
 {
@@ -39,13 +39,21 @@ namespace Falcor
         */
         static SharedPtr create();
 
+        /** Set a scene
+        */
+        void setScene(const std::shared_ptr<Scene>& pScene);
+
         /** Add a render-pass. The name has to be unique, otherwise the call will be ignored
         */
-        void setRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
+        void addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
 
         /** Get a render-pass
         */
         const RenderPass::SharedPtr& getRenderPass(const std::string& name) const;
+
+        /** Remove a render-pass. You need to make sure the edges are still valid after the node was removed
+        */
+        void removeRenderPass(const std::string& name);
 
         /** Insert an edge from a render-pass' output into a different render-pass input.
             The render passes must be different, the graph must be a DAG.
@@ -59,7 +67,7 @@ namespace Falcor
 
         /** Execute the graph
         */
-        void execute() const;
+        void execute(RenderContext* pContext) const;
 
         /** Set an input resource. The name has the format `renderPassName.resourceName`.
             This is an alias for `getRenderPass(renderPassName)->setInput(resourceName, pResource)`
@@ -71,6 +79,11 @@ namespace Falcor
         */
         void setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
 
+        /** Get an output resource. The name has the format `renderPassName.resourceName`.
+            This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
+        */
+        const std::shared_ptr<Resource>& getOutput(const std::string& name);
+        
         /** Tells the graph to automatically allocate a render-pass output. Use that to tell the graph which outputs you expect to use after rendering
             The name has the format `renderPassName.resourceName`
             Note that calling `setOutput` with the same name will disable the automatic allocation

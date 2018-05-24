@@ -108,6 +108,13 @@
 #include "Utils/Math/CubicSpline.h"
 #include "Utils/Math/ParallelReduction.h"
 
+// RenderGraph
+#include "Graphics/RenderGraph/RenderGraph.h"
+#include "Graphics/RenderGraph/RenderPass.h"
+
+// Render passes
+#include "RenderPasses/SceneRenderPass.h"
+
 // Utils
 #include "Utils/Bitmap.h"
 #include "Utils/DDSHeader.h"

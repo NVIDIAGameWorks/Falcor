@@ -515,6 +515,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="RenderPasses\SceneRenderPass.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
@@ -1095,6 +1096,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="RenderPasses\SceneRenderPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
     <ClInclude Include="Utils\AABB.h" />

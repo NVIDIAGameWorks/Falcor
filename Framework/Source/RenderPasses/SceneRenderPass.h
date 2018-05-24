@@ -26,21 +26,25 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Graphics/RenderGraph/RenderPass.h"
 
-using namespace Falcor;
-
-class RenderGraphRenderer : public Renderer
+namespace Falcor
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    class SceneRenderPass : public RenderPass, inherit_shared_from_this<RenderPass, SceneRenderPass>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<SceneRenderPass>;
 
-private:
-    RenderGraph::SharedPtr mpGraph;
-    void loadScene(const std::string& filename, bool showProgressBar);
-};
+        /** Create a new object
+        */
+        static SharedPtr create();
+
+        virtual void sceneChangedCB() override;
+        virtual bool isValid() const override;
+        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        virtual RenderPassData getRenderPassData() const override;
+    private:
+
+    };
+}
