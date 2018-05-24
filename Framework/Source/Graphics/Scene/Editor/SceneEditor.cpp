@@ -49,6 +49,7 @@ namespace Falcor
         const char* kSelectedInstanceStr = "Selected Instance";
         const char* kActiveAnimationStr = "Active Animation";
         const char* kModelNameStr = "Model Name";
+        const char* kShadingModelStr = "Shading Model";
         const char* kInstanceStr = "Instance";
         const char* kCamerasStr = "Cameras";
         const char* kActiveCameraStr = "Active Camera";
@@ -59,6 +60,12 @@ namespace Falcor
     const float SceneEditor::kCameraModelScale = 0.5f;
     const float SceneEditor::kLightModelScale = 0.3f;
     const float SceneEditor::kKeyframeModelScale = 0.2f;
+
+    const Gui::DropdownList SceneEditor::kShadingModelList =
+    {
+        { ShadingModelMetalRough, "Metal-Rough" },
+        { ShadingModelSpecGloss, "Spec-Gloss" }
+    };
 
     const Gui::RadioButtonGroup SceneEditor::kGizmoSelectionButtons
     {
@@ -116,6 +123,23 @@ namespace Falcor
         if (pGui->addTextBox(kModelNameStr, modelName, arraysize(modelName)))
         {
             mpScene->getModel(mSelectedModel)->setName(modelName);
+            mSceneDirty = true;
+        }
+    }
+
+    void SceneEditor::setShadingModel(Gui* pGui)
+    {
+        auto& pModel = mpScene->getModel(mSelectedModel);
+        assert(pModel->getMeshCount() > 0);
+        assert(pModel->getMesh(0)->getMaterial() != nullptr);
+
+        uint32_t shadingModel = pModel->getMesh(0)->getMaterial()->getShadingModel();
+        if (pGui->addDropdown(kShadingModelStr, kShadingModelList, shadingModel))
+        {
+            for (uint32_t i = 0; i < pModel->getMeshCount(); i++)
+            {
+                pModel->getMesh(i)->getMaterial()->setShadingModel(shadingModel);
+            }
             mSceneDirty = true;
         }
     }
@@ -423,7 +447,7 @@ namespace Falcor
         // Copy camera transform from master scene
         const auto& pSceneCamera = mpScene->getActiveCamera();
 
-        if(pSceneCamera)
+        if (pSceneCamera)
         {
             const auto& pEditorCamera = mpEditorScene->getActiveCamera();
 
@@ -493,7 +517,7 @@ namespace Falcor
 
         mpEditorScene = Scene::create();
         mpEditorScene->addCamera(Camera::create());
-        mpEditorScene->getActiveCamera()->setAspectRatio((float)backBufferWidth/(float)backBufferHeight);
+        mpEditorScene->getActiveCamera()->setAspectRatio((float)backBufferWidth / (float)backBufferHeight);
         mpEditorSceneRenderer = SceneEditorRenderer::create(mpEditorScene);
         mpEditorPicker = Picking::create(mpEditorScene, backBufferWidth, backBufferHeight);
 
@@ -711,7 +735,7 @@ namespace Falcor
                 mpDebugDrawer->addPath(mpScene->getPath(i));
             }
         }
-        else if(mpPathEditor != nullptr)
+        else if (mpPathEditor != nullptr)
         {
             mpDebugDrawer->addPath(mpPathEditor->getPath());
         }
@@ -791,7 +815,7 @@ namespace Falcor
                 const uint32_t activeFrame = mpPathEditor->getActiveFrame();
                 auto& pInstance = mpEditorScene->getModelInstance(mEditorKeyframeModelID, activeFrame);
                 activeGizmo->applyDelta(pInstance);
-                
+
                 auto& pPath = mpScene->getPath(mSelectedPath);
                 pPath->setFramePosition(activeFrame, pInstance->getTranslation());
                 pPath->setFrameTarget(activeFrame, pInstance->getTarget());
@@ -945,6 +969,7 @@ namespace Falcor
                 pGui->addSeparator();
                 selectActiveModel(pGui);
                 setModelName(pGui);
+                setShadingModel(pGui);
 
                 if (pGui->beginGroup(kInstanceStr))
                 {
@@ -1001,7 +1026,7 @@ namespace Falcor
         if (pGui->beginGroup(kCamerasStr))
         {
             addCamera(pGui);
-            if(mpScene->getCameraCount())
+            if (mpScene->getCameraCount())
             {
                 setActiveCamera(pGui);
                 setCameraName(pGui);
@@ -1399,7 +1424,7 @@ namespace Falcor
             {
                 auto pCamera = Camera::create();
                 auto pActiveCamera = mpScene->getActiveCamera();
-                if(pActiveCamera)
+                if (pActiveCamera)
                 {
                     *pCamera = *pActiveCamera;
                 }
@@ -1632,7 +1657,6 @@ namespace Falcor
                 pNewPath->attachObject(pMovable);
                 mObjToPathMap[pMovable.get()] = pNewPath;
             }
-
         }
     }
 }

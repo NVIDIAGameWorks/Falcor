@@ -3,6 +3,7 @@ v3.0.3
 - Added FXAA as an effect
 - Support programmable sample position - `Fbo::setSamplePositions()` (DX only)
 - Added RenderContext::resolveResource() and RenderContext::resolveSubresource() MSAA resolve functions
+- Added support for setting shading model through fscene files and load flags. Also editable in Scene Editor
 
 v3.0.2
 ------

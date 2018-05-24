@@ -333,6 +333,11 @@ namespace Falcor
         Material::SharedPtr pMaterial = Material::create(nameStr);
         loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
 
+        if(is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials))
+        {
+            pMaterial->setShadingModel(ShadingModelSpecGloss);
+        }
+
         // Opacity
         float opacity;
         if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)

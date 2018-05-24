@@ -90,6 +90,11 @@ namespace Falcor
         static const char* kLight = "light";
         static const char* kCamera = "camera";
 
+        static const char* kMaterial = "material";
+        static const char* kShadingModel = "shading_model";
+        static const char* kShadingMetalRough = "metal_rough";
+        static const char* kShadingSpecGloss = "spec_gloss";
+
         static const char* kUserDefined = "user_defined";
     };
 }
