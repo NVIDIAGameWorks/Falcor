@@ -25,23 +25,24 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Falcor.h"
+__import Shading;
 
-using namespace Falcor;
-
-class RenderGraphRenderer : public Renderer
+float4 ps(VertexOut vOut, float4 pixelCrd : SV_POSITION) : SV_TARGET
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
-private:
-    RenderGraph::SharedPtr mpGraph;
-    RenderPass::SharedPtr mpSceneRenderPass;
-    void loadScene(const std::string& filename, bool showProgressBar);
-};
+    float4 color = float4(0, 0, 0, 1);
+    
+    for (uint l = 0; l < gLightsCount; l++)
+    {
+        color.rgb += evalMaterial(sd, gLights[l], 1).color.rgb;
+    }
+
+    // Add the emissive component
+    color.rgb += sd.emissive;
+
+    // Add light-map
+    color.rgb += sd.diffuse * sd.lightMap.rgb;
+
+    return color;
+}

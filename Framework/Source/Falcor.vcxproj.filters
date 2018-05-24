@@ -1905,6 +1905,9 @@
     <Filter Include="RenderPasses">
       <UniqueIdentifier>{c211a7c2-a22a-4745-9a23-42e98dbff40c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data\RenderPasses">
+      <UniqueIdentifier>{6fb02568-1f63-46b7-baee-85e961051a76}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Externals\dear_imgui\LICENSE">
@@ -2350,6 +2353,9 @@
     </None>
     <None Include="Data\Effects\FXAA.slang">
       <Filter>Data\Effects</Filter>
+    </None>
+    <None Include="Data\RenderPasses\SceneRenderPass.slang">
+      <Filter>Data\RenderPasses</Filter>
     </None>
   </ItemGroup>
 </Project>

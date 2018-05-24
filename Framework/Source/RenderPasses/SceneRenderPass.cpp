@@ -149,7 +149,12 @@ namespace Falcor
         pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0);
         if (mpSceneRenderer)
         {
+            mpState->setFbo(mpFbo);
+            pContext->pushGraphicsState(mpState);
+            pContext->pushGraphicsVars(mpVars);
             mpSceneRenderer->renderScene(pContext);
+            pContext->popGraphicsState();
+            pContext->popGraphicsVars();
         }
     }
 
