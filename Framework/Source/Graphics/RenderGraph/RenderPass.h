@@ -113,7 +113,6 @@ namespace Falcor
         /** Set the DataChanged callback
         */
         void setRenderDataChangedCallback(RenderDataChangedFunc pDataChangedCB) { mpRenderDataChangedCallback = pDataChangedCB; }
-
     protected:
         RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB = nullptr);
         

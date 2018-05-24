@@ -46,51 +46,51 @@ void RenderGraphRenderer::loadScene(const std::string& filename, bool showProgre
         pBar = ProgressBar::create("Loading Scene", 100);
     }
 
-//    mpGraph->setScene(nullptr);
+    mpGraph->setScene(nullptr);
     Scene::SharedPtr pScene = Scene::loadFromFile(filename);
-    mpSceneRenderPass->setScene(pScene);
-//    mpGraph->setScene(pScene);
+    mpGraph->setScene(pScene);
+    mCamControl.attachCamera(pScene->getCamera(0));
 }
 
 void RenderGraphRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
-//    mpGraph = RenderGraph::create();
-    mpSceneRenderPass = SceneRenderPass::create();
-//     mpGraph->addRenderPass(mpSceneRenderPass, "SceneRenderer");
-//     mpGraph->autoAllocateOutput("SceneRenderer.color");
+    mpGraph = RenderGraph::create();
+    mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
 
     loadScene(gkDefaultScene, false);
 }
 
 void RenderGraphRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
+    mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
+
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-//    mpGraph->execute(pRenderContext.get());
+    mpGraph->execute(pRenderContext.get());
 
-    mpSceneRenderPass->execute(pRenderContext.get());
+    mpGraph->execute(pRenderContext.get());
 
-//    Texture* pColor = dynamic_cast<Texture*>(mpGraph->getOutput("SceneRenderer.color").get());
-    Texture* pColor = dynamic_cast<Texture*>(mpSceneRenderPass->getOutput("color").get());
+    Texture* pColor = dynamic_cast<Texture*>(mpGraph->getOutput("SceneRenderer.color").get());
     pRenderContext->blit(pColor->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
 bool RenderGraphRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
-    return false;
+    return mCamControl.onKeyEvent(keyEvent);
 }
 
 bool RenderGraphRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
-    return false;
+    return mCamControl.onMouseEvent(mouseEvent);
 }
 
 void RenderGraphRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     auto& pColor = Texture::create2D(width, height, pSample->getCurrentFbo()->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
     auto& pDepth = Texture::create2D(width, height, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
-    mpSceneRenderPass->setOutput("color", pColor);
-    mpSceneRenderPass->setOutput("depth", pDepth);
+    mpGraph->setOutput("SceneRenderer.color", pColor);
+    mpGraph->setOutput("SceneRenderer.depth", pDepth);
+    mpGraph->onResizeSwapChain(pSample, width, height);
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

@@ -42,6 +42,6 @@ public:
 
 private:
     RenderGraph::SharedPtr mpGraph;
-    RenderPass::SharedPtr mpSceneRenderPass;
+    FirstPersonCameraController mCamControl;
     void loadScene(const std::string& filename, bool showProgressBar);
 };
