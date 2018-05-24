@@ -34,6 +34,7 @@ namespace Falcor
     class Scene;
     class Resource;
     class Gui;
+    class RenderContext;
 
     /** Base class for render-passes. The class inherits from Renderer
     */
@@ -53,17 +54,21 @@ namespace Falcor
             {
                 std::string name;                        ///< The field's name
                 ReflectionResourceType::SharedPtr pType; ///< The resource type
-                uint32_t width = 0;         ///< 0 means don't care. For buffers this is the size in bytes
-                uint32_t height = 0;        ///< 0 means don't care
-                uint32_t depth = 0;         ///< 0 means don't care
-                uint32_t sampleCount = 0;   ///< 0 means don't care
-                ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means don't care
+                uint32_t width = 0;         ///< 0 means use the window size. For buffers this is the size in bytes
+                uint32_t height = 0;        ///< 0 means use the window size
+                uint32_t depth = 0;         ///< 0 means use the window size
+                uint32_t sampleCount = 0;   ///< 0 means don't care (which means 1)
+                ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format
                 bool required = true;      ///< If this is true, then the render-pass will not work if this field is not set. Otherwise, this field is optional
             };
 
             std::vector<Field> inputs;
             std::vector<Field> outputs;
         };
+
+        /** Execute the pass
+        */
+        virtual void execute(RenderContext* pContext) = 0;
 
         /** Get the render-pass data
         */
@@ -77,9 +82,17 @@ namespace Falcor
         */
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) = 0;
 
+        /** Get an input resource
+        */
+        virtual std::shared_ptr<Resource> getInput(const std::string& name);
+
+        /** Get an output resource
+        */
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name);
+
         /** Call this after the input/output resources are set to make sure the render-pass is ready for execution
         */
-        virtual bool isValid() const = 0;
+        virtual bool isValid(std::string& log = std::string()) = 0;
 
         /** Set a scene into the render-pass
         */
@@ -96,6 +109,10 @@ namespace Falcor
         /** Optional serialization function. Use this to export custom data into the json file
         */
         virtual void serializeJson() const {}
+
+        /** Set the DataChanged callback
+        */
+        void setRenderDataChangedCallback(RenderDataChangedFunc pDataChangedCB) { mpRenderDataChangedCallback = pDataChangedCB; }
 
     protected:
         RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB = nullptr);

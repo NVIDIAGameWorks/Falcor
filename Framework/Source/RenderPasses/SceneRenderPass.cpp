@@ -30,5 +30,144 @@
 
 namespace Falcor
 {
+    static std::string kColor = "color";
+    static std::string kDepth = "depth";
 
+    static SceneRenderPass::RenderPassData createRenderPassData()
+    {
+        RenderPass::RenderPassData data;
+        RenderPass::RenderPassData::Field output;
+        output.name = kColor;
+        output.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
+        data.outputs.push_back(output);
+
+        output.name = kDepth;
+        output.format = ResourceFormat::D32Float;
+        data.outputs.push_back(output);
+
+        return data;
+    }
+
+    const SceneRenderPass::RenderPassData SceneRenderPass::kRenderPassData = createRenderPassData();
+
+    SceneRenderPass::SharedPtr SceneRenderPass::create()
+    {
+        try
+        {
+            return SharedPtr(new SceneRenderPass);
+        }
+        catch (const std::exception&)
+        {
+            return nullptr;
+        }
+    }
+
+    SceneRenderPass::SceneRenderPass() : RenderPass("SceneRenderPass", nullptr)
+    {
+        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/SceneRenderPass.slang", "", "ps");
+        mpState = GraphicsState::create();
+        mpState->setProgram(pProgram);
+        mpVars = GraphicsVars::create(pProgram->getReflector());
+        mpFbo = Fbo::create();
+    }
+
+    void SceneRenderPass::sceneChangedCB()
+    {
+        mpSceneRenderer = nullptr;
+        if (mpScene)
+        {
+            mpSceneRenderer = SceneRenderer::create(mpScene);
+        }
+    }
+
+    bool SceneRenderPass::isValid(std::string& log)
+    {
+        bool b = true;
+        if (mpSceneRenderer == nullptr)
+        {
+            log += "SceneRenderPass must have a scene attached to it\n";
+            b = false;
+        }
+
+        const auto& pColor = mpFbo->getColorTexture(0).get();
+        if (!pColor)
+        {
+            log += "SceneRenderPass must have a color texture attached\n";
+            b = false;
+        }
+        const auto& pDepth = mpFbo->getDepthStencilTexture().get();
+        if (!pDepth)
+        {
+            log += "SceneRenderPass must have a depth texture attached\n";
+            b = false;
+        }
+
+        if (mpFbo->checkStatus() == false)
+        {
+            log += "SceneRenderPass FBO is invalid, probably because the depth and color textures have different dimensions";
+            b = false;
+        }
+
+        return b;
+    }
+
+    bool SceneRenderPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        logError("SceneRenderPass::setInput() - trying to set `" + name + "` but this render-pass requires no inputs");
+        return false;
+    }
+
+    bool SceneRenderPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        if (!mpFbo)
+        {
+            logError("SceneRenderPass::setOutput() - please call onResizeSwapChain() before setting an input");
+            return false;
+        }
+
+        if (name == kColor)
+        {
+            Texture::SharedPtr pColor = std::dynamic_pointer_cast<Texture>(pResource);
+            mpFbo->attachColorTarget(pColor, 0);
+        }
+        else if (name == kDepth)
+        {
+            Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
+            mpFbo->attachDepthStencilTarget(pDepth);
+        }
+        else
+        {
+            logError("SceneRenderPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
+            return false;
+        }
+
+        return true;
+    }
+
+    void SceneRenderPass::execute(RenderContext* pContext)
+    {
+        pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0);
+        if (mpSceneRenderer)
+        {
+            mpSceneRenderer->renderScene(pContext);
+        }
+    }
+
+    std::shared_ptr<Resource> SceneRenderPass::getOutput(const std::string& name)
+    {
+        if (name == kColor)
+        {
+            return mpFbo->getColorTexture(0);
+        }
+        else if (name == kDepth)
+        {
+            return mpFbo->getDepthStencilTexture();
+        }
+        else return RenderPass::getOutput(name);
+    }
+
+    void SceneRenderPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+    {
+        pGui->addRgbaColor("Clear color", mClearColor);
+    }
 }

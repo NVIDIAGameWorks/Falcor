@@ -27,6 +27,10 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/Program/GraphicsProgram.h"
+#include "Graphics/Program/ProgramVars.h"
+#include "Graphics/GraphicsState.h"
+#include "Graphics/Scene/SceneRenderer.h"
 
 namespace Falcor
 {
@@ -39,12 +43,22 @@ namespace Falcor
         */
         static SharedPtr create();
 
-        virtual void sceneChangedCB() override;
-        virtual bool isValid() const override;
+        virtual void execute(RenderContext* pContext) override;
+        virtual bool isValid(std::string& log = std::string()) override;
         virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual RenderPassData getRenderPassData() const override;
-    private:
+        virtual RenderPassData getRenderPassData() const override { return kRenderPassData; }
+        virtual void sceneChangedCB() override;
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name) override;
 
+        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    private:
+        SceneRenderPass();
+        static const RenderPassData kRenderPassData;
+        Fbo::SharedPtr mpFbo;
+        GraphicsState::SharedPtr mpState;
+        GraphicsVars::SharedPtr mpVars;
+        SceneRenderer::SharedPtr mpSceneRenderer;
+        vec4 mClearColor = vec4(1);
     };
 }
