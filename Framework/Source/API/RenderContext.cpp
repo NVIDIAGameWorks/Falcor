@@ -125,3 +125,4 @@ namespace Falcor
         mBindGraphicsRootSig = true;
     }
 }
+

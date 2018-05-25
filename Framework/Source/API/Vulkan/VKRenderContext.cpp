@@ -35,7 +35,8 @@
 namespace Falcor
 {
     VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format);
-
+    VkImageLayout getImageLayout(Resource::State state);
+      
     RenderContext::SharedPtr RenderContext::create(CommandQueueHandle queue)
     {
         SharedPtr pCtx = SharedPtr(new RenderContext());
@@ -319,5 +320,25 @@ namespace Falcor
             VkFilter vkFilter = isDepthStencilFormat(pTexture->getFormat()) ? VK_FILTER_NEAREST : getVkFilter(filter);
             vkCmdBlitImage(mpLowLevelData->getCommandList(), pSrc->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDst->getResource()->getApiHandle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blt, vkFilter);
         }
+        mCommandsPending = true;
+    }
+
+    void RenderContext::resolveResource(const Texture* pSrc, const Texture* pDst)
+    {
+        // Just blit. It will work
+        blit(pSrc->getSRV(), pDst->getRTV());
+    }
+
+    void RenderContext::resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource)
+    {
+        uint32_t srcArray = pSrc->getSubresourceArraySlice(srcSubresource);
+        uint32_t srcMip = pSrc->getSubresourceMipLevel(srcSubresource);
+        const auto& pSrcSrv = pSrc->getSRV(srcMip, 1, srcArray, 1);
+
+        uint32_t dstArray = pDst->getSubresourceArraySlice(dstSubresource);
+        uint32_t dstMip = pDst->getSubresourceMipLevel(dstSubresource);
+        const auto& pDstRtv = pDst->getRTV(dstMip, dstArray, 1);
+
+        blit(pSrcSrv, pDstRtv);
     }
 }

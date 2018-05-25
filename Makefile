@@ -101,7 +101,7 @@ SOURCE_DIR:=Framework/Source/
 # All directories containing source code relative from the base Source folder. The "/" in the first line is to include the base Source directory
 RELATIVE_DIRS:=/ \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
-Effects/AmbientOcclusion/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
+Effects/AmbientOcclusion/ Effects/FXAA/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
 Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ \
 VR/ VR/OpenVR/ \

@@ -140,6 +140,7 @@
 #include "Effects/AmbientOcclusion/SSAO.h"
 #include "Effects/ParticleSystem/ParticleSystem.h"
 #include "Effects/TAA/TAA.h"
+#include "Effects/FXAA/FXAA.h"
 
 #ifdef FALCOR_DXR
 #include "Raytracing/RtModel.h"
@@ -159,5 +160,5 @@
 #define FALCOR_MAJOR_VERSION 3
 #define FALCOR_MINOR_VERSION 0
 #define FALCOR_DEV_STAGE ""
-#define FALCOR_DEV_REVISION 2
-#define FALCOR_VERSION_STRING "3.0.2"
+#define FALCOR_DEV_REVISION 3
+#define FALCOR_VERSION_STRING "3.0.3"

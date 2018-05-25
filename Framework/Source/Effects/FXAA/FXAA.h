@@ -25,25 +25,51 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "API/GpuTimer.h"
-#include "API/Device.h"
+#pragma once
+#include "Falcor.h"
 
 namespace Falcor
 {
-    void GpuTimer::apiBegin()
-   {
-        vkCmdResetQueryPool(mpLowLevelData->getCommandList(), mpHeap, mStart, 2);
-        vkCmdWriteTimestamp(mpLowLevelData->getCommandList(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, mpHeap, mStart);
-   }
+    class Gui;
 
-    void GpuTimer::apiEnd()
+    /** Temporal AA class
+    */
+    class FXAA
     {
-        vkCmdWriteTimestamp(mpLowLevelData->getCommandList(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, mpHeap, mEnd);
-    }
+    public:
+        using UniquePtr = std::unique_ptr<FXAA>;
 
-    void GpuTimer::apiResolve(uint64_t result[2])
-    {
-        vk_call(vkGetQueryPoolResults(gpDevice->getApiHandle(), mpHeap, mStart, 2, sizeof(uint64_t) * 2, result, sizeof(result[0]), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT));
-    }
+        /** Destructor
+        */
+        ~FXAA();
+
+        /** Create a new instance
+        */
+        static UniquePtr create();
+
+        /** Render UI controls for this effect.
+            \param[in] pGui GUI object to render UI elements with
+        */
+        void renderUI(Gui* pGui, const char* uiGroup);
+
+        /** Run the effect
+            \param[in] pRenderContext Render context with the destination FBO already set
+            \param[in] pCurColor Current frame color buffer
+            \param[in] pPrevColor Previous frame color buffer
+            \param[in] pMotionVec Motion vector buffer
+        */
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Fbo::SharedPtr& pDstFbo);
+
+    private:
+        FXAA();
+
+        FullScreenPass::UniquePtr mpPass;
+        GraphicsVars::SharedPtr mpGraphicsVars;
+        Sampler::SharedPtr mpLinearSampler;
+
+        float mQualitySubPix = 0.75f;
+        float mQualityEdgeThreshold = 0.166f;
+        float mQualityEdgeThresholdMin = 0.0833f;
+        bool mEarlyOut = true;
+    };
 }

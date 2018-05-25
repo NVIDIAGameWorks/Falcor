@@ -38,7 +38,8 @@ Gui::DropdownList kSampleCountList =
 const Gui::DropdownList aaModeList =
 {
     { 0, "MSAA" },
-    { 1, "TAA" }
+    { 1, "TAA" },
+    { 2, "FXAA" }
 };
 
 
@@ -92,15 +93,26 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
     // Release the TAA FBOs
     mTAA.resetFbos();
 
-    if (mAAMode == AAMode::MSAA)
+    if (mAAMode == AAMode::MSAA || mAAMode == AAMode::FXAA)
     {
         mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
-        fboDesc.setSampleCount(mMSAASampleCount);
+        fboDesc.setSampleCount(mAAMode == AAMode::MSAA ? mMSAASampleCount : 1);
 
-        Fbo::Desc resolveDesc;
-        resolveDesc.setColorTarget(0, ResourceFormat::RGBA32Float).setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
-        mpResolveFbo = FboHelper::create2D(w, h, resolveDesc);
+        if(mAAMode == AAMode::MSAA)
+        {
+            Fbo::Desc resolveDesc;
+            resolveDesc.setColorTarget(0, ResourceFormat::RGBA32Float);
+            resolveDesc.setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
+            mpResolveFbo = FboHelper::create2D(w, h, resolveDesc);
+        }
+
+        if (mAAMode == AAMode::FXAA)
+        {
+            Fbo::Desc resolveDesc;
+            resolveDesc.setColorTarget(0, pSample->getCurrentFbo()->getColorTexture(0)->getFormat());
+            mpResolveFbo = FboHelper::create2D(w, h, resolveDesc);
+        }
     }
     else if (mAAMode == AAMode::TAA)
     {
@@ -117,7 +129,7 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
     mpDepthPassFbo = Fbo::create();
     mpDepthPassFbo->attachDepthStencilTarget(mpMainFbo->getDepthStencilTexture());
 
-    if (mAAMode == AAMode::TAA)
+    if (mAAMode != AAMode::MSAA)
     {
         mpResolveFbo = mpMainFbo;
     }
@@ -230,7 +242,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                     applyLightingProgramControl(ControlID::SuperSampling);
                 }
             }
-
+            
             //  Temporal Anti-Aliasing.
             if (mAAMode == AAMode::TAA)
             {
@@ -248,6 +260,11 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                     // Disable super-sampling
                     pGui->endGroup();
                 }
+            }
+
+            if (mAAMode == AAMode::FXAA)
+            {
+                mpFXAA->renderUI(pGui, "FXAA");
             }
 
             if (reapply) applyAaMode(pSample);

@@ -188,8 +188,38 @@ namespace Falcor
                 }
             }
         }
+        ID3D12GraphicsCommandList* pCmdList = pCtx->getLowLevelData()->getCommandList().GetInterfacePtr();
+        pCmdList->OMSetRenderTargets(colorTargets, pRTV.data(), FALSE, &pDSV);
+    }
 
-        pCtx->getLowLevelData()->getCommandList()->OMSetRenderTargets(colorTargets, pRTV.data(), FALSE, &pDSV);
+    static void D3D12SetSamplePositions(ID3D12GraphicsCommandList* pList, const Fbo* pFbo)
+    {
+        if (!pFbo) return;
+        ID3D12GraphicsCommandList1* pList1;
+        pList->QueryInterface(IID_PPV_ARGS(&pList1));
+        const auto& samplePos = pFbo->getSamplePositions();
+
+        if (!pList1)
+        {
+            if (samplePos.size())
+            {
+                logError("The FBO specifies programmable sample positions, but the hardware doesn't support it");
+            }
+        }
+        else
+        {
+            static_assert(offsetof(Fbo::SamplePosition, xOffset) == offsetof(D3D12_SAMPLE_POSITION, X), "SamplePosition.X");
+            static_assert(offsetof(Fbo::SamplePosition, yOffset) == offsetof(D3D12_SAMPLE_POSITION, Y), "SamplePosition.Y");
+
+            if (samplePos.size())
+            {
+                pList1->SetSamplePositions(pFbo->getSampleCount(), pFbo->getSamplePositionsPixelCount(), (D3D12_SAMPLE_POSITION*)samplePos.data());
+            }
+            else
+            {
+                pList1->SetSamplePositions(0, 0, nullptr);
+            }
+        }
     }
 
     static void D3D12SetViewports(ID3D12GraphicsCommandList* pList, const GraphicsState::Viewport* vp)
@@ -258,6 +288,10 @@ namespace Falcor
         {
             D3D12SetFbo(this, mpGraphicsState->getFbo().get());
         }
+        if (is_set(StateBindFlags::SamplePositions, mBindFlags))
+        {
+            D3D12SetSamplePositions(pList, mpGraphicsState->getFbo().get());
+        }
         if (is_set(StateBindFlags::Viewports, mBindFlags))
         {
             D3D12SetViewports(pList, &mpGraphicsState->getViewport(0));
@@ -269,6 +303,13 @@ namespace Falcor
         if (is_set(StateBindFlags::PipelineState, mBindFlags))
         {
             pList->SetPipelineState(mpGraphicsState->getGSO(mpGraphicsVars.get())->getApiHandle());
+        }
+        if (is_set(StateBindFlags::SamplePositions, mBindFlags))
+        {
+            if (mpGraphicsState->getFbo() && mpGraphicsState->getFbo()->getSamplePositions().size())
+            {
+                logWarning("The Vulkan backend doesn't support programmable sample positions");
+            }
         }
 
         BlendState::SharedPtr blendState = mpGraphicsState->getBlendState();
@@ -418,5 +459,32 @@ namespace Falcor
         gBlitData.pState->popFbo(false);
         popGraphicsState();
         popGraphicsVars();
+    }
+
+    void RenderContext::resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource)
+    {
+        DXGI_FORMAT format = getDxgiFormat(pDst->getFormat());
+        mpLowLevelData->getCommandList()->ResolveSubresource(pDst->getApiHandle(), dstSubresource, pSrc->getApiHandle(), srcSubresource, format);
+        mCommandsPending = true;
+    }
+
+    void RenderContext::resolveResource(const Texture* pSrc, const Texture* pDst)
+    {
+        bool match = true;
+        match = match && (pSrc->getMipCount() == pDst->getMipCount());
+        match = match && (pSrc->getArraySize() == pDst->getArraySize());
+        if (!match)
+        {
+            logWarning("Can't resolve a resource. The src and dst textures have a different array-size or mip-count");
+        }
+
+        resourceBarrier(pSrc, Resource::State::ResolveSource);
+        resourceBarrier(pDst, Resource::State::ResolveDest);
+
+        uint32_t subresourceCount = pSrc->getMipCount() * pSrc->getArraySize();
+        for (uint32_t s = 0; s < subresourceCount; s++)
+        {
+            resolveSubresource(pSrc, s, pDst, s);
+        }
     }
 }

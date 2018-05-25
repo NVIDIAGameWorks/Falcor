@@ -66,6 +66,7 @@ namespace Falcor
             DontMergeMeshes             = 0x8,    ///< Preserve the original list of meshes in the scene, don't merge meshes with the same material
             BuffersAsShaderResource     = 0x10,   ///< Generate the VBs and IB with the shader-resource-view bind flag
             RemoveInstancing            = 0x20,   ///< Flatten mesh instances
+            UseSpecGlossMaterials       = 0x40,   ///< Set materials to use Spec-Gloss shading model. Otherwise default is Metal-Rough.
         };
 
         /** Create a new model from file

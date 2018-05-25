@@ -94,6 +94,11 @@ namespace Falcor
         */
         ConstantBuffer::SharedPtr getConstantBuffer(const BindLocation& bindLocation, uint32_t arrayIndex) const;
 
+        /** Get the default constant-buffer
+            The default constant-buffer has the same name as the parameter-block, so this call is equivalent to `getConstantBuffer(getReflection()->getName())`
+        */
+        ConstantBuffer::SharedPtr getDefaultConstantBuffer() const;
+
         /** Set a raw-buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
             \param[in] name The name of the buffer
             \param[in] pBuf The buffer object

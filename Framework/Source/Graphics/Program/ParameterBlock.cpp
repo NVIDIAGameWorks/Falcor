@@ -228,6 +228,11 @@ namespace Falcor
         return pReflector->getResourceBinding(name);
     }
 
+    ConstantBuffer::SharedPtr ParameterBlock::getDefaultConstantBuffer() const
+    {
+        return getConstantBuffer(mpReflector->getName());
+    }
+
     ConstantBuffer::SharedPtr ParameterBlock::getConstantBuffer(const std::string& name) const
     {
         uint32_t arrayIndex;

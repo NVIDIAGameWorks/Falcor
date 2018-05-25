@@ -125,6 +125,8 @@ private:
         GraphicsVars::SharedPtr pVars;
     } mSSAO;
 
+    FXAA::UniquePtr mpFXAA;
+
     void beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint64_t frameId);
     void endFrame(RenderContext* pContext);
     void depthPass(RenderContext* pContext);
@@ -134,6 +136,7 @@ private:
     //Need to resolve depth first to pass resolved depth to shadow pass
     void resolveDepthMSAA(RenderContext* pContext);
     void resolveMSAA(RenderContext* pContext);
+    void executeFXAA(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
     void runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo);
     void postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
     void ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo);
@@ -142,15 +145,14 @@ private:
     void renderOpaqueObjects(RenderContext* pContext);
     void renderTransparentObjects(RenderContext* pContext);
 
-
-    void initSkyBox(const std::string& name);
+        void initSkyBox(const std::string& name);
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();
     void initShadowPass(uint32_t windowWidth, uint32_t windowHeight);
     void initSSAO();
     void updateLightProbe(const LightProbe::SharedPtr& pLight);
-    void initTAA(SampleCallbacks* pSample);
+    void initAA(SampleCallbacks* pSample);
 
     void initControls();
 
@@ -196,7 +198,8 @@ private:
     enum class AAMode
     {
         MSAA,
-        TAA
+        TAA,
+        FXAA
     };
 
     float mOpacityScale = 0.5f;
