@@ -35,6 +35,7 @@
 #include "Utils/Platform/OS.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
 
+#define SCENE_EXPORTER
 #include "SceneExportImportCommon.h"
 
 
