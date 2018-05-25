@@ -39,6 +39,7 @@
 #include "API/RenderContext.h"
 #include "Utils/StringUtils.h"
 #include "ShaderLibrary.h"
+#include "Graphics/Material/Material.h"
 
 namespace Falcor
 {
@@ -518,12 +519,17 @@ namespace Falcor
         {
             auto paramBlock = originalReflector->getParameterBlock(i);
             auto newParamBlock = pVars->getParameterBlock(i);
-            if (newParamBlock->genericTypeParamName.length())
+            std::string typeParamName = newParamBlock->genericTypeParamName;
+            if (newParamBlock->getTypeName() == "TMaterial")
+                typeParamName = "TMaterial";
+            if (typeParamName.length() )
             {
-                auto index = originalReflector->getTypeParameterIndexByName(newParamBlock->genericTypeParamName);
+                auto index = originalReflector->getTypeParameterIndexByName(typeParamName);
                 if (typeArguments.size() <= index)
                     typeArguments.resize(index + 1);
                 typeArguments[index] = newParamBlock->genericTypeArgumentName;
+                if (typeParamName == "TMaterial" && newParamBlock->genericTypeArgumentName.length() == 0)
+                    typeArguments[index] = Material::kDefaultMaterialType;
             }
         }
         SlangCompileRequest* slangRequest = createSlangCompileRequest(pVersion->getDefines(),

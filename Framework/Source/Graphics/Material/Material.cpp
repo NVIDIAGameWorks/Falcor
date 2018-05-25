@@ -40,11 +40,12 @@ namespace Falcor
 {
     uint32_t Material::sMaterialCounter = 0;
     static const char* kMaterialVarName = "materialBlock";
-
+    const char* Material::kDefaultMaterialType = "StandardMaterial<UnusedChannel,UnusedChannel,UnusedChannel,UnusedChannel,UnusedChannel,UnusedChannel,NoNormalMap,NoAlphaTest,2>";
     Material::Material(const std::string& name) : mName(name)
     {
         mData.id = sMaterialCounter;
         sMaterialCounter++;
+        shaderTypeName = kDefaultMaterialType;
     }
 
     Material::SharedPtr Material::create(const std::string& name)

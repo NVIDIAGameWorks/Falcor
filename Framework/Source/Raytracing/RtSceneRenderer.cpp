@@ -160,6 +160,8 @@ namespace Falcor
     {
         InstanceData data;
         data.currentData.pCamera = pCamera;
+        data.currentData.pLightEnv = mpScene->getLightEnv().get();
+
         uint32_t hitCount = pRtVars->getHitProgramsCount();
         if (hitCount)
         {   

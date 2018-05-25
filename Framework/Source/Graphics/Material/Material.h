@@ -117,7 +117,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<Material>;
         using SharedConstPtr = std::shared_ptr<const Material>;
-
+        static const char * kDefaultMaterialType;
         /** Create a new material.
             \param[in] name The material name
         */
