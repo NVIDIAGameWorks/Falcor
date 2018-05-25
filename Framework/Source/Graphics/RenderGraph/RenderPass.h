@@ -59,6 +59,7 @@ namespace Falcor
                 uint32_t depth = 0;         ///< 0 means use the window size
                 uint32_t sampleCount = 0;   ///< 0 means don't care (which means 1)
                 ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format
+                Resource::BindFlags bindFlags = Resource::BindFlags::None;  ///< The required bind flags
                 bool required = true;      ///< If this is true, then the render-pass will not work if this field is not set. Otherwise, this field is optional
             };
 

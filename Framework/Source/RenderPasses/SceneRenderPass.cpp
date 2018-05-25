@@ -37,12 +37,14 @@ namespace Falcor
     {
         RenderPass::RenderPassData data;
         RenderPass::RenderPassData::Field output;
+        output.bindFlags = Resource::BindFlags::RenderTarget;
         output.name = kColor;
         output.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
         data.outputs.push_back(output);
 
         output.name = kDepth;
         output.format = ResourceFormat::D32Float;
+        output.bindFlags = Resource::BindFlags::DepthStencil;
         data.outputs.push_back(output);
 
         return data;
