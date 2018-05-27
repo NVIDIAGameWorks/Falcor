@@ -61,10 +61,13 @@ namespace Falcor
             return pProg;
         }
 
-        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr pReflector) const override
+        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr pReflector,
+            const std::vector<std::string> & entryPointNames) const override
         {
             RtShader::SharedPtr pShader;
-            pShader = createRtShaderFromBlob(mDesc.getShaderLibrary(ShaderType(shaderType))->getFilename(), mDesc.getShaderEntryPoint(ShaderType(shaderType)), shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
+            pShader = createRtShaderFromBlob(mDesc.getShaderLibrary(ShaderType(shaderType))->getFilename(), 
+                (entryPointNames.size()? entryPointNames[0] : mDesc.getShaderEntryPoint(ShaderType(shaderType))), 
+                shaderBlob[uint32_t(shaderType)], mDesc.getCompilerFlags(), shaderType, log);
             auto rootSignature = RootSignature::create(pReflector.get());
 
             if (pShader)

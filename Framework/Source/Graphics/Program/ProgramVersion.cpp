@@ -121,7 +121,7 @@ namespace Falcor
         , slangRequest(compileReq)
     {}
 
-    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const
+    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars, bool renameEntrypoint) const
     {
         // TODO: need a caching layer here, which takes into account:
         //
@@ -147,7 +147,21 @@ namespace Falcor
         for(;;)
         {
             std::string log;
-            auto kernels = mpProgram->preprocessAndCreateProgramKernels(this, pVars, log);
+            std::vector<std::string> newKernelNames;
+            if (renameEntrypoint)
+            {
+                newKernelNames.resize((size_t)ShaderType::Count);
+                for (size_t i = 0u; i < (size_t)ShaderType::Count; i++)
+                {
+                    auto entryPointName = mpProgram->mDesc.getShaderEntryPoint((ShaderType)i);
+                    if (entryPointName.length())
+                    {
+                        newKernelNames[i] = entryPointName + std::to_string(programKey);
+                    }
+                }
+            }
+            
+            auto kernels = mpProgram->preprocessAndCreateProgramKernels(this, pVars, newKernelNames, log);
             if( kernels )
             {
                 // Success.

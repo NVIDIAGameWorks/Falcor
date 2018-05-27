@@ -162,7 +162,7 @@ namespace Falcor
 
         /** Get executable kernels based on state in a `ProgramVars`
         */
-        ProgramKernels::SharedConstPtr getKernels(ProgramVars const* pVars) const;
+        ProgramKernels::SharedConstPtr getKernels(ProgramVars const* pVars, bool renameEntrypoint = false) const;
 
     protected:
         ProgramVersion(

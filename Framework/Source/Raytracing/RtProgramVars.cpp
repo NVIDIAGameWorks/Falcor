@@ -117,7 +117,7 @@ namespace Falcor
         newSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, newSize);
         if (newSize != mRecordSize)
         {
-            assert(mRecordSize != 0);
+            assert(newSize != 0);
 
             mRecordSize = newSize;
             uint32_t recordCountPerHit = mpScene->getGeometryCount(mHitProgCount);

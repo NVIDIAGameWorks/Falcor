@@ -58,9 +58,19 @@ namespace Falcor
         // Pipeline config
         rtsoHelper.addPipelineConfig(desc.mMaxTraceRecursionDepth);
 
+        std::unordered_map<const RtProgramKernels*, int> programKernelIds;
+
         // Loop over the programs
+        int progId = 0;
         for (const auto& pProg : pState->getProgramList())
         {
+            auto progIdIter = programKernelIds.find(pProg.get());
+            if (progIdIter != programKernelIds.end())
+            {
+                continue;
+            }
+            programKernelIds[pProg.get()] = progId;
+            progId++;
             if (pProg->getType() == RtProgramKernels::Type::Hit)
             {
                 const RtShader* pIntersection = pProg->getShader(ShaderType::Intersection).get();

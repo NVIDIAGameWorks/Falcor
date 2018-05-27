@@ -110,7 +110,7 @@ namespace Falcor
         private:
             friend class Program;
             friend class GraphicsProgram;
-
+            friend class ProgramVersion;
             Desc& addDefaultVertexShaderIfNeeded();
 
             struct EntryPoint
@@ -216,8 +216,10 @@ namespace Falcor
         ProgramKernels::SharedPtr preprocessAndCreateProgramKernels(
             ProgramVersion const* pVersion,
             ProgramVars    const* pVars,
+            const std::vector<std::string>   &newEntryPointNames,
             std::string         & log) const;
-        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr pReflector) const;
+        virtual ProgramKernels::SharedPtr createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount],
+            ProgramReflection::SharedPtr pReflector, const std::vector<std::string> & entryPointNames) const;
         
         // The description used to create this program
         Desc mDesc;

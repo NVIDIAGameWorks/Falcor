@@ -704,7 +704,7 @@ namespace Falcor
                 {
                     lt.second.cbOffset = blockType->findMember(lt.second.variableName)->getOffset();
                 }
-                const auto& pAmbientOffset = blockType->findMember(varNameSb.str() + "ambientLight");
+                const auto& pAmbientOffset = blockType->findMember(varNameSb.str() + ".light.ambientLight");
                 sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
                 mpParamBlock = ParameterBlock::create(spBlockReflection, true);
                 mpParamBlock->setTypeName(shaderTypeName);

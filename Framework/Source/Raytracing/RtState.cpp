@@ -56,7 +56,7 @@ namespace Falcor
             {
                 auto & vars = pVars->getHitVars(i);
                 for (uint32_t j = 0; j < vars.size(); j++)
-                    programs.push_back(std::dynamic_pointer_cast<const RtProgramKernels>(mpProgram->getHitProgram(i)->getActiveVersion()->getKernels(vars[j].get())));
+                    programs.push_back(std::dynamic_pointer_cast<const RtProgramKernels>(mpProgram->getHitProgram(i)->getActiveVersion()->getKernels(vars[j].get(), true)));
             }
         }
 

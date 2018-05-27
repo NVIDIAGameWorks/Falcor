@@ -263,6 +263,9 @@ namespace Falcor
         template<bool forGraphics>
         bool applyProgramVarsCommon(CopyContext* pContext, bool rootSigChanged, RootSignature* rootSignature);
 
+        template<bool forGraphics>
+        bool bindRootSetsCommon(CopyContext* pContext, bool bindRootSig, RootSignature * rootSig);
+
     protected:
         ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers);
         

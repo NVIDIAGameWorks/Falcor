@@ -64,7 +64,7 @@ namespace Falcor
     {                                                           \
         _pshader = createRtShaderFromBlob(                      \
         mDesc.getShaderLibrary(_type)->getFilename(),            \
-        mDesc.getShaderEntryPoint(_type),                       \
+        (entryPointNames.size()>uint32_t(_type)?entryPointNames[uint32_t(_type)]:mDesc.getShaderEntryPoint(_type)),                       \
             shaderBlob[uint32_t(_type)],                        \
             flags,                                              \
             _type,                                              \
@@ -72,7 +72,8 @@ namespace Falcor
         OK = OK && (_pshader != nullptr);                       \
     }
 
-    ProgramKernels::SharedPtr HitProgram::createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr pReflector) const
+    ProgramKernels::SharedPtr HitProgram::createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr pReflector,
+        const std::vector<std::string> & entryPointNames) const
     {
         RtShader::SharedPtr pAnyHit, pIntersect, pClosestHit;
         bool OK = true;

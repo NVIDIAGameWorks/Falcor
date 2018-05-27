@@ -38,7 +38,6 @@ namespace Falcor
         using ApiHandle = ID3D12StateObjectPrototypePtr;
 
         using ProgramList = std::vector<RtProgramKernels::SharedConstPtr>;
-
         class Desc
         {
         public:

@@ -509,6 +509,7 @@ namespace Falcor
     ProgramKernels::SharedPtr Program::preprocessAndCreateProgramKernels(
         ProgramVersion const* pVersion,
         ProgramVars    const* pVars,
+        const std::vector<std::string>  &newEntryPointNames,
         std::string         & log) const
     {
         // TODO: bind type parameters as needed based on `pVars`
@@ -551,7 +552,6 @@ namespace Falcor
             // Skip unused entry points
             if(entryPoint.libraryIndex < 0)
                 continue;
-
             int entryPointIndex = entryPointCounter++;
 
             size_t size = 0;
@@ -560,17 +560,30 @@ namespace Falcor
             shaderBlob[i].data.assign(data, data + size);
             shaderBlob[i].type = Shader::Blob::Type::Bytecode;
 #else
-            const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
-            shaderBlob[i].data.assign(data, data + strlen(data));
+            auto find_and_replace = [](std::string& source, std::string const& find, std::string const& replace)
+            {
+                for (std::string::size_type i = 0; (i = source.find(find, i)) != std::string::npos;)
+                {
+                    source.replace(i, find.length(), replace);
+                    i += replace.length();
+                }
+            };
+            auto srcStr = std::string(spGetEntryPointSource(slangRequest, entryPointIndex));
+            if (newEntryPointNames.size() > entryPointIndex)
+            {
+                find_and_replace(srcStr, entryPoint.name, newEntryPointNames[i]);
+            }
+            shaderBlob[i].data.assign(srcStr.c_str(), srcStr.c_str() + srcStr.length());
             shaderBlob[i].type = Shader::Blob::Type::String;
 #endif
         }
         // Extract the reflection data
         auto kernelReflector = ProgramReflection::create(slang::ShaderReflection::get(slangRequest), ProgramReflection::ResourceScope::All, log);
-        return createProgramKernels(log, shaderBlob, kernelReflector);
+        return createProgramKernels(log, shaderBlob, kernelReflector, newEntryPointNames);
     }
 
-    ProgramKernels::SharedPtr Program::createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr reflector) const
+    ProgramKernels::SharedPtr Program::createProgramKernels(std::string& log, const Shader::Blob shaderBlob[kShaderCount], ProgramReflection::SharedPtr reflector,
+        const std::vector<std::string> & entryPointNames) const
     {
         // create the shaders
         Shader::SharedPtr shaders[kShaderCount] = {};
@@ -578,7 +591,9 @@ namespace Falcor
         {
             if (shaderBlob[i].data.size())
             {
-                shaders[i] = createShaderFromBlob(shaderBlob[i], ShaderType(i), mDesc.mEntryPoints[i].name, mDesc.getCompilerFlags(), log);
+                shaders[i] = createShaderFromBlob(shaderBlob[i], ShaderType(i), 
+                    (entryPointNames.size() > i ? entryPointNames[i] : mDesc.mEntryPoints[i].name), 
+                    mDesc.getCompilerFlags(), log);
                 if (!shaders[i]) return nullptr;
             }
         }

@@ -249,10 +249,8 @@ namespace Falcor
         return mDefaultBlock.pBlock->setUav(loc, arrayIndex, pUav);
     }
 
-    template<bool forGraphics>
-    bool ProgramVars::applyProgramVarsCommon(CopyContext* pContext, bool rootSigChanged, RootSignature* pRootSig)
-    {
-        uint32_t rootCounter = 0;
+    /*
+    uint32_t rootCounter = 0;
         // Bind the sets
         for(uint32_t b = 0 ; b < getParameterBlockCount() ; b++)
         {
@@ -283,6 +281,61 @@ namespace Falcor
             }
         }
         return true;
+    */
+
+    template<bool forGraphics>
+    bool ProgramVars::bindRootSetsCommon(CopyContext* pContext, bool bindRootSig, RootSignature * rootSig)
+    {
+        uint32_t rootCounter = 0;
+
+        // Bind the sets
+        for (uint32_t b = 0; b < getParameterBlockCount(); b++)
+        {
+            ParameterBlock* pBlock = mParameterBlocks[b].pBlock.get(); // #PARAMBLOCK getParameterBlock() because we don't want the user to change blocks directly, but we need it non-const here
+            if (pBlock->prepareForDraw(pContext) == false) return false; // #PARAMBLOCK Get rid of it. getRootSets() should have a dirty flag
+
+            auto& rootSets = pBlock->getRootSets();
+            bool forceBind = bindRootSig || mParameterBlocks[b].bind;
+            mParameterBlocks[b].bind = false;
+
+            for (uint32_t s = 0; s < rootSets.size(); s++)
+            {
+                uint32_t rootIndex = rootCounter;
+                rootCounter++;
+
+                if (rootSets[s].dirty || forceBind)
+                {
+                    rootSets[s].dirty = false;
+                    if (forGraphics)
+                    {
+                        rootSets[s].pSet->bindForGraphics(pContext, rootSig, rootIndex);
+                    }
+                    else
+                    {
+                        rootSets[s].pSet->bindForCompute(pContext, rootSig, rootIndex);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    template<bool forGraphics>
+    bool ProgramVars::applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig, RootSignature * rootSig)
+    {
+        if (bindRootSig)
+        {
+            if (forGraphics)
+            {
+                rootSig->bindForGraphics(pContext);
+            }
+            else
+            {
+                rootSig->bindForCompute(pContext);
+            }
+        }
+
+        return bindRootSetsCommon<forGraphics>(pContext, bindRootSig, rootSig);
     }
 
     bool ComputeVars::apply(ComputeContext* pContext, bool rootSignatureChanged, RootSignature* pRootSig)
