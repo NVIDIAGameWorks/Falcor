@@ -54,7 +54,7 @@ namespace Falcor
             mExportName = string_2_wstring(ppShaders[0]->getEntryPoint());
             break;
         case Falcor::RtProgramKernels::Type::Hit:
-            mExportName = L"RtProgramVersion" + std::to_wstring(sProgId++);
+            mExportName = L"RtHitProgram" + std::to_wstring(sProgId++);
             break;
         case Falcor::RtProgramKernels::Type::Miss:
             mExportName = string_2_wstring(ppShaders[0]->getEntryPoint());

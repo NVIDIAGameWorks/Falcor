@@ -426,19 +426,19 @@ namespace Falcor
             }
             calculateTime();
             
-            /*if (mEnableProfiling)
-                mGpuTimer->begin();*/
+            if (mEnableProfiling)
+                mGpuTimer->begin();
             
             auto cpuStartTime = CpuTimer::getCurrentTimePoint();
             mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
             auto cpuEndTime = CpuTimer::getCurrentTimePoint();
             mCpuElapsedTime = CpuTimer::calcDuration(cpuStartTime, cpuEndTime);
             
-            /*if (mEnableProfiling)
+            if (mEnableProfiling)
             {
                 mGpuTimer->end();
                 mGpuElapsedTime = (float)mGpuTimer->getElapsedTime();
-            }*/
+            }
         }
 
         if (gpDevice)
