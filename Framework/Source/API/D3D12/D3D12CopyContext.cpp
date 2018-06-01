@@ -72,25 +72,44 @@ namespace Falcor
         }
     }
 
-    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData)
+    void CopyContext::updateTextureSubresources(const Texture* pTexture, uint32_t firstSubresource, uint32_t subresourceCount, const void* pData, const uvec3& offset, const uvec3& size)
     {
+        bool copyRegion = (offset != uvec3(0)) || (size != uvec3(-1));
+        assert(subresourceCount == 1 || (copyRegion == false));
+
         mCommandsPending = true;
 
         uint32_t arraySize = (pTexture->getType() == Texture::Type::TextureCube) ? pTexture->getArraySize() * 6 : pTexture->getArraySize();
         assert(firstSubresource + subresourceCount <= arraySize * pTexture->getMipCount());
-
-        ID3D12Device* pDevice = gpDevice->getApiHandle();
 
         // Get the footprint
         D3D12_RESOURCE_DESC texDesc = pTexture->getApiHandle()->GetDesc();
         std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprint(subresourceCount);
         std::vector<uint32_t> rowCount(subresourceCount);
         std::vector<uint64_t> rowSize(subresourceCount);
-        uint64_t size;
-        pDevice->GetCopyableFootprints(&texDesc, firstSubresource, subresourceCount, 0, footprint.data(), rowCount.data(), rowSize.data(), &size);
+        uint64_t bufferSize;
+
+        if (copyRegion)
+        {
+            footprint[0].Offset = 0;
+            footprint[0].Footprint.Format = getDxgiFormat(pTexture->getFormat());
+            uint32_t mipLevel = pTexture->getSubresourceMipLevel(firstSubresource);
+            footprint[0].Footprint.Width = (size.x == -1) ? pTexture->getWidth(mipLevel) - offset.x : size.x;
+            footprint[0].Footprint.Height = (size.y == -1) ? pTexture->getHeight(mipLevel) - offset.y : size.y;
+            footprint[0].Footprint.Depth = (size.z == -1) ? pTexture->getDepth(mipLevel) - offset.z : size.z;
+            footprint[0].Footprint.RowPitch = footprint[0].Footprint.Width * getFormatBytesPerBlock(pTexture->getFormat());
+            rowCount[0] = footprint[0].Footprint.Height;
+            rowSize[0] = footprint[0].Footprint.RowPitch;
+            bufferSize = rowSize[0] * rowCount[0] * footprint[0].Footprint.Depth;
+        }
+        else
+        {
+            ID3D12Device* pDevice = gpDevice->getApiHandle();
+            pDevice->GetCopyableFootprints(&texDesc, firstSubresource, subresourceCount, 0, footprint.data(), rowCount.data(), rowSize.data(), &bufferSize);
+        }
 
         // Allocate a buffer on the upload heap
-        Buffer::SharedPtr pBuffer = Buffer::create(size, Buffer::BindFlags::None, Buffer::CpuAccess::Write, nullptr);
+        Buffer::SharedPtr pBuffer = Buffer::create(bufferSize, Buffer::BindFlags::None, Buffer::CpuAccess::Write, nullptr);
         // Map the buffer
         uint8_t* pDst = (uint8_t*)pBuffer->map(Buffer::MapType::WriteDiscard);
         ID3D12ResourcePtr pResource = pBuffer->getApiHandle();
@@ -117,7 +136,8 @@ namespace Falcor
             uint32_t subresource = s + firstSubresource;
             D3D12_TEXTURE_COPY_LOCATION dstLoc = { pTexture->getApiHandle(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, subresource };
             D3D12_TEXTURE_COPY_LOCATION srcLoc = { pResource, D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, footprint[s] };
-            mpLowLevelData->getCommandList()->CopyTextureRegion(&dstLoc, 0, 0, 0, &srcLoc, nullptr);
+
+            mpLowLevelData->getCommandList()->CopyTextureRegion(&dstLoc, offset.x, offset.y, offset.z, &srcLoc, nullptr);
         }
 
         pBuffer->unmap();

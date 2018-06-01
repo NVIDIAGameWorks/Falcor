@@ -140,26 +140,9 @@ namespace Falcor
         updateTextureSubresources(pTexture, 0, subresourceCount, pData);
     }
 
-    void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresorce, const void* pData, const uvec3& offset, const uvec3& size)
+    void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uvec3& offset, const uvec3& size)
     {
-        // Create a temporary texture
-        uvec3 s = size;
-        uint32_t mipLevel = pDst->getSubresourceMipLevel(subresorce);
-        s.x = (s.x == -1) ? pDst->getWidth(mipLevel) - offset.x : s.x;
-        s.y = (s.y == -1) ? pDst->getHeight(mipLevel) - offset.y : s.y;
-        s.z = (s.z == -1) ? pDst->getDepth(mipLevel) - offset.z : s.z;
-
-        Texture::SharedPtr pStaging;
-        if(s.z > 1)
-        {
-            pStaging = Texture::create3D(s.x, s.y, s.z, pDst->getFormat(), 1, pData);
-        }
-        else
-        {
-            pStaging = Texture::create2D(s.x, s.y, pDst->getFormat(), 1, 1, pData);
-        }
-
-        copySubresourceRegion(pDst, subresorce, pStaging.get(), 0, offset, vec3(0), size);
         mCommandsPending = true;
+        updateTextureSubresources(pDst, subresource, 1, pData, offset, size);
     }
 }
