@@ -150,13 +150,13 @@ namespace Falcor
             for (uint32_t i = 0; i < mArraySize * numFaces; i++)
             {
                 uint32_t subresource = getSubresourceIndex(i, 0);
-                pRenderContext->updateTextureSubresource(this, subresource, pSrc);
+                pRenderContext->updateTextureSubresourceData(this, subresource, pSrc);
                 pSrc += arraySliceSize;
             }
         }
         else
         {
-            pRenderContext->updateTexture(this, pData);
+            pRenderContext->updateTextureData(this, pData);
         }
 
         if (autoGenMips)

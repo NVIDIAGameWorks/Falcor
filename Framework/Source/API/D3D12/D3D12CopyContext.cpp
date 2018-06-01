@@ -96,7 +96,7 @@ namespace Falcor
         ID3D12ResourcePtr pResource = pBuffer->getApiHandle();
 
         // Get the offset from the beginning of the resource
-        uint64_t offset = pBuffer->getGpuAddressOffset();
+        uint64_t vaOffset = pBuffer->getGpuAddressOffset();
         resourceBarrier(pTexture, Resource::State::CopyDest);
 
         const uint8_t* pSrc = (uint8_t*)pData;
@@ -113,7 +113,7 @@ namespace Falcor
             pSrc = (uint8_t*)pSrc + footprint[s].Footprint.Depth * src.SlicePitch;
 
             // Dispatch a command
-            footprint[s].Offset += offset;
+            footprint[s].Offset += vaOffset;
             uint32_t subresource = s + firstSubresource;
             D3D12_TEXTURE_COPY_LOCATION dstLoc = { pTexture->getApiHandle(), D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX, subresource };
             D3D12_TEXTURE_COPY_LOCATION srcLoc = { pResource, D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT, footprint[s] };
@@ -121,12 +121,6 @@ namespace Falcor
         }
 
         pBuffer->unmap();
-    }
-
-    void CopyContext::updateTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex, const void* pData)
-    {
-        mCommandsPending = true;
-        updateTextureSubresources(pTexture, subresourceIndex, 1, pData);
     }
 
     CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext::SharedPtr pCtx, const Texture* pTexture, uint32_t subresourceIndex)
@@ -276,6 +270,35 @@ namespace Falcor
         resourceBarrier(pDst, Resource::State::CopyDest);
         resourceBarrier(pSrc, Resource::State::CopySource);
         mpLowLevelData->getCommandList()->CopyBufferRegion(pDst->getApiHandle(), dstOffset, pSrc->getApiHandle(), pSrc->getGpuAddressOffset() + srcOffset, numBytes);    
+        mCommandsPending = true;
+    }
+
+    void CopyContext::copySubresourceRegion(const Texture* pDst, uint32_t dstSubresource, const Texture* pSrc, uint32_t srcSubresource, const uvec3& dstOffset, const uvec3& srcOffset, const uvec3& size)
+    {
+        resourceBarrier(pDst, Resource::State::CopyDest);
+        resourceBarrier(pSrc, Resource::State::CopySource);
+
+        D3D12_TEXTURE_COPY_LOCATION dstLoc = {};
+        dstLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dstLoc.SubresourceIndex = dstSubresource;
+        dstLoc.pResource = pDst->getApiHandle();
+
+        D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
+        srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        srcLoc.SubresourceIndex = srcSubresource;
+        srcLoc.pResource = pSrc->getApiHandle();
+
+        D3D12_BOX box;
+        box.left = srcOffset.x;
+        box.top = srcOffset.y;
+        box.front = srcOffset.z;
+        uint32_t mipLevel = pSrc->getSubresourceMipLevel(dstSubresource);
+        box.right  = (size.x == -1) ? pSrc->getWidth(mipLevel)  - box.left  : size.x;
+        box.bottom = (size.y == -1) ? pSrc->getHeight(mipLevel) - box.top   : size.y;
+        box.back   = (size.z == -1) ? pSrc->getDepth(mipLevel)  - box.front : size.z;
+
+        mpLowLevelData->getCommandList()->CopyTextureRegion(&dstLoc, dstOffset.x, dstOffset.y, dstOffset.z, &srcLoc, &box);
+
         mCommandsPending = true;
     }
 }
