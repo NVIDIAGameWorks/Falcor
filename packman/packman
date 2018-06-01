@@ -1,15 +1,27 @@
 #!/bin/bash
 
-PM_PACKMAN_VERSION=5.2.4
+PM_PACKMAN_VERSION=5.3.1
 
 # Specify where packman command exists
 export PM_INSTALL_PATH=$(dirname ${BASH_SOURCE})
 
+add_packages_root_to_file()
+{
+	FILE_PATH=$1
+	if [ -f "$FILE_PATH" ]; then
+		if ! grep -Fq "PM_PACKAGES_ROOT" $FILE_PATH ; then
+			echo "Adjusting $FILE_PATH"
+			echo -e "export PM_PACKAGES_ROOT=\$HOME/packman-repo\n" >> $FILE_PATH
+		fi
+	fi
+}
+
 # The packages root may already be configured by the user
 if [ -z "$PM_PACKAGES_ROOT" ]; then
-    # Set variable permanently using .profile for this user
-    echo "export PM_PACKAGES_ROOT=\$HOME/packman-repo" >> ~/.profile
-    # Set variable temporarily in this process so that the following execution will work 
+	# Set variable permanently using .profile for this user (if exists)
+	add_packages_root_to_file ~/.profile
+	add_packages_root_to_file ~/.bashrc
+	# Set variable temporarily in this process so that the following execution will work 
 	export PM_PACKAGES_ROOT="${HOME}/packman-repo"
 fi
 
@@ -81,7 +93,7 @@ if [ ! -d "$PM_7za_PATH" ]; then
 fi
 
 # Generate temporary file name for environment variables:
-PM_VAR_PATH=`mktemp -u -t tmp.XXXXX.$$.pmvars`
+PM_VAR_PATH=`mktemp -u -t tmp.$$.pmvars.XXXXXX`
 
 $PM_PYTHON -u "$PM_MODULE" $* --var-path="$PM_VAR_PATH"
 exit_code=$?
