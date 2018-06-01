@@ -49,6 +49,7 @@ namespace Falcor
         const char* kSelectedInstanceStr = "Selected Instance";
         const char* kActiveAnimationStr = "Active Animation";
         const char* kModelNameStr = "Model Name";
+        const char* kShadingModelStr = "Shading Model";
         const char* kInstanceStr = "Instance";
         const char* kCamerasStr = "Cameras";
         const char* kActiveCameraStr = "Active Camera";
@@ -59,6 +60,12 @@ namespace Falcor
     const float SceneEditor::kCameraModelScale = 0.5f;
     const float SceneEditor::kLightModelScale = 0.3f;
     const float SceneEditor::kKeyframeModelScale = 0.2f;
+
+    const Gui::DropdownList SceneEditor::kShadingModelList =
+    {
+        { ShadingModelMetalRough, "Metal-Rough" },
+        { ShadingModelSpecGloss, "Spec-Gloss" }
+    };
 
     const Gui::RadioButtonGroup SceneEditor::kGizmoSelectionButtons
     {
@@ -116,6 +123,23 @@ namespace Falcor
         if (pGui->addTextBox(kModelNameStr, modelName, arraysize(modelName)))
         {
             mpScene->getModel(mSelectedModel)->setName(modelName);
+            mSceneDirty = true;
+        }
+    }
+
+    void SceneEditor::setShadingModel(Gui* pGui)
+    {
+        auto& pModel = mpScene->getModel(mSelectedModel);
+        assert(pModel->getMeshCount() > 0);
+        assert(pModel->getMesh(0)->getMaterial() != nullptr);
+
+        uint32_t shadingModel = pModel->getMesh(0)->getMaterial()->getShadingModel();
+        if (pGui->addDropdown(kShadingModelStr, kShadingModelList, shadingModel))
+        {
+            for (uint32_t i = 0; i < pModel->getMeshCount(); i++)
+            {
+                pModel->getMesh(i)->getMaterial()->setShadingModel(shadingModel);
+            }
             mSceneDirty = true;
         }
     }
@@ -240,16 +264,6 @@ namespace Falcor
         if (pGui->addFloatVar("Camera Speed", speed, 0, FLT_MAX, 0.1f))
         {
             mpScene->setCameraSpeed(speed);
-            mSceneDirty = true;
-        }
-    }
-
-    void SceneEditor::setAmbientIntensity(Gui* pGui)
-    {
-        vec3 ambientIntensity = mpScene->getAmbientIntensity();
-        if (pGui->addRgbColor("Ambient intensity", ambientIntensity))
-        {
-            mpScene->setAmbientIntensity(ambientIntensity);
             mSceneDirty = true;
         }
     }
@@ -433,7 +447,7 @@ namespace Falcor
         // Copy camera transform from master scene
         const auto& pSceneCamera = mpScene->getActiveCamera();
 
-        if(pSceneCamera)
+        if (pSceneCamera)
         {
             const auto& pEditorCamera = mpEditorScene->getActiveCamera();
 
@@ -462,8 +476,8 @@ namespace Falcor
     void SceneEditor::initializeEditorRendering()
     {
         auto backBufferFBO = gpDevice->getSwapChainFbo();
-        const float backBufferWidth = backBufferFBO->getWidth();
-        const float backBufferHeight = backBufferFBO->getHeight();
+        uint32_t backBufferWidth = backBufferFBO->getWidth();
+        uint32_t backBufferHeight = backBufferFBO->getHeight();
 
         //
         // Selection Wireframe Scene
@@ -483,8 +497,8 @@ namespace Falcor
         mpSelectionGraphicsState->setDepthStencilState(depthTestDS);
 
         // Shader
-        mpColorProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang");
-        mpColorProgramVars = GraphicsVars::create(mpColorProgram->getActiveVersion()->getReflector());
+        mpColorProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditor.slang", "editorVs", "editorPs");
+        mpColorProgramVars = GraphicsVars::create(mpColorProgram->getReflector());
         mpSelectionGraphicsState->setProgram(mpColorProgram);
 
         // Selection Scene and Renderer
@@ -503,7 +517,7 @@ namespace Falcor
 
         mpEditorScene = Scene::create();
         mpEditorScene->addCamera(Camera::create());
-        mpEditorScene->getActiveCamera()->setAspectRatio((float)backBufferWidth/(float)backBufferHeight);
+        mpEditorScene->getActiveCamera()->setAspectRatio((float)backBufferWidth / (float)backBufferHeight);
         mpEditorSceneRenderer = SceneEditorRenderer::create(mpEditorScene);
         mpEditorPicker = Picking::create(mpEditorScene, backBufferWidth, backBufferHeight);
 
@@ -514,10 +528,8 @@ namespace Falcor
         RasterizerState::Desc lineRSDesc;
         lineRSDesc.setFillMode(RasterizerState::FillMode::Solid).setCullMode(RasterizerState::CullMode::None);
 
-        GraphicsProgram::DefineList defines;
-        defines.add("DEBUG_DRAW");
-        mpDebugDrawProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditorVS.slang", "Framework/Shaders/SceneEditorPS.slang", defines);
-        mpDebugDrawProgramVars = GraphicsVars::create(mpDebugDrawProgram->getActiveVersion()->getReflector());
+        mpDebugDrawProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneEditor.slang", "debugDrawVs", "debugDrawPs");
+        mpDebugDrawProgramVars = GraphicsVars::create(mpDebugDrawProgram->getReflector());
 
         mpPathGraphicsState = GraphicsState::create();
         mpPathGraphicsState->setProgram(mpDebugDrawProgram);
@@ -675,7 +687,7 @@ namespace Falcor
             {
                 const auto& pLight = mpScene->getLight(mLightIDEditorToScene[i]);
                 auto& pModelInstance = mpEditorScene->getModelInstance(mEditorLightModelID, i);
-                pModelInstance->setTranslation(pLight->getData().worldPos, true);
+                pModelInstance->setTranslation(pLight->getData().posW, true);
             }
         }
 
@@ -710,11 +722,6 @@ namespace Falcor
         pInstance->setUpVector(pCamera->getUpVector());
     }
 
-    void SceneEditor::materialEditorFinishedCB()
-    {
-        mpMaterialEditor = nullptr;
-    }
-
     void SceneEditor::renderPath(RenderContext* pContext)
     {
         mpDebugDrawer->clear();
@@ -728,7 +735,7 @@ namespace Falcor
                 mpDebugDrawer->addPath(mpScene->getPath(i));
             }
         }
-        else if(mpPathEditor != nullptr)
+        else if (mpPathEditor != nullptr)
         {
             mpDebugDrawer->addPath(mpPathEditor->getPath());
         }
@@ -808,7 +815,7 @@ namespace Falcor
                 const uint32_t activeFrame = mpPathEditor->getActiveFrame();
                 auto& pInstance = mpEditorScene->getModelInstance(mEditorKeyframeModelID, activeFrame);
                 activeGizmo->applyDelta(pInstance);
-                
+
                 auto& pPath = mpScene->getPath(mSelectedPath);
                 pPath->setFramePosition(activeFrame, pInstance->getTranslation());
                 pPath->setFrameTarget(activeFrame, pInstance->getTarget());
@@ -882,7 +889,6 @@ namespace Falcor
                 // Scene Object Selection
                 if (mMouseHoldTimer.getElapsedTime() < 0.2f)
                 {
-                    // When selecting meshes for applying material override, don't check editor objects
                     if (mpEditorPicker->pick(pContext, mouseEvent.pos, mpEditorScene->getActiveCamera()))
                     {
                         select(mpEditorPicker->getPickedModelInstance());
@@ -963,6 +969,7 @@ namespace Falcor
                 pGui->addSeparator();
                 selectActiveModel(pGui);
                 setModelName(pGui);
+                setShadingModel(pGui);
 
                 if (pGui->beginGroup(kInstanceStr))
                 {
@@ -997,7 +1004,6 @@ namespace Falcor
         if (pGui->beginGroup("Global Settings"))
         {
             setCameraSpeed(pGui);
-            setAmbientIntensity(pGui);
             pGui->endGroup();
         }
     }
@@ -1015,30 +1021,12 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::renderMaterialElements(Gui* pGui)
-    {
-        if (pGui->beginGroup("Materials"))
-        {
-            selectMaterial(pGui);
-
-            addMaterial(pGui);
-            startMaterialEditor(pGui);
-            deleteMaterial(pGui);
-
-            pGui->addCheckBox("Hide Wireframe", mHideWireframe);
-
-            applyMaterialOverride(pGui);
-
-            pGui->endGroup();
-        }
-    }
-
     void SceneEditor::renderCameraElements(Gui* pGui)
     {
         if (pGui->beginGroup(kCamerasStr))
         {
             addCamera(pGui);
-            if(mpScene->getCameraCount())
+            if (mpScene->getCameraCount())
             {
                 setActiveCamera(pGui);
                 setCameraName(pGui);
@@ -1125,18 +1113,12 @@ namespace Falcor
         renderPathElements(pGui);
         renderModelElements(pGui);
         renderLightElements(pGui);
-        renderMaterialElements(pGui);
 
         pGui->popWindow();
 
         if (mpPathEditor != nullptr)
         {
             mpPathEditor->render(pGui);
-        }
-
-        if (mpMaterialEditor != nullptr)
-        {
-            mpMaterialEditor->renderGui(pGui);
         }
     }
 
@@ -1442,7 +1424,7 @@ namespace Falcor
             {
                 auto pCamera = Camera::create();
                 auto pActiveCamera = mpScene->getActiveCamera();
-                if(pActiveCamera)
+                if (pActiveCamera)
                 {
                     *pCamera = *pActiveCamera;
                 }
@@ -1675,94 +1657,6 @@ namespace Falcor
                 pNewPath->attachObject(pMovable);
                 mObjToPathMap[pMovable.get()] = pNewPath;
             }
-
         }
     }
-
-    void SceneEditor::addMaterial(Gui* pGui)
-    {
-        if (mpMaterialEditor == nullptr)
-        {
-            if (pGui->addButton("Add Material"))
-            {
-                std::string name("Material" + std::to_string(mpScene->getMaterialCount()));
-                mpScene->addMaterial(Material::create(name));
-                mSelectedMaterial = mpScene->getMaterialCount() - 1;
-            }
-        }
-    }
-
-    void SceneEditor::startMaterialEditor(Gui* pGui)
-    {
-        if (mpScene->getMaterialCount() > 0 && mpMaterialEditor == nullptr)
-        {
-            if (pGui->addButton("Edit Material", true))
-            {
-                mpMaterialEditor = MaterialEditor::create(mpScene->getMaterial(mSelectedMaterial), [this](){ materialEditorFinishedCB(); });
-            }
-        }
-    }
-
-    void SceneEditor::selectMaterial(Gui* pGui)
-    {
-        if (mpScene->getMaterialCount() > 0)
-        {
-            if (mpMaterialEditor == nullptr)
-            {
-                Gui::DropdownList materialList;
-                for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
-                {
-                    materialList.push_back({ (int32_t)i, mpScene->getMaterial(i)->getName() });
-                }
-
-                pGui->addDropdown("Selected Material", materialList, mSelectedMaterial);
-            }
-            else
-            {
-                std::string msg = mpScene->getMaterial(mSelectedMaterial)->getName();
-                pGui->addText(msg.c_str());
-            }
-        }
-    }
-
-    void SceneEditor::applyMaterialOverride(Gui* pGui)
-    {
-        if (mpScene->getMaterialCount() > 0 && mpSelectedMesh != nullptr)
-        {
-            pGui->addSeparator();
-
-            // Show selected mesh
-            pGui->addText(mSelectedMeshString.c_str());
-
-            auto& pMaterialHistory = mpScene->getMaterialHistory();
-
-            if (pGui->addButton("Apply to Mesh"))
-            {
-                // Save original material
-                pMaterialHistory->replace(mpSelectedMesh.get(), mpScene->getMaterial(mSelectedMaterial));
-            }
-
-            // Check if mesh has been overridden
-            if (pMaterialHistory->hasOverride(mpSelectedMesh.get()))
-            {
-                if (pGui->addButton("Revert Override", true))
-                {
-                    pMaterialHistory->revert(mpSelectedMesh.get());
-                }
-            }
-        }
-    }
-
-    void SceneEditor::deleteMaterial(Gui* pGui)
-    {
-        if (mpScene->getMaterialCount() > 0 && mpMaterialEditor == nullptr)
-        {
-            if (pGui->addButton("Delete Material", true))
-            {
-                mpScene->deleteMaterial(mSelectedMaterial);
-                mSelectedMaterial = 0;
-            }
-        }
-    }
-
 }

@@ -35,6 +35,7 @@
 #include "Utils/Platform/OS.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
 
+#define SCENE_EXPORTER
 #include "SceneExportImportCommon.h"
 
 
@@ -116,7 +117,6 @@ namespace Falcor
         if (exportOptions & ExportCameras)           writeCameras();
         if (exportOptions & ExportUserDefined)       writeUserDefinedSection();
         if (exportOptions & ExportPaths)             writePaths();
-        if (exportOptions & ExportMaterials)         writeMaterials();
 
         // Get the output string
         rapidjson::StringBuffer buffer;
@@ -150,37 +150,9 @@ namespace Falcor
         {
             addString(jval, Allocator, SceneKeys::kActiveCamera, mpScene->getActiveCamera()->getName());
         }
-
-        addVector(jval, Allocator, SceneKeys::kAmbientIntensity, mpScene->getAmbientIntensity());
     }
 
-    bool createMaterialOverrideValue(const Model* pModel, const MaterialHistory::SharedPtr& pMatHistory, const std::unordered_map<const Material*, uint32_t>& matIDLookup, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jOverrideArray)
-    {
-        bool overridesExist = false;
-
-        for (uint32_t i = 0; i < pModel->getMeshCount(); i++)
-        {
-            const Mesh* pMesh = pModel->getMesh(i).get();
-
-            if (pMatHistory->hasOverride(pMesh))
-            {
-                // Mesh's material should be found in scene
-                assert(matIDLookup.count(pMesh->getMaterial().get()) > 0);
-
-                rapidjson::Value matValue(rapidjson::kObjectType);
-                addLiteral(matValue, allocator, SceneKeys::kMeshID, i);
-                addLiteral(matValue, allocator, SceneKeys::kMaterialID, matIDLookup.at(pMesh->getMaterial().get()));
-
-                jOverrideArray.PushBack(matValue, allocator);
-
-                overridesExist = true;
-            }
-        }
-
-        return overridesExist;
-    }
-
-    void createModelValue(const Scene::SharedPtr& pScene, uint32_t modelID, bool exportMatHistory, const std::unordered_map<const Material*, uint32_t>& matIDLookup, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jmodel)
+    void createModelValue(const Scene::SharedPtr& pScene, uint32_t modelID, rapidjson::Document::AllocatorType& allocator, rapidjson::Value& jmodel)
     {
         jmodel.SetObject();
 
@@ -195,15 +167,21 @@ namespace Falcor
             addLiteral(jmodel, allocator, SceneKeys::kActiveAnimation, pModel->getActiveAnimation());
         }
 
-        // Export model's meshes' overrides if they exist
-        if (exportMatHistory && pScene->getMaterialHistory() != nullptr)
+        // Export model material properties
+        rapidjson::Value materialValue;
+        materialValue.SetObject();
+        switch(pModel->getMesh(0)->getMaterial()->getShadingModel())
         {
-            rapidjson::Value jsonOverridesArray(rapidjson::kArrayType);
-            if (createMaterialOverrideValue(pModel, pScene->getMaterialHistory(), matIDLookup, allocator, jsonOverridesArray))
-            {
-                addJsonValue(jmodel, allocator, SceneKeys::kMaterialOverrides, jsonOverridesArray);
-            }
+        case ShadingModelMetalRough:
+            addString(materialValue, allocator, SceneKeys::kShadingModel, SceneKeys::kShadingMetalRough);
+            break;
+        case ShadingModelSpecGloss:
+            addString(materialValue, allocator, SceneKeys::kShadingModel, SceneKeys::kShadingSpecGloss);
+            break;
+        default:
+            logWarning("SceneExporter: Unknown shading model found on model " + pModel->getName() + ", ignoring value");
         }
+        addJsonValue(jmodel, allocator, SceneKeys::kMaterial, materialValue);
 
         // Export model instances
         rapidjson::Value jsonInstanceArray;
@@ -235,21 +213,13 @@ namespace Falcor
             return;
         }
 
-        std::unordered_map<const Material*, uint32_t> matIDLookup;
-        for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
-        {
-            matIDLookup.emplace(mpScene->getMaterial(i).get(), i);
-        }
-
         rapidjson::Value jsonModelArray;
         jsonModelArray.SetArray();
 
         for (uint32_t i = 0; i < mpScene->getModelCount(); i++)
         {
             rapidjson::Value jsonModel;
-            bool exportMatHistory = (mExportOptions & SceneExporter::ExportMaterials) != 0;
-
-            createModelValue(mpScene, i, exportMatHistory, matIDLookup, mJDoc.GetAllocator(), jsonModel);
+            createModelValue(mpScene, i, mJDoc.GetAllocator(), jsonModel);
             jsonModelArray.PushBack(jsonModel, mJDoc.GetAllocator());
         }
         addJsonValue(mJDoc, mJDoc.GetAllocator(), SceneKeys::kModels, jsonModelArray);
@@ -483,161 +453,5 @@ namespace Falcor
         }
 
         addJsonValue(mJDoc, allocator, SceneKeys::kUserDefined, jsonUserValues);
-    }
-
-    const char* getMaterialLayerType(uint32_t type)
-    {
-        switch (type)
-        {
-        case MatLambert:
-            return SceneKeys::kMaterialLambert;
-        case MatConductor:
-            return SceneKeys::kMaterialConductor;
-        case MatDielectric:
-            return SceneKeys::kMaterialDielectric;
-        case MatEmissive:
-            return SceneKeys::kMaterialEmissive;
-        case MatUser:
-            return SceneKeys::kMaterialUser;
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
-
-    const char* getMaterialLayerNDF(uint32_t ndf)
-    {
-        switch (ndf)
-        {
-        case NDFBeckmann:
-            return SceneKeys::kMaterialBeckmann;
-        case NDFGGX:
-            return SceneKeys::kMaterialGGX;
-        case NDFUser:
-            return SceneKeys::kMaterialUser;
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
-
-    const char* getMaterialLayerBlending(uint32_t blend)
-    {
-        switch (blend)
-        {
-        case BlendFresnel:
-            return SceneKeys::kMaterialBlendFresnel;
-        case BlendConstant:
-            return SceneKeys::kMaterialBlendConstant;
-        case BlendAdd:
-            return SceneKeys::kMaterialBlendAdd;
-        default:
-            should_not_get_here();
-            return "";
-        }
-    }
-
-    void createMaterialTextureValue(const Texture::SharedPtr& pTexture, rapidjson::Value& jsonVal, rapidjson::Document::AllocatorType& allocator)
-    {
-        if (pTexture)
-        {
-            std::string filename = stripDataDirectories(pTexture->getSourceFilename());
-            addString(jsonVal, allocator, SceneKeys::kMaterialTexture, filename);
-        }
-    }
-
-    void createMaterialLayer(const Material::Layer& layer, rapidjson::Value& jsonVal, rapidjson::Document::AllocatorType& allocator)
-    {
-        jsonVal.SetObject();
-
-        if (layer.pTexture != nullptr)
-        {
-            addString(jsonVal, allocator, SceneKeys::kMaterialTexture, stripDataDirectories(layer.pTexture->getSourceFilename()));
-        }
-
-        addString(jsonVal, allocator, SceneKeys::kMaterialLayerType, getMaterialLayerType((uint32_t)layer.type));
-        addString(jsonVal, allocator, SceneKeys::kMaterialNDF, getMaterialLayerNDF((uint32_t)layer.ndf));
-        addString(jsonVal, allocator, SceneKeys::kMaterialBlend, getMaterialLayerBlending((uint32_t)layer.blend));
-
-        addVector(jsonVal, allocator, SceneKeys::kMaterialAlbedo, layer.albedo);
-        addVector(jsonVal, allocator, SceneKeys::kMaterialRoughness, layer.roughness);
-        addVector(jsonVal, allocator, SceneKeys::kMaterialExtraParam, layer.extraParam);
-    }
-
-    void createMaterialValue(const Material* pMaterial, rapidjson::Value& jsonMaterial, rapidjson::Document::AllocatorType& allocator)
-    {
-        // Name
-        addString(jsonMaterial, allocator, SceneKeys::kName, pMaterial->getName());
-
-        // ID
-        addLiteral(jsonMaterial, allocator, SceneKeys::kID, pMaterial->getId());
-
-        // Double-Sided
-        addBool(jsonMaterial, allocator, SceneKeys::kMaterialDoubleSided, pMaterial->isDoubleSided());
-
-        // Alpha layer
-        auto pAlphaMap = pMaterial->getAlphaMap();
-        if (pAlphaMap != nullptr)
-        {
-            addString(jsonMaterial, allocator, SceneKeys::kMaterialAlpha, stripDataDirectories(pAlphaMap->getSourceFilename()));
-        }
-
-        // Normal
-        auto pNormalMap = pMaterial->getNormalMap();
-        if (pNormalMap != nullptr)
-        {
-            addString(jsonMaterial, allocator, SceneKeys::kMaterialNormal, stripDataDirectories(pNormalMap->getSourceFilename()));
-        }
-
-        // Height
-        auto pHeightMap = pMaterial->getHeightMap();
-        if (pHeightMap != nullptr)
-        {
-            addString(jsonMaterial, allocator, SceneKeys::kMaterialHeight, stripDataDirectories(pHeightMap->getSourceFilename()));
-        }
-
-        // Ambient Occlusion
-        auto pAOMap = pMaterial->getAmbientOcclusionMap();
-        if (pAOMap != nullptr)
-        {
-            addString(jsonMaterial, allocator, SceneKeys::kMaterialAO, stripDataDirectories(pAOMap->getSourceFilename()));
-        }
-
-        // Loop over the layers
-        if (pMaterial->getNumLayers() > 0)
-        {
-            rapidjson::Value jsonLayerArray(rapidjson::kArrayType);
-            for (uint32_t i = 0; i < pMaterial->getNumLayers(); i++)
-            {
-                Material::Layer layer = pMaterial->getLayer(i);
-
-                rapidjson::Value jsonLayer;
-                createMaterialLayer(layer, jsonLayer, allocator);
-                jsonLayerArray.PushBack(jsonLayer, allocator);
-            }
-
-            addJsonValue(jsonMaterial, allocator, SceneKeys::kMaterialLayers, jsonLayerArray);
-        }
-    }
-
-    void SceneExporter::writeMaterials()
-    {
-        if (mpScene->getMaterialCount() == 0)
-        {
-            return;
-        }
-
-        auto& allocator = mJDoc.GetAllocator();
-        rapidjson::Value jsonMaterialArray(rapidjson::kArrayType);
-
-        for (uint32_t i = 0; i < mpScene->getMaterialCount(); i++)
-        {
-            const auto pMaterial = mpScene->getMaterial(i);
-            rapidjson::Value jsonMaterial(rapidjson::kObjectType);
-            createMaterialValue(pMaterial.get(), jsonMaterial, allocator);
-            jsonMaterialArray.PushBack(jsonMaterial, allocator);
-        }
-
-        addJsonValue(mJDoc, allocator, SceneKeys::kMaterials, jsonMaterialArray);
     }
 }

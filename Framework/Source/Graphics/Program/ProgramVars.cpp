@@ -259,20 +259,8 @@ namespace Falcor
     }
 
     template<bool forGraphics>
-    bool ProgramVars::applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig)
+    bool ProgramVars::bindRootSetsCommon(CopyContext* pContext, bool bindRootSig)
     {
-        if (bindRootSig)
-        {
-            if (forGraphics)
-            {
-                mpRootSignature->bindForGraphics(pContext);
-            }
-            else
-            {
-                mpRootSignature->bindForCompute(pContext);
-            }
-        }
-
         // Bind the sets
         for(uint32_t b = 0 ; b < getParameterBlockCount() ; b++)
         {
@@ -303,6 +291,25 @@ namespace Falcor
         }
         return true;
     }
+
+    template<bool forGraphics>
+    bool ProgramVars::applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig)
+    {
+        if (bindRootSig)
+        {
+            if (forGraphics)
+            {
+                mpRootSignature->bindForGraphics(pContext);
+            }
+            else
+            {
+                mpRootSignature->bindForCompute(pContext);
+            }
+        }
+
+        return bindRootSetsCommon<forGraphics>(pContext, bindRootSig);
+    }
+
 
     bool ComputeVars::apply(ComputeContext* pContext, bool bindRootSig)
     {

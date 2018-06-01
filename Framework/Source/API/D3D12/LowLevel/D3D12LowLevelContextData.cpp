@@ -44,6 +44,14 @@ namespace Falcor
         return pAllocator;
     }
 
+    template<typename ApiType>
+    ApiType createCommandList(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE type, CommandAllocatorHandle allocator)
+    {
+        ApiType pList;
+        HRESULT hr = pDevice->CreateCommandList(0, type, allocator, nullptr, IID_PPV_ARGS(&pList));
+        return (FAILED(hr)) ? nullptr : pList;
+    }
+
     LowLevelContextData::SharedPtr LowLevelContextData::create(CommandQueueType type, CommandQueueHandle queue)
     {
         SharedPtr pThis = SharedPtr(new LowLevelContextData);
@@ -69,9 +77,15 @@ namespace Falcor
         }
         pThis->mpAllocator = pThis->mpApiData->pAllocatorPool->newObject();
 
-        // Create a command list
+        // Create a command list. Try to create the latest version the device supports
         ID3D12Device* pDevice = gpDevice->getApiHandle().GetInterfacePtr();
-        if (FAILED(pDevice->CreateCommandList(0, cmdListType, pThis->mpAllocator, nullptr, IID_PPV_ARGS(&pThis->mpList))))
+#ifdef FALCOR_DXR
+        pThis->mpList = createCommandList<ID3D12GraphicsCommandList2*>(pDevice, cmdListType, pThis->mpAllocator);
+#endif
+        if (!pThis->mpList) pThis->mpList = createCommandList<ID3D12GraphicsCommandList1*>(pDevice, cmdListType, pThis->mpAllocator);
+        if (!pThis->mpList) pThis->mpList = createCommandList<ID3D12GraphicsCommandList*>(pDevice, cmdListType, pThis->mpAllocator);
+
+        if (pThis->mpList == nullptr)
         {
             logError("Failed to create command list for LowLevelContextData");
             return nullptr;
@@ -84,21 +98,14 @@ namespace Falcor
         safe_delete(mpApiData);
     }
 
-    void LowLevelContextData::reset()
-    {
-        mpFence->gpuSignal(mpQueue);
-        mpAllocator = mpApiData->pAllocatorPool->newObject();
-        d3d_call(mpList->Close());
-        d3d_call(mpAllocator->Reset());
-        d3d_call(mpList->Reset(mpAllocator, nullptr));
-    }
-
     void LowLevelContextData::flush()
     {
         d3d_call(mpList->Close());
         ID3D12CommandList* pList = mpList.GetInterfacePtr();
         mpQueue->ExecuteCommandLists(1, &pList);
         mpFence->gpuSignal(mpQueue);
-        mpList->Reset(mpAllocator, nullptr);
+        mpAllocator = mpApiData->pAllocatorPool->newObject();
+        d3d_call(mpAllocator->Reset());
+        d3d_call(mpList->Reset(mpAllocator, nullptr));
     }
 }

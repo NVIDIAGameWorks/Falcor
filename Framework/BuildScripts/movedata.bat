@@ -7,11 +7,12 @@ rem %4 -> Platform Name.
 rem %5 -> Platform Short Name.
 rem %6 -> Configuration.
 rem %7 -> Output Directory
+rem %8 -> FALCOR_BACKEND
 
 setlocal
 
 SET ExternalsSourceDirectory=%1\Externals\
-SET DestinationDirectory=%2\Bin\%5\%6\
+SET DestinationDirectory=%7
 
 echo "%ExternalsSourceDirectory%"
 echo "%DestinationDirectory%"
@@ -27,6 +28,18 @@ robocopy %ExternalsSourceDirectory%\OptiX\bin64 %DestinationDirectory%  *.dll /r
 robocopy %ExternalsSourceDirectory%\openvr\bin\win64 %DestinationDirectory%  openvr_api.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\Slang\bin\windows-x64\release %DestinationDirectory%  *.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\GLFW\lib %DestinationDirectory%  *.dll /r:0 >nul
-echo %1
 call %1\BuildScripts\moveprojectdata.bat %1\Source\ %DestinationDirectory%
 call %1\BuildScripts\moveprojectdata.bat %3 %DestinationDirectory% /r:0 >nul
+
+rem copy or clear the DXR DLLs
+if "%8%"=="FALCOR_DXR" (
+	robocopy %ExternalsSourceDirectory%\DXR\bin\x64 %DestinationDirectory%  *.dll /r:0 >nul
+	) ELSE (
+	del %DestinationDirectory%\d3d12.dll >nul
+	del %DestinationDirectory%\d3d12SDKLayers.dll >nul
+	del %DestinationDirectory%\dxcompiler.dll >nul
+	del %DestinationDirectory%\dxgidebug.dll >nul
+)
+
+rem robocopy sets the error level to something that is not zero even if the copy operation was successful. Set the error level to zero
+exit /b 0

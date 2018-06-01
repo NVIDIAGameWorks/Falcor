@@ -104,8 +104,12 @@ namespace Falcor
 
             if (mpCurrentChunk->allocCount == 0)
             {
-                mpCurrentChunk->reset();
-                return true;
+                // Chunk is empty, doesn't necessarily mean it has enough space, need to check
+                if (mpCurrentChunk->chunkCount * kDescPerChunk >= descCount)
+                {
+                    mpCurrentChunk->reset();
+                    return true;
+                }
             }
         }
 

@@ -41,6 +41,7 @@ namespace Falcor
 {
     void Gui::init()
     {
+        ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
         io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)KeyboardEvent::Key::Left;
@@ -64,18 +65,18 @@ namespace Falcor
         io.IniFilename = nullptr;
 
         ImGuiStyle& style = ImGui::GetStyle();
-        style.Colors[ImGuiCol_WindowBg].w = 0.85f;
-        style.Colors[ImGuiCol_FrameBg].x *= 0.5f;
-        style.Colors[ImGuiCol_FrameBg].y *= 0.5f;
-        style.Colors[ImGuiCol_FrameBg].z *= 0.5f;
+        style.Colors[ImGuiCol_WindowBg].w = 0.9f;
+        style.Colors[ImGuiCol_FrameBg].x *= 0.1f;
+        style.Colors[ImGuiCol_FrameBg].y *= 0.1f;
+        style.Colors[ImGuiCol_FrameBg].z *= 0.1f;
         style.ScrollbarSize *= 0.7f;
 
         // Create the pipeline state cache
         mpPipelineState = GraphicsState::create();
 
         // Create the program
-        mpProgram = GraphicsProgram::createFromFile("Framework/Shaders/Gui.vs.slang", "Framework/Shaders/Gui.ps.slang");
-        mpProgramVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+        mpProgram = GraphicsProgram::createFromFile("Framework/Shaders/Gui.slang", "vs", "ps");
+        mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 
         // Create and set the texture
@@ -112,6 +113,11 @@ namespace Falcor
         pBufLayout->addElement("COLOR", offsetof(ImDrawVert, col), ResourceFormat::RGBA8Unorm, 1, 2);
         mpLayout = VertexLayout::create();
         mpLayout->addBufferLayout(0, pBufLayout);
+    }
+
+    Gui::~Gui()
+    {
+        ImGui::DestroyContext();
     }
 
     Gui::UniquePtr Gui::create(uint32_t width, uint32_t height)
@@ -262,6 +268,14 @@ namespace Falcor
         return ImGui::Checkbox(label, &var);
     }
 
+    bool Gui::addCheckBox(const char label[], int& var, bool sameLine)
+    {
+        bool value = (var != 0);
+        bool modified = addCheckBox(label, value, sameLine);
+        var = (value ? 1 : 0);
+        return modified;
+    }
+
     void Gui::addText(const char text[], bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
@@ -308,10 +322,10 @@ namespace Falcor
         }
     }
 
-    bool Gui::addFloatVar(const char label[], float& var, float minVal, float maxVal, float step, bool sameLine)
+    bool Gui::addFloatVar(const char label[], float& var, float minVal, float maxVal, float step, bool sameLine, const char* displayFormat)
     {
         if (sameLine) ImGui::SameLine();
-        bool b = ImGui::DragFloat(label, &var, step);
+        bool b = ImGui::DragFloat(label, &var, step, minVal, maxVal, displayFormat);
         var = clamp(var, minVal, maxVal);
         return b;
     }
@@ -438,8 +452,8 @@ namespace Falcor
     {
         ImVec2 pos{ float(x), float(y) };
         ImVec2 size{ float(width), float(height) };
-        ImGui::SetNextWindowSize(size, ImGuiSetCond_FirstUseEver);
-        ImGui::SetNextWindowPos(pos, ImGuiSetCond_FirstUseEver);
+        ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowPos(pos, ImGuiCond_FirstUseEver);
         int flags = 0;
         if (!showTitleBar)
         {

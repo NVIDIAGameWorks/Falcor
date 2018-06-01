@@ -36,15 +36,27 @@ namespace Falcor
 #ifdef SCENE_IMPORTER
         static const char* kInclude = "include";
 
+        // Not supported in exporter yet
+        static const char* kLightProbes = "light_probes";
+        static const char* kLightProbeRadius = "radius";
+        static const char* kLightProbeDiffSamples = "diff_samples";
+        static const char* kLightProbeSpecSamples = "spec_samples";
+
         // Keys for values in older scene versions that are not exported anymore
         static const char* kCamFovY = "fovY";
         static const char* kActivePath = "active_path";
+        static const char* kAmbientIntensity = "ambient_intensity";
+#endif
+
+        // Values currently only used in the exporter
+#ifdef SCENE_EXPORTER
+        // Default values ignored by importer
+        static const char* kShadingMetalRough = "metal_rough";
 #endif
 
         static const char* kVersion = "version";
         static const char* kCameraSpeed = "camera_speed";
         static const char* kActiveCamera = "active_camera";
-        static const char* kAmbientIntensity = "ambient_intensity";
         static const char* kLightingScale = "lighting_scale";
 
         static const char* kName = "name";
@@ -84,40 +96,10 @@ namespace Falcor
         static const char* kLight = "light";
         static const char* kCamera = "camera";
 
-        static const char* kMaterialOverrides = "material_overrides";
-        static const char* kMeshID = "mesh_id";
-        static const char* kMaterialID = "material_id";
+        static const char* kMaterial = "material";
+        static const char* kShadingModel = "shading_model";
+        static const char* kShadingSpecGloss = "spec_gloss";
 
         static const char* kUserDefined = "user_defined";
-
-        static const char* kMaterials = "materials";
-        static const char* kID = "id";
-        static const char* kMaterialDoubleSided = "double_sided";
-        static const char* kMaterialAlpha = "alpha";
-        static const char* kMaterialNormal = "normal";
-        static const char* kMaterialHeight = "height";
-        static const char* kMaterialAO = "ao";
-        static const char* kMaterialTexture = "texture";
-        static const char* kMaterialLayers = "layers";
-
-        static const char* kMaterialLayerType = "type";
-        static const char* kMaterialLambert = "lambert";
-        static const char* kMaterialDielectric = "dielectric";
-        static const char* kMaterialConductor = "conductor";
-        static const char* kMaterialEmissive = "emissive";
-        static const char* kMaterialUser = "user";
-
-        static const char* kMaterialAlbedo = "albedo";
-        static const char* kMaterialRoughness = "roughness";
-        static const char* kMaterialExtraParam = "extra_param";
-
-        static const char* kMaterialNDF = "ndf";
-        static const char* kMaterialBeckmann = "beckmann";
-        static const char* kMaterialGGX = "ggx";
-
-        static const char* kMaterialBlend = "blend";
-        static const char* kMaterialBlendAdd = "add";
-        static const char* kMaterialBlendFresnel = "fresnel";
-        static const char* kMaterialBlendConstant = "const";
     };
 }

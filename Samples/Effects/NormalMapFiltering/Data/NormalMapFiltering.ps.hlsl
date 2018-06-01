@@ -25,8 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#import "ShaderCommon.slang"
-#import "Shading.slang"
+__import ShaderCommon;
+__import Shading;
 __import DefaultVS;
 
 cbuffer PerFrameCB : register(b0)
@@ -34,19 +34,18 @@ cbuffer PerFrameCB : register(b0)
     float3 gAmbient;
 };
 
-float4 main(VS_OUT vOut) : SV_TARGET
+float4 main(VertexOut vOut) : SV_TARGET
 {
-    ShadingAttribs shAttr;
-    prepareShadingAttribs(gMaterial, vOut.posW, gCam.position, vOut.normalW, vOut.bitangentW, vOut.texC, shAttr);
+    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
 
-    ShadingOutput result;
+    float3 result = 0;
 
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
     {
-        evalMaterial(shAttr, gLights[l], result, l == 0);
+        result += evalMaterial(sd, gLights[l], 1).color.rgb;
     }
 
-    float4 finalColor = float4(result.finalValue + gAmbient * result.diffuseAlbedo, 1.f);
-    return finalColor;
+    result += gAmbient * sd.diffuse;
+    return float4(result, 1);
 }

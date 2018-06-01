@@ -68,7 +68,7 @@ namespace Falcor
 
     AnimationController::UniquePtr AnimationController::create(const AnimationController& other)
     {
-        return UniquePtr(new AnimationController(other.mBones));
+        return UniquePtr(new AnimationController(other));
     }
 
     AnimationController::AnimationController(const std::vector<Bone>& Bones)
@@ -77,6 +77,18 @@ namespace Falcor
         mBoneTransforms.resize(mBones.size());
         mBoneInvTransposeTransforms.resize(mBones.size());
         setActiveAnimation(kBindPoseAnimationId);
+    }
+
+    AnimationController::AnimationController(const AnimationController& other)
+    {
+        mBones = other.mBones;
+        mBoneTransforms = other.mBoneTransforms;
+        mBoneInvTransposeTransforms = other.mBoneInvTransposeTransforms;
+        for (const auto& it : other.mAnimations)
+        {
+            mAnimations.push_back(Animation::create(*it));
+        }
+        mActiveAnimation = other.mActiveAnimation;
     }
 
     void AnimationController::addAnimation(Animation::UniquePtr pAnimation)

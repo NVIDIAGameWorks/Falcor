@@ -36,7 +36,6 @@
 #include "VR/OpenVR/VRSystem.h"
 #include "API/Device.h"
 #include "glm/matrix.hpp"
-#include "Graphics/Material/MaterialSystem.h"
 
 namespace Falcor
 {
@@ -51,12 +50,15 @@ namespace Falcor
     size_t SceneRenderer::sDrawIDOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sLightCountOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sLightArrayOffset = ConstantBuffer::kInvalidOffset;
-    size_t SceneRenderer::sAmbientLightOffset = ConstantBuffer::kInvalidOffset;
 
     const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
+    const char* SceneRenderer::kProbeVarName = "gLightProbe";
+    const char* SceneRenderer::kProbeSharedVarName = "gProbeShared";
+    const char* SceneRenderer::kAreaLightCbName = "InternalAreaLightCB";
+
 
     SceneRenderer::SharedPtr SceneRenderer::create(const Scene::SharedPtr& pScene)
     {
@@ -96,18 +98,16 @@ namespace Falcor
         if (sCameraDataOffset == ConstantBuffer::kInvalidOffset)
         {
             const ReflectionVar* pVar = pBlock->getResource(kPerFrameCbName).get();
-            assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
 
             if (pVar != nullptr)
             {
+                assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
                 const ReflectionType* pType = pVar->getType().get();
-                sCameraDataOffset = pType->findMember("gCam.viewMat")->getOffset();
+                sCameraDataOffset = pType->findMember("gCamera.viewMat")->getOffset();
                 const auto& pCountOffset = pType->findMember("gLightsCount");
                 sLightCountOffset = pCountOffset ? pCountOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                const auto& pLightOffset = pType->findMember("gLights[0].worldPos");
+                const auto& pLightOffset = pType->findMember("gLights");
                 sLightArrayOffset = pLightOffset ? pLightOffset->getOffset() : ConstantBuffer::kInvalidOffset;
-                const auto& pAmbientOffset = pType->findMember("gAmbientLighting");
-                sAmbientLightOffset = pAmbientOffset ? pAmbientOffset->getOffset() : ConstantBuffer::kInvalidOffset;
             }
         }
     }
@@ -129,16 +129,38 @@ namespace Falcor
                 assert(mpScene->getLightCount() <= MAX_LIGHT_SOURCES);  // Max array size in the shader
                 for (uint_t i = 0; i < mpScene->getLightCount(); i++)
                 {
-                    mpScene->getLight(i)->setIntoConstantBuffer(pCB, i * Light::getShaderStructSize() + sLightArrayOffset);
+                    mpScene->getLight(i)->setIntoProgramVars(currentData.pVars, pCB, sLightArrayOffset + (i * Light::getShaderStructSize()));
                 }
             }
             if (sLightCountOffset != ConstantBuffer::kInvalidOffset)
             {
                 pCB->setVariable(sLightCountOffset, mpScene->getLightCount());
             }
-            if (sAmbientLightOffset != ConstantBuffer::kInvalidOffset)
+            if (mpScene->getLightProbeCount() > 0)
             {
-                pCB->setVariable(sAmbientLightOffset, mpScene->getAmbientIntensity());
+                // #TODO Support multiple light probes
+                LightProbe::setCommonIntoProgramVars(currentData.pVars, kProbeSharedVarName);
+                mpScene->getLightProbe(0)->setIntoProgramVars(currentData.pVars, pCB, kProbeVarName);
+            }
+        }
+
+        if (mpScene->getAreaLightCount() > 0)
+        {
+            const ParameterBlockReflection* pBlock = currentData.pVars->getReflection()->getDefaultParameterBlock().get();
+
+            // If area lights have been declared
+            const ReflectionVar* pVar = pBlock->getResource(kAreaLightCbName).get();
+            if (pVar != nullptr)
+            {
+                const ReflectionVar* pAreaLightVar = pVar->getType()->findMember("gAreaLights").get();
+                assert(pAreaLightVar != nullptr);
+
+                uint32_t areaLightArraySize = pAreaLightVar->getType()->asArrayType()->getArraySize();
+                for (uint32_t i = 0; i < min(areaLightArraySize, mpScene->getAreaLightCount()); i++)
+                {
+                    std::string varName = "gAreaLights[" + std::to_string(i) + "]";
+                    mpScene->getAreaLight(i)->setIntoProgramVars(currentData.pVars, currentData.pVars->getConstantBuffer(kAreaLightCbName).get(), varName.c_str());
+                }
             }
         }
     }
@@ -161,7 +183,7 @@ namespace Falcor
 
                 assert(pModel->getBoneCount() <= MAX_BONES);
                 pCB->setVariableArray(sBonesOffset, pModel->getBoneMatrices(), pModel->getBoneCount());
-                pCB->setVariableArray(sWorldInvTransposeMatOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
+                pCB->setVariableArray(sBonesInvTransposeOffset, pModel->getBoneInvTransposeMatrices(), pModel->getBoneCount());
             }
         }
         return true;
@@ -183,8 +205,6 @@ namespace Falcor
         if (pCB)
         {
             const Mesh* pMesh = pMeshInstance->getObject().get();
-
-            assert(drawInstanceID == 0); // We don't support instanced skinned models
 
             glm::mat4 worldMat = pModelInstance->getTransformMatrix();
             glm::mat4 prevWorldMat = pModelInstance->getPrevTransformMatrix();
@@ -235,18 +255,24 @@ namespace Falcor
 
             if(mCompileMaterialWithProgram)
             {
-                MaterialSystem::patchProgram(currentData.pState->getProgram().get(), mpLastMaterial);
+                currentData.pState->getProgram()->addDefine("_MS_STATIC_MATERIAL_FLAGS", std::to_string(mpLastMaterial->getFlags()));
             }
         }
 
         executeDraw(currentData, pMesh->getIndexCount(), instanceCount);
         postFlushDraw(currentData);
-        currentData.pState->getProgram()->removeDefine("_MS_STATIC_MATERIAL_DESC");
+        currentData.pState->getProgram()->removeDefine("_MS_STATIC_MATERIAL_FLAGS");
     }
 
     void SceneRenderer::postFlushDraw(const CurrentWorkingData& currentData)
     {
 
+    }
+
+    bool SceneRenderer::cullMeshInstance(const CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, const Model::MeshInstance* pMeshInstance)
+    {
+        BoundingBox box = pMeshInstance->getBoundingBox().transform(pModelInstance->getTransformMatrix());
+        return currentData.pCamera->isObjectCulled(box);
     }
 
     void SceneRenderer::renderMeshInstances(CurrentWorkingData& currentData, const Scene::ModelInstance* pModelInstance, uint32_t meshID)
@@ -257,13 +283,14 @@ namespace Falcor
         if (setPerMeshData(currentData, pMesh))
         {
             Program* pProgram = currentData.pState->getProgram().get();
-            if (pMesh->hasBones())
+            bool useVsSkinning = pMesh->hasBones() && !pModel->getSkinningCache();
+            if (useVsSkinning)
             {
                 pProgram->addDefine("_VERTEX_BLENDING");
             }
 
-            // Bind VAO and set topology
-            currentData.pState->setVao(pMesh->getVao());
+            // Bind VAO and set topology            
+            currentData.pState->setVao(useVsSkinning ? pMesh->getVao() : pModel->getMeshVao(pMesh));
 
             uint32_t activeInstances = 0;
 
@@ -271,11 +298,10 @@ namespace Falcor
             for (uint32_t instanceID = 0; instanceID < instanceCount; instanceID++)
             {
                 const Model::MeshInstance* pMeshInstance = pModel->getMeshInstance(meshID, instanceID).get();
-                BoundingBox box = pMeshInstance->getBoundingBox().transform(pModelInstance->getTransformMatrix());
 
-                if ((mCullEnabled == false) || (currentData.pCamera->isObjectCulled(box) == false))
+                if (pMeshInstance->isVisible())
                 {
-                    if (pMeshInstance->isVisible())
+                    if ((mCullEnabled == false) || (cullMeshInstance(currentData, pModelInstance, pMeshInstance) == false))
                     {
                         if (setPerMeshInstanceData(currentData, pModelInstance, pMeshInstance, activeInstances))
                         {
@@ -299,7 +325,7 @@ namespace Falcor
             }
 
             // Restore the program state
-            if (pMesh->hasBones())
+            if (useVsSkinning)
             {
                 pProgram->removeDefine("_VERTEX_BLENDING");
             }
@@ -352,7 +378,7 @@ namespace Falcor
         }
     }
 
-    void SceneRenderer::renderScene(RenderContext* pContext, Camera* pCamera)
+    void SceneRenderer::renderScene(RenderContext* pContext, const Camera* pCamera)
     {
         updateVariableOffsets(pContext->getGraphicsVars()->getReflection().get());
 

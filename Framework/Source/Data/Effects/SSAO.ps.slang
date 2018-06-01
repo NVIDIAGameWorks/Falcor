@@ -45,10 +45,14 @@ float4 getPosition(float2 uv)
     float4 pos;
     pos.x = uv.x * 2.0f - 1.0f;
     pos.y = (1.0f - uv.y) * 2.0f - 1.0f;
+#ifdef FALCOR_VK
+    // NDC space is inverted
+    pos.y = -pos.y;
+#endif
     pos.z = gDepthTex.SampleLevel(gTextureSampler, uv, 0).r;
     pos.w = 1.0f;
 
-    float4 posW = mul(pos, gCam.invViewProj);
+    float4 posW = mul(pos, gCamera.invViewProj);
     posW /= posW.w;
 
     return posW;
@@ -63,11 +67,8 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 
     // Calculate world position of pixel
     float3 posW = getPosition(texC).xyz;
-
     float3 normal = normalize(gNormalTex.Sample(gTextureSampler, texC).xyz * 2.0f - 1.0f);
-
-    float originDist = length(posW - gCam.position);
-
+    float originDist = length(posW - gCamera.posW);
     float3 randDir = gNoiseTex.Sample(gNoiseSampler, texC * gData.noiseScale).xyz * 2.0f - 1.0f;
 
     float3 tangent = normalize(randDir - normal * dot(randDir, normal));
@@ -82,15 +83,19 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 
         // Calculate sample world space pos
         float3 samplePosW = posW + (kernelPos * gData.radius);
-        float sampleDepth = length(samplePosW - gCam.position);
+        float sampleDepth = length(samplePosW - gCamera.posW);
 
         // Get screen space pos of sample
-        float4 samplePosProj = mul(float4(samplePosW, 1.0f), gCam.viewProjMat);
+        float4 samplePosProj = mul(float4(samplePosW, 1.0f), gCamera.viewProjMat);
         samplePosProj /= samplePosProj.w;
 
         // Sample depth buffer at the same place as sample
-        float2 sampleUV = clamp(float2(samplePosProj.x, -samplePosProj.y) * 0.5f + 0.5f, 0.0f, 1.0f);
-        float sceneDepth = length(getPosition(sampleUV).xyz - gCam.position);
+#ifdef FALCOR_VK
+        // NDC space is inverted
+        samplePosProj.y = -samplePosProj.y;
+#endif
+        float2 sampleUV = saturate(float2(samplePosProj.x, -samplePosProj.y) * 0.5f + 0.5f);
+        float sceneDepth = length(getPosition(sampleUV).xyz - gCamera.posW);
 
         float rangeCheck = step(abs(sampleDepth - sceneDepth), gData.radius);
         occlusion += step(sceneDepth, sampleDepth) * rangeCheck;

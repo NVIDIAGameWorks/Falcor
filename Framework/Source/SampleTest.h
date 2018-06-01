@@ -29,47 +29,18 @@
 #include "Externals/RapidJson/include/rapidjson/document.h"
 #include "Externals/RapidJson/include/rapidjson/stringbuffer.h"
 #include "Externals/RapidJson/include/rapidjson/prettywriter.h"
-//#include "Falcor.h"
-#include "Sample.h"
 
 namespace Falcor
 {
+    class SampleCallbacks;
+
     /** Test framework layer for Falcor.
         Runs tests based on config files passed in by command line arguments
     */
-    class SampleTest : public Sample
+    class SampleTest
     {
     public:
-
-        /** Initializes Test Task vectors based on command line arguments
-        */
-        void initializeTesting();
-
-        /** Callback for anything the testing sample wants to initialize
-        */
-        virtual void onInitializeTesting() {}
-
-        /** Testing actions that need to happen before the frame renders
-        */
-        void beginTestFrame();
-
-        /** Callback for anything the testing sample wants to do before the frame renders
-        */
-        virtual void onBeginTestFrame() {}
-
-        /** Testing actions that need to happen after the frame renders
-        */
-        void endTestFrame();
-
-        /** Callback for anything the testing sample wants to do after the frame renders
-        */
-        virtual void onEndTestFrame() {}
-
-        /** Callback for anything the testing sample wants to do right before shutdown
-        */
-        virtual void onTestShutdown() {}
-
-    protected:
+        using UniquePtr = std::unique_ptr<SampleTest>;
 
         /** Different ways test tasks can be triggered
         */
@@ -77,10 +48,8 @@ namespace Falcor
         {
             Frame,
             Time,
-            None 
+            None
         };
-
-        TriggerType mCurrentTriggerType = TriggerType::None;
 
         /** Types of operations used in testing
         */
@@ -90,8 +59,43 @@ namespace Falcor
             MemoryCheckTask,
             PerformanceCheckTask,
             ScreenCaptureTask,
-            ShutdownTask
+            ShutdownTask,
+            None
         };
+
+        static UniquePtr create() { return std::make_unique<SampleTest>(); }
+
+        /** Initialize the Tests based on command line arguments
+        */
+        void initializeTests(SampleCallbacks* pSample);
+
+        /** Callback for anything the testing sample wants to initialize
+        */
+        virtual void onInitializeTesting() {}
+
+        /** Testing actions that need to happen before the frame renders
+        */
+        void beginTestFrame(SampleCallbacks* pSample);
+
+        /** Testing actions that need to happen after the frame renders
+        */
+        void endTestFrame(SampleCallbacks* pSample);
+
+        /** Get the trigger type of the next test 
+        */
+        TriggerType getNextTriggerType() { return mCurrentTriggerType; }
+
+        /** Get the type of the next time test 
+        */
+        TaskType getNextTimeTaskType(); 
+
+        /** Get the type of the next frame test
+        */
+        TaskType getNextFrameTaskType();
+
+    protected:
+        TriggerType mCurrentTriggerType = TriggerType::None;
+
 
         /** The Memory Check for one point. 
         */
@@ -122,9 +126,9 @@ namespace Falcor
                 return mStartFrame < rhs.mStartFrame;
             }
 
-            virtual bool isActive(SampleTest* sampleTest) = 0;
-            virtual void onFrameBegin(SampleTest* sampleTest) = 0;
-            virtual void onFrameEnd(SampleTest* sampleTest)  = 0;
+            virtual bool isActive(SampleCallbacks* pSample) = 0;
+            virtual void onFrameBegin(SampleCallbacks* pSample) = 0;
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)  = 0;
 
             // Task Type.
             TaskType mTaskType;
@@ -158,9 +162,9 @@ namespace Falcor
         public:
             LoadTimeCheckTask() : FrameTask(TaskType::LoadTimeCheckTask, 2, 2) {};
 
-            virtual bool isActive(SampleTest* sampleTest);
-            virtual void onFrameBegin(SampleTest* sampleTest);
-            virtual void onFrameEnd(SampleTest* sampleTest);
+            virtual bool isActive(SampleCallbacks* pSample);
+            virtual void onFrameBegin(SampleCallbacks* pSample);
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
 
             float mLoadTimeCheckResult = 0;
         };
@@ -170,9 +174,9 @@ namespace Falcor
         public:
             ScreenCaptureFrameTask(uint32_t captureFrame) : FrameTask(TaskType::ScreenCaptureTask, captureFrame, captureFrame), mCaptureFrame(captureFrame) {};
 
-            virtual bool isActive(SampleTest* sampleTest);
-            virtual void onFrameBegin(SampleTest* sampleTest);
-            virtual void onFrameEnd(SampleTest* sampleTest);
+            virtual bool isActive(SampleCallbacks* pSample);
+            virtual void onFrameBegin(SampleCallbacks* pSample);
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest);
 
             uint32_t mCaptureFrame = 0;
             std::string mCaptureFilename = "";
@@ -184,9 +188,9 @@ namespace Falcor
         public:
             ShutdownFrameTask(uint32_t shutdownFrame) : FrameTask(TaskType::ShutdownTask, shutdownFrame, shutdownFrame), mShutdownFrame(shutdownFrame) {};
 
-            virtual bool isActive(SampleTest* sampleTest);
-            virtual void onFrameBegin(SampleTest* sampleTest) {}
-            virtual void onFrameEnd(SampleTest* sampleTest);
+            virtual bool isActive(SampleCallbacks* pSample);
+            virtual void onFrameBegin(SampleCallbacks* pSample) {}
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest);
 
             uint32_t mShutdownFrame = 0;
         };
@@ -202,9 +206,9 @@ namespace Falcor
                 return mStartTime < rhs.mStartTime;
             }
 
-            virtual bool isActive(SampleTest* sampleTest) = 0;
-            virtual void onFrameBegin(SampleTest* sampleTest) = 0;
-            virtual void onFrameEnd(SampleTest* sampleTest) = 0;
+            virtual bool isActive(SampleCallbacks* pSample) = 0;
+            virtual void onFrameBegin(SampleCallbacks* pSample) = 0;
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest) = 0;
 
             // Task Type.
             TaskType mTaskType;
@@ -239,8 +243,9 @@ namespace Falcor
         public:
             MemoryCheckTimeTask(float memoryCheckRangeBeginTime, float memoryCheckRangeBeginEnd) : TimeTask(TaskType::MemoryCheckTask, memoryCheckRangeBeginTime, memoryCheckRangeBeginEnd) {};
 
-            virtual void onFrameBegin(SampleTest* sampleTest) {}
-            virtual void onFrameEnd(SampleTest* sampleTest);
+            virtual bool isActive(SampleCallbacks* pSample) { return mIsActive; }
+            virtual void onFrameBegin(SampleCallbacks* pSample) {}
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest);
 
             MemoryCheck mStartCheck;
             MemoryCheck mEndCheck;
@@ -252,9 +257,9 @@ namespace Falcor
         public:
             PerformanceCheckTimeTask(float perfomanceCheckRangeBeginTime, float perfomanceCheckRangeBeginEnd) : TimeTask(TaskType::PerformanceCheckTask, perfomanceCheckRangeBeginTime, perfomanceCheckRangeBeginEnd) {};
 
-            virtual bool isActive(SampleTest* sampleTest);
-            virtual void onFrameBegin(SampleTest* sampleTest) {}
-            virtual void onFrameEnd(SampleTest* sampleTest);
+            virtual bool isActive(SampleCallbacks* pSample);
+            virtual void onFrameBegin(SampleCallbacks* pSample) {}
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest);
 
             float mPerformanceCheckResults = 0;
         };
@@ -264,9 +269,9 @@ namespace Falcor
         public:
             ScreenCaptureTimeTask(float captureTime) : TimeTask(TaskType::ScreenCaptureTask, captureTime, captureTime), mCaptureTime(captureTime) {}
 
-            virtual bool isActive(SampleTest* sampleTest);
-            virtual void onFrameBegin(SampleTest* sampleTest);
-            virtual void onFrameEnd(SampleTest* sampleTest);
+            virtual bool isActive(SampleCallbacks* pSample);
+            virtual void onFrameBegin(SampleCallbacks* pSample);
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest);
 
             // Capture Time.
             float mCaptureTime = 0;
@@ -279,9 +284,9 @@ namespace Falcor
         public:
             ShutdownTimeTask(float shutdownTime) : TimeTask(TaskType::ShutdownTask, shutdownTime, shutdownTime), mShutdownTime(shutdownTime) {};
 
-            virtual bool isActive(SampleTest* sampleTest);
-            virtual void onFrameBegin(SampleTest* sampleTest) {}
-            virtual void onFrameEnd(SampleTest* sampleTest);
+            virtual bool isActive(SampleCallbacks* pSample);
+            virtual void onFrameBegin(SampleCallbacks* pSample) {}
+            virtual void onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest);
 
             // Shutdown Time.
             float mShutdownTime = 0;
@@ -332,17 +337,14 @@ namespace Falcor
         */
         void writeScreenCaptureResults(rapidjson::Document & jsonTestResults);
 
-        /** Initialize the Tests.
-        */
-        void initializeTests();
         
         /** Initialize the Frame Tests.
         */
-        void initializeFrameTests();
+        void initializeFrameTests(const ArgList& args);
 
         /** Initialize the Tests.
         */
-        void initializeTimeTests();
+        void initializeTimeTests(const ArgList& args);
 
         bool mHasSetDirectory = false;
         std::string mTestOutputDirectory = "";

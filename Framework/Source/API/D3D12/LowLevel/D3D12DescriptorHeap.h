@@ -55,8 +55,9 @@ namespace Falcor
             using SharedPtr = std::shared_ptr<Allocation>;
             ~Allocation();
 
-            CpuHandle getCpuHandle(uint32_t index) const { assert(index < mDescCount); return mpHeap->getCpuHandle(index + mBaseIndex); }; // Index is relative to the allocation
-            GpuHandle getGpuHandle(uint32_t index) const { assert(index < mDescCount); return mpHeap->getGpuHandle(index + mBaseIndex); }; // Index is relative to the allocation
+            uint32_t getHeapEntryIndex(uint32_t index) const { assert(index < mDescCount); return index + mBaseIndex; }
+            CpuHandle getCpuHandle(uint32_t index) const { return mpHeap->getCpuHandle(getHeapEntryIndex(index)); } // Index is relative to the allocation
+            GpuHandle getGpuHandle(uint32_t index) const { return mpHeap->getGpuHandle(getHeapEntryIndex(index)); } // Index is relative to the allocation
             
         private:
             friend D3D12DescriptorHeap;
@@ -69,7 +70,7 @@ namespace Falcor
         };
         
         Allocation::SharedPtr allocateDescriptors(uint32_t count);
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
         D3D12_DESCRIPTOR_HEAP_TYPE getType() const { return mType; }
 
         uint32_t getReservedChunkCount() const { return mChunkCount; }

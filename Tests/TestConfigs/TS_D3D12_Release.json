@@ -1,0 +1,105 @@
+{
+    "Solution Target" : "Falcor.sln",
+    "Configuration Target" : "ReleaseD3D12",
+    "Tests Groups" :
+    {
+        "ComputeShaderTest": {
+            "Enabled" : true,
+            "Project Name" : "ComputeShader",
+            "Project Tests Args" :
+            [
+                "-test -ssframes 50 -shutdown 300 -loadimage StockImage.jpg",
+                "-test -ssframes 50 -shutdown 300 -pixelate -loadimage StockImage.jpg",
+                "-test -ssframes 50 -shutdown 300 -loadimage TestTex2.png",
+                "-test -ssframes 50 -shutdown 300 -pixelate -loadimage TestTex2.png"
+            ]
+        },
+
+        "MultiPassPostProcessTest": {
+            "Enabled" : true,
+            "Project Name" : "MultiPassPostProcess",
+            "Project Tests Args" :
+            [
+                "-test -ssframes 50 -shutdown 100 -loadimage StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -loadimage StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage StockImage.jpg",
+                "-test -ssframes 50 -shutdown 100 -loadimage TestTex2.png",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -loadimage TestTex2.png",
+                "-test -ssframes 50 -shutdown 100 -gaussianblur -grayscale -loadimage TestTex2.png"
+            ]
+        },
+
+        "AnimationTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "ForwardRenderer",
+            "Project Tests Args" :
+            [
+                "-test -fixedtimedelta 0.03333 -loadscene Cerberus/Standard/Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
+            ]
+        },
+
+        "ForwardRendererTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "ForwardRenderer",
+            "Test Config" : {
+                "Type" : "Image Compare",
+                "Tolerance" : 0.01
+            },
+            "Project Tests Args" :
+            [
+                "-test -fixedtimedelta 0.03333 -loadscene classroom/Classroom.fscene -sstimes 7 15 -shutdowntime 16",
+                "-test -fixedtimedelta 0.03333 -loadscene pink_room/pink_room.fscene -sstimes 10 -shutdowntime 11",
+                "-test -fixedtimedelta 0.03333 -loadscene grey_and_white_room/grey_and_white_room.fscene -sstimes 10 20 32 -shutdowntime 33",
+                "-test -fixedtimedelta 0.03333 -loadscene bathroom2/bathroom.fscene -sstimes 10 20 30 -shutdowntime 31",
+                "-test -fixedtimedelta 0.03333 -loadscene living_room/living_room.fscene -sstimes 10 20 30 -shutdowntime 31",
+                "-test -fixedtimedelta 0.03333 -loadscene SunTemple/SunTemple.fscene -sstimes 10 27 50 -shutdowntime 51",
+                "-test -fixedtimedelta 0.03333 -loadscene Bistro/Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 19",
+                "-test -fixedtimedelta 0.03333 -loadscene Bistro/Bistro_Exterior.fscene -sstimes 3 28 36 65 -shutdowntime 66"
+            ]
+        },
+
+        "ShadowsTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "Shadows",
+            "Project Tests Args" :
+            [
+                "-test -fixedtimedelta 0.03333 -loadscene Arcade/Arcade.fscene incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300",
+                "-test -fixedtimedelta 0.03333 -loadscene alphatest/alpha_test.fscene -incrementFilter 100 300 500 700 900 1100 -ssframes 150 350 550 750 950 1150 -shutdown 1300"
+            ]
+        },
+
+        "HDRToneMappingTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "HDRToneMapping",
+            "Project Tests Args" :
+            [
+                "-test -changeMode 150 300 450 600 750 900 1050 1200 1350 1500 1650 1800 1950 2100 2250 2400 2550 -ssframes 50 200 350 500 650 800 950 1100 1250 1400 1550 1700 1850 2000 2150 2300 2450 2600 -shutdown 2700"
+            ]
+        },
+
+        "SimpleDeferredTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "SimpleDeferred",
+            "Project Tests Args" :
+            [
+                "-test -incrementDebugMode 100 200 300 400 -ssframes 50 150 250 350 450 -shutdown 500"
+            ]
+        },
+
+        "SkyBoxTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "SkyBoxRenderer",
+            "Project Tests Args" :
+            [
+                "-test -changeView 100 200 300 400 500 -ssframes 50 150 250 350 450 550 -shutdown 600"
+            ]
+
+        }
+    }
+}

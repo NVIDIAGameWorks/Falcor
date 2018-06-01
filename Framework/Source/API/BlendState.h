@@ -196,7 +196,7 @@ namespace Falcor
 
         /** Get the API handle
         */
-        BlendStateHandle getApiHandle() const;
+        const BlendStateHandle& getApiHandle() const;
 
     private:
         BlendState(const Desc& Desc) : mDesc(Desc) {}

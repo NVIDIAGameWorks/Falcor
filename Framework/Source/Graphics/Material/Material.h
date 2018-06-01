@@ -40,99 +40,44 @@
 namespace Falcor
 {
     class Texture;
-    class ParameterBlock;
     class ProgramVars;
     class ConstantBuffer;
 
-    /** A surface material object.
-        The core part of material is the 'MaterialData' data structure which consists of multiple layers and additional modifiers.
-        Modifiers can modify shading attributes *before* performing the actual shading. So far only two modifiers are supported natively:
-            - Alpha Map                     - Alpha test. Decides whether to shade at all.
-                                                Invalidates the shading hit based on the opacity sampled from the alpha texture.
-                                                'MaterialValues#alphaThreshold' is used as alpha threshold for alpha testing (from 0 to 1).
-            - Normal Map                    - Normal mapping. Rotates the shading frame before performing shading.
-            - Height Map [Unimplemented]    - Moves the shading hit point along the shading normal by the amount fetched from height map texture.
-                                                Can be used in parallax and relief mapping in pixel shader, or as a displacement map during tessellation stage.
 
-        After modifiers are applied, the shading is performed with 'MatMaxLayers' number of layers (MatMaxLayers can be adjusted, by default is 3). Each layer can be one of the following types:
-            - MatLambert        - The simplest Lambertian diffuse BRDF.
-                                    'MaterialLayerValues#albedo' is used as albedo color if no texture is applied.
-                                    Other MaterialLayerValues parameters are not used for this Type of layer.
+    /** Channel Layout For Different Shading Models
+        (Options listed in HostDeviceSharedMacros.h)
 
-            - MatConductor      - The conductor BRDF. Has metallic glossy look, designed for metals and compute corresponding conductor Fresnel.
-                                    Normal Distribution Function (NDF) Type, which is responsible for rough look of the material and takes roughness as an input. Can take on the following values:
-                                    'NDFGGX'        - Modern distribution model, characterized by a more smooth highlight.
-                                    'NDFBeckmann'   - Beckmann normal distribution.
+        ShadingModelMetalRough
+            BaseColor
+                - RGB - Base Color
+                - A   - Transparency
+            Specular
+                - R - Occlusion
+                - G - Metalness
+                - B - Roughness
+                - A - Reserved
 
-                                    The layer's texture is used as specular reflection color if available. Otherwise 'MaterialLayerValues#albedo' is used.
-                                    'MaterialLayerValues#roughness' is used as material roughness, takes values from 0 (perfect smooth specular) to 1 (highest roughness, diffuse-like).
-                                        If a texture is set in the layer, the alpha channel of the texture will be used as roughness.
-                                    'MaterialLayerValues#extraParam' is used to store Fresnel parameters of the conductor.
-                                        X - real part of complex index of refraction for conductors (actual values are a common knowledge for many metals).
-                                        Y - imaginary part of complex index of refraction for conductors.
-                                    Other MaterialLayerValues parameters are not used for this type of layer.
+        ShadingModelSpecGloss
+            BaseColor
+                - RGB - Diffuse Color
+                - A   - Transparency
+            Specular
+                - RGB - Specular Color
+                - A   - Gloss
 
-            - MatDielectric     - The dielectric BSDF. Has plastic specular/glossy transparent look, designed for transparent dielectrics (like glass, water, coatings etc.) and compute corresponding dielectric Fresnel.
-                                    'MaterialLayerValues#albedo' is used as albedo color if no texture is applied.
-                                    'MaterialLayerValues#roughness' is used as material roughness, takes values from 0 (perfect smooth specular) to 1 (highest roughness, diffuse-like).
-                                        If a texture is set in the layer, the alpha channel of the texture will be used as roughness.
-                                    'MaterialLayerValues#extraParam' is used to store index of refraction for dielectric Fresnel parameter (common knowledge, e.g. ~1.3 for unsalted water).
-                                    Other MaterialLayerValues parameters are not used for this Type of layer.
-
-        Besides that, each layer defines how it will compose its shading results with the results of previous layers.
-        The shading happens in a last-to-first order, so each next layer with smaller index composites its shading results with the previous results according to the value of 'Blending' variable of this layer:
-            - BlendFresnel  - Composite the results of this layer according to the Fresnel value of the layer. Available only for layers with Fresnel (conductor/dielectric).
-                                Useful for describing a material with e.g. a dielectric coating, where the underlying material layer is blended according to the dielectric Fresnel-based transmission.
-            - BlendConstant - Constant-weight blending between this layer and the previous result. The constant value is taken from albedo.a component of the current layer.
-                                Useful for mixing multiple BSDFs, e.g. diffuse+conductor, or a multi-lobe conductor.
-            - BlendAdd      - Just add the shading results of this layer to the results of previous shading.
+        Common for all shading models
+            Emissive
+                - RGB - Emissive Color
+                - A   - Unused
+            Normal
+                - 3-Channel standard normal map, or 2-Channel BC5 format
     */
+
     class Material : public std::enable_shared_from_this<Material>
     {
     public:
         using SharedPtr = std::shared_ptr<Material>;
         using SharedConstPtr = std::shared_ptr<const Material>;
-
-        struct Layer
-        {
-            /** Layer type
-            */
-            enum class Type
-            {
-                Lambert = MatLambert,           ///< Lambert layer
-                Conductor = MatConductor,       ///< Conductor layer
-                Dielectric = MatDielectric,     ///< Dialectric layer
-                Emissive = MatEmissive,         ///< Emissive layer
-                User = MatUser                  ///< User-defined shading layer
-            };
-
-            /** Normal Distribution Functions
-            */
-            enum class NDF
-            {
-                Beckmann = NDFBeckmann, ///< Beckmann function
-                GGX = NDFGGX,           ///< GGX function
-                User = NDFUser          ///< User-defined function
-            };
-
-            /** Blend modes for blending between layers
-            */
-            enum class Blend
-            {
-                Fresnel = BlendFresnel,     ///< Blend based on fresnel value. Available for conductor and dialectric layers.
-                Additive = BlendAdd,        ///< Regular additive blending. Add results for this layer to the previous.
-                Constant = BlendConstant    ///< Constant blending using value from the layer texture's alpha channel, or the albedo's alpha value if no texture is bound.
-            };
-
-            Type type = Type::Lambert;
-            NDF ndf = NDF::GGX;
-            Blend blend = Blend::Fresnel;
-            glm::vec4 albedo;               ///< Base albedo color. Used when no texture is specified.
-            glm::vec4 roughness;            ///< Material layer roughness.
-            glm::vec4 extraParam;           ///< Extra parameters interpreted differently depending on layer type.
-            Texture::SharedPtr pTexture;    ///< Color texture map for a layer.
-            float pmf = 1;
-        };
 
         /** Create a new material.
             \param[in] name The material name
@@ -151,208 +96,187 @@ namespace Falcor
 
         /** Get the material ID.
         */
-        const int32_t getId() const { return mData.values.id; }
+        const int32_t getId() const { return mData.id; }
 
         /** Set the material ID
         */
-        void setID(int32_t id) { mData.values.id = id; }
+        void setID(int32_t id);
 
         /** Reset all global id counter of model, mesh and material
         */
         static void resetGlobalIdCounter();
 
-        /** Returns the number of active layers in the material
+        /** Set the base color texture
         */
-        uint32_t getNumLayers() const;
+        void setBaseColorTexture(Texture::SharedPtr& pBaseColor);
 
-        /** Returns a material layer descriptor. If the index is out-of-bound, will return a default layer
-            \param[in] layerIdx Material layer index
+        /** Get the base color texture
         */
-        Layer getLayer(uint32_t layerIdx) const;
+        Texture::SharedPtr getBaseColorTexture() const { return mData.resources.baseColor; }
 
-        /** Adds a layer to the material. Returns true if succeeded
-            \param[in] layer The material layer to add
+        /** Set the specular texture
         */
-        bool addLayer(const Layer& layer);
+        void setSpecularTexture(Texture::SharedPtr pSpecular);
 
-        /** Removes a layer of the material.
-            \param[in] layerIdx Material layer index
+        /** Get the specular texture
         */
-        void removeLayer(uint32_t layerIdx);
+        Texture::SharedPtr getSpecularTexture() const { return mData.resources.specular; }
 
-        /** Set a layer's type.
-            \param[in] layerId Material layer index
-            \param[in] type Layer type
+        /** Set the emissive texture
         */
-        void setLayerType(uint32_t layerId, Layer::Type type) { mData.desc.layers[layerId].type = (uint32_t)type; mDescDirty = true; }
+        void setEmissiveTexture(const Texture::SharedPtr& pEmissive);
 
-        /** Set a layer's NDF
-            \param[in] layerId Material layer index
-            \param[in] ndf NDF type
+        /** Get the emissive texture
         */
-        void setLayerNdf(uint32_t layerId, Layer::NDF ndf) { mData.desc.layers[layerId].ndf = (uint32_t)ndf; mDescDirty = true; }
+        Texture::SharedPtr getEmissiveTexture() const { return mData.resources.emissive; }
 
-        /** Set a layer's blend
-            \param[in] layerId Material layer index
-            \param[in] blend Layer blend mode
+        /** Set the shading model
         */
-        void setLayerBlend(uint32_t layerId, Layer::Blend blend) { mData.desc.layers[layerId].blending = (uint32_t)blend; mDescDirty = true; }
+        void setShadingModel(uint32_t model);
 
-        /** Set a layer's albedo color
-            \param[in] layerId Material layer index
-            \param[in] albedo RGBA color
+        /** Get the shading model
         */
-        void setLayerAlbedo(uint32_t layerId, const glm::vec4& albedo) { mData.values.layers[layerId].albedo = albedo; }
-
-        /** Set a layer's roughness
-            \param[in] layerId Material layer index
-        */
-        void setLayerRoughness(uint32_t layerId, const glm::vec4& roughness) { mData.values.layers[layerId].roughness = roughness; }
-
-        /** Set extra parameters on a layer interpreted based on layer type (IoR, etc.)
-            \param[in] layerId Material layer index
-            \param[in] data Extra parameter data
-        */
-        void setLayerUserParam(uint32_t layerId, const glm::vec4& data) { mData.values.layers[layerId].extraParam = data; }
-
-        /** Set a layer's texture
-            \param[in] layerId Material layer index
-            \param[in] pTexture Texture
-        */
-        void setLayerTexture(uint32_t layerId, const Texture::SharedPtr& pTexture);
-
-        /** Gets number of textures in the material
-        */
-        uint32_t getTextureCount() const { return mTextureCount; }
+        uint32_t getShadingModel() const { return EXTRACT_SHADING_MODEL(mData.flags); }
 
         /** Set the normal map
-            \param[in] pNormalMap Normal map texture
         */
-        void setNormalMap(Texture::SharedPtr& pNormalMap);
+        void setNormalMap(Texture::SharedPtr pNormalMap);
 
-        /** Get the normal map texture
+        /** Get the normal map
         */
-        Texture::SharedPtr getNormalMap() const { return mData.textures.normalMap; }
+        Texture::SharedPtr getNormalMap() const { return mData.resources.normalMap; }
 
-        /** Set the alpha map used for alpha testing.
-            \param[in] pAlphaMap Alpha map texture
+        /** Set the occlusion map
         */
-        void setAlphaMap(const Texture::SharedPtr& pAlphaMap);
+        void setOcclusionMap(Texture::SharedPtr pOcclusionMap);
 
-        /** Get the alpha map texture
+        /** Get the occlusion map
         */
-        Texture::SharedPtr getAlphaMap() const { return mData.textures.alphaMap; }
+        Texture::SharedPtr getOcclusionMap() const { return mData.resources.occlusionMap; }
 
-        /** Set the alpha threshold value
+        /** Set the light map
         */
-        void setAlphaThreshold(float threshold) { mData.values.alphaThreshold = threshold; }
+        void setLightMap(Texture::SharedPtr pLightMap);
 
-        /** Get the alpha threshold value
+        /** Get the light map
         */
-        float getAlphaThreshold() const { return mData.values.alphaThreshold; }
+        Texture::SharedPtr getLightMap() const { return mData.resources.lightMap; }
 
-        /** Set the ambient occlusion map
-            \param[in] pAoMap Ambient occlusion map texture
+        /** Set the height map
         */
-        void setAmbientOcclusionMap(const Texture::SharedPtr& pAoMap);
+        void setHeightMap(Texture::SharedPtr pHeightMap);
 
-        /** Gets the ambient occlusion texture
+        /** Get the height map
         */
-        Texture::SharedPtr getAmbientOcclusionMap() const { return mData.textures.ambientMap; }
+        Texture::SharedPtr getHeightMap() const { return mData.resources.heightMap; }
 
-        /** Set the height map value
+        /** Set the base color
         */
-        void setHeightMap(const Texture::SharedPtr& pHeightMap);
+        void setBaseColor(const vec4& color);
 
-        /** Returns the height map value
+        /** Get the base color
         */
-        Texture::SharedPtr getHeightMap() const { return mData.textures.heightMap; }
+        const vec4& getBaseColor() const { return mData.baseColor; }
 
-        /** Set the height scale values
-            \param[in] mod Two modifier values for the height map. X = scale, Y = offset.
+        /** Set the specular parameters
         */
-        void setHeightModifiers(const glm::vec2& mod) { mData.values.height = mod; }
+        void setSpecularParams(const vec4& color);
 
-        /** Get the height scale values
+        /** Get the specular parameters
         */
-        glm::vec2 getHeightModifiers() const { return mData.values.height; }
+        const vec4& getSpecularParams() const { return mData.specular; }
 
-        /** Check if this is a double-sided material. Meshes with double sided materials should be drawn without culling, and for backfacing polygons, the normal has to be inverted.
+        /** Set the emissive color
         */
-        bool isDoubleSided() const { return mDoubleSided; }
+        void setEmissiveColor(const vec3& color);
 
-        /** Set the material as double-sided. Meshes with double sided materials should be drawn without culling, and for backfacing polygons, the normal has to be inverted.
+        /** Get the emissive color
         */
-        void setDoubleSided(bool doubleSided) { mDoubleSided = doubleSided; mDescDirty = true; }
+        const vec3& getEmissiveColor() const { return mData.emissive; }
 
-        /** Set the material parameters into a constant buffer. To use this you need to include/import 'ShaderCommon' inside your shader.
-            \param[in] pVars The graphics vars of the shader to set material into.
-            \param[in] pCB The constant buffer to set the parameters into.
-            \param[in] varName The name of the MaterialData member in the buffer.
+        /** Set the alpha mode
         */
-        void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const char varName[]) const;
+        void setAlphaMode(uint32_t alphaMode);
 
-        /** Set the material parameters into a ParameterBlock. To use this you need to include/import 'ShaderCommon' inside your shader and use Slang's `ParameterBlock<MaterialData>`
-            \param[in] pBlock A parameter block which layout matches `MaterialData`
+        /** Get the alpha mode
         */
-        void setIntoParameterBlock(ParameterBlock* pBlock) const;
+        uint32_t getAlphaMode() const { return EXTRACT_ALPHA_MODE(mData.flags); }
 
-        /** Set the sampler used when rendering this material.
+        /** Set the double-sided flag. This flag doesn't affect the rasterizer state, just the shading
         */
-        void setSampler(const Sampler::SharedPtr& pSampler);
+        void setDoubleSided(bool doubleSided);
 
-        /** Get this material's sampler.
+        /** Returns true if the material is double-sided
         */
-        Sampler::SharedPtr getSampler() const { return mData.samplerState; }
+        bool getDoubleSided() const { return EXTRACT_DOUBLE_SIDED(mData.flags); }
 
-        /** Comparison operator. Compares Materials by their data values.
+        /** Set the alpha threshold. The threshold is only used if the alpha mode is `AlphaModeMask`
+        */
+        void setAlphaThreshold(float alpha);
+
+        /** Get the alpha threshold
+        */
+        float getAlphaThreshold() const { return mData.alphaThreshold; }
+
+        /** Get the flags
+        */
+        uint32_t getFlags() const { return mData.flags; }
+
+        /** Set the height scale and offset
+        */
+        void setHeightScaleOffset(float scale, float offset);
+
+        /** Get the height scale
+        */
+        float getHeightScale() const { return mData.heightScaleOffset.x; }
+
+        /** Get the height offset
+        */
+        float getHeightOffset() const { return mData.heightScaleOffset.y; }
+
+        /** Set the index of refraction
+        */
+        void setIndexOfRefraction(float IoR);
+
+        /** Get the index of refraction
+        */
+        float getIndexOfRefraction() const { return mData.IoR; }
+
+        /** Comparison operator
         */
         bool operator==(const Material& other) const;
 
-        /** The a string for a MaterialDesc string which can be patched into the shader. It can be used to statically compile the material into a program, resulting in better generated code
+        /** Bind a sampler to the material
         */
-        const std::string& getMaterialDescStr() const { finalize(); return mDescString; }
+        void setSampler(Sampler::SharedPtr pSampler);
 
-        /** Get an identifier for material desc. This can be used for fast comparison of desc objects. 2 materials will have the same identifier if and only if their desc is exactly the same.
+        /** Get the sampler attached to the material
         */
-        uint64_t getDescIdentifier() const;
+        Sampler::SharedPtr getSampler() const { return mData.resources.samplerState; }
 
+        /** Bind the material to a program variables object
+        */
+        void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCB, const char varName[]) const;
+        
         /** Get the ParameterBlock object for the material. Each material is created with a parameter-block. Using it is more efficient than assigning data to a custom constant-buffer.
         */
         ParameterBlock::SharedConstPtr getParameterBlock() const;
     private:
-        void finalize() const;
-        void normalize() const;
-        void updateTextureCount() const;
-
-        static const uint32_t kTexCount = MatMaxLayers + 4;
-        static_assert(sizeof(MaterialTextures) == (sizeof(Texture::SharedPtr) * kTexCount), "Wrong number of textures in Material::mTextures");
-
+        void updateBaseColorType();
+        void updateSpecularType();
+        void updateEmissiveType();
+        void updateOcclusionFlag();
+        void setIntoParameterBlock(ParameterBlock* pBlock) const;
+        
         Material(const std::string& name);
-        mutable MaterialData mData; ///< Material data shared between host and device
-        bool mDoubleSided = false;  ///< Used for culling
         std::string mName;
-        mutable uint32_t mTextureCount = 0;
-
-        // The next functions and fields are used for material compilation into shaders.
-        // We only compile based on the material descriptor, so as an optimization we minimize the number of shader permutations based on the desc
-        struct DescId
-        {
-            MaterialDesc desc;
-            uint64_t id;
-            uint32_t refCount;
-        };
-        mutable bool mDescDirty = true;
-        mutable std::string mDescString;
-        mutable size_t mDescIdentifier;
-        void updateDescIdentifier() const;
-        void removeDescIdentifier() const;
-        void updateDescString() const;
+        MaterialData mData;
+        bool mOcclusionMapEnabled = false;
+        mutable bool mParamBlockDirty = true;
+        ParameterBlock::SharedPtr mpParameterBlock;
         static uint32_t sMaterialCounter;
-        static std::vector<DescId> sDescIdentifier; // vector is slower then map, but map requires 'less' operator. This vector is only being used when the material is dirty, which shouldn't happen often
-
-        ParameterBlock::SharedPtr mpParamBlock;
         static ParameterBlockReflection::SharedConstPtr spBlockReflection;
-        void createParameterBlock();
     };
+
+#undef Texture2D
 }

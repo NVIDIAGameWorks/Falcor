@@ -32,7 +32,7 @@ namespace Falcor
 {
     RasterizerState::~RasterizerState() = default;
 
-    RasterizerStateHandle RasterizerState::getApiHandle() const
+    const RasterizerStateHandle& RasterizerState::getApiHandle() const
     {
         UNSUPPORTED_IN_D3D12("RasterizerState::getApiHandle()");
         return mApiHandle;

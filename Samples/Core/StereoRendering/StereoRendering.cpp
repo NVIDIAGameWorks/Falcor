@@ -27,22 +27,24 @@
 ***************************************************************************/
 #include "StereoRendering.h"
 
+const std::string StereoRendering::skDefaultScene = "Arcade/Arcade.fscene";
+
 static const glm::vec4 kClearColor(0.38f, 0.52f, 0.10f, 1);
 
 
-void StereoRendering::onGuiRender()
+void StereoRendering::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (mpGui->addButton("Load Scene"))
+    if (pGui->addButton("Load Scene"))
     {
         loadScene();
     }
 
     if(VRSystem::instance())
     {
-        mpGui->addCheckBox("Display VR FBO", mShowStereoViews);
+        pGui->addCheckBox("Display VR FBO", mShowStereoViews);
     }
 
-    if (mpGui->addDropdown("Submission Mode", mSubmitModeList, (uint32_t&)mRenderMode))
+    if (pGui->addDropdown("Submission Mode", mSubmitModeList, (uint32_t&)mRenderMode))
     {
         setRenderMode();
     }
@@ -56,7 +58,7 @@ bool displaySpsWarning()
     return false;
 }
 
-void StereoRendering::initVR()
+void StereoRendering::initVR(Fbo* pTargetFbo)
 {
     mSubmitModeList.clear();
     mSubmitModeList.push_back({ (int)RenderMode::Mono, "Render to Screen" });
@@ -66,8 +68,8 @@ void StereoRendering::initVR()
         // Create the FBOs
         Fbo::Desc vrFboDesc;
 
-        vrFboDesc.setColorTarget(0, mpDefaultFBO->getColorTexture(0)->getFormat());
-        vrFboDesc.setDepthStencilTarget(mpDefaultFBO->getDepthStencilTexture()->getFormat());
+        vrFboDesc.setColorTarget(0, pTargetFbo->getColorTexture(0)->getFormat());
+        vrFboDesc.setDepthStencilTarget(pTargetFbo->getDepthStencilTexture()->getFormat());
 
         mpVrFbo = VrFbo::create(vrFboDesc);
 
@@ -88,57 +90,53 @@ void StereoRendering::initVR()
     }
 }
 
-void StereoRendering::submitStereo(bool singlePassStereo)
+void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pTargetFbo, bool singlePassStereo)
 {
     PROFILE(STEREO);
     VRSystem::instance()->refresh();
 
     // Clear the FBO
-    mpRenderContext->clearFbo(mpVrFbo->getFbo().get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
+    pContext->clearFbo(mpVrFbo->getFbo().get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
     
     // update state
     if (singlePassStereo)
     {
         mpGraphicsState->setProgram(mpMonoSPSProgram);
-        mpRenderContext->setGraphicsVars(mpMonoSPSVars);
+        pContext->setGraphicsVars(mpMonoSPSVars);
     }
     else
     {
         mpGraphicsState->setProgram(mpStereoProgram);
-        mpRenderContext->setGraphicsVars(mpStereoVars);
+        pContext->setGraphicsVars(mpStereoVars);
     }
     mpGraphicsState->setFbo(mpVrFbo->getFbo());
-    mpRenderContext->pushGraphicsState(mpGraphicsState);
+    pContext->pushGraphicsState(mpGraphicsState);
 
     // Render
-    mpSceneRenderer->renderScene(mpRenderContext.get());
+    mpSceneRenderer->renderScene(pContext);
 
     // Restore the state
-    mpRenderContext->popGraphicsState();
+    pContext->popGraphicsState();
 
     // Submit the views and display them
-    mpVrFbo->submitToHmd(mpRenderContext.get());
-    blitTexture(mpVrFbo->getEyeResourceView(VRDisplay::Eye::Left), 0);
-    blitTexture(mpVrFbo->getEyeResourceView(VRDisplay::Eye::Right), mpDefaultFBO->getWidth() / 2);
+    mpVrFbo->submitToHmd(pContext);
+    blitTexture(pContext, pTargetFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Left), 0);
+    blitTexture(pContext, pTargetFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Right), pTargetFbo->getWidth() / 2);
 }
 
-void StereoRendering::submitToScreen()
+void StereoRendering::submitToScreen(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     mpGraphicsState->setProgram(mpMonoSPSProgram);
-    mpGraphicsState->setFbo(mpDefaultFBO);
-    mpRenderContext->setGraphicsState(mpGraphicsState);
-    mpRenderContext->setGraphicsVars(mpMonoSPSVars);
-    mpSceneRenderer->renderScene(mpRenderContext.get());
+    mpGraphicsState->setFbo(pTargetFbo);
+    pContext->setGraphicsState(mpGraphicsState);
+    pContext->setGraphicsVars(mpMonoSPSVars);
+    mpSceneRenderer->renderScene(pContext);
 }
 
 void StereoRendering::setRenderMode()
 {
     if(mpScene)
     {
-        std::string lights;
-        getSceneLightString(mpScene.get(), lights);
-        mpMonoSPSProgram->addDefine("_LIGHT_SOURCES", lights);
-        mpStereoProgram->addDefine("_LIGHT_SOURCES", lights);
         mpMonoSPSProgram->removeDefine("_SINGLE_PASS_STEREO");
 
         mpGraphicsState->toggleSinglePassStereo(false);
@@ -172,12 +170,14 @@ void StereoRendering::loadScene(const std::string& filename)
 {
     mpScene = Scene::loadFromFile(filename);
     mpSceneRenderer = SceneRenderer::create(mpScene);
-    mpMonoSPSProgram = GraphicsProgram::createFromFile("", appendShaderExtension("StereoRendering.ps"));
-    mpStereoProgram = GraphicsProgram::createFromFile(appendShaderExtension("StereoRendering.vs"), appendShaderExtension("StereoRendering.ps"), appendShaderExtension("StereoRendering.gs"), "", "");
+    mpMonoSPSProgram = GraphicsProgram::createFromFile("StereoRendering.ps.hlsl", "", "main");
+    GraphicsProgram::Desc progDesc;
+    progDesc.addShaderLibrary("StereoRendering.vs.hlsl").vsEntry("main").addShaderLibrary("StereoRendering.ps.hlsl").psEntry("main").addShaderLibrary("StereoRendering.gs.hlsl").gsEntry("main");
+    mpStereoProgram = GraphicsProgram::create(progDesc);
 
     setRenderMode();
-    mpMonoSPSVars = GraphicsVars::create(mpMonoSPSProgram->getActiveVersion()->getReflector());
-    mpStereoVars = GraphicsVars::create(mpStereoProgram->getActiveVersion()->getReflector());
+    mpMonoSPSVars = GraphicsVars::create(mpMonoSPSProgram->getReflector());
+    mpStereoVars = GraphicsVars::create(mpStereoProgram->getReflector());
 
     for (uint32_t m = 0; m < mpScene->getModelCount(); m++)
     {
@@ -185,11 +185,11 @@ void StereoRendering::loadScene(const std::string& filename)
     }
 }
 
-void StereoRendering::onLoad()
+void StereoRendering::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mSPSSupported = gpDevice->isExtensionSupported("VK_NVX_multiview_per_view_attributes");
 
-    initVR();
+    initVR(pSample->getCurrentFbo().get());
 
     mpGraphicsState = GraphicsState::create();
     setRenderMode();
@@ -197,56 +197,58 @@ void StereoRendering::onLoad()
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
+
+    loadScene(skDefaultScene);
 }
 
-void StereoRendering::blitTexture(Texture::SharedPtr pTexture, uint32_t xStart)
+void StereoRendering::blitTexture(RenderContext* pContext, Fbo* pTargetFbo, Texture::SharedPtr pTexture, uint32_t xStart)
 {
     if(mShowStereoViews)
     {
         uvec4 dstRect;
         dstRect.x = xStart;
         dstRect.y = 0;
-        dstRect.z = xStart + (mpDefaultFBO->getWidth() / 2);
-        dstRect.w = mpDefaultFBO->getHeight();
-        mpRenderContext->blit(pTexture->getSRV(0, 1, 0, 1), mpDefaultFBO->getRenderTargetView(0), uvec4(-1), dstRect);
+        dstRect.z = xStart + (pTargetFbo->getWidth() / 2);
+        dstRect.w = pTargetFbo->getHeight();
+        pContext->blit(pTexture->getSRV(0, 1, 0, 1), pTargetFbo->getRenderTargetView(0), uvec4(-1), dstRect);
     }
 }
 
-void StereoRendering::onFrameRender()
+void StereoRendering::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     static uint32_t frameCount = 0u;
 
-    mpRenderContext->clearFbo(mpDefaultFBO.get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
+    pRenderContext->clearFbo(pTargetFbo.get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
 
     if(mpSceneRenderer)
     {      
-        mpSceneRenderer->update(mCurrentTime);
+        mpSceneRenderer->update(pSample->getCurrentTime());
 
         switch(mRenderMode)
         {
         case RenderMode::Mono:
-            submitToScreen();
+            submitToScreen(pRenderContext.get(), pTargetFbo);
             break;
         case RenderMode::SinglePassStereo:
-            submitStereo(true);
+            submitStereo(pRenderContext.get(), pTargetFbo, true);
             break;
         case RenderMode::Stereo:
-            submitStereo(false);
+            submitStereo(pRenderContext.get(), pTargetFbo, false);
             break;
         default:
             should_not_get_here();
         }
     }
 
-    std::string message = getFpsMsg();
+    std::string message = pSample->getFpsMsg();
     message += "\nFrame counter: " + std::to_string(frameCount);
 
-    renderText(message, glm::vec2(10, 10));
+    pSample->renderText(message, glm::vec2(10, 10));
 
     frameCount++;
 }
 
-bool StereoRendering::onKeyEvent(const KeyboardEvent& keyEvent)
+bool StereoRendering::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     if(keyEvent.key == KeyboardEvent::Key::Space && keyEvent.type == KeyboardEvent::Type::KeyPressed)
     {
@@ -262,19 +264,14 @@ bool StereoRendering::onKeyEvent(const KeyboardEvent& keyEvent)
     return mpSceneRenderer ? mpSceneRenderer->onKeyEvent(keyEvent) : false;
 }
 
-bool StereoRendering::onMouseEvent(const MouseEvent& mouseEvent)
+bool StereoRendering::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mpSceneRenderer ? mpSceneRenderer->onMouseEvent(mouseEvent) : false;
 }
 
-void StereoRendering::onDataReload()
+void StereoRendering::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-
-}
-
-void StereoRendering::onResizeSwapChain()
-{
-    initVR();
+    initVR(pSample->getCurrentFbo().get());
 }
 
 #ifdef _WIN32
@@ -283,7 +280,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 int main(int argc, char** argv)
 #endif
 {
-    StereoRendering sample;
+    StereoRendering::UniquePtr pRenderer = std::make_unique<StereoRendering>();
     SampleConfig config;
     config.windowDesc.title = "Stereo Rendering";
     config.windowDesc.height = 1024;
@@ -295,9 +292,11 @@ int main(int argc, char** argv)
 #endif
 
 #ifdef _WIN32
-    sample.run(config);
+    Sample::run(config, pRenderer);
 #else
-    sample.run(config, (uint32_t)argc, argv);
+    config.argc = (uint32_t)argc;
+    config.argv = argv;
+    Sample::run(config, pRenderer);
 #endif
     return 0;
 }

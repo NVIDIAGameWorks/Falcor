@@ -52,11 +52,11 @@ namespace Falcor
             createNvApiVsExDesc(nvApiPsoExDescs.back());
         }
 
-        auto uav = desc.getProgramVersion()->getReflector()->getBufferBinding("g_NvidiaExt");
-        if (uav.baseRegIndex != ProgramReflection::kInvalidLocation)
+        ReflectionVar::SharedConstPtr pUav = desc.getProgramVersion()->getReflector()->getDefaultParameterBlock()->getResource("g_NvidiaExt");
+        if ((pUav != nullptr) && (pUav->getRegisterIndex() != ProgramReflection::kInvalidLocation))
         {
             nvApiPsoExDescs.push_back(NvApiPsoExDesc());
-            createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), uav.baseRegIndex);
+            createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), pUav->getRegisterIndex());
         }
     }
     
@@ -90,8 +90,8 @@ namespace Falcor
 
     bool getIsNvApiGraphicsPsoRequired(const GraphicsStateObject::Desc& desc)
     {
-        auto uav = desc.getProgramVersion()->getReflector()->getBufferBinding("g_NvidiaExt");
-        return uav.baseRegIndex != ProgramReflection::kInvalidLocation || desc.getSinglePassStereoEnabled();
+        ReflectionVar::SharedConstPtr pUav = desc.getProgramVersion()->getReflector()->getDefaultParameterBlock()->getResource("g_NvidiaExt");
+        return ((pUav != nullptr) && (pUav->getRegisterIndex() != ProgramReflection::kInvalidLocation)) || desc.getSinglePassStereoEnabled();
     }
 #else
     void getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs) { should_not_get_here(); }
@@ -101,55 +101,19 @@ namespace Falcor
     
     bool GraphicsStateObject::apiInit()
     {
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-        assert(mDesc.mpProgram);
-#define get_shader_handle(_type) mDesc.mpProgram->getShader(_type) ? mDesc.mpProgram->getShader(_type)->getApiHandle() : D3D12_SHADER_BYTECODE{}
-
-        desc.VS = get_shader_handle(ShaderType::Vertex);
-        desc.PS = get_shader_handle(ShaderType::Pixel);
-        desc.GS = get_shader_handle(ShaderType::Geometry);
-        desc.HS = get_shader_handle(ShaderType::Hull);
-        desc.DS = get_shader_handle(ShaderType::Domain);
-#undef get_shader_handle
-
-        initD3D12BlendDesc(mDesc.mpBlendState.get(), desc.BlendState);
-        initD3D12RasterizerDesc(mDesc.mpRasterizerState.get(), desc.RasterizerState);
-        initD3DDepthStencilDesc(mDesc.mpDepthStencilState.get(), desc.DepthStencilState);
-
-        InputLayoutDesc layoutDesc;
-        if(mDesc.mpLayout)
-        {
-            initD3D12VertexLayout(mDesc.mpLayout.get(), layoutDesc);
-            desc.InputLayout.NumElements = (uint32_t)layoutDesc.elements.size();
-            desc.InputLayout.pInputElementDescs = layoutDesc.elements.data();
-        }
-        desc.SampleMask = mDesc.mSampleMask;
-        desc.pRootSignature = mDesc.mpRootSignature ? mDesc.mpRootSignature->getApiHandle() : nullptr;
-
-        uint32_t numRtvs = 0;
-        for (uint32_t rt = 0; rt < Fbo::getMaxColorTargetCount(); rt++)
-        {
-            desc.RTVFormats[rt] = getDxgiFormat(mDesc.mFboDesc.getColorTargetFormat(rt));
-            if (desc.RTVFormats[rt] != DXGI_FORMAT_UNKNOWN)
-            {
-                numRtvs = rt + 1;
-            }
-        }
-        desc.NumRenderTargets = numRtvs;
-        desc.DSVFormat = getDxgiFormat(mDesc.mFboDesc.getDepthStencilFormat());
-        desc.SampleDesc.Count = mDesc.mFboDesc.getSampleCount();
-
-        desc.PrimitiveTopologyType = getD3DPrimitiveType(mDesc.mPrimType);
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC d3dDesc;
+        InputLayoutDesc inputDesc;
+        initD3D12GraphicsStateDesc(mDesc, d3dDesc, inputDesc);
 
         if (getIsNvApiGraphicsPsoRequired(mDesc))
         {
             std::vector<NvApiPsoExDesc> nvApiDesc;
             getNvApiGraphicsPsoDesc(mDesc, nvApiDesc);
-            mApiHandle = getNvApiGraphicsPsoHandle(nvApiDesc, desc);
+            mApiHandle = getNvApiGraphicsPsoHandle(nvApiDesc, d3dDesc);
         }
         else
         {
-            d3d_call(gpDevice->getApiHandle()->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&mApiHandle)));
+            d3d_call(gpDevice->getApiHandle()->CreateGraphicsPipelineState(&d3dDesc, IID_PPV_ARGS(&mApiHandle)));
         }
         return true;
     }

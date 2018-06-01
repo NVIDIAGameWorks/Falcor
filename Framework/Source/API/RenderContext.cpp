@@ -119,15 +119,10 @@ namespace Falcor
         }
     }
 
-    void RenderContext::reset()
-    {
-        ComputeContext::reset();
-        mBindGraphicsRootSig = true;
-    }
-
     void RenderContext::flush(bool wait)
     {
         ComputeContext::flush(wait);
         mBindGraphicsRootSig = true;
     }
 }
+

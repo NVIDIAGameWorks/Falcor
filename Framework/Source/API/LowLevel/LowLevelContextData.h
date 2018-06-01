@@ -48,16 +48,17 @@ namespace Falcor
         ~LowLevelContextData();
 
         static SharedPtr create(CommandQueueType type, CommandQueueHandle queue);
-        void reset();
-        virtual void flush();
+        void flush();
 
-        CommandListHandle getCommandList() const { return mpList; }
-        CommandQueueHandle getCommandQueue() const { return mpQueue; }
-        CommandAllocatorHandle getCommandAllocator() const { return mpAllocator; }
-        GpuFence::SharedPtr getFence() const { return mpFence; }
+        const CommandListHandle& getCommandList() const { return mpList; }
+        const CommandQueueHandle& getCommandQueue() const { return mpQueue; }
+        const CommandAllocatorHandle& getCommandAllocator() const { return mpAllocator; }
+        const GpuFence::SharedPtr& getFence() const { return mpFence; }
         LowLevelContextApiData* getApiData() const { return mpApiData; }
-        void setCommandList(CommandListHandle pList) { mpList = pList; }
 
+#ifdef FALCOR_DXR
+        void setCommandList(CommandListHandle pList) { mpList = pList; }
+#endif
     protected:
 
         LowLevelContextData() = default;

@@ -102,7 +102,7 @@ namespace Falcor
             mpCamera->setTarget(mModelCenter);
 
             glm::vec3 camPos = mModelCenter;
-			camPos += (glm::vec3(0,0,1) * mRotation) * mModelRadius * mCameraDistance;
+            camPos += (glm::vec3(0,0,1) * mRotation) * mModelRadius * mCameraDistance;
             mpCamera->setPosition(camPos);
 
             glm::vec3 up(0, 1, 0);
@@ -128,27 +128,27 @@ namespace Falcor
         switch(event.key)
         {
         case KeyboardEvent::Key::W:
-            mMovement.forward = keyPressed;
+            mMovement[Direction::Forward] = keyPressed;
             handled = true;
             break;
         case KeyboardEvent::Key::S:
-            mMovement.backward = keyPressed;
+            mMovement[Direction::Backward] = keyPressed;
             handled = true;
             break;
         case KeyboardEvent::Key::A:
-            mMovement.right = keyPressed;
+            mMovement[Direction::Right] = keyPressed;
             handled = true;
             break;
         case KeyboardEvent::Key::D:
-            mMovement.left = keyPressed;
+            mMovement[Direction::Left] = keyPressed;
             handled = true;
             break;
         case KeyboardEvent::Key::Q:
-            mMovement.down = keyPressed;
+            mMovement[Direction::Down] = keyPressed;
             handled = true;
             break;
         case KeyboardEvent::Key::E:
-            mMovement.up = keyPressed;
+            mMovement[Direction::Up] = keyPressed;
             handled = true;
             break;
         default:
@@ -210,15 +210,15 @@ namespace Falcor
                 mShouldRotate = false;
             }
 
-            if(mMovement.b)
+            if(mMovement.any())
             {
                 glm::vec3 movement(0, 0, 0);
-                movement.z += mMovement.forward ? 1 : 0;
-                movement.z += mMovement.backward ? -1 : 0;
-                movement.x += mMovement.left ? 1 : 0;
-                movement.x += mMovement.right ? -1 : 0;
-                movement.y += mMovement.up ? 1 : 0;
-                movement.y += mMovement.down ? -1 : 0;
+                movement.z += mMovement.test(Direction::Forward) ? 1 : 0;
+                movement.z += mMovement.test(Direction::Backward) ? -1 : 0;
+                movement.x += mMovement.test(Direction::Left) ? 1 : 0;
+                movement.x += mMovement.test(Direction::Right) ? -1 : 0;
+                movement.y += mMovement.test(Direction::Up) ? 1 : 0;
+                movement.y += mMovement.test(Direction::Down) ? -1 : 0;
 
                 glm::vec3 camPos = mpCamera->getPosition();
                 glm::vec3 camTarget = mpCamera->getTarget();
@@ -313,7 +313,7 @@ namespace Falcor
             // Initialize the parameters from the HMD
             VRDisplay* pDisplay = VRSystem::instance()->getHMD().get();
 
-            pCamera->setFocalLength(fovYToFocalLength(pDisplay->getFovY(), Camera::kDefaultFrameHeight));
+            pCamera->setFocalLength(fovYToFocalLength(pDisplay->getFovY(), pCamera->getFrameHeight()));
             pCamera->setAspectRatio(pDisplay->getAspectRatio());
 
             mInvPrevHmdViewMat = glm::mat4();

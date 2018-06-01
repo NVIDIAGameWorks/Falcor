@@ -53,7 +53,7 @@ namespace Falcor
             \param[in] kernelSize Number of samples taken along each axis
             \param[in] sigma Gaussian distribution sigma value used to calculate sample weights. Values smaller than twice the sigma are ineffective
         */
-        static UniquePtr create(uint32_t kernelSize = 5, float sigma = 1.0f);
+        static UniquePtr create(uint32_t kernelSize = 5, float sigma = 2.5f);
 
         /** Apply gaussian blur by rendering one texture into another.
             \param pRenderContext Render context to use

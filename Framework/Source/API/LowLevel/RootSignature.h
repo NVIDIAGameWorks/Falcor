@@ -40,7 +40,7 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<RootSignature>;
         using SharedConstPtr = std::shared_ptr<const RootSignature>;
         using ApiHandle = RootSignatureHandle;
-        
+
         using DescType = Falcor::DescriptorSet::Type;
         using DescriptorSetLayout = DescriptorSet::Layout;
         
@@ -48,17 +48,25 @@ namespace Falcor
         {
         public:
             Desc& addDescriptorSet(const DescriptorSetLayout& setLayout);
+#ifdef FALCOR_DXR
+            Desc& setLocal(bool isLocal) { mIsLocal = isLocal; return *this; }
+#endif
+            size_t getSetsCount() const { return mSets.size(); }
+            const DescriptorSetLayout getSet(size_t index) const { return mSets[index]; }
         private:
             friend class RootSignature;
             std::vector<DescriptorSetLayout> mSets;
+#ifdef FALCOR_DXR
+            bool mIsLocal = false;
+#endif
         };
 
         ~RootSignature();
         static SharedPtr getEmpty();
         static SharedPtr create(const Desc& desc);
-        static SharedPtr create(const ProgramReflection* pReflection);
+        static SharedPtr create(const ProgramReflection* pReflection, bool isLocal = false);
 
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         size_t getDescriptorSetCount() const { return mDesc.mSets.size(); }
         const DescriptorSetLayout& getDescriptorSet(size_t index) const { return mDesc.mSets[index]; }
@@ -68,6 +76,8 @@ namespace Falcor
 
         void bindForGraphics(CopyContext* pCtx);
         void bindForCompute(CopyContext* pCtx);
+
+        const Desc& getDesc() const { return mDesc; }
     protected:
         RootSignature(const Desc& desc);
         bool apiInit();

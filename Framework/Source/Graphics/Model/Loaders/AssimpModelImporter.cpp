@@ -209,27 +209,35 @@ namespace Falcor
         return glm::transpose(glmMat);
     }
 
-    BasicMaterial::MapType getFalcorTexTypeFromAi(aiTextureType type, const bool isObjFile)
+    static void setTexture(aiTextureType type, bool isObjFile, Material* pMaterial, Texture::SharedPtr pTexture)
     {
         switch (type)
         {
         case aiTextureType_DIFFUSE:
-            return BasicMaterial::MapType::DiffuseMap;
+            pMaterial->setBaseColorTexture(pTexture);
+            break;
         case aiTextureType_SPECULAR:
-            return BasicMaterial::MapType::SpecularMap;
+            pMaterial->setSpecularTexture(pTexture);
+            break;
         case aiTextureType_EMISSIVE:
-            return BasicMaterial::MapType::EmissiveMap;
+            pMaterial->setEmissiveTexture(pTexture);
+            break;
         case aiTextureType_HEIGHT:
+        case aiTextureType_DISPLACEMENT:
             // OBJ doesn't support normal maps, so they are usually placed in the height map slot. For consistency with other formats, we move them to the normal map slot.
-            return isObjFile ? BasicMaterial::MapType::NormalMap : BasicMaterial::MapType::HeightMap;
+            isObjFile ? pMaterial->setNormalMap(pTexture) : pMaterial->setHeightMap(pTexture);
+            break;
         case aiTextureType_NORMALS:
-            return BasicMaterial::MapType::NormalMap;
-        case aiTextureType_OPACITY:
-            return BasicMaterial::MapType::AlphaMap;
+            pMaterial->setNormalMap(pTexture);
+            break;
         case aiTextureType_AMBIENT:
-            return BasicMaterial::MapType::AmbientMap;
+            pMaterial->setOcclusionMap(pTexture);
+            break;
+        case aiTextureType_LIGHTMAP:
+            pMaterial->setLightMap(pTexture);
+            break;
         default:
-            return BasicMaterial::MapType::Count;
+            logWarning("Unsupported Assimp texture type " + std::to_string(type));
         }
     }
 
@@ -260,7 +268,7 @@ namespace Falcor
         }
     }
 
-    void AssimpModelImporter::loadTextures(const aiMaterial* pAiMaterial, const std::string& folder, BasicMaterial* pMaterial, bool isObjFile, bool useSrgb)
+    void AssimpModelImporter::loadTextures(const aiMaterial* pAiMaterial, const std::string& folder, Material* pMaterial, bool isObjFile, bool useSrgb)
     {
         for (int i = 0; i < AI_TEXTURE_TYPE_MAX; ++i)
         {
@@ -307,15 +315,7 @@ namespace Falcor
                 }
 
                 assert(pTex != nullptr);
-                BasicMaterial::MapType texSlot = getFalcorTexTypeFromAi(aiType, isObjFile);
-                if (texSlot != BasicMaterial::MapType::Count)
-                {
-                    pMaterial->pTextures[texSlot] = pTex;
-                }
-                else
-                {
-                    logWarning("Texture '" + s + "' is not supported by the material system\n");
-                }
+                setTexture(aiType, isObjFile, pMaterial, pTex);
             }
         }
 
@@ -325,82 +325,79 @@ namespace Falcor
 
     Material::SharedPtr AssimpModelImporter::createMaterial(const aiMaterial* pAiMaterial, const std::string& folder, bool isObjFile, bool useSrgb)
     {
-        BasicMaterial basicMaterial;
-        loadTextures(pAiMaterial, folder, &basicMaterial, isObjFile, useSrgb);
+        aiString name;
+        pAiMaterial->Get(AI_MATKEY_NAME, name);
+        std::string nameStr = std::string(name.C_Str());
+        std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
+
+        Material::SharedPtr pMaterial = Material::create(nameStr);
+        loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
+
+        if(is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials))
+        {
+            pMaterial->setShadingModel(ShadingModelSpecGloss);
+        }
 
         // Opacity
         float opacity;
         if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
         {
-            basicMaterial.opacity = opacity;
+            vec4 diffuse = pMaterial->getBaseColor();
+            diffuse.a = opacity;
+            pMaterial->setBaseColor(diffuse);
         }
 
         // Bump scaling
         float bumpScaling;
         if (pAiMaterial->Get(AI_MATKEY_BUMPSCALING, bumpScaling) == AI_SUCCESS)
         {
-            basicMaterial.bumpScale = bumpScaling;
+            float bumpOffset = pMaterial->getHeightOffset();
+            pMaterial->setHeightScaleOffset(bumpScaling, bumpOffset);
         }
 
         // Shininess
         float shininess;
         if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
         {
-            basicMaterial.shininess = shininess;
+            vec4 spec = pMaterial->getSpecularParams();
+            spec.a = shininess;
+            pMaterial->setSpecularParams(spec);
         }
 
         // Refraction
         float refraction;
-        if (pAiMaterial->Get(AI_MATKEY_REFRACTI, refraction) == AI_SUCCESS)
-        {
-            basicMaterial.IoR = refraction;
-        }
+        if (pAiMaterial->Get(AI_MATKEY_REFRACTI, refraction) == AI_SUCCESS) pMaterial->setIndexOfRefraction(refraction);
 
         // Diffuse color
         aiColor3D color;
         if (pAiMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
         {
-            basicMaterial.diffuseColor = glm::vec3(color.r, color.g, color.b);
+            vec4 diffuse = vec4(color.r, color.g, color.b, pMaterial->getBaseColor().a);
+            pMaterial->setBaseColor(diffuse);
         }
 
         // Specular color
         if (pAiMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color) == AI_SUCCESS)
         {
-            basicMaterial.specularColor = glm::vec3(color.r, color.g, color.b);
+            vec4 specular = vec4(color.r, color.g, color.b, pMaterial->getSpecularParams().a);
+            pMaterial->setSpecularParams(specular);
         }
 
         // Emissive color
         if (pAiMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color) == AI_SUCCESS)
         {
-            basicMaterial.emissiveColor = glm::vec3(color.r, color.g, color.b);
-            if (isObjFile && luminance(basicMaterial.emissiveColor) > 0)
+            vec3 emissive = vec3(color.r, color.g, color.b);
+            pMaterial->setEmissiveColor(emissive);
+            if (isObjFile && luminance(emissive) > 0)
             {
-                basicMaterial.pTextures[BasicMaterial::MapType::EmissiveMap] = basicMaterial.pTextures[BasicMaterial::MapType::DiffuseMap];
+                pMaterial->setEmissiveTexture(pMaterial->getBaseColorTexture());
             }
         }
-
-        // Transparent color
-        if (pAiMaterial->Get(AI_MATKEY_COLOR_TRANSPARENT, color) == AI_SUCCESS)
-        {
-            basicMaterial.transparentColor = glm::vec3(color.r, color.g, color.b);
-        }
-
-        auto pMaterial = basicMaterial.convertToMaterial();
-
         // Double-Sided
         int isDoubleSided;
         if (pAiMaterial->Get(AI_MATKEY_TWOSIDED, isDoubleSided) == AI_SUCCESS)
         {
             pMaterial->setDoubleSided((isDoubleSided != 0));
-        }
-
-        // Material name
-        aiString name;
-        pAiMaterial->Get(AI_MATKEY_NAME, name);
-        std::string nameStr = std::string(name.C_Str());
-        if (nameStr.length() > 0)
-        {
-            pMaterial->setName(nameStr);
         }
 
         return pMaterial;
@@ -501,29 +498,20 @@ namespace Falcor
             return false;
         }
 
-        uint32_t AssimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
+        uint32_t assimpFlags = aiProcessPreset_TargetRealtime_MaxQuality |
             aiProcess_OptimizeGraph |
             aiProcess_FlipUVs |
-            // aiProcess_FixInfacingNormals | // causes incorrect facing normals for crytek-sponza
             0;
 
-        // aiProcessPreset_TargetRealtime_MaxQuality enabled some optimizations the user might not want
-        if(is_set(mFlags, Model::LoadFlags::FindDegeneratePrimitives) == false)
-        {
-            AssimpFlags &= ~aiProcess_FindDegenerates;
-        }
-
-        // Avoid merging original meshes
-        if(is_set(mFlags, Model::LoadFlags::DontMergeMeshes))
-        {
-            AssimpFlags &= ~aiProcess_OptimizeMeshes;
-        }
+        if(is_set(mFlags, Model::LoadFlags::FindDegeneratePrimitives) == false) assimpFlags &= ~aiProcess_FindDegenerates;
+        if(is_set(mFlags, Model::LoadFlags::DontMergeMeshes))                   assimpFlags &= ~aiProcess_OptimizeMeshes; // Avoid merging original meshes
+        if(is_set(mFlags, Model::LoadFlags::RemoveInstancing))                  assimpFlags |= aiProcess_PreTransformVertices;
 
         // Never use Assimp's tangent gen code
-        AssimpFlags &= ~(aiProcess_CalcTangentSpace);
+        assimpFlags &= ~(aiProcess_CalcTangentSpace);
 
         Assimp::Importer importer;
-        const aiScene* pScene = importer.ReadFile(fullpath, AssimpFlags);
+        const aiScene* pScene = importer.ReadFile(fullpath, assimpFlags);
 
         if((pScene == nullptr) || (verifyScene(pScene) == false))
         {
@@ -861,6 +849,8 @@ namespace Falcor
             return pAiMesh->HasTextureCoords(0);
         case VERTEX_LIGHTMAP_UV_LOC:
             return pAiMesh->HasTextureCoords(1);
+        case VERTEX_PREV_POSITION_LOC:
+            return false;
         default:
             should_not_get_here();
             return false;
@@ -944,10 +934,18 @@ namespace Falcor
                     size = sizeof(pAiMesh->mColors[0][0]);
                     break;
                 case VERTEX_TEXCOORD_LOC:
+                    if (pAiMesh->mTextureCoords[0][vertexID].z != 0.f)
+                    {
+                        Falcor::logErrorAndExit("AssimpModelImporter::createVertexBuffer: Texcoord[0].z != 0.0");
+                    }
                     pSrc = (uint8_t*)(&pAiMesh->mTextureCoords[0][vertexID]);
                     size = sizeof(pAiMesh->mTextureCoords[0][vertexID]);
                     break;
                 case VERTEX_LIGHTMAP_UV_LOC:
+                    if (pAiMesh->mTextureCoords[1][vertexID].z != 0.f)
+                    {
+                        Falcor::logErrorAndExit("AssimpModelImporter::createVertexBuffer: Texcoord[1].z != 0.0");
+                    }
                     pSrc = (uint8_t*)(&pAiMesh->mTextureCoords[1][vertexID]);
                     size = sizeof(pAiMesh->mTextureCoords[1][vertexID]);
                     break;

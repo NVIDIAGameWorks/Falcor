@@ -200,6 +200,7 @@ namespace Falcor
             pProg->removeDefine("HAS_TEXCRD");
             pProg->removeDefine("HAS_COLORS");
             pProg->removeDefine("HAS_LIGHTMAP_UV");
+            pProg->removeDefine("HAS_PREV_POSITION");
 
             for (const auto& l : mpBufferLayouts)
             {
@@ -226,6 +227,10 @@ namespace Falcor
                         if (l->getElementShaderLocation(i) == VERTEX_DIFFUSE_COLOR_LOC)
                         {
                             pProg->addDefine("HAS_COLORS");
+                        }
+                        if (l->getElementShaderLocation(i) == VERTEX_PREV_POSITION_LOC)
+                        {
+                            pProg->addDefine("HAS_PREV_POSITION");
                         }
                     }
                 }

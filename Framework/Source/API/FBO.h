@@ -144,7 +144,7 @@ namespace Falcor
 
         /** Get the object's API handle.      
         */
-        ApiHandle getApiHandle() const;
+        const ApiHandle& getApiHandle() const;
 
         /** Get the maximum number of color targets
         */
@@ -190,6 +190,29 @@ namespace Falcor
         */
         RenderTargetView::SharedPtr getRenderTargetView(uint32_t rtIndex) const;
 
+
+        struct SamplePosition
+        {
+            int8 xOffset = 0;
+            int8 yOffset = 0;
+        };
+
+        /**  Configure the sample positions used by multi-sampled buffers.
+            \param[in] samplesPerPixel The number of samples-per-pixel. This value has to match the FBO's sample count
+            \param[in] pixelCount the number if pixels the sample pattern is specified for
+            \param[in] positions The sample positions. (0,0) is a pixel's center. The size of this array should be samplesPerPixel*pixelCount
+            To reset the positions to their original location pass `nullptr` for positions
+        */
+        void setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[]);
+
+        /** Get the sample positions
+        */
+        const std::vector<SamplePosition> getSamplePositions() const { return mSamplePositions; }
+
+        /** Get the number of pixels the sample positions are configured for
+        */
+        uint32_t getSamplePositionsPixelCount() const { return mSamplePositionsPixelCount; }
+
         struct Attachment
         {
             Texture::SharedPtr pTexture = nullptr;
@@ -215,6 +238,9 @@ namespace Falcor
 
         Fbo();
         std::vector<Attachment> mColorAttachments;
+        std::vector<SamplePosition> mSamplePositions;
+        uint32_t mSamplePositionsPixelCount = 0;
+
         Attachment mDepthStencil;
 
         mutable Desc mTempDesc;

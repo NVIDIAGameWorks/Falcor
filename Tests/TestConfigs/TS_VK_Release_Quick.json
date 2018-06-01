@@ -1,0 +1,39 @@
+{
+    "Solution Target" : "Falcor.sln",
+    "Configuration Target" : "ReleaseVK",
+    "Tests Groups" :
+    {
+        "ComputeShaderTest": {
+            "Enabled" : true,
+            "Project Name" : "ComputeShader",
+            "Project Tests Args" :
+            [
+                "-test -ssframes 50 -shutdown 300 -pixelate -loadimage StockImage.jpg",
+                "-test -ssframes 50 -shutdown 300 -pixelate -loadimage TestTex2.png"
+            ]
+        },
+        "AnimationTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "ForwardRenderer",
+            "Project Tests Args" :
+            [
+                "-test -fixedtimedelta 0.03333 -loadscene Cerberus/Standard/Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
+            ]
+        },
+
+        "ForwardRendererTest":
+        {
+            "Enabled" : true,
+            "Project Name" : "ForwardRenderer",
+            "Test Config" : {
+                "Type" : "Image Compare",
+                "Tolerance" : 0.01
+            },
+            "Project Tests Args" :
+            [
+                "-test -fixedtimedelta 0.03333 -loadscene SunTemple/SunTemple.fscene -sstimes 10 27 50 -shutdowntime 51"
+            ]
+        }
+    }
+}

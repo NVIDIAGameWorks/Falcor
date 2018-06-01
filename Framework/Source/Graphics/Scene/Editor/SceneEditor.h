@@ -29,12 +29,10 @@
 #include <vector>
 #include <set>
 #include "Graphics/Paths/PathEditor.h"
-#include "Graphics/Material/MaterialEditor.h"
 #include "Utils/DebugDrawer.h"
 #include "Utils/Picking/Picking.h"
 #include "Graphics/Scene/Editor/Gizmo.h"
 #include "Graphics/Scene/Editor/SceneEditorRenderer.h"
-#include "Graphics/Material/MaterialHistory.h"
 
 namespace Falcor
 {
@@ -103,13 +101,13 @@ namespace Falcor
         void renderLightElements(Gui* pGui);
         void renderGlobalElements(Gui* pGui);
         void renderPathElements(Gui* pGui);
-        void renderMaterialElements(Gui* pGui);
 
         // Model functions
         void addModel(Gui* pGui);
         void deleteModel(Gui* pGui);
         void deleteModel();
         void setModelName(Gui* pGui);
+        void setShadingModel(Gui* pGui);
         void setModelVisible(Gui* pGui);
         void selectActiveModel(Gui* pGui);
 
@@ -147,15 +145,7 @@ namespace Falcor
         void startPathEditor();
         void setObjectPath(Gui* pGui, const IMovableObject::SharedPtr& pMovable, const std::string& objType);
 
-        // Materials
-        void addMaterial(Gui* pGui);
-        void startMaterialEditor(Gui* pGui);
-        void selectMaterial(Gui* pGui);
-        void deleteMaterial(Gui* pGui);
-        void applyMaterialOverride(Gui* pGui);
-
         // Global functions
-        void setAmbientIntensity(Gui* pGui);
         void saveScene();
 
         void renderModelAnimation(Gui* pGui);
@@ -229,7 +219,6 @@ namespace Falcor
         uint32_t mSelectedCamera = 0;
         uint32_t mSelectedLight = 0;
         uint32_t mSelectedPath = 0;
-        uint32_t mSelectedMaterial = 0;
 
         Picking::UniquePtr mpScenePicker;
 
@@ -286,20 +275,14 @@ namespace Falcor
         std::unordered_map<uint32_t, uint32_t> mLightIDEditorToScene;
         std::unordered_map<uint32_t, uint32_t> mLightIDSceneToEditor;
 
-        //
-        // Materials
-        //
-
-        void materialEditorFinishedCB();
-
-        MaterialEditor::UniquePtr mpMaterialEditor;
         std::string mSelectedMeshString;
         Mesh::SharedPtr mpSelectedMesh;
+
+        const static Gui::DropdownList kShadingModelList;
 
         //
         // Paths
         //
-
         void renderPath(RenderContext* pContext);
 
         void detachObjectFromPaths(const IMovableObject::SharedPtr& pMovable);

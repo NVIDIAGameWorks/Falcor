@@ -75,10 +75,10 @@ namespace Falcor
             defines.add("_SPHERICAL_MAP");
         }
 
-        mpProgram = GraphicsProgram::createFromFile("Effects/SkyBox.vs.slang", "Effects/SkyBox.ps.slang", defines);
-        mpVars = GraphicsVars::create(mpProgram->getActiveVersion()->getReflector());
+        mpProgram = GraphicsProgram::createFromFile("Effects/SkyBox.slang", "vs", "ps", defines);
+        mpVars = GraphicsVars::create(mpProgram->getReflector());
 
-        const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getActiveVersion()->getReflector()->getDefaultParameterBlock().get();
+        const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getReflector()->getDefaultParameterBlock().get();
         mBindLocations.perFrameCB = pDefaultBlockReflection->getResourceBinding("PerFrameCB");
         mBindLocations.texture = pDefaultBlockReflection->getResourceBinding("gTexture");
         mBindLocations.sampler= pDefaultBlockReflection->getResourceBinding("gSampler");
@@ -147,6 +147,8 @@ namespace Falcor
         pCB->setVariable(mScaleOffset, mScale);
 
         mpState->setFbo(pRenderCtx->getGraphicsState()->getFbo());
+        mpState->setViewport(0, pRenderCtx->getGraphicsState()->getViewport(0));
+        mpState->setScissors(0, pRenderCtx->getGraphicsState()->getScissors(0));
         pRenderCtx->pushGraphicsVars(mpVars);
         pRenderCtx->pushGraphicsState(mpState);
 

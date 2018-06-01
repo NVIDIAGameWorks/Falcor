@@ -36,27 +36,29 @@
 #include "VR/OpenVR/VRSystem.h"
 #include "Utils/Platform/ProgressBar.h"
 #include "Utils/StringUtils.h"
+#include "Graphics/FboHelper.h"
 #include <sstream>
 #include <iomanip>
 
 namespace Falcor
 {
-    Sample::Sample()
-    {
-    }
-
     void Sample::handleWindowSizeChange()
     {
         if (!gpDevice) return;
         // Tell the device to resize the swap chain
-        mpDefaultFBO = gpDevice->resizeSwapChain(mpWindow->getClientAreaWidth(), mpWindow->getClientAreaHeight());
-        mpDefaultPipelineState->setFbo(mpDefaultFBO);
+        mpBackBufferFBO = gpDevice->resizeSwapChain(mpWindow->getClientAreaWidth(), mpWindow->getClientAreaHeight());
+        auto width = mpBackBufferFBO->getWidth();
+        auto height = mpBackBufferFBO->getHeight();
+
+        //Recopy back buffer to recreate target fbo 
+        mpTargetFBO = FboHelper::create2D(width, height, mpBackBufferFBO->getDesc());
+        if(mpDefaultPipelineState) mpDefaultPipelineState->setFbo(mpTargetFBO);
 
         // Tell the GUI the swap-chain size changed
-        mpGui->onWindowResize(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
+        if(mpGui) mpGui->onWindowResize(width, height);
 
         // Call the user callback
-        onResizeSwapChain();
+        if(mpRenderer) mpRenderer->onResizeSwapChain(this, width, height);
     }
 
     void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent)
@@ -113,7 +115,7 @@ namespace Falcor
                         break;
                     case KeyboardEvent::Key::F5:
                         Program::reloadAllPrograms();
-                        onDataReload();
+                        if(mpRenderer) mpRenderer->onDataReload(this);
                         break;
                     case KeyboardEvent::Key::Escape:
                         if (mVideoCapture.pVideoCapture)
@@ -125,7 +127,7 @@ namespace Falcor
                             mpWindow->shutdown();
                         }
                         break;
-                    case KeyboardEvent::Key::Equal:
+                    case KeyboardEvent::Key::Pause:
                         mFreezeTime = !mFreezeTime;
                         break;
                     }
@@ -134,7 +136,18 @@ namespace Falcor
         }
 
         // If we got here, this is a user specific message
-        onKeyEvent(keyEvent);
+        if(mpRenderer)
+        {
+            mpRenderer->onKeyEvent(this, keyEvent);
+        }
+    }
+
+    void Sample::handleDroppedFile(const std::string& filename)
+    {
+        if(mpRenderer)
+        {
+            mpRenderer->onDroppedFile(this, filename);
+        }
     }
 
     void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
@@ -144,7 +157,10 @@ namespace Falcor
             if (mpGui->onMouseEvent(mouseEvent)) return;
             if (mpPixelZoom->onMouseEvent(mouseEvent)) return;
         }
-        onMouseEvent(mouseEvent);
+        if(mpRenderer)
+        {
+            mpRenderer->onMouseEvent(this, mouseEvent);
+        }
     }
 
     // Sample functions
@@ -159,7 +175,8 @@ namespace Falcor
 
         mpGui.reset();
         mpDefaultPipelineState.reset();
-        mpDefaultFBO.reset();
+        mpBackBufferFBO.reset();
+        mpTargetFBO.reset();
         mpTextRenderer.reset();
         mpPixelZoom.reset();
         mpRenderContext.reset();
@@ -167,11 +184,18 @@ namespace Falcor
         gpDevice.reset();
     }
 
-    void Sample::run(const SampleConfig& config, uint32_t argc, char** argv)
+    void Sample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer)
+    {
+        Sample s(pRenderer);
+        s.runInternal(config, config.argc, config.argv);
+    }
+
+    void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv)
     {
         mTimeScale = config.timeScale;
         mFixedTimeDelta = config.fixedTimeDelta;
         mFreezeTime = config.freezeTimeOnStartup;
+        mVsyncOn = config.deviceDesc.enableVsync;
 
         // Start the logger
         Logger::init();
@@ -208,23 +232,18 @@ namespace Falcor
                 logError("Failed to create device");
                 return;
             }
-
-            if (config.deviceCreatedCallback != nullptr)
-            {
-                config.deviceCreatedCallback();
-            }
-
+            
             // Get the default objects before calling onLoad()
-            mpDefaultFBO = gpDevice->getSwapChainFbo();
+            mpBackBufferFBO = gpDevice->getSwapChainFbo();
+            mpTargetFBO = FboHelper::create2D(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight(), mpBackBufferFBO->getDesc());
             mpDefaultPipelineState = GraphicsState::create();
-            mpDefaultPipelineState->setFbo(mpDefaultFBO);
+            mpDefaultPipelineState->setFbo(mpTargetFBO);
             mpRenderContext = gpDevice->getRenderContext();
             mpRenderContext->setGraphicsState(mpDefaultPipelineState);
 
             // Init the UI
             initUI();
-
-            mpPixelZoom = PixelZoom::create(mpDefaultFBO.get());
+            mpPixelZoom = PixelZoom::create(mpTargetFBO.get());
         }
         else
         {
@@ -247,13 +266,16 @@ namespace Falcor
         }
 
         // Load and run
-        onLoad();
+        mpRenderer->onLoad(this, mpRenderContext);
+        initializeTesting();
         pBar = nullptr;
 
         mFrameRate.resetClock();
         mpWindow->msgLoop();
 
-        onShutdown();
+        mpRenderer->onShutdown(this);
+        gpDevice->flushAndSync();
+        mpRenderer = nullptr;
         Logger::shutdown();
     }
 
@@ -270,10 +292,16 @@ namespace Falcor
         }
     }
 
-    void Sample::setSampleGuiWindowSize(uint32_t width, uint32_t height)
+    void Sample::setDefaultGuiSize(uint32_t width, uint32_t height)
     {
         mSampleGuiWidth = width;
         mSampleGuiHeight = height;
+    }
+
+    void Sample::setDefaultGuiPosition(uint32_t x, uint32_t y)
+    {
+        mSampleGuiPositionX = x;
+        mSampleGuiPositionY = y;
     }
 
     void Sample::renderGUI()
@@ -288,7 +316,7 @@ namespace Falcor
             "  'V'       - Toggle VSync\n"
             "  'F12'     - Capture screenshot\n"
             "  'Shift+F12' - Video capture\n"
-            "  '='       - Pause\\resume timer\n"
+            "  'Pause'     - Pause\\resume timer\n"
             "  'Z'       - Zoom in on a pixel\n"
             "  'MouseWheel' - Change level of zoom\n"
 #if _PROFILING_ENABLED
@@ -297,7 +325,7 @@ namespace Falcor
             ;
 #endif
 
-        mpGui->pushWindow("Falcor", mSampleGuiWidth, mSampleGuiHeight, 20, 40, false);
+        mpGui->pushWindow("Falcor", mSampleGuiWidth, mSampleGuiHeight, mSampleGuiPositionX, mSampleGuiPositionY, false);
         mpGui->addText("Keyboard Shortcuts");
         mpGui->addTooltip(help, true);
 
@@ -336,7 +364,7 @@ namespace Falcor
             mpGui->endGroup();
         }
 
-        onGuiRender();
+        mpRenderer->onGuiRender(this, mpGui.get());
         mpGui->popWindow();
         
         if (mVideoCapture.pUI)
@@ -347,6 +375,39 @@ namespace Falcor
         mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
     }
 
+    bool Sample::initializeTesting()
+    {
+        if (mArgList.argExists("test"))
+        {
+            mpSampleTest = SampleTest::create();
+            mpSampleTest->initializeTests(this);
+            mpRenderer->onInitializeTesting(this);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    void Sample::beginTestFrame()
+    { 
+        if (mpSampleTest != nullptr) 
+        { 
+            mpSampleTest->beginTestFrame(this); 
+            mpRenderer->onBeginTestFrame(mpSampleTest.get());
+        } 
+    }
+
+    void Sample::endTestFrame()
+    {
+        if (mpSampleTest != nullptr)
+        {
+            mpSampleTest->endTestFrame(this);
+            mpRenderer->onEndTestFrame(this, mpSampleTest.get());
+        }
+    }
+
     void Sample::renderFrame()
     {
         if (gpDevice && gpDevice->isWindowOccluded())
@@ -355,45 +416,59 @@ namespace Falcor
         }
 
         mFrameRate.newFrame();
+        beginTestFrame();
         {
             PROFILE(onFrameRender);
             // The swap-chain FBO might have changed between frames, so get it
             if(gpDevice)
             {
-                mpDefaultFBO = gpDevice->getSwapChainFbo();
+                mpBackBufferFBO = gpDevice->getSwapChainFbo();
                 mpRenderContext = gpDevice->getRenderContext();
                 // Bind the default state
+                mpDefaultPipelineState->setFbo(mpTargetFBO);
                 mpRenderContext->setGraphicsState(mpDefaultPipelineState);
-                mpDefaultPipelineState->setFbo(mpDefaultFBO);
             }
             calculateTime();
-            onFrameRender();
+            mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
         }
+
+        if (gpDevice)
         {
-            PROFILE(renderGUI);
-            if (mShowUI)
+            //blits the temp fbo given to user's renderer onto the backbuffer
+            mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
+            //Takes testing screenshots if desired (leaves out gui and fps text)
+            endTestFrame();
+
+            //Swaps back to backbuffer to render fps text and gui directly onto it
+            mpDefaultPipelineState->setFbo(mpBackBufferFBO);
+            mpRenderContext->setGraphicsState(mpDefaultPipelineState);
             {
-                renderGUI();
+                PROFILE(renderGUI);
+                if (mShowUI)
+                {
+                    renderGUI();
+                }
             }
-        }
 
-        renderText(getFpsMsg(), glm::vec2(10, 10));
-        if(mpPixelZoom)
-        {
-            mpPixelZoom->render(mpRenderContext.get(), gpDevice->getSwapChainFbo().get());
-        }
+            renderText(getFpsMsg(), glm::vec2(10, 10));
+            if (mpPixelZoom)
+            {
+                mpPixelZoom->render(mpRenderContext.get(), mpBackBufferFBO.get());
+            }
 
-        captureVideoFrame();
-        printProfileData();
-        if (mCaptureScreen)
-        {
-            captureScreen();
-        }
+            printProfileData();
+            captureVideoFrame();
 
-        if(gpDevice)
-        {
-            PROFILE(present);
-            gpDevice->present();
+            if (mCaptureScreen)
+            {
+                captureScreen();
+            }
+
+
+            {
+                PROFILE(present);
+                gpDevice->present();
+            }
         }
     }
 
@@ -407,7 +482,8 @@ namespace Falcor
         std::string pngFile;
         if (findAvailableFilename(filename, outputDirectory, "png", pngFile))
         {
-            Texture::SharedPtr pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
+            Texture::SharedPtr pTexture;
+            pTexture = gpDevice->getSwapChainFbo()->getColorTexture(0);
             pTexture->captureToFile(0, 0, pngFile);
         }
         else
@@ -421,11 +497,11 @@ namespace Falcor
 
     void Sample::initUI()
     {
-        mpGui = Gui::create(mpDefaultFBO->getWidth(), mpDefaultFBO->getHeight());
+        mpGui = Gui::create(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight());
         mpTextRenderer = TextRenderer::create();
     }
 
-    const std::string Sample::getFpsMsg() const
+    std::string Sample::getFpsMsg()
     {
         std::string s;
         if (mShowText)
@@ -439,23 +515,18 @@ namespace Falcor
         return s;
     }
 
-    void Sample::toggleText(bool enabled)
-    {
-        mShowText = enabled && gpDevice;
-    }
-
     void Sample::resizeSwapChain(uint32_t width, uint32_t height)
     {
         mpWindow->resize(width, height);
         mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
     }
 
-    bool Sample::isKeyPressed(const KeyboardEvent::Key& key) const
+    bool Sample::isKeyPressed(const KeyboardEvent::Key& key)
     {
         return mPressedKeys.find(key) != mPressedKeys.cend();
     }
 
-    void Sample::renderText(const std::string& msg, const glm::vec2& position, const glm::vec2 shadowOffset) const
+    void Sample::renderText(const std::string& msg, const glm::vec2& position, const glm::vec2 shadowOffset)
     {
         if (mShowText)
         {
@@ -502,10 +573,10 @@ namespace Falcor
         desc.flipY = false;
         desc.codec = mVideoCapture.pUI->getCodec();
         desc.filename = mVideoCapture.pUI->getFilename();
-        desc.format = mpDefaultFBO->getColorTexture(0)->getFormat();
+        desc.format = mpBackBufferFBO->getColorTexture(0)->getFormat();
         desc.fps = mVideoCapture.pUI->getFPS();
-        desc.height = mpDefaultFBO->getHeight();
-        desc.width = mpDefaultFBO->getWidth();
+        desc.height = mpBackBufferFBO->getHeight();
+        desc.width = mpBackBufferFBO->getWidth();
         desc.bitrateMbps = mVideoCapture.pUI->getBitrate();
         desc.gopSize = mVideoCapture.pUI->getGopSize();
 
@@ -524,10 +595,6 @@ namespace Falcor
                 mFixedTimeDelta = -mFixedTimeDelta;
             }
             mCurrentTime = mVideoCapture.pUI->getStartTime();
-            if (!mVideoCapture.pUI->captureUI())
-            {
-                mShowUI = false;
-            }
         }
     }
  
@@ -548,7 +615,7 @@ namespace Falcor
     {
         if (mVideoCapture.pVideoCapture)
         {
-            mVideoCapture.pVideoCapture->appendFrame(mpRenderContext->readTextureSubresource(mpDefaultFBO->getColorTexture(0).get(), 0).data());
+            mVideoCapture.pVideoCapture->appendFrame(mpRenderContext->readTextureSubresource(mpBackBufferFBO->getColorTexture(0).get(), 0).data());
 
             if (mVideoCapture.pUI->useTimeRange())
             {
@@ -565,20 +632,5 @@ namespace Falcor
                 }
             }
         }
-    }
-
-    void Sample::shutdownApp()
-    {
-        mpWindow->shutdown();
-    }
-
-    void Sample::pollForEvents()
-    {
-        mpWindow->pollForEvents();
-    }
-
-    void Sample::setWindowTitle(const std::string& title)
-    {
-        mpWindow->setWindowTitle(title);
     }
 }

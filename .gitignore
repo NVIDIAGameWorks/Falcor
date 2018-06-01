@@ -18,6 +18,7 @@ Framework/Externals/NVAPI/
 .vs/*
 *.pyc
 *.o
+*slang-dump-*
 
 # A bit of a song and dance to ignore all the files
 # in the Slang codebase except for the ones we need.

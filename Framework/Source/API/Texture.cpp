@@ -45,6 +45,34 @@ namespace Falcor
         return flags;
     }
 
+    Texture::SharedPtr Texture::createFromApiHandle(ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags)
+    {
+        switch (type)
+        {
+            case Resource::Type::Texture1D:
+                assert(height == 1 && depth == 1 && sampleCount == 1);
+                break;
+            case Resource::Type::Texture2D:
+                assert(depth == 1 && sampleCount == 1);
+                break;
+            case Resource::Type::Texture2DMultisample:
+                assert(depth == 1);
+                break;
+            case Resource::Type::Texture3D:
+                assert(sampleCount == 1);
+                break;
+            case Resource::Type::TextureCube:
+                assert(depth == 1 && sampleCount == 1);
+                break;
+        }
+        Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
+        pTexture->mApiHandle = handle;
+
+        pTexture->mState.global = initState;
+        pTexture->mState.isGlobal = true;
+        return pTexture->mApiHandle ? pTexture : nullptr;
+    }
+
     Texture::SharedPtr Texture::create1D(uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags)
     {
         bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels);
@@ -93,6 +121,7 @@ namespace Falcor
             uint32_t dims = width | height | depth;
             mMipLevels = bitScanReverse(dims) + 1;
         }
+        mState.perSubresource.resize(mMipLevels * mArraySize, mState.global);
     }
 
     void Texture::captureToFile(uint32_t mipLevel, uint32_t arraySlice, const std::string& filename, Bitmap::FileFormat format, Bitmap::ExportFlags exportFlags) const
@@ -132,25 +161,26 @@ namespace Falcor
 
         if (autoGenMips)
         {
-            generateMips();
+            generateMips(gpDevice->getRenderContext().get());
             invalidateViews();
         }
     }
 
-    void Texture::generateMips()
+    void Texture::generateMips(RenderContext* pContext)
     {
         if (mType != Type::Texture2D)
         {
             logWarning("Texture::generateMips() was only tested with Texture2Ds");
         }
-
-        RenderContext* pContext = gpDevice->getRenderContext().get();
-
-        for (uint32_t i = 0; i < mMipLevels - 1; i++)
+        // #OPTME: should blit support arrays?
+        for (uint32_t m = 0; m < mMipLevels - 1; m++)
         {
-            auto srv = getSRV(i, 1, 0, mArraySize);
-            auto rtv = getRTV(i + 1, 0, mArraySize);
-            pContext->blit(srv, rtv);
+            for(uint32_t a = 0 ; a < mArraySize ; a++)
+            {
+                auto srv = getSRV(m, 1, a, 1);
+                auto rtv = getRTV(m + 1, a, 1);
+                pContext->blit(srv, rtv);
+            }
         }
 
 		if(mReleaseRtvsAfterGenMips)

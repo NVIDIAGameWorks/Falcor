@@ -39,7 +39,7 @@ namespace Falcor
 
     Fbo::~Fbo() = default;
 
-    Fbo::ApiHandle Fbo::getApiHandle() const
+    const Fbo::ApiHandle& Fbo::getApiHandle() const
     {
         checkStatus();
         return mApiHandle;

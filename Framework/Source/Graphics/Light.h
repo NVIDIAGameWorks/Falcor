@@ -33,8 +33,8 @@
 #include "glm/mat4x4.hpp"
 #include "Data/HostDeviceData.h"
 #include "Utils/Gui.h"
-#include "Graphics/Model/Model.h"
 #include "Graphics/Paths/MovableObject.h"
+#include "Graphics/Model/Model.h"
 
 namespace Falcor
 {
@@ -53,16 +53,18 @@ namespace Falcor
         virtual ~Light() = default;
 
         /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
+            \param[in] pVars The program vars to set the parameters into.
             \param[in] pBuffer The constant buffer to set the parameters into.
             \param[in] varName The name of the light variable in the program.
         */
-        virtual void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName);
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName);
 
         /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
+            \param[in] pVars The program vars to set the parameters into.
             \param[in] pBuffer The constant buffer to set the parameters into.
             \param[in] offset Byte offset into the constant buffer to set data to.
         */
-        virtual void setIntoConstantBuffer(ConstantBuffer* pBuffer, size_t offset);
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
 
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
@@ -70,17 +72,9 @@ namespace Falcor
         */
         virtual void renderUI(Gui* pGui, const char* group = nullptr);
 
-        /** Prepare GPU data
-        */
-        virtual void prepareGPUData() = 0;
-
-        /** Unload GPU data
-        */
-        virtual void unloadGPUData() = 0;
-
         /** Get total light power
         */
-        virtual float getPower() = 0;
+        virtual float getPower() const = 0;
 
         /** Get the light type
         */
@@ -104,7 +98,7 @@ namespace Falcor
 
     protected:
 
-        static const size_t kDataSize = sizeof(LightData); //TODO(tfoley) HACK:SPIRE - sizeof(MaterialData);
+        static const size_t kDataSize = sizeof(LightData);
 
         /* UI callbacks for keeping the intensity in-sync */
         glm::vec3 getColorForUI();
@@ -139,14 +133,6 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* group = nullptr) override;
 
-        /** Prepare GPU data
-        */
-        void prepareGPUData() override;
-
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
-
         /** Set the light's world-space direction.
         */
         void setWorldDirection(const glm::vec3& dir);
@@ -162,7 +148,7 @@ namespace Falcor
 
         /** Get the light's world-space direction.
         */
-        const glm::vec3& getWorldDirection() const { return mData.worldDir; }
+        const glm::vec3& getWorldDirection() const { return mData.dirW; }
 
         /** Get the light intensity.
         */
@@ -170,7 +156,7 @@ namespace Falcor
 
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** IMovableObject interface
         */
@@ -200,26 +186,18 @@ namespace Falcor
             \param[in] group Optional. If specified, creates a UI group to display elements within
         */
         void renderUI(Gui* pGui, const char* group = nullptr) override;
-
-        /** Prepare GPU data
-        */
-        void prepareGPUData() override;
-
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
         
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
         /** Set the light's world-space position
         */
-        void setWorldPosition(const glm::vec3& pos) { mData.worldPos = pos; }
+        void setWorldPosition(const glm::vec3& pos) { mData.posW = pos; }
 
         /** Set the light's world-space position
         */
-        void setWorldDirection(const glm::vec3& dir) { mData.worldDir = dir; }
+        void setWorldDirection(const glm::vec3& dir) { mData.dirW = dir; }
 
         /** Set the light intensity.
         */
@@ -232,11 +210,11 @@ namespace Falcor
 
         /** Get the light's world-space position
         */
-        const glm::vec3& getWorldPosition() const { return mData.worldPos; }
+        const glm::vec3& getWorldPosition() const { return mData.posW; }
 
         /** Get the light's world-space direction
         */
-        const glm::vec3& getWorldDirection() const { return mData.worldDir; }
+        const glm::vec3& getWorldDirection() const { return mData.dirW; }
 
         /** Get the light intensity.
         */
@@ -281,27 +259,26 @@ namespace Falcor
         
         /** Get total light power (needed for light picking)
         */
-        float getPower() override;
+        float getPower() const override;
 
-        /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader.
+        /** Set the light parameters into a program. To use this you need to include/import 'ShaderCommon' inside your shader
+            and declare a constant buffer to bind the values to using the AREA_LIGHTS() macro defined in HostDeviceSharedMacros.h
+            \param[in] pVars The program vars to set the parameters into.
             \param[in] pBuffer The constant buffer to set the parameters into.
-            \param[in] varName The name of the light variable in the program.
+            \param[in] varName The name of the declared variable in the program. "gAreaLights" by default.
         */
-        void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName) override;
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName);
+
+        /** Do not use this overload for area lights. Area light data contains resources that cannot be bound using an offset when
+            there is an array of light data. Calling this function will do nothing except log a warning.
+        */
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
 
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
             \param[in] group Optional. If specified, creates a UI group to display elements within
         */
         void renderUI(Gui* pGui, const char* group = nullptr) override;
-
-        /** Prepare GPU data
-        */
-        void prepareGPUData() override;
-
-        /** Unload GPU data
-        */
-        void unloadGPUData() override;
 
         /** Set the geometry mesh for this light
             \param[in] pModel Model that contains the geometry mesh for this light
@@ -321,7 +298,7 @@ namespace Falcor
 
         /** Get surface area of the mesh
         */
-        float getSurfaceArea() const { return mSurfaceArea; }
+        float getSurfaceArea() const { return mAreaLightData.surfaceArea; }
 
         /** Get the probability distribution of the mesh
         */
@@ -330,66 +307,61 @@ namespace Falcor
         /** Set the index buffer
             \param[in] indexBuf Buffer containing mesh indices
         */
-        void setIndexBuffer(const Buffer::SharedPtr& indexBuf) { mIndexBuf = indexBuf; }
+        void setIndexBuffer(const Buffer::SharedPtr& indexBuf) { mpIndexBuffer = indexBuf; }
 
         /** Get the index buffer.
         */
-        const Buffer::SharedPtr& getIndexBuffer() const { return mIndexBuf; }
+        const Buffer::SharedPtr& getIndexBuffer() const { return mpIndexBuffer; }
 
         /** Set the vertex buffer.
             \param[in] vertexBuf Buffer containing mesh vertices
         */
-        void setPositionsBuffer(const Buffer::SharedPtr& vertexBuf) { mVertexBuf = vertexBuf; }
+        void setPositionsBuffer(const Buffer::SharedPtr& vertexBuf) { mpVertexBuffer = vertexBuf; }
 
         /** Get the vertex buffer.
         */
-        const Buffer::SharedPtr& getPositionsBuffer() const { return mVertexBuf; }
+        const Buffer::SharedPtr& getPositionsBuffer() const { return mpVertexBuffer; }
 
         /** Set the texture coordinate/UV buffer.
             \param[in] texCoordBuf Buffer containing texture coordinates
         */
-        void setTexCoordBuffer(const Buffer::SharedPtr& texCoordBuf) { mTexCoordBuf = texCoordBuf; }
+        void setTexCoordBuffer(const Buffer::SharedPtr& texCoordBuf) { mpTexCoordBuffer = texCoordBuf; }
 
         /** Get texture coordinate buffer.
         */
-        const Buffer::SharedPtr& getTexCoordBuffer() const { return mTexCoordBuf; }
+        const Buffer::SharedPtr& getTexCoordBuffer() const { return mpTexCoordBuffer; }
 
         /** Set the mesh CDF buffer.
             \param[in] meshCDF Buffer containing mesh CDF data
         */
-        void setMeshCDFBuffer(const Buffer::SharedPtr& meshCDFBuf) { mMeshCDFBuf = meshCDFBuf; }
+        void setMeshCDFBuffer(const Buffer::SharedPtr& meshCDFBuf) { mpMeshCDFBuffer = meshCDFBuf; }
 
         /** Get the mesh CDF buffer
         */
-        const Buffer::SharedPtr& getMeshCDFBuffer() const { return mMeshCDFBuf; }
+        const Buffer::SharedPtr& getMeshCDFBuffer() const { return mpMeshCDFBuffer; }
 
-        /**
-            IMovableObject interface
+        /** IMovableObject interface
         */
         void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
 
-        /** Creates area lights automatically from meshes with emissive materials in a model.
-            \param[in] pModel Model
-            \param[out] areaLights Array of area lights created from the model
+        /** Gets the size of a single light data struct in bytes
         */
-        static void createAreaLightsForModel(const Model::SharedPtr& pModel, std::vector<Light::SharedPtr>& areaLights);
+        static uint32_t getShaderStructSize() { return kAreaLightDataSize; }
 
     private:
 
-        /** This is a utility function that creates an area light for the geometry mesh.
-            \param[in] pMeshInstance Instance of geometry mesh
-        */
-        static Light::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance);
+        static const size_t kAreaLightDataSize = sizeof(AreaLightData) - sizeof(AreaLightResources);
+        AreaLightData mAreaLightData;
 
         Model::MeshInstance::SharedPtr mpMeshInstance; ///< Geometry mesh data
-        Buffer::SharedPtr mIndexBuf;    ///< Buffer id for indices
-        Buffer::SharedPtr mVertexBuf;   ///< Buffer id for vertices
-        Buffer::SharedPtr mTexCoordBuf; ///< Buffer id for texcoord
-        Buffer::SharedPtr mMeshCDFBuf;  ///< Buffer id for mesh Cumulative distribution function (CDF)
+        Buffer::SharedPtr mpIndexBuffer;    ///< Buffer for indices
+        Buffer::SharedPtr mpVertexBuffer;   ///< Buffer for vertices
+        Buffer::SharedPtr mpTexCoordBuffer; ///< Buffer for texcoord
+        Buffer::SharedPtr mpMeshCDFBuffer;  ///< Buffer for mesh Cumulative distribution function (CDF)
 
-        float mSurfaceArea;          ///< Surface area of the mesh
-        vec3 mTangent;               ///< Unnormalized tangent vector of the light
-        vec3 mBitangent;             ///< Unnormalized bitangent vector of the light
         std::vector<float> mMeshCDF; ///< CDF function for importance sampling a triangle mesh
     };
+
+    AreaLight::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance);
+    std::vector<AreaLight::SharedPtr> createAreaLightsForModel(const Model* pModel);
 }

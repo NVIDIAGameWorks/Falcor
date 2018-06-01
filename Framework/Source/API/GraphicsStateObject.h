@@ -82,8 +82,9 @@ namespace Falcor
             uint32_t getSampleMask() const { return mSampleMask; }
             GraphicsStateObject::PrimitiveType getPrimitiveType() const { return mPrimType; }
             VertexLayout::SharedConstPtr getVertexLayout() const { return mpLayout; }
-            const Fbo::Desc& getFboDesc() const { return mFboDesc; }
+            Fbo::Desc getFboDesc() const { return mFboDesc; }
             ProgramVersion::SharedConstPtr getProgramVersion() const { return mpProgram; }
+            RootSignature::SharedPtr getRootSignature() const { return mpRootSignature; }
 
             bool getSinglePassStereoEnabled() const { return mSinglePassStereoEnabled; }
 
@@ -116,7 +117,7 @@ namespace Falcor
 
         static SharedPtr create(const Desc& desc);
 
-        ApiHandle getApiHandle() { return mApiHandle; }
+        const ApiHandle& getApiHandle() { return mApiHandle; }
 
         const Desc& getDesc() const { return mDesc; }
 

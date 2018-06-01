@@ -1,26 +1,23 @@
 {
-    "Tests Collections Name" : "TC_DailyTests",
+    "Tests Collections Name" : "DailyTests",
 
     "Tests Collections" :
     {
-        "GitHub_DailyTests" :
+        "DailyTests" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Destination Target" : "C:\\Falcor\\GitHub\\",
-            "Source Branch Target" : "master",
+            "Source Branch Target" : "dev-3.0.2",
             "Compare Branch Target" : "master",
-            "Compare Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
-            "Generate Reference Target" : "\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\",
-            "Tests Configs Target" : "TestConfigs\\",
+            "Tests Configs Target" : "TestConfigs/",
 
             "Tests":
             [
                 {
-                    "Tests Set" : "TS_ReleaseD3D12.json"
+                    "Tests Set" : "TS_D3D12_Release.json"
                 },
-                {
-                    "Tests Set" : "TS_ReleaseVK.json"
-                }
+				{
+					"Tests Set" : "TS_VK_Release.json"
+				}
             ]
         }
     }

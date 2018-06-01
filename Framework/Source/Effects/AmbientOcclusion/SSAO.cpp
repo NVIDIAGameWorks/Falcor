@@ -113,7 +113,7 @@ namespace Falcor
     SSAO::SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution)
     {
         Fbo::Desc fboDesc;
-        fboDesc.setColorTarget(0, Falcor::ResourceFormat::RGBA8Unorm);
+        fboDesc.setColorTarget(0, Falcor::ResourceFormat::R8Unorm);
         mpAOFbo = FboHelper::create2D(aoMapSize.x, aoMapSize.y, fboDesc);
 
         initShader();
@@ -150,9 +150,9 @@ namespace Falcor
     void SSAO::initShader()
     {
         mpSSAOPass = FullScreenPass::create("Effects/SSAO.ps.slang");
-        mpSSAOVars = GraphicsVars::create(mpSSAOPass->getProgram()->getActiveVersion()->getReflector());
+        mpSSAOVars = GraphicsVars::create(mpSSAOPass->getProgram()->getReflector());
 
-        const ParameterBlockReflection* pReflector = mpSSAOPass->getProgram()->getActiveVersion()->getReflector()->getDefaultParameterBlock().get();
+        const ParameterBlockReflection* pReflector = mpSSAOPass->getProgram()->getReflector()->getDefaultParameterBlock().get();
         mBindLocations.internalPerFrameCB = pReflector->getResourceBinding("InternalPerFrameCB");
         mBindLocations.ssaoCB = pReflector->getResourceBinding("SSAOCB");
         mBindLocations.noiseSampler = pReflector->getResourceBinding("gNoiseSampler");

@@ -52,7 +52,7 @@
 // Clarity.  Cleans pybind11 call notation a bit.
 namespace py = pybind11;
 
-void LiveTrainRenderer::onInitialize(RenderContext::SharedPtr)
+void LiveTrainRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     // Don't re-initialize if we already have.
     if (mIsInitialized) 
@@ -96,8 +96,6 @@ void LiveTrainRenderer::onInitialize(RenderContext::SharedPtr)
     mDNNSizeList.push_back( { 1, "Learn 256 x 256 image" } );
     mDNNSizeList.push_back( { 2, "Learn 512 x 512 image" } );
 
-    // Resize our gui window so it's big enough
-    mGuiSize = ivec2(300, 600);
     mIsInitialized = true;
 }
 
@@ -123,7 +121,7 @@ void LiveTrainRenderer::doPythonTrain( Texture::SharedPtr fromTex )
 
     // Get our scene's light direction
     Light* pLight = mpScene->getScene()->getLight(0).get();
-    float dirData[3] = { pLight->getData().worldDir.x, pLight->getData().worldDir.y, pLight->getData().worldDir.z };
+    float dirData[3] = { pLight->getData().dirW.x, pLight->getData().dirW.y, pLight->getData().dirW.z };
 
     // Actually pass our light direction to Python (used as the input for this training run on the network)
     mGlobals["lightData"] = py::array_t<float>({ 3 }, { 4 }, dirData);  // data shape, data stride, raw data ptr (1D array of floats)
@@ -149,7 +147,7 @@ void LiveTrainRenderer::doPythonInference()
 {
     // Send our light direction to Python
     DirectionalLight *dirLight = (DirectionalLight *)(mpScene->getScene()->getLight(0).get());
-    float dirData[3] = { dirLight->getData().worldDir.x, dirLight->getData().worldDir.y, dirLight->getData().worldDir.z };
+    float dirData[3] = { dirLight->getData().dirW.x, dirLight->getData().dirW.y, dirLight->getData().dirW.z };
     mGlobals["inferLight"] = py::array_t<float>( { 3 }, { 4 }, dirData );
     
     // Predict the image given the above light direction
@@ -184,9 +182,9 @@ void LiveTrainRenderer::doRandomTrain()
     if (mTrainsLeft>0) mTrainsLeft--;
 }
 
-void LiveTrainRenderer::onDisplay(RenderContext::SharedPtr context, Fbo::SharedPtr targetFbo)
+void LiveTrainRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
-    context->clearFbo(targetFbo.get(), vec4(0.2f, 0.4f, 0.5f, 1), 1, 0);
+    pRenderContext->clearFbo(pTargetFbo.get(), vec4(0.2f, 0.4f, 0.5f, 1), 1, 0);
 
     if (mpScene)
     {
@@ -201,18 +199,18 @@ void LiveTrainRenderer::onDisplay(RenderContext::SharedPtr context, Fbo::SharedP
         }
 
         // Render our scene traditionally.
-        mpState->setFbo(mpMainFbo);
-        context->clearFbo(mpMainFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::All);
-        mpScene->update(mCurrentTime);
-        lightingPass(context);
-        msaaResolvePass(context);
+        pRenderContext->getGraphicsState()->setFbo(mpMainFbo);
+        pRenderContext->clearFbo(mpMainFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::All);
+        mpScene->update(pSample->getCurrentTime());
+        lightingPass(pRenderContext);
+        msaaResolvePass(pRenderContext);
 
         // If training, convert the data to a format Python can look at.  This is relatively slow & simplistic, 
         //     since we could probably use the original FBO (mpResolveFbo) directly, but in this simple example,  
         //     we just wanted to see if Python I/O transfers would work in simple cases.
         if (mDoTraining)
         {
-            context->blit(mpResolveFbo->getColorTexture(0)->getSRV(), mpCaptureFbo->getRenderTargetView(0));
+            pRenderContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), mpCaptureFbo->getRenderTargetView(0));
             doPythonTrain(mpCaptureFbo->getColorTexture(0));
         }
 
@@ -223,19 +221,27 @@ void LiveTrainRenderer::onDisplay(RenderContext::SharedPtr context, Fbo::SharedP
         }
 
         // Blit our rendering and our Python return textures onto the screen
-        context->blit(mpResolveFbo->getColorTexture(0)->getSRV(), targetFbo->getRenderTargetView(0), uvec4(-1), uvec4(504, 284, 1016, 796));
-        context->blit(mPythonReturnTexture->getSRV(),             targetFbo->getRenderTargetView(0), uvec4(-1), uvec4(1204, 284, 1716, 796));
+        pRenderContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0), uvec4(-1), uvec4(504, 284, 1016, 796));
+        pRenderContext->blit(mPythonReturnTexture->getSRV(),             pTargetFbo->getRenderTargetView(0), uvec4(-1), uvec4(1204, 284, 1716, 796));
     }
 }
 
-void LiveTrainRenderer::onGuiRender()
+void LiveTrainRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     // If we haven't loaded a scene, there's not much we can do.
     if (!mpScene)
     {
-        mpGui->addText(mPythonInitialized ? "Python Initialized: (Successfully)" : "Python Initialized: **Failure**");
-        mpGui->addText("");
-        mpGui->addText("Load a scene to enable training...");
+        pGui->addText(mPythonInitialized ? "Python Initialized: (Successfully)" : "Python Initialized: **Failure**");
+        pGui->addText("");
+        pGui->addText("Load a scene to enable training...");
+        if (pGui->addButton("Load Scene"))
+        {
+            std::string filename;
+            if (openFileDialog(Scene::kFileFormatString, filename))
+            {
+                initNewScene(SceneRenderer::create(loadScene(filename)));
+            }
+        }
     }
 
     // Now that we have a scene loaded, give more options.
@@ -243,46 +249,46 @@ void LiveTrainRenderer::onGuiRender()
     {
         // Allow the user to update the current light position
         DirectionalLight *dirLight = (DirectionalLight *)(mpScene->getScene()->getLight(0).get());
-        vec3 tmp = dirLight->getData().worldDir;
-        if (mpGui->addDirectionWidget("Direction", tmp))
+        vec3 tmp = dirLight->getData().dirW;
+        if (pGui->addDirectionWidget("Direction", tmp))
         {
             dirLight->setWorldDirection(tmp);
             mDoInference = true;
         }
 
-        mpGui->addSeparator();
+        pGui->addSeparator();
 
-        if (mpGui->beginGroup("Training & Inference", true))
+        if (pGui->beginGroup("Training & Inference", true))
         {
             // Print some status messages
-            mpGui->addText( mPythonInitialized ? "Python Initialized: (Successfully)" : "Python Initialized: **Failure**");  // Python available?
-            addTextHelper("Trained example images: %d", int(mNumTrainingRuns));                                              // How many times trained?
-            addTextHelper( mLastTrainTime > 0 ? "Last train cost: %.3f ms" : "", mLastTrainTime );                           // Last training cost (if available)?
-            addTextHelper( mLastInferenceTime > 0 ? "Last inference cost: %.3f ms" : "", mLastInferenceTime );               // Last inference cost (if available)?
-            mpGui->addText("");
+            pGui->addText( mPythonInitialized ? "Python Initialized: (Successfully)" : "Python Initialized: **Failure**");  // Python available?
+            addTextHelper(pGui, "Trained example images: %d", int(mNumTrainingRuns));                                              // How many times trained?
+            addTextHelper(pGui, mLastTrainTime > 0 ? "Last train cost: %.3f ms" : "", mLastTrainTime );                           // Last training cost (if available)?
+            addTextHelper(pGui, mLastInferenceTime > 0 ? "Last inference cost: %.3f ms" : "", mLastInferenceTime );               // Last inference cost (if available)?
+            pGui->addText("");
 
             // Give some options for how to train...
-            if (mpGui->addButton("(T) Train once"))
+            if (pGui->addButton("(T) Train once"))
             {
                 doRandomTrain();
             }
-            if (mpGui->addButton("(B) Train batch of 128"))
+            if (pGui->addButton("(B) Train batch of 128"))
             {
                 mTrainsLeft = 128;
             }
-            if (mpGui->addButton("(C) Continuous Train"))
+            if (pGui->addButton("(C) Continuous Train"))
             {
                 mContinuousTrain = !mContinuousTrain;
             }
 
-            mpGui->addText("");
-            mpGui->addSeparator();
+            pGui->addText("");
+            pGui->addSeparator();
 
             // Show some other options.  These reset the training, so hide them in a closed group
-            if (mpGui->beginGroup("Options (that reset training)"))
+            if (pGui->beginGroup("Options (that reset training)"))
             {
-                if (mpGui->addDropdown("Network Size", mDNNSizeList, mDNNSize) ||
-                    mpGui->addButton("(R) Reset DNN Model"))
+                if (pGui->addDropdown("Network Size", mDNNSizeList, mDNNSize) ||
+                    pGui->addButton("(R) Reset DNN Model"))
                 {
                     mPythonInitialized = (executeStringAndSetFlags(mPythonCreateModel[mDNNSize]) >= 0.0f);
                     if (mPythonInitialized)
@@ -291,7 +297,7 @@ void LiveTrainRenderer::onGuiRender()
                         mNumTrainingRuns = 0;
                     }
                 }
-                if (mpGui->addButton("Reload Python Scripts"))
+                if (pGui->addButton("Reload Python Scripts"))
                 {
                     reloadPythonScripts();   // Reload Python
                     doPythonInit();          // Reinitialize all of Python
@@ -301,24 +307,24 @@ void LiveTrainRenderer::onGuiRender()
                         mNumTrainingRuns = 0;
                     }
                 }
-                mpGui->endGroup();
+                pGui->endGroup();
             }
 
-            mpGui->addSeparator();
-            mpGui->endGroup();
+            pGui->addSeparator();
+            pGui->endGroup();
         }
     }
 
     // If we get a Python error, print out Python's error in a window rather than silently failing.
     if (mHasFailure)
     {
-        mpGui->pushWindow("Python Error Message:" , 1000, 250, 500, 10 );
-        mpGui->addText(mTestResult.c_str());
-        mpGui->popWindow();
+        pGui->pushWindow("Python Error Message:" , 1000, 250, 500, 10 );
+        pGui->addText(mTestResult.c_str());
+        pGui->popWindow();
     }
 }
 
-bool LiveTrainRenderer::onKeyEvent(const KeyboardEvent& keyEvent)
+bool LiveTrainRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     if (keyEvent.type != KeyboardEvent::Type::KeyPressed || !mpScene)
     {
@@ -396,7 +402,7 @@ void LiveTrainRenderer::reloadPythonScripts( void )
     mPythonInfer.assign((std::istreambuf_iterator<char>(inferFile)), std::istreambuf_iterator<char>());
 }
 
-bool LiveTrainRenderer::onMouseEvent(const MouseEvent& mouseEvent)
+bool LiveTrainRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     // Prevents mouse motion from changing the camera.
     if (mouseEvent.type == MouseEvent::Type::LeftButtonDown ||
@@ -411,26 +417,26 @@ bool LiveTrainRenderer::onMouseEvent(const MouseEvent& mouseEvent)
 // Below here:  Mostly encapsulation of simple/basic Falcor rendering code
 ///////////////////////////////////////////////////////////////////////////////////
 
-void LiveTrainRenderer::msaaResolvePass(RenderContext::SharedPtr context)
+void LiveTrainRenderer::msaaResolvePass(RenderContext::SharedPtr pContext)
 {
-    context->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
-    context->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
-    context->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
+    pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
+    pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
+    pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
 }
 
-void LiveTrainRenderer::lightingPass(RenderContext::SharedPtr context)
+void LiveTrainRenderer::lightingPass(RenderContext::SharedPtr pContext)
 {
-    mpState->setProgram(mLightingPass.pProgram);
-    context->setGraphicsVars(mLightingPass.pVars);
-    mpScene->renderScene(context.get());
+    pContext->getGraphicsState()->setProgram(mLightingPass.pProgram);
+    pContext->setGraphicsVars(mLightingPass.pVars);
+    mpScene->renderScene(pContext.get());
 }
 
 void LiveTrainRenderer::initLightingPass()
 {
-    mLightingPass.pProgram = GraphicsProgram::createFromFile("RenderForLearning.vs.slang", "RenderForLearning.ps.slang");  
+    mLightingPass.pProgram = GraphicsProgram::createFromFile("RenderForLearning.slang", "vs", "ps");  
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpScene->getScene()->getLightCount()));
     initControls();
-    mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getActiveVersion()->getReflector());
+    mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
 }
 
 void LiveTrainRenderer::applyLightingProgramControl(ControlID controlId)
@@ -449,7 +455,7 @@ void LiveTrainRenderer::applyLightingProgramControl(ControlID controlId)
     }
 }
 
-void LiveTrainRenderer::onResizeSwapChain(uint32_t newWidth, uint32_t newHeight)
+void LiveTrainRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     Fbo::Desc fboDesc;
     fboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
@@ -462,7 +468,7 @@ void LiveTrainRenderer::onResizeSwapChain(uint32_t newWidth, uint32_t newHeight)
     mpMainFbo = FboHelper::create2D(512, 512, fboDesc);
 }
 
-void LiveTrainRenderer::onInitNewScene(SceneRenderer::SharedPtr pScene)
+void LiveTrainRenderer::initNewScene(SceneRenderer::SharedPtr pScene)
 {
     mpScene = pScene;
 
@@ -477,7 +483,6 @@ void LiveTrainRenderer::initControls(void)
 {
     mControls.resize(ControlID::Count);
     mControls[ControlID::SuperSampling] = { false, "INTERPOLATION_MODE", "sample" };
-    mControls[ControlID::DisableSpecAA] = { false, "_MS_DISABLE_ROUGHNESS_FILTERING" };
     mControls[ControlID::EnableShadows] = { false, "_ENABLE_SHADOWS" };
     mControls[ControlID::EnableReflections] = { false, "_ENABLE_REFLECTIONS" };
     mControls[ControlID::EnableSSAO] = { false, "" };
@@ -491,37 +496,68 @@ void LiveTrainRenderer::initControls(void)
 
 // Some dumb, printf-like helpers for adding text to the GUI.  These were hacked in quickly to hide some of my UI mess before releasing the code.
 
-void LiveTrainRenderer::addTextHelper(const char *format, int intVal)
+void LiveTrainRenderer::addTextHelper(Gui* pGui, const char *format, int intVal)
 {
     char buf[512];
     if (format[0])
     {
         sprintf_s(buf, format, intVal);
-        mpGui->addText(buf);
+        pGui->addText(buf);
     }
-    else mpGui->addText("");
+    else pGui->addText("");
 }
 
-void LiveTrainRenderer::addTextHelper(const char *format, float floatVal)
+void LiveTrainRenderer::addTextHelper(Gui* pGui, const char *format, float floatVal)
 {
     char buf[512];
     if (format[0])
     {
         sprintf_s(buf, format, floatVal);
-        mpGui->addText(buf);
+        pGui->addText(buf);
     }
-    else mpGui->addText("");
+    else pGui->addText("");
 }
 
-void LiveTrainRenderer::addTextHelper(const char *format, float floatVal1, float floatVal2)
+void LiveTrainRenderer::addTextHelper(Gui* pGui, const char *format, float floatVal1, float floatVal2)
 {
     char buf[512];
     if (format[0])
     {
         sprintf_s(buf, format, floatVal1, floatVal2);
-        mpGui->addText(buf);
+        pGui->addText(buf);
     }
-    else mpGui->addText("");
+    else pGui->addText("");
+}
+
+Scene::SharedPtr LiveTrainRenderer::loadScene(const std::string& filename)
+{
+    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
+    if (pScene != nullptr)
+    {
+        if (pScene->getCameraCount() == 0)
+        {
+            const Model* pModel = pScene->getModel(0).get();
+            Camera::SharedPtr pCamera = Camera::create();
+            vec3 position = pModel->getCenter();
+            float radius = pModel->getRadius();
+            position.y += 0.1f * radius;
+            pScene->setCameraSpeed(radius * 0.03f);
+            pCamera->setPosition(position);
+            pCamera->setTarget(position + vec3(0, -0.3f, -radius));
+            pCamera->setDepthRange(0.1f, radius * 10);
+            pScene->addCamera(pCamera);
+        }
+
+        if (pScene->getLightCount() == 0)
+        {
+            DirectionalLight::SharedPtr pDirLight = DirectionalLight::create();
+            pDirLight->setWorldDirection(vec3(-0.189f, -0.861f, -0.471f));
+            pDirLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
+            pDirLight->setName("DirLight");
+            pScene->addLight(pDirLight);
+        }
+    }
+    return pScene;
 }
 
 #endif

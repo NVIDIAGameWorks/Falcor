@@ -50,11 +50,11 @@ uint32_t getFilterMode(CsmData csmData)
 
 int getCascadeIndex(CsmData csmData, float depthCamClipSpace)
 {
-    for(int i = 1; i < getCascadeCount(csmData); i++)
+    for(int i = 0; i < getCascadeCount(csmData); i++)
     {
-        if(depthCamClipSpace < csmData.cascadeRange[i].x)
+        if(depthCamClipSpace < (csmData.cascadeRange[i].x + csmData.cascadeRange[i].y))
         {
-            return i - 1;
+            return i;        
         }
     }
     return getCascadeCount(csmData) - 1;
@@ -211,26 +211,16 @@ float calcChebyshevUpperBound(float2 moments, float depth, float lightBleedingRe
     return res;
 }
 
-float csmVsmFilter(CsmData csmData, float2 texC, float sampleDepth, uint32_t cascadeIndex, bool calcDrv, inout float2 drvX, inout float2 drvY)
+float csmVsmFilter(CsmData csmData, float2 texC, float sampleDepth, uint32_t cascadeIndex, float2 drvX, float2 drvY)
 {
-    if(calcDrv)
-    {
-        drvY = ddy_fine(texC);
-        drvX = ddx_fine(texC);
-    }
     float2 moments = csmData.shadowMap.SampleGrad(csmData.csmSampler, float3(texC, float(cascadeIndex)), drvX, drvY).rg;
     float pMax = calcChebyshevUpperBound(moments, sampleDepth, csmData.lightBleedingReduction);
 
     return pMax;
 }
 
-float csmEvsmFilter(CsmData csmData, float2 texC, float sampleDepth, uint32_t cascadeIndex, bool calcDrv, inout float2 drvX, inout float2 drvY)
+float csmEvsmFilter(CsmData csmData, float2 texC, float sampleDepth, uint32_t cascadeIndex, float2 drvX, float2 drvY)
 {
-    if(calcDrv)
-    {
-        drvY = ddy_fine(texC);
-        drvX = ddx_fine(texC);
-    }
     float2 expDepth = applyEvsmExponents(sampleDepth, csmData.evsmExponents);
     float4 moments = csmData.shadowMap.SampleGrad(csmData.csmSampler, float3(texC, float(cascadeIndex)), drvX, drvY);
     // Positive contribution
@@ -244,7 +234,7 @@ float csmEvsmFilter(CsmData csmData, float2 texC, float sampleDepth, uint32_t ca
     return res;
 }
 
-float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, float3 posW, float2 posSxy, bool calcDrv, inout float2 drvX, inout float2 drvY)
+float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, float3 posW, float2 posSxy)
 {
     // Apply normal offset
     //posW.xyz += calcNormalOffset(csmData, normal, cascadeIndex);
@@ -253,19 +243,28 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
     float4 shadowPos = mul(float4(posW, 1), csmData.globalMat);
     shadowPos /= shadowPos.w;
 
-    // Calculate the texC
-    shadowPos *= csmData.cascadeScale[cascadeIndex];
-    shadowPos += csmData.cascadeOffset[cascadeIndex];
+    // Calculate the texC derivatives. We need to do that before applying the scale and offset - the cascadeIndex can be different for pixels in the same quad, resulting in wrong derivatives
+    float2 drvX = ddx_fine(shadowPos.xy);
+    float2 drvY = ddy_fine(shadowPos.xy);
 
-    // Apply TexC transformation
-    shadowPos.xy += 1;
-    shadowPos.xy *= 0.5;
-#ifdef FALCOR_HLSL
+    // Calculate the scale and offset
+    float3 scale = csmData.cascadeScale[cascadeIndex].xyz;
+    scale.xy *= 0.5;
+    float3 offset = csmData.cascadeOffset[cascadeIndex].xyz;
+    offset.xy = (offset.xy + 1) * 0.5;
+
+    // Apply the scale and offset to the derivatives and the position
+    shadowPos.xyz = shadowPos.xyz * scale + offset;
+    drvX = drvX * scale.xy;
+    drvY = drvY * scale.xy;
+
+#ifdef FALCOR_D3D
     shadowPos.y = 1 - shadowPos.y;
 #endif
 
     // Calculate the texC
     shadowPos.z -= csmData.depthBias;
+    shadowPos.z = saturate(shadowPos.z);
 
     switch(getFilterMode(csmData))
     {
@@ -275,10 +274,10 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
     case CsmFilterFixedPcf:
         return csmFixedSizePcf(csmData, shadowPos.xy, shadowPos.z, cascadeIndex); 
     case CsmFilterVsm:
-        return csmVsmFilter(csmData, shadowPos.xy, shadowPos.z, cascadeIndex, calcDrv, drvX, drvY); 
+        return csmVsmFilter(csmData, shadowPos.xy, shadowPos.z, cascadeIndex, drvX, drvY); 
     case CsmFilterEvsm2:
     case CsmFilterEvsm4:
-        return csmEvsmFilter(csmData, shadowPos.xy, shadowPos.z, cascadeIndex, calcDrv, drvX, drvY); 
+        return csmEvsmFilter(csmData, shadowPos.xy, shadowPos.z, cascadeIndex, drvX, drvY); 
     case CsmFilterStochasticPcf:
         return csmStochasticFilter(csmData, shadowPos.xy, shadowPos.z, cascadeIndex, posSxy); 
     default:
@@ -286,25 +285,36 @@ float calcShadowFactorWithCascadeIdx(CsmData csmData, uint32_t cascadeIndex, flo
     }
 }
 
-float3 getBlendedCascadeColor(CsmData csmData, float cameraDepth)
+bool getCascadeParamsAndCheckForBlend(CsmData csmData, float cameraDepth, out int cascadeIndex, out float weight)
 {
-    float weight = 0;
-    float s;
-    int cascadeIndex = 0;
+    cascadeIndex = 0;
+    weight = 0;
     bool blend = false;
+
 #if !defined(_CSM_CASCADE_COUNT) || (_CSM_CASCADE_COUNT != 1)
     cascadeIndex = getCascadeIndex(csmData, cameraDepth);
     // Get the prev cascade factor
-    weight = (cameraDepth - csmData.cascadeRange[cascadeIndex].x) / csmData.cascadeRange[cascadeIndex].y;
+    weight = 1 - ((cameraDepth - csmData.cascadeRange[cascadeIndex].x) / csmData.cascadeRange[cascadeIndex].y);
     blend = weight < csmData.cascadeBlendThreshold;
+    if(blend)
+    {
+        weight /= csmData.cascadeBlendThreshold;
+    }
 #endif
+    return blend;
+}
+
+float3 getBlendedCascadeColor(CsmData csmData, float cameraDepth)
+{
+    float weight;
+    int cascadeIndex;
+    bool blend = getCascadeParamsAndCheckForBlend(csmData, cameraDepth, cascadeIndex, weight);
 
     if(blend)
     {
-        weight = smoothstep(0.0, csmData.cascadeBlendThreshold, weight);
-        int prevCascade = max(0, cascadeIndex - 1);
-        float3 col1 = getCascadeColor(prevCascade);
+        int nextCascade = min(getCascadeCount(csmData) - 1, cascadeIndex + 1);
         float3 col0 = getCascadeColor(cascadeIndex);
+        float3 col1 = getCascadeColor(nextCascade);
         return lerp(col1, col0, weight);
     }
     else
@@ -315,35 +325,16 @@ float3 getBlendedCascadeColor(CsmData csmData, float cameraDepth)
 
 float calcShadowFactor(CsmData csmData, float cameraDepth, float3 posW, float2 posSxy)
 {
-    float weight = 0;
-    float s;
-    int cascadeIndex = 0;
-    bool blend = false;
-#if !defined(_CSM_CASCADE_COUNT) || (_CSM_CASCADE_COUNT != 1)
-    cascadeIndex = getCascadeIndex(csmData, cameraDepth);
-    // Get the prev cascade factor
-    weight = (cameraDepth - csmData.cascadeRange[cascadeIndex].x) / csmData.cascadeRange[cascadeIndex].y;
-    blend = weight < csmData.cascadeBlendThreshold;
-#endif
+    float weight;
+    int cascadeIndex;
+    bool blend = getCascadeParamsAndCheckForBlend(csmData, cameraDepth, cascadeIndex, weight);
+    float s = calcShadowFactorWithCascadeIdx(csmData, cascadeIndex, posW, posSxy);
 
     if(blend)
     {       
-        // Getting the previous mip-level to calculate the derivative, otherwise we get cracks between cascade with *VSM.
-        // On the edge of the cascade we only use the previous cascade factor (weight == 0), but we get the derivatives from the current cascade, which probably chooses a different mip-level.
-        // This should work though, since mip-levels should appear continuous
-        weight = smoothstep(0.0, csmData.cascadeBlendThreshold, weight);
-        int prevCascade = max(0, cascadeIndex - 1);
-        float2 drvX = float2(0, 0);
-        float2 drvY = float2(0, 0);
-        float s1 = calcShadowFactorWithCascadeIdx(csmData, prevCascade, posW, posSxy, true, drvX, drvY);
-        s = calcShadowFactorWithCascadeIdx(csmData, cascadeIndex, posW, posSxy, false, drvX, drvY);
-        s = lerp(s1, s, weight);
+        int nextCascade = min(getCascadeCount(csmData) - 1, cascadeIndex + 1);
+        float nextS = calcShadowFactorWithCascadeIdx(csmData, nextCascade, posW, posSxy);
+        s = lerp(nextS, s, weight);
     }
-    else
-    {
-        float2 drvX, drvY;
-        s = calcShadowFactorWithCascadeIdx(csmData, cascadeIndex, posW, posSxy, true, drvX, drvY);
-    }
-
     return s;
 }

@@ -35,12 +35,14 @@ namespace Falcor
 
     struct ResourceViewInfo
     {
+        ResourceViewInfo() = default;
         ResourceViewInfo(uint32_t mostDetailedMip_, uint32_t mipCount_, uint32_t firstArraySlice_, uint32_t arraySize_) : mostDetailedMip(mostDetailedMip_), mipCount(mipCount_), firstArraySlice(firstArraySlice_), arraySize(arraySize_) {}
-        uint32_t mostDetailedMip;
-        uint32_t mipCount;
-        uint32_t firstArraySlice;
-        uint32_t arraySize;
+        uint32_t mostDetailedMip = 0;
+        uint32_t mipCount = kMaxPossible;
+        uint32_t firstArraySlice = 0;
+        uint32_t arraySize = kMaxPossible;
 
+        static const uint32_t kMaxPossible = -1;
         bool operator==(const ResourceViewInfo& other) const
         {
             return (firstArraySlice == other.firstArraySlice) && (arraySize == other.arraySize) && (mipCount == other.mipCount) && (mostDetailedMip == other.mostDetailedMip);
@@ -62,7 +64,7 @@ namespace Falcor
 
         /** Get the raw API handle.
         */
-        ApiHandle getApiHandle() const { return mApiHandle; }
+        const ApiHandle& getApiHandle() const { return mApiHandle; }
 
         /** Get information about the view.
         */

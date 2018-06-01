@@ -81,7 +81,7 @@ namespace Falcor
                 }
             }
 
-            VkType getObject()
+            const VkType& getObject()
             {
                 VkType object;
                 if (freeObjects.size())
@@ -95,7 +95,7 @@ namespace Falcor
                     object = createFunc();
                 }
                 activeObjects.push_back(object);
-                return object;
+                return activeObjects.back();
             }
 
             void popAllObjects()
@@ -183,9 +183,9 @@ namespace Falcor
         return mCpuValue - 1;
     }
 
-    FenceHandle GpuFence::getApiHandle() const
+    const FenceHandle& GpuFence::getApiHandle() const
     {
-        auto fence = mpApiData->semaphoreQueue.getObject(); // #VKTODO Figure this out. It is implemented like this based on the internal usage in VkDevice.cpp, but might not be what the user expects
+        const auto& fence = mpApiData->semaphoreQueue.getObject(); // #VKTODO Figure this out. It is implemented like this based on the internal usage in VkDevice.cpp, but might not be what the user expects
         mpApiData->semaphoreWaitList.push_back(fence);
         return fence;
     }

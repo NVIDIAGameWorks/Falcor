@@ -28,7 +28,7 @@
 
 #include "MultiRendererSample.h"
 #include "Externals/dear_imgui/imgui.h"
-
+#if 0
 namespace Falcor
 {
     // You may want to override this function in derived classes for a more complex scene loader
@@ -267,3 +267,4 @@ namespace Falcor
     }
 
 } // End namespace Falcor
+#endif
