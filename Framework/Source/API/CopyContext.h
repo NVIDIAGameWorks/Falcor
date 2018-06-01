@@ -106,7 +106,7 @@ namespace Falcor
             `offset` and `size` describe a region to update. For any channel of `extent` that is -1, the texture dimension will be used.
             pData can't be null. The size of the pointed buffer must be equal to a single texel size times the size of the region we are updating
         */
-        void updateTextureSubresourceData(const Texture* pDst, uint32_t subresorce, const void* pData, const uvec3& offset = uvec3(0), const uvec3& size = uvec3(-1));
+        void updateSubresourceData(const Texture* pDst, uint32_t subresorce, const void* pData, const uvec3& offset = uvec3(0), const uvec3& size = uvec3(-1));
 
         /** Update an entire texture
         */

@@ -140,7 +140,7 @@ namespace Falcor
         updateTextureSubresources(pTexture, 0, subresourceCount, pData);
     }
 
-    void CopyContext::updateTextureSubresourceData(const Texture* pDst, uint32_t subresorce, const void* pData, const uvec3& offset, const uvec3& size)
+    void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresorce, const void* pData, const uvec3& offset, const uvec3& size)
     {
         // Create a temporary texture
         uvec3 s = size;

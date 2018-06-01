@@ -150,7 +150,7 @@ namespace Falcor
             for (uint32_t i = 0; i < mArraySize * numFaces; i++)
             {
                 uint32_t subresource = getSubresourceIndex(i, 0);
-                pRenderContext->updateTextureSubresourceData(this, subresource, pSrc);
+                pRenderContext->updateSubresourceData(this, subresource, pSrc);
                 pSrc += arraySliceSize;
             }
         }
