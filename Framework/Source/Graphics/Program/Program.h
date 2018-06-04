@@ -65,10 +65,15 @@ namespace Falcor
             */
             explicit Desc(std::string const& filename);
 
-            /** Add a file of course code to use.
-            This also sets the given file as the "active" source for subsequent entry points.
+            /** Add a file of source code to use.
+                This also sets the given file as the "active" source for subsequent entry points.
             */
             Desc& addShaderLibrary(const std::string& path);
+
+            /** Add a string of source code to use.
+                This also sets the given string as the "active" source for subsequent entry points.
+            */
+            Desc& addShaderString(const std::string& shader);
 
             /** Adds an entry point based on the "active" source.
             */
@@ -81,9 +86,13 @@ namespace Falcor
             Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
             Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
 
-            /** Get the source string associated with a shader stage, or an empty string if no stage found
+            /** Get the source library associated with a shader stage, or an empty library if one isn't bound to the shader
             */
             const std::shared_ptr<ShaderLibrary>& getShaderLibrary(ShaderType shaderType) const;
+
+            /** Get the source string associated with a shader stage, or an empty string if one isn't bound to the shader
+            */
+            const std::string& getShaderString(ShaderType shaderType) const;
 
             /** Get the name of the shader entry point associated with a shader stage, or an empty string if no stage found
             */
@@ -106,17 +115,33 @@ namespace Falcor
 
             Desc& addDefaultVertexShaderIfNeeded();
             
+            struct Source
+            {
+                enum class Type
+                {
+                    String,
+                    File
+                };
+
+                Source(std::shared_ptr<ShaderLibrary> pLib) : pLibrary(pLib), type(Type::File) {};
+                Source(std::string s) : str(s), type(Type::String) {};
+
+                Type type;
+                std::shared_ptr<ShaderLibrary> pLibrary;
+                std::string str;
+            };
+
             struct EntryPoint
             {
                 std::string name;
                 // The index of the shader module that this entry point will use, or `-1` to indicate that this entry point is disabled
-                int libraryIndex = -1;
-                bool isValid() const { return libraryIndex >= 0; }
+                int index = -1;
+                bool isValid() const { return index >= 0; }
             };
 
-            std::vector<std::shared_ptr<ShaderLibrary>> mShaderLibraries;
+            std::vector<Source> mSources;
             EntryPoint mEntryPoints[kShaderCount];
-            int mActiveLibraryIndex = -1;
+            uint32_t mActiveSource = -1;
             Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
         };
 

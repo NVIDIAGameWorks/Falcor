@@ -58,8 +58,15 @@ namespace Falcor
 
     Program::Desc& Program::Desc::addShaderLibrary(std::string const& path)
     {
-        mActiveLibraryIndex = (int)mShaderLibraries.size();
-        mShaderLibraries.emplace_back(ShaderLibrary::create(path));
+        mActiveSource = (int)mSources.size();
+        mSources.emplace_back(ShaderLibrary::create(path));
+        return *this;
+    }
+
+    Program::Desc& Program::Desc::addShaderString(const std::string& shader)
+    {
+        mActiveSource = (int)mSources.size();
+        mSources.emplace_back(shader);
 
         return *this;
     }
@@ -70,16 +77,16 @@ namespace Falcor
         entryPoint.name = name;
         if (name.size() == 0)
         {
-            entryPoint.libraryIndex = -1;
+            entryPoint.index = -1;
         }
         else
         {
-            assert(mActiveLibraryIndex >= 0);
-            if (entryPoint.libraryIndex != -1)
+            assert(mActiveSource >= 0);
+            if (entryPoint.index != -1)
             {
                 logWarning("Trying to set a " + to_string(shaderType) + " entry-point when one already exists. Overriding previous entry-point");
             }
-            entryPoint.libraryIndex = mActiveLibraryIndex;
+            entryPoint.index = mActiveSource;
             entryPoint.name = name;
         }
 
@@ -101,10 +108,18 @@ namespace Falcor
 
     const ShaderLibrary::SharedPtr& Program::Desc::getShaderLibrary(ShaderType shaderType) const
     {
-        static ShaderLibrary::SharedPtr pM;;
+        static ShaderLibrary::SharedPtr pM;
         const auto& e = mEntryPoints[(uint32_t)shaderType];
 
-        return e.isValid() ? mShaderLibraries[e.libraryIndex] : pM;
+        return e.isValid() ? mSources[e.index].pLibrary : pM;
+    }
+
+    const std::string& Program::Desc::getShaderString(ShaderType shaderType) const
+    {
+        static std::string s;
+        const auto& e = mEntryPoints[(uint32_t)shaderType];
+
+        return e.isValid() ? mSources[e.index].str : s;
     }
 
     // Program
@@ -139,15 +154,25 @@ namespace Falcor
         std::string desc = "Program with Shaders:\n";
 
         int sourceCounter = 0;
-        for(auto pModule : mDesc.mShaderLibraries)
+        for(auto src : mDesc.mSources)
         {
             int sourceIndex = sourceCounter++;
 
-            desc += pModule->getFilename();
+            switch (src.type)
+            {
+            case Desc::Source::Type::File:
+                desc += src.pLibrary->getFilename();
+                break;
+            case Desc::Source::Type::String:
+                desc += "Created from string";
+                break;
+            default:
+                should_not_get_here();
+            }
 
             for( auto entryPoint : mDesc.mEntryPoints )
             {
-                if(entryPoint.libraryIndex != sourceIndex) continue;
+                if(entryPoint.index != sourceIndex) continue;
                 desc += "/*" + entryPoint.name + "*/";
             }
             desc += "\n";
@@ -406,23 +431,31 @@ namespace Falcor
 
         // Now lets add all our input shader code, one-by-one
         int translationUnitsAdded = 0;
-        for(auto pLibrary : mDesc.mShaderLibraries)
-        {
-            // If this is not an HLSL or a SLANG file, display a warning
-            if (!hasSuffix(pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(pLibrary->getFilename(), ".slang", false))
-            {
-                logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
-            }
 
+        for(auto src : mDesc.mSources)
+        {
             // Register the translation unit with Slang
             int translationUnitIndex = spAddTranslationUnit(slangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
             assert(translationUnitIndex == translationUnitsAdded);
             translationUnitsAdded++;
 
             // Add source code to the translation unit
-            std::string fullpath;
-            findFileInDataDirectories(pLibrary->getFilename(), fullpath);
-            spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
+            if (src.type == Desc::Source::Type::File)
+            {
+                // If this is not an HLSL or a SLANG file, display a warning
+                if (!hasSuffix(src.pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(src.pLibrary->getFilename(), ".slang", false))
+                {
+                    logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
+                }
+                std::string fullpath;
+                findFileInDataDirectories(src.pLibrary->getFilename(), fullpath);
+                spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
+            }
+            else
+            {
+                assert(src.type == Desc::Source::Type::String);
+                spAddTranslationUnitSourceString(slangRequest, translationUnitIndex, "", src.str.c_str());
+            }
         }
 
         // Now we make a separate pass and add the entry points.
@@ -434,12 +467,13 @@ namespace Falcor
             auto& entryPoint = mDesc.mEntryPoints[i];
 
             // Skip unused entry points
-            if(entryPoint.libraryIndex < 0)
+            if(entryPoint.index < 0)
                 continue;
 
+            uint32_t slangIndex = 
             spAddEntryPoint(
                 slangRequest,
-                entryPoint.libraryIndex,
+                entryPoint.index,
                 entryPoint.name.c_str(),
                 getSlangStage(ShaderType(i)));
         }
@@ -459,9 +493,8 @@ namespace Falcor
         for (uint32_t i = 0; i < kShaderCount; i++)
         {
             auto& entryPoint = mDesc.mEntryPoints[i];
-
             // Skip unused entry points
-            if(entryPoint.libraryIndex < 0)
+            if(entryPoint.index < 0)
                 continue;
 
             int entryPointIndex = entryPointCounter++;
