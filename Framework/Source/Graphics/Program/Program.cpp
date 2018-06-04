@@ -397,6 +397,12 @@ namespace Falcor
 
         spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString()));
 
+        // We always use row-major matrix layout (and when we invoke fxc/dxc we pass in the
+        // appropriate flags to request this behavior), so we need to inform Slang that
+        // this is what we want/expect so that it can compute correct reflection information.
+        //
+        spSetTargetMatrixLayoutMode(slangRequest, 0, SLANG_MATRIX_LAYOUT_ROW_MAJOR);
+
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
 
