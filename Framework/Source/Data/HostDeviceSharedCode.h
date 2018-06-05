@@ -222,7 +222,7 @@ inline float convertShininessToRoughness(float shininess)
     return clamp(sqrt(2.0f / (shininess + 2.0f)), 0.f, 1.f);
 }
 
-inline float2 convertShininessToRoughness(float2 shininess)
+inline float2 convertShininessToRoughness(const float2 &shininess)
 {
     return clamp(sqrt(2.0f / (shininess + 2.0f)), 0.f, 1.f);
 }
@@ -264,7 +264,7 @@ inline float3 RGBToYCgCo(float3 rgb)
 /** Converts color from YCgCo to RGB space
 \param YCgCoColor linear HDR YCgCo color
 */
-inline float3 YCgCoToRGB(float3 YCgCo)
+inline float3 YCgCoToRGB(const float3 &YCgCo)
 {
     float tmp = YCgCo.x - YCgCo.y;
     float r = tmp + YCgCo.z;
@@ -315,7 +315,7 @@ inline float sRGBToLinear(float srgb)
 /** Returns a linear-space RGB version of an input RGB color in the ITU-R BT.709 color space
 \param sRGBColor sRGB input color
 */
-inline float3 sRGBToLinear(float3 srgb)
+inline float3 sRGBToLinear(const float3 &srgb)
 {
     return float3(
         sRGBToLinear(srgb.x),
@@ -341,7 +341,7 @@ inline float linearToSRGB(float lin)
 /** Returns a sRGB version of an input linear RGB color in the ITU-R BT.709 color space
 \param LinearColor linear input color
 */
-inline float3 linearToSRGB(float3 lin)
+inline float3 linearToSRGB(const float3 &lin)
 {
     return float3(
         linearToSRGB(lin.x),
