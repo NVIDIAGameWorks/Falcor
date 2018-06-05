@@ -36,22 +36,22 @@ namespace Falcor
         ID3DBlobPtr pBlob;
     };
 
-    const char* getTargetString(ShaderType type)
+    std::string getTargetString(ShaderType type, const std::string& shaderModel)
     {
         switch (type)
         {
         case ShaderType::Vertex:
-            return "vs_5_1";
+            return "vs_" + shaderModel;
         case ShaderType::Pixel:
-            return "ps_5_1";
+            return "ps_" + shaderModel;
         case ShaderType::Hull:
-            return "hs_5_1";
+            return "hs_" + shaderModel;
         case ShaderType::Domain:
-            return "ds_5_1";
+            return "ds_" + shaderModel;
         case ShaderType::Geometry:
-            return "gs_5_1";
+            return "gs_" + shaderModel;
         case ShaderType::Compute:
-            return "cs_5_1";
+            return "cs_" + shaderModel;
         default:
             should_not_get_here();
             return "";
@@ -134,7 +134,7 @@ namespace Falcor
                 nullptr,
                 nullptr,
                 entryPointName.c_str(),
-                getTargetString(mType),
+                getTargetString(mType, blob.shaderModel).c_str(),
                 d3dFlags,
                 0,
                 &pCode,

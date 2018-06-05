@@ -100,15 +100,22 @@ namespace Falcor
 
             /** Enable/disable treat-warnings-as-error compilation flag
             */
-            Desc& warningsAsErrors(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : shaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
+            Desc& warningsAsErrors(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
 
             /** Enable/disable pre-processed shader dump
             */
-            Desc& dumpIntermediates(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::DumpIntermediates : shaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
+            Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
+
+
+            /** Set the shader model string. This depends on the API you are using.
+            For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1` or `6_2`. The default is `5_1`. Shader model `6.x` will use dxcompiler
+            For Vulkan, it should be `400`, `410`, `420`, `430`, `440` or `450`. The default is `450`
+            */
+            Desc& setShaderModel(const std::string& sm);
 
             /** Get the compiler flags
             */
-            Shader::CompilerFlags getCompilerFlags() const { return shaderFlags; }
+            Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
         private:
             friend class Program;
             friend class GraphicsProgram;
@@ -142,7 +149,12 @@ namespace Falcor
             std::vector<Source> mSources;
             EntryPoint mEntryPoints[kShaderCount];
             uint32_t mActiveSource = -1;
-            Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
+            Shader::CompilerFlags mShaderFlags = Shader::CompilerFlags::None;
+#ifdef FALCOR_VK
+            std::string mShaderModel = "450";
+#elif defined FALCOR_D3D12
+            std::string mShaderModel = "5_1";
+#endif
         };
 
         virtual ~Program() = 0;

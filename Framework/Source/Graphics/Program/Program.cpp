@@ -42,6 +42,12 @@
 
 namespace Falcor
 {
+#ifdef FALCOR_VK
+    const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
+#elif defined FALCOR_D3D12
+    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2" };
+#endif
+
     static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
     {
         std::string errorMsg;
@@ -104,6 +110,35 @@ namespace Falcor
     {
         static std::string s;
         return mEntryPoints[(uint32_t)shaderType].isValid() ? mEntryPoints[(uint32_t)shaderType].name : s;
+    }
+
+    Program::Desc& Program::Desc::setShaderModel(const std::string& sm)
+    {
+        // Check that the model is supported
+        bool b = false;
+        for (const auto& s : kSupportedShaderModels)
+        {
+            if (s == sm)
+            {
+                b = true;
+                break;
+            }
+        }
+
+        if (b == false)
+        {
+            std::string warn = "Unsupported shader-model `" + sm + "` requested. Supported shader-models are ";
+            for (size_t i = 0; i < kSupportedShaderModels->size(); i++)
+            {
+                warn += kSupportedShaderModels[i];
+                warn += (i == kSupportedShaderModels->size() - 1) ? "." : ", ";
+            }
+            warn += "\nThis is not an error, but if something goes wrong try using one of the supported models.";
+            logWarning(warn);
+        }
+
+        mShaderModel = sm;
+        return *this;
     }
 
     const ShaderLibrary::SharedPtr& Program::Desc::getShaderLibrary(ShaderType shaderType) const
@@ -361,12 +396,12 @@ namespace Falcor
         }
     }
 
-    static const char* getSlangProfileString()
+    static std::string getSlangProfileString(const std::string& shaderModel)
     {
 #if defined FALCOR_VK
-        return "glsl_450";
+        return "glsl_" + shaderModel;
 #elif defined FALCOR_D3D12
-        return "sm_5_1";
+        return "sm_" + shaderModel;
 #else
 #error unknown shader compilation target
 #endif
@@ -413,12 +448,20 @@ namespace Falcor
         spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
 #elif defined FALCOR_D3D12
         spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
-        spSetCodeGenTarget(slangRequest, SLANG_DXBC);
+        // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
+        if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_"))
+        {
+            spSetCodeGenTarget(slangRequest, SLANG_DXBC);
+        }
+        else
+        {
+            spSetCodeGenTarget(slangRequest, SLANG_DXIL);
+        }
 #else
 #error unknown shader compilation target
 #endif
 
-        spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString()));
+        spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString(mDesc.mShaderModel).c_str()));
 
         // We always use row-major matrix layout (and when we invoke fxc/dxc we pass in the
         // appropriate flags to request this behavior), so we need to inform Slang that
@@ -507,6 +550,7 @@ namespace Falcor
             const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
             shaderBlob[i].data.assign(data, data + size);
             shaderBlob[i].type = Shader::Blob::Type::Bytecode;
+            shaderBlob[i].shaderModel = mDesc.mShaderModel;
         }
 
         VersionData programVersion;
@@ -616,5 +660,4 @@ namespace Falcor
             }
         }
     }
-
 }

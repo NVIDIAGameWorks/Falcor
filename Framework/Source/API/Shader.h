@@ -52,6 +52,7 @@ namespace Falcor
             };
             std::vector<uint8_t> data;
             Type type = Type::Undefined;
+            std::string shaderModel;
         };
 
         enum class CompilerFlags
