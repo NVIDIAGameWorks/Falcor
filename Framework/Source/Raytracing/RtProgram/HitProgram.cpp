@@ -53,7 +53,7 @@ namespace Falcor
         if (closestHitEntry.size())     desc.entryPoint(ShaderType::ClosestHit,   closestHitEntry);
         if (anyHitEntry.size())         desc.entryPoint(ShaderType::AnyHit,       anyHitEntry);
         if (intersectionEntry.size())   desc.entryPoint(ShaderType::Intersection, intersectionEntry);
-
+        desc.setShaderModel("6_3");        
         pProg->init(desc, programDefines);
         return pProg;
     }

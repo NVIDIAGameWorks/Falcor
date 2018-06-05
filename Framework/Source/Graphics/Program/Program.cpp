@@ -45,7 +45,7 @@ namespace Falcor
 #ifdef FALCOR_VK
     const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
 #elif defined FALCOR_D3D12
-    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2" };
+    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", "6_3" };
 #endif
 
     static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
@@ -116,9 +116,9 @@ namespace Falcor
     {
         // Check that the model is supported
         bool b = false;
-        for (const auto& s : kSupportedShaderModels)
+        for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++)
         {
-            if (s == sm)
+            if (kSupportedShaderModels[i] == sm)
             {
                 b = true;
                 break;
@@ -128,7 +128,7 @@ namespace Falcor
         if (b == false)
         {
             std::string warn = "Unsupported shader-model `" + sm + "` requested. Supported shader-models are ";
-            for (size_t i = 0; i < kSupportedShaderModels->size(); i++)
+            for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++)
             {
                 warn += kSupportedShaderModels[i];
                 warn += (i == kSupportedShaderModels->size() - 1) ? "." : ", ";
@@ -453,6 +453,11 @@ namespace Falcor
         {
             spSetCodeGenTarget(slangRequest, SLANG_DXBC);
         }
+        else if (mDesc.mShaderModel == "6_3")
+        {
+            // Hack to compile DXR shaders
+            spSetCodeGenTarget(slangRequest, SLANG_HLSL);
+        }
         else
         {
             spSetCodeGenTarget(slangRequest, SLANG_DXIL);
@@ -549,7 +554,14 @@ namespace Falcor
             size_t size = 0;
             const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
             shaderBlob[i].data.assign(data, data + size);
-            shaderBlob[i].type = Shader::Blob::Type::Bytecode;
+            if (mDesc.mShaderModel == "6_3")
+            {
+                shaderBlob[i].type = Shader::Blob::Type::String;
+            }
+            else
+            {
+                shaderBlob[i].type = Shader::Blob::Type::Bytecode;
+            }
             shaderBlob[i].shaderModel = mDesc.mShaderModel;
         }
 
