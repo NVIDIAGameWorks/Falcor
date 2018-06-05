@@ -551,16 +551,18 @@ namespace Falcor
 
             int entryPointIndex = entryPointCounter++;
 
-            size_t size = 0;
-            const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
-            shaderBlob[i].data.assign(data, data + size);
             if (mDesc.mShaderModel == "6_3")
             {
                 shaderBlob[i].type = Shader::Blob::Type::String;
+                const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
+                shaderBlob[i].data.assign(data, data + strlen(data));
             }
             else
             {
                 shaderBlob[i].type = Shader::Blob::Type::Bytecode;
+                size_t size = 0;
+                const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
+                shaderBlob[i].data.assign(data, data + size);
             }
             shaderBlob[i].shaderModel = mDesc.mShaderModel;
         }

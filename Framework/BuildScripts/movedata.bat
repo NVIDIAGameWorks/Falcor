@@ -31,8 +31,6 @@ robocopy %ExternalsSourceDirectory%\GLFW\lib %DestinationDirectory%  *.dll /r:0 
 call %1\BuildScripts\moveprojectdata.bat %1\Source\ %DestinationDirectory%
 call %1\BuildScripts\moveprojectdata.bat %3 %DestinationDirectory% /r:0 >nul
 
-robocopy %ExternalsSourceDirectory%\dxcompiler\x64\ %DestinationDirectory%  *.dll /r:0 >nul
-
 rem copy or clear the DXR DLLs
 if "%8%"=="FALCOR_DXR" (
 	robocopy %ExternalsSourceDirectory%\DXR\bin\x64 %DestinationDirectory%  *.dll /r:0 >nul
