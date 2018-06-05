@@ -413,9 +413,7 @@ namespace Falcor
         spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
 #elif defined FALCOR_D3D12
         spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
-        // Note: we could compile Slang directly to DXBC (by having Slang invoke the MS compiler for us,
-        // but that path seems to have more issues at present, so let's just go to HLSL instead...)
-        spSetCodeGenTarget(slangRequest, SLANG_HLSL);
+        spSetCodeGenTarget(slangRequest, SLANG_DXBC);
 #else
 #error unknown shader compilation target
 #endif
@@ -506,15 +504,9 @@ namespace Falcor
             int entryPointIndex = entryPointCounter++;
 
             size_t size = 0;
-#ifdef FALCOR_VK
             const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
             shaderBlob[i].data.assign(data, data + size);
             shaderBlob[i].type = Shader::Blob::Type::Bytecode;
-#else
-            const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
-            shaderBlob[i].data.assign(data, data + strlen(data));
-            shaderBlob[i].type = Shader::Blob::Type::String;
-#endif
         }
 
         VersionData programVersion;
