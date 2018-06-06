@@ -57,17 +57,6 @@ namespace Falcor
             mpLowLevelData->getFence()->syncCpu();
         }
     }
-    
-    void CopyContext::updateTexture(const Texture* pTexture, const void* pData)
-    {
-        mCommandsPending = true;
-        uint32_t subresourceCount = pTexture->getArraySize() * pTexture->getMipCount();
-        if (pTexture->getType() == Texture::Type::TextureCube)
-        {
-            subresourceCount *= 6;
-        }
-        updateTextureSubresources(pTexture, 0, subresourceCount, pData);
-    }
 
     CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
     {
@@ -79,8 +68,6 @@ namespace Falcor
         CopyContext::ReadTextureTask::SharedPtr pTask = asyncReadTextureSubresource(pTexture, subresourceIndex);
         return pTask->getData();
     }
-
-
 
     void CopyContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
     {
@@ -140,5 +127,22 @@ namespace Falcor
             }
         }
         if (setGlobal) pTexture->setGlobalState(newState);
+    }
+
+    void CopyContext::updateTextureData(const Texture* pTexture, const void* pData)
+    {
+        mCommandsPending = true;
+        uint32_t subresourceCount = pTexture->getArraySize() * pTexture->getMipCount();
+        if (pTexture->getType() == Texture::Type::TextureCube)
+        {
+            subresourceCount *= 6;
+        }
+        updateTextureSubresources(pTexture, 0, subresourceCount, pData);
+    }
+
+    void CopyContext::updateSubresourceData(const Texture* pDst, uint32_t subresource, const void* pData, const uvec3& offset, const uvec3& size)
+    {
+        mCommandsPending = true;
+        updateTextureSubresources(pDst, subresource, 1, pData, offset, size);
     }
 }

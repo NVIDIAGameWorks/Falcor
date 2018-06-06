@@ -35,6 +35,7 @@
 #include "Utils/Platform/OS.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
 
+#define SCENE_EXPORTER
 #include "SceneExportImportCommon.h"
 
 
@@ -165,6 +166,22 @@ namespace Falcor
         {
             addLiteral(jmodel, allocator, SceneKeys::kActiveAnimation, pModel->getActiveAnimation());
         }
+
+        // Export model material properties
+        rapidjson::Value materialValue;
+        materialValue.SetObject();
+        switch(pModel->getMesh(0)->getMaterial()->getShadingModel())
+        {
+        case ShadingModelMetalRough:
+            addString(materialValue, allocator, SceneKeys::kShadingModel, SceneKeys::kShadingMetalRough);
+            break;
+        case ShadingModelSpecGloss:
+            addString(materialValue, allocator, SceneKeys::kShadingModel, SceneKeys::kShadingSpecGloss);
+            break;
+        default:
+            logWarning("SceneExporter: Unknown shading model found on model " + pModel->getName() + ", ignoring value");
+        }
+        addJsonValue(jmodel, allocator, SceneKeys::kMaterial, materialValue);
 
         // Export model instances
         rapidjson::Value jsonInstanceArray;

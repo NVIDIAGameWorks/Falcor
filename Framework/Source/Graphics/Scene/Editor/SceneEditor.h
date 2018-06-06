@@ -107,6 +107,7 @@ namespace Falcor
         void deleteModel(Gui* pGui);
         void deleteModel();
         void setModelName(Gui* pGui);
+        void setShadingModel(Gui* pGui);
         void setModelVisible(Gui* pGui);
         void selectActiveModel(Gui* pGui);
 
@@ -276,6 +277,8 @@ namespace Falcor
 
         std::string mSelectedMeshString;
         Mesh::SharedPtr mpSelectedMesh;
+
+        const static Gui::DropdownList kShadingModelList;
 
         //
         // Paths

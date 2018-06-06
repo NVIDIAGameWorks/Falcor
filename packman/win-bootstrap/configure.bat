@@ -1,4 +1,4 @@
-@set PM_PACKMAN_VERSION=5.2.4
+@set PM_PACKMAN_VERSION=5.3.1
 
 :: Specify where packman command is rooted
 @set PM_INSTALL_PATH=%~dp0..
@@ -53,15 +53,15 @@
 @if exist "%PM_PYTHON%" goto PACKMAN
 @if not exist "%PM_PYTHON_BASE_DIR%" call :CREATE_PYTHON_BASE_DIR
 
-@set PM_PYTHON_PACKAGE=python@%PM_PYTHON_VERSION%.exe
+@set PM_PYTHON_PACKAGE=python@%PM_PYTHON_VERSION%.zip
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do @set TEMP_FILE_NAME=%%a
-@set TARGET=%TEMP_FILE_NAME%.exe
+@set TARGET=%TEMP_FILE_NAME%.zip
 @call "%~dp0fetch_file_from_s3.cmd" %PM_PYTHON_PACKAGE% "%TARGET%"
 @if errorlevel 1 goto ERROR
 
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_folder.ps1" -parentPath "%PM_PACKAGES_ROOT%"') do @set TEMP_FOLDER_NAME=%%a
 @echo Unpacking Python interpreter ...
-@"%TARGET%" -o"%TEMP_FOLDER_NAME%" -y 1> nul
+@powershell -Command "Expand-Archive '%TARGET%' -DestinationPath '%TEMP_FOLDER_NAME%' -Force"
 @del "%TARGET%"
 :: Failure during extraction to temp folder name, need to clean up and abort
 @if errorlevel 1 (

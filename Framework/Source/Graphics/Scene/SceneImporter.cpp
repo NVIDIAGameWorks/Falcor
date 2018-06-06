@@ -38,6 +38,7 @@
 #include <algorithm>
 #include "Graphics/TextureHelper.h"
 #include "API/Device.h"
+#include "Data/HostDeviceSharedMacros.h"
 
 #define SCENE_IMPORTER
 #include "SceneExportImportCommon.h"
@@ -184,19 +185,44 @@ namespace Falcor
         {
             return error("Model must have a filename");
         }
+
+        // Get Model name
         const auto& modelFile = jsonModel[SceneKeys::kFilename];
         if(modelFile.IsString() == false)
         {
             return error("Model filename must be a string");
         }
 
-        // Load the model
-        std::string file =  mDirectory + '/' + modelFile.GetString();
+        std::string file = mDirectory + '/' + modelFile.GetString();
         if (doesFileExist(file) == false)
         {
             file = modelFile.GetString();
         }
-        auto pModel = Model::createFromFile(file.c_str(), mModelLoadFlags);
+
+        // Parse additional properties that affect loading
+        Model::LoadFlags modelFlags = mModelLoadFlags;
+        if (jsonModel.HasMember(SceneKeys::kMaterial))
+        {
+            const auto& materialSettings = jsonModel[SceneKeys::kMaterial];
+            if (materialSettings.IsObject() == false)
+            {
+                return error("Material properties for \"" + file + "\" must be a JSON object");
+            }
+
+            for (auto m = materialSettings.MemberBegin(); m != materialSettings.MemberEnd(); m++)
+            {
+                if (m->name == SceneKeys::kShadingModel)
+                {
+                    if (m->value == SceneKeys::kShadingSpecGloss)
+                    {
+                        modelFlags |= Model::LoadFlags::UseSpecGlossMaterials;
+                    }
+                }
+            }
+        }
+
+        // Load the model
+        auto pModel = Model::createFromFile(file.c_str(), modelFlags);
         if(pModel == nullptr)
         {
             return error("Could not load model: " + file);
@@ -246,6 +272,10 @@ namespace Falcor
                 {
                     pModel->setActiveAnimation(activeAnimation);
                 }
+            }
+            else if (keyName == SceneKeys::kMaterial)
+            {
+                // Existing parameters already handled
             }
             else
             {

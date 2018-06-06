@@ -65,10 +65,15 @@ namespace Falcor
             */
             explicit Desc(std::string const& filename);
 
-            /** Add a file of course code to use.
-            This also sets the given file as the "active" source for subsequent entry points.
+            /** Add a file of source code to use.
+                This also sets the given file as the "active" source for subsequent entry points.
             */
             Desc& addShaderLibrary(const std::string& path);
+
+            /** Add a string of source code to use.
+                This also sets the given string as the "active" source for subsequent entry points.
+            */
+            Desc& addShaderString(const std::string& shader);
 
             /** Adds an entry point based on the "active" source.
             */
@@ -81,9 +86,13 @@ namespace Falcor
             Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
             Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
 
-            /** Get the source string associated with a shader stage, or an empty string if no stage found
+            /** Get the source library associated with a shader stage, or an empty library if one isn't bound to the shader
             */
             const std::shared_ptr<ShaderLibrary>& getShaderLibrary(ShaderType shaderType) const;
+
+            /** Get the source string associated with a shader stage, or an empty string if one isn't bound to the shader
+            */
+            const std::string& getShaderString(ShaderType shaderType) const;
 
             /** Get the name of the shader entry point associated with a shader stage, or an empty string if no stage found
             */
@@ -91,33 +100,61 @@ namespace Falcor
 
             /** Enable/disable treat-warnings-as-error compilation flag
             */
-            Desc& warningsAsErrors(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : shaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
+            Desc& warningsAsErrors(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors); return *this; }
 
             /** Enable/disable pre-processed shader dump
             */
-            Desc& dumpIntermediates(bool enable) { enable ? shaderFlags |= Shader::CompilerFlags::DumpIntermediates : shaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
+            Desc& dumpIntermediates(bool enable) { enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates); return *this; }
+
+
+            /** Set the shader model string. This depends on the API you are using.
+            For DirectX it should be `4_0`, `4_1`, `5_0`, `5_1`, `6_0`, `6_1` or `6_2`. The default is `5_1`. Shader model `6.x` will use dxcompiler
+            For Vulkan, it should be `400`, `410`, `420`, `430`, `440` or `450`. The default is `450`
+            */
+            Desc& setShaderModel(const std::string& sm);
 
             /** Get the compiler flags
             */
-            Shader::CompilerFlags getCompilerFlags() const { return shaderFlags; }
+            Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
         private:
             friend class Program;
             friend class GraphicsProgram;
 
             Desc& addDefaultVertexShaderIfNeeded();
             
+            struct Source
+            {
+                enum class Type
+                {
+                    String,
+                    File
+                };
+
+                Source(std::shared_ptr<ShaderLibrary> pLib) : pLibrary(pLib), type(Type::File) {};
+                Source(std::string s) : str(s), type(Type::String) {};
+
+                Type type;
+                std::shared_ptr<ShaderLibrary> pLibrary;
+                std::string str;
+            };
+
             struct EntryPoint
             {
                 std::string name;
                 // The index of the shader module that this entry point will use, or `-1` to indicate that this entry point is disabled
-                int libraryIndex = -1;
-                bool isValid() const { return libraryIndex >= 0; }
+                int index = -1;
+                bool isValid() const { return index >= 0; }
             };
 
-            std::vector<std::shared_ptr<ShaderLibrary>> mShaderLibraries;
+            std::vector<Source> mSources;
             EntryPoint mEntryPoints[kShaderCount];
-            int mActiveLibraryIndex = -1;
-            Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
+            uint32_t mActiveSource = -1;
+            Shader::CompilerFlags mShaderFlags = Shader::CompilerFlags::None;
+#ifdef FALCOR_VK
+            std::string mShaderModel = "450";
+#elif defined FALCOR_D3D12
+            std::string mShaderModel = "5_1";
+#endif
         };
 
         virtual ~Program() = 0;

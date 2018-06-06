@@ -327,11 +327,19 @@ namespace Falcor
     {
         aiString name;
         pAiMaterial->Get(AI_MATKEY_NAME, name);
+
+        // Parse the name
         std::string nameStr = std::string(name.C_Str());
         std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
+        auto nameVec = splitString(nameStr, ".");   // The name might contain information about the material
+        Material::SharedPtr pMaterial = Material::create(nameVec[0]);
 
-        Material::SharedPtr pMaterial = Material::create(nameStr);
         loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
+
+        if(is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials))
+        {
+            pMaterial->setShadingModel(ShadingModelSpecGloss);
+        }
 
         // Opacity
         float opacity;
@@ -395,6 +403,16 @@ namespace Falcor
             pMaterial->setDoubleSided((isDoubleSided != 0));
         }
 
+        // Parse the information contained in the name
+        // The first part is the material name, the other parts provides some info about the material properties
+        if (nameVec.size() > 1)
+        {
+            for (size_t i = 1; i < nameVec.size(); i++)
+            {
+                if (nameVec[i] == "doublesided") pMaterial->setDoubleSided(true);
+                else logWarning("Unknown material property found in the material's name - `" + nameVec[i] + "`");
+            }
+        }
         return pMaterial;
     }
 

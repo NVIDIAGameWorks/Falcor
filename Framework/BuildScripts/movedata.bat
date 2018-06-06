@@ -34,11 +34,12 @@ call %1\BuildScripts\moveprojectdata.bat %3 %DestinationDirectory% /r:0 >nul
 rem copy or clear the DXR DLLs
 if "%8%"=="FALCOR_DXR" (
 	robocopy %ExternalsSourceDirectory%\DXR\bin\x64 %DestinationDirectory%  *.dll /r:0 >nul
+    del %DestinationDirectory%\dxil.dll >nul
 	) ELSE (
 	del %DestinationDirectory%\d3d12.dll >nul
 	del %DestinationDirectory%\d3d12SDKLayers.dll >nul
-	del %DestinationDirectory%\dxcompiler.dll >nul
 	del %DestinationDirectory%\dxgidebug.dll >nul
+    robocopy %ExternalsSourceDirectory%\dxcompiler\x64\ %DestinationDirectory%  *.dll /r:0 >nul
 )
 
 rem robocopy sets the error level to something that is not zero even if the copy operation was successful. Set the error level to zero
