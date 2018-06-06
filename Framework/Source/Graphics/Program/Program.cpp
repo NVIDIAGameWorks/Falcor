@@ -45,7 +45,11 @@ namespace Falcor
 #ifdef FALCOR_VK
     const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
 #elif defined FALCOR_D3D12
-    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", "6_3" };
+    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", 
+#ifdef FALCOR_DXR
+        "6_3" 
+#endif
+    };
 #endif
 
     static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
@@ -401,7 +405,7 @@ namespace Falcor
 #if defined FALCOR_VK
         return "glsl_" + shaderModel;
 #elif defined FALCOR_D3D12
-        return "sm_" + shaderModel;
+        return "sm_" + (shaderModel == "6_3" ? "5_1" : shaderModel);
 #else
 #error unknown shader compilation target
 #endif
@@ -442,29 +446,23 @@ namespace Falcor
             spAddPreprocessorDefine(slangRequest, shaderDefine.first.c_str(), shaderDefine.second.c_str());
         }
 
+        SlangCompileTarget slangTarget = SLANG_TARGET_UNKNOWN;
+        const char* preprocessorDefine;
         // Pick the right target based on the current graphics API
 #ifdef FALCOR_VK
-        spSetCodeGenTarget(slangRequest, SLANG_SPIRV);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
+        slangTarget = SLANG_SPIRV;
+        preprocessorDefine = "FALCOR_VK";
 #elif defined FALCOR_D3D12
-        spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
+        preprocessorDefine = "FALCOR_D3D";
         // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
-        if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_"))
-        {
-            spSetCodeGenTarget(slangRequest, SLANG_DXBC);
-        }
-        else if (mDesc.mShaderModel == "6_3")
-        {
-            // Hack to compile DXR shaders
-            spSetCodeGenTarget(slangRequest, SLANG_HLSL);
-        }
-        else
-        {
-            spSetCodeGenTarget(slangRequest, SLANG_DXIL);
-        }
+        if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_")) slangTarget = SLANG_DXBC;
+        else if (mDesc.mShaderModel == "6_3")                                           slangTarget = SLANG_HLSL;   // TODO This is actually a hack for DXR, we need to fix it
+        else                                                                            slangTarget = SLANG_DXIL;
 #else
 #error unknown shader compilation target
 #endif
+        spSetCodeGenTarget(slangRequest, slangTarget);
+        spAddPreprocessorDefine(slangRequest, preprocessorDefine, "1");
 
         spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString(mDesc.mShaderModel).c_str()));
 
@@ -551,7 +549,7 @@ namespace Falcor
 
             int entryPointIndex = entryPointCounter++;
 
-            if (mDesc.mShaderModel == "6_3")
+            if (slangTarget == SLANG_GLSL || slangTarget == SLANG_GLSL_VULKAN || slangTarget == SLANG_HLSL)
             {
                 shaderBlob[i].type = Shader::Blob::Type::String;
                 const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
