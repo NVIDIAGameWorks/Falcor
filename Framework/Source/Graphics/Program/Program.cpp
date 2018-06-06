@@ -405,7 +405,7 @@ namespace Falcor
 #if defined FALCOR_VK
         return "glsl_" + shaderModel;
 #elif defined FALCOR_D3D12
-        return "sm_" + (shaderModel == "6_3" ? "5_1" : shaderModel);
+        return "sm_" + shaderModel;
 #else
 #error unknown shader compilation target
 #endif
