@@ -520,7 +520,6 @@ namespace Falcor
             if(entryPoint.index < 0)
                 continue;
 
-            uint32_t slangIndex = 
             spAddEntryPoint(
                 slangRequest,
                 entryPoint.index,
