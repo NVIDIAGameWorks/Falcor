@@ -27,17 +27,14 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/RenderGraph/RenderPass.h"
-#include "Graphics/Program/GraphicsProgram.h"
-#include "Graphics/Program/ProgramVars.h"
-#include "Graphics/GraphicsState.h"
-#include "Graphics/Scene/SceneRenderer.h"
+#include "API/Texture.h"
 
 namespace Falcor
 {
-    class SceneRenderPass : public RenderPass, inherit_shared_from_this<RenderPass, SceneRenderPass>
+    class BlitPass : public RenderPass, inherit_shared_from_this<RenderPass, BlitPass>
     {
     public:
-        using SharedPtr = std::shared_ptr<SceneRenderPass>;
+        using SharedPtr = std::shared_ptr<BlitPass>;
 
         /** Create a new object
         */
@@ -48,17 +45,11 @@ namespace Falcor
         virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual PassData getRenderPassData() const override { return kRenderPassData; }
-        virtual void sceneChangedCB() override;
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name) override;
 
-        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     private:
-        SceneRenderPass();
+        BlitPass();
         static const PassData kRenderPassData;
-        Fbo::SharedPtr mpFbo;
-        GraphicsState::SharedPtr mpState;
-        GraphicsVars::SharedPtr mpVars;
-        SceneRenderer::SharedPtr mpSceneRenderer;
-        vec4 mClearColor = vec4(1);
+        Texture::SharedPtr mpSrc;
+        Texture::SharedPtr mpDst;
     };
 }

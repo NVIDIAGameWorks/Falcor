@@ -114,6 +114,7 @@
 
 // Render passes
 #include "RenderPasses/SceneRenderPass.h"
+#include "RenderPasses/BlitPass.h"
 
 // Utils
 #include "Utils/Bitmap.h"

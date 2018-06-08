@@ -56,6 +56,9 @@ void RenderGraphRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::
 {
     mpGraph = RenderGraph::create();
     mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
+    mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
+
+    mpGraph->addEdge("SceneRenderer.color", "BlitPass.src");
 
     loadScene(gkDefaultScene, false);
 }
@@ -67,11 +70,6 @@ void RenderGraphRenderer::onFrameRender(SampleCallbacks* pSample, const RenderCo
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     mpGraph->execute(pRenderContext.get());
-
-    mpGraph->execute(pRenderContext.get());
-
-    Texture* pColor = dynamic_cast<Texture*>(mpGraph->getOutput("SceneRenderer.color").get());
-    pRenderContext->blit(pColor->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
 bool RenderGraphRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
@@ -88,8 +86,7 @@ void RenderGraphRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t w
 {
     auto& pColor = Texture::create2D(width, height, pSample->getCurrentFbo()->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
     auto& pDepth = Texture::create2D(width, height, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
-    mpGraph->setOutput("SceneRenderer.color", pColor);
-    mpGraph->setOutput("SceneRenderer.depth", pDepth);
+    mpGraph->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
     mpGraph->onResizeSwapChain(pSample, width, height);
 }
 

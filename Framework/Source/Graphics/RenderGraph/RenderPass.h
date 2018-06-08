@@ -48,17 +48,17 @@ namespace Falcor
 
         /** This struct describes the available input/output resources fields by the render-pass
         */
-        struct RenderPassData
+        struct PassData
         {
             struct Field
             {
                 std::string name;                        ///< The field's name
                 ReflectionResourceType::SharedPtr pType; ///< The resource type
-                uint32_t width = 0;         ///< 0 means use the window size. For buffers this is the size in bytes
-                uint32_t height = 0;        ///< 0 means use the window size
-                uint32_t depth = 0;         ///< 0 means use the window size
-                uint32_t sampleCount = 0;   ///< 0 means don't care (which means 1)
-                ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format
+                uint32_t width = 0;         ///< For output resources, 0 means use the window size(textures) or the size in bytes (buffers). For input resources 0 means don't care
+                uint32_t height = 0;        ///< For output resources, 0 means use the window size. For input resources 0 means don't care
+                uint32_t depth = 0;         ///< For output resources, 0 means use the window size. For input resources 0 means don't care
+                uint32_t sampleCount = 0;   ///< 0 means don't care (which means 1 for output resources)
+                ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
                 Resource::BindFlags bindFlags = Resource::BindFlags::None;  ///< The required bind flags
                 bool required = true;      ///< If this is true, then the render-pass will not work if this field is not set. Otherwise, this field is optional
             };
@@ -73,7 +73,7 @@ namespace Falcor
 
         /** Get the render-pass data
         */
-        virtual RenderPassData getRenderPassData() const = 0;
+        virtual PassData getRenderPassData() const = 0;
 
         /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
         */

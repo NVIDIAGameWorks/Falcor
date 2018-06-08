@@ -31,6 +31,7 @@
 namespace Falcor
 {
     class Scene;
+    class Texture;
 
     class RenderGraph
     {
@@ -65,7 +66,7 @@ namespace Falcor
 
         /** Check if the graph is ready for execution (all passes inputs/outputs have been initialized correctly, no loops in the graph)
         */
-        bool isValid() const;
+        bool isValid(std::string& log = std::string()) const;
 
         /** Execute the graph
         */
@@ -133,6 +134,8 @@ namespace Falcor
         };
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
+
+        std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
 
         struct  
         {

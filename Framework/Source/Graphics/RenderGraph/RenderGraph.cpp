@@ -194,30 +194,98 @@ namespace Falcor
         return true;
     }
 
-    bool RenderGraph::isValid() const
+    bool RenderGraph::isValid(std::string& log) const
     {
-        if(mRecompile)
+        bool valid = true;
+        size_t logSize = log.size();
+        for (const auto& pPass : mpPasses)
         {
-            for (const auto& pPass : mpPasses)
+            if (pPass->isValid(log) == false)
             {
-                if (pPass->isValid() == false) return false;
+                valid = false;
+                if (log.size() != logSize && log.back() != '\n')
+                {
+                    log += '\n';
+                    logSize = log.size();
+                }
             }
         }
-        return true;
+        return valid;
+    }
+
+    Texture::SharedPtr RenderGraph::createTextureForPass(const RenderPass::PassData::Field& field)
+    {
+        uint32_t width = field.width ? field.width : mSwapChainData.width;
+        uint32_t height = field.height ? field.height : mSwapChainData.height;
+        uint32_t depth = field.depth ? field.depth : 1;
+        uint32_t sampleCount = field.sampleCount ? field.sampleCount : 1;
+        ResourceFormat format = field.format == ResourceFormat::Unknown ? mSwapChainData.colorFormat : field.format;
+        Texture::SharedPtr pTexture;
+
+        if (depth > 1)
+        {
+            assert(sampleCount == 1);
+            pTexture = Texture::create3D(width, height, depth, format, 1, nullptr, field.bindFlags | Resource::BindFlags::ShaderResource);
+        }
+        else if (height > 1 || sampleCount > 1)
+        {
+            if (sampleCount > 1)
+            {
+                pTexture = Texture::create2DMS(width, height, format, sampleCount, 1, field.bindFlags | Resource::BindFlags::ShaderResource);
+            }
+            else
+            {
+                pTexture = Texture::create2D(width, height, format, 1, 1, nullptr, field.bindFlags | Resource::BindFlags::ShaderResource);
+            }
+        }
+        else
+        {
+            pTexture = Texture::create1D(width, format, 1, 1, nullptr, field.bindFlags | Resource::BindFlags::ShaderResource);
+        }
+
+        return pTexture;
     }
 
     void RenderGraph::compile()
     {
         if(mRecompile)
-        {
-            if (!isValid()) return;
-            mRecompile = false;
+        {   
+            // Allocate outputs
+            for (const auto& e : mEdges)
+            {
+                const RenderPass::PassData& passData = e.pSrc->getRenderPassData();
+                // Find the input
+                bool found = false;
+                for (const auto& src : passData.outputs)
+                {
+                    if(src.required || (src.name == e.srcField))
+                    {
+                        Texture::SharedPtr pTexture = createTextureForPass(src);
+                        e.pSrc->setOutput(src.name, pTexture);
+
+                        if (src.name == e.srcField)
+                        {
+                            e.pDst->setInput(e.dstField, pTexture);
+                            found = true;
+                        }
+                    }
+                }
+                assert(found);
+            }
         }
+        mRecompile = false;
     }
 
     void RenderGraph::execute(RenderContext* pContext)
     {
         compile();
+
+        std::string log;
+        if (!isValid(log))
+        {
+            logWarning("Failed to compile RenderGraph\n" + log +"Ignoreing RenderGraph::execute() call");
+            return;
+        }
 
         for (auto& pPass : mpPasses)
         {

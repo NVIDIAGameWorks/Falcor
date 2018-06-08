@@ -33,10 +33,10 @@ namespace Falcor
     static std::string kColor = "color";
     static std::string kDepth = "depth";
 
-    static SceneRenderPass::RenderPassData createRenderPassData()
+    static SceneRenderPass::PassData createRenderPassData()
     {
-        RenderPass::RenderPassData data;
-        RenderPass::RenderPassData::Field output;
+        RenderPass::PassData data;
+        RenderPass::PassData::Field output;
         output.bindFlags = Resource::BindFlags::RenderTarget;
         output.name = kColor;
         output.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
@@ -50,7 +50,7 @@ namespace Falcor
         return data;
     }
 
-    const SceneRenderPass::RenderPassData SceneRenderPass::kRenderPassData = createRenderPassData();
+    const SceneRenderPass::PassData SceneRenderPass::kRenderPassData = createRenderPassData();
 
     SceneRenderPass::SharedPtr SceneRenderPass::create()
     {

@@ -544,6 +544,9 @@
     <ClCompile Include="RenderPasses\SceneRenderPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPasses\BlitPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1709,6 +1712,9 @@
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
     <ClInclude Include="RenderPasses\SceneRenderPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\BlitPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
   </ItemGroup>
