@@ -175,21 +175,9 @@ namespace Falcor
         */
         const std::string& getSourceFilename() const { return mSourceFilename; }
 
-        void copySubresource(const Texture* pDst, uint32_t srcMipLevel, uint32_t srcArraySlice, uint32_t dstMipLevel, uint32_t dstArraySlice) const;
-
-        /** If the texture has been created as using sparse storage, makes individual physically pages resident and non-resident.
-          * Use page index.
-        */
-        void setSparseResidencyPageIndex(bool isResident, uint32_t mipLevel, uint32_t pageX, uint32_t pageY, uint32_t pageZ, uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1);
-
-        /** If the texture has been created as using sparse storage, makes individual physically pages resident and non-resident.
-        */
-        glm::i32vec3 getSparseResidencyPageSize();
-
     protected:
         friend class Device;
         void apinit(const void* pData, bool autoGenMips);
-        void apiSetName();
         void uploadInitData(const void* pData, bool autoGenMips);
 		bool mReleaseRtvsAfterGenMips = true;
         static RtvHandle spNullRTV;

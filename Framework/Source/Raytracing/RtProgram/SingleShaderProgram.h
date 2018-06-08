@@ -59,6 +59,7 @@ namespace Falcor
             SharedPtr pProg = SharedPtr(new RtSingleShaderProgram(maxPayloadSize, maxAttributesSize));
             Desc d(str);
             d.entryPoint((ShaderType)shaderType, entryPoint);
+            d.setShaderModel("6_3");
             pProg->init(d, programDefines);
             return pProg;
         }

@@ -42,6 +42,16 @@
 
 namespace Falcor
 {
+#ifdef FALCOR_VK
+    const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
+#elif defined FALCOR_D3D12
+    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", 
+#ifdef FALCOR_DXR
+        "6_3" 
+#endif
+    };
+#endif
+
     static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
     {
         std::string errorMsg;
@@ -58,8 +68,15 @@ namespace Falcor
 
     Program::Desc& Program::Desc::addShaderLibrary(std::string const& path)
     {
-        mActiveLibraryIndex = (int)mShaderLibraries.size();
-        mShaderLibraries.emplace_back(ShaderLibrary::create(path));
+        mActiveSource = (int)mSources.size();
+        mSources.emplace_back(ShaderLibrary::create(path));
+        return *this;
+    }
+
+    Program::Desc& Program::Desc::addShaderString(const std::string& shader)
+    {
+        mActiveSource = (int)mSources.size();
+        mSources.emplace_back(shader);
 
         return *this;
     }
@@ -70,16 +87,16 @@ namespace Falcor
         entryPoint.name = name;
         if (name.size() == 0)
         {
-            entryPoint.libraryIndex = -1;
+            entryPoint.index = -1;
         }
         else
         {
-            assert(mActiveLibraryIndex >= 0);
-            if (entryPoint.libraryIndex != -1)
+            assert(mActiveSource >= 0);
+            if (entryPoint.index != -1)
             {
                 logWarning("Trying to set a " + to_string(shaderType) + " entry-point when one already exists. Overriding previous entry-point");
             }
-            entryPoint.libraryIndex = mActiveLibraryIndex;
+            entryPoint.index = mActiveSource;
             entryPoint.name = name;
         }
 
@@ -99,12 +116,49 @@ namespace Falcor
         return mEntryPoints[(uint32_t)shaderType].isValid() ? mEntryPoints[(uint32_t)shaderType].name : s;
     }
 
+    Program::Desc& Program::Desc::setShaderModel(const std::string& sm)
+    {
+        // Check that the model is supported
+        bool b = false;
+        for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++)
+        {
+            if (kSupportedShaderModels[i] == sm)
+            {
+                b = true;
+                break;
+            }
+        }
+
+        if (b == false)
+        {
+            std::string warn = "Unsupported shader-model `" + sm + "` requested. Supported shader-models are ";
+            for (size_t i = 0; i < arraysize(kSupportedShaderModels); i++)
+            {
+                warn += kSupportedShaderModels[i];
+                warn += (i == kSupportedShaderModels->size() - 1) ? "." : ", ";
+            }
+            warn += "\nThis is not an error, but if something goes wrong try using one of the supported models.";
+            logWarning(warn);
+        }
+
+        mShaderModel = sm;
+        return *this;
+    }
+
     const ShaderLibrary::SharedPtr& Program::Desc::getShaderLibrary(ShaderType shaderType) const
     {
-        static ShaderLibrary::SharedPtr pM;;
+        static ShaderLibrary::SharedPtr pM;
         const auto& e = mEntryPoints[(uint32_t)shaderType];
 
-        return e.isValid() ? mShaderLibraries[e.libraryIndex] : pM;
+        return e.isValid() ? mSources[e.index].pLibrary : pM;
+    }
+
+    const std::string& Program::Desc::getShaderString(ShaderType shaderType) const
+    {
+        static std::string s;
+        const auto& e = mEntryPoints[(uint32_t)shaderType];
+
+        return e.isValid() ? mSources[e.index].str : s;
     }
 
     // Program
@@ -139,15 +193,25 @@ namespace Falcor
         std::string desc = "Program with Shaders:\n";
 
         int sourceCounter = 0;
-        for(auto pModule : mDesc.mShaderLibraries)
+        for(auto src : mDesc.mSources)
         {
             int sourceIndex = sourceCounter++;
 
-            desc += pModule->getFilename();
+            switch (src.type)
+            {
+            case Desc::Source::Type::File:
+                desc += src.pLibrary->getFilename();
+                break;
+            case Desc::Source::Type::String:
+                desc += "Created from string";
+                break;
+            default:
+                should_not_get_here();
+            }
 
             for( auto entryPoint : mDesc.mEntryPoints )
             {
-                if(entryPoint.libraryIndex != sourceIndex) continue;
+                if(entryPoint.index != sourceIndex) continue;
                 desc += "/*" + entryPoint.name + "*/";
             }
             desc += "\n";
@@ -336,12 +400,12 @@ namespace Falcor
         }
     }
 
-    static const char* getSlangProfileString()
+    static std::string getSlangProfileString(const std::string& shaderModel)
     {
 #if defined FALCOR_VK
-        return "glsl_450";
+        return "glsl_" + shaderModel;
 #elif defined FALCOR_D3D12
-        return "sm_5_1";
+        return "sm_" + shaderModel;
 #else
 #error unknown shader compilation target
 #endif
@@ -382,20 +446,31 @@ namespace Falcor
             spAddPreprocessorDefine(slangRequest, shaderDefine.first.c_str(), shaderDefine.second.c_str());
         }
 
+        SlangCompileTarget slangTarget = SLANG_TARGET_UNKNOWN;
+        const char* preprocessorDefine;
         // Pick the right target based on the current graphics API
 #ifdef FALCOR_VK
-        spSetCodeGenTarget(slangRequest, SLANG_SPIRV);
-        spAddPreprocessorDefine(slangRequest, "FALCOR_VK", "1");
+        slangTarget = SLANG_SPIRV;
+        preprocessorDefine = "FALCOR_VK";
 #elif defined FALCOR_D3D12
-        spAddPreprocessorDefine(slangRequest, "FALCOR_D3D", "1");
-        // Note: we could compile Slang directly to DXBC (by having Slang invoke the MS compiler for us,
-        // but that path seems to have more issues at present, so let's just go to HLSL instead...)
-        spSetCodeGenTarget(slangRequest, SLANG_HLSL);
+        preprocessorDefine = "FALCOR_D3D";
+        // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
+        if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_")) slangTarget = SLANG_DXBC;
+        else if (mDesc.mShaderModel == "6_3")                                           slangTarget = SLANG_HLSL;   // TODO This is actually a hack for DXR, we need to fix it
+        else                                                                            slangTarget = SLANG_DXIL;
 #else
 #error unknown shader compilation target
 #endif
+        spSetCodeGenTarget(slangRequest, slangTarget);
+        spAddPreprocessorDefine(slangRequest, preprocessorDefine, "1");
 
-        spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString()));
+        spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString(mDesc.mShaderModel).c_str()));
+
+        // We always use row-major matrix layout (and when we invoke fxc/dxc we pass in the
+        // appropriate flags to request this behavior), so we need to inform Slang that
+        // this is what we want/expect so that it can compute correct reflection information.
+        //
+        spSetTargetMatrixLayoutMode(slangRequest, 0, SLANG_MATRIX_LAYOUT_ROW_MAJOR);
 
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
@@ -406,23 +481,31 @@ namespace Falcor
 
         // Now lets add all our input shader code, one-by-one
         int translationUnitsAdded = 0;
-        for(auto pLibrary : mDesc.mShaderLibraries)
-        {
-            // If this is not an HLSL or a SLANG file, display a warning
-            if (!hasSuffix(pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(pLibrary->getFilename(), ".slang", false))
-            {
-                logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
-            }
 
+        for(auto src : mDesc.mSources)
+        {
             // Register the translation unit with Slang
             int translationUnitIndex = spAddTranslationUnit(slangRequest, SLANG_SOURCE_LANGUAGE_SLANG, nullptr);
             assert(translationUnitIndex == translationUnitsAdded);
             translationUnitsAdded++;
 
             // Add source code to the translation unit
-            std::string fullpath;
-            findFileInDataDirectories(pLibrary->getFilename(), fullpath);
-            spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
+            if (src.type == Desc::Source::Type::File)
+            {
+                // If this is not an HLSL or a SLANG file, display a warning
+                if (!hasSuffix(src.pLibrary->getFilename(), ".hlsl", false) && !hasSuffix(src.pLibrary->getFilename(), ".slang", false))
+                {
+                    logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
+                }
+                std::string fullpath;
+                findFileInDataDirectories(src.pLibrary->getFilename(), fullpath);
+                spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
+            }
+            else
+            {
+                assert(src.type == Desc::Source::Type::String);
+                spAddTranslationUnitSourceString(slangRequest, translationUnitIndex, "", src.str.c_str());
+            }
         }
 
         // Now we make a separate pass and add the entry points.
@@ -434,12 +517,12 @@ namespace Falcor
             auto& entryPoint = mDesc.mEntryPoints[i];
 
             // Skip unused entry points
-            if(entryPoint.libraryIndex < 0)
+            if(entryPoint.index < 0)
                 continue;
 
             spAddEntryPoint(
                 slangRequest,
-                entryPoint.libraryIndex,
+                entryPoint.index,
                 entryPoint.name.c_str(),
                 getSlangStage(ShaderType(i)));
         }
@@ -459,23 +542,26 @@ namespace Falcor
         for (uint32_t i = 0; i < kShaderCount; i++)
         {
             auto& entryPoint = mDesc.mEntryPoints[i];
-
             // Skip unused entry points
-            if(entryPoint.libraryIndex < 0)
+            if(entryPoint.index < 0)
                 continue;
 
             int entryPointIndex = entryPointCounter++;
 
-            size_t size = 0;
-#ifdef FALCOR_VK
-            const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
-            shaderBlob[i].data.assign(data, data + size);
-            shaderBlob[i].type = Shader::Blob::Type::Bytecode;
-#else
-            const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
-            shaderBlob[i].data.assign(data, data + strlen(data));
-            shaderBlob[i].type = Shader::Blob::Type::String;
-#endif
+            if (slangTarget == SLANG_GLSL || slangTarget == SLANG_GLSL_VULKAN || slangTarget == SLANG_HLSL)
+            {
+                shaderBlob[i].type = Shader::Blob::Type::String;
+                const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
+                shaderBlob[i].data.assign(data, data + strlen(data));
+            }
+            else
+            {
+                shaderBlob[i].type = Shader::Blob::Type::Bytecode;
+                size_t size = 0;
+                const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
+                shaderBlob[i].data.assign(data, data + size);
+            }
+            shaderBlob[i].shaderModel = mDesc.mShaderModel;
         }
 
         VersionData programVersion;
@@ -585,5 +671,4 @@ namespace Falcor
             }
         }
     }
-
 }

@@ -36,22 +36,22 @@ namespace Falcor
         ID3DBlobPtr pBlob;
     };
 
-    const char* getTargetString(ShaderType type)
+    std::string getTargetString(ShaderType type, const std::string& shaderModel)
     {
         switch (type)
         {
         case ShaderType::Vertex:
-            return "vs_5_1";
+            return "vs_" + shaderModel;
         case ShaderType::Pixel:
-            return "ps_5_1";
+            return "ps_" + shaderModel;
         case ShaderType::Hull:
-            return "hs_5_1";
+            return "hs_" + shaderModel;
         case ShaderType::Domain:
-            return "ds_5_1";
+            return "ds_" + shaderModel;
         case ShaderType::Geometry:
-            return "gs_5_1";
+            return "gs_" + shaderModel;
         case ShaderType::Compute:
-            return "cs_5_1";
+            return "cs_" + shaderModel;
         default:
             should_not_get_here();
             return "";
@@ -60,13 +60,11 @@ namespace Falcor
 
     struct SlangBlob : ID3DBlob
     {
-        void* buffer;
-        size_t bufferSize;
+        std::vector<uint8_t> data;
         size_t refCount;
 
-        SlangBlob(void* buffer, size_t bufferSize)
-            : buffer(buffer)
-            , bufferSize(bufferSize)
+        SlangBlob(const void* buffer, size_t bufferSize)
+            : data((uint8_t*)buffer, ((uint8_t*)buffer) + bufferSize)
             , refCount(1)
         {}
 
@@ -100,12 +98,12 @@ namespace Falcor
 
         virtual LPVOID STDMETHODCALLTYPE GetBufferPointer() override
         {
-            return buffer;
+            return data.data();
         }
 
         virtual SIZE_T STDMETHODCALLTYPE GetBufferSize() override
         {
-            return bufferSize;
+            return data.size();
         }
     };
 
@@ -122,29 +120,36 @@ namespace Falcor
 
     ID3DBlobPtr Shader::compile(const Blob& blob, const std::string& entryPointName, CompilerFlags flags, std::string& errorLog)
     {
-        ID3DBlob* pCode;
-        ID3DBlobPtr pErrors;
+        ID3DBlob* pCode = nullptr;
 
-        UINT d3dFlags = getD3dCompilerFlags(flags);
-
-        HRESULT hr = D3DCompile(
-            blob.data.data(),
-            blob.data.size(),
-            nullptr,
-            nullptr,
-            nullptr,
-            entryPointName.c_str(),
-            getTargetString(mType),
-            d3dFlags,
-            0,
-            &pCode,
-            &pErrors);
-        if(FAILED(hr))
+        if (blob.type == Blob::Type::String)
         {
-            errorLog = convertBlobToString(pErrors.GetInterfacePtr());
-            return nullptr;
-        }
+            ID3DBlobPtr pErrors;
+            UINT d3dFlags = getD3dCompilerFlags(flags);
 
+            HRESULT hr = D3DCompile(
+                blob.data.data(),
+                blob.data.size(),
+                nullptr,
+                nullptr,
+                nullptr,
+                entryPointName.c_str(),
+                getTargetString(mType, blob.shaderModel).c_str(),
+                d3dFlags,
+                0,
+                &pCode,
+                &pErrors);
+            if (FAILED(hr))
+            {
+                errorLog = convertBlobToString(pErrors.GetInterfacePtr());
+                return nullptr;
+            }
+        }
+        else
+        {
+            assert(blob.type == Blob::Type::Bytecode);
+            pCode = new SlangBlob(blob.data.data(), blob.data.size());
+        }
         return pCode;
     }
 
@@ -161,11 +166,6 @@ namespace Falcor
 
     bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log)
     {
-        if (shaderBlob.type != Blob::Type::String)
-        {
-            logError("D3D shader compilation only supports string inputs");
-            return false;
-        }
         // Compile the shader
         ShaderData* pData = (ShaderData*)mpPrivateData;
         pData->pBlob = compile(shaderBlob, entryPointName, flags, log);
