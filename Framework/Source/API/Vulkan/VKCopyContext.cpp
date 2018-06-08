@@ -225,7 +225,7 @@ namespace Falcor
         pThis->mpContext = pCtx;
 
         VkBufferImageCopy vkCopy;
-        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, vec3(-1, -1, -1), pThis->mDataSize);
+        initTexAccessParams(pTexture, subresourceIndex, vkCopy, pThis->mpBuffer, nullptr, {}, uvec3(-1, -1, -1), pThis->mDataSize);
 
         // Execute the copy
         pCtx->resourceBarrier(pTexture, Resource::State::CopySource);
