@@ -548,8 +548,7 @@ namespace Falcor
             int entryPointIndex = entryPointCounter++;
             int targetIndex = 0; // We always compile for a single target
 
-            ISlangBlob* blob = spGetEntryPointCodeBlob(slangRequest, entryPointIndex, targetIndex);
-            shaderBlob[i].attach(blob);
+            spGetEntryPointCodeBlob(slangRequest, entryPointIndex, targetIndex, shaderBlob[i].writeRef());
         }
 
         VersionData programVersion;

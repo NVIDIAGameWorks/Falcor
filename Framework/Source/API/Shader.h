@@ -55,10 +55,22 @@ namespace Falcor
         ComPtr(const ThisType& rhs) : mpObject(rhs.mpObject) { if (mpObject) (mpObject)->AddRef(); }
 
         /// Add a new reference to an existing object
-        T* operator=(T* in);
+        T* operator=(T* in)
+        {
+            if(in) in->AddRef();
+            if(mpObject) mpObject->Release();
+            mpObject = in;
+            return in;
+        }
 
         /// Add a new reference to an existing object
-        const ThisType& operator=(const ThisType& rhs);
+        const ThisType& operator=(const ThisType& rhs)
+        {
+            if(rhs.mpObject) rhs.mpObject->AddRef();
+            if(mpObject) mpObject->Release();
+            mpObject = rhs.mpObject;
+            return *this;
+        }
 
         /// Transfer ownership of a reference.
         ComPtr(ThisType&& rhs) : mpObject(rhs.mpObject) { rhs.mpObject = nullptr; }
@@ -67,10 +79,22 @@ namespace Falcor
         ComPtr& operator=(ThisType&& rhs) { ObjectType* swap = mpObject; mpObject = rhs.mpObject; rhs.mpObject = swap; return *this; }
 
         /// Clear out object pointer.
-        void setNull();
+        void setNull()
+        {
+            if( mpObject )
+            {
+                mpObject->Release();
+                mpObject = nullptr;
+            }
+        }
 
         /// Swap pointers with another reference.
-        void swap(ThisType& rhs);
+        void swap(ThisType& rhs)
+        {
+            T* tmp = mpObject;
+            mpObject = rhs.mpObject;
+            rhs.mpObject = tmp;
+        }
 
         /// Get the underlying object pointer.
         T* get() const { return mpObject; }
