@@ -29,8 +29,81 @@
 #include <string>
 #include <unordered_set>
 
+#include "Externals/Slang/slang.h"
+
 namespace Falcor
 {
+    /** Minimal smart pointer for working with COM objects.
+    */
+    template<typename T>
+    struct ComPtr
+    {
+    public:
+        /// Type of the smart pointer itself
+        typedef ComPtr ThisType;
+
+        /// Initialize to a null pointer.
+        ComPtr() : mpObject(nullptr) {}
+
+        /// Release reference to the pointed-to object.
+        ~ComPtr() { if (mpObject) (mpObject)->Release(); }
+
+        /// Add a new reference to an existing object.
+        explicit ComPtr(T* pObject) : mpObject(pObject) { if (pObject) (pObject)->AddRef(); }
+
+        /// Add a new reference to an existing object.
+        ComPtr(const ThisType& rhs) : mpObject(rhs.mpObject) { if (mpObject) (mpObject)->AddRef(); }
+
+        /// Add a new reference to an existing object
+        T* operator=(T* in);
+
+        /// Add a new reference to an existing object
+        const ThisType& operator=(const ThisType& rhs);
+
+        /// Transfer ownership of a reference.
+        ComPtr(ThisType&& rhs) : mpObject(rhs.mpObject) { rhs.mpObject = nullptr; }
+
+        /// Transfer ownership of a reference.
+        ComPtr& operator=(ThisType&& rhs) { ObjectType* swap = mpObject; mpObject = rhs.mpObject; rhs.mpObject = swap; return *this; }
+
+        /// Clear out object pointer.
+        void setNull();
+
+        /// Swap pointers with another reference.
+        void swap(ThisType& rhs);
+
+        /// Get the underlying object pointer.
+        T* get() const { return mpObject; }
+
+        /// Cast to object pointer type.
+        operator T*() const { return mpObject; }
+
+        /// Access members of underlying object.
+        T* operator->() const { return mpObject; }
+
+        /// Dereference underlying pointer.
+        T& operator*() { return *mpObject; }
+
+        /// Transfer ownership of reference to the caller.
+        T* detach() { T* ptr = mpObject; mpObject = nullptr; return ptr; }
+
+        /// Transfer owenership of reference from the caller.
+        void attach(T* in) { T* old = mpObject; mpObject = in; if(old) old->Release(); }
+
+        /// Get a writable reference suitable for use as a function output argument.
+        T** writeRef() { setNull(); return &mpObject; }
+
+        /// Get a readable reference suitable for use as a function input argument.
+        T*const* readRef() const { return &mpObject; }
+
+    protected:
+        // Disabled: do not take the address of a smart pointer.
+        T** operator&();
+
+        /// The underlying raw object pointer
+        T* mpObject;
+    };
+
     /** Low-level shader object
     This class abstracts the API's shader creation and management
     */
@@ -42,18 +115,7 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const Shader>;
         using ApiHandle = ShaderHandle;
 
-        struct Blob
-        {
-            enum class Type
-            {
-                Undefined,
-                String,
-                Bytecode
-            };
-            std::vector<uint8_t> data;
-            Type type = Type::Undefined;
-            std::string shaderModel;
-        };
+        typedef ComPtr<ISlangBlob> Blob;
 
         enum class CompilerFlags
         {
@@ -92,10 +154,8 @@ namespace Falcor
         ShaderType getType() const { return mType; }
 
 
-
 #ifdef FALCOR_D3D12
         ID3DBlobPtr getD3DBlob() const;
-        virtual ID3DBlobPtr compile(const Blob& blob, const std::string&  entryPointName, CompilerFlags flags, std::string& errorLog);
 #endif
 
     protected:
