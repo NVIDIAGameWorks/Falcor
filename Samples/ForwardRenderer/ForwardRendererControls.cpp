@@ -29,7 +29,6 @@
 
 Gui::DropdownList kSampleCountList =
 {
-    { 1, "1" },
     { 2, "2" },
     { 4, "4" },
     { 8, "8" },
@@ -37,9 +36,10 @@ Gui::DropdownList kSampleCountList =
 
 const Gui::DropdownList aaModeList =
 {
-    { 0, "MSAA" },
-    { 1, "TAA" },
-    { 2, "FXAA" }
+    { 0, "None"},
+    { 1, "MSAA" },
+    { 2, "TAA" },
+    { 3, "FXAA" }
 };
 
 
@@ -83,6 +83,8 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
 {
     if (mLightingPass.pProgram == nullptr) return;
 
+    assert(mAAMode == AAMode::MSAA ? mMSAASampleCount > 1 : true);
+
     uint32_t w = pSample->getCurrentFbo()->getWidth();
     uint32_t h = pSample->getCurrentFbo()->getHeight();
 
@@ -93,7 +95,17 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
     // Release the TAA FBOs
     mTAA.resetFbos();
 
-    if (mAAMode == AAMode::MSAA || mAAMode == AAMode::FXAA)
+    if (mAAMode == AAMode::TAA)
+    {
+        mLightingPass.pProgram->removeDefine("INTERPOLATION_MODE");
+        mLightingPass.pProgram->addDefine("_OUTPUT_MOTION_VECTORS");
+        fboDesc.setColorTarget(2, ResourceFormat::RG16Float);
+
+        Fbo::Desc taaFboDesc;
+        taaFboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
+        mTAA.createFbos(w, h, taaFboDesc);
+    }
+    else
     {
         mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
@@ -106,23 +118,12 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
             resolveDesc.setColorTarget(1, ResourceFormat::RGBA8Unorm).setColorTarget(2, ResourceFormat::R32Float);
             mpResolveFbo = FboHelper::create2D(w, h, resolveDesc);
         }
-
-        if (mAAMode == AAMode::FXAA)
+        else if (mAAMode == AAMode::FXAA)
         {
             Fbo::Desc resolveDesc;
             resolveDesc.setColorTarget(0, pSample->getCurrentFbo()->getColorTexture(0)->getFormat());
             mpResolveFbo = FboHelper::create2D(w, h, resolveDesc);
         }
-    }
-    else if (mAAMode == AAMode::TAA)
-    {
-        mLightingPass.pProgram->removeDefine("INTERPOLATION_MODE");
-        mLightingPass.pProgram->addDefine("_OUTPUT_MOTION_VECTORS");
-        fboDesc.setColorTarget(2, ResourceFormat::RG16Float);
-
-        Fbo::Desc taaFboDesc;
-        taaFboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
-        mTAA.createFbos(w, h, taaFboDesc);
     }
 
     mpMainFbo = FboHelper::create2D(w, h, fboDesc);
