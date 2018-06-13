@@ -34,6 +34,11 @@
 #include "Graphics/Program/ProgramReflection.h"
 #include "API/Device.h"
 
+#include "Renderer.h"
+#include "utils/Gui.h"
+
+
+
 namespace Falcor
 {
     ConstantBuffer::~ConstantBuffer() = default;
@@ -82,4 +87,42 @@ namespace Falcor
         }
         return mpCbv;
     }
+
+	void ConstantBuffer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+	{
+		const auto& reflectionDescMap = getBufferReflector()->asResourceType()->getOffsetDescMap();
+
+
+		if (reflectionDescMap.size())
+		{
+			size_t offset = 0;
+
+			if (pGui->beginGroup("Constant Buffer"))
+			{
+				std::string displayString;
+				for (const auto& reflectionDesc : reflectionDescMap)
+				{
+					displayString = "Offset: ";
+					
+					displayString.append(std::to_string(offset));
+					
+					displayString.append("	Size: ");
+					displayString.append(std::to_string(reflectionDesc.first));
+
+					offset += reflectionDesc.first;
+
+					displayString.append("	Type: ");
+					displayString.append(to_string(reflectionDesc.second.type));
+
+					displayString.append("		Count: ");
+					displayString.append(std::to_string(reflectionDesc.second.count));
+
+					pGui->addText(displayString.c_str());
+					pGui->addSeparator();
+				}
+
+				pGui->endGroup();
+			}
+		}
+	}
 }
