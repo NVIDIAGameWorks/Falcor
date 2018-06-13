@@ -47,6 +47,8 @@ namespace Falcor
         {
             PngFile,    //< PNG file for lossless compressed 8-bits images with optional alpha
             JpegFile,   //< JPEG file for lossy compressed 8-bits images without alpha
+            TgaFile,    //< TGA file for lossless uncompressed 8-bits images with optional alpha
+            BmpFile,    //< BMP file for lossless uncompressed 8-bits images with optional alpha
             PfmFile,    //< PFM file for floating point HDR images with 32-bit float per channel
             ExrFile,    //< EXR file for floating point HDR images with 16-bit float per channel
         };
