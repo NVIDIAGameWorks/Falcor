@@ -540,14 +540,18 @@ namespace Falcor
         char buf[maxSize];
         copyStringToBuffer(buf, maxSize, text);
 
+        bool result = false;
         if (lineCount > 1)
         {
-            return ImGui::InputTextMultiline(label, buf, maxSize, ImVec2(-1.0f, ImGui::GetTextLineHeight() * lineCount), flags);
+            result = ImGui::InputTextMultiline(label, buf, maxSize, ImVec2(-1.0f, ImGui::GetTextLineHeight() * lineCount), flags);
         }
         else
         {
-            return ImGui::InputText(label, buf, maxSize, flags);
+            result = ImGui::InputText(label, buf, maxSize, flags);
         }
+
+        text = std::string(buf);
+        return result;
     }
 
     void Gui::addTooltip(const char tip[], bool sameLine)
