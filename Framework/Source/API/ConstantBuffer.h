@@ -136,7 +136,7 @@ namespace Falcor
             return VariablesBuffer::setVariableArray(name, 0, pValue, count);
         }
 
-		void onGuiRender(SampleCallbacks* pSample, Gui* pGui);
+		void renderUI(Gui* pGui);
 
 		bool guiWidgetForData(Gui* pGui, ReflectionBasicType::Type type, uint8_t* data, const std::string& name);
 
@@ -149,7 +149,7 @@ namespace Falcor
         mutable ConstantBufferView::SharedPtr mpCbv;
 
 	private:
-		void onGuiRenderInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float spacing = 0.0f);
-		void onGuiRenderMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing);
+		void renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float spacing = 0.0f);
+		void renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing);
     };
 }

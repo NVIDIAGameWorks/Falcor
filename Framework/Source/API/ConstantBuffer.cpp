@@ -346,7 +346,7 @@ namespace Falcor
 		return returnValue;
 	}
 
-	void ConstantBuffer::onGuiRenderMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing)
+	void ConstantBuffer::renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing)
 	{
 		// Display reflection data and gather offset
 		pGui->addText("Name: ", false, textSpacing);
@@ -365,7 +365,7 @@ namespace Falcor
 		pGui->addSeparator();
 	}
 
-	void ConstantBuffer::onGuiRenderInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float textSpacing)
+	void ConstantBuffer::renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float textSpacing)
 	{
 		static std::unordered_map<std::string, int32> guiArrayIndices;
 
@@ -394,7 +394,7 @@ namespace Falcor
 					if (pGui->beginGroup(memberName))
 					{
 						memberName.push_back('.');
-						onGuiRenderInternal(pGui, pStructType, memberName, currentOffset, textSpacing + kTextSpacingOffset);
+						renderUIInternal(pGui, pStructType, memberName, currentOffset, textSpacing + kTextSpacingOffset);
 						memberName.pop_back();
 
 						pGui->endGroup();
@@ -473,14 +473,14 @@ namespace Falcor
 					if (pGui->beginGroup(displayName))
 					{
 						displayName.push_back('.');
-						onGuiRenderInternal(pGui, pArrayType->getType()->asStructType(), displayName, currentOffset, textSpacing + kTextSpacingOffset);
+						renderUIInternal(pGui, pArrayType->getType()->asStructType(), displayName, currentOffset, textSpacing + kTextSpacingOffset);
 						pGui->endGroup();
 					}
 				}
 				else
 				{
 					// for basic types
-					onGuiRenderMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType, textSpacing);
+					renderUIMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType, textSpacing);
 				}
 				
 				currentOffset += memberSize;
@@ -495,16 +495,16 @@ namespace Falcor
 		}
 	}
 
-	void ConstantBuffer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+	void ConstantBuffer::renderUI(Gui* pGui)
 	{
 		auto* pStruct = mpReflector->asResourceType()->getStructType()->asStructType();
 
-		if (pGui->beginGroup(std::string("ConstantBuffer").append(mName)))
+		if (pGui->beginGroup(std::string("ConstantBuffer: ").append(mName)))
 		{
 			pGui->addSeparator();
 
 			// begin recursion on first struct
-			onGuiRenderInternal(pGui, pStruct, "", 0);
+			renderUIInternal(pGui, pStruct, "", 0);
 
 			// dirty flag for uploading will be set by GUI
 			uploadToGPU();
