@@ -1,3 +1,11 @@
+v3.1
+------
+- Added support for exporting BMP and TGA images.
+
+Bug Fixes:
+- Fixed crash when setting ForwardRenderer sample to MSAA with sample count 1
+- std::string version of Gui::addTextBox() now correctly updates the user's string
+
 v3.0.4
 ------
 - Updated Slang to 0.10.24
