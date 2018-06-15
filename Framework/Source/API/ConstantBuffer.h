@@ -138,11 +138,18 @@ namespace Falcor
 
 		void onGuiRender(SampleCallbacks* pSample, Gui* pGui);
 
+		bool guiWidgetForData(Gui* pGui, ReflectionBasicType::Type type, uint8_t* data, const std::string& name);
+
         virtual bool uploadToGPU(size_t offset = 0, size_t size = -1) override;
 
         ConstantBufferView::SharedPtr getCbv() const;
+
     protected:
         ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;
+
+	private:
+		void onGuiRenderInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float spacing = 0.0f);
+		void onGuiRenderMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing);
     };
 }

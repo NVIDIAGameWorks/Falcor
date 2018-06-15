@@ -90,11 +90,12 @@ namespace Falcor
         */
         bool onKeyboardEvent(const KeyboardEvent& event);
 
-        /** Static text
-            \param[in] text The string to display
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-        */
-        void addText(const char text[], bool sameLine = false);
+		/** Static text
+			\param[in] text The string to display
+			\param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+			\param[in] spacing Optional. Spacing value to the next widget if on the same line 
+		*/
+		void addText(const char text[], bool sameLine = false, float spacing = -1.0f);
 
         /** Button. Will return true if the button was pressed
             \param[in] label Text to display on the button
