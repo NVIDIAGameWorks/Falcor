@@ -392,8 +392,6 @@ namespace Falcor
         */
         const OffsetDesc& getOffsetDesc(size_t offset) const;
 
-		const OffsetDescMap& getOffsetDescMap() const { return mOffsetDescMap; }
-
         bool operator==(const ReflectionResourceType& other) const;
         bool operator==(const ReflectionType& other) const override;
     private:

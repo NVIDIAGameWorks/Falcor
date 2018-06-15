@@ -350,8 +350,5 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         {
             applyLightingProgramControl(ControlID::EnableHashedAlpha);
         }
-
-		ConstantBuffer::SharedPtr pCB = mLightingPass.pVars->getConstantBuffer("PerFrameCB");
-		pCB->onGuiRender(pSample, pGui);
     }
 }
