@@ -276,11 +276,11 @@ namespace Falcor
         return modified;
     }
 
-	void Gui::addText(const char text[], bool sameLine, float spacing)
-	{
-		if (sameLine) ImGui::SameLine(spacing);
-		ImGui::Text(text, "");
-	}
+    void Gui::addText(const char text[], bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        ImGui::Text(text, "");
+    }
 
     bool Gui::addButton(const char label[], bool sameLine)
     {

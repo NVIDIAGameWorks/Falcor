@@ -35,9 +35,9 @@
 namespace Falcor
 {
     class Sampler;
-	// Forward declares for gui draw func
-	class SampleCallbacks;
-	class Gui;
+    // Forward declares for gui draw func
+    class SampleCallbacks;
+    class Gui;
 
     /** Abstracts a Constant/Uniform buffer.
         When accessing a variable by name, you can only use a name which points to a basic Type, or an array of basic Type (so if you want the start of a structure, ask for the first field in the struct).
@@ -136,20 +136,34 @@ namespace Falcor
             return VariablesBuffer::setVariableArray(name, 0, pValue, count);
         }
 
-		void renderUI(Gui* pGui);
+        void renderUI(Gui* pGui);
 
-		bool guiWidgetForData(Gui* pGui, ReflectionBasicType::Type type, uint8_t* data, const std::string& name);
-
+        
         virtual bool uploadToGPU(size_t offset = 0, size_t size = -1) override;
 
         ConstantBufferView::SharedPtr getCbv() const;
 
-    protected:
+     private:
         ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;
 
-	private:
-		void renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float spacing = 0.0f);
-		void renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing);
+        /** Render gui widget for reflected data
+            \param[in] pGui Pointer to the gui structure for rendering
+            \param[in] type Reflection type to look up corresponding widget
+            \param[in] name String name for widget to display
+        */
+        bool getGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, uint8_t* data, const std::string& name);
+
+        /** Render gui widget for reflected data
+            \param[in] pGui Pointer to the gui structure for rendering
+            \param[in] type Reflection type to look up corresponding widget
+            \param[in] name String name for widget to display
+        */
+        void renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float spacing = 0.0f);
+        
+        /**
+
+        */
+        void renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing);
     };
 }
