@@ -88,37 +88,28 @@ namespace Falcor
         return mpCbv;
     }
 
-    bool ConstantBuffer::getGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, uint8_t* data, const std::string& name)
+    bool ConstantBuffer::getGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name)
     {
-        std::string displayName = name;
-        displayName.resize(name.size() + 3, 0);
-        size_t offset = 0;
         unsigned displayIndex = 0;
         bool returnValue = false;
 
-
-#define update_array_index_name() displayName[displayName.size() - 3] = '['; \
-        displayName[displayName.size() - 2] = '0' + displayIndex; \
-        displayName[displayName.size() - 1] = ']'; \
-        displayIndex++
 #define concatStrings_(a, b) a##b
 #define concatStrings(a, b) concatStrings_(a, b)
 #define to_gui_widget(widgetName, baseType) \
-        returnValue |= pGui-> concatStrings(add, widgetName)(displayName.c_str(), *reinterpret_cast<baseType*>(data + offset)); \
+        returnValue |= pGui-> concatStrings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(mData.data() + offset)); \
         offset += sizeof(baseType);
         
         switch (type)
         {
         case ReflectionBasicType::Type::Bool4:
-            update_array_index_name();
-            to_gui_widget(CheckBox, bool);
+            to_gui_widget(Bool4Var, glm::bvec4);
+            break;
         case ReflectionBasicType::Type::Bool3:
-            update_array_index_name();
-            to_gui_widget(CheckBox, bool);
+            to_gui_widget(Bool3Var, glm::bvec3);
+            break;
         case ReflectionBasicType::Type::Bool2:
-            update_array_index_name();
-            to_gui_widget(CheckBox, bool);
-            update_array_index_name();
+            to_gui_widget(Bool2Var, glm::bvec2);
+            break;
         case ReflectionBasicType::Type::Bool:
             to_gui_widget(CheckBox, bool);
             break;
@@ -126,21 +117,20 @@ namespace Falcor
         case ReflectionBasicType::Type::Uint64_4:
         case ReflectionBasicType::Type::Int4:
         case ReflectionBasicType::Type::Int64_4:
-            update_array_index_name();
-            to_gui_widget(IntVar, int);
+            to_gui_widget(Int4Var, glm::ivec4);
+            break;
         case ReflectionBasicType::Type::Uint3:
         case ReflectionBasicType::Type::Uint64_3:
         case ReflectionBasicType::Type::Int3:
         case ReflectionBasicType::Type::Int64_3:
-            update_array_index_name();
-            to_gui_widget(IntVar, int);
+            to_gui_widget(Int3Var, glm::ivec3);
+            break;
         case ReflectionBasicType::Type::Uint2:
         case ReflectionBasicType::Type::Uint64_2:
         case ReflectionBasicType::Type::Int2:
         case ReflectionBasicType::Type::Int64_2:
-            update_array_index_name();
-            to_gui_widget(IntVar, int);
-            update_array_index_name();
+            to_gui_widget(Int2Var, glm::ivec2);
+            break;
         case ReflectionBasicType::Type::Uint:
         case ReflectionBasicType::Type::Uint64:
         case ReflectionBasicType::Type::Int:
@@ -148,88 +138,43 @@ namespace Falcor
             to_gui_widget(IntVar, int);
             break;
         case ReflectionBasicType::Type::Float:
-            returnValue |= pGui->addFloatVar(name.c_str(), *reinterpret_cast<float*>(data));
+            to_gui_widget(FloatVar, float);
             break;
         case ReflectionBasicType::Type::Float2:
-            returnValue |= pGui->addFloat2Var(name.c_str(), *reinterpret_cast<glm::vec2*>(data));
+            to_gui_widget(Float2Var, glm::vec2);
             break;
         case ReflectionBasicType::Type::Float3:
-            returnValue |= pGui->addFloat3Var(name.c_str(), *reinterpret_cast<glm::vec3*>(data));
+            to_gui_widget(Float3Var, glm::vec3);
             break;
         case ReflectionBasicType::Type::Float4:
-            returnValue |= pGui->addFloat4Var(name.c_str(), *reinterpret_cast<glm::vec4*>(data));
+            to_gui_widget(Float4Var, glm::vec4);
             break;
         case ReflectionBasicType::Type::Float2x2:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data + sizeof(float) * 2, displayName);
+            to_gui_widget(Matrix2x2Var, glm::mat2x2);
             break;
         case ReflectionBasicType::Type::Float2x3:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float3, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float3, data + sizeof(float) * 3, displayName);
+            to_gui_widget(Matrix2x3Var, glm::mat2x3);
             break;
         case ReflectionBasicType::Type::Float2x4:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 4, displayName);
+            to_gui_widget(Matrix2x4Var, glm::mat2x4);
             break;
         case ReflectionBasicType::Type::Float3x2:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data + sizeof(float) * 2, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data + sizeof(float) * 4, displayName);
+            to_gui_widget(Matrix3x2Var, glm::mat3x2);
             break;
         case ReflectionBasicType::Type::Float3x3:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float3, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float3, data + sizeof(float) * 3, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float3, data + sizeof(float) * 6, displayName);
+            to_gui_widget(Matrix3x3Var, glm::mat3x3);
             break;
         case ReflectionBasicType::Type::Float3x4:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 4, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 8, displayName);
+            to_gui_widget(Matrix3x4Var, glm::mat3x4);
             break;
         case ReflectionBasicType::Type::Float4x2:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data + sizeof(float) * 2, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data + sizeof(float) * 4, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float2, data + sizeof(float) * 6, displayName);
+            to_gui_widget(Matrix4x2Var, glm::mat4x2);
             break;
         case ReflectionBasicType::Type::Float4x3:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data, name);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 3, name);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 6, name);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 9, name);
+            to_gui_widget(Matrix4x3Var, glm::mat4x3);
             break;
         case ReflectionBasicType::Type::Float4x4:
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 4, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 8, displayName);
-            update_array_index_name();
-            returnValue |= guiWidgetForData(pGui, ReflectionBasicType::Type::Float4, data + sizeof(float) * 12, displayName);
+            to_gui_widget(Matrix4x4Var, glm::mat4x4);
             break;
         case ReflectionBasicType::Type::Unknown:
             break;
@@ -239,32 +184,31 @@ namespace Falcor
 #undef to_gui_widget
 #undef concatStrings
 #undef concatStrings_
-#undef update_array_index_name
 
         return returnValue;
     }
 
-    void ConstantBuffer::renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, float textSpacing)
+    void ConstantBuffer::renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType)
     {
         // Display reflection data and gather offset
         pGui->addText("Name: ", false);
-        pGui->addText(memberName.c_str(), true); //, textSpacing + 50.0f
-        pGui->addText("Offset: ", false); // textSpacing
-        pGui->addText(std::to_string(memberOffset).c_str(), true); //textSpacing + 50.0f
-        pGui->addText("	Size: ", true); // textSpacing + 150.0f
-        pGui->addText(std::to_string(memberSize).c_str(), true); // textSpacing + 200.0f
-        pGui->addText("	Type: ", true); // textSpacing + 250.0f
-        pGui->addText(memberTypeString.c_str(), true); // textSpacing + 300.0f
+        pGui->addText(memberName.c_str(), true);
+        pGui->addText("Offset: ", false);
+        pGui->addText(std::to_string(memberOffset).c_str(), true);
+        pGui->addText("	Size: ", true);
+        pGui->addText(std::to_string(memberSize).c_str(), true);
+        pGui->addText("	Type: ", true);
+        pGui->addText(memberTypeString.c_str(), true);
 
         // Display data from the stage memory
-        mDirty |= guiWidgetForData(pGui, memberType, mData.data() + memberOffset, memberName);
+        mDirty |= getGuiWidgetFromType(pGui, memberType, memberOffset, memberName);
 
         pGui->addSeparator();
     }
 
-    void ConstantBuffer::renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, float textSpacing)
+    void ConstantBuffer::renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset)
     {
-        static std::unordered_map<std::string, int32> guiArrayIndices;
+        static std::unordered_map<std::string, int32> sGuiArrayIndices;
 
         for (auto memberIt = pStruct->begin(); memberIt != pStruct->end(); ++memberIt)
         {
@@ -272,9 +216,8 @@ namespace Falcor
             size_t memberSize = 0;
             ReflectionBasicType::Type memberType = ReflectionBasicType::Type::Unknown;
             std::string memberName = (*memberIt)->getName();
-            constexpr float kTextSpacingOffset = 50.0f;
             const ReflectionBasicType* pBasicType = (*memberIt)->getType()->asBasicType();
-            ReflectionArrayType* pArrayType = nullptr;
+            const ReflectionArrayType* pArrayType = nullptr;
             bool baseTypeIsStruct = false;
             bool arrayGroupStatus = false;
             size_t currentOffset = startOffset + (*memberIt)->getOffset();
@@ -283,14 +226,14 @@ namespace Falcor
             if (!pBasicType)
             {
                 // recurse through struct if possible
-                auto* pStructType = (*memberIt)->getType()->asStructType();
+                const ReflectionStructType* pStructType = (*memberIt)->getType()->asStructType();
                 if (pStructType)
                 {
                     // Iterate through the internal struct
                     if (pGui->beginGroup(memberName))
                     {
                         memberName.push_back('.');
-                        renderUIInternal(pGui, pStructType, memberName, currentOffset, textSpacing + kTextSpacingOffset);
+                        renderUIInternal(pGui, pStructType, memberName, currentOffset);
                         memberName.pop_back();
 
                         pGui->endGroup();
@@ -302,7 +245,8 @@ namespace Falcor
                 }
 
                 // if array type gather info for iterating through elements
-                pArrayType = const_cast<ReflectionArrayType*>((*memberIt)->getType()->asArrayType());
+                pArrayType = (*memberIt)->getType()->asArrayType();
+
                 if (pArrayType)
                 {
                     pGui->addSeparator();
@@ -315,7 +259,7 @@ namespace Falcor
                         continue;
                     }
 
-                    auto* elementBasicType = pArrayType->getType()->asBasicType();
+                    const ReflectionBasicType* elementBasicType = pArrayType->getType()->asBasicType();
                     numMembers = pArrayType->getArraySize();
                     memberSize = pArrayType->getArrayStride();
 
@@ -328,8 +272,6 @@ namespace Falcor
                         // for special case of array of structures
                         baseTypeIsStruct = true;
                     }
-
-                    textSpacing += kTextSpacingOffset;
                 }
                 else if (!pStructType)
                 {
@@ -352,7 +294,7 @@ namespace Falcor
             if (numMembers > 1)
             {
                 // display information for specific index of array
-                int32& refGuiArrayIndex = guiArrayIndices[currentStructName + displayName];
+                int32& refGuiArrayIndex = sGuiArrayIndices[currentStructName + displayName];
                 pGui->addIntVar((std::string("Index (Size : ") + std::to_string(numMembers) + ") ").c_str(), refGuiArrayIndex, 0, static_cast<int>(numMembers) - 1);
                 memberIndex = refGuiArrayIndex;
                 currentOffset += (memberSize * memberIndex);
@@ -365,14 +307,14 @@ namespace Falcor
                 if (pGui->beginGroup(displayName))
                 {
                     displayName.push_back('.');
-                    renderUIInternal(pGui, pArrayType->getType()->asStructType(), displayName, currentOffset, textSpacing + kTextSpacingOffset);
+                    renderUIInternal(pGui, pArrayType->getType()->asStructType(), displayName, currentOffset);
                     pGui->endGroup();
                 }
             }
             else
             {
                 // for basic types
-                renderUIMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType, textSpacing);
+                renderUIMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType);
             }
             
             currentOffset += memberSize;
@@ -387,7 +329,7 @@ namespace Falcor
 
     void ConstantBuffer::renderUI(Gui* pGui)
     {
-        auto* pStruct = mpReflector->asResourceType()->getStructType()->asStructType();
+        const ReflectionStructType* pStruct = mpReflector->asResourceType()->getStructType()->asStructType();
 
         if (pGui->beginGroup(std::string("ConstantBuffer: ").append(mName)))
         {

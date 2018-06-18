@@ -179,6 +179,39 @@ namespace Falcor
         */
         bool addCheckBox(const char label[], int& pVar, bool sameLine = false);
 
+        /** Adds a checkbox.
+        \param[in] label The name of the checkbox.
+        \param[in] var A reference to the bools that will be updated directly when the checkbox state changes (0 = unchecked, 1 = checked).
+        \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        \return true if the value changed, otherwise false
+        */
+        bool addBool2Var(const char lable[], glm::bvec2& var, bool sameLine = false);
+
+        /** Adds a checkbox.
+        \param[in] label The name of the checkbox.
+        \param[in] var A reference to the bools that will be updated directly when the checkbox state changes (0 = unchecked, 1 = checked).
+        \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        \return true if the value changed, otherwise false
+        */
+        bool addBool3Var(const char lable[], glm::bvec3& var, bool sameLine = false);
+
+        /** Adds a checkbox.
+        \param[in] label The name of the checkbox.
+        \param[in] var A reference to the bools that will be updated directly when the checkbox state changes (0 = unchecked, 1 = checked).
+        \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        \return true if the value changed, otherwise false
+        */
+        bool addBool4Var(const char lable[], glm::bvec4& var, bool sameLine = false);
+
+        /** Adds a checkbox.
+        \param[in] label The name of the checkbox.
+        \param[in] var Pointer to the array of bools to fill checkboxes for
+        \param[in] numCheckboxes number of checkbox widgets to create for same number of bools
+        \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        \return true if the value changed, otherwise false
+        */
+        bool addNCheckboxes(const char label[], bool* pData, int numCheckboxes, bool sameLine);
+
         /** Adds an RGB color UI widget.
             \param[in] label The name of the widget.
             \param[in] var A reference to a vector that will be updated directly when the widget state changes.
@@ -205,6 +238,64 @@ namespace Falcor
             \return true if the value changed, otherwise false
         */
         bool addIntVar(const char label[], int32_t& var, int minVal = -INT32_MAX, int maxVal = INT32_MAX, int step = 1, bool sameLine = false);
+
+        /** Adds an integer UI widget.
+            \param[in] label The name of the widget.
+            \param[in] var A reference to two integers that will be updated directly when the widget state changes.
+            \param[in] minVal Optional. The minimum allowed value for the variable.
+            \param[in] maxVal Optional. The maximum allowed value for the variable.
+            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+            \return true if the value changed, otherwise false
+        */
+        bool addInt2Var(const char label[], glm::ivec2& var, int minVal = -INT32_MAX, int maxVal = INT32_MAX, bool sameLine = false);
+
+        /** Adds an integer UI widget.
+        \param[in] label The name of the widget.
+        \param[in] var A reference to a vector of 3 integers that will be updated directly when the widget state changes.
+        \param[in] minVal Optional. The minimum allowed value for the variable.
+        \param[in] maxVal Optional. The maximum allowed value for the variable.
+        \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        \return true if the value changed, otherwise false
+        */
+        bool addInt3Var(const char label[], glm::ivec3& var, int minVal = -INT32_MAX, int maxVal = INT32_MAX, bool sameLine = false);
+
+        /** Adds an integer UI widget.
+        \param[in] label The name of the widget.
+        \param[in] var A reference to a vector of 4 integers that will be updated directly when the widget state changes.
+        \param[in] minVal Optional. The minimum allowed value for the variable.
+        \param[in] maxVal Optional. The maximum allowed value for the variable.
+        \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        \return true if the value changed, otherwise false
+        */
+        bool addInt4Var(const char label[], glm::ivec4& var, int minVal = -INT32_MAX, int maxVal = INT32_MAX, bool sameLine = false);
+
+        /** Adds an matrix UI widget.
+        \param[in] label The name of the widget.
+        \param[in] var A reference to the matrix struct that will be updated directly when the widget state changes.
+        \param[in] minVal Optional. The minimum allowed value for the variable.
+        \param[in] maxVal Optional. The maximum allowed value for the variable.
+        \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        \return true if the value changed, otherwise false
+        */
+#define concatStrings_(a, b) a##b
+#define concatStrings(a, b) concatStrings_(a, b)
+#define add_matrix_function(funcName, matrixSize) \
+        bool funcName (const char label[], concatStrings(glm::mat, matrixSize) & var, float minVal = -1, float maxVal = 1, bool sameLine = false)
+
+        add_matrix_function(addMatrix2x2Var, 2x2);
+        add_matrix_function(addMatrix2x3Var, 2x3);
+        add_matrix_function(addMatrix2x4Var, 2x4);
+        add_matrix_function(addMatrix3x2Var, 3x2);
+        add_matrix_function(addMatrix3x3Var, 3x3);
+        add_matrix_function(addMatrix3x4Var, 3x4);
+        add_matrix_function(addMatrix4x2Var, 4x2);
+        add_matrix_function(addMatrix4x3Var, 4x3);
+        add_matrix_function(addMatrix4x4Var, 4x4);
+
+#undef add_matrix_function
+#undef concatStrings
+#undef concatStrings_
+
 
         /** Add a separator
         */

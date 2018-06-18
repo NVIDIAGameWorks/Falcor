@@ -276,6 +276,36 @@ namespace Falcor
         return modified;
     }
 
+    bool Gui::addBool2Var(const char label[], glm::bvec2& var, bool sameLine)
+    {
+        return addNCheckboxes(label, glm::value_ptr(var), 2, sameLine);
+    }
+
+    bool Gui::addBool3Var(const char label[], glm::bvec3& var, bool sameLine)
+    {
+        return addNCheckboxes(label, glm::value_ptr(var), 3, sameLine);
+    }
+
+    bool Gui::addBool4Var(const char label[], glm::bvec4& var, bool sameLine)
+    {
+        return addNCheckboxes(label, glm::value_ptr(var), 4, sameLine);
+    }
+
+    bool Gui::addNCheckboxes(const char label[], bool* pData, int numCheckboxes, bool sameLine)
+    {
+        bool modified = false;
+        std::string labelString(label);
+        labelString.append("[0]");
+
+        for (int i = 0; i < numCheckboxes; ++i)
+        {
+            labelString[labelString.size() - 2] = '0' + i;
+            modified |= addCheckBox(labelString.c_str(), pData[i], sameLine);
+        }
+        
+        return modified;
+    }
+
     void Gui::addText(const char text[], bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
@@ -364,6 +394,62 @@ namespace Falcor
         var = clamp(var, minVal, maxVal);
         return b;
     }
+
+    bool Gui::addInt2Var(const char label[], glm::ivec2& var, int minVal, int maxVal, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::InputInt2(label, static_cast<int*>(glm::value_ptr(var)), 0);
+        var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+    bool Gui::addInt3Var(const char label[], glm::ivec3& var, int minVal, int maxVal, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::InputInt3(label, static_cast<int*>(glm::value_ptr(var)), 0);
+        var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+    bool Gui::addInt4Var(const char label[], glm::ivec4& var, int minVal, int maxVal, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::InputInt4(label, static_cast<int*>(glm::value_ptr(var)), 0);
+        var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+#define concatStrings_(a, b) a##b
+#define concatStrings(a, b) concatStrings_(a, b)
+#define add_matrix_function(funcName, matrixSize, baseFunc) \
+    bool concatStrings(Gui::, funcName) (const char label[], concatStrings(glm::mat, matrixSize) & var, float minVal, float maxVal, bool sameLine) \
+    { \
+        std::string labelString(label); \
+        labelString.append("[0]"); \
+        bool b = false; \
+        \
+        for (int i = 0; i < var.length(); ++i) \
+        { \
+            labelString[labelString.size() - 2] = '0' + i; \
+            b |= baseFunc (labelString.c_str(), var[i], minVal, maxVal, sameLine); \
+        } \
+        \
+        return b;\
+    }
+
+    add_matrix_function(addMatrix2x2Var, 2x2, addFloat2Var)
+    add_matrix_function(addMatrix2x3Var, 2x3, addFloat3Var)
+    add_matrix_function(addMatrix2x4Var, 2x4, addFloat4Var)
+    add_matrix_function(addMatrix3x2Var, 3x2, addFloat2Var)
+    add_matrix_function(addMatrix3x3Var, 3x3, addFloat3Var)
+    add_matrix_function(addMatrix3x4Var, 3x4, addFloat4Var)
+    add_matrix_function(addMatrix4x2Var, 4x2, addFloat2Var)
+    add_matrix_function(addMatrix4x3Var, 4x3, addFloat3Var)
+    add_matrix_function(addMatrix4x4Var, 4x4, addFloat4Var)
+
+#undef add_matrix_function
+#undef concatStrings
+#undef concatStrings_
 
     bool Gui::addRgbColor(const char label[], glm::vec3& var, bool sameLine)
     {
