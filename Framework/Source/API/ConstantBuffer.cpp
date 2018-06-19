@@ -35,9 +35,7 @@
 #include "API/Device.h"
 
 #include "Renderer.h"
-#include "utils/Gui.h"
-
-
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
