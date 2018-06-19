@@ -73,7 +73,7 @@ void fillScene(Scene::SharedPtr pScene, const std::string& modelName, uint32_t w
     }
 }
 
-void LightProbeViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void LightProbeViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpCamera = Camera::create();
     mCameraController.attachCamera(mpCamera);
@@ -174,7 +174,7 @@ void LightProbeViewer::onDroppedFile(SampleCallbacks* pSample, const std::string
     updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float, mDiffuseSamples, mSpecSamples));
 }
 
-void LightProbeViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void LightProbeViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

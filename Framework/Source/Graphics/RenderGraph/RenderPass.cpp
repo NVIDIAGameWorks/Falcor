@@ -28,6 +28,8 @@
 #include "Framework.h"
 #include "RenderPass.h"
 
+#include "Utils\Gui.h"
+
 namespace Falcor
 {
     RenderPass::RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB) : mName(name), mpRenderDataChangedCallback(pDataChangedCB)
@@ -53,5 +55,12 @@ namespace Falcor
     {
         logWarning(mName + " doesn't have an input resource called `" + name + "`");
         return nullptr;
+    }
+
+    void RenderPass::renderUI(Gui* pGui)
+    {
+        pGui->pushWindow(std::string("Node: ").append(mName).c_str(), 256, 256, 0, 0);
+
+        pGui->popWindow();
     }
 }

@@ -64,9 +64,14 @@ namespace Falcor
         */
         bool addEdge(const std::string& src, const std::string& dst);
 
+        /** Remove edge connection for given render graph. Need to make sure the graph is valid after
+            Connection removed.
+         */
+        void RemoveEdge(const std::string& src, const std::string& dst);
+
         /** Check if the graph is ready for execution (all passes inputs/outputs have been initialized correctly, no loops in the graph)
         */
-        bool isValid(std::string& log = std::string()) const;
+        bool isValid(std::string& log) const;
 
         /** Execute the graph
         */
@@ -106,6 +111,10 @@ namespace Falcor
         /** Get the attached scene
         */
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
+
+        /** Display enter graph in gui.
+        */
+        void renderUI(Gui *pGui);
     private:
         RenderGraph();
         static const size_t kInvalidIndex = -1;
@@ -123,6 +132,12 @@ namespace Falcor
             RenderPass* pDst;
             std::string srcField;
             std::string dstField;
+
+            bool operator==(const Edge& rref)
+            {
+                return ((pDst == rref.pDst) && (pSrc == rref.pSrc)) &&
+                    ((dstField == rref.dstField) && (srcField == rref.srcField));
+            }
         };
 
         std::vector<Edge> mEdges;

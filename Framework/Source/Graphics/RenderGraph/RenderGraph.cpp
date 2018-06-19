@@ -194,6 +194,24 @@ namespace Falcor
         return true;
     }
 
+    void RenderGraph::RemoveEdge(const std::string& src, const std::string& dst)
+    {
+        // I need to find a faster way to remove connections
+        Edge newEdge;
+        newEdge.pSrc = getRenderPassAndField<false>(this, src, "Invalid src string in RenderGraph::removeEdge()", newEdge.srcField);
+        newEdge.pDst = getRenderPassAndField<true>(this, dst, "Invalid dst string in RenderGraph::removeEdge()", newEdge.dstField);
+
+        auto& edgeIt = std::find(mEdges.begin(), mEdges.end(), newEdge);
+        if (edgeIt == mEdges.end())
+        {
+            logWarning("RenderGraph::removeEdge() -  Unable to find edge to remove. No such connection exists within this graph.");
+        }
+
+        mEdges.erase(edgeIt, edgeIt + 1);
+
+        mRecompile = true;
+    }
+
     bool RenderGraph::isValid(std::string& log) const
     {
         bool valid = true;
@@ -352,6 +370,22 @@ namespace Falcor
         RenderPass* pPass = getRenderPassAndField<false>(this, name, "RenderGraph::getOutput()", field);
         
         return pPass ? pPass->getOutput(field) : pNull;
+    }
+
+    void RenderGraph::renderUI(Gui* pGui)
+    {
+        // To get some data displaying with what we want, start with raw IMGUI
+        // TODO -- implement what we need into the actual gui class
+        
+        for (const auto& renderGraphPass : mpPasses)
+        {
+            renderGraphPass->renderUI(pGui);
+        }
+
+        // Connect the graph nodes for each of the edges
+        for (const auto& renderGraphEdges : mEdges)
+        {
+        }
     }
 
     void RenderGraph::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)

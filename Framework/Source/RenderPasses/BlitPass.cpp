@@ -143,7 +143,7 @@ namespace Falcor
 
     void BlitPass::execute(RenderContext* pContext)
     {
-        assert(isValid());
+        assert(isValid(std::string()));
         pContext->blit(mpSrc->getSRV(), mpDst->getRTV());
     }
 }

@@ -44,7 +44,7 @@ namespace Falcor
         static SharedPtr create();
 
         virtual void execute(RenderContext* pContext) override;
-        virtual bool isValid(std::string& log = std::string()) override;
+        virtual bool isValid(std::string& log) override;
         virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual PassData getRenderPassData() const override { return kRenderPassData; }

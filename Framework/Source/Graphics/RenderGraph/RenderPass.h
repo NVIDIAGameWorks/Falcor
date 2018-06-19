@@ -93,7 +93,7 @@ namespace Falcor
 
         /** Call this after the input/output resources are set to make sure the render-pass is ready for execution
         */
-        virtual bool isValid(std::string& log = std::string()) = 0;
+        virtual bool isValid(std::string& log) = 0;
 
         /** Set a scene into the render-pass
         */
@@ -114,6 +114,11 @@ namespace Falcor
         /** Set the DataChanged callback
         */
         void setRenderDataChangedCallback(RenderDataChangedFunc pDataChangedCB) { mpRenderDataChangedCallback = pDataChangedCB; }
+
+        /** Display the data in the graph editor as a node
+         */
+        void renderUI(Gui* pGui);
+
     protected:
         RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB = nullptr);
         

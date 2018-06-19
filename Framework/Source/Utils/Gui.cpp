@@ -538,16 +538,23 @@ namespace Falcor
 
         static const int maxSize = 2048;
         char buf[maxSize];
+        bool modified = false;
+        size_t originalSize = text.size();
         copyStringToBuffer(buf, maxSize, text);
 
         if (lineCount > 1)
         {
-            return ImGui::InputTextMultiline(label, buf, maxSize, ImVec2(-1.0f, ImGui::GetTextLineHeight() * lineCount), flags);
+            modified = ImGui::InputTextMultiline(label, buf, maxSize, ImVec2(-1.0f, ImGui::GetTextLineHeight() * lineCount), flags);
         }
         else
         {
-            return ImGui::InputText(label, buf, maxSize, flags);
+            modified = ImGui::InputText(label, buf, maxSize, flags);
         }
+
+        text = (buf);
+        text.resize(originalSize);
+
+        return modified;
     }
 
     void Gui::addTooltip(const char tip[], bool sameLine)
