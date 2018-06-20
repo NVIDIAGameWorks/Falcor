@@ -6,4 +6,7 @@
   <ItemGroup>
     <ClInclude Include="RenderGraphEditor.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\DefaultRenderGraph.json" />
+  </ItemGroup>
 </Project>

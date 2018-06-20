@@ -145,7 +145,7 @@ private:
     void renderOpaqueObjects(RenderContext* pContext);
     void renderTransparentObjects(RenderContext* pContext);
 
-        void initSkyBox(const std::string& name);
+    void initSkyBox(const std::string& name);
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();

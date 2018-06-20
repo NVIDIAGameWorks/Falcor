@@ -173,7 +173,7 @@ void SimpleDeferred::renderModelUiElements(Gui* pGui)
     }
 }
 
-void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void SimpleDeferred::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpCamera = Camera::create();
 
@@ -218,7 +218,7 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr p
     loadModelFromFile(skDefaultModel, pSample->getCurrentFbo().get());
 }
 
-void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     GraphicsState* pState = pRenderContext->getGraphicsState().get();
 

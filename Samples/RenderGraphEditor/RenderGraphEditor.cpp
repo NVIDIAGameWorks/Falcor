@@ -27,12 +27,38 @@
 ***************************************************************************/
 #include "RenderGraphEditor.h"
 
+#include <fstream>
+
+#include "Externals/RapidJson/include/rapidjson/rapidjson.h"
+#include "Externals/RapidJson/include/rapidjson/document.h"
+#include "Externals/RapidJson/include/rapidjson/istreamwrapper.h"
+#include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
+#include "Externals/RapidJson/include/rapidjson/prettywriter.h"
+
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
+
+std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphEditor::sBaseRenderTypes;
 
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
 {
+    Gui::DropdownValue dropdownValue;
+
+#define register_render_pass(renderPassType) \
+    sBaseRenderTypes.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
+        []() { return renderPassType ::create(); }) )\
+    ); \
+    dropdownValue.label = #renderPassType; dropdownValue.value = static_cast<int32_t>(mRenderPassTypes.size()); \
+    mRenderPassTypes.push_back(dropdownValue)
+
+
+    register_render_pass(SceneRenderPass);
+    register_render_pass(BlitPass);
+
+#undef register_render_pass
+
     mNextGraphString.resize(255, 0);
+    mNodeString.resize(255, 0);
 }
 
 void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
@@ -62,18 +88,33 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         if (mNextGraphString[0] && pGui->addButton("Create New Graph"))
         {
-            createRenderGraph(mNextGraphString);
+            createRenderGraph(mNextGraphString, "DefaultRenderGraph.json"); // TODO - create it as blank plz
         }
     }
 
-    pGui->addButton("Load Graph");
-    pGui->addButton("Save Graph");
+    if (pGui->addButton("Load Graph"))
+    {
+        createRenderGraph(mNextGraphString, "DefaultRenderGraph.json");
+    }
+    
+    if (pGui->addButton("Save Graph"))
+    {
+        serializeRenderGraph (mNextGraphString);
+    }
 
     uint32_t selection = false;
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
     {
         // Display graph
          mCurrentGraphIndex = selection;
+    }
+
+    pGui->addDropdown("RenderPassType", mRenderPassTypes, mTypeSelection);
+
+    pGui->addTextBox("Render Pass Name", mNodeString);
+    if (pGui->addButton("Create Node"))
+    {
+        createAndAddRenderPass(mRenderPassTypes[mTypeSelection].label, mNodeString);
     }
 
     if (pGui->addButton("Preview Graph"))
@@ -100,8 +141,63 @@ void RenderGraphEditor::loadScene(const std::string& filename, bool showProgress
     mCamControl.attachCamera(pScene->getCamera(0));
 }
 
-// takes string by value for async calls to ensure copy
-void RenderGraphEditor::createRenderGraph(std::string renderGraphName)
+void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
+{
+    std::string filePath(fileName);
+
+    std::ofstream outStream(filePath);
+    rapidjson::OStreamWrapper oStream(outStream);
+    rapidjson::Writer<rapidjson::OStreamWrapper> writer(oStream);
+    
+    writer.StartObject();
+    mpGraphs[mCurrentGraphIndex]->serializeJson(&writer);
+    writer.EndObject();
+    
+    outStream.close();
+}
+
+void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
+{
+    std::string filePath;
+    
+    assert (findFileInDataDirectories(fileName, filePath) );
+    
+    std::ifstream instream(filePath);
+    rapidjson::IStreamWrapper istream(instream);
+
+    rapidjson::Document document;
+    document.ParseStream(istream);
+
+    // make sure nodes are created before we connect the edges
+    auto nodesArray = (document.FindMember("RenderPassNodes")->value).GetArray();
+    assert(!nodesArray.Empty());
+
+    for (const auto& node : nodesArray)
+    {
+        std::string renderPassName;
+        std::string renderPassType;
+
+        // first create the graph
+        renderPassType = node.FindMember("RenderPassType")->value.GetString();
+        renderPassName = node.FindMember("RenderPassName")->value.GetString();
+
+        createAndAddRenderPass(renderPassType, renderPassName);
+    }
+
+    // add all edges
+    auto edgesArray = (document.FindMember("Edges")->value).GetArray();
+    assert (!edgesArray.Empty());
+
+    for(const auto& edge : edgesArray)
+    {
+        createAndAddConnection(edge.FindMember("SrcRenderPassName")->value.GetString(), edge.FindMember("DstRenderPassName")->value.GetString(),
+            edge.FindMember("SrcField")->value.GetString(), edge.FindMember("DstField")->value.GetString());
+    }
+    
+    instream.close();
+}
+
+void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
 {
     mCreatingRenderGraph = true;
 
@@ -115,10 +211,7 @@ void RenderGraphEditor::createRenderGraph(std::string renderGraphName)
 
     mCurrentGraphIndex = mOpenGraphNames.size() - static_cast<size_t>(1);
 
-    newGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
-    newGraph->addRenderPass(BlitPass::create(), "BlitPass");
-
-    newGraph->addEdge("SceneRenderer.color", "BlitPass.src");
+    deserializeRenderGraph(renderGraphNameFileName);
 
     // only load the scene for the first graph for now
     if (mCurrentGraphIndex >= 1)
@@ -133,10 +226,21 @@ void RenderGraphEditor::createRenderGraph(std::string renderGraphName)
     mCreatingRenderGraph = false;
 }
 
+void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField)
+{
+    // add information for GUI to avoid costly drawing in renderUI function for graph
+    mpGraphs[mCurrentGraphIndex]->addEdge(srcRenderPass + std::string(".") + srcField, dstRenderPass + std::string(".") + dstField);
+}
+
+void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName)
+{
+    mpGraphs[mCurrentGraphIndex]->addRenderPass(sBaseRenderTypes[renderPassType](), renderPassName);
+}
+
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpEditorGraph = RenderGraph::create();
-    createRenderGraph("DefaultRenderGraph");
+    createRenderGraph("DefaultRenderGraph", "DefaultRenderGraph.json");
 }
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
@@ -148,7 +252,7 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
     if (!mPreviewing)
     {
-        // render the editor gui graph
+        // render the editor GUI graph
         const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
         pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
@@ -157,7 +261,7 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
     {
         mpGraphs[mCurrentGraphIndex]->getScene()->update(pSample->getCurrentTime(), &mCamControl);
 
-        // render the editor gui graph
+        // render the editor GUI graph
         const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
         pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 

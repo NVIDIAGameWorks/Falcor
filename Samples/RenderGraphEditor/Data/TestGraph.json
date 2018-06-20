@@ -1,0 +1,1 @@
+{"RenderPassNodes":[{"RenderPassName":"SceneRenderer","RenderPassType":"SceneRenderPass"},{"RenderPassName":"BlitPass","RenderPassType":"BlitPass"}],"Edges":[{"SrcRenderPassName":"","DstRenderPassName":"","SrcField":"color","DstField":"src"}]}

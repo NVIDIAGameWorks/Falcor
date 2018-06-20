@@ -46,14 +46,24 @@ public:
 
 private:
     
-    void createRenderGraph(std::string renderGraphName);
+    void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
+    void createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName);
+    void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
+    void serializeRenderGraph(const std::string& fileName);
+    void deserializeRenderGraph(const std::string& fileName);
+
+    // simple lookup to create render pass type from string
+    static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderTypes;
 
     RenderGraph::SharedPtr mpEditorGraph;
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     size_t mCurrentGraphIndex;
 
     std::string mNextGraphString;
+    std::string mNodeString;
+
     Gui::DropdownList mOpenGraphNames;
+    Gui::DropdownList mRenderPassTypes; uint32_t mTypeSelection;
 
     bool mCreatingRenderGraph;
     bool mPreviewing;

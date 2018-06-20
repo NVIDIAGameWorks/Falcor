@@ -41,7 +41,7 @@ void MultiPassPostProcess::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
+void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext)
 {
     mpLuminance = FullScreenPass::create("Luminance.ps.hlsl");
     mpGaussianBlur = GaussianBlur::create(5);
@@ -70,7 +70,7 @@ void MultiPassPostProcess::loadImageFromFile(SampleCallbacks* pSample, std::stri
     pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
 }
 
-void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
+void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pContext->clearFbo(pTargetFbo.get(), clearColor, 0, 0, FboAttachmentType::Color);

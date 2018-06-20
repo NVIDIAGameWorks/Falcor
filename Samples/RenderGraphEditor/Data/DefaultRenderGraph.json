@@ -1,0 +1,33 @@
+{
+    "RenderPassNodes" :
+    [
+        {
+            "RenderPassName" : "SceneRenderer",
+            "RenderPassType" : "SceneRenderPass"
+        },
+        {
+            "RenderPassName" : "BlitPass",
+            "RenderPassType" : "BlitPass"
+        },
+        {
+            "RenderPassName" : "AnotherOne",
+            "RenderPassType" : "BlitPass"
+        }
+		
+    ],
+    "Edges" :
+    [
+        {
+            "SrcRenderPassName" : "SceneRenderer",
+            "DstRenderPassName" : "BlitPass",
+            "SrcField" : "color",
+            "DstField" : "src"
+        },
+		{
+            "SrcRenderPassName" : "BlitPass",
+            "DstRenderPassName" : "AnotherOne",
+            "SrcField" : "memes",
+            "DstField" : "src"
+        }
+    ]
+}

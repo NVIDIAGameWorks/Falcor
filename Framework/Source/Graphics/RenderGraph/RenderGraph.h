@@ -28,11 +28,16 @@
 #pragma once
 #include "RenderPass.h"
 
+// need for document passed in. may move entire file serialization to serialize json
+#include "Externals/RapidJson/include/rapidjson/rapidjson.h"
+#include "Externals/RapidJson/include/rapidjson/writer.h"
+#include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
+
 namespace Falcor
 {
     class Scene;
     class Texture;
-
+    
     class RenderGraph
     {
     public:
@@ -115,6 +120,11 @@ namespace Falcor
         /** Display enter graph in gui.
         */
         void renderUI(Gui *pGui);
+
+        /** Serialization function. Serialize full graph into json file.
+        */
+        void serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* document) const;
+
     private:
         RenderGraph();
         static const size_t kInvalidIndex = -1;

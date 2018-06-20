@@ -29,6 +29,8 @@
 #include "RenderGraph.h"
 #include "API/FBO.h"
 
+#include "Utils/Gui.h"
+
 namespace Falcor
 {
     RenderGraph::SharedPtr RenderGraph::create()
@@ -264,10 +266,19 @@ namespace Falcor
         return pTexture;
     }
 
+    // map the pointers to their names to get destination name for editor.
+    // made static for multiple renders
+    static std::unordered_map<RenderPass*, std::string> sPassToName; // TODO move this somewhere better
+
     void RenderGraph::compile()
     {
         if(mRecompile)
-        {   
+        {
+            for (const auto& nameIndexPair : mNameToIndex)
+            {
+                sPassToName[&*mpPasses[nameIndexPair.second]] = nameIndexPair.first;
+            }
+
             // Allocate outputs
             for (const auto& e : mEdges)
             {
@@ -374,18 +385,34 @@ namespace Falcor
 
     void RenderGraph::renderUI(Gui* pGui)
     {
-        // To get some data displaying with what we want, start with raw IMGUI
-        // TODO -- implement what we need into the actual gui class
-        
-        for (const auto& renderGraphPass : mpPasses)
+        for (const auto& nameIndexPair : mNameToIndex)
         {
-            renderGraphPass->renderUI(pGui);
+            auto passToDraw = mpPasses[nameIndexPair.second]; 
+            passToDraw->renderUI(pGui, nameIndexPair.first);
+
+            // Connect the graph nodes for each of the edges
+            // need to iterate in here in order to use the right indices
+            for (const auto& renderGraphEdge : mEdges)
+            {
+                if (pGui->beginGroup(renderGraphEdge.srcField.c_str(), true))
+                {
+                    if (renderGraphEdge.pSrc == &*passToDraw)
+                    {
+                        if (pGui->beginGroup(renderGraphEdge.dstField.c_str()))
+                        {
+                            pGui->addText(sPassToName[renderGraphEdge.pDst].c_str());
+                            pGui->endGroup();
+                        }
+                    }
+
+                    pGui->endGroup();
+                }
+            }
+
+            pGui->popWindow();
         }
 
-        // Connect the graph nodes for each of the edges
-        for (const auto& renderGraphEdges : mEdges)
-        {
-        }
+        
     }
 
     void RenderGraph::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
@@ -413,5 +440,51 @@ namespace Falcor
         {
             pPass->onResizeSwapChain(pSample, width, height);
         }
+    }
+
+    void RenderGraph::serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* writer) const
+    {
+#define string_2_json(_string) \
+        rapidjson::StringRef(_string.c_str())
+
+        writer->String("RenderPassNodes");
+        writer->StartArray();
+
+        for (auto& nameIndexPair : mNameToIndex)
+        {
+            writer->StartObject();
+
+            writer->String("RenderPassName");
+            writer->String(nameIndexPair.first.c_str());
+            writer->String("RenderPassType");
+            writer->String(mpPasses[nameIndexPair.second]->getTypeName().c_str());
+
+            writer->EndObject();
+        }
+
+        writer->EndArray();
+
+        writer->String("Edges");
+        writer->StartArray();
+
+        for (auto& edge : mEdges)
+        {
+            writer->StartObject();
+            
+            writer->String("SrcRenderPassName");
+            writer->String(sPassToName[edge.pSrc].c_str());
+            writer->String("DstRenderPassName");
+            writer->String(sPassToName[edge.pDst].c_str());
+
+            writer->String("SrcField");
+            writer->String(edge.srcField.c_str());
+            writer->String("DstField");
+            writer->String(edge.dstField.c_str());
+            writer->EndObject();
+        }
+
+        writer->EndArray();
+
+#undef string_2_json
     }
 }

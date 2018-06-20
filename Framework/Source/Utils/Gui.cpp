@@ -552,7 +552,6 @@ namespace Falcor
         }
 
         text = (buf);
-        text.resize(originalSize);
 
         return modified;
     }

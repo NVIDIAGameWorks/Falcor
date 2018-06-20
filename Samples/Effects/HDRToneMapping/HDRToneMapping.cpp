@@ -33,7 +33,7 @@ const Gui::DropdownList HDRToneMapping::kImageList = { { HdrImage::EveningSun, "
                                                     { HdrImage::AtTheWindow, "Window" },
                                                     { HdrImage::OvercastDay, "Overcast Day" } };
 
-void HDRToneMapping::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void HDRToneMapping::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     //Create model and camera
     mpTeapot = Model::createFromFile("teapot.obj");
@@ -117,7 +117,7 @@ void HDRToneMapping::renderTeapot(RenderContext* pContext)
     pContext->drawIndexed(mpTeapot->getMesh(0)->getIndexCount(), 0, 0);
 }
 
-void HDRToneMapping::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void HDRToneMapping::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(mpHdrFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

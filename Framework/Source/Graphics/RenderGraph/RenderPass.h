@@ -117,7 +117,9 @@ namespace Falcor
 
         /** Display the data in the graph editor as a node
          */
-        void renderUI(Gui* pGui);
+        void renderUI(Gui* pGui, const std::string& name);
+
+        const std::string& getTypeName() const { return mName;  };
 
     protected:
         RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB = nullptr);

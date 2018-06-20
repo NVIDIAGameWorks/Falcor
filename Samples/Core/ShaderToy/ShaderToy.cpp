@@ -31,7 +31,7 @@ ShaderToy::~ShaderToy()
 {
 }
 
-void ShaderToy::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void ShaderToy::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     // create rasterizer state
     RasterizerState::Desc rsDesc;
@@ -61,7 +61,7 @@ void ShaderToy::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRende
     mToyCBBinding = mpMainPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("ToyCB");
 }
 
-void ShaderToy::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void ShaderToy::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     // iResolution
     float width = (float)pTargetFbo->getWidth();

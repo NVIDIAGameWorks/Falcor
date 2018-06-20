@@ -57,10 +57,8 @@ namespace Falcor
         return nullptr;
     }
 
-    void RenderPass::renderUI(Gui* pGui)
+    void RenderPass::renderUI(Gui* pGui, const std::string& name)
     {
-        pGui->pushWindow(std::string("Node: ").append(mName).c_str(), 256, 256, 0, 0);
-
-        pGui->popWindow();
+        pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
     }
 }
