@@ -547,6 +547,12 @@
     <ClCompile Include="RenderPasses\BlitPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPasses\GraphEditorGuiPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPasses\NodeGraphGuiPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1715,6 +1721,12 @@
       <Filter>RenderPasses</Filter>
     </ClInclude>
     <ClInclude Include="RenderPasses\BlitPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\GraphEditorGuiPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\NodeGraphGuiPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
   </ItemGroup>

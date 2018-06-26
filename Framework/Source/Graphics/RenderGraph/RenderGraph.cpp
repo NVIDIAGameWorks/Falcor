@@ -31,6 +31,13 @@
 
 #include "Utils/Gui.h"
 
+#include "Externals/imgui-node-editor/NodeEditor/Include/NodeEditor.h"
+
+// TODO Don't do this
+#include "Externals/dear_imgui/imgui.h"
+#include "Externals/dear_imgui/imgui_internal.h"
+
+
 namespace Falcor
 {
     RenderGraph::SharedPtr RenderGraph::create()
@@ -58,7 +65,7 @@ namespace Falcor
         mpScene = pScene;
         for (auto& pPass : mpPasses)
         {
-            pPass->setScene(pScene);
+            pPass->setScene(mpScene);
         }
     }
 
@@ -196,7 +203,7 @@ namespace Falcor
         return true;
     }
 
-    void RenderGraph::RemoveEdge(const std::string& src, const std::string& dst)
+    void RenderGraph::removeEdge(const std::string& src, const std::string& dst)
     {
         // I need to find a faster way to remove connections
         Edge newEdge;
@@ -242,6 +249,8 @@ namespace Falcor
         ResourceFormat format = field.format == ResourceFormat::Unknown ? mSwapChainData.colorFormat : field.format;
         Texture::SharedPtr pTexture;
 
+        assert(depth * width * height * sampleCount);
+
         if (depth > 1)
         {
             assert(sampleCount == 1);
@@ -268,7 +277,7 @@ namespace Falcor
 
     // map the pointers to their names to get destination name for editor.
     // made static for multiple renders
-    static std::unordered_map<RenderPass*, std::string> sPassToName; // TODO move this somewhere better
+    static std::unordered_map<RenderPass*, std::string> sPassToName; 
 
     void RenderGraph::compile()
     {
@@ -289,7 +298,19 @@ namespace Falcor
                 {
                     if(src.required || (src.name == e.srcField))
                     {
-                        Texture::SharedPtr pTexture = createTextureForPass(src);
+                        const std::string& srcName = sPassToName[e.pSrc];
+                        const auto overrideDataIt = mOverridePassDatas.find(srcName + "." + src.name);
+                        Texture::SharedPtr pTexture;
+                        
+                        if (overrideDataIt != mOverridePassDatas.end())
+                        {
+                            pTexture = createTextureForPass(overrideDataIt->second);
+                        }
+                        else
+                        {
+                            pTexture = createTextureForPass(src);
+                        }
+
                         e.pSrc->setOutput(src.name, pTexture);
 
                         if (src.name == e.srcField)
@@ -312,7 +333,7 @@ namespace Falcor
         std::string log;
         if (!isValid(log))
         {
-            logWarning("Failed to compile RenderGraph\n" + log +"Ignoreing RenderGraph::execute() call");
+            logWarning("Failed to compile RenderGraph\n" + log +"Ignoring RenderGraph::execute() call");
             return;
         }
 
@@ -339,6 +360,27 @@ namespace Falcor
         if (pPass->setOutput(field, pResource) == false) return false;
         markGraphOutput(name);
         return true;
+    }
+
+    void RenderGraph::setEdgeViewport(const std::string& input, const std::string& output, const glm::vec3& viewportBounds)
+    {
+        RenderPass::PassData::Field overrideData{};
+        overrideData.width  = static_cast<uint32_t>(viewportBounds.x);
+        overrideData.height = static_cast<uint32_t>(viewportBounds.y);
+        overrideData.depth  = static_cast<uint32_t>(viewportBounds.z);
+
+        str_pair fieldNamePair;
+        parseFieldName(input, fieldNamePair);
+        overrideData.name = fieldNamePair.second;
+
+        overrideData.format = ResourceFormat::Unknown;
+        overrideData.sampleCount = 1;
+        overrideData.bindFlags = Texture::BindFlags::RenderTarget;
+
+        mOverridePassDatas[input] = overrideData;
+        mOverridePassDatas[output] = mOverridePassDatas[input];
+
+        mRecompile = true;
     }
 
     void RenderGraph::markGraphOutput(const std::string& name)
@@ -383,36 +425,136 @@ namespace Falcor
         return pPass ? pPass->getOutput(field) : pNull;
     }
 
+    const Resource::SharedPtr RenderGraph::getInput(const std::string& name)
+    {
+        static const Resource::SharedPtr pNull;
+        std::string field;
+        RenderPass* pPass = getRenderPassAndField<true>(this, name, "RenderGraph::getOutput()", field);
+
+        return pPass ? pPass->getInput(field) : pNull;
+    }
+
     void RenderGraph::renderUI(Gui* pGui)
     {
-        for (const auto& nameIndexPair : mNameToIndex)
+        unsigned nodeIndex = 0;
+        unsigned pinIndex = 0;
+        unsigned linkIndex = 0; 
+        
+        std::unordered_map<RenderPass*, std::unordered_map<std::string, unsigned>> nodeindexmap;
+
+        static bool draggingConnection = false;
+        static unsigned draggingNodeIndex = 0;
+
+        const ImVec2& mousePos = ImGui::GetCurrentContext()->IO.MousePos;
+
+        for (const auto& renderGraphEdge : mEdges)
         {
-            auto passToDraw = mpPasses[nameIndexPair.second]; 
-            passToDraw->renderUI(pGui, nameIndexPair.first);
-
-            // Connect the graph nodes for each of the edges
-            // need to iterate in here in order to use the right indices
-            for (const auto& renderGraphEdge : mEdges)
+            // move filling this out to not here
+            auto& nameToIndexMap = nodeindexmap[renderGraphEdge.pSrc];
+            auto& nameToIndexIt = nameToIndexMap.find(renderGraphEdge.srcField);
+            if (nameToIndexIt == nameToIndexMap.end() )
             {
-                if (pGui->beginGroup(renderGraphEdge.srcField.c_str(), true))
-                {
-                    if (renderGraphEdge.pSrc == &*passToDraw)
-                    {
-                        if (pGui->beginGroup(renderGraphEdge.dstField.c_str()))
-                        {
-                            pGui->addText(sPassToName[renderGraphEdge.pDst].c_str());
-                            pGui->endGroup();
-                        }
-                    }
-
-                    pGui->endGroup();
-                }
+                nameToIndexMap.insert(std::make_pair(renderGraphEdge.srcField, pinIndex++));
             }
 
-            pGui->popWindow();
+            auto& nameToIndexMapDst = nodeindexmap[renderGraphEdge.pDst];
+            nameToIndexIt = nameToIndexMapDst.find(renderGraphEdge.dstField);
+            if (nameToIndexIt == nameToIndexMapDst.end())
+            {
+                nameToIndexMapDst.insert(std::make_pair(renderGraphEdge.dstField, pinIndex++));
+            }
         }
 
-        
+        for (const auto& nameToIndexMap : nodeindexmap)
+        {
+            //passToDraw->renderUI(pGui, nameIndexPair.first);
+
+            ax::NodeEditor::BeginNode(nodeIndex);
+
+            for (const auto& nameToIndexIt : nameToIndexMap.second)
+            {
+                // Connect the graph nodes for each of the edges
+                // need to iterate in here in order to use the right indices
+                bool isInput = true;
+
+                GraphOut graphOutputToFind; graphOutputToFind.pPass = nameToIndexMap.first;  graphOutputToFind.field = nameToIndexIt.first;
+                if (std::find(mOutputs.begin(), mOutputs.end(), graphOutputToFind) != mOutputs.end())
+                {
+                    isInput = false;
+                }
+
+                /// pGui->addText(nameToIndexIt.first.c_str());
+
+
+                // if (pGui->beginGroup("Inputs: "))
+                {
+                    // pGui->endGroup();
+                }
+
+                ax::NodeEditor::BeginPin(nameToIndexIt.second, static_cast<ax::NodeEditor::PinKind>(!isInput));
+                
+                // draw the pin output for input / output
+                
+                    pGui->addText(nameToIndexIt.first.c_str());
+                    
+                    // abstract this plz
+                    ImGui::SameLine();
+                    ImGui::InvisibleButton(nameToIndexIt.first.c_str(), { 12.0f, 12.0f });
+
+                    const ImVec2& nodeSize = ax::NodeEditor::GetNodeSize(nodeIndex);
+                    ImVec2 buttonAlignment =  (ImVec2(nodeSize.x - nodeSize.x / 8.0f, ImGui::GetCursorScreenPos().y ));
+                    auto lastItemRect = ImGui::GetCurrentWindow()->DC.LastItemRect; // might make this a helper function
+                    auto pWindowDrawList = ImGui::GetCurrentWindow()->DrawList;
+                    ax::NodeEditor::PinRect(lastItemRect.GetTL(), lastItemRect.GetBR());
+
+                    if (!ImGui::IsMouseDown(0))
+                    {
+                        draggingConnection = false;
+                    }
+
+                    constexpr uint32_t color = 0xFFFFFFFF;
+
+                    //ImGui::PushStyleColor(0, { 255, 255, 255, 255});
+                    if (ImGui::IsItemHovered()) {
+                        pWindowDrawList->AddCircleFilled( lastItemRect.GetCenter(), 6.0f, color);
+
+                        if (ImGui::IsItemClicked())
+                        {
+                            draggingConnection = true;
+                            draggingNodeIndex = nodeIndex;
+                        }
+                    }
+                    else
+                    {
+                        pWindowDrawList->AddCircle(lastItemRect.GetCenter(), 6.0f, color);
+                    }
+                    
+                    if ((draggingNodeIndex == nodeIndex) && draggingConnection)
+                    {
+                        pWindowDrawList->PathLineTo(lastItemRect.GetCenter());
+                        pWindowDrawList->PathBezierCurveTo(lastItemRect.GetCenter(), 
+                            lastItemRect.GetCenter(),
+                            mousePos, 100);
+                    }
+
+
+                ax::NodeEditor::EndPin();
+
+                //pGui->popWindow();
+            }
+
+            ax::NodeEditor::EndNode();
+            nodeIndex++;
+        }
+
+        // draw connections
+        for (const auto& nameIndexPair : mNameToIndex)
+        {
+            for (const auto& renderGraphEdge : mEdges)
+            {
+                ax::NodeEditor::Link(linkIndex++, nodeindexmap[renderGraphEdge.pSrc][renderGraphEdge.srcField], nodeindexmap[renderGraphEdge.pDst][renderGraphEdge.dstField]);
+            }
+        }
     }
 
     void RenderGraph::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
@@ -426,7 +568,7 @@ namespace Falcor
         // If the back-buffer values changed, recompile
         mRecompile = mRecompile || (mSwapChainData.colorFormat != pColor->getFormat());
         mRecompile = mRecompile || (mSwapChainData.depthFormat != pDepth->getFormat());
-        mRecompile = mRecompile || (mSwapChainData.width != width);
+        mRecompile = mRecompile || (mSwapChainData.width  != width);
         mRecompile = mRecompile || (mSwapChainData.height != height);
 
         // Store the values
@@ -458,6 +600,8 @@ namespace Falcor
             writer->String(nameIndexPair.first.c_str());
             writer->String("RenderPassType");
             writer->String(mpPasses[nameIndexPair.second]->getTypeName().c_str());
+
+            // serialize custom data here
 
             writer->EndObject();
         }

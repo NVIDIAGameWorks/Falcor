@@ -26,14 +26,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "SceneRenderPass.h"
+#include "NodeGraphGuiPass.h"
 
 namespace Falcor
 {
     static std::string kColor = "color";
     static std::string kDepth = "depth";
 
-    static SceneRenderPass::PassData createRenderPassData()
+    static NodeGraphGuiPass::PassData createRenderPassData()
     {
         RenderPass::PassData data;
         RenderPass::PassData::Field output;
@@ -50,13 +50,13 @@ namespace Falcor
         return data;
     }
 
-    const SceneRenderPass::PassData SceneRenderPass::kRenderPassData = createRenderPassData();
+    const NodeGraphGuiPass::PassData NodeGraphGuiPass::kRenderPassData = createRenderPassData();
 
-    SceneRenderPass::SharedPtr SceneRenderPass::create()
+    NodeGraphGuiPass::SharedPtr NodeGraphGuiPass::create()
     {
         try
         {
-            return SharedPtr(new SceneRenderPass);
+            return SharedPtr(new NodeGraphGuiPass);
         }
         catch (const std::exception&)
         {
@@ -64,72 +64,43 @@ namespace Falcor
         }
     }
 
-    SceneRenderPass::SceneRenderPass() : RenderPass("SceneRenderPass", nullptr), 
-        mShaderSource("", [this]() { recreateShaders(); }, {"SceneRenderPass.slang", "", "ps"})
+    NodeGraphGuiPass::NodeGraphGuiPass() : RenderPass("NodeGraphGuiPass", nullptr)
     {
         mpState = GraphicsState::create();
-        recreateShaders();
         mpFbo = Fbo::create();
     }
 
-    void SceneRenderPass::recreateShaders()
-    {
-        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/" + mShaderSource.mData[0], mShaderSource.mData[1], mShaderSource.mData[2]);
-        mpState->setProgram(pProgram);
-        mpVars = GraphicsVars::create(pProgram->getReflector());
-    }
-
-    void SceneRenderPass::sceneChangedCB()
-    {
-        mpSceneRenderer = nullptr;
-        if (mpScene)
-        {
-            mpSceneRenderer = SceneRenderer::create(mpScene);
-        }
-    }
-
-    bool SceneRenderPass::isValid(std::string& log)
+    bool NodeGraphGuiPass::isValid(std::string& log)
     {
         bool b = true;
-        if (mpSceneRenderer == nullptr)
-        {
-            log += "SceneRenderPass must have a scene attached to it\n";
-            b = false;
-        }
-
         const auto& pColor = mpFbo->getColorTexture(0).get();
+
         if (!pColor)
         {
-            log += "SceneRenderPass must have a color texture attached\n";
-            b = false;
-        }
-        const auto& pDepth = mpFbo->getDepthStencilTexture().get();
-        if (!pDepth)
-        {
-            log += "SceneRenderPass must have a depth texture attached\n";
+            log += "NodeGraphGuiPass must have a color texture attached\n";
             b = false;
         }
 
         if (mpFbo->checkStatus() == false)
         {
-            log += "SceneRenderPass FBO is invalid, probably because the depth and color textures have different dimensions";
+            log += "NodeGraphGuiPass FBO is invalid, probably incorrect dimensions";
             b = false;
         }
 
         return b;
     }
 
-    bool SceneRenderPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    bool NodeGraphGuiPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        logError("SceneRenderPass::setInput() - trying to set `" + name + "` but this render-pass requires no inputs");
+        logError("NodeGraphGuiPass::setInput() - trying to set `" + name + "` but this render-pass requires no inputs");
         return false;
     }
 
-    bool SceneRenderPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    bool NodeGraphGuiPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
         if (!mpFbo)
         {
-            logError("SceneRenderPass::setOutput() - please call onResizeSwapChain() before setting an input");
+            logError("NodeGraphGuiPass::setOutput() - please call onResizeSwapChain() before setting an input");
             return false;
         }
 
@@ -141,51 +112,34 @@ namespace Falcor
         else if (name == kDepth)
         {
             Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
-            mpFbo->attachDepthStencilTarget(pDepth);
+            mpFbo->attachDepthStencilTarget(pDepth, 0);
         }
         else
         {
-            logError("SceneRenderPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
+            logError("NodeGraphGuiPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
             return false;
         }
 
         return true;
     }
 
-    void SceneRenderPass::execute(RenderContext* pContext)
+    void NodeGraphGuiPass::execute(RenderContext* pContext)
     {
         pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0);
-        if (mpSceneRenderer)
-        {
-            mpState->setFbo(mpFbo);
-            pContext->pushGraphicsState(mpState);
-            pContext->pushGraphicsVars(mpVars);
-            mpSceneRenderer->renderScene(pContext);
-            pContext->popGraphicsState();
-            pContext->popGraphicsVars();
-        }
+        // draw the imgui stuff now
     }
 
-    std::shared_ptr<Resource> SceneRenderPass::getOutput(const std::string& name)
+    std::shared_ptr<Resource> NodeGraphGuiPass::getOutput(const std::string& name)
     {
         if (name == kColor)
         {
             return mpFbo->getColorTexture(0);
         }
-        else if (name == kDepth)
-        {
-            return mpFbo->getDepthStencilTexture();
-        }
+
         else return RenderPass::getOutput(name);
     }
 
-    void SceneRenderPass::renderUI(Gui* pGui, const std::string& name)
-    {
-        pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
-        mShaderSource.renderUI(pGui);
-    }
-
-    void SceneRenderPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+    void NodeGraphGuiPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         pGui->addRgbaColor("Clear color", mClearColor);
     }

@@ -72,7 +72,7 @@ namespace Falcor
         /** Remove edge connection for given render graph. Need to make sure the graph is valid after
             Connection removed.
          */
-        void RemoveEdge(const std::string& src, const std::string& dst);
+        void removeEdge(const std::string& src, const std::string& dst);
 
         /** Check if the graph is ready for execution (all passes inputs/outputs have been initialized correctly, no loops in the graph)
         */
@@ -93,11 +93,20 @@ namespace Falcor
         */
         bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
 
+        /** Set bounds for the inputs and receiving outputs of a given edge within the graph
+         */
+        void setEdgeViewport(const std::string& input, const std::string& output, const glm::vec3& viewportBounds);
+
         /** Get an output resource. The name has the format `renderPassName.resourceName`.
             This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
         */
         const std::shared_ptr<Resource> getOutput(const std::string& name);
         
+        /** Get an input resource. The name has the format `renderPassName.resourceName`.
+          This is an alias for `getRenderPass(renderPassName)->getInput(resourceName)`
+        */
+        const Resource::SharedPtr getInput(const std::string& name);
+
         /** Mark a render-pass output as the graph's output. If the graph has no outputs it is invalid.
             The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs.
             If the user didn't set the output resource using `setOutput()`, the graph will automatically allocate it
@@ -156,9 +165,16 @@ namespace Falcor
         {
             RenderPass* pPass;
             std::string field;
+
+            bool operator==(const GraphOut& rref)
+            {
+                return (rref.pPass == pPass) && (rref.field == field);
+            }
         };
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
+
+        std::unordered_map<std::string, RenderPass::PassData::Field> mOverridePassDatas;
 
         std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
 

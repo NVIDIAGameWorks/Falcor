@@ -35,6 +35,11 @@
 #include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
 #include "Externals/RapidJson/include/rapidjson/prettywriter.h"
 
+#include "Externals/imgui-node-editor/NodeEditor/Include/NodeEditor.h"
+
+#include "Externals/dear_imgui/imgui.h"
+#include "Externals/dear_imgui/imgui_internal.h"
+
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 
 std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphEditor::sBaseRenderTypes;
@@ -54,6 +59,8 @@ RenderGraphEditor::RenderGraphEditor()
 
     register_render_pass(SceneRenderPass);
     register_render_pass(BlitPass);
+    register_render_pass(NodeGraphGuiPass);
+    register_render_pass(GraphEditorGuiPass);
 
 #undef register_render_pass
 
@@ -63,22 +70,45 @@ RenderGraphEditor::RenderGraphEditor()
 
 void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (mPreviewing)
+    mWindowSize = pGui->getCurrentWindowSize();
+    mWindowPos = pGui->getCurrentWindowPosition();
+
+    // please remove this
+    static bool firstFrame = true;
+
+    static ax::NodeEditor::EditorContext* spContext = nullptr;
+    if (!spContext)
     {
-        return;
+        spContext = ax::NodeEditor::CreateEditor();
     }
 
-    if (pGui->addButton("Load Scene"))
+    ax::NodeEditor::SetCurrentEditor(spContext);
+
+    // Test node editor
+    ax::NodeEditor::Begin("Editor");
+
+    mpGraphs[mCurrentGraphIndex]->renderUI(pGui);
+
+    ax::NodeEditor::End();
+
+
+    if (!firstFrame)
     {
-        std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true);
+        auto& nodeEditorFBO = static_cast<const NodeGraphGuiPass*>(mpEditorGraph->getRenderPass("NodeGraphPass").get())->getFbo();
+        pGui->addImageForContext("RenderGraphContext", nodeEditorFBO->getColorTexture(0)); 
+
     }
+    
+    firstFrame = false;
 
     uint32_t screenHeight = pSample->getWindow()->getClientAreaHeight();
-    uint32_t screenWidth  =  pSample->getWindow()->getClientAreaWidth();
-
+    uint32_t screenWidth = pSample->getWindow()->getClientAreaWidth();
+    
     pGui->pushWindow("Graph Editor Settings", screenWidth / 8, screenHeight - 1, screenWidth - screenWidth / 8, 0, false);
 
+    // DO you want to keep these ?? -- posible custom contexts outside of what is rendered?  would that even be useful
+    pGui->setContextSize(mWindowSize);
+    
     pGui->addTextBox("Graph Name", mNextGraphString);
     if (mCreatingRenderGraph)
     {
@@ -88,7 +118,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         if (mNextGraphString[0] && pGui->addButton("Create New Graph"))
         {
-            createRenderGraph(mNextGraphString, "DefaultRenderGraph.json"); // TODO - create it as blank plz
+            createRenderGraph(mNextGraphString, "DefaultRenderGraph.json");
         }
     }
 
@@ -96,17 +126,17 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         createRenderGraph(mNextGraphString, "DefaultRenderGraph.json");
     }
-    
+
     if (pGui->addButton("Save Graph"))
     {
-        serializeRenderGraph (mNextGraphString);
+        serializeRenderGraph(mNextGraphString);
     }
 
-    uint32_t selection = false;
+    uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
     {
         // Display graph
-         mCurrentGraphIndex = selection;
+        mCurrentGraphIndex = selection;
     }
 
     pGui->addDropdown("RenderPassType", mRenderPassTypes, mTypeSelection);
@@ -124,7 +154,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     pGui->popWindow();
 
-    mpGraphs[mCurrentGraphIndex]->renderUI(pGui);
+    // update the viewport of the editor render graph from first draw - blit
+    mpEditorGraph->setEdgeViewport("NodeGraphPass.color", "BlitPass.src", { pGui->getCurrentWindowSize(), 1.0f });
 }
 
 void RenderGraphEditor::loadScene(const std::string& filename, bool showProgressBar)
@@ -143,7 +174,14 @@ void RenderGraphEditor::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
-    std::string filePath(fileName);
+    
+    std::string filePath(getExecutableDirectory() + "/Data/");
+    filePath.append(fileName);
+    if (doesFileExist(filePath))
+    {
+        // Are you sure you want to overwrite this file
+        logWarning(std::string("Overwriting render graph file ").append(fileName).append("\n"));
+    }
 
     std::ofstream outStream(filePath);
     rapidjson::OStreamWrapper oStream(outStream);
@@ -207,16 +245,25 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     mOpenGraphNames.push_back(nextGraphID);
     
     RenderGraph::SharedPtr newGraph = RenderGraph::create();
+    mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
 
-    mCurrentGraphIndex = mOpenGraphNames.size() - static_cast<size_t>(1);
-
-    deserializeRenderGraph(renderGraphNameFileName);
+    if (renderGraphNameFileName.size())
+    {
+        deserializeRenderGraph(renderGraphNameFileName);
+    }
 
     // only load the scene for the first graph for now
     if (mCurrentGraphIndex >= 1)
     {
         mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
+
+        // force a resize event to configure the newly loaded render graph
+        Fbo::SharedPtr pBackBufferFBO = gpDevice->getSwapChainFbo();
+        auto width = pBackBufferFBO->getWidth();
+        auto height = pBackBufferFBO->getHeight();
+        onResizeSwapChain(mpLastSample, width, height);
+
     }
     else
     {
@@ -229,7 +276,11 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
 void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField)
 {
     // add information for GUI to avoid costly drawing in renderUI function for graph
-    mpGraphs[mCurrentGraphIndex]->addEdge(srcRenderPass + std::string(".") + srcField, dstRenderPass + std::string(".") + dstField);
+    if (!mpGraphs[mCurrentGraphIndex]->addEdge(srcRenderPass + std::string(".") + srcField, dstRenderPass + std::string(".") + dstField))
+    {
+        logWarning(std::string("Failed to create edge between nodes: ").append(srcRenderPass)
+            .append(" and ").append(dstRenderPass).append( " connecting fields ").append(srcField).append(" to ").append(dstField).append(".\n"));
+    }
 }
 
 void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName)
@@ -240,7 +291,35 @@ void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpEditorGraph = RenderGraph::create();
+    // Maybe add another specialized node here for initial GUI drawing
+    mpEditorGraph->addRenderPass(sBaseRenderTypes["NodeGraphGuiPass"](), "NodeGraphPass");
+    mpEditorGraph->addRenderPass(sBaseRenderTypes["BlitPass"](), "BlitPass");
+    // mpEditorGraph->addRenderPass(sBaseRenderTypes["GraphEditorGuiPass"](), "BlitPass");
+
+    mpEditorGraph->addEdge("NodeGraphPass.color", "BlitPass.src");
+
     createRenderGraph("DefaultRenderGraph", "DefaultRenderGraph.json");
+}
+
+void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui)
+{
+    // TODO Make an abstraction for this
+    pGui->pushContext("RenderGraphContext");
+
+    pGui->beginFrame();
+
+    pGui->setContextPosition(mWindowPos);
+
+    if (mPreviewing)
+    {
+        return;
+    }
+
+    // mpGraphs[mCurrentGraphIndex]->renderUI(pGui);
+
+    pGui->renderBeforeEndOfFrame(&*(pSample->getRenderContext()), pSample->getLastFrameTime());
+
+    pGui->popContext();
 }
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
@@ -250,21 +329,34 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
         mPreviewing = false;
     }
 
+    mpLastSample = pSample;
+
+    // render the editor GUI graph
+    const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
+    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+
+    static bool firstFrame = true;// TEMPERARY
+
     if (!mPreviewing)
     {
-        // render the editor GUI graph
-        const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-        pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
+        // draw node graph editor into specialized graph
+        if (!firstFrame)
+        {
+            auto& nodeEditorFBO = static_cast<const NodeGraphGuiPass*>(mpEditorGraph->getRenderPass("NodeGraphPass").get())->getFbo();
+            pRenderContext->clearFbo(nodeEditorFBO.get(), vec4(1), 1, 0);
+            // nodeEditorFBO->set
+            pSample->getRenderContext()->getGraphicsState()->setFbo(nodeEditorFBO); // TODO put this in the nodegraphguipass node please
+            mpEditorGraph->execute(&*pRenderContext);
+            renderGraphEditorGUI(pSample, pSample->getGui());
 
+            
+        }
+
+        firstFrame = false;
     }
     else
     {
         mpGraphs[mCurrentGraphIndex]->getScene()->update(pSample->getCurrentTime(), &mCamControl);
-
-        // render the editor GUI graph
-        const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
-        pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-
         mpGraphs[mCurrentGraphIndex]->execute(pRenderContext.get());
     }
 }
@@ -281,10 +373,11 @@ bool RenderGraphEditor::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    auto pColor = Texture::create2D(width, height, pSample->getCurrentFbo()->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
-    auto pDepth = Texture::create2D(width, height, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
     mpGraphs[mCurrentGraphIndex]->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample, width, height);
+
+    mpEditorGraph->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
+    mpEditorGraph->onResizeSwapChain(pSample, width, height);
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

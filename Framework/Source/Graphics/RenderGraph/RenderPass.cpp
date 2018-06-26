@@ -32,6 +32,31 @@
 
 namespace Falcor
 {
+    void RenderPass::ButtonProperty::renderUI(Gui* pGui)
+    {
+        mStatus = pGui->addButton(mLabel.c_str());
+        if (mStatus)
+        {
+            onUpdate();
+        }
+    }
+
+    void RenderPass::StringProperty::renderUI(Gui* pGui)
+    {
+        unsigned i = 0;
+        for (auto& string : mData)
+        {
+            pGui->addTextBox(std::string(mLabel + std::to_string(i++)).c_str(), string);
+        }
+        
+        mConfirmation.renderUI(pGui);
+
+        if (mConfirmation.mStatus)
+        {
+            onUpdate();
+        }
+    }
+
     RenderPass::RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB) : mName(name), mpRenderDataChangedCallback(pDataChangedCB)
     {
         setScene(pScene);

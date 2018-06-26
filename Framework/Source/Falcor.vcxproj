@@ -516,6 +516,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="RenderPasses\BlitPass.cpp" />
+    <ClCompile Include="RenderPasses\GraphEditorGuiPass.cpp" />
+    <ClCompile Include="RenderPasses\NodeGraphGuiPass.cpp" />
     <ClCompile Include="RenderPasses\SceneRenderPass.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
@@ -1098,6 +1100,8 @@
     </ClInclude>
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPasses\BlitPass.h" />
+    <ClInclude Include="RenderPasses\GraphEditorGuiPass.h" />
+    <ClInclude Include="RenderPasses\NodeGraphGuiPass.h" />
     <ClInclude Include="RenderPasses\SceneRenderPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
@@ -1340,7 +1344,7 @@
     <ProjectGuid>{3B602F0E-3834-4F73-B97D-7DFC91597A98}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Falcor</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'" Label="Configuration">

@@ -29,6 +29,9 @@
 #include "BlitPass.h"
 #include "API/RenderContext.h"
 
+// #include "Externals/RapidJson/include/rapidjson/rapidjson.h"
+#include "Utils/Gui.h"
+
 namespace Falcor
 {
     static const std::string kDst = "dst";
@@ -145,5 +148,10 @@ namespace Falcor
     {
         assert(isValid(std::string()));
         pContext->blit(mpSrc->getSRV(), mpDst->getRTV());
+    }
+
+    void BlitPass::renderUI(Gui* pGui, const std::string& name)
+    {
+        pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
     }
 }

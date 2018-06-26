@@ -32,6 +32,7 @@
 #include "Utils/UserInput.h"
 #include "API/RenderContext.h"
 #include "Externals/dear_imgui/imgui.h"
+#include "Externals/dear_imgui/imgui_internal.h"
 #include "Utils/Math/FalcorMath.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "Utils/StringUtils.h"
@@ -39,37 +40,17 @@
 #pragma warning (disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
 namespace Falcor
 {
+    static std::unordered_map<std::string, std::pair<ImGuiContext*, Gui::ContextData>> sContexts;
+    static std::stack<ImGuiContext*> sActiveContexts;
+    static ImGuiContext* spDeselectOtherContexts;
+
     void Gui::init()
     {
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
-        io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
-        io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)KeyboardEvent::Key::Left;
-        io.KeyMap[ImGuiKey_RightArrow] = (uint32_t)KeyboardEvent::Key::Right;
-        io.KeyMap[ImGuiKey_UpArrow] = (uint32_t)KeyboardEvent::Key::Up;
-        io.KeyMap[ImGuiKey_DownArrow] = (uint32_t)KeyboardEvent::Key::Down;
-        io.KeyMap[ImGuiKey_PageUp] = (uint32_t)KeyboardEvent::Key::PageUp;
-        io.KeyMap[ImGuiKey_PageDown] = (uint32_t)KeyboardEvent::Key::PageDown;
-        io.KeyMap[ImGuiKey_Home] = (uint32_t)KeyboardEvent::Key::Home;
-        io.KeyMap[ImGuiKey_End] = (uint32_t)KeyboardEvent::Key::End;
-        io.KeyMap[ImGuiKey_Delete] = (uint32_t)KeyboardEvent::Key::Del;
-        io.KeyMap[ImGuiKey_Backspace] = (uint32_t)KeyboardEvent::Key::Backspace;
-        io.KeyMap[ImGuiKey_Enter] = (uint32_t)KeyboardEvent::Key::Enter;
-        io.KeyMap[ImGuiKey_Escape] = (uint32_t)KeyboardEvent::Key::Escape;
-        io.KeyMap[ImGuiKey_A] = (uint32_t)KeyboardEvent::Key::A;
-        io.KeyMap[ImGuiKey_C] = (uint32_t)KeyboardEvent::Key::C;
-        io.KeyMap[ImGuiKey_V] = (uint32_t)KeyboardEvent::Key::V;
-        io.KeyMap[ImGuiKey_X] = (uint32_t)KeyboardEvent::Key::X;
-        io.KeyMap[ImGuiKey_Y] = (uint32_t)KeyboardEvent::Key::Y;
-        io.KeyMap[ImGuiKey_Z] = (uint32_t)KeyboardEvent::Key::Z;
-        io.IniFilename = nullptr;
+        pushContext("MainContext");
 
-        ImGuiStyle& style = ImGui::GetStyle();
-        style.Colors[ImGuiCol_WindowBg].w = 0.9f;
-        style.Colors[ImGuiCol_FrameBg].x *= 0.1f;
-        style.Colors[ImGuiCol_FrameBg].y *= 0.1f;
-        style.Colors[ImGuiCol_FrameBg].z *= 0.1f;
-        style.ScrollbarSize *= 0.7f;
+        int32_t width, height;
+        uint8_t* pFontData;
+        ImGuiIO& io = ImGui::GetIO();
 
         // Create the pipeline state cache
         mpPipelineState = GraphicsState::create();
@@ -80,13 +61,6 @@ namespace Falcor
         mpPipelineState->setProgram(mpProgram);
 
         // Create and set the texture
-        uint8_t* pFontData;
-        int32_t width, height;
-        std::string fontFile;
-        if(findFileInDataDirectories("Framework/Fonts/trebucbd.ttf", fontFile))
-        {
-            io.Fonts->AddFontFromFileTTF(fontFile.c_str(), 14);
-        }
         io.Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
         Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
         mpProgramVars->setTexture("gFont", pTexture);
@@ -115,8 +89,109 @@ namespace Falcor
         mpLayout->addBufferLayout(0, pBufLayout);
     }
 
+    void Gui::createGuiContext(const std::string& name)
+    {
+        ImGuiContext* currentContext = ImGui::GetCurrentContext();
+        ImGuiContext* nextContext = ImGui::CreateContext();
+        
+        ImGuiIO& io = nextContext->IO;
+        io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
+        io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)KeyboardEvent::Key::Left;
+        io.KeyMap[ImGuiKey_RightArrow] = (uint32_t)KeyboardEvent::Key::Right;
+        io.KeyMap[ImGuiKey_UpArrow] = (uint32_t)KeyboardEvent::Key::Up;
+        io.KeyMap[ImGuiKey_DownArrow] = (uint32_t)KeyboardEvent::Key::Down;
+        io.KeyMap[ImGuiKey_PageUp] = (uint32_t)KeyboardEvent::Key::PageUp;
+        io.KeyMap[ImGuiKey_PageDown] = (uint32_t)KeyboardEvent::Key::PageDown;
+        io.KeyMap[ImGuiKey_Home] = (uint32_t)KeyboardEvent::Key::Home;
+        io.KeyMap[ImGuiKey_End] = (uint32_t)KeyboardEvent::Key::End;
+        io.KeyMap[ImGuiKey_Delete] = (uint32_t)KeyboardEvent::Key::Del;
+        io.KeyMap[ImGuiKey_Backspace] = (uint32_t)KeyboardEvent::Key::Backspace;
+        io.KeyMap[ImGuiKey_Enter] = (uint32_t)KeyboardEvent::Key::Enter;
+        io.KeyMap[ImGuiKey_Escape] = (uint32_t)KeyboardEvent::Key::Escape;
+        io.KeyMap[ImGuiKey_A] = (uint32_t)KeyboardEvent::Key::A;
+        io.KeyMap[ImGuiKey_C] = (uint32_t)KeyboardEvent::Key::C;
+        io.KeyMap[ImGuiKey_V] = (uint32_t)KeyboardEvent::Key::V;
+        io.KeyMap[ImGuiKey_X] = (uint32_t)KeyboardEvent::Key::X;
+        io.KeyMap[ImGuiKey_Y] = (uint32_t)KeyboardEvent::Key::Y;
+        io.KeyMap[ImGuiKey_Z] = (uint32_t)KeyboardEvent::Key::Z;
+        io.IniFilename = nullptr;
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.Colors[ImGuiCol_WindowBg].w = 0.9f;
+        style.Colors[ImGuiCol_FrameBg].x *= 0.1f;
+        style.Colors[ImGuiCol_FrameBg].y *= 0.1f;
+        style.Colors[ImGuiCol_FrameBg].z *= 0.1f;
+        style.ScrollbarSize *= 0.7f;
+        
+        // Set up the fonts
+        std::string fontFile;
+        int32_t width, height;
+        uint8_t* pFontData;
+        if (findFileInDataDirectories("Framework/Fonts/trebucbd.ttf", fontFile))
+        {
+            io.Fonts->AddFontFromFileTTF(fontFile.c_str(), 14);
+        }
+
+        // sets default values internally. 
+        io.Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
+
+        if (currentContext)
+        {
+            const ImGuiIO& currentIO = currentContext->IO;
+            io.DisplaySize = currentIO.DisplaySize;
+        }
+
+        sContexts.insert(std::make_pair(name, std::make_pair(nextContext, Gui::ContextData())));
+    }
+
+    void Gui::pushContext(const std::string& name)
+    {
+        auto contextIt = sContexts.find(name);
+
+        if (contextIt != sContexts.end())
+        {
+            sActiveContexts.push(contextIt->second.first);
+        }
+        else
+        {
+            createGuiContext(name);
+            sActiveContexts.push(sContexts[name].first);
+        }
+
+        ImGui::SetCurrentContext(sActiveContexts.top());
+    }
+
+    void Gui::setContextPosition(const glm::vec2& contextPosition)
+    {
+    }
+
+    void Gui::setContextSize(const glm::vec2& contextSize)
+    {
+    }
+
+    void Gui::popContext()
+    {
+        sActiveContexts.pop();
+        if (sActiveContexts.size())
+        {
+            ImGui::SetCurrentContext(sActiveContexts.top());
+        }
+    }
+
     Gui::~Gui()
     {
+        if (!sContexts.size())
+        {
+            return;
+        }
+
+        ImGui::SetCurrentContext(sContexts[0].first);
+
+        for (auto& contextPair : sContexts)
+        {
+            ImGui::DestroyContext(contextPair.second.first);
+        }
+
         ImGui::DestroyContext();
     }
 
@@ -156,14 +231,19 @@ namespace Falcor
     
     void Gui::onWindowResize(uint32_t width, uint32_t height)
     {
-        ImGuiIO& io = ImGui::GetIO();
-        io.DisplaySize.x = (float)width;
-        io.DisplaySize.y = (float)height;
+        for (auto context : sContexts)
+        {
+            ImGuiIO& io = context.second.first->IO;
+            io.DisplaySize.x = (float)width;
+            io.DisplaySize.y = (float)height;
+        }
+
+        
 #ifdef FALCOR_VK
-        mpProgramVars["PerFrameCB"]["scale"] = 2.0f / vec2(io.DisplaySize.x, io.DisplaySize.y);
+        mpProgramVars["PerFrameCB"]["scale"] = 2.0f / vec2(width, height);
         mpProgramVars["PerFrameCB"]["offset"] = vec2(-1.0f);
 #else
-        mpProgramVars["PerFrameCB"]["scale"] = 2.0f / vec2(io.DisplaySize.x, -io.DisplaySize.y);
+        mpProgramVars["PerFrameCB"]["scale"] = 2.0f / vec2(width, -static_cast<int32_t>(height) );
         mpProgramVars["PerFrameCB"]["offset"] = vec2(-1.0f, 1.0f);
 #endif
     }
@@ -190,23 +270,8 @@ namespace Falcor
         ImGui::NewFrame();
     }
 
-    void Gui::render(RenderContext* pContext, float elapsedTime)
+    void Gui::renderInternal(ImDrawData* pDrawData, RenderContext* pContext, float elapsedTime)
     {
-        while (mGroupStackSize)
-        {
-            endGroup();
-        }
-
-        pContext->setGraphicsVars(mpProgramVars);
-        // Set the mouse state
-        setIoMouseEvents();
-
-        ImGui::Render();
-        ImDrawData* pDrawData = ImGui::GetDrawData();
-    
-        resetMouseEvents();
-        // Update the VAO
-
         createVao(pDrawData->TotalVtxCount, pDrawData->TotalIdxCount);
         mpPipelineState->setVao(mpVao);
 
@@ -247,6 +312,24 @@ namespace Falcor
             for (int32_t cmd = 0; cmd < pCmdList->CmdBuffer.Size; cmd++)
             {
                 const ImDrawCmd* pCmd = &pCmdList->CmdBuffer[cmd];
+                
+                // the image needs to be externally transitioned or this will be invalid
+                if (pCmd->TextureId) 
+                {
+                    size_t textureIndex = static_cast<size_t>(*reinterpret_cast<const int64_t*>(&pCmd->TextureId) - 1);
+                    Texture::SharedPtr& textureRef = mpTextures[textureIndex];
+                    
+                    // need to transition the image view to a shader read and then back within this buffer.
+
+                    mpProgramVars->setTexture("gOptionalImage", textureRef);
+
+                    mpProgramVars["PerFrameCB"]["useOptionalImage"] = true;
+                }
+                else
+                {
+                    mpProgramVars["PerFrameCB"]["useOptionalImage"] = false;
+                }
+
                 GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
                 mpPipelineState->setScissors(0, scissor);
                 pContext->drawIndexed(pCmd->ElemCount, idxOffset, vtxOffset);
@@ -254,12 +337,51 @@ namespace Falcor
             }
             vtxOffset += pCmdList->VtxBuffer.Size;
         }
- 
+
         // Prepare for the next frame
+        mGroupStackSize = 0;
+        mpTextures.clear();
+        pContext->popGraphicsState();
+
         ImGuiIO& io = ImGui::GetIO();
         io.DeltaTime = elapsedTime;
-        mGroupStackSize = 0;
-        pContext->popGraphicsState();
+    }
+
+    void Gui::renderBeforeEndOfFrame(RenderContext* pContext, float elapsedTime)
+    {
+        while (mGroupStackSize)
+        {
+            endGroup();
+        }
+
+        pContext->setGraphicsVars(mpProgramVars);
+        // Set the mouse state
+        setIoMouseEvents();
+
+        ImGui::Render();
+        ImDrawData* pDrawData = ImGui::GetDrawData();
+
+        renderInternal(pDrawData, pContext, elapsedTime);
+    }
+
+    void Gui::render(RenderContext* pContext, float elapsedTime)
+    {
+        while (mGroupStackSize)
+        {
+            endGroup();
+        }
+
+        pContext->setGraphicsVars(mpProgramVars);
+        // Set the mouse state
+        setIoMouseEvents();
+
+        ImGui::Render();
+        ImDrawData* pDrawData = ImGui::GetDrawData();
+
+        resetMouseEvents();
+        // Update the VAO
+
+        renderInternal(pDrawData, pContext, elapsedTime);
     }
 
     bool Gui::addCheckBox(const char label[], bool& var, bool sameLine)
@@ -415,6 +537,8 @@ namespace Falcor
 
     bool Gui::onMouseEvent(const MouseEvent& event)
     {
+        unsigned i = 0;
+
         ImGuiIO& io = ImGui::GetIO();
         switch (event.type)
         {
@@ -437,11 +561,25 @@ namespace Falcor
             mMouseEvents.buttonReleased[2] = true;
             break;
         case MouseEvent::Type::Move:
-            io.MousePos.x = event.pos.x * io.DisplaySize.x;
-            io.MousePos.y = event.pos.y * io.DisplaySize.y;
+            for (auto& context : sContexts)
+            {
+                if (spDeselectOtherContexts && spDeselectOtherContexts != context.second.first)
+                {
+                    context.second.first->IO.WantCaptureMouse = false;
+                }
+                else
+                {
+                    
+                    context.second.first->IO.MousePos.x = -context.second.second.position.x + event.pos.x * context.second.first->IO.DisplaySize.x;
+                    context.second.first->IO.MousePos.y = -context.second.second.position.y + event.pos.y * context.second.first->IO.DisplaySize.y;
+                }
+            }
             break;
         case MouseEvent::Type::Wheel:
-            io.MouseWheel += event.wheelDelta.y;
+            for (auto& context : sContexts)
+            {
+                context.second.first->IO.MouseWheel += event.wheelDelta.y;
+            }
             break;
         }
 
@@ -516,6 +654,43 @@ namespace Falcor
     {
         ImGuiIO& io = ImGui::GetIO();
         io.FontGlobalScale = scale;
+    }
+
+    glm::ivec2 Gui::getCurrentWindowSize()
+    {
+        const ImVec2& sizeRef = ImGui::GetCurrentWindow()->Size;
+        return glm::ivec2(static_cast<int32_t>(sizeRef.x), static_cast<int32_t>(sizeRef.y));
+    }
+
+    glm::ivec2 Gui::getCurrentWindowPosition()
+    {
+        const ImVec2& sizeRef = ImGui::GetCurrentWindow()->Pos;
+        return glm::ivec2(static_cast<int32_t>(sizeRef.x), static_cast<int32_t>(sizeRef.y));
+    }
+
+    void Gui::addImage(const Texture::SharedPtr& texture, const glm::vec2& scale)
+    {
+        ImVec2 imageSize(static_cast<float>(texture->getWidth()) * scale.x, static_cast<float>(texture->getHeight()) * scale.y);
+        mpTextures.push_back(texture);
+        ImGui::Image(reinterpret_cast<ImTextureID*>(static_cast<int64_t>(mpTextures.size())), imageSize);
+    }
+
+    void Gui::addImageForContext(const std::string& contextName, const Texture::SharedPtr& texture, const glm::vec2& scale)
+    {
+        addImage(texture, scale);
+
+        const ImVec2& topLeft = ImGui::GetCurrentWindow()->DC.LastItemRect.GetTL();
+        sContexts[contextName].second.position = { topLeft.x, topLeft.y };
+
+        // if (ImGui::IsItemHovered())
+        // {
+        //     // deselect all other inputs
+        //     spDeselectOtherContexts = sContexts[contextName].first;
+        // }
+        // else
+        // {
+        //     spDeselectOtherContexts = nullptr;
+        // }
     }
 
     bool Gui::addTextBox(const char label[], char buf[], size_t bufSize, uint32_t lineCount)

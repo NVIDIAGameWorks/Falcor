@@ -27,14 +27,19 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/RenderGraph/RenderPass.h"
-#include "API/Texture.h"
+#include "Graphics/Program/GraphicsProgram.h"
+#include "Graphics/Program/ProgramVars.h"
+#include "Graphics/GraphicsState.h"
+#include "Graphics/Scene/SceneRenderer.h"
 
 namespace Falcor
 {
-    class BlitPass : public RenderPass, inherit_shared_from_this<RenderPass, BlitPass>
+    // Might rename?
+    // This renderpass is for drawing the gui into another fbo for use in a later pass
+    class NodeGraphGuiPass : public RenderPass, inherit_shared_from_this<RenderPass, NodeGraphGuiPass>
     {
     public:
-        using SharedPtr = std::shared_ptr<BlitPass>;
+        using SharedPtr = std::shared_ptr<NodeGraphGuiPass>;
 
         /** Create a new object
         */
@@ -45,12 +50,22 @@ namespace Falcor
         virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual PassData getRenderPassData() const override { return kRenderPassData; }
-        virtual void renderUI(Gui* pGui, const std::string& name) override;
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name) override;
+
+        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+
+        // should move this. used for drawing imgui externally into the node's fbo
+        const Fbo::SharedPtr& getFbo() const { return mpFbo; }
 
     private:
-        BlitPass();
+        NodeGraphGuiPass();
+
         static const PassData kRenderPassData;
-        Texture::SharedPtr mpSrc;
-        Texture::SharedPtr mpDst;
+
+        Fbo::SharedPtr mpFbo; // just  need color buffer
+        GraphicsState::SharedPtr mpState;
+        GraphicsVars::SharedPtr mpVars;
+        vec4 mClearColor = vec4(1);
     };
 }
+

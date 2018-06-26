@@ -8,10 +8,6 @@
         {
             "RenderPassName" : "BlitPass",
             "RenderPassType" : "BlitPass"
-        },
-        {
-            "RenderPassName" : "AnotherOne",
-            "RenderPassType" : "BlitPass"
         }
 		
     ],
@@ -21,12 +17,6 @@
             "SrcRenderPassName" : "SceneRenderer",
             "DstRenderPassName" : "BlitPass",
             "SrcField" : "color",
-            "DstField" : "src"
-        },
-		{
-            "SrcRenderPassName" : "BlitPass",
-            "DstRenderPassName" : "AnotherOne",
-            "SrcField" : "memes",
             "DstField" : "src"
         }
     ]

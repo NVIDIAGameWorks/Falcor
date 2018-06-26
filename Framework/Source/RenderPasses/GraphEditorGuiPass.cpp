@@ -26,14 +26,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "SceneRenderPass.h"
+#include "GraphEditorGuiPass.h"
 
 namespace Falcor
 {
     static std::string kColor = "color";
     static std::string kDepth = "depth";
 
-    static SceneRenderPass::PassData createRenderPassData()
+    static GraphEditorGuiPass::PassData createRenderPassData()
     {
         RenderPass::PassData data;
         RenderPass::PassData::Field output;
@@ -50,13 +50,13 @@ namespace Falcor
         return data;
     }
 
-    const SceneRenderPass::PassData SceneRenderPass::kRenderPassData = createRenderPassData();
+    const GraphEditorGuiPass::PassData GraphEditorGuiPass::kRenderPassData = createRenderPassData();
 
-    SceneRenderPass::SharedPtr SceneRenderPass::create()
+    GraphEditorGuiPass::SharedPtr GraphEditorGuiPass::create()
     {
         try
         {
-            return SharedPtr(new SceneRenderPass);
+            return SharedPtr(new GraphEditorGuiPass);
         }
         catch (const std::exception&)
         {
@@ -64,22 +64,18 @@ namespace Falcor
         }
     }
 
-    SceneRenderPass::SceneRenderPass() : RenderPass("SceneRenderPass", nullptr), 
-        mShaderSource("", [this]() { recreateShaders(); }, {"SceneRenderPass.slang", "", "ps"})
+    GraphEditorGuiPass::GraphEditorGuiPass() : RenderPass("GraphEditorGuiPass", nullptr)
     {
         mpState = GraphicsState::create();
         recreateShaders();
         mpFbo = Fbo::create();
     }
 
-    void SceneRenderPass::recreateShaders()
+    void GraphEditorGuiPass::recreateShaders()
     {
-        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/" + mShaderSource.mData[0], mShaderSource.mData[1], mShaderSource.mData[2]);
-        mpState->setProgram(pProgram);
-        mpVars = GraphicsVars::create(pProgram->getReflector());
     }
 
-    void SceneRenderPass::sceneChangedCB()
+    void GraphEditorGuiPass::sceneChangedCB()
     {
         mpSceneRenderer = nullptr;
         if (mpScene)
@@ -88,48 +84,48 @@ namespace Falcor
         }
     }
 
-    bool SceneRenderPass::isValid(std::string& log)
+    bool GraphEditorGuiPass::isValid(std::string& log)
     {
         bool b = true;
         if (mpSceneRenderer == nullptr)
         {
-            log += "SceneRenderPass must have a scene attached to it\n";
+            log += "GraphEditorGuiPass must have a scene attached to it\n";
             b = false;
         }
 
         const auto& pColor = mpFbo->getColorTexture(0).get();
         if (!pColor)
         {
-            log += "SceneRenderPass must have a color texture attached\n";
+            log += "GraphEditorGuiPass must have a color texture attached\n";
             b = false;
         }
         const auto& pDepth = mpFbo->getDepthStencilTexture().get();
         if (!pDepth)
         {
-            log += "SceneRenderPass must have a depth texture attached\n";
+            log += "GraphEditorGuiPass must have a depth texture attached\n";
             b = false;
         }
 
         if (mpFbo->checkStatus() == false)
         {
-            log += "SceneRenderPass FBO is invalid, probably because the depth and color textures have different dimensions";
+            log += "GraphEditorGuiPass FBO is invalid, probably because the depth and color textures have different dimensions";
             b = false;
         }
 
         return b;
     }
 
-    bool SceneRenderPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    bool GraphEditorGuiPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        logError("SceneRenderPass::setInput() - trying to set `" + name + "` but this render-pass requires no inputs");
+        logError("GraphEditorGuiPass::setInput() - trying to set `" + name + "` but this render-pass requires no inputs");
         return false;
     }
 
-    bool SceneRenderPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    bool GraphEditorGuiPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
         if (!mpFbo)
         {
-            logError("SceneRenderPass::setOutput() - please call onResizeSwapChain() before setting an input");
+            logError("GraphEditorGuiPass::setOutput() - please call onResizeSwapChain() before setting an input");
             return false;
         }
 
@@ -145,14 +141,14 @@ namespace Falcor
         }
         else
         {
-            logError("SceneRenderPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
+            logError("GraphEditorGuiPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
             return false;
         }
 
         return true;
     }
 
-    void SceneRenderPass::execute(RenderContext* pContext)
+    void GraphEditorGuiPass::execute(RenderContext* pContext)
     {
         pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0);
         if (mpSceneRenderer)
@@ -166,7 +162,7 @@ namespace Falcor
         }
     }
 
-    std::shared_ptr<Resource> SceneRenderPass::getOutput(const std::string& name)
+    std::shared_ptr<Resource> GraphEditorGuiPass::getOutput(const std::string& name)
     {
         if (name == kColor)
         {
@@ -177,16 +173,5 @@ namespace Falcor
             return mpFbo->getDepthStencilTexture();
         }
         else return RenderPass::getOutput(name);
-    }
-
-    void SceneRenderPass::renderUI(Gui* pGui, const std::string& name)
-    {
-        pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
-        mShaderSource.renderUI(pGui);
-    }
-
-    void SceneRenderPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
-    {
-        pGui->addRgbaColor("Clear color", mClearColor);
     }
 }

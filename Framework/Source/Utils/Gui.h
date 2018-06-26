@@ -34,6 +34,9 @@
 #include "Graphics/Program//Program.h"
 #include "Graphics/GraphicsState.h"
 
+// Remove this
+struct ImDrawData;
+
 namespace Falcor
 {
     class RenderContext;
@@ -78,6 +81,10 @@ namespace Falcor
         */
         void render(RenderContext* pContext, float elapsedTime);
 
+        /** Render GUI without handling the input
+        */
+        void renderBeforeEndOfFrame(RenderContext* pContext, float elapsedTime);
+
         /** Handle window resize events
         */
         void onWindowResize(uint32_t width, uint32_t height);
@@ -90,11 +97,35 @@ namespace Falcor
         */
         bool onKeyboardEvent(const KeyboardEvent& event);
 
+        struct ContextData
+        {
+            glm::vec2 size;
+            glm::vec2 position;
+        };
+
+        void pushContext(const std::string& name);
+
+        void setContextSize(const glm::vec2& contextSize);
+
+        void setContextPosition(const glm::vec2& contextPosition);
+
+        void popContext();
+
+        glm::ivec2 getCurrentWindowSize();
+
+        glm::ivec2 getCurrentWindowPosition();
+
         /** Static text
             \param[in] text The string to display
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
         */
         void addText(const char text[], bool sameLine = false);
+
+        void addImage(const Texture::SharedPtr& texture, const glm::vec2& scale = { 1.0f, 1.0f });
+
+        /** Use this function to be able to accept input from inside of a rendered image in the gui
+        */
+        void addImageForContext(const std::string& contextName, const Texture::SharedPtr& texture, const glm::vec2& scale = {1.0f, 1.0f});
 
         /** Button. Will return true if the button was pressed
             \param[in] label Text to display on the button
@@ -291,6 +322,12 @@ namespace Falcor
         void init();
         void createVao(uint32_t vertexCount, uint32_t indexCount);
 
+        /** Helper function to set up callback and data for the new gui context.
+        */
+        void createGuiContext(const std::string& name);
+
+        void renderInternal(ImDrawData* pDrawData, RenderContext* pContext, float elapsedTime);
+        
         struct ComboData
         {
             uint32_t lastVal = -1;
@@ -316,5 +353,10 @@ namespace Falcor
         GraphicsState::SharedPtr mpPipelineState;
         uint32_t mGroupStackSize = 0;
         float mFontScale = 1;
+
+        glm::vec2 mScreenOrigin = {0, 0}; // offset of origin. for contexts within windows
+
+        // For drawing textures
+        std::vector<Texture::SharedPtr> mpTextures;
     };
 }

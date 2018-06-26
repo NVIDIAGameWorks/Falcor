@@ -26,9 +26,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+// TODO PLEASE NO
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+
 #include "Falcor.h"
 
 #include <vector>
+
+
 
 using namespace Falcor;
 
@@ -51,9 +56,12 @@ private:
     void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
+    void renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui);
 
     // simple lookup to create render pass type from string
     static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderTypes;
+
+    SampleCallbacks* mpLastSample;
 
     RenderGraph::SharedPtr mpEditorGraph;
     std::vector<RenderGraph::SharedPtr> mpGraphs;
@@ -68,6 +76,10 @@ private:
     bool mCreatingRenderGraph;
     bool mPreviewing;
 
+    // TODO this should be in an abstraction for reuse
+    glm::vec2 mWindowPos{0.0f, 0.0f};
+    glm::vec2 mWindowSize{ 1600.0f, 900.0f }; // init this better
+    
     FirstPersonCameraController mCamControl;
     void loadScene(const std::string& filename, bool showProgressBar);
 };
