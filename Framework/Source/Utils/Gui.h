@@ -132,36 +132,9 @@ namespace Falcor
             \return true if the value changed, otherwise false
         */
         bool addFloatVar(const char label[], float& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false, const char* displayFormat = "%.3f");
-
-        /** Adds a 2-elements floating-point vector UI element.
-            \param[in] label The name of the widget.
-            \param[in] var A reference to a float2 that will be updated directly when the widget state changes.
-            \param[in] minVal Optional. The minimum allowed value for each element of the vector.
-            \param[in] maxVal Optional. The maximum allowed value for each element ofthe vector.
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
-        bool addFloat2Var(const char label[], glm::vec2& var, float minVal = -1, float maxVal = 1, bool sameLine = false);
-
-        /** Adds a 3-elements floating-point vector UI element.
-            \param[in] label The name of the widget.
-            \param[in] var A reference to a float3 that will be updated directly when the widget state changes.
-            \param[in] minVal Optional. The minimum allowed value for each element of the vector.
-            \param[in] maxVal Optional. The maximum allowed value for each element of the vector.
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
-        bool addFloat3Var(const char label[], glm::vec3& var, float minVal = -1, float maxVal = 1, bool sameLine = false);
-
-        /** Adds a 4-elements floating-point vector UI element.
-            \param[in] label The name of the widget.
-            \param[in] var A reference to a float4 that will be updated directly when the widget state changes.
-            \param[in] minVal Optional. The minimum allowed value for each element of the vector.
-            \param[in] maxVal Optional. The maximum allowed value for each element of the vector.
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
-        bool addFloat4Var(const char label[], glm::vec4& var, float minVal = -1, float maxVal = 1, bool sameLine = false);
+        bool addFloat2Var(const char label[], glm::vec2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false, const char* displayFormat = "%.3f");
+        bool addFloat3Var(const char label[], glm::vec3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false, const char* displayFormat = "%.3f");
+        bool addFloat4Var(const char label[], glm::vec4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false, const char* displayFormat = "%.3f");
 
         /** Adds a checkbox.
             \param[in] label The name of the checkbox.
@@ -179,38 +152,15 @@ namespace Falcor
         */
         bool addCheckBox(const char label[], int& pVar, bool sameLine = false);
 
-        /** Adds a checkbox.
-            \param[in] label The name of the checkbox.
+        /** Adds a UI widget for multiple checkboxes.
+            \param[in] label The name of the widget.
             \param[in] var A reference to the bools that will be updated directly when the checkbox state changes (0 = unchecked, 1 = checked).
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
             \return true if the value changed, otherwise false
         */
         bool addBool2Var(const char lable[], glm::bvec2& var, bool sameLine = false);
-
-        /** Adds a checkbox.
-            \param[in] label The name of the checkbox.
-            \param[in] var A reference to the bools that will be updated directly when the checkbox state changes (0 = unchecked, 1 = checked).
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
         bool addBool3Var(const char lable[], glm::bvec3& var, bool sameLine = false);
-
-        /** Adds a checkbox.
-            \param[in] label The name of the checkbox.
-            \param[in] var A reference to the bools that will be updated directly when the checkbox state changes (0 = unchecked, 1 = checked).
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
         bool addBool4Var(const char lable[], glm::bvec4& var, bool sameLine = false);
-
-        /** Adds a checkbox.
-            \param[in] label The name of the checkbox.
-            \param[in] var Pointer to the array of bools to fill checkboxes for
-            \param[in] numCheckboxes number of checkbox widgets to create for same number of bools
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
-        bool addNCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine);
 
         /** Adds an RGB color UI widget.
             \param[in] label The name of the widget.
@@ -228,7 +178,7 @@ namespace Falcor
         */
         bool addRgbaColor(const char label[], glm::vec4& var, bool sameLine = false);
 
-        /** Adds an integer UI widget.
+        /** Adds a UI widget for integers.
             \param[in] label The name of the widget.
             \param[in] var A reference to an integer that will be updated directly when the widget state changes.
             \param[in] minVal Optional. The minimum allowed value for the variable.
@@ -238,35 +188,8 @@ namespace Falcor
             \return true if the value changed, otherwise false
         */
         bool addIntVar(const char label[], int32_t& var, int minVal = -INT32_MAX, int maxVal = INT32_MAX, int step = 1, bool sameLine = false);
-
-        /** Adds an integer UI widget.
-            \param[in] label The name of the widget.
-            \param[in] var A reference to two integers that will be updated directly when the widget state changes.
-            \param[in] minVal Optional. The minimum allowed value for the variable.
-            \param[in] maxVal Optional. The maximum allowed value for the variable.
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
         bool addInt2Var(const char label[], glm::ivec2& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
-
-        /** Adds an integer UI widget.
-            \param[in] label The name of the widget.
-            \param[in] var A reference to a vector of 3 integers that will be updated directly when the widget state changes.
-            \param[in] minVal Optional. The minimum allowed value for the variable.
-            \param[in] maxVal Optional. The maximum allowed value for the variable.
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
         bool addInt3Var(const char label[], glm::ivec3& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
-
-        /** Adds an integer UI widget.
-            \param[in] label The name of the widget.
-            \param[in] var A reference to a vector of 4 integers that will be updated directly when the widget state changes.
-            \param[in] minVal Optional. The minimum allowed value for the variable.
-            \param[in] maxVal Optional. The maximum allowed value for the variable.
-            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
-            \return true if the value changed, otherwise false
-        */
         bool addInt4Var(const char label[], glm::ivec4& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
 
         /** Adds an matrix UI widget.
@@ -277,10 +200,8 @@ namespace Falcor
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
             \return true if the value changed, otherwise false
         */
-#define concatStrings_(a, b) a##b
-#define concatStrings(a, b) concatStrings_(a, b)
 #define add_matrix_function(funcName, matrixSize) \
-        bool funcName (const char label[], concatStrings(glm::mat, matrixSize) & var, float minVal = -1, float maxVal = 1, bool sameLine = false)
+        bool funcName (const char label[], concat_strings(glm::mat, matrixSize) & var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false)
 
         add_matrix_function(addMatrix2x2Var, 2x2);
         add_matrix_function(addMatrix2x3Var, 2x3);
@@ -291,11 +212,7 @@ namespace Falcor
         add_matrix_function(addMatrix4x2Var, 4x2);
         add_matrix_function(addMatrix4x3Var, 4x3);
         add_matrix_function(addMatrix4x4Var, 4x4);
-
 #undef add_matrix_function
-#undef concatStrings
-#undef concatStrings_
-
 
         /** Add a separator
         */
@@ -381,6 +298,9 @@ namespace Falcor
         Gui() = default;
         void init();
         void createVao(uint32_t vertexCount, uint32_t indexCount);
+
+        // Helper to create multiple inline text boxes
+        bool Gui::addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine);
 
         struct ComboData
         {
