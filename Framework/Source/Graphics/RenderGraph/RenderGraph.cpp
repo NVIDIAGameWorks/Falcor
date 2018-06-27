@@ -436,111 +436,127 @@ namespace Falcor
 
     void RenderGraph::renderUI(Gui* pGui)
     {
-        unsigned nodeIndex = 0;
-        unsigned pinIndex = 0;
-        unsigned linkIndex = 0; 
-        
-        std::unordered_map<RenderPass*, std::unordered_map<std::string, unsigned>> nodeindexmap;
+        uint32_t nodeIndex = 0;
+        uint32_t pinIndex = 0;
+        uint32_t specialPinIndex = static_cast<uint32_t>(static_cast<uint16_t>(-1)); // used for avoiding conflicts with creating additional unique pins.
+        uint32_t linkIndex = 0; 
+        uint32_t mouseDragBezierPin = 0;
 
         static bool draggingConnection = false;
-        static unsigned draggingNodeIndex = 0;
+        static unsigned draggingPinIndex = 0;
 
         const ImVec2& mousePos = ImGui::GetCurrentContext()->IO.MousePos;
 
         for (const auto& renderGraphEdge : mEdges)
         {
             // move filling this out to not here
-            auto& nameToIndexMap = nodeindexmap[renderGraphEdge.pSrc];
+            auto& nameToIndexMap = mDisplayMap[renderGraphEdge.pSrc];
             auto& nameToIndexIt = nameToIndexMap.find(renderGraphEdge.srcField);
             if (nameToIndexIt == nameToIndexMap.end() )
             {
-                nameToIndexMap.insert(std::make_pair(renderGraphEdge.srcField, pinIndex++));
+                nameToIndexMap.insert(std::make_pair(renderGraphEdge.srcField, std::make_pair(pinIndex++, false)));
             }
 
-            auto& nameToIndexMapDst = nodeindexmap[renderGraphEdge.pDst];
+            auto& nameToIndexMapDst = mDisplayMap[renderGraphEdge.pDst];
             nameToIndexIt = nameToIndexMapDst.find(renderGraphEdge.dstField);
             if (nameToIndexIt == nameToIndexMapDst.end())
             {
-                nameToIndexMapDst.insert(std::make_pair(renderGraphEdge.dstField, pinIndex++));
+                nameToIndexMapDst.insert(std::make_pair(renderGraphEdge.dstField, std::make_pair(pinIndex++, true)));
             }
         }
 
-        for (const auto& nameToIndexMap : nodeindexmap)
+
+        for (const auto& nameToIndexMap : mDisplayMap)
         {
             //passToDraw->renderUI(pGui, nameIndexPair.first);
 
             ax::NodeEditor::BeginNode(nodeIndex);
-
+                
+            // display name for the render pass
+            pGui->addText(sPassToName[nameToIndexMap.first].c_str());
+                
             for (const auto& nameToIndexIt : nameToIndexMap.second)
             {
                 // Connect the graph nodes for each of the edges
                 // need to iterate in here in order to use the right indices
-                bool isInput = true;
+                bool isInput = nameToIndexIt.second.second;
 
-                GraphOut graphOutputToFind; graphOutputToFind.pPass = nameToIndexMap.first;  graphOutputToFind.field = nameToIndexIt.first;
-                if (std::find(mOutputs.begin(), mOutputs.end(), graphOutputToFind) != mOutputs.end())
-                {
-                    isInput = false;
-                }
-
-                /// pGui->addText(nameToIndexIt.first.c_str());
+                // GraphOut graphOutputToFind; graphOutputToFind.pPass = nameToIndexMap.first;  graphOutputToFind.field = nameToIndexIt.first;
+                // if (std::find(mOutputs.begin(), mOutputs.end(), graphOutputToFind) != mOutputs.end())
+                // {
+                //     isInput = false;
+                // }
 
 
-                // if (pGui->beginGroup("Inputs: "))
-                {
-                    // pGui->endGroup();
-                }
+                ax::NodeEditor::PushStyleVar(ax::NodeEditor::StyleVar::StyleVar_SourceDirection, ImVec2(-1, 0)); // input
+                ax::NodeEditor::PushStyleVar(ax::NodeEditor::StyleVar::StyleVar_TargetDirection, ImVec2(1, 0));  // output
 
-                ax::NodeEditor::BeginPin(nameToIndexIt.second, static_cast<ax::NodeEditor::PinKind>(!isInput));
+                ax::NodeEditor::BeginPin(nameToIndexIt.second.first, static_cast<ax::NodeEditor::PinKind>(isInput));
                 
                 // draw the pin output for input / output
-                
+                if (!isInput)
+                {
                     pGui->addText(nameToIndexIt.first.c_str());
-                    
-                    // abstract this plz
                     ImGui::SameLine();
-                    ImGui::InvisibleButton(nameToIndexIt.first.c_str(), { 12.0f, 12.0f });
+                }
+                
 
-                    const ImVec2& nodeSize = ax::NodeEditor::GetNodeSize(nodeIndex);
-                    ImVec2 buttonAlignment =  (ImVec2(nodeSize.x - nodeSize.x / 8.0f, ImGui::GetCursorScreenPos().y ));
-                    auto lastItemRect = ImGui::GetCurrentWindow()->DC.LastItemRect; // might make this a helper function
-                    auto pWindowDrawList = ImGui::GetCurrentWindow()->DrawList;
-                    ax::NodeEditor::PinRect(lastItemRect.GetTL(), lastItemRect.GetBR());
-
-                    if (!ImGui::IsMouseDown(0))
+                // abstract this please
+                ImGui::InvisibleButton(nameToIndexIt.first.c_str(), { 6.0f, 6.0f });
+                
+                const ImVec2& nodeSize = ax::NodeEditor::GetNodeSize(nodeIndex);
+                ImVec2 buttonAlignment =  (ImVec2(nodeSize.x - nodeSize.x / 8.0f, ImGui::GetCursorScreenPos().y ));
+                auto lastItemRect = ImGui::GetCurrentWindow()->DC.LastItemRect; // might make this a helper function
+                auto pWindowDrawList = ImGui::GetCurrentWindow()->DrawList;
+                
+                if (!ImGui::IsMouseDown(0))
+                {
+                    draggingConnection = false;
+                }
+                
+                constexpr uint32_t color = 0xFFFFFFFF;
+                
+                //ImGui::PushStyleColor(0, { 255, 255, 255, 255});
+                if (ImGui::IsItemHovered()) {
+                    pWindowDrawList->AddCircleFilled( lastItemRect.GetCenter(), 6.0f, color);
+                
+                    if (ImGui::IsItemClicked())
                     {
-                        draggingConnection = false;
+                        draggingConnection = true;
+                        draggingPinIndex = pinIndex;
                     }
+                }
+                else
+                {
+                    pWindowDrawList->AddCircle(lastItemRect.GetCenter(), 6.0f, color);
+                }
+                
+                ax::NodeEditor::PinRect(ImVec2(lastItemRect.GetCenter().x - 1.0f, lastItemRect.GetCenter().y + 1.0f),
+                    ImVec2(lastItemRect.GetCenter().x + 1.0f, lastItemRect.GetCenter().y - 1.0f));
 
-                    constexpr uint32_t color = 0xFFFFFFFF;
-
-                    //ImGui::PushStyleColor(0, { 255, 255, 255, 255});
-                    if (ImGui::IsItemHovered()) {
-                        pWindowDrawList->AddCircleFilled( lastItemRect.GetCenter(), 6.0f, color);
-
-                        if (ImGui::IsItemClicked())
-                        {
-                            draggingConnection = true;
-                            draggingNodeIndex = nodeIndex;
-                        }
-                    }
-                    else
-                    {
-                        pWindowDrawList->AddCircle(lastItemRect.GetCenter(), 6.0f, color);
-                    }
-                    
-                    if ((draggingNodeIndex == nodeIndex) && draggingConnection)
-                    {
-                        pWindowDrawList->PathLineTo(lastItemRect.GetCenter());
-                        pWindowDrawList->PathBezierCurveTo(lastItemRect.GetCenter(), 
-                            lastItemRect.GetCenter(),
-                            mousePos, 100);
-                    }
+                if (isInput)
+                {
+                    ImGui::SameLine();
+                    pGui->addText(nameToIndexIt.first.c_str());
+                }
 
 
                 ax::NodeEditor::EndPin();
+                
+                if ((draggingPinIndex == pinIndex) && draggingConnection)
+                {
+                    mouseDragBezierPin = nameToIndexIt.second.first;
+                    // use the same bezier with picking by creating another link
+                }
 
-                //pGui->popWindow();
+                pinIndex++;
+            }
+
+            if (pGui->addButton("AddInput"))
+            {
+            }
+            if (pGui->addButton("AddOutput"))
+            {
             }
 
             ax::NodeEditor::EndNode();
@@ -552,8 +568,18 @@ namespace Falcor
         {
             for (const auto& renderGraphEdge : mEdges)
             {
-                ax::NodeEditor::Link(linkIndex++, nodeindexmap[renderGraphEdge.pSrc][renderGraphEdge.srcField], nodeindexmap[renderGraphEdge.pDst][renderGraphEdge.dstField]);
+                ax::NodeEditor::Link(linkIndex++, mDisplayMap[renderGraphEdge.pSrc][renderGraphEdge.srcField].first, 
+                    mDisplayMap[renderGraphEdge.pDst][renderGraphEdge.dstField].first);
             }
+        }
+
+        // add output of the graph as the last output
+
+
+
+        if (mouseDragBezierPin)
+        {
+            ax::NodeEditor::LinkToPos(linkIndex++, mouseDragBezierPin, ImGui::GetCurrentContext()->IO.MousePos);
         }
     }
 

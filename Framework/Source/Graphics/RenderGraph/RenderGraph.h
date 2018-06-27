@@ -178,6 +178,8 @@ namespace Falcor
 
         std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
 
+        std::unordered_map<RenderPass*, std::unordered_map<std::string, std::pair<uint32_t, bool> >> mDisplayMap;
+
         struct  
         {
             uint32_t width = 0;
