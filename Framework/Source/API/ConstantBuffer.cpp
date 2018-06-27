@@ -88,13 +88,10 @@ namespace Falcor
 
     bool ConstantBuffer::renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name)
     {
-        unsigned displayIndex = 0;
         bool returnValue = false;
 
-#define concatStrings_(a, b) a##b
-#define concatStrings(a, b) concatStrings_(a, b)
 #define to_gui_widget(widgetName, baseType) \
-        returnValue = pGui-> concatStrings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(mData.data() + offset)); \
+        returnValue = pGui-> concat_strings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(mData.data() + offset)); \
         offset += sizeof(baseType);
         
         switch (type)
@@ -181,8 +178,6 @@ namespace Falcor
             break;
         }
 #undef to_gui_widget
-#undef concatStrings
-#undef concatStrings_
 
         return returnValue;
     }

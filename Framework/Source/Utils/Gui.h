@@ -300,7 +300,7 @@ namespace Falcor
         void createVao(uint32_t vertexCount, uint32_t indexCount);
 
         // Helper to create multiple inline text boxes
-        bool Gui::addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine);
+        bool addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine);
 
         struct ComboData
         {

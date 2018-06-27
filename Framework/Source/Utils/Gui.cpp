@@ -417,7 +417,7 @@ namespace Falcor
     }
 
 #define add_matrix_function(funcName, matrixSize, baseFunc) \
-    bool concat_strings(Gui::, funcName) (const char label[], concat_strings(glm::mat, matrixSize) & var, float minVal, float maxVal, bool sameLine) \
+    bool Gui::funcName(const char label[], concat_strings(glm::mat, matrixSize) & var, float minVal, float maxVal, bool sameLine) \
     { \
         std::string labelString(label); \
         labelString.append("[0]"); \
