@@ -156,7 +156,7 @@ namespace Falcor
             \param[in] name String name for widget to display
             \return true if data was changed from the widget. internal used to call upload to gpu
         */
-        bool getGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name);
+        bool renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name);
 
         /** Recursive function for traversing reflection data and display ui
             \param[in] pGui Pointer to the gui structure for rendering

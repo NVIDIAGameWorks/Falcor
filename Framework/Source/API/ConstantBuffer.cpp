@@ -86,7 +86,7 @@ namespace Falcor
         return mpCbv;
     }
 
-    bool ConstantBuffer::getGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name)
+    bool ConstantBuffer::renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name)
     {
         unsigned displayIndex = 0;
         bool returnValue = false;
@@ -94,7 +94,7 @@ namespace Falcor
 #define concatStrings_(a, b) a##b
 #define concatStrings(a, b) concatStrings_(a, b)
 #define to_gui_widget(widgetName, baseType) \
-        returnValue |= pGui-> concatStrings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(mData.data() + offset)); \
+        returnValue = pGui-> concatStrings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(mData.data() + offset)); \
         offset += sizeof(baseType);
         
         switch (type)
@@ -177,6 +177,7 @@ namespace Falcor
         case ReflectionBasicType::Type::Unknown:
             break;
         default:
+            should_not_get_here();
             break;
         }
 #undef to_gui_widget
@@ -199,14 +200,14 @@ namespace Falcor
         pGui->addText(memberTypeString.c_str(), true);
 
         // Display data from the stage memory
-        mDirty |= getGuiWidgetFromType(pGui, memberType, memberOffset, memberName);
+        mDirty |= renderGuiWidgetFromType(pGui, memberType, memberOffset, memberName);
 
         pGui->addSeparator();
     }
 
     void ConstantBuffer::renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset)
     {
-        static std::unordered_map<std::string, int32> sGuiArrayIndices;
+        static std::unordered_map<std::string, int32_t> sGuiArrayIndices;
 
         for (auto memberIt = pStruct->begin(); memberIt != pStruct->end(); ++memberIt)
         {
@@ -286,15 +287,14 @@ namespace Falcor
 
             
             // Display member of the array
-            unsigned memberIndex = 0;
+            int32_t memberIndex = 0;
             std::string displayName = memberName;
             
             if (numMembers > 1)
             {
                 // display information for specific index of array
-                int32& refGuiArrayIndex = sGuiArrayIndices[currentStructName + displayName];
-                pGui->addIntVar((std::string("Index (Size : ") + std::to_string(numMembers) + ") ").c_str(), refGuiArrayIndex, 0, static_cast<int>(numMembers) - 1);
-                memberIndex = refGuiArrayIndex;
+                memberIndex = sGuiArrayIndices[displayName];
+                pGui->addIntVar((std::string("Index (Size : ") + std::to_string(numMembers) + ") ").c_str(), memberIndex, 0, static_cast<int>(numMembers) - 1);
                 currentOffset += (memberSize * memberIndex);
                 displayName.append("[").append(std::to_string(memberIndex)).append("]");
             }

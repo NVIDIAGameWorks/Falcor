@@ -291,15 +291,15 @@ namespace Falcor
         return addNCheckboxes(label, glm::value_ptr(var), 4, sameLine);
     }
 
-    bool Gui::addNCheckboxes(const char label[], bool* pData, int numCheckboxes, bool sameLine)
+    bool Gui::addNCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine)
     {
         bool modified = false;
         std::string labelString(label);
         labelString.append("[0]");
 
-        for (int i = 0; i < numCheckboxes; ++i)
+        for (uint32_t i = 0; i < numCheckboxes; ++i)
         {
-            labelString[labelString.size() - 2] = '0' + i;
+            labelString[labelString.size() - 2] = '0' + static_cast<int32_t>(i);
             modified |= addCheckBox(labelString.c_str(), pData[i], sameLine);
         }
         
@@ -395,7 +395,7 @@ namespace Falcor
         return b;
     }
 
-    bool Gui::addInt2Var(const char label[], glm::ivec2& var, int minVal, int maxVal, bool sameLine)
+    bool Gui::addInt2Var(const char label[], glm::ivec2& var, int32_t minVal, int32_t maxVal, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
         bool b = ImGui::InputInt2(label, static_cast<int*>(glm::value_ptr(var)), 0);
@@ -403,7 +403,7 @@ namespace Falcor
         return b;
     }
 
-    bool Gui::addInt3Var(const char label[], glm::ivec3& var, int minVal, int maxVal, bool sameLine)
+    bool Gui::addInt3Var(const char label[], glm::ivec3& var, int32_t minVal, int32_t maxVal, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
         bool b = ImGui::InputInt3(label, static_cast<int*>(glm::value_ptr(var)), 0);
@@ -411,7 +411,7 @@ namespace Falcor
         return b;
     }
 
-    bool Gui::addInt4Var(const char label[], glm::ivec4& var, int minVal, int maxVal, bool sameLine)
+    bool Gui::addInt4Var(const char label[], glm::ivec4& var, int32_t minVal, int32_t maxVal, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
         bool b = ImGui::InputInt4(label, static_cast<int*>(glm::value_ptr(var)), 0);
@@ -428,9 +428,9 @@ namespace Falcor
         labelString.append("[0]"); \
         bool b = false; \
         \
-        for (int i = 0; i < var.length(); ++i) \
+        for (uint32_t i = 0; i < static_cast<uint32_t>(var.length()); ++i) \
         { \
-            labelString[labelString.size() - 2] = '0' + i; \
+            labelString[labelString.size() - 2] = '0' + static_cast<int32_t>(i); \
             b |= baseFunc (labelString.c_str(), var[i], minVal, maxVal, sameLine); \
         } \
         \
