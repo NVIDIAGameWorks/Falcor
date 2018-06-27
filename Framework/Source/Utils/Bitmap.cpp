@@ -326,7 +326,7 @@ namespace Falcor
 
             // Lossless formats
             case FileFormat::PngFile:
-                flags = is_set(exportFlags, ExportFlags::Uncompressed) ? flags = PNG_Z_NO_COMPRESSION : PNG_Z_BEST_COMPRESSION;
+                flags = is_set(exportFlags, ExportFlags::Uncompressed) ? PNG_Z_NO_COMPRESSION : PNG_Z_BEST_COMPRESSION;
 
                 if (is_set(exportFlags, ExportFlags::Lossy))
                 {
