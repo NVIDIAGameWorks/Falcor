@@ -1,6 +1,7 @@
 v3.1
 ------
 - Added support for exporting BMP and TGA images.
+- Added `ConstantBuffer::renderUI()` to automatically render UI for editing a constant buffer's values.
 
 Bug Fixes:
 - Fixed crash when setting ForwardRenderer sample to MSAA with sample count 1
