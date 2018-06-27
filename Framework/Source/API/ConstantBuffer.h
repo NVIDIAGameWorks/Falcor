@@ -149,6 +149,8 @@ namespace Falcor
         ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;
 
+        std::unordered_map<std::string, int32_t> mGuiArrayIndices;
+
         /** Call the corresponding gui function using the reflected data
             \param[in] pGui Pointer to the gui structure for rendering
             \param[in] type Reflection type to look up corresponding widget

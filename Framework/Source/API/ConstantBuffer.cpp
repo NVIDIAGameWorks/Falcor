@@ -207,8 +207,6 @@ namespace Falcor
 
     void ConstantBuffer::renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset)
     {
-        static std::unordered_map<std::string, int32_t> sGuiArrayIndices;
-
         for (auto memberIt = pStruct->begin(); memberIt != pStruct->end(); ++memberIt)
         {
             size_t numMembers = 1;
@@ -293,7 +291,7 @@ namespace Falcor
             if (numMembers > 1)
             {
                 // display information for specific index of array
-                memberIndex = sGuiArrayIndices[displayName];
+                memberIndex = mGuiArrayIndices[displayName];
                 pGui->addIntVar((std::string("Index (Size : ") + std::to_string(numMembers) + ") ").c_str(), memberIndex, 0, static_cast<int>(numMembers) - 1);
                 currentOffset += (memberSize * memberIndex);
                 displayName.append("[").append(std::to_string(memberIndex)).append("]");
