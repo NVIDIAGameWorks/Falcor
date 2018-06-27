@@ -88,7 +88,6 @@ namespace Falcor
 
     bool ConstantBuffer::renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name)
     {
-        unsigned displayIndex = 0;
         bool returnValue = false;
 
 #define to_gui_widget(widgetName, baseType) \
