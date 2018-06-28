@@ -300,7 +300,7 @@ namespace Falcor
         else
         {
             FIBITMAP* pTemp = FreeImage_ConvertFromRawBits((BYTE*)pData, width, height, bytesPerPixel * width, bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
-            if(is_set(exportFlags, ExportFlags::ExportAlpha) || fileFormat == Bitmap::FileFormat::JpegFile)
+            if(is_set(exportFlags, ExportFlags::ExportAlpha) == false || fileFormat == Bitmap::FileFormat::JpegFile)
             {
                 pImage = FreeImage_ConvertTo24Bits(pTemp);
                 FreeImage_Unload(pTemp);
