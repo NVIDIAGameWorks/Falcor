@@ -318,11 +318,11 @@ namespace Falcor
         }
     }
 
-    void ConstantBuffer::renderUI(Gui* pGui)
+    void ConstantBuffer::renderUI(Gui* pGui, const char* uiGroup)
     {
         const ReflectionStructType* pStruct = mpReflector->asResourceType()->getStructType()->asStructType();
 
-        if (pGui->beginGroup(std::string("ConstantBuffer: ").append(mName)))
+        if (!uiGroup || pGui->beginGroup(uiGroup))
         {
             pGui->addSeparator();
 

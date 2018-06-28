@@ -139,7 +139,7 @@ namespace Falcor
         /** Renders ui for reflected data within the buffer.
             \param[in] pGui Pointer to the gui structure for rendering
         */
-        void renderUI(Gui* pGui);
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
         virtual bool uploadToGPU(size_t offset = 0, size_t size = -1) override;
 
