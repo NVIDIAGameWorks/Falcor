@@ -80,6 +80,8 @@ namespace Falcor
 
         size_t getElementSize() const { return mElementSize; }
 
+        friend class VariablesBufferUI;
+
     protected:
         template<typename T>
         void setVariable(const std::string& name, size_t elementIndex, const T& value);

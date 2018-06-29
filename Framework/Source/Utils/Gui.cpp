@@ -279,14 +279,16 @@ namespace Falcor
     bool Gui::addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine)
     {
         bool modified = false;
-        std::string labelString(label);
-        labelString.append("[0]");
+        std::string labelString(std::string("##") + label);
+        labelString.push_back('0');
 
-        for (uint32_t i = 0; i < numCheckboxes; ++i)
+        for (uint32_t i = 0; i < numCheckboxes - 1; ++i)
         {
-            labelString[labelString.size() - 2] = '0' + static_cast<int32_t>(i);
-            modified |= addCheckBox(labelString.c_str(), pData[i], sameLine);
+            labelString[labelString.size() - 1] = '0' + static_cast<int32_t>(i);
+            modified |= addCheckBox(labelString.c_str(), pData[i], (!i) ? sameLine : true);
         }
+
+        addCheckBox(label, pData[numCheckboxes - 1], (numCheckboxes == 1) ? sameLine : true );
 
         return modified;
     }

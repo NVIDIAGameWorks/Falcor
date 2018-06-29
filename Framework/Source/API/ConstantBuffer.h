@@ -36,7 +36,6 @@ namespace Falcor
 {
     class Sampler;
     // Forward declares for gui draw func
-    class SampleCallbacks;
     class Gui;
 
     /** Abstracts a Constant/Uniform buffer.
@@ -137,7 +136,8 @@ namespace Falcor
         }
 
         /** Renders ui for reflected data within the buffer.
-            \param[in] pGui Pointer to the gui structure for rendering
+            \param[in] pGui Pointer to the GUI structure for rendering
+            \param[in] uiGroup optional label for GUI
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
@@ -148,33 +148,5 @@ namespace Falcor
      private:
         ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;
-
-        std::unordered_map<std::string, int32_t> mGuiArrayIndices;
-
-        /** Call the corresponding gui function using the reflected data
-            \param[in] pGui Pointer to the gui structure for rendering
-            \param[in] type Reflection type to look up corresponding widget
-            \param[in] offset offset into the data array of the constant buffer
-            \param[in] name String name for widget to display
-            \return true if data was changed from the widget. internal used to call upload to gpu
-        */
-        bool renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name);
-
-        /** Recursive function for traversing reflection data and display ui
-            \param[in] pGui Pointer to the gui structure for rendering
-            \param[in] pStruct Pointer to structure to iterate and display for the gui
-            \param[in] currentStructName Current struct name to append for full reflection name
-            \param[in] startOffset Starting offset in memory for nested structures
-        */
-        void renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset);
-        
-        /** Render gui widget for reflected data
-            \param[in] pGui Pointer to the gui structure for rendering
-            \param[in] memberName string containing the name of the data member to render
-            \param[in] memberOffset offset into the data array
-            \param[in] memberSize size of the data in the member
-            \param[in] memberType reflection type enum for the basic type
-        */
-        void renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType);
     };
 }
