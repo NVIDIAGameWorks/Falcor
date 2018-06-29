@@ -1717,6 +1717,9 @@
     <ClInclude Include="RenderPasses\BlitPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\DirectedGraph.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

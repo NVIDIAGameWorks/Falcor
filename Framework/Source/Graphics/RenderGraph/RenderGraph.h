@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPass.h"
+#include "Utils/DirectedGraph.h"
 
 namespace Falcor
 {
@@ -108,28 +109,26 @@ namespace Falcor
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
     private:
         RenderGraph();
-        static const size_t kInvalidIndex = -1;
-        std::unordered_map<std::string, size_t> mNameToIndex;
-        std::vector<RenderPass::SharedPtr> mpPasses;
-        size_t getPassIndex(const std::string& name) const;
+        static const uint32_t kInvalidIndex = -1;
+        std::unordered_map<std::string, uint32_t> mNameToIndex;
+        uint32_t RenderGraph::getPassIndex(const std::string& name) const;
         void compile();
 
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;
 
-        struct Edge
+        struct EdgeData
         {
-            RenderPass* pSrc;
-            RenderPass* pDst;
             std::string srcField;
             std::string dstField;
         };
 
-        std::vector<Edge> mEdges;
+        using DAG = DirectedGraph<RenderPass::SharedPtr, EdgeData>;
+        DAG::SharedPtr mpGraph;
 
         struct GraphOut
         {
-            RenderPass* pPass;
+            uint32_t nodeId;
             std::string field;
         };
 

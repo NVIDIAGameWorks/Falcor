@@ -43,9 +43,12 @@ namespace Falcor
         }
     }
 
-    RenderGraph::RenderGraph() = default;
+    RenderGraph::RenderGraph()
+    {
+        mpGraph = DAG::create();
+    }
 
-    size_t RenderGraph::getPassIndex(const std::string& name) const
+    uint32_t RenderGraph::getPassIndex(const std::string& name) const
     {
         auto& it = mNameToIndex.find(name);
         return (it == mNameToIndex.end()) ? kInvalidIndex : it->second;
@@ -54,9 +57,9 @@ namespace Falcor
     void RenderGraph::setScene(const std::shared_ptr<Scene>& pScene)
     {
         mpScene = pScene;
-        for (auto& pPass : mpPasses)
+        for (auto& it : mNameToIndex)
         {
-            pPass->setScene(pScene);
+            mpGraph->getNodeData(it.second)->setScene(pScene);
         }
     }
 
@@ -70,15 +73,14 @@ namespace Falcor
         }
 
         pPass->setScene(mpScene);
-        mNameToIndex[passName] = mpPasses.size();
-        mpPasses.push_back(pPass);
+        mNameToIndex[passName] = mpGraph->addNode(pPass);
         mRecompile = true;
         return true;
     }
 
     void RenderGraph::removeRenderPass(const std::string& name)
     {
-        size_t index = getPassIndex(name);
+        uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
         {
             logWarning("Can't remove pass `" + name + "`. Pass doesn't exist");
@@ -86,40 +88,23 @@ namespace Falcor
         }
 
         // Update the indices
-        for (auto& i : mNameToIndex)
-        {
-            if (i.second > index) i.second--;
-        }
-
         mNameToIndex.erase(name);
-        // Remove all the edges associated with this pass
-        RenderPass* pPass = mpPasses[index].get();
-        for (size_t i = 0 ; i < mEdges.size() ;)
-        {
-            if (mEdges[i].pSrc == pPass || mEdges[i].pDst == pPass)
-            {
-                mEdges.erase(mEdges.begin() + i);
-            }
-            else
-            {
-                i++;
-            }
-        }
 
-        mpPasses.erase(mpPasses.begin() + index);
+        // Remove all the edges associated with this pass
+        mpGraph->removeNode(index);
         mRecompile = true;
     }
 
     const RenderPass::SharedPtr& RenderGraph::getRenderPass(const std::string& name) const
     {
-        size_t index = getPassIndex(name);
+        uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
         {
             static RenderPass::SharedPtr pNull;
             logWarning("RenderGraph::getRenderPass() - can't find a pass named `" + name + "`");
             return pNull;
         }
-        return mpPasses[index];
+        return mpGraph->getNodeData(index);
     }
     
     using str_pair = std::pair<std::string, std::string>;
@@ -150,46 +135,50 @@ namespace Falcor
     }
 
     template<bool input>
-    static RenderPass* getRenderPassAndField(const RenderGraph* pGraph, const std::string& fullname, const std::string& errorPrefix, std::string& field)
+    static RenderPass* getRenderPassAndNamePair(const RenderGraph* pGraph, const std::string& fullname, const std::string& errorPrefix, str_pair& nameAndField)
     {
-        str_pair strPair;
-        if (parseFieldName(fullname, strPair) == false) return false;
+        if (parseFieldName(fullname, nameAndField) == false) return false;
 
-        RenderPass* pPass = pGraph->getRenderPass(strPair.first).get();
+        RenderPass* pPass = pGraph->getRenderPass(nameAndField.first).get();
         if (!pPass)
         {
-            logWarning(errorPrefix + " - can't find render-pass named '" + strPair.first + "'");
+            logWarning(errorPrefix + " - can't find render-pass named '" + nameAndField.first + "'");
             return nullptr;
         }
 
-        if (checkRenderPassIoExist<input>(pPass, strPair.second) == false)
+        if (checkRenderPassIoExist<input>(pPass, nameAndField.second) == false)
         {
-            logWarning(errorPrefix + "- can't find field named `" + strPair.second + "` in render-pass `" + strPair.first + "`");
+            logWarning(errorPrefix + "- can't find field named `" + nameAndField.second + "` in render-pass `" + nameAndField.first + "`");
             return nullptr;
         }
-        field = strPair.second;
         return pPass;
     }
 
     bool RenderGraph::addEdge(const std::string& src, const std::string& dst)
     {
-        Edge newEdge;
-        newEdge.pSrc = getRenderPassAndField<false>(this, src, "Invalid src string in RenderGraph::addEdge()", newEdge.srcField);
-        newEdge.pDst = getRenderPassAndField<true>(this, dst, "Invalid dst string in RenderGraph::addEdge()", newEdge.dstField);
+        EdgeData newEdge;
+        str_pair srcPair, dstPair;
+        const auto& pSrc = getRenderPassAndNamePair<false>(this, src, "Invalid src string in RenderGraph::addEdge()", srcPair);
+        const auto& pDst = getRenderPassAndNamePair<true>(this, dst, "Invalid dst string in RenderGraph::addEdge()", dstPair);
+        newEdge.srcField = srcPair.second;
+        newEdge.dstField = dstPair.second;
 
-        if (newEdge.pSrc == nullptr || newEdge.pDst == nullptr) return false;
+        if (pSrc == nullptr || pDst == nullptr) return false;
 
         // Check that the dst field is not already initialized
-        for (const Edge& e : mEdges)
+        const DAG::Node& node = mpGraph->getNode(mNameToIndex[dstPair.first]);
+
+        for (uint32_t e = 0 ; e < node.getOutgoingEdgeCount() ; e++)
         {
-            if (newEdge.pDst == e.pDst && newEdge.dstField == e.dstField)
+            const auto& edgeData = mpGraph->getEdgeData(node.getIncomingEdge(e));
+            if (edgeData.dstField == newEdge.dstField)
             {
                 logWarning("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
                 return false;
             }
         }
- 
-        mEdges.push_back(newEdge);
+        
+        mpGraph->addEdge(mNameToIndex[srcPair.first], mNameToIndex[dstPair.first], newEdge);
         mRecompile = true;
         return true;
     }
@@ -198,8 +187,10 @@ namespace Falcor
     {
         bool valid = true;
         size_t logSize = log.size();
-        for (const auto& pPass : mpPasses)
+
+        for (const auto& passIndex : mNameToIndex)
         {
+            RenderPass* pPass = mpGraph->getNodeData(passIndex.second).get();
             if (pPass->isValid(log) == false)
             {
                 valid = false;
@@ -250,27 +241,48 @@ namespace Falcor
     {
         if(mRecompile)
         {   
-            // Allocate outputs
-            for (const auto& e : mEdges)
+            for (const auto& passIndex : mNameToIndex)
             {
-                const RenderPass::PassData& passData = e.pSrc->getRenderPassData();
-                // Find the input
-                bool found = false;
+                const DAG::Node& node = mpGraph->getNode(passIndex.second);
+                RenderPass* pSrcPass = node.getData().get();
+                const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
+
+                // Allocate everything that is required
                 for (const auto& src : passData.outputs)
                 {
-                    if(src.required || (src.name == e.srcField))
+                    if (src.required)
                     {
-                        Texture::SharedPtr pTexture = createTextureForPass(src);
-                        e.pSrc->setOutput(src.name, pTexture);
-
-                        if (src.name == e.srcField)
+                        // Only allocate it if the user didn't set it
+                        if(pSrcPass->getOutput(src.name) == nullptr)
                         {
-                            e.pDst->setInput(e.dstField, pTexture);
-                            found = true;
+                            Texture::SharedPtr pTexture = createTextureForPass(src);
+                            pSrcPass->setOutput(src.name, pTexture);
                         }
                     }
                 }
-                assert(found);
+
+                // Now go over the edges, allocate the required resources and attach them to the input pass
+                for (uint32_t e = 0; e < node.getOutgoingEdgeCount(); e++)
+                {
+                    const auto& edge = mpGraph->getEdge(node.getOutgoingEdge(e));
+                    const auto& edgeData = edge.getData();
+
+                    // Find the input
+                    for (const auto& src : passData.outputs)
+                    {
+                        if (src.name == edgeData.srcField)
+                        {
+                            Texture::SharedPtr pTexture = createTextureForPass(src);
+                            pSrcPass->setOutput(src.name, pTexture);
+
+                            // Connect it to the dst pass
+                            RenderPass* pDstPass = mpGraph->getNodeData(edge.getDestNode()).get();
+                            pDstPass->setInput(edgeData.dstField, pTexture);
+                            break;
+                        }
+                        else should_not_get_here();
+                    }
+                }
             }
         }
         mRecompile = false;
@@ -287,41 +299,44 @@ namespace Falcor
             return;
         }
 
-        for (auto& pPass : mpPasses)
+        for (const auto& passIndex : mNameToIndex)
         {
-            pPass->execute(pContext);
+            mpGraph->getNodeData(passIndex.second)->execute(pContext);
         }
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        // GRAPH_TODO 
-        std::string field;
-        RenderPass* pPass = getRenderPassAndField<true>(this, name, "RenderGraph::setInput()", field);
+        str_pair strPair;
+        RenderPass* pPass = getRenderPassAndNamePair<true>(this, name, "RenderGraph::setInput()", strPair);
         if (pPass == nullptr) return false;
-        return pPass->setInput(field, pResource);
+        return pPass->setInput(strPair.second, pResource);
     }
 
     bool RenderGraph::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        std::string field;
-        RenderPass* pPass = getRenderPassAndField<false>(this, name, "RenderGraph::setOutput()", field);
+        str_pair strPair;
+        RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
         if (pPass == nullptr) return false;
-        if (pPass->setOutput(field, pResource) == false) return false;
+        if (pPass->setOutput(strPair.second, pResource) == false) return false;
         markGraphOutput(name);
         return true;
     }
 
     void RenderGraph::markGraphOutput(const std::string& name)
     {
+        str_pair strPair;
+        const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::markGraphOutput()", strPair);
+        if (pPass == nullptr) return;
+
         GraphOut newOut;
-        newOut.pPass = getRenderPassAndField<false>(this, name, "RenderGraph::markGraphOutput()", newOut.field);
-        if (newOut.pPass == nullptr) return;
+        newOut.field = strPair.second;
+        newOut.nodeId = mNameToIndex[strPair.first];
 
         // Check that this is not already marked
         for (const auto& o : mOutputs)
         {
-            if (newOut.pPass == o.pPass && newOut.field == o.field) return;
+            if (newOut.nodeId == o.nodeId && newOut.field == o.field) return;
         }
 
         mOutputs.push_back(newOut);
@@ -330,13 +345,17 @@ namespace Falcor
 
     void RenderGraph::unmarkGraphOutput(const std::string& name)
     {
+        str_pair strPair;
+        const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::unmarkGraphOutput()", strPair);
+        if (pPass == nullptr) return;
+
         GraphOut removeMe;
-        removeMe.pPass = getRenderPassAndField<false>(this, name, "RenderGraph::unmarkGraphOutput()", removeMe.field);
-        if (removeMe.pPass == nullptr) return;
+        removeMe.field = strPair.second;
+        removeMe.nodeId = mNameToIndex[strPair.first];
 
         for (size_t i = 0 ; i < mOutputs.size() ; i++)
         {
-            if (mOutputs[i].pPass == removeMe.pPass && mOutputs[i].field == removeMe.field)
+            if (mOutputs[i].nodeId == removeMe.nodeId && mOutputs[i].field == removeMe.field)
             {
                 mOutputs.erase(mOutputs.begin() + i);
                 mRecompile = true;
@@ -348,10 +367,10 @@ namespace Falcor
     const Resource::SharedPtr RenderGraph::getOutput(const std::string& name)
     {
         static const Resource::SharedPtr pNull;
-        std::string field;
-        RenderPass* pPass = getRenderPassAndField<false>(this, name, "RenderGraph::getOutput()", field);
+        str_pair strPair;
+        RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
         
-        return pPass ? pPass->getOutput(field) : pNull;
+        return pPass ? pPass->getOutput(strPair.second) : pNull;
     }
 
     void RenderGraph::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
@@ -375,9 +394,9 @@ namespace Falcor
         mSwapChainData.height = height;
 
         // Invoke the passes' callback
-        for (auto& pPass : mpPasses)
+        for (auto& passIndex : mNameToIndex)
         {
-            pPass->onResizeSwapChain(pSample, width, height);
+            mpGraph->getNodeData(passIndex.second)->onResizeSwapChain(pSample, width, height);
         }
     }
 }

@@ -85,11 +85,11 @@ namespace Falcor
 
         /** Get an input resource
         */
-        virtual std::shared_ptr<Resource> getInput(const std::string& name);
+        virtual std::shared_ptr<Resource> getInput(const std::string& name) const;
 
         /** Get an output resource
         */
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name);
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const;
 
         /** Call this after the input/output resources are set to make sure the render-pass is ready for execution
         */
