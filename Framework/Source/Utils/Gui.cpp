@@ -32,6 +32,7 @@
 #include "Utils/UserInput.h"
 #include "API/RenderContext.h"
 #include "Externals/dear_imgui/imgui.h"
+#include "Externals/dear_imgui/imgui_internal.h"
 #include "Utils/Math/FalcorMath.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "Utils/StringUtils.h"
@@ -288,6 +289,9 @@ namespace Falcor
             modified |= addCheckBox(labelString.c_str(), pData[i], (!i) ? sameLine : true);
         }
 
+        ImVec2 newCursorPosition = ImGui::GetCursorScreenPos();
+        newCursorPosition.x += ImGui::GetContentRegionAvail().x;
+        ImGui::SetCursorScreenPos(newCursorPosition);
         addCheckBox(label, pData[numCheckboxes - 1], (numCheckboxes == 1) ? sameLine : true );
 
         return modified;
@@ -422,12 +426,37 @@ namespace Falcor
     bool Gui::funcName(const char label[], concat_strings(glm::mat, matrixSize) & var, float minVal, float maxVal, bool sameLine) \
     { \
         std::string labelString(label); \
-        labelString.append("[0]"); \
+        std::string hiddenLabelString; \
+        hiddenLabelString = "##" + labelString; \
+        hiddenLabelString.append("[0]"); \
+        \
+        ImVec2 topLeft = ImGui::GetCursorScreenPos(); \
+        ImVec2 bottomRight; \
+        \
         bool b = false; \
+        \
         for (uint32_t i = 0; i < static_cast<uint32_t>(var.length()); ++i) \
         { \
-            labelString[labelString.size() - 2] = '0' + static_cast<int32_t>(i); \
-            b |= baseFunc (labelString.c_str(), var[i], minVal, maxVal, sameLine); \
+            hiddenLabelString[hiddenLabelString.size() - 2] = '0' + static_cast<int32_t>(i);\
+            if (i != var.length() - 1) \
+            { \
+                b |= baseFunc (hiddenLabelString.c_str(), var[i], minVal, maxVal, sameLine);\
+            } \
+            else \
+            { \
+                b |= baseFunc(labelString.c_str(), var[i], minVal, maxVal, sameLine); \
+            } \
+            if(i == 1) \
+            { \
+                bottomRight = ImGui::GetCurrentWindow()->DC.CursorPosPrevLine; \
+                bottomRight.y = topLeft.y + (bottomRight.y - topLeft.y) * (var.length()); \
+                bottomRight.x -= ImGui::GetStyle().ItemInnerSpacing.x - 1; \
+                bottomRight.y -= ImGui::GetStyle().ItemInnerSpacing.y - 1; \
+                topLeft.x -= 1; topLeft.y -= 1; \
+                auto colorVec4 =ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarGrab); colorVec4.w *= 0.25f; \
+                ImU32 color = ImGui::ColorConvertFloat4ToU32(colorVec4); \
+                ImGui::GetCurrentWindow()->DrawList->AddRect(topLeft, bottomRight, color); \
+            } \
         } \
         return b;\
     }

@@ -129,73 +129,65 @@ namespace Falcor
         return returnValue;
     }
 
-    void VariablesBufferUI::renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType)
+    void VariablesBufferUI::renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, size_t arraySize)
     {
-        // Display reflection data and gather offset
-        pGui->addText("Name: ", false);
-        pGui->addText(memberName.c_str(), true);
-        pGui->addText("Offset: ", false);
-        pGui->addText(std::to_string(memberOffset).c_str(), true);
-        pGui->addText("	Size: ", true);
-        pGui->addText(std::to_string(memberSize).c_str(), true);
-        pGui->addText("	Type: ", true);
-        pGui->addText(memberTypeString.c_str(), true);
-
         // Display data from the stage memory
         mVariabelsBufferRef.mDirty |= renderGuiWidgetFromType(pGui, memberType, memberOffset, memberName);
+
+        // Display name and then reflection data as tooltip
+        std::string toolTipString = "Offset: " + std::to_string(memberOffset);
+        toolTipString.append("\nSize: " + std::to_string(memberSize));
+        if (arraySize > 1) 
+        {
+            toolTipString.append("\nArray Size: " + std::to_string(arraySize));
+        }
+        toolTipString.append("\nType: " + memberTypeString);
+
+        pGui->addTooltip(toolTipString.c_str(), true);
     }
 
     void VariablesBufferUI::renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag)
     {
-        for (auto memberIt : *pStruct)
+        for (auto pMember : *pStruct)
         {
             size_t numMembers = 1;
             size_t memberSize = 0;
             ReflectionBasicType::Type memberType = ReflectionBasicType::Type::Unknown;
-            std::string memberName = (memberIt)->getName();
-            const ReflectionBasicType* pBasicType = (memberIt)->getType()->asBasicType();
+            std::string memberName = (pMember)->getName();
+            const ReflectionBasicType* pBasicType = (pMember)->getType()->asBasicType();
             const ReflectionArrayType* pArrayType = nullptr;
             bool baseTypeIsStruct = false;
-            bool arrayGroupStatus = false;
-            size_t currentOffset = startOffset + (memberIt)->getOffset();
+            size_t currentOffset = startOffset + (pMember)->getOffset();
 
             // First test is not basic type
             if (!pBasicType)
             {
                 // recurse through struct if possible
-                const ReflectionStructType* pStructType = (memberIt)->getType()->asStructType();
+                const ReflectionStructType* pStructType = (pMember)->getType()->asStructType();
                 if (pStructType)
                 {
                     // Iterate through the internal struct
                     if (pGui->beginGroup(memberName))
                     {
+                        pGui->addSeparator();
+
                         memberName.push_back('.');
                         renderUIInternal(pGui, pStructType, memberName, currentOffset, dirtyFlag);
                         memberName.pop_back();
 
                         pGui->endGroup();
+                        pGui->addSeparator();
                     }
-                    pGui->addSeparator();
-
+                    
                     // skip to next member
                     continue;
                 }
 
                 // if array type gather info for iterating through elements
-                pArrayType = (memberIt)->getType()->asArrayType();
+                pArrayType = (pMember)->getType()->asArrayType();
 
                 if (pArrayType)
                 {
-                    pGui->addSeparator();
-
-                    // only iterate through array if it is displaying
-                    arrayGroupStatus = pGui->beginGroup(memberName + "[]");
-                    if (!arrayGroupStatus)
-                    {
-                        pGui->addSeparator();
-                        continue;
-                    }
-
                     const ReflectionBasicType* elementBasicType = pArrayType->getType()->asBasicType();
                     numMembers = pArrayType->getArraySize();
                     memberSize = pArrayType->getArrayStride();
@@ -226,15 +218,18 @@ namespace Falcor
 
             // Display member of the array
             std::string displayName = memberName;
+            int32_t& memberIndex = mGuiArrayIndices[displayName];
+            std::string indexLabelString;
 
             if (numMembers > 1)
             {
                 // display information for specific index of array
-                int32_t& memberIndex = mGuiArrayIndices[displayName];
-                pGui->addIntVar((std::string("Index (Size : ") + std::to_string(numMembers) + ") ").c_str(), memberIndex, 0, static_cast<int>(numMembers) - 1);
+                indexLabelString = (std::string("Index (Size : ") + std::to_string(numMembers) + ") ");
+                
                 currentOffset += (memberSize * memberIndex);
-                displayName.append("[").append(std::to_string(memberIndex)).append("]");
+                displayName.append("[0:").append(std::to_string(numMembers)).append("]");
             }
+
 
             if (baseTypeIsStruct)
             {
@@ -249,16 +244,24 @@ namespace Falcor
             else
             {
                 // for basic types
-                renderUIMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType);
+                renderUIMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType, numMembers);
+            }
+
+            if (numMembers > 1)
+            {
+                if (pGui->addButton(("-##" + indexLabelString + displayName).c_str(), true))
+                {
+                    memberIndex--;
+                }
+                if (pGui->addButton(("+##" + indexLabelString + displayName).c_str(), true))
+                {
+                    memberIndex++;
+                }
+
+                memberIndex = clamp(memberIndex, 0, static_cast<int32_t>(numMembers));
             }
 
             currentOffset += memberSize;
-
-
-            if (arrayGroupStatus)
-            {
-                pGui->endGroup();
-            }
         }
     }
 
@@ -268,8 +271,6 @@ namespace Falcor
 
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
-            pGui->addSeparator();
-
             // begin recursion on first struct
             renderUIInternal(pGui, pStruct, "", 0, mVariabelsBufferRef.mDirty);
 

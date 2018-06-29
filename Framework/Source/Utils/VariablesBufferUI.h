@@ -71,6 +71,6 @@ namespace Falcor
         \param[in] memberSize size of the data in the member
         \param[in] memberType reflection type enum for the basic type
         */
-        void renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType);
+        void renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, size_t arraySize = 0);
     };
 }
