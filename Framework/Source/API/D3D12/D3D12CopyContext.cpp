@@ -89,9 +89,6 @@ namespace Falcor
         std::vector<uint64_t> rowSize(subresourceCount);
         uint64_t bufferSize;
 
-        ID3D12Device* pDevice = gpDevice->getApiHandle();
-        pDevice->GetCopyableFootprints(&texDesc, firstSubresource, subresourceCount, 0, footprint.data(), rowCount.data(), rowSize.data(), &bufferSize);
-
         if (copyRegion)
         {
             footprint[0].Offset = 0;
@@ -100,8 +97,15 @@ namespace Falcor
             footprint[0].Footprint.Width = (size.x == -1) ? pTexture->getWidth(mipLevel) - offset.x : size.x;
             footprint[0].Footprint.Height = (size.y == -1) ? pTexture->getHeight(mipLevel) - offset.y : size.y;
             footprint[0].Footprint.Depth = (size.z == -1) ? pTexture->getDepth(mipLevel) - offset.z : size.z;
+            footprint[0].Footprint.RowPitch = align_to(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT, footprint[0].Footprint.Width * getFormatBytesPerBlock(pTexture->getFormat()));
             rowCount[0] = footprint[0].Footprint.Height;
+            rowSize[0] = footprint[0].Footprint.RowPitch;
             bufferSize = rowSize[0] * rowCount[0] * footprint[0].Footprint.Depth;
+        }
+        else
+        {
+            ID3D12Device* pDevice = gpDevice->getApiHandle();
+            pDevice->GetCopyableFootprints(&texDesc, firstSubresource, subresourceCount, 0, footprint.data(), rowCount.data(), rowSize.data(), &bufferSize);
         }
 
         // Allocate a buffer on the upload heap
