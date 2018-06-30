@@ -38,16 +38,6 @@ layout(binding = 0) cbuffer PerFrameCB : register(b0)
     float4x4 camVpAtLastCsmUpdate;
     float2 gRenderTargetDim;
     float gOpacityScale;
-    float hereIsATest[128];
-    bool testBool;
-    bool2 testBool2;
-    bool3 testBool3;
-    bool4 testBool4[128];
-};
-
-layout(binding = 8) cbuffer Tests : register(b0)
-{
-	float4x4 testMatrix;
 };
 
 layout(set = 1, binding = 1) SamplerState gSampler;

@@ -350,8 +350,5 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         {
             applyLightingProgramControl(ControlID::EnableHashedAlpha);
         }
-
-        mLightingPass.pVars->getConstantBuffer("PerFrameCB")->renderUI(pGui, "Constant Buffer: PerFrameCB");
-        mLightingPass.pVars->getConstantBuffer("Tests")->renderUI(pGui, "Constant Buffer: Tests");
     }
 }
