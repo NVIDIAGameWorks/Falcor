@@ -206,15 +206,6 @@ namespace Falcor
         template <typename MatrixType>
         bool addMatrixVar(const char label[], MatrixType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
 
-        // bool addMatrix2x3Var(const char label[], glm::mat2x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        // bool addMatrix2x4Var(const char label[], glm::mat2x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        // bool addMatrix3x2Var(const char label[], glm::mat3x2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        // bool addMatrix3x3Var(const char label[], glm::mat3x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        // bool addMatrix3x4Var(const char label[], glm::mat3x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        // bool addMatrix4x2Var(const char label[], glm::mat4x2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        // bool addMatrix4x3Var(const char label[], glm::mat4x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        // bool addMatrix4x4Var(const char label[], glm::mat4x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-
         /** Add a separator
         */
         void addSeparator();
