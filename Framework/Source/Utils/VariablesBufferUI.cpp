@@ -40,17 +40,25 @@ namespace Falcor
 #define to_gui_widget(widgetName, baseType) \
             returnValue = pGui-> concat_strings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(data.data() + offset)); \
             offset += sizeof(baseType);
+#define to_gui_widget_bvec(widgetName, baseType) \
+            { \
+                uint32_t* pUintData = reinterpret_cast<uint32_t*>(data.data() + offset); \
+                baseType tempBVec; \
+                for (int32_t i = 0; i < tempBVec.length(); ++i) { tempBVec[i] = pUintData[i]; } \
+                returnValue = pGui->concat_strings(add, widgetName)(name.c_str(), tempBVec); \
+                for (int32_t i = 0; i < tempBVec.length(); ++i) { pUintData[i] = tempBVec[i]; offset += sizeof(uint32_t); } \
+            }
 
         switch (type)
         {
         case ReflectionBasicType::Type::Bool4:
-            to_gui_widget(Bool4Var, glm::bvec4);
+            to_gui_widget_bvec(Bool4Var, glm::bvec4);
             break;
         case ReflectionBasicType::Type::Bool3:
-            to_gui_widget(Bool3Var, glm::bvec3);
+            to_gui_widget_bvec(Bool3Var, glm::bvec3);
             break;
         case ReflectionBasicType::Type::Bool2:
-            to_gui_widget(Bool2Var, glm::bvec2);
+            to_gui_widget_bvec(Bool2Var, glm::bvec2);
             break;
         case ReflectionBasicType::Type::Bool:
             to_gui_widget(CheckBox, bool);
@@ -124,6 +132,7 @@ namespace Falcor
             should_not_get_here();
             break;
         }
+#undef to_gui_widget_bvec
 #undef to_gui_widget
 
         return returnValue;
@@ -193,10 +202,7 @@ namespace Falcor
                     memberSize = pArrayType->getArrayStride();
                     
                     // only iterate through array if it is displaying
-                    if (pGui->beginGroup(memberName + "[" + std::to_string(numMembers) + "]"))
-                    {
-                    }
-                    else
+                    if (!pGui->beginGroup(memberName + "[" + std::to_string(numMembers) + "]"))
                     {
                         continue;
                     }

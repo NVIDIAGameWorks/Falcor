@@ -288,7 +288,7 @@ namespace Falcor
             modified |= addCheckBox(labelString.c_str(), pData[i], (!i) ? sameLine : true);
         }
 
-        addCheckBox(label, pData[numCheckboxes - 1], (numCheckboxes == 1) ? sameLine : true );
+        addCheckBox(label, pData[numCheckboxes - 1], true );
 
         return modified;
     }
