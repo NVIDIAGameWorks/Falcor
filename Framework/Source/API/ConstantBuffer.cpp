@@ -35,7 +35,6 @@
 #include "API/Device.h"
 
 #include "Renderer.h"
-#include "Utils/VariablesBufferUI.h"
 
 namespace Falcor
 {
@@ -84,11 +83,5 @@ namespace Falcor
             mpCbv = ConstantBufferView::create(Resource::shared_from_this());
         }
         return mpCbv;
-    }
-
-    void ConstantBuffer::renderUI(Gui* pGui, const char* uiGroup)
-    {
-        VariablesBufferUI variablesBufferUI(*this);
-        variablesBufferUI.renderUI(pGui, uiGroup);
     }
 }

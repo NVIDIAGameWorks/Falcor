@@ -38,23 +38,14 @@ namespace Falcor
     class VariablesBufferUI
     {
     public:
-        VariablesBufferUI(VariablesBuffer& variablesBufferRef) : mVariabelsBufferRef(variablesBufferRef) {}
+        VariablesBufferUI(VariablesBuffer& variablesBufferRef) : mVariablesBufferRef(variablesBufferRef) {}
 
         void renderUI(Gui* pGui, const char* uiGroup);
 
     private:
 
-        VariablesBuffer& mVariabelsBufferRef;
+        VariablesBuffer& mVariablesBufferRef;
         static std::unordered_map<std::string, int32_t> mGuiArrayIndices;
-
-        /** Call the corresponding gui function using the reflected data
-        \param[in] pGui Pointer to the gui structure for rendering
-        \param[in] type Reflection type to look up corresponding widget
-        \param[in] offset offset into the data array of the constant buffer
-        \param[in] name String name for widget to display
-        \return true if data was changed from the widget. internal used to call upload to gpu
-        */
-        bool renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name);
 
         /** Recursive function for traversing reflection data and display ui
         \param[in] pGui Pointer to the gui structure for rendering

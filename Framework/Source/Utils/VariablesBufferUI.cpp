@@ -33,12 +33,12 @@ namespace Falcor
 {
     std::unordered_map<std::string, int32_t> VariablesBufferUI::mGuiArrayIndices;
 
-    bool VariablesBufferUI::renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name)//, std::vector<int32_t>& data)
+    bool renderGuiWidgetFromType(Gui* pGui, ReflectionBasicType::Type type, size_t offset, const std::string& name, std::vector<uint8_t>& data)
     {
         bool returnValue = false;
 
 #define to_gui_widget(widgetName, baseType) \
-            returnValue = pGui-> concat_strings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(mVariabelsBufferRef.mData.data() + offset)); \
+            returnValue = pGui-> concat_strings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(data.data() + offset)); \
             offset += sizeof(baseType);
 
         switch (type)
@@ -132,7 +132,7 @@ namespace Falcor
     void VariablesBufferUI::renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, size_t arraySize)
     {
         // Display data from the stage memory
-        mVariabelsBufferRef.mDirty |= renderGuiWidgetFromType(pGui, memberType, memberOffset, memberName);
+        mVariablesBufferRef.mDirty |= renderGuiWidgetFromType(pGui, memberType, memberOffset, memberName, mVariablesBufferRef.mData);
 
         // Display name and then reflection data as tooltip
         std::string toolTipString = "Offset: " + std::to_string(memberOffset);
@@ -191,6 +191,15 @@ namespace Falcor
                     const ReflectionBasicType* elementBasicType = pArrayType->getType()->asBasicType();
                     numMembers = pArrayType->getArraySize();
                     memberSize = pArrayType->getArrayStride();
+                    
+                    // only iterate through array if it is displaying
+                    if (pGui->beginGroup(memberName + "[" + std::to_string(numMembers) + "]"))
+                    {
+                    }
+                    else
+                    {
+                        continue;
+                    }
 
                     if (elementBasicType)
                     {
@@ -225,9 +234,10 @@ namespace Falcor
             {
                 // display information for specific index of array
                 indexLabelString = (std::string("Index (Size : ") + std::to_string(numMembers) + ") ");
-                
+                pGui->addIntVar((std::string("##") + indexLabelString).c_str(), memberIndex, 0, static_cast<int32_t>(numMembers - 1));
+
                 currentOffset += (memberSize * memberIndex);
-                displayName.append("[0:").append(std::to_string(numMembers)).append("]");
+                displayName.append("[" + std::to_string(memberIndex) + ":" + std::to_string(numMembers) + "]");
             }
 
 
@@ -249,16 +259,7 @@ namespace Falcor
 
             if (numMembers > 1)
             {
-                if (pGui->addButton(("-##" + indexLabelString + displayName).c_str(), true))
-                {
-                    memberIndex--;
-                }
-                if (pGui->addButton(("+##" + indexLabelString + displayName).c_str(), true))
-                {
-                    memberIndex++;
-                }
-
-                memberIndex = clamp(memberIndex, 0, static_cast<int32_t>(numMembers));
+                pGui->endGroup();
             }
 
             currentOffset += memberSize;
@@ -267,15 +268,15 @@ namespace Falcor
 
     void VariablesBufferUI::renderUI(Gui* pGui, const char* uiGroup)
     {
-        const ReflectionStructType* pStruct = mVariabelsBufferRef.mpReflector->asResourceType()->getStructType()->asStructType();
+        const ReflectionStructType* pStruct = mVariablesBufferRef.mpReflector->asResourceType()->getStructType()->asStructType();
 
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
             // begin recursion on first struct
-            renderUIInternal(pGui, pStruct, "", 0, mVariabelsBufferRef.mDirty);
+            renderUIInternal(pGui, pStruct, "", 0, mVariablesBufferRef.mDirty);
 
             // dirty flag for uploading will be set by GUI
-            mVariabelsBufferRef.uploadToGPU();
+            mVariablesBufferRef.uploadToGPU();
 
             pGui->endGroup();
         }

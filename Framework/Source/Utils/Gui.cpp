@@ -280,8 +280,7 @@ namespace Falcor
     bool Gui::addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine)
     {
         bool modified = false;
-        std::string labelString(std::string("##") + label);
-        labelString.push_back('0');
+        std::string labelString(std::string("##") + label + '0');
 
         for (uint32_t i = 0; i < numCheckboxes - 1; ++i)
         {
@@ -289,9 +288,6 @@ namespace Falcor
             modified |= addCheckBox(labelString.c_str(), pData[i], (!i) ? sameLine : true);
         }
 
-        ImVec2 newCursorPosition = ImGui::GetCursorScreenPos();
-        newCursorPosition.x += ImGui::GetContentRegionAvail().x;
-        ImGui::SetCursorScreenPos(newCursorPosition);
         addCheckBox(label, pData[numCheckboxes - 1], (numCheckboxes == 1) ? sameLine : true );
 
         return modified;
@@ -440,11 +436,11 @@ namespace Falcor
             hiddenLabelString[hiddenLabelString.size() - 2] = '0' + static_cast<int32_t>(i);\
             if (i != var.length() - 1) \
             { \
-                b |= baseFunc (hiddenLabelString.c_str(), var[i], minVal, maxVal, sameLine);\
+                b |= baseFunc (hiddenLabelString.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);\
             } \
             else \
             { \
-                b |= baseFunc(labelString.c_str(), var[i], minVal, maxVal, sameLine); \
+                b |= baseFunc(labelString.c_str(), var[i], minVal, maxVal, 0.001f, sameLine); \
             } \
             if(i == 1) \
             { \

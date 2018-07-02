@@ -35,8 +35,6 @@
 namespace Falcor
 {
     class Sampler;
-    // Forward declares for gui draw func
-    class Gui;
 
     /** Abstracts a Constant/Uniform buffer.
         When accessing a variable by name, you can only use a name which points to a basic Type, or an array of basic Type (so if you want the start of a structure, ask for the first field in the struct).
@@ -134,12 +132,6 @@ namespace Falcor
         {
             return VariablesBuffer::setVariableArray(name, 0, pValue, count);
         }
-
-        /** Renders ui for reflected data within the buffer.
-            \param[in] pGui Pointer to the GUI structure for rendering
-            \param[in] uiGroup optional label for GUI
-        */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
         virtual bool uploadToGPU(size_t offset = 0, size_t size = -1) override;
 
