@@ -192,6 +192,9 @@ namespace Falcor
         bool addInt3Var(const char label[], glm::ivec3& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
         bool addInt4Var(const char label[], glm::ivec4& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
 
+        template<typename VectorType>
+        bool addFloatVecVar(const char label[], VectorType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false);
+
         /** Adds an matrix UI widget.
             \param[in] label The name of the widget.
             \param[in] var A reference to the matrix struct that will be updated directly when the widget state changes.
@@ -200,19 +203,8 @@ namespace Falcor
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
             \return true if the value changed, otherwise false
         */
-#define add_matrix_function(funcName, matrixSize) \
-        bool funcName (const char label[], concat_strings(glm::mat, matrixSize) & var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false)
-
-        add_matrix_function(addMatrix2x2Var, 2x2);
-        add_matrix_function(addMatrix2x3Var, 2x3);
-        add_matrix_function(addMatrix2x4Var, 2x4);
-        add_matrix_function(addMatrix3x2Var, 3x2);
-        add_matrix_function(addMatrix3x3Var, 3x3);
-        add_matrix_function(addMatrix3x4Var, 3x4);
-        add_matrix_function(addMatrix4x2Var, 4x2);
-        add_matrix_function(addMatrix4x3Var, 4x3);
-        add_matrix_function(addMatrix4x4Var, 4x4);
-#undef add_matrix_function
+        template <typename MatrixType>
+        bool addMatrixVar(const char label[], MatrixType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
 
         /** Add a separator
         */

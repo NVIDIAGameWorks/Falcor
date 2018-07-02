@@ -535,6 +535,9 @@
     <ClCompile Include="Effects\FXAA\FXAA.cpp">
       <Filter>Effects\FXAA</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\VariablesBufferUI.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1692,6 +1695,9 @@
     </ClInclude>
     <ClInclude Include="Effects\FXAA\FXAA.h">
       <Filter>Effects\FXAA</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\VariablesBufferUI.h">
+      <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
