@@ -192,6 +192,9 @@ namespace Falcor
         bool addInt3Var(const char label[], glm::ivec3& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
         bool addInt4Var(const char label[], glm::ivec4& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
 
+        template<typename VectorType>
+        bool addFloatVecVar(const char label[], VectorType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false);
+
         /** Adds an matrix UI widget.
             \param[in] label The name of the widget.
             \param[in] var A reference to the matrix struct that will be updated directly when the widget state changes.
@@ -200,15 +203,17 @@ namespace Falcor
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
             \return true if the value changed, otherwise false
         */
-        bool addMatrix2x2Var(const char label[], glm::mat2x2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix2x3Var(const char label[], glm::mat2x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix2x4Var(const char label[], glm::mat2x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix3x2Var(const char label[], glm::mat3x2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix3x3Var(const char label[], glm::mat3x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix3x4Var(const char label[], glm::mat3x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix4x2Var(const char label[], glm::mat4x2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix4x3Var(const char label[], glm::mat4x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
-        bool addMatrix4x4Var(const char label[], glm::mat4x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        template <typename MatrixType>
+        bool addMatrixVar(const char label[], MatrixType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+
+        // bool addMatrix2x3Var(const char label[], glm::mat2x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        // bool addMatrix2x4Var(const char label[], glm::mat2x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        // bool addMatrix3x2Var(const char label[], glm::mat3x2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        // bool addMatrix3x3Var(const char label[], glm::mat3x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        // bool addMatrix3x4Var(const char label[], glm::mat3x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        // bool addMatrix4x2Var(const char label[], glm::mat4x2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        // bool addMatrix4x3Var(const char label[], glm::mat4x3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
+        // bool addMatrix4x4Var(const char label[], glm::mat4x4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
 
         /** Add a separator
         */

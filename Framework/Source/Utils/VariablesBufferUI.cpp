@@ -40,6 +40,9 @@ namespace Falcor
 #define to_gui_widget(widgetName, baseType) \
             returnValue = pGui-> concat_strings(add, widgetName)(name.c_str(), *reinterpret_cast<baseType*>(data.data() + offset)); \
             offset += sizeof(baseType);
+#define to_gui_widget_matrix(widgetName, baseType) \
+            returnValue = pGui-> concat_strings(add, widgetName)<baseType>(name.c_str(), *reinterpret_cast<baseType*>(data.data() + offset)); \
+            offset += sizeof(baseType);
 #define to_gui_widget_bvec(widgetName, baseType) \
             { \
                 uint32_t* pUintData = reinterpret_cast<uint32_t*>(data.data() + offset); \
@@ -100,31 +103,31 @@ namespace Falcor
             to_gui_widget(Float4Var, glm::vec4);
             break;
         case ReflectionBasicType::Type::Float2x2:
-            to_gui_widget(Matrix2x2Var, glm::mat2x2);
+            to_gui_widget_matrix(MatrixVar, glm::mat2x2);
             break;
         case ReflectionBasicType::Type::Float2x3:
-            to_gui_widget(Matrix2x3Var, glm::mat2x3);
+            to_gui_widget_matrix(MatrixVar, glm::mat2x3);
             break;
         case ReflectionBasicType::Type::Float2x4:
-            to_gui_widget(Matrix2x4Var, glm::mat2x4);
+            to_gui_widget_matrix(MatrixVar, glm::mat2x4);
             break;
         case ReflectionBasicType::Type::Float3x2:
-            to_gui_widget(Matrix3x2Var, glm::mat3x2);
+            to_gui_widget_matrix(MatrixVar, glm::mat3x2);
             break;
         case ReflectionBasicType::Type::Float3x3:
-            to_gui_widget(Matrix3x3Var, glm::mat3x3);
+            to_gui_widget_matrix(MatrixVar, glm::mat3x3);
             break;
         case ReflectionBasicType::Type::Float3x4:
-            to_gui_widget(Matrix3x4Var, glm::mat3x4);
+            to_gui_widget_matrix(MatrixVar, glm::mat3x4);
             break;
         case ReflectionBasicType::Type::Float4x2:
-            to_gui_widget(Matrix4x2Var, glm::mat4x2);
+            to_gui_widget_matrix(MatrixVar, glm::mat4x2);
             break;
         case ReflectionBasicType::Type::Float4x3:
-            to_gui_widget(Matrix4x3Var, glm::mat4x3);
+            to_gui_widget_matrix(MatrixVar, glm::mat4x3);
             break;
         case ReflectionBasicType::Type::Float4x4:
-            to_gui_widget(Matrix4x4Var, glm::mat4x4);
+            to_gui_widget_matrix(MatrixVar, glm::mat4x4);
             break;
         case ReflectionBasicType::Type::Unknown:
             break;

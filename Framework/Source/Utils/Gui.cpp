@@ -417,68 +417,89 @@ namespace Falcor
         return b;
     }
 
-#define add_matrix_function(funcName, matrixSize, baseFunc) \
-    bool Gui::funcName(const char label[], concat_strings(glm::mat, matrixSize) & var, float minVal, float maxVal, bool sameLine) \
-    { \
-        std::string labelString(label); \
-        std::string hiddenLabelString; \
-        hiddenLabelString = "##" + labelString; \
-        hiddenLabelString.append("[0]"); \
-        \
-        ImVec2 topLeft = ImGui::GetCursorScreenPos(); \
-        ImVec2 bottomRight; \
-        \
-        bool b = false; \
-        \
-        for (uint32_t i = 0; i < static_cast<uint32_t>(var.length()); ++i) \
-        { \
-            hiddenLabelString[hiddenLabelString.size() - 2] = '0' + static_cast<int32_t>(i);\
-            if (i != var.length() - 1) \
-            { \
-                b |= baseFunc(hiddenLabelString.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);\
-            } \
-            else \
-            { \
-                b |= baseFunc(labelString.c_str(), var[i], minVal, maxVal, 0.001f, sameLine); \
-            } \
-            if(i == 0) \
-            { \
-                ImGui::SameLine(); \
-                bottomRight = ImGui::GetCursorScreenPos(); \
-                float oldSpacing = ImGui::GetStyle().ItemSpacing.y; \
-                ImGui::GetStyle().ItemSpacing.y = 0.0f; \
-                ImGui::Dummy({}); \
-                ImGui::Dummy({}); \
-                ImGui::GetStyle().ItemSpacing.y = oldSpacing; \
-                ImVec2 correctedCursorPos = ImGui::GetCursorScreenPos(); \
-                correctedCursorPos.y += oldSpacing; \
-                ImGui::SetCursorScreenPos(correctedCursorPos); \
-                bottomRight.y = ImGui::GetCursorScreenPos().y; \
-            } \
-            if(i == 1) \
-            { \
-                bottomRight.y = topLeft.y + (bottomRight.y - topLeft.y) * (var.length()); \
-                bottomRight.x -= ImGui::GetStyle().ItemInnerSpacing.x * 3 - 1; \
-                bottomRight.y -= ImGui::GetStyle().ItemInnerSpacing.y  - 1; \
-                topLeft.x -= 1; topLeft.y -= 1; \
-                auto colorVec4 =ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarGrab); colorVec4.w *= 0.25f; \
-                ImU32 color = ImGui::ColorConvertFloat4ToU32(colorVec4); \
-                ImGui::GetOverlayDrawList()->AddRect(topLeft, bottomRight, color); \
-            } \
-        } \
-        return b;\
+    template <>
+    bool Gui::addFloatVecVar<glm::vec2>(const char label[], glm::vec2& var, float minVal, float maxVal, float step, bool sameLine)
+    {
+        return addFloat2Var(label, var, minVal, maxVal, step, sameLine);
     }
 
-    add_matrix_function(addMatrix2x2Var, 2x2, addFloat2Var)
-    add_matrix_function(addMatrix2x3Var, 2x3, addFloat3Var)
-    add_matrix_function(addMatrix2x4Var, 2x4, addFloat4Var)
-    add_matrix_function(addMatrix3x2Var, 3x2, addFloat2Var)
-    add_matrix_function(addMatrix3x3Var, 3x3, addFloat3Var)
-    add_matrix_function(addMatrix3x4Var, 3x4, addFloat4Var)
-    add_matrix_function(addMatrix4x2Var, 4x2, addFloat2Var)
-    add_matrix_function(addMatrix4x3Var, 4x3, addFloat3Var)
-    add_matrix_function(addMatrix4x4Var, 4x4, addFloat4Var)
-#undef add_matrix_function
+    template <>
+    bool Gui::addFloatVecVar<glm::vec3>(const char label[], glm::vec3& var, float minVal, float maxVal, float step, bool sameLine)
+    {
+        return addFloat3Var(label, var, minVal, maxVal, step, sameLine);
+    }
+
+    template <>
+    bool Gui::addFloatVecVar<glm::vec4>(const char label[], glm::vec4& var, float minVal, float maxVal, float step, bool sameLine)
+    {
+        return addFloat4Var(label, var, minVal, maxVal, step, sameLine);
+    }
+
+#define add_matrix_var(TypeName) template bool Gui::addMatrixVar(const char label[], TypeName& var, float minVal , float maxVal, bool sameLine)
+
+    add_matrix_var(glm::mat2x2);
+    add_matrix_var(glm::mat2x3);
+    add_matrix_var(glm::mat2x4);
+    add_matrix_var(glm::mat3x2);
+    add_matrix_var(glm::mat3x3);
+    add_matrix_var(glm::mat3x4);
+    add_matrix_var(glm::mat4x2);
+    add_matrix_var(glm::mat4x3);
+    add_matrix_var(glm::mat4x4);
+
+#undef add_matrix_var
+
+
+    template<typename MatrixType>
+    bool Gui::addMatrixVar(const char label[], MatrixType& var, float minVal, float maxVal, bool sameLine)
+    {
+        std::string labelString(label);
+        std::string hiddenLabelString("##");
+        hiddenLabelString += labelString + "[0]";
+        
+        ImVec2 topLeft = ImGui::GetCursorScreenPos();
+        ImVec2 bottomRight;
+        
+        bool b = false;
+        
+        for (uint32_t i = 0; i < static_cast<uint32_t>(var.length()); ++i)
+        {
+            std::string& stringToDisplay = hiddenLabelString;
+            hiddenLabelString[hiddenLabelString.size() - 2] = '0' + static_cast<int32_t>(i);
+            if (i == var.length() - 1)
+            {
+               stringToDisplay = labelString;
+            }
+
+            b |= addFloatVecVar<MatrixType::col_type>(stringToDisplay.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);
+            
+            if (i == 0)
+            {
+                ImGui::SameLine();
+                bottomRight = ImGui::GetCursorScreenPos();
+                float oldSpacing = ImGui::GetStyle().ItemSpacing.y;
+                ImGui::GetStyle().ItemSpacing.y = 0.0f;
+                ImGui::Dummy({});
+                ImGui::Dummy({});
+                ImGui::GetStyle().ItemSpacing.y = oldSpacing;
+                ImVec2 correctedCursorPos = ImGui::GetCursorScreenPos();
+                correctedCursorPos.y += oldSpacing;
+                ImGui::SetCursorScreenPos(correctedCursorPos);
+                bottomRight.y = ImGui::GetCursorScreenPos().y;
+            }
+            else if(i == 1)
+            {
+                bottomRight.y = topLeft.y + (bottomRight.y - topLeft.y) * (var.length());
+                bottomRight.x -= ImGui::GetStyle().ItemInnerSpacing.x * 3 - 1;
+                bottomRight.y -= ImGui::GetStyle().ItemInnerSpacing.y  - 1;
+                topLeft.x -= 1; topLeft.y -= 1;
+                auto colorVec4 =ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarGrab); colorVec4.w *= 0.25f;
+                ImU32 color = ImGui::ColorConvertFloat4ToU32(colorVec4);
+                ImGui::GetOverlayDrawList()->AddRect(topLeft, bottomRight, color);
+            }
+        }
+        return b;
+    }
 
     bool Gui::addRgbColor(const char label[], glm::vec3& var, bool sameLine)
     {
