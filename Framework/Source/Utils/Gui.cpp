@@ -32,7 +32,6 @@
 #include "Utils/UserInput.h"
 #include "API/RenderContext.h"
 #include "Externals/dear_imgui/imgui.h"
-#include "Externals/dear_imgui/imgui_internal.h"
 #include "Utils/Math/FalcorMath.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "Utils/StringUtils.h"
@@ -436,22 +435,35 @@ namespace Falcor
             hiddenLabelString[hiddenLabelString.size() - 2] = '0' + static_cast<int32_t>(i);\
             if (i != var.length() - 1) \
             { \
-                b |= baseFunc (hiddenLabelString.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);\
+                b |= baseFunc(hiddenLabelString.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);\
             } \
             else \
             { \
                 b |= baseFunc(labelString.c_str(), var[i], minVal, maxVal, 0.001f, sameLine); \
             } \
+            if(i == 0) \
+            { \
+                ImGui::SameLine(); \
+                bottomRight = ImGui::GetCursorScreenPos(); \
+                float oldSpacing = ImGui::GetStyle().ItemSpacing.y; \
+                ImGui::GetStyle().ItemSpacing.y = 0.0f; \
+                ImGui::Dummy({}); \
+                ImGui::Dummy({}); \
+                ImGui::GetStyle().ItemSpacing.y = oldSpacing; \
+                ImVec2 correctedCursorPos = ImGui::GetCursorScreenPos(); \
+                correctedCursorPos.y += oldSpacing; \
+                ImGui::SetCursorScreenPos(correctedCursorPos); \
+                bottomRight.y = ImGui::GetCursorScreenPos().y; \
+            } \
             if(i == 1) \
             { \
-                bottomRight = ImGui::GetCurrentWindow()->DC.CursorPosPrevLine; \
                 bottomRight.y = topLeft.y + (bottomRight.y - topLeft.y) * (var.length()); \
-                bottomRight.x -= ImGui::GetStyle().ItemInnerSpacing.x - 1; \
-                bottomRight.y -= ImGui::GetStyle().ItemInnerSpacing.y - 1; \
+                bottomRight.x -= ImGui::GetStyle().ItemInnerSpacing.x * 3 - 1; \
+                bottomRight.y -= ImGui::GetStyle().ItemInnerSpacing.y  - 1; \
                 topLeft.x -= 1; topLeft.y -= 1; \
                 auto colorVec4 =ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarGrab); colorVec4.w *= 0.25f; \
                 ImU32 color = ImGui::ColorConvertFloat4ToU32(colorVec4); \
-                ImGui::GetCurrentWindow()->DrawList->AddRect(topLeft, bottomRight, color); \
+                ImGui::GetOverlayDrawList()->AddRect(topLeft, bottomRight, color); \
             } \
         } \
         return b;\

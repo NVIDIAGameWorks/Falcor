@@ -1,6 +1,7 @@
 v3.1
 ------
 - Added support for exporting BMP and TGA images.
+- Added GUI for displaying and editing variable buffers. Call renderUI on buffer to display in gui.
 
 Bug Fixes:
 - Fixed crash when setting ForwardRenderer sample to MSAA with sample count 1

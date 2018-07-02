@@ -240,7 +240,7 @@ namespace Falcor
             {
                 // display information for specific index of array
                 indexLabelString = (std::string("Index (Size : ") + std::to_string(numMembers) + ") ");
-                pGui->addIntVar((std::string("##") + indexLabelString).c_str(), memberIndex, 0, static_cast<int32_t>(numMembers - 1));
+                pGui->addIntVar(("Array Index" + std::string("##") + indexLabelString).c_str(), memberIndex, 0, static_cast<int32_t>(numMembers - 1));
 
                 currentOffset += (memberSize * memberIndex);
                 displayName.append("[" + std::to_string(memberIndex) + ":" + std::to_string(numMembers) + "]");
