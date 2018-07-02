@@ -25,40 +25,51 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "RenderPass.h"
-
-#include "Utils\Gui.h"
+#pragma once
+#include "Graphics/Program/ProgramReflection.h"
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
-    RenderPass::RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB) : mName(name), mpRenderDataChangedCallback(pDataChangedCB)
+    struct Property
     {
-        setScene(pScene);
-    }
+        virtual void renderUI(Gui* pGui) = 0;
+        virtual void onUpdate() {
+            if (mCallback)
+            {
+                mCallback(this);
+            }
+        }
 
-    RenderPass::~RenderPass() = default;
+        Property(const std::string& labelString, const std::function<void(Property*)>& func = std::function<void(Property*)>());
+        
+        void* mpMetaData; // metadata for function call back
 
-    void RenderPass::setScene(const std::shared_ptr<Scene>& pScene)
+    protected:
+        std::string mLabel;
+        std::function<void(Property*)> mCallback;
+        uint32_t mUniqueID;
+    };
+
+    struct ButtonProperty : public Property
     {
-        mpScene = pScene;
-        sceneChangedCB();
-    }
+        virtual void renderUI(Gui* pGui) override;
 
-    std::shared_ptr<Resource> RenderPass::getOutput(const std::string& name)
-    {
-        logWarning(mName + " doesn't have an output resource called `" + name + "`");
-        return nullptr;
-    }
+        ButtonProperty();
+        ButtonProperty(const std::string& labelString, const std::function<void(Property*)>& func = std::function<void(Property*)>(), bool startingVal = false);
 
-    std::shared_ptr<Resource> RenderPass::getInput(const std::string& name)
-    {
-        logWarning(mName + " doesn't have an input resource called `" + name + "`");
-        return nullptr;
-    }
+        bool mStatus;
+    };
 
-    void RenderPass::renderUI(Gui* pGui, const std::string& name)
+    struct StringProperty : public Property
     {
-        //pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
-    }
+        virtual void renderUI(Gui* pGui) override;
+
+        StringProperty();
+
+        StringProperty(const std::string& labelString, const std::function<void(Property*)>& func, const std::vector<std::string>& startingVal, const std::string& confirmationString = "Update");
+
+        std::vector<std::string> mData;
+        ButtonProperty mConfirmation;
+    };
 }

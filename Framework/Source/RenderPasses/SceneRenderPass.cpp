@@ -65,7 +65,7 @@ namespace Falcor
     }
 
     SceneRenderPass::SceneRenderPass() : RenderPass("SceneRenderPass", nullptr), 
-        mShaderSource("", [this]() { recreateShaders(); }, {"SceneRenderPass.slang", "", "ps"})
+        mShaderSource("", [this](Property*) { recreateShaders(); }, {"SceneRenderPass.slang", "", "ps"})
     {
         mpState = GraphicsState::create();
         recreateShaders();
@@ -181,7 +181,6 @@ namespace Falcor
 
     void SceneRenderPass::renderUI(Gui* pGui, const std::string& name)
     {
-        pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
         mShaderSource.renderUI(pGui);
     }
 

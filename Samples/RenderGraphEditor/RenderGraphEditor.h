@@ -58,6 +58,8 @@ private:
     void deserializeRenderGraph(const std::string& fileName);
     void renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui);
 
+    void updateAndCompileGraph();
+
     // simple lookup to create render pass type from string
     static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderTypes;
 

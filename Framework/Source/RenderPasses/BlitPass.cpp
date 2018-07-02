@@ -152,6 +152,5 @@ namespace Falcor
 
     void BlitPass::renderUI(Gui* pGui, const std::string& name)
     {
-        pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
     }
 }

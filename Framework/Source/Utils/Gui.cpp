@@ -229,6 +229,16 @@ namespace Falcor
         mpVao = Vao::create(Vao::Topology::TriangleList, mpLayout, pVB, pIB, ResourceFormat::R16Uint);
     }
     
+    void Gui::pushItemID(uint32_t id)
+    {
+        ImGui::PushID(id);
+    }
+
+    void Gui::popItemID()
+    {
+        ImGui::PopID();
+    }
+
     void Gui::onWindowResize(uint32_t width, uint32_t height)
     {
         for (auto context : sContexts)

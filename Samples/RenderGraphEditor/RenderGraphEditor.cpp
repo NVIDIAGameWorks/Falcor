@@ -64,6 +64,8 @@ RenderGraphEditor::RenderGraphEditor()
 
 #undef register_render_pass
 
+#define register_resource_type() 
+
     mNextGraphString.resize(255, 0);
     mNodeString.resize(255, 0);
 }
@@ -149,6 +151,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (pGui->addButton("Preview Graph"))
     {
+        // recompile the graph before a preview
+        updateAndCompileGraph();
         mPreviewing = true;
     }
 
@@ -222,6 +226,9 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
         createAndAddRenderPass(renderPassType, renderPassName);
     }
 
+    // Specialised json  deserialization that can't be done from the front facing interface. mainly used for editor data
+    mpGraphs[mCurrentGraphIndex]->deserializeJson(document);
+
     // add all edges
     auto edgesArray = (document.FindMember("Edges")->value).GetArray();
     assert (!edgesArray.Empty());
@@ -233,6 +240,15 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
     }
     
     instream.close();
+}
+
+void RenderGraphEditor::updateAndCompileGraph()
+{
+    // force a resize event to configure the newly loaded render graph
+    Fbo::SharedPtr pBackBufferFBO = gpDevice->getSwapChainFbo();
+    auto width = pBackBufferFBO->getWidth();
+    auto height = pBackBufferFBO->getHeight();
+    onResizeSwapChain(mpLastSample, width, height);
 }
 
 void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
@@ -258,12 +274,7 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     {
         mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
 
-        // force a resize event to configure the newly loaded render graph
-        Fbo::SharedPtr pBackBufferFBO = gpDevice->getSwapChainFbo();
-        auto width = pBackBufferFBO->getWidth();
-        auto height = pBackBufferFBO->getHeight();
-        onResizeSwapChain(mpLastSample, width, height);
-
+        updateAndCompileGraph();
     }
     else
     {
@@ -297,8 +308,8 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     // mpEditorGraph->addRenderPass(sBaseRenderTypes["GraphEditorGuiPass"](), "BlitPass");
 
     mpEditorGraph->addEdge("NodeGraphPass.color", "BlitPass.src");
-
-    createRenderGraph("DefaultRenderGraph", "DefaultRenderGraph.json");
+    
+    createRenderGraph("DefaultRenderGraph", "" /*"DefaultRenderGraph.json"*/);
 }
 
 void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui)
@@ -317,7 +328,7 @@ void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui
 
     // mpGraphs[mCurrentGraphIndex]->renderUI(pGui);
 
-    pGui->renderBeforeEndOfFrame(&*(pSample->getRenderContext()), pSample->getLastFrameTime());
+    pGui->renderBeforeEndOfFrame(pSample->getRenderContext().get(), pSample->getLastFrameTime());
 
     pGui->popContext();
 }
@@ -348,8 +359,6 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
             pSample->getRenderContext()->getGraphicsState()->setFbo(nodeEditorFBO); // TODO put this in the nodegraphguipass node please
             mpEditorGraph->execute(&*pRenderContext);
             renderGraphEditorGUI(pSample, pSample->getGui());
-
-            
         }
 
         firstFrame = false;

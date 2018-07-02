@@ -111,6 +111,10 @@ namespace Falcor
 
         void popContext();
 
+        void pushItemID(uint32_t id);
+
+        void popItemID();
+
         glm::ivec2 getCurrentWindowSize();
 
         glm::ivec2 getCurrentWindowPosition();

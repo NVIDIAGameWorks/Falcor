@@ -27,11 +27,15 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPass.h"
+#include "Utils/GuiProperty.h"
+
+#include <array>
 
 // need for document passed in. may move entire file serialization to serialize json
 #include "Externals/RapidJson/include/rapidjson/rapidjson.h"
 #include "Externals/RapidJson/include/rapidjson/writer.h"
 #include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
+#include "Externals/RapidJson/include/rapidjson/document.h"
 
 namespace Falcor
 {
@@ -134,6 +138,10 @@ namespace Falcor
         */
         void serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* document) const;
 
+        /** Deserialize function for deserializing graph and building data for gui viewing
+         */
+        void deserializeJson(const rapidjson::Document& reader);
+
     private:
         RenderGraph();
         static const size_t kInvalidIndex = -1;
@@ -174,11 +182,17 @@ namespace Falcor
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
-        std::unordered_map<std::string, RenderPass::PassData::Field> mOverridePassDatas;
-
+        
         std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
 
+        std::unordered_map<std::string, RenderPass::PassData::Field> mOverridePassDatas; // should it be keyed by name?
+
+        // Display data for node editor
+        uint32_t mDisplayPinIndex = 0;
         std::unordered_map<RenderPass*, std::unordered_map<std::string, std::pair<uint32_t, bool> >> mDisplayMap;
+        std::unordered_map<RenderPass*, StringProperty[2] > mNodeProperties; // ideally more generic as nodes gain more data
+
+        void addFieldDisplayData(RenderPass* pRenderPass, const std::string& displayName, bool isInput);
 
         struct  
         {

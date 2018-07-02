@@ -123,46 +123,6 @@ namespace Falcor
         */
         const std::string& getTypeName() const { return mName;  };
 
-        struct Property
-        {
-            virtual void renderUI(Gui* pGui) = 0;
-            virtual void onUpdate() {
-                if (mCallback)
-                {
-                    mCallback();
-                }
-            }
-
-            Property(const std::string& labelString, const std::function<void(void)>& func = std::function<void(void)>([]() {})) : mLabel(labelString), mCallback(func) {}
-
-         protected:
-            std::string mLabel;
-            std::function<void(void)> mCallback;
-        };
-
-        struct ButtonProperty : public Property
-        {
-            virtual void renderUI(Gui* pGui) override;
-
-            ButtonProperty(const std::string& labelString, const std::function<void(void)>& func = std::function<void(void)>(), bool startingVal = false) 
-
-                : Property(labelString, func), mStatus(startingVal) {}
-
-            bool mStatus;
-        };
-
-        struct StringProperty : public Property
-        {
-            virtual void renderUI(Gui* pGui) override;
-
-            StringProperty(const std::string& labelString, const std::function<void(void)>& func, const std::vector<std::string>& startingVal)
-                : Property(labelString, func), mData(startingVal), mConfirmation("Update") {}
-
-            std::vector<std::string> mData;
-            ButtonProperty mConfirmation;
-        };
-
-
     protected:
         RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB = nullptr);
         

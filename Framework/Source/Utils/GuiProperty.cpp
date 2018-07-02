@@ -25,40 +25,65 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "RenderPass.h"
 
-#include "Utils\Gui.h"
+#include "GuiProperty.h"
 
 namespace Falcor
 {
-    RenderPass::RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB) : mName(name), mpRenderDataChangedCallback(pDataChangedCB)
+    static uint32_t sUniqueIndexOffset = 0;
+
+    Property::Property(const std::string& labelString, const std::function<void(Property*)>& func)
+        : mLabel(labelString), mCallback(func) 
     {
-        setScene(pScene);
+        mUniqueID = sUniqueIndexOffset++;
     }
 
-    RenderPass::~RenderPass() = default;
-
-    void RenderPass::setScene(const std::shared_ptr<Scene>& pScene)
+    ButtonProperty::ButtonProperty() 
+        : Property("") 
     {
-        mpScene = pScene;
-        sceneChangedCB();
     }
 
-    std::shared_ptr<Resource> RenderPass::getOutput(const std::string& name)
+    ButtonProperty::ButtonProperty(const std::string& labelString, const std::function<void(Property*)>& func, bool startingVal)
+        : Property(labelString, func), mStatus(startingVal) 
     {
-        logWarning(mName + " doesn't have an output resource called `" + name + "`");
-        return nullptr;
     }
 
-    std::shared_ptr<Resource> RenderPass::getInput(const std::string& name)
+    void ButtonProperty::renderUI(Gui* pGui)
     {
-        logWarning(mName + " doesn't have an input resource called `" + name + "`");
-        return nullptr;
+        pGui->pushItemID(mUniqueID);
+        mStatus = pGui->addButton(mLabel.c_str());
+        pGui->popItemID();
+        if (mStatus)
+        {
+            onUpdate();
+        }
     }
 
-    void RenderPass::renderUI(Gui* pGui, const std::string& name)
+    StringProperty::StringProperty()
+        : Property("") 
     {
-        //pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
+    }
+
+    StringProperty::StringProperty(const std::string& labelString, const std::function<void(Property*)>& func, const std::vector<std::string>& startingVal, const std::string& confirmationString)
+        : Property(labelString, func), mData(startingVal), mConfirmation(confirmationString) 
+    {
+    }
+
+    void StringProperty::renderUI(Gui* pGui)
+    {
+        unsigned i = 0;
+        for (auto& string : mData)
+        {
+            pGui->pushItemID(i++ + mUniqueID); 
+            pGui->addTextBox(mLabel.c_str(), string);
+            pGui->popItemID();
+        }
+
+        mConfirmation.renderUI(pGui);
+
+        if (mConfirmation.mStatus)
+        {
+            onUpdate();
+        }
     }
 }

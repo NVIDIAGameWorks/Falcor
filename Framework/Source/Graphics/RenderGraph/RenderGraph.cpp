@@ -82,6 +82,26 @@ namespace Falcor
         mNameToIndex[passName] = mpPasses.size();
         mpPasses.push_back(pPass);
         mRecompile = true;
+        
+        // insert properties for editing this node for the graph editor
+        mNodeProperties[mpPasses.back().get()][0] = StringProperty("Output Name", 
+            [this](Property* stringProperty) {
+                addFieldDisplayData(reinterpret_cast<RenderPass*>(stringProperty->mpMetaData), 
+                    static_cast<StringProperty*>(stringProperty)->mData[0], false);
+            },
+            {""}, "Add Output"
+         );
+        mNodeProperties[mpPasses.back().get()][0].mpMetaData = mpPasses.back().get();
+
+        mNodeProperties[mpPasses.back().get()][1] = StringProperty("Input Name",
+            [this](Property* stringProperty) {
+                addFieldDisplayData(reinterpret_cast<RenderPass*>(stringProperty->mpMetaData),
+                    static_cast<StringProperty*>(stringProperty)->mData[0], true);
+            },
+            { "" }, "Add Input"
+            );
+        mNodeProperties[mpPasses.back().get()][1].mpMetaData = mpPasses.back().get();
+
         return true;
     }
 
@@ -198,6 +218,21 @@ namespace Falcor
             }
         }
  
+        // Fill out data for displaying GUI of render graph
+        auto& nameToIndexMap = mDisplayMap[newEdge.pSrc];
+        auto& nameToIndexIt = nameToIndexMap.find(newEdge.srcField);
+        if (nameToIndexIt == nameToIndexMap.end())
+        {
+            nameToIndexMap.insert(std::make_pair(newEdge.srcField, std::make_pair(mDisplayPinIndex++, false)));
+        }
+
+        auto& nameToIndexMapDst = mDisplayMap[newEdge.pDst];
+        nameToIndexIt = nameToIndexMapDst.find(newEdge.dstField);
+        if (nameToIndexIt == nameToIndexMapDst.end())
+        {
+            nameToIndexMapDst.insert(std::make_pair(newEdge.dstField, std::make_pair(mDisplayPinIndex++, true)));
+        }
+
         mEdges.push_back(newEdge);
         mRecompile = true;
         return true;
@@ -442,51 +477,48 @@ namespace Falcor
         uint32_t linkIndex = 0; 
         uint32_t mouseDragBezierPin = 0;
 
+        constexpr uint32_t bezierColor = 0xFFFFFFFF;
         static bool draggingConnection = false;
         static unsigned draggingPinIndex = 0;
-
+        
         const ImVec2& mousePos = ImGui::GetCurrentContext()->IO.MousePos;
 
-        for (const auto& renderGraphEdge : mEdges)
-        {
-            // move filling this out to not here
-            auto& nameToIndexMap = mDisplayMap[renderGraphEdge.pSrc];
-            auto& nameToIndexIt = nameToIndexMap.find(renderGraphEdge.srcField);
-            if (nameToIndexIt == nameToIndexMap.end() )
-            {
-                nameToIndexMap.insert(std::make_pair(renderGraphEdge.srcField, std::make_pair(pinIndex++, false)));
-            }
+        // handle deleting nodes and connections?
+        std::unordered_set<uint32_t> nodeIDsToDelete;
+        std::vector<std::string> nodeNamesToDelete;
+        
+        ax::NodeEditor::BeginDelete();
 
-            auto& nameToIndexMapDst = mDisplayMap[renderGraphEdge.pDst];
-            nameToIndexIt = nameToIndexMapDst.find(renderGraphEdge.dstField);
-            if (nameToIndexIt == nameToIndexMapDst.end())
-            {
-                nameToIndexMapDst.insert(std::make_pair(renderGraphEdge.dstField, std::make_pair(pinIndex++, true)));
-            }
+        ax::NodeEditor::NodeId deletedNodeId = 0;
+        while (ax::NodeEditor::QueryDeletedNode(&deletedNodeId))
+        {
+            nodeIDsToDelete.insert(static_cast<uint32_t>(deletedNodeId.Get()));
+            
         }
 
-
-        for (const auto& nameToIndexMap : mDisplayMap)
+        for (const auto& currentPass : mpPasses)
         {
-            //passToDraw->renderUI(pGui, nameIndexPair.first);
-
+            // only worry about the GUI for the node if no deletion
+            if (nodeIDsToDelete.find(nodeIndex) != nodeIDsToDelete.end())
+            {
+                nodeNamesToDelete.push_back(sPassToName[currentPass.get()]);
+            }
+            
             ax::NodeEditor::BeginNode(nodeIndex);
-                
+            
             // display name for the render pass
-            pGui->addText(sPassToName[nameToIndexMap.first].c_str());
-                
-            for (const auto& nameToIndexIt : nameToIndexMap.second)
+            pGui->addText(sPassToName[currentPass.get()].c_str());
+            
+            const auto& nameToIndexMap = mDisplayMap[currentPass.get()];
+
+            // for attempting to create a new edge in the editor. Name of the first node
+            static std::string firstConnectionName;
+
+            for (const auto& nameToIndexIt : nameToIndexMap)
             {
                 // Connect the graph nodes for each of the edges
                 // need to iterate in here in order to use the right indices
                 bool isInput = nameToIndexIt.second.second;
-
-                // GraphOut graphOutputToFind; graphOutputToFind.pPass = nameToIndexMap.first;  graphOutputToFind.field = nameToIndexIt.first;
-                // if (std::find(mOutputs.begin(), mOutputs.end(), graphOutputToFind) != mOutputs.end())
-                // {
-                //     isInput = false;
-                // }
-
 
                 ax::NodeEditor::PushStyleVar(ax::NodeEditor::StyleVar::StyleVar_SourceDirection, ImVec2(-1, 0)); // input
                 ax::NodeEditor::PushStyleVar(ax::NodeEditor::StyleVar::StyleVar_TargetDirection, ImVec2(1, 0));  // output
@@ -500,8 +532,6 @@ namespace Falcor
                     ImGui::SameLine();
                 }
                 
-
-                // abstract this please
                 ImGui::InvisibleButton(nameToIndexIt.first.c_str(), { 6.0f, 6.0f });
                 
                 const ImVec2& nodeSize = ax::NodeEditor::GetNodeSize(nodeIndex);
@@ -509,17 +539,19 @@ namespace Falcor
                 auto lastItemRect = ImGui::GetCurrentWindow()->DC.LastItemRect; // might make this a helper function
                 auto pWindowDrawList = ImGui::GetCurrentWindow()->DrawList;
                 
-                if (!ImGui::IsMouseDown(0))
-                {
-                    draggingConnection = false;
-                }
-                
-                constexpr uint32_t color = 0xFFFFFFFF;
-                
+                // if (ax::NodeEditor::GetSe)
+
                 //ImGui::PushStyleColor(0, { 255, 255, 255, 255});
-                if (ImGui::IsItemHovered()) {
-                    pWindowDrawList->AddCircleFilled( lastItemRect.GetCenter(), 6.0f, color);
-                
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) {
+                    pWindowDrawList->AddCircleFilled( lastItemRect.GetCenter(), 6.0f, bezierColor);
+                    
+                    if (draggingConnection && draggingPinIndex != pinIndex)
+                    {
+                        //attempt to add connection
+                        addEdge(firstConnectionName, sPassToName[currentPass.get()] + "." + nameToIndexIt.first );
+                        draggingConnection = false;
+                    }
+
                     if (ImGui::IsItemClicked())
                     {
                         draggingConnection = true;
@@ -528,9 +560,14 @@ namespace Falcor
                 }
                 else
                 {
-                    pWindowDrawList->AddCircle(lastItemRect.GetCenter(), 6.0f, color);
+                    pWindowDrawList->AddCircle(lastItemRect.GetCenter(), 6.0f, bezierColor);
                 }
                 
+                if (!ImGui::IsMouseDown(0))
+                {
+                    draggingConnection = false;
+                }
+
                 ax::NodeEditor::PinRect(ImVec2(lastItemRect.GetCenter().x - 1.0f, lastItemRect.GetCenter().y + 1.0f),
                     ImVec2(lastItemRect.GetCenter().x + 1.0f, lastItemRect.GetCenter().y - 1.0f));
 
@@ -540,11 +577,11 @@ namespace Falcor
                     pGui->addText(nameToIndexIt.first.c_str());
                 }
 
-
                 ax::NodeEditor::EndPin();
                 
                 if ((draggingPinIndex == pinIndex) && draggingConnection)
                 {
+                    firstConnectionName = sPassToName[currentPass.get()] + "." + nameToIndexIt.first;
                     mouseDragBezierPin = nameToIndexIt.second.first;
                     // use the same bezier with picking by creating another link
                 }
@@ -552,16 +589,16 @@ namespace Falcor
                 pinIndex++;
             }
 
-            if (pGui->addButton("AddInput"))
-            {
-            }
-            if (pGui->addButton("AddOutput"))
-            {
-            }
+            mNodeProperties[currentPass.get()][0].renderUI(pGui);
+            mNodeProperties[currentPass.get()][1].renderUI(pGui);
+
+            currentPass->renderUI(pGui, sPassToName[currentPass.get()]);
 
             ax::NodeEditor::EndNode();
             nodeIndex++;
         }
+
+        ax::NodeEditor::EndDelete();
 
         // draw connections
         for (const auto& nameIndexPair : mNameToIndex)
@@ -575,12 +612,23 @@ namespace Falcor
 
         // add output of the graph as the last output
 
-
-
         if (mouseDragBezierPin)
         {
             ax::NodeEditor::LinkToPos(linkIndex++, mouseDragBezierPin, ImGui::GetCurrentContext()->IO.MousePos);
         }
+
+
+        // get rid of nodes for next frame
+        for (const std::string& passName : nodeNamesToDelete)
+        {
+            removeRenderPass(passName);
+        }
+    }
+
+    void RenderGraph::addFieldDisplayData(RenderPass* pRenderPass, const std::string& displayName, bool isInput)
+    {
+        assert(pRenderPass);
+        mDisplayMap[pRenderPass].insert(std::make_pair(displayName, std::make_pair(mDisplayPinIndex++, isInput)));
     }
 
     void RenderGraph::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
@@ -610,14 +658,45 @@ namespace Falcor
         }
     }
 
+    void RenderGraph::deserializeJson(const rapidjson::Document& reader)
+    {
+        const char* memberArrayNames[2] = { "OutputFields", "InputFields" };
+        bool isInput = false;
+
+        // all of the fields types have the same type of schema
+        for (uint32_t i = 0; i < 2; ++i)
+        {
+            // insert the display data for the fields with no connections
+            if (reader.FindMember(memberArrayNames[i]) == reader.MemberEnd())
+            {
+                return;
+            }
+
+            auto fields = reader.FindMember(memberArrayNames[i])->value.GetArray();
+            for (const auto& field : fields)
+            {
+                RenderPass::SharedPtr pFieldPass = mpPasses[mNameToIndex[std::string(field.FindMember("RenderPassName")->value.GetString())]];
+                std::string fieldNameString(field.FindMember("FieldName")->value.GetString());
+                addFieldDisplayData(pFieldPass.get(), fieldNameString, isInput);
+            }
+            isInput = true;
+        }
+
+        // TODO - need to mark output from the file as well but need way of mapping to resources or resource handles
+
+
+
+    }
+
     void RenderGraph::serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* writer) const
     {
 #define string_2_json(_string) \
         rapidjson::StringRef(_string.c_str())
 
+        // write out the nodes and node data
         writer->String("RenderPassNodes");
         writer->StartArray();
-
+        
         for (auto& nameIndexPair : mNameToIndex)
         {
             writer->StartObject();
@@ -634,6 +713,40 @@ namespace Falcor
 
         writer->EndArray();
 
+        // write out the fields that cannot be filled out by the connections
+        const char* memberArrayNames[2] = { "OutputFields", "InputFields" };
+        bool isInput = false;
+
+        for(uint32_t i = 0; i < 2; ++i)
+        {
+            writer->String(memberArrayNames[i]);
+            writer->StartArray();
+
+            // maybe make another structure for free pins??? (Avoids duplicates like now, but will have additional memory (maybe slot map??))
+            for (const auto& nameToIndexMap : mDisplayMap)
+            {
+                for (const auto& nameToIndexIt : nameToIndexMap.second)
+                {
+                    if (nameToIndexIt.second.second == isInput)
+                    {
+                        writer->StartObject();
+
+                        writer->String("RenderPassName");
+                        writer->String(sPassToName[nameToIndexMap.first].c_str());
+                        writer->String("FieldName");
+                        writer->String(nameToIndexIt.first.c_str());
+
+                        writer->EndObject();
+                    }
+                }
+                
+            }
+
+            writer->EndArray();
+            isInput = true;
+        }        
+
+        // write out the node connections
         writer->String("Edges");
         writer->StartArray();
 

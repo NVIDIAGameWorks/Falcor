@@ -553,6 +553,9 @@
     <ClCompile Include="RenderPasses\NodeGraphGuiPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\GuiProperty.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1728,6 +1731,9 @@
     </ClInclude>
     <ClInclude Include="RenderPasses\NodeGraphGuiPass.h">
       <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\GuiProperty.h">
+      <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
