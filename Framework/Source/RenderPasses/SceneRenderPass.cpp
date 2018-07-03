@@ -179,11 +179,6 @@ namespace Falcor
         else return RenderPass::getOutput(name);
     }
 
-    void SceneRenderPass::renderUI(Gui* pGui, const std::string& name)
-    {
-        mShaderSource.renderUI(pGui);
-    }
-
     void SceneRenderPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         pGui->addRgbaColor("Clear color", mClearColor);

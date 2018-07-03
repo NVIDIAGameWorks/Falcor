@@ -42,7 +42,8 @@
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 
-std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphEditor::sBaseRenderTypes;
+std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphEditor::sBaseRenderCreateFuncs;
+std::unordered_map<std::string, std::function<RenderPass::PassData(RenderPass::SharedPtr)>> RenderGraphEditor::sGetRenderPassData;
 
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
@@ -50,8 +51,11 @@ RenderGraphEditor::RenderGraphEditor()
     Gui::DropdownValue dropdownValue;
 
 #define register_render_pass(renderPassType) \
-    sBaseRenderTypes.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
-        []() { return renderPassType ::create(); }) )\
+    sBaseRenderCreateFuncs.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
+        []() { return renderPassType::create(); }) )\
+    ); \
+    sGetRenderPassData.insert(std::make_pair(#renderPassType, std::function<RenderPass::PassData(RenderPass::SharedPtr renderPass)> ( \
+        [](RenderPass::SharedPtr renderPass) { auto toReturn = dynamic_cast<renderPassType*>( renderPass.get() ); assert(toReturn); return toReturn->getRenderPassData(); }) )\
     ); \
     dropdownValue.label = #renderPassType; dropdownValue.value = static_cast<int32_t>(mRenderPassTypes.size()); \
     mRenderPassTypes.push_back(dropdownValue)
@@ -157,9 +161,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     pGui->popWindow();
-
-    // update the viewport of the editor render graph from first draw - blit
-    // mpEditorGraph->setEdgeViewport("NodeGraphPass.color", "BlitPass.src", { pGui->getCurrentWindowSize(), 1.0f });
 }
 
 void RenderGraphEditor::loadScene(const std::string& filename, bool showProgressBar)
@@ -297,15 +298,15 @@ void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass,
 
 void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName)
 {
-    mpGraphs[mCurrentGraphIndex]->addRenderPass(sBaseRenderTypes[renderPassType](), renderPassName);
+    mpGraphs[mCurrentGraphIndex]->addRenderPass(sBaseRenderCreateFuncs[renderPassType](), renderPassName);
 }
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpEditorGraph = RenderGraph::create();
     // Maybe add another specialized node here for initial GUI drawing
-    mpEditorGraph->addRenderPass(sBaseRenderTypes["NodeGraphGuiPass"](), "NodeGraphPass");
-    mpEditorGraph->addRenderPass(sBaseRenderTypes["BlitPass"](), "BlitPass");
+    mpEditorGraph->addRenderPass(sBaseRenderCreateFuncs["NodeGraphGuiPass"](), "NodeGraphPass");
+    mpEditorGraph->addRenderPass(sBaseRenderCreateFuncs["BlitPass"](), "BlitPass");
     // mpEditorGraph->addRenderPass(sBaseRenderTypes["GraphEditorGuiPass"](), "BlitPass");
 
     mpEditorGraph->addEdge("NodeGraphPass.color", "BlitPass.src");

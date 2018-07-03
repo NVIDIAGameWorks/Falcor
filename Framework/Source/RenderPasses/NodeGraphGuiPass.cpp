@@ -129,16 +129,6 @@ namespace Falcor
         // draw the imgui stuff now
     }
 
-    std::shared_ptr<Resource> NodeGraphGuiPass::getOutput(const std::string& name)
-    {
-        if (name == kColor)
-        {
-            return mpFbo->getColorTexture(0);
-        }
-
-        else return RenderPass::getOutput(name);
-    }
-
     void NodeGraphGuiPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         pGui->addRgbaColor("Clear color", mClearColor);

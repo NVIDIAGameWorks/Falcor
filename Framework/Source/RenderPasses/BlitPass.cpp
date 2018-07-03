@@ -169,10 +169,6 @@ namespace Falcor
         pContext->blit(mpSrc->getSRV(), mpDst->getRTV());
     }
 
-    void BlitPass::renderUI(Gui* pGui, const std::string& name)
-    {
-    }
-
     std::shared_ptr<Resource> BlitPass::getOutput(const std::string& name) const
     {
         if (verifyPassOutput(name, nullptr) == false) nullptr;

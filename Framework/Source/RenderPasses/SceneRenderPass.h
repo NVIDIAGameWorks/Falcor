@@ -52,8 +52,6 @@ namespace Falcor
         virtual void sceneChangedCB() override;
         virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
 
-        virtual void renderUI(Gui* pGui, const std::string& name) override;
-
         virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     private:
         SceneRenderPass();

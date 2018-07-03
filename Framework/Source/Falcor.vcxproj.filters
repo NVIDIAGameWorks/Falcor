@@ -1726,7 +1726,6 @@
     <ClInclude Include="RenderPasses\BlitPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
-<<<<<<< HEAD
     <ClInclude Include="RenderPasses\GraphEditorGuiPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
@@ -1734,9 +1733,8 @@
       <Filter>RenderPasses</Filter>
     </ClInclude>
     <ClInclude Include="Utils\GuiProperty.h">
-=======
     <ClInclude Include="Utils\DirectedGraph.h">
->>>>>>> render-graph
+    <ClInclude Include="Utils\DirectedGraph.h">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>

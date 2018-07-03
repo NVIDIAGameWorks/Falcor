@@ -51,6 +51,10 @@ public:
 
     RenderGraphEditor();
 
+
+    // cast funcs for render pass types
+    static std::unordered_map<std::string, std::function<RenderPass::PassData(RenderPass::SharedPtr)> > sGetRenderPassData;
+
 private:
     
     void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
@@ -63,7 +67,8 @@ private:
     void updateAndCompileGraph();
 
     // simple lookup to create render pass type from string
-    static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderTypes;
+    static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;
+
 
     SampleCallbacks* mpLastSample;
 

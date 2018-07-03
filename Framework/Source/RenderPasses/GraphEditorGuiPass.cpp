@@ -161,17 +161,4 @@ namespace Falcor
             pContext->popGraphicsVars();
         }
     }
-
-    std::shared_ptr<Resource> GraphEditorGuiPass::getOutput(const std::string& name)
-    {
-        if (name == kColor)
-        {
-            return mpFbo->getColorTexture(0);
-        }
-        else if (name == kDepth)
-        {
-            return mpFbo->getDepthStencilTexture();
-        }
-        else return RenderPass::getOutput(name);
-    }
 }

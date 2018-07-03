@@ -119,7 +119,7 @@ namespace Falcor
         RenderGraph();
         static const uint32_t kInvalidIndex = -1;
         std::unordered_map<std::string, uint32_t> mNameToIndex;
-        uint32_t RenderGraph::getPassIndex(const std::string& name) const;
+        uint32_t getPassIndex(const std::string& name) const;
         void compile();
 
         bool mRecompile = true;

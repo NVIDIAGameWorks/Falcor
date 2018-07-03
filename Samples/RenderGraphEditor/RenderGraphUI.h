@@ -25,7 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#pragma once
 
+#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 #include "Utils/GuiProperty.h"
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
@@ -33,6 +35,8 @@
 #include <array>
 
 // need for document passed in. may move entire file serialization to serialize json
+
+
 #include "Externals/RapidJson/include/rapidjson/rapidjson.h"
 #include "Externals/RapidJson/include/rapidjson/writer.h"
 #include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
@@ -44,12 +48,15 @@ namespace Falcor
     {
     public:
 
+        // pin type enum?
+
         struct PinUIData
         {
-            std::string mFieldName; // might be temp
             uint32_t mGuiPinID;
             bool mIsInput;
         };
+
+        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput);
 
         void renderUI(Gui *pGui);
 
@@ -57,8 +64,7 @@ namespace Falcor
 
     private:
 
-        std::vector<PinUIData> mInputPins;
-        std::vector<PinUIData> mOutputPins;
+        std::unordered_map<std::string, PinUIData> mPins; // should this be a map? this probably can be a vec
         uint32_t mGuiNodeID;
 
     };
@@ -72,6 +78,12 @@ namespace Falcor
         /** Display enter graph in GUI.
         */
         void renderUI(Gui *pGui);
+        
+        /**  Add a new display node for the graph representing a render pass 
+          */
+        void addRenderPassNode();
+
+        // TODO -- move these out of the UI code
 
         /** Serialization function. Serialize full graph into json file.
         */
@@ -81,36 +93,20 @@ namespace Falcor
         */
         void deserializeJson(const rapidjson::Document& reader);
 
-        void addFieldDisplayData(RenderPass* pRenderPass, const std::string& displayName, bool isInput);
-
-        /** Set bounds for the inputs and receiving outputs of a given edge within the graph
-        */
-        // void setEdgeViewport(const std::string& input, const std::string& output, const glm::vec3& viewportBounds);
-
-
-        void addFieldDisplayData(RenderPass* pRenderPass, const std::string& displayName, bool isInput);
-
-        /**  Add a new display node for the graph representing a render pass 
-          */
-        void addRenderPassNode();
-
     private:
-        
-        // TODO -- remove this for now
-        // std::unordered_map<std::string, RenderPass::PassData::Field> mOverridePassDatas;
 
-        // map the pointers to their names to get destination name for editor.
-        // std::unordered_map<RenderPass*, std::string> mPassToName;
-
+        /** Updates structure for drawing the gui graph
+        */
+        void updateDisplayData();
 
         // start with reference of render graph
         RenderGraph& mRenderGraphRef;
 
-        // Display data for node editor
+        std::unordered_map <std::string, RenderPassUI> mRenderPassUI;
+
+        // maps output pin name to input pin ids
+        std::unordered_map <std::string, std::vector<uint32_t> > mOutputToInputPins;
+
         uint32_t mDisplayPinIndex = 0;
-
-        std::unordered_map<std::string, RenderPassUI> mRenderPassUI;
-
-        std::unordered_map<RenderPass*, StringProperty[2] > mNodeProperties; // ideally more generic as nodes gain more data
     };
 }
