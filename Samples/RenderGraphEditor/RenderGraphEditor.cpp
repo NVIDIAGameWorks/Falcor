@@ -89,7 +89,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // Test node editor
     ax::NodeEditor::Begin("Editor");
 
-    mpGraphs[mCurrentGraphIndex]->renderUI(pGui);
+    mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
 
     ax::NodeEditor::End();
 
@@ -108,7 +108,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     
     pGui->pushWindow("Graph Editor Settings", screenWidth / 8, screenHeight - 1, screenWidth - screenWidth / 8, 0, false);
 
-    // DO you want to keep these ?? -- posible custom contexts outside of what is rendered?  would that even be useful
+    // DO you want to keep these ?? -- possible custom contexts outside of what is rendered?  would that even be useful
     pGui->setContextSize(mWindowSize);
     
     pGui->addTextBox("Graph Name", mNextGraphString);
@@ -159,7 +159,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     pGui->popWindow();
 
     // update the viewport of the editor render graph from first draw - blit
-    mpEditorGraph->setEdgeViewport("NodeGraphPass.color", "BlitPass.src", { pGui->getCurrentWindowSize(), 1.0f });
+    // mpEditorGraph->setEdgeViewport("NodeGraphPass.color", "BlitPass.src", { pGui->getCurrentWindowSize(), 1.0f });
 }
 
 void RenderGraphEditor::loadScene(const std::string& filename, bool showProgressBar)
@@ -192,7 +192,7 @@ void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
     rapidjson::Writer<rapidjson::OStreamWrapper> writer(oStream);
     
     writer.StartObject();
-    mpGraphs[mCurrentGraphIndex]->serializeJson(&writer);
+    mRenderGraphUIs[mCurrentGraphIndex].serializeJson(&writer);
     writer.EndObject();
     
     outStream.close();
@@ -226,8 +226,7 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
         createAndAddRenderPass(renderPassType, renderPassName);
     }
 
-    // Specialised json  deserialization that can't be done from the front facing interface. mainly used for editor data
-    mpGraphs[mCurrentGraphIndex]->deserializeJson(document);
+    mRenderGraphUIs[mCurrentGraphIndex].deserializeJson(document);
 
     // add all edges
     auto edgesArray = (document.FindMember("Edges")->value).GetArray();
@@ -264,6 +263,9 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
 
+    RenderGraphUI graphUI(*newGraph);
+    mRenderGraphUIs.emplace_back(std::move(graphUI));
+
     if (renderGraphNameFileName.size())
     {
         deserializeRenderGraph(renderGraphNameFileName);
@@ -273,7 +275,6 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     if (mCurrentGraphIndex >= 1)
     {
         mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
-
         updateAndCompileGraph();
     }
     else

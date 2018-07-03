@@ -41,7 +41,7 @@ namespace Falcor
     {
         RenderPass::PassData data;
         RenderPass::PassData::Field dstField;
-        dstField.bindFlags = Resource::BindFlags::None;
+        dstField.bindFlags = Resource::BindFlags::RenderTarget;
         dstField.name = kDst;
         dstField.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Undefined);
         data.outputs.push_back(dstField);
@@ -92,55 +92,74 @@ namespace Falcor
         return b;
     }
 
-    bool BlitPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    static bool verifyPassInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
         if (name != kSrc)
         {
-            logError("BlitPass::setInput() - this pass doesn't have an input named `" + name + "`");
+            logError("BlitPass doesn't have an input named `" + name + "`");
             return false;
         }
 
-        Texture::SharedPtr pSrc = std::dynamic_pointer_cast<Texture>(pResource);
-
-        if (!pSrc)
+        if(pResource)
         {
-            logError("BlitPass::setInput() - the source resource must be a texture");
-            return false;
-        }
+            Texture::SharedPtr pSrc = std::dynamic_pointer_cast<Texture>(pResource);
 
-        if (is_set(pSrc->getBindFlags(), Resource::BindFlags::ShaderResource) == false)
+            if (!pSrc)
+            {
+                logError("BlitPass - the source resource must be a texture");
+                return false;
+            }
+
+            if (is_set(pSrc->getBindFlags(), Resource::BindFlags::ShaderResource) == false)
+            {
+                logError("BlitPass - the source resource must be created with the ShaderResource bind-flag");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool BlitPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        if (verifyPassInput(name, pResource) == false) return false;
+
+        mpSrc = std::dynamic_pointer_cast<Texture>(pResource);
+        return true;
+    }
+
+    static bool verifyPassOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        if (name != kDst)
         {
-            logError("BlitPass::setInput() - the source resource must be created with the ShaderResource bind-flag");
+            logError("BlitPass doesn't have an output named `" + name + "`");
             return false;
         }
 
-        mpSrc = pSrc;
+        if(pResource)
+        {
+            Texture::SharedPtr pDst = std::dynamic_pointer_cast<Texture>(pResource);
+
+            if (!pDst)
+            {
+                logError("BlitPass - the destination resource must be a texture");
+                return false;
+            }
+
+            if (is_set(pDst->getBindFlags(), Resource::BindFlags::RenderTarget) == false)
+            {
+                logError("BlitPass - the destination resource must be created with the RenderTarget bind-flag");
+                return false;
+            }
+        }
+
         return true;
     }
 
     bool BlitPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        if (name != kDst)
-        {
-            logError("BlitPass::setOutput() - this pass doesn't have an output named `" + name + "`");
-            return false;
-        }
+        if (verifyPassOutput(name, pResource) == false) return false;
 
-        Texture::SharedPtr pDst = std::dynamic_pointer_cast<Texture>(pResource);
-
-        if (!pDst)
-        {
-            logError("BlitPass::setOutput() - the destination resource must be a texture");
-            return false;
-        }
-
-        if (is_set(pDst->getBindFlags(), Resource::BindFlags::RenderTarget) == false)
-        {
-            logError("BlitPass::setOutput() - the destination resource must be created with the RenderTarget bind-flag");
-            return false;
-        }
-
-        mpDst = pDst;
+        mpDst = std::dynamic_pointer_cast<Texture>(pResource);
         return true;
     }
 
@@ -152,5 +171,17 @@ namespace Falcor
 
     void BlitPass::renderUI(Gui* pGui, const std::string& name)
     {
+    }
+
+    std::shared_ptr<Resource> BlitPass::getOutput(const std::string& name) const
+    {
+        if (verifyPassOutput(name, nullptr) == false) nullptr;
+        return mpDst;
+    }
+
+    std::shared_ptr<Resource> BlitPass::getInput(const std::string& name) const
+    {
+        if (verifyPassInput(name, nullptr) == false) return nullptr;
+        return mpSrc;
     }
 }

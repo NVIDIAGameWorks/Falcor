@@ -50,7 +50,7 @@ namespace Falcor
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual PassData getRenderPassData() const override { return kRenderPassData; }
         virtual void sceneChangedCB() override;
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name) override;
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
 
         virtual void renderUI(Gui* pGui, const std::string& name) override;
 

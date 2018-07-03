@@ -31,6 +31,8 @@
 
 #include "Falcor.h"
 
+#include "RenderGraphUI.h"
+
 #include <vector>
 
 
@@ -67,6 +69,7 @@ private:
 
     RenderGraph::SharedPtr mpEditorGraph;
     std::vector<RenderGraph::SharedPtr> mpGraphs;
+    std::vector<RenderGraphUI> mRenderGraphUIs;
     size_t mCurrentGraphIndex;
 
     std::string mNextGraphString;

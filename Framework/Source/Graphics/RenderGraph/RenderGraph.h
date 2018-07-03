@@ -27,15 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPass.h"
-#include "Utils/GuiProperty.h"
-
-#include <array>
-
-// need for document passed in. may move entire file serialization to serialize json
-#include "Externals/RapidJson/include/rapidjson/rapidjson.h"
-#include "Externals/RapidJson/include/rapidjson/writer.h"
-#include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
-#include "Externals/RapidJson/include/rapidjson/document.h"
+#include "Utils/DirectedGraph.h"
 
 namespace Falcor
 {
@@ -73,11 +65,6 @@ namespace Falcor
         */
         bool addEdge(const std::string& src, const std::string& dst);
 
-        /** Remove edge connection for given render graph. Need to make sure the graph is valid after
-            Connection removed.
-         */
-        void removeEdge(const std::string& src, const std::string& dst);
-
         /** Check if the graph is ready for execution (all passes inputs/outputs have been initialized correctly, no loops in the graph)
         */
         bool isValid(std::string& log) const;
@@ -96,11 +83,7 @@ namespace Falcor
             Calling this function will automatically mark the output as one of the graph's outputs (even if called with nullptr)
         */
         bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
-
-        /** Set bounds for the inputs and receiving outputs of a given edge within the graph
-         */
-        void setEdgeViewport(const std::string& input, const std::string& output, const glm::vec3& viewportBounds);
-
+        
         /** Get an output resource. The name has the format `renderPassName.resourceName`.
             This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
         */
@@ -130,67 +113,36 @@ namespace Falcor
         */
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
-        /** Display enter graph in gui.
-        */
-        void renderUI(Gui *pGui);
-
-        /** Serialization function. Serialize full graph into json file.
-        */
-        void serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* document) const;
-
-        /** Deserialize function for deserializing graph and building data for gui viewing
-         */
-        void deserializeJson(const rapidjson::Document& reader);
+        friend class RenderGraphUI;
 
     private:
         RenderGraph();
-        static const size_t kInvalidIndex = -1;
-        std::unordered_map<std::string, size_t> mNameToIndex;
-        std::vector<RenderPass::SharedPtr> mpPasses;
-        size_t getPassIndex(const std::string& name) const;
+        static const uint32_t kInvalidIndex = -1;
+        std::unordered_map<std::string, uint32_t> mNameToIndex;
+        uint32_t RenderGraph::getPassIndex(const std::string& name) const;
         void compile();
 
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;
 
-        struct Edge
+        struct EdgeData
         {
-            RenderPass* pSrc;
-            RenderPass* pDst;
             std::string srcField;
             std::string dstField;
-
-            bool operator==(const Edge& rref)
-            {
-                return ((pDst == rref.pDst) && (pSrc == rref.pSrc)) &&
-                    ((dstField == rref.dstField) && (srcField == rref.srcField));
-            }
         };
 
-        std::vector<Edge> mEdges;
+        using DAG = DirectedGraph<RenderPass::SharedPtr, EdgeData>;
+        DAG::SharedPtr mpGraph;
 
         struct GraphOut
         {
-            RenderPass* pPass;
+            uint32_t nodeId;
             std::string field;
-
-            bool operator==(const GraphOut& rref)
-            {
-                return (rref.pPass == pPass) && (rref.field == field);
-            }
         };
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
-        
         std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
-
-        std::unordered_map<std::string, RenderPass::PassData::Field> mOverridePassDatas; // should it be keyed by name?
-
-        // Display data for node editor
-        uint32_t mDisplayPinIndex = 0;
-        std::unordered_map<RenderPass*, std::unordered_map<std::string, std::pair<uint32_t, bool> >> mDisplayMap;
-        std::unordered_map<RenderPass*, StringProperty[2] > mNodeProperties; // ideally more generic as nodes gain more data
 
         void addFieldDisplayData(RenderPass* pRenderPass, const std::string& displayName, bool isInput);
 

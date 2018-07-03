@@ -85,11 +85,11 @@ namespace Falcor
 
         /** Get an input resource
         */
-        virtual std::shared_ptr<Resource> getInput(const std::string& name);
+        virtual std::shared_ptr<Resource> getInput(const std::string& name) const;
 
         /** Get an output resource
         */
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name);
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const;
 
         /** Call this after the input/output resources are set to make sure the render-pass is ready for execution
         */
@@ -114,10 +114,6 @@ namespace Falcor
         /** Set the DataChanged callback
         */
         void setRenderDataChangedCallback(RenderDataChangedFunc pDataChangedCB) { mpRenderDataChangedCallback = pDataChangedCB; }
-
-        /** Display the data in the graph editor as a node
-         */
-        virtual void renderUI(Gui* pGui, const std::string& name);
 
         /** Get render pass type name
         */

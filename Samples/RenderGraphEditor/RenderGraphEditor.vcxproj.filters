@@ -4,10 +4,12 @@
     <ClCompile Include="RenderGraphEditor.cpp" />
     <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\NodeEditor.cpp" />
     <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.cpp" />
+    <ClCompile Include="RenderGraphUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderGraphEditor.h" />
     <ClInclude Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.h" />
+    <ClInclude Include="RenderGraphUI.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\DefaultRenderGraph.json" />

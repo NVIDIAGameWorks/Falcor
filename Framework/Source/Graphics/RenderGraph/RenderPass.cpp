@@ -45,20 +45,15 @@ namespace Falcor
         sceneChangedCB();
     }
 
-    std::shared_ptr<Resource> RenderPass::getOutput(const std::string& name)
+    std::shared_ptr<Resource> RenderPass::getOutput(const std::string& name) const
     {
         logWarning(mName + " doesn't have an output resource called `" + name + "`");
         return nullptr;
     }
 
-    std::shared_ptr<Resource> RenderPass::getInput(const std::string& name)
+    std::shared_ptr<Resource> RenderPass::getInput(const std::string& name) const
     {
         logWarning(mName + " doesn't have an input resource called `" + name + "`");
         return nullptr;
-    }
-
-    void RenderPass::renderUI(Gui* pGui, const std::string& name)
-    {
-        //pGui->pushWindow(std::string("Node: ").append(name).append(" Type: ").append(mName).c_str(), 256, 256, 0, 0);
     }
 }

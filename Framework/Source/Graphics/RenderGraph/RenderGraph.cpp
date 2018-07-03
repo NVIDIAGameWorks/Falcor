@@ -29,15 +29,6 @@
 #include "RenderGraph.h"
 #include "API/FBO.h"
 
-#include "Utils/Gui.h"
-
-#include "Externals/imgui-node-editor/NodeEditor/Include/NodeEditor.h"
-
-// TODO Don't do this
-#include "Externals/dear_imgui/imgui.h"
-#include "Externals/dear_imgui/imgui_internal.h"
-
-
 namespace Falcor
 {
     RenderGraph::SharedPtr RenderGraph::create()
@@ -52,9 +43,12 @@ namespace Falcor
         }
     }
 
-    RenderGraph::RenderGraph() = default;
+    RenderGraph::RenderGraph()
+    {
+        mpGraph = DAG::create();
+    }
 
-    size_t RenderGraph::getPassIndex(const std::string& name) const
+    uint32_t RenderGraph::getPassIndex(const std::string& name) const
     {
         auto& it = mNameToIndex.find(name);
         return (it == mNameToIndex.end()) ? kInvalidIndex : it->second;
@@ -63,9 +57,9 @@ namespace Falcor
     void RenderGraph::setScene(const std::shared_ptr<Scene>& pScene)
     {
         mpScene = pScene;
-        for (auto& pPass : mpPasses)
+        for (auto& it : mNameToIndex)
         {
-            pPass->setScene(mpScene);
+            mpGraph->getNodeData(it.second)->setScene(pScene);
         }
     }
 
@@ -79,35 +73,15 @@ namespace Falcor
         }
 
         pPass->setScene(mpScene);
-        mNameToIndex[passName] = mpPasses.size();
-        mpPasses.push_back(pPass);
+        mNameToIndex[passName] = mpGraph->addNode(pPass);
         mRecompile = true;
-        
-        // insert properties for editing this node for the graph editor
-        mNodeProperties[mpPasses.back().get()][0] = StringProperty("Output Name", 
-            [this](Property* stringProperty) {
-                addFieldDisplayData(reinterpret_cast<RenderPass*>(stringProperty->mpMetaData), 
-                    static_cast<StringProperty*>(stringProperty)->mData[0], false);
-            },
-            {""}, "Add Output"
-         );
-        mNodeProperties[mpPasses.back().get()][0].mpMetaData = mpPasses.back().get();
-
-        mNodeProperties[mpPasses.back().get()][1] = StringProperty("Input Name",
-            [this](Property* stringProperty) {
-                addFieldDisplayData(reinterpret_cast<RenderPass*>(stringProperty->mpMetaData),
-                    static_cast<StringProperty*>(stringProperty)->mData[0], true);
-            },
-            { "" }, "Add Input"
-            );
-        mNodeProperties[mpPasses.back().get()][1].mpMetaData = mpPasses.back().get();
 
         return true;
     }
 
     void RenderGraph::removeRenderPass(const std::string& name)
     {
-        size_t index = getPassIndex(name);
+        uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
         {
             logWarning("Can't remove pass `" + name + "`. Pass doesn't exist");
@@ -115,40 +89,23 @@ namespace Falcor
         }
 
         // Update the indices
-        for (auto& i : mNameToIndex)
-        {
-            if (i.second > index) i.second--;
-        }
-
         mNameToIndex.erase(name);
-        // Remove all the edges associated with this pass
-        RenderPass* pPass = mpPasses[index].get();
-        for (size_t i = 0 ; i < mEdges.size() ;)
-        {
-            if (mEdges[i].pSrc == pPass || mEdges[i].pDst == pPass)
-            {
-                mEdges.erase(mEdges.begin() + i);
-            }
-            else
-            {
-                i++;
-            }
-        }
 
-        mpPasses.erase(mpPasses.begin() + index);
+        // Remove all the edges associated with this pass
+        mpGraph->removeNode(index);
         mRecompile = true;
     }
 
     const RenderPass::SharedPtr& RenderGraph::getRenderPass(const std::string& name) const
     {
-        size_t index = getPassIndex(name);
+        uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
         {
             static RenderPass::SharedPtr pNull;
             logWarning("RenderGraph::getRenderPass() - can't find a pass named `" + name + "`");
             return pNull;
         }
-        return mpPasses[index];
+        return mpGraph->getNodeData(index);
     }
     
     using str_pair = std::pair<std::string, std::string>;
@@ -179,89 +136,62 @@ namespace Falcor
     }
 
     template<bool input>
-    static RenderPass* getRenderPassAndField(const RenderGraph* pGraph, const std::string& fullname, const std::string& errorPrefix, std::string& field)
+    static RenderPass* getRenderPassAndNamePair(const RenderGraph* pGraph, const std::string& fullname, const std::string& errorPrefix, str_pair& nameAndField)
     {
-        str_pair strPair;
-        if (parseFieldName(fullname, strPair) == false) return false;
+        if (parseFieldName(fullname, nameAndField) == false) return false;
 
-        RenderPass* pPass = pGraph->getRenderPass(strPair.first).get();
+        RenderPass* pPass = pGraph->getRenderPass(nameAndField.first).get();
         if (!pPass)
         {
-            logWarning(errorPrefix + " - can't find render-pass named '" + strPair.first + "'");
+            logWarning(errorPrefix + " - can't find render-pass named '" + nameAndField.first + "'");
             return nullptr;
         }
 
-        if (checkRenderPassIoExist<input>(pPass, strPair.second) == false)
+        if (checkRenderPassIoExist<input>(pPass, nameAndField.second) == false)
         {
-            logWarning(errorPrefix + "- can't find field named `" + strPair.second + "` in render-pass `" + strPair.first + "`");
+            logWarning(errorPrefix + "- can't find field named `" + nameAndField.second + "` in render-pass `" + nameAndField.first + "`");
             return nullptr;
         }
-        field = strPair.second;
         return pPass;
     }
 
     bool RenderGraph::addEdge(const std::string& src, const std::string& dst)
     {
-        Edge newEdge;
-        newEdge.pSrc = getRenderPassAndField<false>(this, src, "Invalid src string in RenderGraph::addEdge()", newEdge.srcField);
-        newEdge.pDst = getRenderPassAndField<true>(this, dst, "Invalid dst string in RenderGraph::addEdge()", newEdge.dstField);
+        EdgeData newEdge;
+        str_pair srcPair, dstPair;
+        const auto& pSrc = getRenderPassAndNamePair<false>(this, src, "Invalid src string in RenderGraph::addEdge()", srcPair);
+        const auto& pDst = getRenderPassAndNamePair<true>(this, dst, "Invalid dst string in RenderGraph::addEdge()", dstPair);
+        newEdge.srcField = srcPair.second;
+        newEdge.dstField = dstPair.second;
 
-        if (newEdge.pSrc == nullptr || newEdge.pDst == nullptr) return false;
+        if (pSrc == nullptr || pDst == nullptr) return false;
 
         // Check that the dst field is not already initialized
-        for (const Edge& e : mEdges)
+        const DAG::Node& node = mpGraph->getNode(mNameToIndex[dstPair.first]);
+
+        for (uint32_t e = 0 ; e < node.getOutgoingEdgeCount() ; e++)
         {
-            if (newEdge.pDst == e.pDst && newEdge.dstField == e.dstField)
+            const auto& edgeData = mpGraph->getEdgeData(node.getIncomingEdge(e));
+            if (edgeData.dstField == newEdge.dstField)
             {
                 logWarning("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
                 return false;
             }
         }
- 
-        // Fill out data for displaying GUI of render graph
-        auto& nameToIndexMap = mDisplayMap[newEdge.pSrc];
-        auto& nameToIndexIt = nameToIndexMap.find(newEdge.srcField);
-        if (nameToIndexIt == nameToIndexMap.end())
-        {
-            nameToIndexMap.insert(std::make_pair(newEdge.srcField, std::make_pair(mDisplayPinIndex++, false)));
-        }
-
-        auto& nameToIndexMapDst = mDisplayMap[newEdge.pDst];
-        nameToIndexIt = nameToIndexMapDst.find(newEdge.dstField);
-        if (nameToIndexIt == nameToIndexMapDst.end())
-        {
-            nameToIndexMapDst.insert(std::make_pair(newEdge.dstField, std::make_pair(mDisplayPinIndex++, true)));
-        }
-
-        mEdges.push_back(newEdge);
+        
+        mpGraph->addEdge(mNameToIndex[srcPair.first], mNameToIndex[dstPair.first], newEdge);
         mRecompile = true;
         return true;
-    }
-
-    void RenderGraph::removeEdge(const std::string& src, const std::string& dst)
-    {
-        // I need to find a faster way to remove connections
-        Edge newEdge;
-        newEdge.pSrc = getRenderPassAndField<false>(this, src, "Invalid src string in RenderGraph::removeEdge()", newEdge.srcField);
-        newEdge.pDst = getRenderPassAndField<true>(this, dst, "Invalid dst string in RenderGraph::removeEdge()", newEdge.dstField);
-
-        auto& edgeIt = std::find(mEdges.begin(), mEdges.end(), newEdge);
-        if (edgeIt == mEdges.end())
-        {
-            logWarning("RenderGraph::removeEdge() -  Unable to find edge to remove. No such connection exists within this graph.");
-        }
-
-        mEdges.erase(edgeIt, edgeIt + 1);
-
-        mRecompile = true;
     }
 
     bool RenderGraph::isValid(std::string& log) const
     {
         bool valid = true;
         size_t logSize = log.size();
-        for (const auto& pPass : mpPasses)
+
+        for (const auto& passIndex : mNameToIndex)
         {
+            RenderPass* pPass = mpGraph->getNodeData(passIndex.second).get();
             if (pPass->isValid(log) == false)
             {
                 valid = false;
@@ -310,52 +240,53 @@ namespace Falcor
         return pTexture;
     }
 
-    // map the pointers to their names to get destination name for editor.
-    // made static for multiple renders
-    static std::unordered_map<RenderPass*, std::string> sPassToName; 
 
     void RenderGraph::compile()
     {
         if(mRecompile)
-        {
-            for (const auto& nameIndexPair : mNameToIndex)
+        {   
+            for (const auto& passIndex : mNameToIndex)
             {
-                sPassToName[&*mpPasses[nameIndexPair.second]] = nameIndexPair.first;
-            }
+                const DAG::Node& node = mpGraph->getNode(passIndex.second);
+                RenderPass* pSrcPass = node.getData().get();
+                const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
 
-            // Allocate outputs
-            for (const auto& e : mEdges)
-            {
-                const RenderPass::PassData& passData = e.pSrc->getRenderPassData();
-                // Find the input
-                bool found = false;
+                // Allocate everything that is required
                 for (const auto& src : passData.outputs)
                 {
-                    if(src.required || (src.name == e.srcField))
+                    if (src.required)
                     {
-                        const std::string& srcName = sPassToName[e.pSrc];
-                        const auto overrideDataIt = mOverridePassDatas.find(srcName + "." + src.name);
-                        Texture::SharedPtr pTexture;
-                        
-                        if (overrideDataIt != mOverridePassDatas.end())
+                        // Only allocate it if the user didn't set it
+                        if(pSrcPass->getOutput(src.name) == nullptr)
                         {
-                            pTexture = createTextureForPass(overrideDataIt->second);
-                        }
-                        else
-                        {
-                            pTexture = createTextureForPass(src);
-                        }
-
-                        e.pSrc->setOutput(src.name, pTexture);
-
-                        if (src.name == e.srcField)
-                        {
-                            e.pDst->setInput(e.dstField, pTexture);
-                            found = true;
+                            Texture::SharedPtr pTexture = createTextureForPass(src);
+                            pSrcPass->setOutput(src.name, pTexture);
                         }
                     }
                 }
-                assert(found);
+
+                // Now go over the edges, allocate the required resources and attach them to the input pass
+                for (uint32_t e = 0; e < node.getOutgoingEdgeCount(); e++)
+                {
+                    const auto& edge = mpGraph->getEdge(node.getOutgoingEdge(e));
+                    const auto& edgeData = edge.getData();
+
+                    // Find the input
+                    for (const auto& src : passData.outputs)
+                    {
+                        if (src.name == edgeData.srcField)
+                        {
+                            Texture::SharedPtr pTexture = createTextureForPass(src);
+                            pSrcPass->setOutput(src.name, pTexture);
+
+                            // Connect it to the dst pass
+                            RenderPass* pDstPass = mpGraph->getNodeData(edge.getDestNode()).get();
+                            pDstPass->setInput(edgeData.dstField, pTexture);
+                            break;
+                        }
+                        else should_not_get_here();
+                    }
+                }
             }
         }
         mRecompile = false;
@@ -372,62 +303,44 @@ namespace Falcor
             return;
         }
 
-        for (auto& pPass : mpPasses)
+        for (const auto& passIndex : mNameToIndex)
         {
-            pPass->execute(pContext);
+            mpGraph->getNodeData(passIndex.second)->execute(pContext);
         }
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        // GRAPH_TODO 
-        std::string field;
-        RenderPass* pPass = getRenderPassAndField<true>(this, name, "RenderGraph::setInput()", field);
+        str_pair strPair;
+        RenderPass* pPass = getRenderPassAndNamePair<true>(this, name, "RenderGraph::setInput()", strPair);
         if (pPass == nullptr) return false;
-        return pPass->setInput(field, pResource);
+        return pPass->setInput(strPair.second, pResource);
     }
 
     bool RenderGraph::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        std::string field;
-        RenderPass* pPass = getRenderPassAndField<false>(this, name, "RenderGraph::setOutput()", field);
+        str_pair strPair;
+        RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
         if (pPass == nullptr) return false;
-        if (pPass->setOutput(field, pResource) == false) return false;
+        if (pPass->setOutput(strPair.second, pResource) == false) return false;
         markGraphOutput(name);
         return true;
     }
 
-    void RenderGraph::setEdgeViewport(const std::string& input, const std::string& output, const glm::vec3& viewportBounds)
-    {
-        RenderPass::PassData::Field overrideData{};
-        overrideData.width  = static_cast<uint32_t>(viewportBounds.x);
-        overrideData.height = static_cast<uint32_t>(viewportBounds.y);
-        overrideData.depth  = static_cast<uint32_t>(viewportBounds.z);
-
-        str_pair fieldNamePair;
-        parseFieldName(input, fieldNamePair);
-        overrideData.name = fieldNamePair.second;
-
-        overrideData.format = ResourceFormat::Unknown;
-        overrideData.sampleCount = 1;
-        overrideData.bindFlags = Texture::BindFlags::RenderTarget;
-
-        mOverridePassDatas[input] = overrideData;
-        mOverridePassDatas[output] = mOverridePassDatas[input];
-
-        mRecompile = true;
-    }
-
     void RenderGraph::markGraphOutput(const std::string& name)
     {
+        str_pair strPair;
+        const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::markGraphOutput()", strPair);
+        if (pPass == nullptr) return;
+
         GraphOut newOut;
-        newOut.pPass = getRenderPassAndField<false>(this, name, "RenderGraph::markGraphOutput()", newOut.field);
-        if (newOut.pPass == nullptr) return;
+        newOut.field = strPair.second;
+        newOut.nodeId = mNameToIndex[strPair.first];
 
         // Check that this is not already marked
         for (const auto& o : mOutputs)
         {
-            if (newOut.pPass == o.pPass && newOut.field == o.field) return;
+            if (newOut.nodeId == o.nodeId && newOut.field == o.field) return;
         }
 
         mOutputs.push_back(newOut);
@@ -436,13 +349,17 @@ namespace Falcor
 
     void RenderGraph::unmarkGraphOutput(const std::string& name)
     {
+        str_pair strPair;
+        const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::unmarkGraphOutput()", strPair);
+        if (pPass == nullptr) return;
+
         GraphOut removeMe;
-        removeMe.pPass = getRenderPassAndField<false>(this, name, "RenderGraph::unmarkGraphOutput()", removeMe.field);
-        if (removeMe.pPass == nullptr) return;
+        removeMe.field = strPair.second;
+        removeMe.nodeId = mNameToIndex[strPair.first];
 
         for (size_t i = 0 ; i < mOutputs.size() ; i++)
         {
-            if (mOutputs[i].pPass == removeMe.pPass && mOutputs[i].field == removeMe.field)
+            if (mOutputs[i].nodeId == removeMe.nodeId && mOutputs[i].field == removeMe.field)
             {
                 mOutputs.erase(mOutputs.begin() + i);
                 mRecompile = true;
@@ -454,181 +371,10 @@ namespace Falcor
     const Resource::SharedPtr RenderGraph::getOutput(const std::string& name)
     {
         static const Resource::SharedPtr pNull;
-        std::string field;
-        RenderPass* pPass = getRenderPassAndField<false>(this, name, "RenderGraph::getOutput()", field);
+        str_pair strPair;
+        RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
         
-        return pPass ? pPass->getOutput(field) : pNull;
-    }
-
-    const Resource::SharedPtr RenderGraph::getInput(const std::string& name)
-    {
-        static const Resource::SharedPtr pNull;
-        std::string field;
-        RenderPass* pPass = getRenderPassAndField<true>(this, name, "RenderGraph::getOutput()", field);
-
-        return pPass ? pPass->getInput(field) : pNull;
-    }
-
-    void RenderGraph::renderUI(Gui* pGui)
-    {
-        uint32_t nodeIndex = 0;
-        uint32_t pinIndex = 0;
-        uint32_t specialPinIndex = static_cast<uint32_t>(static_cast<uint16_t>(-1)); // used for avoiding conflicts with creating additional unique pins.
-        uint32_t linkIndex = 0; 
-        uint32_t mouseDragBezierPin = 0;
-
-        constexpr uint32_t bezierColor = 0xFFFFFFFF;
-        static bool draggingConnection = false;
-        static unsigned draggingPinIndex = 0;
-        
-        const ImVec2& mousePos = ImGui::GetCurrentContext()->IO.MousePos;
-
-        // handle deleting nodes and connections?
-        std::unordered_set<uint32_t> nodeIDsToDelete;
-        std::vector<std::string> nodeNamesToDelete;
-        
-        ax::NodeEditor::BeginDelete();
-
-        ax::NodeEditor::NodeId deletedNodeId = 0;
-        while (ax::NodeEditor::QueryDeletedNode(&deletedNodeId))
-        {
-            nodeIDsToDelete.insert(static_cast<uint32_t>(deletedNodeId.Get()));
-            
-        }
-
-        for (const auto& currentPass : mpPasses)
-        {
-            // only worry about the GUI for the node if no deletion
-            if (nodeIDsToDelete.find(nodeIndex) != nodeIDsToDelete.end())
-            {
-                nodeNamesToDelete.push_back(sPassToName[currentPass.get()]);
-            }
-            
-            ax::NodeEditor::BeginNode(nodeIndex);
-            
-            // display name for the render pass
-            pGui->addText(sPassToName[currentPass.get()].c_str());
-            
-            const auto& nameToIndexMap = mDisplayMap[currentPass.get()];
-
-            // for attempting to create a new edge in the editor. Name of the first node
-            static std::string firstConnectionName;
-
-            for (const auto& nameToIndexIt : nameToIndexMap)
-            {
-                // Connect the graph nodes for each of the edges
-                // need to iterate in here in order to use the right indices
-                bool isInput = nameToIndexIt.second.second;
-
-                ax::NodeEditor::PushStyleVar(ax::NodeEditor::StyleVar::StyleVar_SourceDirection, ImVec2(-1, 0)); // input
-                ax::NodeEditor::PushStyleVar(ax::NodeEditor::StyleVar::StyleVar_TargetDirection, ImVec2(1, 0));  // output
-
-                ax::NodeEditor::BeginPin(nameToIndexIt.second.first, static_cast<ax::NodeEditor::PinKind>(isInput));
-                
-                // draw the pin output for input / output
-                if (!isInput)
-                {
-                    pGui->addText(nameToIndexIt.first.c_str());
-                    ImGui::SameLine();
-                }
-                
-                ImGui::InvisibleButton(nameToIndexIt.first.c_str(), { 6.0f, 6.0f });
-                
-                const ImVec2& nodeSize = ax::NodeEditor::GetNodeSize(nodeIndex);
-                ImVec2 buttonAlignment =  (ImVec2(nodeSize.x - nodeSize.x / 8.0f, ImGui::GetCursorScreenPos().y ));
-                auto lastItemRect = ImGui::GetCurrentWindow()->DC.LastItemRect; // might make this a helper function
-                auto pWindowDrawList = ImGui::GetCurrentWindow()->DrawList;
-                
-                // if (ax::NodeEditor::GetSe)
-
-                //ImGui::PushStyleColor(0, { 255, 255, 255, 255});
-                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)) {
-                    pWindowDrawList->AddCircleFilled( lastItemRect.GetCenter(), 6.0f, bezierColor);
-                    
-                    if (draggingConnection && draggingPinIndex != pinIndex)
-                    {
-                        //attempt to add connection
-                        addEdge(firstConnectionName, sPassToName[currentPass.get()] + "." + nameToIndexIt.first );
-                        draggingConnection = false;
-                    }
-
-                    if (ImGui::IsItemClicked())
-                    {
-                        draggingConnection = true;
-                        draggingPinIndex = pinIndex;
-                    }
-                }
-                else
-                {
-                    pWindowDrawList->AddCircle(lastItemRect.GetCenter(), 6.0f, bezierColor);
-                }
-                
-                if (!ImGui::IsMouseDown(0))
-                {
-                    draggingConnection = false;
-                }
-
-                ax::NodeEditor::PinRect(ImVec2(lastItemRect.GetCenter().x - 1.0f, lastItemRect.GetCenter().y + 1.0f),
-                    ImVec2(lastItemRect.GetCenter().x + 1.0f, lastItemRect.GetCenter().y - 1.0f));
-
-                if (isInput)
-                {
-                    ImGui::SameLine();
-                    pGui->addText(nameToIndexIt.first.c_str());
-                }
-
-                ax::NodeEditor::EndPin();
-                
-                if ((draggingPinIndex == pinIndex) && draggingConnection)
-                {
-                    firstConnectionName = sPassToName[currentPass.get()] + "." + nameToIndexIt.first;
-                    mouseDragBezierPin = nameToIndexIt.second.first;
-                    // use the same bezier with picking by creating another link
-                }
-
-                pinIndex++;
-            }
-
-            mNodeProperties[currentPass.get()][0].renderUI(pGui);
-            mNodeProperties[currentPass.get()][1].renderUI(pGui);
-
-            currentPass->renderUI(pGui, sPassToName[currentPass.get()]);
-
-            ax::NodeEditor::EndNode();
-            nodeIndex++;
-        }
-
-        ax::NodeEditor::EndDelete();
-
-        // draw connections
-        for (const auto& nameIndexPair : mNameToIndex)
-        {
-            for (const auto& renderGraphEdge : mEdges)
-            {
-                ax::NodeEditor::Link(linkIndex++, mDisplayMap[renderGraphEdge.pSrc][renderGraphEdge.srcField].first, 
-                    mDisplayMap[renderGraphEdge.pDst][renderGraphEdge.dstField].first);
-            }
-        }
-
-        // add output of the graph as the last output
-
-        if (mouseDragBezierPin)
-        {
-            ax::NodeEditor::LinkToPos(linkIndex++, mouseDragBezierPin, ImGui::GetCurrentContext()->IO.MousePos);
-        }
-
-
-        // get rid of nodes for next frame
-        for (const std::string& passName : nodeNamesToDelete)
-        {
-            removeRenderPass(passName);
-        }
-    }
-
-    void RenderGraph::addFieldDisplayData(RenderPass* pRenderPass, const std::string& displayName, bool isInput)
-    {
-        assert(pRenderPass);
-        mDisplayMap[pRenderPass].insert(std::make_pair(displayName, std::make_pair(mDisplayPinIndex++, isInput)));
+        return pPass ? pPass->getOutput(strPair.second) : pNull;
     }
 
     void RenderGraph::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
@@ -652,122 +398,9 @@ namespace Falcor
         mSwapChainData.height = height;
 
         // Invoke the passes' callback
-        for (auto& pPass : mpPasses)
+        for (auto& passIndex : mNameToIndex)
         {
-            pPass->onResizeSwapChain(pSample, width, height);
+            mpGraph->getNodeData(passIndex.second)->onResizeSwapChain(pSample, width, height);
         }
-    }
-
-    void RenderGraph::deserializeJson(const rapidjson::Document& reader)
-    {
-        const char* memberArrayNames[2] = { "OutputFields", "InputFields" };
-        bool isInput = false;
-
-        // all of the fields types have the same type of schema
-        for (uint32_t i = 0; i < 2; ++i)
-        {
-            // insert the display data for the fields with no connections
-            if (reader.FindMember(memberArrayNames[i]) == reader.MemberEnd())
-            {
-                return;
-            }
-
-            auto fields = reader.FindMember(memberArrayNames[i])->value.GetArray();
-            for (const auto& field : fields)
-            {
-                RenderPass::SharedPtr pFieldPass = mpPasses[mNameToIndex[std::string(field.FindMember("RenderPassName")->value.GetString())]];
-                std::string fieldNameString(field.FindMember("FieldName")->value.GetString());
-                addFieldDisplayData(pFieldPass.get(), fieldNameString, isInput);
-            }
-            isInput = true;
-        }
-
-        // TODO - need to mark output from the file as well but need way of mapping to resources or resource handles
-
-
-
-    }
-
-    void RenderGraph::serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* writer) const
-    {
-#define string_2_json(_string) \
-        rapidjson::StringRef(_string.c_str())
-
-        // write out the nodes and node data
-        writer->String("RenderPassNodes");
-        writer->StartArray();
-        
-        for (auto& nameIndexPair : mNameToIndex)
-        {
-            writer->StartObject();
-
-            writer->String("RenderPassName");
-            writer->String(nameIndexPair.first.c_str());
-            writer->String("RenderPassType");
-            writer->String(mpPasses[nameIndexPair.second]->getTypeName().c_str());
-
-            // serialize custom data here
-
-            writer->EndObject();
-        }
-
-        writer->EndArray();
-
-        // write out the fields that cannot be filled out by the connections
-        const char* memberArrayNames[2] = { "OutputFields", "InputFields" };
-        bool isInput = false;
-
-        for(uint32_t i = 0; i < 2; ++i)
-        {
-            writer->String(memberArrayNames[i]);
-            writer->StartArray();
-
-            // maybe make another structure for free pins??? (Avoids duplicates like now, but will have additional memory (maybe slot map??))
-            for (const auto& nameToIndexMap : mDisplayMap)
-            {
-                for (const auto& nameToIndexIt : nameToIndexMap.second)
-                {
-                    if (nameToIndexIt.second.second == isInput)
-                    {
-                        writer->StartObject();
-
-                        writer->String("RenderPassName");
-                        writer->String(sPassToName[nameToIndexMap.first].c_str());
-                        writer->String("FieldName");
-                        writer->String(nameToIndexIt.first.c_str());
-
-                        writer->EndObject();
-                    }
-                }
-                
-            }
-
-            writer->EndArray();
-            isInput = true;
-        }        
-
-        // write out the node connections
-        writer->String("Edges");
-        writer->StartArray();
-
-        for (auto& edge : mEdges)
-        {
-            writer->StartObject();
-            
-            writer->String("SrcRenderPassName");
-            writer->String(sPassToName[edge.pSrc].c_str());
-            writer->String("DstRenderPassName");
-            writer->String(sPassToName[edge.pDst].c_str());
-
-            writer->String("SrcField");
-            writer->String(edge.srcField.c_str());
-            writer->String("DstField");
-            writer->String(edge.dstField.c_str());
-            writer->EndObject();
-        }
-
-        writer->EndArray();
-
-#undef string_2_json
     }
 }

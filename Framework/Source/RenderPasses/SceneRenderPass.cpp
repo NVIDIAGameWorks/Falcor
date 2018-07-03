@@ -166,7 +166,7 @@ namespace Falcor
         }
     }
 
-    std::shared_ptr<Resource> SceneRenderPass::getOutput(const std::string& name)
+    std::shared_ptr<Resource> SceneRenderPass::getOutput(const std::string& name) const
     {
         if (name == kColor)
         {

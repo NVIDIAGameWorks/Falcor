@@ -1110,6 +1110,7 @@
     <ClInclude Include="Utils\BinaryFileStream.h" />
     <ClInclude Include="Utils\Bitmap.h" />
     <ClInclude Include="Utils\CpuTimer.h" />
+    <ClInclude Include="Utils\DirectedGraph.h" />
     <ClInclude Include="Utils\DDSHeader.h" />
     <ClInclude Include="Utils\DebugDrawer.h" />
     <ClInclude Include="Utils\DXHeader.h" />
