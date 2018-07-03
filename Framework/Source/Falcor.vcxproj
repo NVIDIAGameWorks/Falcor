@@ -1108,6 +1108,7 @@
     <ClInclude Include="Utils\DirectedGraph.h" />
     <ClInclude Include="Utils\DDSHeader.h" />
     <ClInclude Include="Utils\DebugDrawer.h" />
+    <ClInclude Include="Utils\DirectedGraphTraversal.h" />
     <ClInclude Include="Utils\DXHeader.h" />
     <ClInclude Include="Utils\Font.h" />
     <ClInclude Include="Utils\FrameRate.h" />

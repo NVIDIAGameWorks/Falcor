@@ -36,6 +36,10 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<DirectedGraph>;
+        static const uint32_t kInvalidID = (uint32_t)-1;
+
+        class Node;
+        class Edge;
 
         /** Create a new graph
         */
@@ -78,13 +82,13 @@ namespace Falcor
             if (mNodes.find(srcNode) == mNodes.end())
             {
                 logWarning("Can't add an edge to DirectGraph, src node ID doesn't exist");
-                return -1;
+                return kInvalidID;
             }
 
             if (mNodes.find(dstNode) == mNodes.end())
             {
                 logWarning("Can't add an edge to DirectGraph, src node ID doesn't exist");
-                return -1;
+                return kInvalidID;
             }
 
             mNodes[srcNode].mOutgoingEdges.push_back(mCurrentEdgeId);
@@ -110,35 +114,7 @@ namespace Falcor
 
             mEdges.erase(edgeId);
         }
-
-        /** Get a node's data
-        */
-        const NodeData& getNodeData(uint32_t nodeId)
-        {
-            if (mNodes.find(nodeId) == mNodes.end())
-            {
-                logWarning("DirectGraph::getNodeData() - node ID doesn't exist");
-                static const NodeData nd;
-                return nd;
-            }
-
-            return mNodes[nodeId].mData;
-        }
-
-        /** Get an edge's data
-        */
-        const EdgeData& getEdgeData(uint32_t edgeId)
-        {
-            if (mEdges.find(edgeId) == mEdges.end())
-            {
-                logWarning("DirectGraph::getEdgeData() - edge ID doesn't exist");
-                static const EdgeData e;
-                return e;
-            }
-
-            return mEdges[edgeId].mData;
-        }
-
+        
         class Node
         {
         public:
@@ -167,32 +143,60 @@ namespace Falcor
         private:
             friend DirectedGraph;
             Edge(uint32_t s, uint32_t d, const EdgeData& data) : mSrc(s), mDst(d), mData(data) {}
-            uint32_t mSrc = -1;
-            uint32_t mDst = -1;
+            uint32_t mSrc = kInvalidID;
+            uint32_t mDst = kInvalidID;
             EdgeData mData;
         };
         
-        const Node& getNode(uint32_t nodeId)
+        /** Check if a node exists
+        */
+        bool doesNodeExist(uint32_t nodeId) const { return mNodes.find(nodeId) != mNodes.end(); }
+
+        /** Check if an edge exists
+        */
+        bool doesEdgeExist(uint32_t edgeId) const { return mEdges.find(edgeId) != mEdges.end(); }
+        
+        /** Get a node
+        */
+        const Node* getNode(uint32_t nodeId)
         {
-            if (mNodes.find(nodeId) == mNodes.end())
+            if (doesNodeExist(nodeId) == false)
             {
                 logWarning("DirectGraph::getNode() - node ID doesn't exist");
-                static const Node n;
-                return n;
+                return nullptr;
             }
-            return mNodes[nodeId];
+            return &mNodes[nodeId];
         }
 
-        const Edge& getEdge(uint32_t edgeId)
+        /** Get an edge
+        */
+        const Edge* getEdge(uint32_t edgeId)
         {
-            if (mEdges.find(edgeId) == mEdges.end())
+            if (doesEdgeExist(edgeId) == false)
             {
                 logWarning("DirectGraph::getEdge() - edge ID doesn't exist");
-                static const Edge e;
-                return e;
+                return nullptr;
             }
-            return mEdges[edgeId];
+            return &mEdges[edgeId];
         }
+
+        /** Get a node's data
+        */
+        const NodeData* getNodeData(uint32_t nodeId)
+        {
+            const Node* pNode = getNode(nodeId);
+            return pNode ? &pNode->getData() : nullptr;
+        }
+
+        /** Get an edge's data
+        */
+        const EdgeData* getEdgeData(uint32_t edgeId)
+        {
+            const Edge* pE = getEdge(edgeId);
+            return pE ? &pE->getData() : nullptr;
+        }
+
+        uint32_t getCurrentNodeId() const { return mCurrentNodeId; }
      private:
         DirectedGraph() = default;
 

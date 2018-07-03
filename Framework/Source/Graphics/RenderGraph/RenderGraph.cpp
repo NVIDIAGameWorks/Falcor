@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "RenderGraph.h"
 #include "API/FBO.h"
+#include "Utils/DirectedGraphTraversal.h"
 
 namespace Falcor
 {
@@ -46,6 +47,34 @@ namespace Falcor
     RenderGraph::RenderGraph()
     {
         mpGraph = DAG::create();
+
+        auto& pG = DAG::create();
+
+        DirectedGraphDfsTraversal<DAG> traverser(pG, 0);
+
+        uint32_t a = pG->addNode(nullptr);
+        uint32_t b = pG->addNode(nullptr);
+        uint32_t c = pG->addNode(nullptr);
+        uint32_t d = pG->addNode(nullptr);
+        uint32_t e = pG->addNode(nullptr);
+
+        pG->addEdge(a, b, {});
+        pG->addEdge(b, c, {});
+        pG->addEdge(b, d, {});
+        pG->addEdge(d, e, {});
+        pG->addEdge(a, e, {});
+
+        traverser.reset(0);
+
+        uint32_t n = 0;
+        n = traverser.traverse();
+        n = traverser.traverse();
+        n = traverser.traverse();
+        n = traverser.traverse();
+        n = traverser.traverse();
+        n = traverser.traverse();
+        n = traverser.traverse();
+        n = traverser.traverse();
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
@@ -59,7 +88,7 @@ namespace Falcor
         mpScene = pScene;
         for (auto& it : mNameToIndex)
         {
-            mpGraph->getNodeData(it.second)->setScene(pScene);
+            (*mpGraph->getNodeData(it.second))->setScene(pScene);
         }
     }
 
@@ -104,7 +133,7 @@ namespace Falcor
             logWarning("RenderGraph::getRenderPass() - can't find a pass named `" + name + "`");
             return pNull;
         }
-        return mpGraph->getNodeData(index);
+        return (*mpGraph->getNodeData(index));
     }
     
     using str_pair = std::pair<std::string, std::string>;
@@ -166,12 +195,12 @@ namespace Falcor
         if (pSrc == nullptr || pDst == nullptr) return false;
 
         // Check that the dst field is not already initialized
-        const DAG::Node& node = mpGraph->getNode(mNameToIndex[dstPair.first]);
+        const DAG::Node* pNode = mpGraph->getNode(mNameToIndex[dstPair.first]);
 
-        for (uint32_t e = 0 ; e < node.getOutgoingEdgeCount() ; e++)
+        for (uint32_t e = 0 ; e < pNode->getOutgoingEdgeCount() ; e++)
         {
-            const auto& edgeData = mpGraph->getEdgeData(node.getIncomingEdge(e));
-            if (edgeData.dstField == newEdge.dstField)
+            const auto& pEdgeData = mpGraph->getEdgeData(pNode->getIncomingEdge(e));
+            if (pEdgeData->dstField == newEdge.dstField)
             {
                 logWarning("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
                 return false;
@@ -190,7 +219,7 @@ namespace Falcor
 
         for (const auto& passIndex : mNameToIndex)
         {
-            RenderPass* pPass = mpGraph->getNodeData(passIndex.second).get();
+            RenderPass* pPass = (*mpGraph->getNodeData(passIndex.second)).get();
             if (pPass->isValid(log) == false)
             {
                 valid = false;
@@ -243,8 +272,8 @@ namespace Falcor
         {   
             for (const auto& passIndex : mNameToIndex)
             {
-                const DAG::Node& node = mpGraph->getNode(passIndex.second);
-                RenderPass* pSrcPass = node.getData().get();
+                const DAG::Node* pNode = mpGraph->getNode(passIndex.second);
+                RenderPass* pSrcPass = pNode->getData().get();
                 const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
 
                 // Allocate everything that is required
@@ -262,10 +291,10 @@ namespace Falcor
                 }
 
                 // Now go over the edges, allocate the required resources and attach them to the input pass
-                for (uint32_t e = 0; e < node.getOutgoingEdgeCount(); e++)
+                for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
                 {
-                    const auto& edge = mpGraph->getEdge(node.getOutgoingEdge(e));
-                    const auto& edgeData = edge.getData();
+                    const auto& pEdge = mpGraph->getEdge(pNode->getOutgoingEdge(e));
+                    const auto& edgeData = pEdge->getData();
 
                     // Find the input
                     for (const auto& src : passData.outputs)
@@ -276,7 +305,7 @@ namespace Falcor
                             pSrcPass->setOutput(src.name, pTexture);
 
                             // Connect it to the dst pass
-                            RenderPass* pDstPass = mpGraph->getNodeData(edge.getDestNode()).get();
+                            RenderPass* pDstPass = (*mpGraph->getNodeData(pEdge->getDestNode())).get();
                             pDstPass->setInput(edgeData.dstField, pTexture);
                             break;
                         }
@@ -301,7 +330,7 @@ namespace Falcor
 
         for (const auto& passIndex : mNameToIndex)
         {
-            mpGraph->getNodeData(passIndex.second)->execute(pContext);
+            (*mpGraph->getNodeData(passIndex.second))->execute(pContext);
         }
     }
 
@@ -396,7 +425,7 @@ namespace Falcor
         // Invoke the passes' callback
         for (auto& passIndex : mNameToIndex)
         {
-            mpGraph->getNodeData(passIndex.second)->onResizeSwapChain(pSample, width, height);
+            (*mpGraph->getNodeData(passIndex.second))->onResizeSwapChain(pSample, width, height);
         }
     }
 }
