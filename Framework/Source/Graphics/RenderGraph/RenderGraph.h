@@ -123,8 +123,9 @@ namespace Falcor
             std::string dstField;
         };
 
-        using DAG = DirectedGraph<RenderPass::SharedPtr, EdgeData>;
-        DAG::SharedPtr mpGraph;
+        DirectedGraph::SharedPtr mpGraph;
+        std::unordered_map<uint32_t, EdgeData> mEdgeData;
+        std::unordered_map<uint32_t, RenderPass::SharedPtr> mNodeData;
 
         struct GraphOut
         {

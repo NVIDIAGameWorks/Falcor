@@ -31,7 +31,6 @@
 
 namespace Falcor
 {
-    template<typename NodeData, typename EdgeData>
     class DirectedGraph
     {
     public:
@@ -51,33 +50,37 @@ namespace Falcor
         /** Add a node.
             The returned value is a unique identifier of the node
         */
-        uint32_t addNode(const NodeData& nodeData)
+        uint32_t addNode()
         {
-            mNodes[mCurrentNodeId] = Node(nodeData);
+            mNodes[mCurrentNodeId] = Node();
             return mCurrentNodeId++;
         }
 
         /** Remove a node from the graph. This function will also remove all the incoming and outgoing edges associated with the node
+            \return A list of edges that were removed
         */
-        void removeNode(uint32_t id)
+        std::vector<uint32_t> removeNode(uint32_t id)
         {
             if (mNodes.find(id) == mNodes.end())
             {
                 logWarning("Can't remove node from DirectGraph, node ID doesn't exist");
-                return;
+                return {};
             }
 
+            std::vector<uint32_t> removedEdges;
             // Loop over the edges and erase the edges
-            for (auto& edgeId : mNodes[id].mIncomingEdges) removeEdgeByNode<false>(mNodes[mEdges[edgeId].mSrc].mOutgoingEdges, id);
-            for (auto& edgeId : mNodes[id].mOutgoingEdges) removeEdgeByNode<true>(mNodes[mEdges[edgeId].mDst].mIncomingEdges, id);
+            for (auto& edgeId : mNodes[id].mIncomingEdges) removeEdgeByNode<false>(mNodes[mEdges[edgeId].mSrc].mOutgoingEdges, id, removedEdges);
+            for (auto& edgeId : mNodes[id].mOutgoingEdges) removeEdgeByNode<true>(mNodes[mEdges[edgeId].mDst].mIncomingEdges, id, removedEdges);
 
             // Remove the index from the map
             mNodes.erase(id);
+            
+            return removedEdges;
         }
 
         /** Add an edge
         */
-        uint32_t addEdge(uint32_t srcNode, uint32_t dstNode, const EdgeData& edgeData)
+        uint32_t addEdge(uint32_t srcNode, uint32_t dstNode)
         {
             if (mNodes.find(srcNode) == mNodes.end())
             {
@@ -94,7 +97,7 @@ namespace Falcor
             mNodes[srcNode].mOutgoingEdges.push_back(mCurrentEdgeId);
             mNodes[dstNode].mIncomingEdges.push_back(mCurrentEdgeId);
 
-            mEdges[mCurrentEdgeId] = (Edge(srcNode, dstNode, edgeData));
+            mEdges[mCurrentEdgeId] = (Edge(srcNode, dstNode));
             return mCurrentEdgeId++;
         }
 
@@ -119,7 +122,6 @@ namespace Falcor
         {
         public:
             Node() = default;
-            const NodeData& getData() const { return mData; }
             uint32_t getOutgoingEdgeCount() const { return (uint32_t)mOutgoingEdges.size(); }
             uint32_t getIncomingEdgeCount() const { return (uint32_t)mIncomingEdges.size(); }
 
@@ -127,8 +129,6 @@ namespace Falcor
             uint32_t getOutgoingEdge(uint32_t i) const { return mOutgoingEdges[i]; }
         private:
             friend DirectedGraph;
-            Node(const NodeData& data) : mData(data) {}
-            NodeData mData;
             std::vector<uint32_t> mIncomingEdges;
             std::vector<uint32_t> mOutgoingEdges;
         };
@@ -137,15 +137,13 @@ namespace Falcor
         {
         public:
             Edge() = default;
-            const EdgeData& getData() const { return mData; }
             uint32_t getSourceNode() const { return mSrc; }
             uint32_t getDestNode() const { return mDst; }
         private:
             friend DirectedGraph;
-            Edge(uint32_t s, uint32_t d, const EdgeData& data) : mSrc(s), mDst(d), mData(data) {}
+            Edge(uint32_t s, uint32_t d) : mSrc(s), mDst(d) {}
             uint32_t mSrc = kInvalidID;
             uint32_t mDst = kInvalidID;
-            EdgeData mData;
         };
         
         /** Check if a node exists
@@ -180,22 +178,6 @@ namespace Falcor
             return &mEdges[edgeId];
         }
 
-        /** Get a node's data
-        */
-        const NodeData* getNodeData(uint32_t nodeId)
-        {
-            const Node* pNode = getNode(nodeId);
-            return pNode ? &pNode->getData() : nullptr;
-        }
-
-        /** Get an edge's data
-        */
-        const EdgeData* getEdgeData(uint32_t edgeId)
-        {
-            const Edge* pE = getEdge(edgeId);
-            return pE ? &pE->getData() : nullptr;
-        }
-
         uint32_t getCurrentNodeId() const { return mCurrentNodeId; }
      private:
         DirectedGraph() = default;
@@ -206,7 +188,7 @@ namespace Falcor
         uint32_t mCurrentEdgeId = 0;
 
         template<bool removeSrc>
-        void removeEdgeByNode(std::vector<uint32_t>& edges, uint32_t nodeToRemove)
+        void removeEdgeByNode(std::vector<uint32_t>& edges, uint32_t nodeToRemove, std::vector<uint32_t> removedEdges)
         {
             for (size_t i = 0; i < edges.size();)
             {
@@ -215,6 +197,7 @@ namespace Falcor
                 if (otherNode == nodeToRemove)
                 {
                     removeEdge(edges[i]);
+                    removedEdges.push_back(edges[i]);
                 }
                 else i++;
             }

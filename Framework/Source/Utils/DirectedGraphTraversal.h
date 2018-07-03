@@ -32,18 +32,17 @@
 
 namespace Falcor
 {
-    enum class GraphTraversalFlags
-    {
-        None = 0x0,
-        Reverse = 0x1,
-        IgnoreVisited = 0x2,
-    };
-    template<typename GraphType>
     class DirectedGraphTraversal
     {
     public:
-        using Flags = GraphTraversalFlags;
-        DirectedGraphTraversal(const typename GraphType::SharedPtr pGraph, uint32_t rootNode, Flags flags) : mpGraph(pGraph), mFlags(flags)
+        enum class Flags
+        {
+            None = 0x0,
+            Reverse = 0x1,
+            IgnoreVisited = 0x2,
+        };
+
+        DirectedGraphTraversal(const DirectedGraph::SharedPtr pGraph, uint32_t rootNode, Flags flags) : mpGraph(pGraph), mFlags(flags)
         {
             reset(rootNode);
         }
@@ -53,7 +52,7 @@ namespace Falcor
             if (mpGraph->doesNodeExist(rootNode) == false) return false;
             mNodeStack.push(rootNode);
 
-            if (is_set(mFlags, Flags::IgnoreVisited))
+            if ((uint32_t)mFlags & (uint32_t)Flags::IgnoreVisited)
             {
                 mVisited.assign(mpGraph->getCurrentNodeId(), false);
             }
@@ -63,19 +62,18 @@ namespace Falcor
     protected:
         virtual ~DirectedGraphTraversal() = 0 {}
 
-        typename GraphType::SharedPtr mpGraph;
+        typename DirectedGraph::SharedPtr mpGraph;
         Flags mFlags;
         std::vector<bool> mVisited;
         std::stack<uint32_t> mNodeStack;
     };
 
-    enum_class_operators(GraphTraversalFlags);
+    enum_class_operators(DirectedGraphTraversal::Flags);
 
-    template<typename GraphType>
-    class DirectedGraphDfsTraversal : public DirectedGraphTraversal<typename GraphType>
+    class DirectedGraphDfsTraversal : public DirectedGraphTraversal
     {
     public:
-        DirectedGraphDfsTraversal(const typename GraphType::SharedPtr pGraph, uint32_t rootNode, Flags flags = Flags::None) : DirectedGraphTraversal(pGraph, rootNode, flags) {}
+        DirectedGraphDfsTraversal(const DirectedGraph::SharedPtr pGraph, uint32_t rootNode, Flags flags = Flags::None) : DirectedGraphTraversal(pGraph, rootNode, flags) {}
         ~DirectedGraphDfsTraversal() = default;
 
         uint32_t traverse()
@@ -83,21 +81,21 @@ namespace Falcor
             if (mNodeStack.empty())
             {
                 logWarning("DFS traversal ended, nowhere new to go");
-                return GraphType::kInvalidID;
+                return DirectedGraph::kInvalidID;
             }
 
             uint32_t curNode = mNodeStack.top();
             mNodeStack.pop();
 
             // Insert all the children
-            const GraphType::Node* pNode = mpGraph->getNode(curNode);
-            bool reverse = is_set(mFlags, GraphTraversalFlags::Reverse);
+            const DirectedGraph::Node* pNode = mpGraph->getNode(curNode);
+            bool reverse = is_set(mFlags, Flags::Reverse);
             uint32_t edgeCount = reverse ? pNode->getIncomingEdgeCount() : pNode->getOutgoingEdgeCount();
 
             for (uint32_t i = 0; i < edgeCount; i++)
             {
                 uint32_t e = reverse ? pNode->getIncomingEdge(i) : pNode->getOutgoingEdge(i);
-                const GraphType::Edge* pEdge = mpGraph->getEdge(e);
+                const DirectedGraph::Edge* pEdge = mpGraph->getEdge(e);
                 uint32_t child = reverse ? pEdge->getSourceNode() : pEdge->getDestNode();
                 mNodeStack.push(child);
             }
