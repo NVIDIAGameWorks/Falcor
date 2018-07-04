@@ -5,11 +5,13 @@
     <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\NodeEditor.cpp" />
     <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.cpp" />
     <ClCompile Include="RenderGraphUI.cpp" />
+    <ClCompile Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderGraphEditor.h" />
     <ClInclude Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.h" />
     <ClInclude Include="RenderGraphUI.h" />
+    <ClInclude Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\DefaultRenderGraph.json" />

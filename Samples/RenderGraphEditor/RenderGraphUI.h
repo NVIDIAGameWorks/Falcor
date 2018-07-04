@@ -47,7 +47,6 @@ namespace Falcor
     class RenderPassUI
     {
     public:
-
         // pin type enum?
 
         struct PinUIData
@@ -95,7 +94,7 @@ namespace Falcor
 
     private:
 
-        /** Updates structure for drawing the gui graph
+        /** Updates structure for drawing the GUI graph
         */
         void updateDisplayData();
 

@@ -33,7 +33,7 @@ namespace Falcor
 {
     class Scene;
     class Texture;
-    
+
     class RenderGraph
     {
     public:
@@ -83,17 +83,12 @@ namespace Falcor
             Calling this function will automatically mark the output as one of the graph's outputs (even if called with nullptr)
         */
         bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
-        
+
         /** Get an output resource. The name has the format `renderPassName.resourceName`.
             This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
         */
         const std::shared_ptr<Resource> getOutput(const std::string& name);
         
-        /** Get an input resource. The name has the format `renderPassName.resourceName`.
-          This is an alias for `getRenderPass(renderPassName)->getInput(resourceName)`
-        */
-        const Resource::SharedPtr getInput(const std::string& name);
-
         /** Mark a render-pass output as the graph's output. If the graph has no outputs it is invalid.
             The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs.
             If the user didn't set the output resource using `setOutput()`, the graph will automatically allocate it
@@ -131,8 +126,9 @@ namespace Falcor
             std::string dstField;
         };
 
-        using DAG = DirectedGraph<RenderPass::SharedPtr, EdgeData>;
-        DAG::SharedPtr mpGraph;
+        DirectedGraph::SharedPtr mpGraph;
+        std::unordered_map<uint32_t, EdgeData> mEdgeData;
+        std::unordered_map<uint32_t, RenderPass::SharedPtr> mNodeData;
 
         struct GraphOut
         {
@@ -143,8 +139,6 @@ namespace Falcor
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
         std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
-
-        void addFieldDisplayData(RenderPass* pRenderPass, const std::string& displayName, bool isInput);
 
         struct  
         {

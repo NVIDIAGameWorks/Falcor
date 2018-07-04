@@ -35,8 +35,6 @@
 #include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
 #include "Externals/RapidJson/include/rapidjson/prettywriter.h"
 
-#include "Externals/imgui-node-editor/NodeEditor/Include/NodeEditor.h"
-
 #include "Externals/dear_imgui/imgui.h"
 #include "Externals/dear_imgui/imgui_internal.h"
 
@@ -82,20 +80,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // please remove this
     static bool firstFrame = true;
 
-    static ax::NodeEditor::EditorContext* spContext = nullptr;
-    if (!spContext)
-    {
-        spContext = ax::NodeEditor::CreateEditor();
-    }
-
-    ax::NodeEditor::SetCurrentEditor(spContext);
-
-    // Test node editor
-    ax::NodeEditor::Begin("Editor");
-
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
 
-    ax::NodeEditor::End();
 
 
     if (!firstFrame)

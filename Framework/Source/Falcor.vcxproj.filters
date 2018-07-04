@@ -1734,7 +1734,6 @@
     </ClInclude>
     <ClInclude Include="Utils\GuiProperty.h">
     <ClInclude Include="Utils\DirectedGraph.h">
-    <ClInclude Include="Utils\DirectedGraph.h">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>

@@ -29,7 +29,6 @@
 #include "BlitPass.h"
 #include "API/RenderContext.h"
 
-// #include "Externals/RapidJson/include/rapidjson/rapidjson.h"
 #include "Utils/Gui.h"
 
 namespace Falcor
