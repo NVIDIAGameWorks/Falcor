@@ -50,7 +50,7 @@ namespace Falcor
 
         auto& pG = DirectedGraph::create();
 
-        DirectedGraphBfsTraversal traverser(pG, 0);
+        DirectedGraphDfsTraversal traverser(pG, 0);
 
         uint32_t a = pG->addNode();
         uint32_t b = pG->addNode();
@@ -86,7 +86,7 @@ namespace Falcor
         n = traverser.traverse();
 
         pG->addEdge(f, a);
-        DirectedGraphBfsTraversal reverse(pG, f, DirectedGraphTraversal::Flags::Reverse | DirectedGraphTraversal::Flags::IgnoreVisited);
+        DirectedGraphDfsTraversal reverse(pG, f, DirectedGraphTraversal::Flags::Reverse | DirectedGraphTraversal::Flags::IgnoreVisited);
 
         n = reverse.traverse();
         n = reverse.traverse();
