@@ -75,8 +75,8 @@ namespace Falcor
         mpFbo = Fbo::create();
         
         DepthStencilState::Desc dsDesc;
-        dsDesc.setDepthTest(false).setStencilTest(false);
-        mpDsNoTests = DepthStencilState::create(dsDesc);
+        dsDesc.setDepthTest(true).setDepthWriteMask(false).setStencilTest(false).setDepthFunc(DepthStencilState::Func::LessEqual);
+        mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
     }
 
     void SceneRenderPass::sceneChangedCB()
@@ -119,7 +119,16 @@ namespace Falcor
         {
             Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
             mpFbo->attachDepthStencilTarget(pDepth);
-            mpState->setDepthStencilState(pDepth ? mpDsNoTests : nullptr);
+            if (pDepth)
+            {
+                mpState->setDepthStencilState(mpDsNoDepthWrite);
+                mClearFlags = FboAttachmentType::Color;
+            }
+            else
+            {
+                mpState->setDepthStencilState(nullptr);
+                mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
+            }
         }
         else
         {
@@ -159,7 +168,8 @@ namespace Falcor
             mpFbo->attachDepthStencilTarget(pDepth);
         }
 
-        pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0);
+        pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0, mClearFlags);
+
         if (mpSceneRenderer)
         {
             mpState->setFbo(mpFbo);

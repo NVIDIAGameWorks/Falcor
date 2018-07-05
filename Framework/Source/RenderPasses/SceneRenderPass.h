@@ -58,7 +58,8 @@ namespace Falcor
         static const PassData kRenderPassData;
         Fbo::SharedPtr mpFbo;
         GraphicsState::SharedPtr mpState;
-        DepthStencilState::SharedPtr mpDsNoTests;
+        DepthStencilState::SharedPtr mpDsNoDepthWrite;
+        Falcor::FboAttachmentType mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
         GraphicsVars::SharedPtr mpVars;
         SceneRenderer::SharedPtr mpSceneRenderer;
         vec4 mClearColor = vec4(1);
