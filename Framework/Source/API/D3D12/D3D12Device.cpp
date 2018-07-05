@@ -235,6 +235,22 @@ namespace Falcor
             return false;
         }
 
+        if (desc.enableDebugLayer)
+        {
+            MAKE_SMART_COM_PTR(ID3D12InfoQueue);
+            ID3D12InfoQueuePtr pInfoQueue;
+            mApiHandle->QueryInterface(IID_PPV_ARGS(&pInfoQueue));
+            D3D12_MESSAGE_ID hideMessages[] =
+            {
+                D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+                D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
+            };
+            D3D12_INFO_QUEUE_FILTER f = {};
+            f.DenyList.NumIDs = arraysize(hideMessages);
+            f.DenyList.pIDList = hideMessages;
+            pInfoQueue->AddStorageFilterEntries(&f);
+        }
+
         for (uint32_t i = 0; i < kQueueTypeCount; i++)
         {
             for (uint32_t j = 0; j < desc.cmdQueues[i]; j++)
