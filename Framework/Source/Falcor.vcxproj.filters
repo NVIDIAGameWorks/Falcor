@@ -547,6 +547,9 @@
     <ClCompile Include="RenderPasses\BlitPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPasses\DepthPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1719,6 +1722,10 @@
     </ClInclude>
     <ClInclude Include="Utils\DirectedGraph.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\DirectedGraphTraversal.h" />
+    <ClInclude Include="RenderPasses\DepthPass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

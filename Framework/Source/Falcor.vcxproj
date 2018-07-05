@@ -516,6 +516,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="RenderPasses\BlitPass.cpp" />
+    <ClCompile Include="RenderPasses\DepthPass.cpp" />
     <ClCompile Include="RenderPasses\SceneRenderPass.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
@@ -1098,6 +1099,7 @@
     </ClInclude>
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPasses\BlitPass.h" />
+    <ClInclude Include="RenderPasses\DepthPass.h" />
     <ClInclude Include="RenderPasses\SceneRenderPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />

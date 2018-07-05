@@ -34,10 +34,10 @@
 
 namespace Falcor
 {
-    class SceneRenderPass : public RenderPass, inherit_shared_from_this<RenderPass, SceneRenderPass>
+    class DepthPass : public RenderPass, inherit_shared_from_this<RenderPass, DepthPass>
     {
     public:
-        using SharedPtr = std::shared_ptr<SceneRenderPass>;
+        using SharedPtr = std::shared_ptr<DepthPass>;
 
         /** Create a new object
         */
@@ -50,17 +50,14 @@ namespace Falcor
         virtual PassData getRenderPassData() const override { return kRenderPassData; }
         virtual void sceneChangedCB() override;
         virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
-        virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
 
         virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     private:
-        SceneRenderPass();
+        DepthPass();
         static const PassData kRenderPassData;
         Fbo::SharedPtr mpFbo;
         GraphicsState::SharedPtr mpState;
-        DepthStencilState::SharedPtr mpDsNoTests;
         GraphicsVars::SharedPtr mpVars;
         SceneRenderer::SharedPtr mpSceneRenderer;
-        vec4 mClearColor = vec4(1);
     };
 }
