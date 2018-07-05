@@ -72,7 +72,7 @@ namespace Falcor
     {
     public:
 
-        RenderGraphUI(RenderGraph& renderGraphRef) : mRenderGraphRef(renderGraphRef) {}
+        RenderGraphUI(RenderGraph& renderGraphRef);
 
         /** Display enter graph in GUI.
         */
@@ -92,20 +92,31 @@ namespace Falcor
         */
         void deserializeJson(const rapidjson::Document& reader);
 
+
+
+        static bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
+
+        static void removeLink();
+
+        static void removeRenderPass(const std::string& name);
+
     private:
 
         /** Updates structure for drawing the GUI graph
         */
         void updateDisplayData();
 
+
         // start with reference of render graph
         RenderGraph& mRenderGraphRef;
 
+        static RenderGraphUI& mCurrentGraphUI;
+
         std::unordered_map <std::string, RenderPassUI> mRenderPassUI;
 
-        // maps output pin name to input pin ids
-        std::unordered_map <std::string, std::vector<uint32_t> > mOutputToInputPins;
+        // maps output pin name to input pin ids. Pair first is pin id, second is node id
+        std::unordered_map <std::string, std::vector< std::pair<uint32_t, uint32_t > > > mOutputToInputPins;
 
-        uint32_t mDisplayPinIndex = 0;
+        bool mRebuildDisplayData = true;
     };
 }
