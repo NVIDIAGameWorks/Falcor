@@ -30,7 +30,7 @@
 
 using namespace Falcor;
 
-class RenderGraphRenderer : public Renderer
+class RenderGraphViewer : public Renderer
 {
 public:
     void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;

@@ -25,11 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderGraphRenderer.h"
+#include "RenderGraphViewer.h"
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 
-void RenderGraphRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load Scene"))
     {
@@ -38,7 +38,7 @@ void RenderGraphRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void RenderGraphRenderer::loadScene(const std::string& filename, bool showProgressBar)
+void RenderGraphViewer::loadScene(const std::string& filename, bool showProgressBar)
 {
     ProgressBar::SharedPtr pBar;
     if (showProgressBar)
@@ -52,7 +52,7 @@ void RenderGraphRenderer::loadScene(const std::string& filename, bool showProgre
     mCamControl.attachCamera(pScene->getCamera(0));
 }
 
-void RenderGraphRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpGraph = RenderGraph::create();
     mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
@@ -63,7 +63,7 @@ void RenderGraphRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::
     loadScene(gkDefaultScene, false);
 }
 
-void RenderGraphRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
 
@@ -72,17 +72,17 @@ void RenderGraphRenderer::onFrameRender(SampleCallbacks* pSample, const RenderCo
     mpGraph->execute(pRenderContext.get());
 }
 
-bool RenderGraphRenderer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
+bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
     return mCamControl.onKeyEvent(keyEvent);
 }
 
-bool RenderGraphRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
+bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCamControl.onMouseEvent(mouseEvent);
 }
 
-void RenderGraphRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
+void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     auto& pColor = Texture::create2D(width, height, pSample->getCurrentFbo()->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
     auto& pDepth = Texture::create2D(width, height, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
@@ -92,7 +92,7 @@ void RenderGraphRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t w
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
-    RenderGraphRenderer::UniquePtr pRenderer = std::make_unique<RenderGraphRenderer>();
+    RenderGraphViewer::UniquePtr pRenderer = std::make_unique<RenderGraphViewer>();
     SampleConfig config;
     config.windowDesc.title = "Render Graph Renderer";
     config.windowDesc.resizableWindow = true;

@@ -53,7 +53,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HelloDXR", "Samples\Raytrac
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightProbeViewer", "Samples\Utils\LightProbeViewer\LightProbeViewer.vcxproj", "{9D80D89D-D029-4E3E-BCA8-424ECC1F1DF5}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderGraphRenderer", "Samples\RenderGraphRenderer\RenderGraphRenderer.vcxproj", "{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderGraphViewer", "Samples\RenderGraphViewer\RenderGraphViewer.vcxproj", "{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
