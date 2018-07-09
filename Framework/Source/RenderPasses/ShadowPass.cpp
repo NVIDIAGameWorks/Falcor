@@ -101,7 +101,14 @@ namespace Falcor
         if (name == kShadowMap)
         {
             mpShadowMap = std::dynamic_pointer_cast<Texture>(pResource);
-            mpCsm = CascadedShadowMaps::create(mSmWidth, mSmHeight, mpShadowMap->getWidth(), mpShadowMap->getHeight(), mpScene->getLight(0), mpScene);
+            if (mpShadowMap)
+            {
+                mpCsm = CascadedShadowMaps::create(mSmWidth, mSmHeight, mpShadowMap->getWidth(), mpShadowMap->getHeight(), mpScene->getLight(0), mpScene);
+            }
+            else
+            {
+                mpCsm = nullptr;
+            }
         }
         else
         {
@@ -116,7 +123,7 @@ namespace Falcor
     {
         assert(mpCsm);
         assert(mpShadowMap);
-        auto& pVisBuffer = mpCsm->generateVisibilityBuffer(pContext, mpScene->getActiveCamera().get(), nullptr);
+        auto& pVisBuffer = mpCsm->generateVisibilityBuffer(pContext, mpScene->getActiveCamera().get(), mpDepthIn);
         pContext->blit(pVisBuffer->getSRV(0, 1, 0, 1), mpShadowMap->getRTV(0, 0, 1));
     }
 

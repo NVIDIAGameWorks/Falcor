@@ -290,21 +290,25 @@ namespace Falcor
             RenderPass* pSrcPass = mNodeData[nodeIndex].get();
             const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
 
-            // Allocate everything that is required
-            for (const auto& src : passData.outputs)
+            const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
             {
-                if (src.required)
+                for (const auto& out : mOutputs)
                 {
-                    // Only allocate it if the user didn't set it
-                    if (pSrcPass->getOutput(src.name) == nullptr)
-                    {
-                        Texture::SharedPtr pTexture = createTextureForPass(src);
-                        pSrcPass->setOutput(src.name, pTexture);
-                    }
+                    if (out.nodeId == nodeId && out.field == field) return true;
+                }
+                return false;
+            };
+
+            // Set all the pass' outputs to null
+            for (const auto& output : passData.outputs)
+            {
+                if(isGraphOutput(nodeIndex, output.name) == false)
+                {
+                    pSrcPass->setOutput(output.name, nullptr);
                 }
             }
 
-            // Now go over the edges, allocate the required resources and attach them to the input pass
+            // Go over the edges, allocate the required resources and attach them to the input pass
             for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
             {
                 uint32_t edgeIndex = pNode->getOutgoingEdge(e);
@@ -316,18 +320,19 @@ namespace Falcor
                 {
                     if (src.name == edgeData.srcField)
                     {
-                        Texture::SharedPtr pTexture = createTextureForPass(src);
-                        pSrcPass->setOutput(src.name, pTexture);
+                        Texture::SharedPtr pTexture;
+                        pTexture = std::dynamic_pointer_cast<Texture>(pSrcPass->getOutput(src.name));
+
+                        if(pTexture == nullptr)
+                        {
+                            pTexture = createTextureForPass(src);
+                            pSrcPass->setOutput(src.name, pTexture);
+                        }
 
                         // Connect it to the dst pass
                         RenderPass* pDstPass = mNodeData[pEdge->getDestNode()].get();
                         pDstPass->setInput(edgeData.dstField, pTexture);
                         break;
-                    }
-                    else 
-                    {
-                        should_not_get_here();
-                        return false;
                     }
                 }
             }
@@ -341,8 +346,8 @@ namespace Falcor
         {   
             if(resolveExecutionOrder() == false) return false;
             if (allocateResources() == false) return false;
+            if (isValid(log) == false) return false;
         }
-        if (isValid(log) == false) return false;
         mRecompile = false;
         return true;
     }
