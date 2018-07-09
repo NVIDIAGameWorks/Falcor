@@ -34,14 +34,6 @@
 
 #include <array>
 
-// need for document passed in. may move entire file serialization to serialize json
-
-
-#include "Externals/RapidJson/include/rapidjson/rapidjson.h"
-#include "Externals/RapidJson/include/rapidjson/writer.h"
-#include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
-#include "Externals/RapidJson/include/rapidjson/document.h"
-
 namespace Falcor
 {
     class RenderPassUI
@@ -77,46 +69,35 @@ namespace Falcor
         /** Display enter graph in GUI.
         */
         void renderUI(Gui *pGui);
-        
-        /**  Add a new display node for the graph representing a render pass 
-          */
-        void addRenderPassNode();
-
-        // TODO -- move these out of the UI code
-
-        /** Serialization function. Serialize full graph into json file.
-        */
-        void serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* document) const;
-
-        /** De-serialize function for deserializing graph and building data for GUI viewing
-        */
-        void deserializeJson(const rapidjson::Document& reader);
 
 
-
+        /** static functions used for GUI callbacks required to be static
+         */
         static bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
 
         static void removeLink();
 
         static void removeRenderPass(const std::string& name);
 
+        static bool sRebuildDisplayData;
+
     private:
 
         /** Updates structure for drawing the GUI graph
         */
         void updateDisplayData();
-
+        
+        glm::vec2 mNewNodeStartPosition;
 
         // start with reference of render graph
         RenderGraph& mRenderGraphRef;
 
-        static RenderGraphUI& mCurrentGraphUI;
-
+        std::unordered_set<std::string> mAllNodeTypeStrings;
+        std::vector<const char*> mAllNodeTypes;
+        
         std::unordered_map <std::string, RenderPassUI> mRenderPassUI;
 
         // maps output pin name to input pin ids. Pair first is pin id, second is node id
         std::unordered_map <std::string, std::vector< std::pair<uint32_t, uint32_t > > > mOutputToInputPins;
-
-        bool mRebuildDisplayData = true;
     };
 }

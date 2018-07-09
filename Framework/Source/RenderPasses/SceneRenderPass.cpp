@@ -87,6 +87,7 @@ namespace Falcor
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/" + mShaderSource.mData[0], mShaderSource.mData[1], mShaderSource.mData[2]);
         mpState->setProgram(pProgram);
         mpVars = GraphicsVars::create(pProgram->getReflector());
+
         mpFbo = Fbo::create();
         
         DepthStencilState::Desc dsDesc;

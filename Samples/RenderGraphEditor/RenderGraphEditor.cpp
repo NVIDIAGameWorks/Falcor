@@ -61,6 +61,8 @@ RenderGraphEditor::RenderGraphEditor()
 
     register_render_pass(SceneRenderPass);
     register_render_pass(BlitPass);
+    register_render_pass(DepthPass);
+    register_render_pass(ShadowPass);
     register_render_pass(NodeGraphGuiPass);
     register_render_pass(GraphEditorGuiPass);
 
@@ -80,9 +82,65 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // please remove this
     static bool firstFrame = true;
 
+    // we should move everything below here into the render graph ui struct
+
+    // sub window for listing available window passes
+    pGui->pushWindow("Render Passes");
+
+    // Title menu bar for adding render pass dll s
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
+
+    // for each dll that was found. (or manually imported????)
+    for (auto& availableRenderPasses : sBaseRenderCreateFuncs)
+    {
+        // ImGui::BeginChildFrame();
+        
+        // REMOVE THIS
+        if (availableRenderPasses.first[0] == 'N' || availableRenderPasses.first[0] == 'G')
+        {
+            continue;
+        }
+
+        ImGui::GetCurrentWindow()->DrawList->AddRect(ImGui::GetCursorScreenPos(), { ImGui::GetCursorScreenPos().x + 320.0f, ImGui::GetCursorScreenPos().y + 180.0f }, 0xFFFFFFFF);
+        ImGui::Dummy({ 320.0f , 180.0f });
+
+        static bool payLoadSet = false;
+
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+        {
+            if (!payLoadSet)
+            {
+                payLoadSet = true;
+                std::string addCommand = std::string("AddRenderPass ") + availableRenderPasses.first + " " + availableRenderPasses.first;
+                ImGui::SetDragDropPayload("RenderPassScript", addCommand.c_str(), addCommand.size(), ImGuiCond_Once);
+            }
+            
+            ImGui::EndDragDropSource();
+        }
+        else
+        {
+            payLoadSet = false;
+        }
+
+        ImGui::SameLine();
+        pGui->addText(availableRenderPasses.first.c_str());
+        ImGui::SameLine();
+    }
+
+    pGui->popWindow();
+
+
+
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
-
-
 
     if (!firstFrame)
     {
@@ -110,18 +168,36 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         if (mNextGraphString[0] && pGui->addButton("Create New Graph"))
         {
-            createRenderGraph(mNextGraphString, "DefaultRenderGraph.json");
+            createRenderGraph(mNextGraphString, "");
         }
     }
 
     if (pGui->addButton("Load Graph"))
     {
-        createRenderGraph(mNextGraphString, "DefaultRenderGraph.json");
+        std::string renderGraphFileName;
+        if (openFileDialog("", renderGraphFileName))
+        {
+            createRenderGraph(mNextGraphString, renderGraphFileName);
+        }
+        
     }
 
     if (pGui->addButton("Save Graph"))
     {
-        serializeRenderGraph(mNextGraphString);
+        std::string renderGraphFileName;
+        if (saveFileDialog("", renderGraphFileName))
+        {
+            serializeRenderGraph(renderGraphFileName);
+        }
+    }
+
+    if (pGui->addButton("RunScript"))
+    {
+        std::string renderGraphFileName;
+        if (openFileDialog("", renderGraphFileName))
+        {
+            mRenderGraphLoader.LoadAndRunScript(renderGraphFileName, *mpGraphs[mCurrentGraphIndex]);
+        }
     }
 
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
@@ -165,67 +241,11 @@ void RenderGraphEditor::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
-    
-    std::string filePath(getExecutableDirectory() + "/Data/");
-    filePath.append(fileName);
-    if (doesFileExist(filePath))
-    {
-        // Are you sure you want to overwrite this file
-        logWarning(std::string("Overwriting render graph file ").append(fileName).append("\n"));
-    }
-
-    std::ofstream outStream(filePath);
-    rapidjson::OStreamWrapper oStream(outStream);
-    rapidjson::Writer<rapidjson::OStreamWrapper> writer(oStream);
-    
-    writer.StartObject();
-    mRenderGraphUIs[mCurrentGraphIndex].serializeJson(&writer);
-    writer.EndObject();
-    
-    outStream.close();
+    RenderGraphLoader::SaveRenderGraphAsScript(fileName, *mpGraphs[mCurrentGraphIndex]);
 }
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 {
-    std::string filePath;
-    
-    assert (findFileInDataDirectories(fileName, filePath) );
-    
-    std::ifstream instream(filePath);
-    rapidjson::IStreamWrapper istream(instream);
-
-    rapidjson::Document document;
-    document.ParseStream(istream);
-
-    // make sure nodes are created before we connect the edges
-    auto nodesArray = (document.FindMember("RenderPassNodes")->value).GetArray();
-    assert(!nodesArray.Empty());
-
-    for (const auto& node : nodesArray)
-    {
-        std::string renderPassName;
-        std::string renderPassType;
-
-        // first create the graph
-        renderPassType = node.FindMember("RenderPassType")->value.GetString();
-        renderPassName = node.FindMember("RenderPassName")->value.GetString();
-
-        createAndAddRenderPass(renderPassType, renderPassName);
-    }
-
-    mRenderGraphUIs[mCurrentGraphIndex].deserializeJson(document);
-
-    // add all edges
-    auto edgesArray = (document.FindMember("Edges")->value).GetArray();
-    assert (!edgesArray.Empty());
-
-    for(const auto& edge : edgesArray)
-    {
-        createAndAddConnection(edge.FindMember("SrcRenderPassName")->value.GetString(), edge.FindMember("DstRenderPassName")->value.GetString(),
-            edge.FindMember("SrcField")->value.GetString(), edge.FindMember("DstField")->value.GetString());
-    }
-    
-    instream.close();
 }
 
 void RenderGraphEditor::updateAndCompileGraph()
@@ -255,7 +275,7 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
 
     if (renderGraphNameFileName.size())
     {
-        deserializeRenderGraph(renderGraphNameFileName);
+        mRenderGraphLoader.LoadAndRunScript(renderGraphNameFileName, *newGraph);
     }
 
     // only load the scene for the first graph for now

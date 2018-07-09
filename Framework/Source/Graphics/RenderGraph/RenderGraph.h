@@ -109,6 +109,7 @@ namespace Falcor
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
         friend class RenderGraphUI;
+        friend class RenderGraphLoader;
 
     private:
         RenderGraph();

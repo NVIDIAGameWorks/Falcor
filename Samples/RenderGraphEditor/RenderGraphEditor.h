@@ -32,6 +32,7 @@
 #include "Falcor.h"
 
 #include "RenderGraphUI.h"
+#include "RenderGraphLoader.h"
 
 #include <vector>
 
@@ -54,6 +55,8 @@ public:
 
     // cast funcs for render pass types
     static std::unordered_map<std::string, std::function<RenderPass::PassData(RenderPass::SharedPtr)> > sGetRenderPassData;
+    // simple lookup to create render pass type from string
+    static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;
 
 private:
     
@@ -66,15 +69,13 @@ private:
 
     void updateAndCompileGraph();
 
-    // simple lookup to create render pass type from string
-    static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;
-
-
     SampleCallbacks* mpLastSample;
 
     RenderGraph::SharedPtr mpEditorGraph;
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
+    RenderGraphLoader mRenderGraphLoader;
+
     size_t mCurrentGraphIndex;
 
     std::string mNextGraphString;

@@ -25,15 +25,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
-    <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.cpp" />
-    <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\NodeEditor.cpp" />
     <ClCompile Include="RenderGraphEditor.cpp" />
+    <ClCompile Include="RenderGraphLoader.cpp" />
     <ClCompile Include="RenderGraphUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
-    <ClInclude Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.h" />
     <ClInclude Include="RenderGraphEditor.h" />
+    <ClInclude Include="RenderGraphLoader.h" />
     <ClInclude Include="RenderGraphUI.h" />
   </ItemGroup>
   <ItemGroup>

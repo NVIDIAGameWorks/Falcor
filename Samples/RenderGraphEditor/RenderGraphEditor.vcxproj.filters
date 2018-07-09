@@ -2,16 +2,15 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="RenderGraphEditor.cpp" />
-    <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\NodeEditor.cpp" />
-    <ClCompile Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.cpp" />
     <ClCompile Include="RenderGraphUI.cpp" />
     <ClCompile Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
+    <ClCompile Include="RenderGraphLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderGraphEditor.h" />
-    <ClInclude Include="..\..\Framework\Externals\imgui-node-editor\NodeEditor\Source\Editor.h" />
     <ClInclude Include="RenderGraphUI.h" />
     <ClInclude Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
+    <ClInclude Include="RenderGraphLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\DefaultRenderGraph.json" />

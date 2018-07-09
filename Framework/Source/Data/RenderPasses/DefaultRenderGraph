@@ -1,0 +1,5 @@
+AddRenderPass BlitPass BlitPass
+AddRenderPass DepthPass DepthPass
+AddRenderPass SceneRenderer SceneRenderPass
+AddEdge SceneRenderer.color BlitPass.src
+AddEdge DepthPass.depth SceneRenderer.depth

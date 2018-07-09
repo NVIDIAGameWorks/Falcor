@@ -1,0 +1,3 @@
+CreateRenderPass SceneRenderer SceneRenderPass
+CreateRenderPass BlitPass BlitPass
+AddEdge SceneRenderer.color BlitPass.src

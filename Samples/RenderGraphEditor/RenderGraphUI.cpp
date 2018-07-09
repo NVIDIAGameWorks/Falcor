@@ -35,17 +35,19 @@
 #include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 
 #include "RenderGraphEditor.h"
+#include "RenderGraphLoader.h"
 
 // TODO Don't do this
 #include "Externals/dear_imgui/imgui.h"
-#include "Externals/dear_imgui/imgui_internal.h"
 
 namespace Falcor
 {
     std::string gName;
     std::string gOutputsString;
     std::string gInputsString;
+    Gui* gpGui;
     uint32_t gGuiNodeID;
+    RenderPass* gpCurrentRenderPass; // This is for renderUI callback
 
     static std::unordered_map<uint32_t, ImGui::Node*> spIDToNode;
     static RenderGraphUI* spCurrentGraphUI = nullptr;
@@ -53,7 +55,7 @@ namespace Falcor
     class RenderGraphNode : public ImGui::Node
     {
     public:
-        float test;
+        bool mDisplayProperties;
 
         std::string getInputName(uint32_t index)
         {
@@ -65,14 +67,27 @@ namespace Falcor
             return OutputNames[index];
         }
 
+        // render Gui within the nodes
+        static bool renderUI(ImGui::FieldInfo& field)
+        {
+            std::string dummyText; dummyText.resize(64, ' ');
+            gpGui->addText(dummyText.c_str());
+            static_cast<RenderPass*>(field.userData)->onGuiRender(nullptr, gpGui);
+            return false;
+        }
+
         static RenderGraphNode* create(const ImVec2& pos)
         {
             RenderGraphNode* node = (RenderGraphNode*)ImGui::MemAlloc(sizeof(RenderGraphNode));
             IM_PLACEMENT_NEW(node) RenderGraphNode();
 
-            node->init(gName.c_str(), pos, gOutputsString.c_str(), gInputsString.c_str(), gGuiNodeID);
+            node->init(gName.c_str(), pos, gInputsString.c_str(), gOutputsString.c_str(), gGuiNodeID);
 
-            node->fields.addField(&node->test, 1, (std::string("Test##") + gName ).c_str());
+            node->overrideTitleBgColor = ImGui::GetColorU32(ImGuiCol_Header);
+
+            // add dummy field for window spacing
+            node->fields.addFieldCustom(static_cast<ImGui::FieldInfo::RenderFieldDelegate>(renderUI), nullptr, gpCurrentRenderPass);
+            
 
             return node;
         }
@@ -92,7 +107,7 @@ namespace Falcor
 
     void RenderGraphUI::removeRenderPass(const std::string& name)
     {
-        spCurrentGraphUI->mRebuildDisplayData = true;
+        spCurrentGraphUI->sRebuildDisplayData = true;
         spCurrentGraphUI->mRenderGraphRef.removeRenderPass(name);
     }
 
@@ -101,7 +116,7 @@ namespace Falcor
     }
 
     RenderGraphUI::RenderGraphUI(RenderGraph& renderGraphRef)
-        : mRenderGraphRef(renderGraphRef) 
+        : mRenderGraphRef(renderGraphRef), mNewNodeStartPosition(40.0f, 100.0f)
     {
     }
 
@@ -125,17 +140,12 @@ namespace Falcor
             // immediately remove link if it is not a legal edge in the render graph
             if (!editor.isInited() && !addEdgeStatus) //  only call after graph is setup
             {
-                // does not call link callback suprisingly enough
+                // does not call link callback surprisingly enough
                 editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
             }
         }
-
-        // will need to move this out to a delete callback?
-
-        // else if (state == ImGui::NodeGraphEditor::LinkState::LS_DELETED)
-        // {
-        //     spCurrentGraphUI->removeLink();
-        // }
+        
+        // TODO -- remove link ?? (Possibly remove connected nodes and read them??)
     }
 
     void RenderPassUI::addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput)
@@ -151,29 +161,31 @@ namespace Falcor
 
     }
 
+    bool RenderGraphUI::sRebuildDisplayData = true;
+
     void RenderGraphUI::renderUI(Gui* pGui)
     {
         static ImGui::NodeGraphEditor nodeGraphEditor;
 
-        uint32_t specialPinIndex = static_cast<uint32_t>(static_cast<uint16_t>(-1)); // used for avoiding conflicts with creating additional unique pins.
-        uint32_t mouseDragBezierPin = 0;
-        uint32_t debugPinIndex = 0;
+        gpGui = pGui;
 
-        const ImVec2& mousePos = ImGui::GetCurrentContext()->IO.MousePos;
+        nodeGraphEditor.show_top_pane = false;
+
+        uint32_t debugPinIndex = 0;
+        const ImVec2& mousePos = ImGui::GetMousePos();
 
         // handle deleting nodes and connections?
         std::unordered_set<uint32_t> nodeIDsToDelete;
         std::vector<std::string> nodeNamesToDelete;
 
         // move this out of a button next
-        mRebuildDisplayData |= pGui->addButton("refresh");
+        //mRebuildDisplayData |= pGui->addButton("refresh");
         
-        if (mRebuildDisplayData)
+        if (sRebuildDisplayData)
         {
-            mRebuildDisplayData = false;
+            sRebuildDisplayData = false;
             nodeGraphEditor.setNodeCallback(nullptr);
-            nodeGraphEditor.clear();
-            nodeGraphEditor = ImGui::NodeGraphEditor();
+            nodeGraphEditor.inited = false;
         }
 
         nodeGraphEditor.setLinkCallback(setLink);
@@ -182,27 +194,50 @@ namespace Falcor
         if (!nodeGraphEditor.isInited())
         {
             nodeGraphEditor.render();
-            return;
+
+            if (ImGui::BeginDragDropTarget())
+            {
+                // Accept and run script from drag and drop
+                auto dragDropPayload = ImGui::AcceptDragDropPayload("RenderPassScript");
+
+                if (dragDropPayload)
+                {
+                    RenderGraphLoader::ExecuteStatement(std::string(static_cast<const char*>(dragDropPayload->Data), dragDropPayload->DataSize), mRenderGraphRef);
+                }
+
+                ImGui::EndDragDropTarget();
+            }
+            
+            // ? if (!sRebuildDisplayData)
+            {
+                return;
+            }
         }
 
         updateDisplayData();
 
-        // TODO -- move to member
-        static std::vector<const char*> nodeTypes;
-        nodeTypes.clear();
 
-        for (auto& currentPass : mRenderPassUI)
+        mAllNodeTypes.clear();
+
+        // reset internal data of node if all nodes deleted
+        if (!mRenderPassUI.size())
         {
-            nodeTypes.push_back(currentPass.first.c_str());
+            nodeGraphEditor.clear();
+            nodeGraphEditor.render();
+            return;
         }
 
-        if (nodeTypes.size())
+        for (auto& nodeTypeString : mAllNodeTypeStrings)
         {
-            nodeGraphEditor.registerNodeTypes(nodeTypes.data(), static_cast<uint32_t>(nodeTypes.size()), createNode);
+            mAllNodeTypes.push_back(nodeTypeString.c_str());
+        }
+
+        if (mAllNodeTypes.size())
+        {
+            nodeGraphEditor.registerNodeTypes(mAllNodeTypes.data(), static_cast<uint32_t>(mAllNodeTypes.size()), createNode);
         }
 
         spCurrentGraphUI = this;
-
         spIDToNode.clear();
 
         for (auto& currentPass : mRenderPassUI)
@@ -221,6 +256,7 @@ namespace Falcor
             // display name for the render pass
             pGui->addText(currentPass.first.c_str()); // might have to do this within the callback
 
+
             for (const auto& currentPin : currentPassUI.mPins)
             {
                 // Connect the graph nodes for each of the edges
@@ -232,8 +268,7 @@ namespace Falcor
                 // draw label for input pin
                 if (isInput)
                 {
-                    ImGui::SameLine();
-                    pGui->addText(currentPinName.c_str());
+                    pGui->addText(currentPinName.c_str(), true);
                     gInputsString += gInputsString.size() ? (";" + currentPinName) : currentPinName;
                 }
                 else
@@ -246,18 +281,19 @@ namespace Falcor
 
             gName = currentPass.first;
             gGuiNodeID = currentPassUI.mGuiNodeID;
+            gpCurrentRenderPass = mRenderGraphRef.getRenderPass(currentPass.first).get();
 
-            spIDToNode[gGuiNodeID] = nodeGraphEditor.addNode(gGuiNodeID, ImVec2(40, 150));
-
-            // TODO -- get this within the node window
-            currentPassUI.renderUI(pGui);
+            if (!nodeGraphEditor.getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))
+            {
+                // TODO -- set up new positioning for adding nodes
+                spIDToNode[gGuiNodeID] = nodeGraphEditor.addNode(gGuiNodeID, ImVec2(mNewNodeStartPosition.x, mNewNodeStartPosition.y));
+            }
         }
         
         //  Draw pin connections. All the nodes have to be added to the GUI before the connections can be drawn
         for (auto& currentPass : mRenderPassUI)
         {
             auto& currentPassUI = currentPass.second;
-            uint32_t currentNodeIndex = 0;
 
             for (const auto& currentPin : currentPassUI.mPins)
             {
@@ -273,17 +309,19 @@ namespace Falcor
                     {
                         for (const auto& connectedPin : (inputPins->second))
                         {
-                            nodeGraphEditor.addLink(spIDToNode[connectedPin.second], connectedPin.first,
-                                spIDToNode[currentNodeIndex], currentPinUI.mGuiPinID);
+                            if(!nodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                    spIDToNode[connectedPin.second], connectedPin.first) )
+                            {
+                                nodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                    spIDToNode[connectedPin.second], connectedPin.first);
+                            }
                         }
                     }
                 }
             }
-            currentNodeIndex++;
         }
 
         nodeGraphEditor.render();
-
 
         // get rid of nodes for next frame
         for (const std::string& passName : nodeNamesToDelete)
@@ -297,25 +335,51 @@ namespace Falcor
         uint32_t nodeIndex = 0;
 
         mOutputToInputPins.clear();
-        mRenderPassUI.clear();
 
         // set of field names that have a connection and are represented in the graph
         std::unordered_set<std::string> nodeConnected;
+        std::unordered_map<std::string, uint32_t> previousGuiNodeIDs;
+
+        for (const auto& currentRenderPassUI : mRenderPassUI)
+        {
+            previousGuiNodeIDs.insert(std::make_pair(currentRenderPassUI.first, currentRenderPassUI.second.mGuiNodeID));
+        }
+
+        mRenderPassUI.clear();
 
         // build information for displaying graph
         for (const auto& nameToIndex : mRenderGraphRef.mNameToIndex)
         {
-            uint32_t pinIndex = 0;
+            uint32_t inputPinIndex = 0;
+            uint32_t outputPinIndex = 0;
             auto pCurrentPass = mRenderGraphRef.mpGraph->getNode(nameToIndex.second);
             RenderPassUI renderPassUI;
-            renderPassUI.mGuiNodeID = nodeIndex;
+
+            mAllNodeTypeStrings.insert(mRenderGraphRef.mNodeData[nameToIndex.second]->getTypeName());
+
+            // keep the GUI id from the previous frame
+            auto pPreviousID = previousGuiNodeIDs.find(nameToIndex.first);
+            if (pPreviousID != previousGuiNodeIDs.end())
+            {
+        
+                if (nodeIndex + 1 != pPreviousID->second)
+                {
+                    nodeIndex++;
+                }
+
+                renderPassUI.mGuiNodeID = pPreviousID->second;
+            }
+            else
+            {
+                renderPassUI.mGuiNodeID = nodeIndex++;
+            }
 
             // add all of the incoming connections
             for (uint32_t i = 0; i < pCurrentPass->getIncomingEdgeCount(); ++i)
             {
                 auto currentEdge = mRenderGraphRef.mEdgeData[pCurrentPass->getIncomingEdge(i)];
-                mOutputToInputPins[currentEdge.srcField].push_back(std::make_pair(pinIndex, nodeIndex));
-                renderPassUI.addUIPin(currentEdge.dstField, pinIndex++, false);
+                mOutputToInputPins[currentEdge.srcField].push_back(std::make_pair(inputPinIndex, renderPassUI.mGuiNodeID));
+                renderPassUI.addUIPin(currentEdge.dstField, inputPinIndex++, true);
                 nodeConnected.insert(currentEdge.dstField);
             }
 
@@ -323,7 +387,7 @@ namespace Falcor
             for (uint32_t i = 0; i < pCurrentPass->getOutgoingEdgeCount(); ++i)
             {
                 auto currentEdge = mRenderGraphRef.mEdgeData[pCurrentPass->getOutgoingEdge(i)];
-                renderPassUI.addUIPin(currentEdge.srcField, pinIndex++, true);
+                renderPassUI.addUIPin(currentEdge.srcField, outputPinIndex++, false);
                 nodeConnected.insert( currentEdge.srcField);
             }
 
@@ -337,7 +401,7 @@ namespace Falcor
             {
                 if (nodeConnected.find(inputNode.name) == nodeConnected.end())
                 {
-                    renderPassUI.addUIPin(inputNode.name, pinIndex++, false);
+                    renderPassUI.addUIPin(inputNode.name, inputPinIndex++, true);
                 }
 
                 // add the details description for each pin
@@ -348,162 +412,13 @@ namespace Falcor
             {
                 if (nodeConnected.find(outputNode.name) == nodeConnected.end())
                 {
-                    renderPassUI.addUIPin(outputNode.name, pinIndex++, true);
+                    renderPassUI.addUIPin(outputNode.name, outputPinIndex++, false);
                 }
 
                 // add the details description for each pin
             }
 
             mRenderPassUI.emplace(std::make_pair(nameToIndex.first, std::move(renderPassUI)));
-            nodeIndex++;
         }
-    }
-
-    void RenderGraphUI::addRenderPassNode()
-    {
-        // redo this
-        // insert properties for editing this node for the graph editor
-        // mNodeProperties[mpPasses.back().get()][0] = StringProperty("Output Name",
-        //     [this](Property* stringProperty) {
-        //     addFieldDisplayData(reinterpret_cast<RenderPass*>(stringProperty->mpMetaData),
-        //         static_cast<StringProperty*>(stringProperty)->mData[0], false);
-        // },
-        // { "" }, "Add Output"
-        //     );
-        // mNodeProperties[mpPasses.back().get()][0].mpMetaData = mpPasses.back().get();
-        // 
-        // mNodeProperties[mpPasses.back().get()][1] = StringProperty("Input Name",
-        //     [this](Property* stringProperty) {
-        //     addFieldDisplayData(reinterpret_cast<RenderPass*>(stringProperty->mpMetaData),
-        //         static_cast<StringProperty*>(stringProperty)->mData[0], true);
-        // },
-        // { "" }, "Add Input"
-        //     );
-        // mNodeProperties[mpPasses.back().get()][1].mpMetaData = mpPasses.back().get();
-    }
-
-    void RenderGraphUI::deserializeJson(const rapidjson::Document& reader)
-    {
-        const char* memberArrayNames[2] = { "OutputFields", "InputFields" };
-        bool isInput = false;
-    
-        // all of the fields types have the same type of schema
-        for (uint32_t i = 0; i < 2; ++i)
-        {
-            // insert the display data for the fields with no connections
-            if (reader.FindMember(memberArrayNames[i]) == reader.MemberEnd())
-            {
-                return;
-            }
-    
-            auto fields = reader.FindMember(memberArrayNames[i])->value.GetArray();
-            for (const auto& field : fields)
-            {
-                std::string passNameString(field.FindMember("RenderPassName")->value.GetString());
-                std::string fieldNameString(field.FindMember("FieldName")->value.GetString());
-                mRenderPassUI[passNameString].mPins[fieldNameString] = {};
-            }
-            isInput = true;
-        }
-    }
-    
-    void RenderGraphUI::serializeJson(rapidjson::Writer<rapidjson::OStreamWrapper>* writer) const
-    {
-        // write out the nodes and node data
-        writer->String("RenderPassNodes");
-        writer->StartArray();
-    /*
-        for (auto& nameIndexPair : mRenderGraphRef.mNameToIndex)
-        {
-            writer->StartObject();
-    
-            writer->String("RenderPassName");
-            writer->String(nameIndexPair.first.c_str());
-            writer->String("RenderPassType");
-            writer->String(mRenderPassUI[nameIndexPair.first].->getTypeName().c_str());
-    
-            // serialize specialized data here ( ? )
-    
-            writer->EndObject();
-        }
-    
-        writer->EndArray();
-    
-        // write out the fields that cannot be filled out by the connections
-        const char* memberArrayNames[2] = { "OutputFields", "InputFields" };
-        bool isInput = false;
-    
-        for (uint32_t i = 0; i < 2; ++i)
-        {
-            writer->String(memberArrayNames[i]);
-            writer->StartArray();
-    
-            for (const auto& nameToIndexMap : mDisplayMap)
-            {
-                for (const auto& nameToIndexIt : nameToIndexMap.second)
-                {
-                    if (nameToIndexIt.second.second == isInput)
-                    {
-                        writer->StartObject();
-    
-                        writer->String("RenderPassName");
-                        writer->String(mPassToName[nameToIndexMap.first].c_str());
-                        writer->String("FieldName");
-                        writer->String(nameToIndexIt.first.c_str());
-    
-                        writer->EndObject();
-                    }
-                }
-    
-            }
-    
-            writer->EndArray();
-            isInput = true;
-        }
-    
-        // write out the node connections
-        writer->String("Edges");
-        writer->StartArray();
-    
-        for (auto& edge : mRenderGraphRef.mpGraph->mEdges)
-        {
-    
-            writer->String("SrcField");
-            writer->String(edge.srcField.c_str());
-            writer->String("DstField");
-            writer->String(edge.dstField.c_str());
-            writer->EndObject();
-        }
-        
-        for (const auto& nameToIndex : mRenderGraphRef.mNameToIndex)
-        {
-            auto pCurrentPass = mRenderGraphRef.mpGraph->getNode(nameToIndex.second);
-
-            writer->StartObject();
-
-            // add all of the incoming connections
-            for (uint32_t i = 0; i < pCurrentPass->getIncomingEdgeCount(); ++i)
-            {
-
-                writer->String("SrcRenderPassName");
-                writer->String(mPassToName[edge.pSrc].c_str());
-                writer->String("DstRenderPassName");
-                writer->String(mPassToName[edge.pDst].c_str());
-
-                auto currentEdge = mRenderGraphRef.mpGraph->getEdgeData(pCurrentPass->getIncomingEdge(i));
-
-            }
-
-            // add all of the outgoing connections
-            for (uint32_t i = 0; i < pCurrentPass->getOutgoingEdgeCount(); ++i)
-            {
-                auto currentEdge = mRenderGraphRef.mpGraph->getEdgeData(pCurrentPass->getOutgoingEdge(i));
-                renderPassUI.addUIPin(currentEdge->srcField, pinIndex++, false);
-            }
-
-            mRenderPassUI.emplace(std::make_pair(nameToIndex.first, std::move(renderPassUI)));
-        }
-        */
-        writer->EndArray();
     }
 }

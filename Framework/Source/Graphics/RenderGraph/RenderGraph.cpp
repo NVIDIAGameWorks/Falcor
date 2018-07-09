@@ -175,7 +175,7 @@ namespace Falcor
         // Check that the dst field is not already initialized
         const DirectedGraph::Node* pNode = mpGraph->getNode(dstIndex);
 
-        for (uint32_t e = 0 ; e < pNode->getOutgoingEdgeCount() ; e++)
+        for (uint32_t e = 0 ; e < pNode->getIncomingEdgeCount() ; e++)
         {
             const auto& edgeData = mEdgeData[pNode->getIncomingEdge(e)];
             if (edgeData.dstField == newEdge.dstField)
