@@ -164,4 +164,71 @@ namespace Falcor
             return false;
         }
     };
+
+    class DirectedGraphTopologicalSort
+    {
+    public:
+        static std::vector<uint32_t> sort(DirectedGraph* pGraph)
+        {
+            DirectedGraphTopologicalSort ts(pGraph);
+            for (uint32_t i = 0; i < ts.mpGraph->getCurrentNodeId(); i++)
+            {
+                if (ts.mVisited[i] == false && ts.mpGraph->getNode(i))
+                {
+                    ts.sortInternal(i);
+                }
+            }
+
+            std::vector<uint32_t> result;
+            result.reserve(ts.mStack.size());
+            while (ts.mStack.empty() == false)
+            {
+                result.push_back(ts.mStack.top());
+                ts.mStack.pop();
+            }
+            return result;
+        }
+    private:
+        DirectedGraphTopologicalSort(DirectedGraph* pGraph) : mpGraph(pGraph), mVisited(pGraph->getCurrentNodeId(), false) {}
+        DirectedGraph* mpGraph;
+        std::stack<uint32_t> mStack;
+        std::vector<bool> mVisited;
+
+        void sortInternal(uint32_t node)
+        {
+            mVisited[node] = true;
+            const DirectedGraph::Node* pNode = mpGraph->getNode(node);
+            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
+            {
+                uint32_t nextNode = mpGraph->getEdge(pNode->getOutgoingEdge(e))->getDestNode();
+                if (!mVisited[nextNode])
+                {
+                    sortInternal(nextNode);
+                }
+            }
+
+            mStack.push(node);
+        }
+    };
+
+    namespace DirectedGraphPathDetector
+    {
+        inline bool hasPath(const DirectedGraph::SharedPtr& pGraph, uint32_t from, uint32_t to)
+        {
+            DirectedGraphDfsTraversal dfs(pGraph, from, DirectedGraphDfsTraversal::Flags::IgnoreVisited);
+            uint32_t node = dfs.traverse();
+            node = dfs.traverse(); // skip the root node
+            while (node != DirectedGraph::kInvalidID)
+            {
+                if (node == to) return true;
+                node = dfs.traverse();
+            }
+            return false;
+        }
+
+        inline bool hasCycle(const DirectedGraph::SharedPtr& pGraph, uint32_t root)
+        {
+            return hasPath(pGraph, root, root);
+        }
+    };
 }
