@@ -11,25 +11,22 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RenderGraphRenderer.cpp" />
+    <ClCompile Include="RenderGraphViewer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RenderGraphRenderer.h" />
+    <ClInclude Include="RenderGraphViewer.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Framework\Source\Falcor.vcxproj">
       <Project>{3b602f0e-3834-4f73-b97d-7dfc91597a98}</Project>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\RenderGraphRenderer.slang" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>FeatureDemo</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
-    <ProjectName>RenderGraphRenderer</ProjectName>
+    <ProjectName>RenderGraphViewer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">

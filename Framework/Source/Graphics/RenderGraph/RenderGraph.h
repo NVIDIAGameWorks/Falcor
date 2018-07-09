@@ -115,7 +115,9 @@ namespace Falcor
         static const uint32_t kInvalidIndex = -1;
         std::unordered_map<std::string, uint32_t> mNameToIndex;
         uint32_t getPassIndex(const std::string& name) const;
-        void compile();
+        bool compile(std::string& log);
+        bool resolveExecutionOrder();
+        bool allocateResources();
 
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;
@@ -147,5 +149,7 @@ namespace Falcor
             ResourceFormat colorFormat = ResourceFormat::Unknown;
             ResourceFormat depthFormat = ResourceFormat::Unknown;
         } mSwapChainData;
+
+        std::vector<uint32_t> mExecutionList;
     };
 }

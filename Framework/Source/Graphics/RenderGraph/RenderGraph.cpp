@@ -47,59 +47,6 @@ namespace Falcor
     RenderGraph::RenderGraph()
     {
         mpGraph = DirectedGraph::create();
-
-        auto& pG = DirectedGraph::create();
-
-        DirectedGraphBfsTraversal traverser(pG, 0);
-
-        uint32_t a = pG->addNode();
-        uint32_t b = pG->addNode();
-        uint32_t c = pG->addNode();
-        uint32_t d = pG->addNode();
-        uint32_t e = pG->addNode();
-        uint32_t f = pG->addNode();
-        uint32_t g = pG->addNode();
-
-        pG->addEdge(a, b);
-        pG->addEdge(a, c);
-        pG->addEdge(b, d);
-        pG->addEdge(c, d);
-        pG->addEdge(d, e);
-        pG->addEdge(d, f);
-        pG->addEdge(a, g);
-        pG->addEdge(g, f);
-
-        traverser.reset(0);
-
-        uint32_t n = 0;
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
-
-        pG->addEdge(f, a);
-        DirectedGraphBfsTraversal reverse(pG, f, DirectedGraphTraversal::Flags::Reverse | DirectedGraphTraversal::Flags::IgnoreVisited);
-
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = reverse.traverse();
-        n = traverser.traverse();
-        n = traverser.traverse();
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
@@ -222,9 +169,11 @@ namespace Falcor
         newEdge.dstField = dstPair.second;
 
         if (pSrc == nullptr || pDst == nullptr) return false;
+        uint32_t srcIndex = mNameToIndex[srcPair.first];
+        uint32_t dstIndex = mNameToIndex[dstPair.first];
 
         // Check that the dst field is not already initialized
-        const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex[dstPair.first]);
+        const DirectedGraph::Node* pNode = mpGraph->getNode(dstIndex);
 
         for (uint32_t e = 0 ; e < pNode->getOutgoingEdgeCount() ; e++)
         {
@@ -236,7 +185,14 @@ namespace Falcor
             }
         }
         
-        uint32_t e = mpGraph->addEdge(mNameToIndex[srcPair.first], mNameToIndex[dstPair.first]);
+        // Make sure that this doesn't create a cycle
+        if (DirectedGraphPathDetector::hasPath(mpGraph, dstIndex, srcIndex))
+        {
+            logWarning("RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst + "]. This will create a cycle in the graph which is not allowed");
+            return false;
+        }
+
+        uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
         mEdgeData[e] = newEdge;
         mRecompile = true;
         return true;
@@ -296,73 +252,118 @@ namespace Falcor
         return pTexture;
     }
 
-    void RenderGraph::compile()
+    bool RenderGraph::resolveExecutionOrder()
     {
-        if(mRecompile)
-        {   
-            for (const auto& passIndex : mNameToIndex)
+        // Find all passes that affect the outputs
+        std::unordered_set<uint32_t> participatingPasses;
+        for (auto& o : mOutputs)
+        {
+            uint32_t nodeId = o.nodeId;
+            auto dfs = DirectedGraphDfsTraversal(mpGraph, nodeId, DirectedGraphDfsTraversal::Flags::IgnoreVisited | DirectedGraphDfsTraversal::Flags::Reverse);
+            while (nodeId != DirectedGraph::kInvalidID)
             {
-                uint32_t nodeIndex = passIndex.second;
-                const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
-                RenderPass* pSrcPass = mNodeData[nodeIndex].get();
-                const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
+                participatingPasses.insert(nodeId);
+                nodeId = dfs.traverse();
+            }
+        }
 
-                // Allocate everything that is required
+        // Run topological sort
+        auto topologicalSort = DirectedGraphTopologicalSort::sort(mpGraph.get());
+
+        // For each object in the vector, if it's being used in the execution, put it in the list
+        for (auto& node : topologicalSort)
+        {
+            if (participatingPasses.find(node) != participatingPasses.end())
+            {
+                mExecutionList.push_back(node);
+            }
+        }
+
+        return true;
+    }
+
+    bool RenderGraph::allocateResources()
+    {
+        for (const auto& nodeIndex : mExecutionList)
+        {
+            const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
+            RenderPass* pSrcPass = mNodeData[nodeIndex].get();
+            const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
+
+            const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
+            {
+                for (const auto& out : mOutputs)
+                {
+                    if (out.nodeId == nodeId && out.field == field) return true;
+                }
+                return false;
+            };
+
+            // Set all the pass' outputs to null
+            for (const auto& output : passData.outputs)
+            {
+                if(isGraphOutput(nodeIndex, output.name) == false)
+                {
+                    pSrcPass->setOutput(output.name, nullptr);
+                }
+            }
+
+            // Go over the edges, allocate the required resources and attach them to the input pass
+            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
+            {
+                uint32_t edgeIndex = pNode->getOutgoingEdge(e);
+                const auto& pEdge = mpGraph->getEdge(edgeIndex);
+                const auto& edgeData = mEdgeData[edgeIndex];
+
+                // Find the input
                 for (const auto& src : passData.outputs)
                 {
-                    if (src.required)
+                    if (src.name == edgeData.srcField)
                     {
-                        // Only allocate it if the user didn't set it
-                        if(pSrcPass->getOutput(src.name) == nullptr)
+                        Texture::SharedPtr pTexture;
+                        pTexture = std::dynamic_pointer_cast<Texture>(pSrcPass->getOutput(src.name));
+
+                        if(pTexture == nullptr)
                         {
-                            Texture::SharedPtr pTexture = createTextureForPass(src);
+                            pTexture = createTextureForPass(src);
                             pSrcPass->setOutput(src.name, pTexture);
                         }
-                    }
-                }
 
-                // Now go over the edges, allocate the required resources and attach them to the input pass
-                for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
-                {
-                    uint32_t edgeIndex = pNode->getOutgoingEdge(e);
-                    const auto& pEdge = mpGraph->getEdge(edgeIndex);
-                    const auto& edgeData = mEdgeData[edgeIndex];
-
-                    // Find the input
-                    for (const auto& src : passData.outputs)
-                    {
-                        if (src.name == edgeData.srcField)
-                        {
-                            Texture::SharedPtr pTexture = createTextureForPass(src);
-                            pSrcPass->setOutput(src.name, pTexture);
-
-                            // Connect it to the dst pass
-                            RenderPass* pDstPass = mNodeData[pEdge->getDestNode()].get();
-                            pDstPass->setInput(edgeData.dstField, pTexture);
-                            break;
-                        }
-                        else should_not_get_here();
+                        // Connect it to the dst pass
+                        RenderPass* pDstPass = mNodeData[pEdge->getDestNode()].get();
+                        pDstPass->setInput(edgeData.dstField, pTexture);
+                        break;
                     }
                 }
             }
         }
+        return true;
+    }
+
+    bool RenderGraph::compile(std::string& log)
+    {
+        if(mRecompile)
+        {   
+            if(resolveExecutionOrder() == false) return false;
+            if (allocateResources() == false) return false;
+            if (isValid(log) == false) return false;
+        }
         mRecompile = false;
+        return true;
     }
 
     void RenderGraph::execute(RenderContext* pContext)
     {
-        compile();
-
         std::string log;
-        if (!isValid(log))
+        if (!compile(log))
         {
-            logWarning("Failed to compile RenderGraph\n" + log +"Ignoreing RenderGraph::execute() call");
+            logWarning("Failed to compile RenderGraph\n" + log + "Ignoreing RenderGraph::execute() call");
             return;
         }
 
-        for (const auto& it : mNodeData)
+        for (const auto& node : mExecutionList)
         {
-            it.second->execute(pContext);
+            mNodeData[node]->execute(pContext);
         }
     }
 

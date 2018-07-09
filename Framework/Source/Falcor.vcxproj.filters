@@ -550,6 +550,12 @@
     <ClCompile Include="RenderPasses\GraphEditorGuiPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPasses\DepthPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPasses\ShadowPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
     <ClCompile Include="RenderPasses\NodeGraphGuiPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
@@ -1735,6 +1741,13 @@
     <ClInclude Include="Utils\GuiProperty.h">
     <ClInclude Include="Utils\DirectedGraph.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\DirectedGraphTraversal.h" />
+    <ClInclude Include="RenderPasses\DepthPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\ShadowPass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

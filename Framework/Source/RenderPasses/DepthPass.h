@@ -31,14 +31,13 @@
 #include "Graphics/Program/ProgramVars.h"
 #include "Graphics/GraphicsState.h"
 #include "Graphics/Scene/SceneRenderer.h"
-#include "Utils/GuiProperty.h"
 
 namespace Falcor
 {
-    class SceneRenderPass : public RenderPass, inherit_shared_from_this<RenderPass, SceneRenderPass>
+    class DepthPass : public RenderPass, inherit_shared_from_this<RenderPass, DepthPass>
     {
     public:
-        using SharedPtr = std::shared_ptr<SceneRenderPass>;
+        using SharedPtr = std::shared_ptr<DepthPass>;
 
         /** Create a new object
         */
@@ -51,21 +50,14 @@ namespace Falcor
         virtual PassData getRenderPassData() const override { return kRenderPassData; }
         virtual void sceneChangedCB() override;
         virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
-        virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
 
         virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     private:
-        SceneRenderPass();
-        void recreateShaders();
-
+        DepthPass();
         static const PassData kRenderPassData;
         Fbo::SharedPtr mpFbo;
         GraphicsState::SharedPtr mpState;
-        DepthStencilState::SharedPtr mpDsNoDepthWrite;
-        Falcor::FboAttachmentType mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
         GraphicsVars::SharedPtr mpVars;
         SceneRenderer::SharedPtr mpSceneRenderer;
-        vec4 mClearColor = vec4(1);
-        StringProperty mShaderSource;
     };
 }

@@ -26,22 +26,37 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "Effects/Shadows/CSM.h"
 
-using namespace Falcor;
-
-class RenderGraphRenderer : public Renderer
+namespace Falcor
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    class ShadowPass : public RenderPass, inherit_shared_from_this<RenderPass, ShadowPass>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ShadowPass>;
 
-private:
-    RenderGraph::SharedPtr mpGraph;
-    FirstPersonCameraController mCamControl;
-    void loadScene(const std::string& filename, bool showProgressBar);
-};
+        /** Create a new object
+        */
+        static SharedPtr create(uint32_t width = 2048, uint32_t height = 2048);
+
+        virtual void execute(RenderContext* pContext) override;
+        virtual bool isValid(std::string& log) override;
+        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        virtual PassData getRenderPassData() const override { return mRenderPassData; }
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
+        virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
+
+        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    private:
+        ShadowPass(uint32_t width, uint32_t height);
+        uint32_t mSmWidth;
+        uint32_t mSmHeight;
+        PassData mRenderPassData;
+        std::shared_ptr<Texture> mpShadowMap;
+        std::shared_ptr<Texture> mpDepthIn;
+        CascadedShadowMaps::UniquePtr mpCsm;
+        void createRenderPassData();
+    };
+}
