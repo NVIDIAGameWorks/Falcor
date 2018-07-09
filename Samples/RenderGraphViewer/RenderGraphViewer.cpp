@@ -57,10 +57,12 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     mpGraph = RenderGraph::create();
     mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
     mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
-    mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
+    mpGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
     mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
 
+    mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
     mpGraph->addEdge("DepthPrePass.depth", "SceneRenderer.depth");
+    mpGraph->addEdge("ShadowPass.shadowMap", "SceneRenderer.shadowMap");
     mpGraph->addEdge("SceneRenderer.color", "BlitPass.src");
 
     loadScene(gkDefaultScene, false);

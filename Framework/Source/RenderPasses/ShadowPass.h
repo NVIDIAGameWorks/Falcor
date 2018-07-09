@@ -25,31 +25,38 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import Shading;
-Texture2D gVisibilityBuffer;
+#pragma once
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "Effects/Shadows/CSM.h"
 
-float4 ps(VertexOut vOut, float4 pixelCrd : SV_POSITION) : SV_TARGET
+namespace Falcor
 {
-    ShadingData sd = prepareShadingData(vOut, gMaterial, gCamera.posW);
-
-    float4 color = float4(0, 0, 0, 1);
-    
-    for (uint l = 0; l < gLightsCount; l++)
+    class ShadowPass : public RenderPass, inherit_shared_from_this<RenderPass, ShadowPass>
     {
-        float shadowFactor = 1;
-        if(l == 0)
-        {
-            shadowFactor = gVisibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
-        }
+    public:
+        using SharedPtr = std::shared_ptr<ShadowPass>;
 
-        color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
-    }
+        /** Create a new object
+        */
+        static SharedPtr create(uint32_t width = 2048, uint32_t height = 2048);
 
-    // Add the emissive component
-    color.rgb += sd.emissive;
+        virtual void execute(RenderContext* pContext) override;
+        virtual bool isValid(std::string& log = std::string()) override;
+        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        virtual PassData getRenderPassData() const override { return mRenderPassData; }
+        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
+        virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
 
-    // Add light-map
-    color.rgb += sd.diffuse * sd.lightMap.rgb;
-
-    return color;
+        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    private:
+        ShadowPass(uint32_t width, uint32_t height);
+        uint32_t mSmWidth;
+        uint32_t mSmHeight;
+        PassData mRenderPassData;
+        std::shared_ptr<Texture> mpShadowMap;
+        std::shared_ptr<Texture> mpDepthIn;
+        CascadedShadowMaps::UniquePtr mpCsm;
+        void createRenderPassData();
+    };
 }

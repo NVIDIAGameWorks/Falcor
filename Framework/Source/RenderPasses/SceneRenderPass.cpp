@@ -32,6 +32,7 @@ namespace Falcor
 {
     static std::string kColor = "color";
     static std::string kDepth = "depth";
+    static std::string kShadowMap = "shadowMap";
 
     static SceneRenderPass::PassData createRenderPassData()
     {
@@ -48,6 +49,13 @@ namespace Falcor
         depth.format = ResourceFormat::Unknown;
         depth.bindFlags = Resource::BindFlags::DepthStencil;
         data.inputs.push_back(depth);
+
+        RenderPass::PassData::Field shadowMap;
+        shadowMap.name = kShadowMap;
+        shadowMap.required = true;
+        shadowMap.format = ResourceFormat::Unknown;
+        shadowMap.bindFlags = Resource::BindFlags::ShaderResource;
+        data.inputs.push_back(shadowMap);
 
         return data;
     }
@@ -130,6 +138,11 @@ namespace Falcor
                 mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
             }
         }
+        else if (name == kShadowMap)
+        {
+            Texture::SharedPtr pShadowMap = std::dynamic_pointer_cast<Texture>(pResource);
+            mpVars->setTexture("gVisibilityBuffer", pShadowMap);
+        }
         else
         {
             logError("SceneRenderPass::setInput() - trying to set `" + name + "` which doesn't exist in this render-pass");
@@ -195,6 +208,10 @@ namespace Falcor
         if (name == kDepth)
         {
             return mpFbo->getDepthStencilTexture();
+        }
+        else if (name == kShadowMap)
+        {
+            return mpVars->getTexture("gVisibilityBuffer");
         }
         else return RenderPass::getInput(name);
     }

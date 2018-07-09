@@ -518,6 +518,7 @@
     <ClCompile Include="RenderPasses\BlitPass.cpp" />
     <ClCompile Include="RenderPasses\DepthPass.cpp" />
     <ClCompile Include="RenderPasses\SceneRenderPass.cpp" />
+    <ClCompile Include="RenderPasses\ShadowPass.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
@@ -1101,6 +1102,7 @@
     <ClInclude Include="RenderPasses\BlitPass.h" />
     <ClInclude Include="RenderPasses\DepthPass.h" />
     <ClInclude Include="RenderPasses\SceneRenderPass.h" />
+    <ClInclude Include="RenderPasses\ShadowPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
     <ClInclude Include="Utils\AABB.h" />
