@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 __import Shading;
-Texture2D gVisibilityBuffer;
+Texture2D visibilityBuffer;
 
 float4 ps(VertexOut vOut, float4 pixelCrd : SV_POSITION) : SV_TARGET
 {
@@ -39,7 +39,7 @@ float4 ps(VertexOut vOut, float4 pixelCrd : SV_POSITION) : SV_TARGET
         float shadowFactor = 1;
         if(l == 0)
         {
-            shadowFactor = gVisibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
+            shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
         }
 
         color.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;

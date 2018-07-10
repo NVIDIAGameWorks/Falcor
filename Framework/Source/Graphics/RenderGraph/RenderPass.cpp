@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "RenderPass.h"
 #include "Graphics/Program/ProgramVars.h"
+#include "API/FBO.h"
 
 namespace Falcor
 {
@@ -56,55 +57,146 @@ namespace Falcor
         return nullptr;
     }
 
-    bool RenderPass::addFieldFromProgramVars(const std::string& name,
-        bool input,
+    static RenderPass::Reflection::Field initField(const std::string& name,
+        ResourceFormat format,
+        Resource::BindFlags bindFlags,
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        uint32_t sampleCount,
+        bool optionalField,
+        const ReflectionResourceType::SharedConstPtr& pType
+        )
+    {
+        RenderPass::Reflection::Field f;
+
+        f.optional = optionalField;
+        f.depth = depth;
+        f.format = format;
+        f.height = height;
+        f.name = name;
+        f.sampleCount = sampleCount;
+        f.width = width;
+        f.pType = pType;
+
+        if (bindFlags == Resource::BindFlags::None)
+        {
+            f.bindFlags = Resource::BindFlags::ShaderResource;
+            if (f.pType->getShaderAccess() == ReflectionResourceType::ShaderAccess::ReadWrite) f.bindFlags |= Resource::BindFlags::UnorderedAccess;
+        }
+        else
+        {
+            f.bindFlags = bindFlags;
+        }
+
+        return f;
+    }
+
+    bool RenderPass::addInputFieldFromProgramVars(const std::string& name,
         const std::shared_ptr<ProgramVars>& pVars, 
-        ResourceFormat requiredFormat, 
-        Resource::BindFlags requiredFlags, 
-        uint32_t requiredWidth, 
-        uint32_t requiredHeight, 
-        uint32_t requiredDepth, 
-        uint32_t requiredSampleCount,
+        ResourceFormat format, 
+        Resource::BindFlags bindFlags, 
+        uint32_t width, 
+        uint32_t height, 
+        uint32_t depth, 
+        uint32_t sampleCount,
         bool optionalField)
     {
         assert(pVars);
         if (pVars->getReflection()->getResource(name) == nullptr)
         {
-            logWarning("RenderPass::addFieldFromProgramVars() - can't find a resource named '" + name + "' in the program reflection");
+            logWarning("Error when adding the field `" + name + "` to render-pass `" + mName + "`. Can't find the variable in the program reflection");
             return false;
         }
 
-        Reflection::Field f;
-        f.pType = std::dynamic_pointer_cast<const ReflectionResourceType>(pVars->getReflection()->getResource(name)->getType());
-        if (f.pType == nullptr)
+        const auto& pType = std::dynamic_pointer_cast<const ReflectionResourceType>(pVars->getReflection()->getResource(name)->getType());
+        if (pType == nullptr)
         {
-            logWarning("RenderPass::addFieldFromProgramVars() - variable '" + name + "' is not a resource");
+            logWarning("Error when adding the field `" + name + "` to render-pass `" + mName + "`. The variable is not a resource");
             return false;
         }
 
-        f.optional = optionalField;
-        f.depth = requiredDepth;
-        f.format = requiredFormat;
-        f.height = requiredHeight;
-        f.name = name;
-        f.sampleCount = requiredSampleCount;
-        f.width = requiredWidth;
+        auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
+        mReflection.inputs.push_back(f);
 
-        if (requiredFlags == Resource::BindFlags::None)
+        Input input;
+        input.type = Input::Type::ShaderResource;
+        input.pVars = pVars;
+        input.pField = &mReflection.inputs.back();
+        mInputs[name] = input;
+
+        return true;
+    }
+
+    bool RenderPass::addDepthBufferField(const std::string& name,
+        bool input,
+        const std::shared_ptr<Fbo>& pFbo,
+        ResourceFormat format,
+        Resource::BindFlags flags,
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        uint32_t sampleCount,
+        bool optionalField)
+    {
+        assert(pFbo);
+
+        if (isDepthFormat(format) == false)
         {
-            f.bindFlags = Resource::BindFlags::ShaderResource;
-            if (input)
-            {
-                if (f.pType->getShaderAccess() == ReflectionResourceType::ShaderAccess::ReadWrite) f.bindFlags |= Resource::BindFlags::UnorderedAccess;
-            }
-            else
-            {
-                f.bindFlags |= Resource::BindFlags::RenderTarget;
-            }
+            logWarning("Error when adding the depth-buffer field `" + name + "` to render-pass `" + mName + "`. The provided format is not a depth-stencil format");
+            return false;
+        }
+
+        auto dims = depth > 1 ? ReflectionResourceType::Dimensions::Texture3D : ReflectionResourceType::Dimensions::Texture2D;
+        auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, dims, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::ReadWrite);
+        auto f = initField(name, format, Resource::BindFlags::DepthStencil | Resource::BindFlags::ShaderResource, width, height, depth, sampleCount, optionalField, pType);
+
+        if (input)
+        {
+            mReflection.inputs.push_back(f);
+            Input input;
+            input.pFbo = pFbo;
+            input.pField = &mReflection.inputs.back();
+            input.type = Input::Type::Depth;
+            mInputs[name] = input;
         }
         else
         {
-            f.bindFlags = requiredFlags;
+
+        }
+
+        return true;
+    }
+
+    bool RenderPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        // Check if the name exists here
+        const auto& inputIt = mInputs.find(name);
+        if (inputIt == mInputs.end())
+        {
+            logWarning("Error when binding a resource to a render-pass. The input `" + name + "` doesn't exist");
+            return false;
+        }
+
+        // Currently we only support textures
+        Texture::SharedPtr pTexture = std::dynamic_pointer_cast<Texture>(pResource);
+        if (pTexture == nullptr)
+        {
+            logWarning("Error when binding a resource to a render-pass. The resource provided for the input `" + name + "` is not a texture");
+            return false;
+        }
+
+        const auto& input = inputIt->second;
+        switch (input.type)
+        {
+        case Input::Type::ShaderResource:
+            input.pVars->setTexture(name, pTexture);
+            break;
+        case Input::Type::Depth:
+            input.pFbo->attachDepthStencilTarget(pTexture);
+            break;
+        default:
+            should_not_get_here();
         }
         return true;
     }

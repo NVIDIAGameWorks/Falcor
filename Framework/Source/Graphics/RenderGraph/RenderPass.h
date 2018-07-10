@@ -78,7 +78,7 @@ namespace Falcor
 
         /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
         */
-        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) = 0;
+        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource);
 
         /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
         */
@@ -122,17 +122,43 @@ namespace Falcor
         std::shared_ptr<Scene> mpScene;
         RenderDataChangedFunc mpRenderDataChangedCallback;
 
-        bool addFieldFromProgramVars(const std::string& name, 
-            bool input,
+        bool addInputFieldFromProgramVars(const std::string& name, 
             const std::shared_ptr<ProgramVars>& pVars, 
-            ResourceFormat requiredFormat = ResourceFormat::Unknown,
-            Resource::BindFlags requiredFlags = Resource::BindFlags::None, 
-            uint32_t requiredWidth = 0, 
-            uint32_t requiredHeight = 0, 
-            uint32_t requiredDepth = 0,
-            uint32_t requiredSampleCount = 0,
+            ResourceFormat format = ResourceFormat::Unknown,
+            Resource::BindFlags bindFlags = Resource::BindFlags::None, 
+            uint32_t width = 0, 
+            uint32_t height = 0, 
+            uint32_t depth = 0,
+            uint32_t sampleCount = 0,
+            bool optionalField = false);
+
+        bool addDepthBufferField(const std::string& name,
+            bool input,
+            const std::shared_ptr<Fbo>& pFbo,
+            ResourceFormat format = ResourceFormat::D32Float,
+            Resource::BindFlags bindFlags = Resource::BindFlags::DepthStencil,
+            uint32_t width = 0,
+            uint32_t height = 0,
+            uint32_t depth = 0,
+            uint32_t sampleCount = 0,
             bool optionalField = false);
 
         Reflection mReflection;
+
+        struct Input
+        {
+            enum class Type
+            {
+                Depth,
+                ShaderResource
+            };
+
+            Type type;
+            std::shared_ptr<ProgramVars> pVars;
+            std::shared_ptr<Fbo> pFbo;
+            const Reflection::Field* pField;
+        };
+
+        std::unordered_map<std::string, Input> mInputs;
     };
 }

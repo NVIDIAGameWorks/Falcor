@@ -32,7 +32,7 @@ namespace Falcor
 {
     static std::string kColor = "color";
     static std::string kDepth = "depth";
-    static std::string kShadowMap = "shadowMap";
+    static std::string kShadowMap = "visibilityBuffer";
 
     void SceneRenderPass::initRenderPassData()
     {
@@ -41,20 +41,11 @@ namespace Falcor
         color.name = kColor;
         color.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
         mReflection.outputs.push_back(color);
+        
+        bool b = addInputFieldFromProgramVars(kShadowMap, mpVars);
+        b = b && addDepthBufferField("depth", true, mpFbo);
 
-        RenderPass::Reflection::Field depth;
-        depth.name = kDepth;
-        depth.optional = true;
-        depth.format = ResourceFormat::Unknown;
-        depth.bindFlags = Resource::BindFlags::DepthStencil;
-        mReflection.inputs.push_back(depth);
-
-        RenderPass::Reflection::Field shadowMap;
-        shadowMap.name = kShadowMap;
-        shadowMap.optional = false;
-        shadowMap.format = ResourceFormat::Unknown;
-        shadowMap.bindFlags = Resource::BindFlags::ShaderResource;
-        mReflection.inputs.push_back(shadowMap);
+        assert(b);
     }
 
     SceneRenderPass::SharedPtr SceneRenderPass::create()
@@ -122,9 +113,7 @@ namespace Falcor
     {
         if (name == kDepth)
         {
-            Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
-            mpFbo->attachDepthStencilTarget(pDepth);
-            if (pDepth)
+            if (pResource)
             {
                 mpState->setDepthStencilState(mpDsNoDepthWrite);
                 mClearFlags = FboAttachmentType::Color;
@@ -135,17 +124,8 @@ namespace Falcor
                 mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
             }
         }
-        else if (name == kShadowMap)
-        {
-            Texture::SharedPtr pShadowMap = std::dynamic_pointer_cast<Texture>(pResource);
-            mpVars->setTexture("gVisibilityBuffer", pShadowMap);
-        }
-        else
-        {
-            logError("SceneRenderPass::setInput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-            return false;
-        }
-        return false;
+
+        return RenderPass::setInput(name, pResource);
     }
 
     bool SceneRenderPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
