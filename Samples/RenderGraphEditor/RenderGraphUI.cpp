@@ -135,7 +135,7 @@ namespace Falcor
             RenderGraphNode* inputNode = static_cast<RenderGraphNode*>(link.InputNode), 
                            * outputNode = static_cast<RenderGraphNode*>(link.OutputNode);
 
-            bool addEdgeStatus = spCurrentGraphUI->addLink(inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.OutputSlot), outputNode->getInputName(link.InputSlot));
+            bool addEdgeStatus = spCurrentGraphUI->addLink(inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot));
 
             // immediately remove link if it is not a legal edge in the render graph
             if (!editor.isInited() && !addEdgeStatus) //  only call after graph is setup
@@ -144,8 +144,6 @@ namespace Falcor
                 editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
             }
         }
-        
-        // TODO -- remove link ?? (Possibly remove connected nodes and read them??)
     }
 
     void RenderPassUI::addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput)
@@ -339,9 +337,11 @@ namespace Falcor
         // set of field names that have a connection and are represented in the graph
         std::unordered_set<std::string> nodeConnected;
         std::unordered_map<std::string, uint32_t> previousGuiNodeIDs;
+        std::unordered_set<uint32_t> existingIDs;
 
         for (const auto& currentRenderPassUI : mRenderPassUI)
         {
+            existingIDs.insert(currentRenderPassUI.second.mGuiNodeID);
             previousGuiNodeIDs.insert(std::make_pair(currentRenderPassUI.first, currentRenderPassUI.second.mGuiNodeID));
         }
 
@@ -357,21 +357,21 @@ namespace Falcor
 
             mAllNodeTypeStrings.insert(mRenderGraphRef.mNodeData[nameToIndex.second]->getTypeName());
 
+            while (existingIDs.find(nodeIndex) != existingIDs.end())
+            {
+                nodeIndex++;
+            }
+
             // keep the GUI id from the previous frame
             auto pPreviousID = previousGuiNodeIDs.find(nameToIndex.first);
             if (pPreviousID != previousGuiNodeIDs.end())
             {
-        
-                if (nodeIndex + 1 != pPreviousID->second)
-                {
-                    nodeIndex++;
-                }
-
                 renderPassUI.mGuiNodeID = pPreviousID->second;
             }
             else
             {
-                renderPassUI.mGuiNodeID = nodeIndex++;
+                renderPassUI.mGuiNodeID = nodeIndex;
+                nodeIndex++;
             }
 
             // add all of the incoming connections

@@ -308,6 +308,9 @@ namespace Falcor
                 }
             }
 
+            // check this
+            if (!pNode) logWarning("Attempting to allocate resources on a null node.");
+
             // Go over the edges, allocate the required resources and attach them to the input pass
             for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
             {

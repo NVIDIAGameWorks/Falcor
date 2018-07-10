@@ -185,14 +185,14 @@ namespace Falcor
             return;
         }
 
-        ImGui::SetCurrentContext(sContexts[0].first);
-
-        for (auto& contextPair : sContexts)
-        {
-            ImGui::DestroyContext(contextPair.second.first);
-        }
-
-        ImGui::DestroyContext();
+       //  ImGui::SetCurrentContext(sContexts[0].first);
+       // 
+       //  for (auto& contextPair : sContexts)
+       //  {
+       //      ImGui::DestroyContext(contextPair.second.first);
+       //  }
+       // 
+       //  ImGui::DestroyContext();
     }
 
     Gui::UniquePtr Gui::create(uint32_t width, uint32_t height)

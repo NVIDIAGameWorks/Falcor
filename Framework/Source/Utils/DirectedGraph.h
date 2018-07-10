@@ -196,8 +196,8 @@ namespace Falcor
                 auto& otherNode = removeSrc ? edge.mSrc : edge.mDst;
                 if (otherNode == nodeToRemove)
                 {
-                    removeEdge(edges[i]);
                     removedEdges.push_back(edges[i]);
+                    removeEdge(edges[i]);
                 }
                 else i++;
             }

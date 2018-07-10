@@ -132,7 +132,10 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
 
         ImGui::SameLine();
+        auto currentScreenPos = ImGui::GetCursorScreenPos();
+        ImGui::SetCursorScreenPos({ currentScreenPos.x - 160.0f, currentScreenPos.y});
         pGui->addText(availableRenderPasses.first.c_str());
+        ImGui::SetCursorScreenPos(currentScreenPos);
         ImGui::SameLine();
     }
 
