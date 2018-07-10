@@ -73,7 +73,7 @@ namespace Falcor
         {
             return mMap.at(key);
         }
-        catch(std::out_of_range)
+        catch(const std::out_of_range&)
         {
             return std::vector<ArgList::Arg>();
         }

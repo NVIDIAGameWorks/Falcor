@@ -74,6 +74,8 @@ using namespace glm;
 #define safe_delete(_a) {delete _a; _a = nullptr;}
 #define safe_delete_array(_a) {delete[] _a; _a = nullptr;}
 #define align_to(_alignment, _val) (((_val + _alignment - 1) / _alignment) * _alignment)
+#define concat_strings_(a, b) a##b
+#define concat_strings(a, b) concat_strings_(a, b)
 
 #if defined(_MSC_VER)
 #define FALCOR_DEPRECATED(MESSAGE) __declspec(deprecated(MESSAGE))

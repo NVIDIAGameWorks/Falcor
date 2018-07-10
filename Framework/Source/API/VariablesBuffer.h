@@ -35,6 +35,8 @@
 namespace Falcor
 {
     class Sampler;
+    // Forward declares for gui draw func
+    class Gui;
 
     /** Manages shader buffers containing named data, such as Constant/Uniform Buffers and Structured Buffers.
         When accessing a variable by name, you can only use a name which points to a basic Type, or an array of basic Type (so if you want the start of a structure, ask for the first field in the struct).
@@ -79,6 +81,15 @@ namespace Falcor
         size_t getElementCount() const { return mElementCount; }
 
         size_t getElementSize() const { return mElementSize; }
+
+        /** Renders ui for reflected data within the buffer.
+        \param[in] pGui Pointer to the GUI structure for rendering
+        \param[in] uiGroup optional label for GUI
+        */
+        void renderUI(Gui* pGui, const char* uiGroup);
+
+        // Allows UI functions to look through reflection data
+        friend class VariablesBufferUI;
 
     protected:
         template<typename T>
