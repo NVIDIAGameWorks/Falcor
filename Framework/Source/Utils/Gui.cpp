@@ -471,7 +471,7 @@ namespace Falcor
                stringToDisplay = labelString;
             }
 
-            b |= addFloatVecVar<MatrixType::col_type>(stringToDisplay.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);
+            b |= addFloatVecVar<typename MatrixType::col_type>(stringToDisplay.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);
             
             if (i == 0)
             {
