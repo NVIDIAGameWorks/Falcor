@@ -1,4 +1,4 @@
-v3.1
+v3.0.5
 ------
 - Added support for exporting BMP and TGA images.
 - Added `ConstantBuffer::renderUI()` to automatically render UI for editing a constant buffer's values.
@@ -6,6 +6,7 @@ v3.1
 Bug Fixes:
 - Fixed crash when setting ForwardRenderer sample to MSAA with sample count 1
 - std::string version of Gui::addTextBox() now correctly updates the user's string
+- Fixed row-pitch calculation when copying texture subresources in DX12
 
 v3.0.4
 ------
