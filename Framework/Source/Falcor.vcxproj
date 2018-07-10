@@ -550,6 +550,7 @@
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
+    <ClCompile Include="Utils\VariablesBufferUI.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoderUI.cpp" />
@@ -1122,6 +1123,7 @@
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
     <ClInclude Include="Utils\UserInput.h" />
+    <ClInclude Include="Utils\VariablesBufferUI.h" />
     <ClInclude Include="Utils\Video\VideoDecoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoderUI.h" />

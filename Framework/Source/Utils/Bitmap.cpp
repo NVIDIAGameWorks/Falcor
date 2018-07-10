@@ -31,6 +31,7 @@
 #include "Utils/Platform/OS.h"
 #include "API/Device.h"
 #include <cstring>
+#include "StringUtils.h"
 
 namespace Falcor
 {
@@ -163,6 +164,10 @@ namespace Falcor
             return FIF_PNG;
         case Bitmap::FileFormat::JpegFile:
             return FIF_JPEG;
+        case Bitmap::FileFormat::TgaFile:
+            return FIF_TARGA;
+        case Bitmap::FileFormat::BmpFile:
+            return FIF_BMP;
         case Bitmap::FileFormat::PfmFile:
             return FIF_PFM;
         case Bitmap::FileFormat::ExrFile:
@@ -170,7 +175,7 @@ namespace Falcor
         default:
             should_not_get_here();
         }
-        return FIF_PNG;        
+        return FIF_PNG;
     }
 
     static FREE_IMAGE_TYPE getImageType(uint32_t bytesPerPixel)
@@ -224,45 +229,7 @@ namespace Falcor
             }
         }
 
-        if (fileFormat == Bitmap::FileFormat::PngFile)
-        {
-            pImage = FreeImage_ConvertFromRawBits((BYTE*)pData, width, height, bytesPerPixel * width, bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
-            if(is_set(exportFlags, ExportFlags::ExportAlpha) == false)
-            {
-                auto pTemp = pImage;
-                pImage = FreeImage_ConvertTo24Bits(pImage);
-                FreeImage_Unload(pTemp);
-            }
-            flags = PNG_Z_BEST_COMPRESSION;
-
-            if(is_set(exportFlags, ExportFlags::Uncompressed))
-            {
-                flags = PNG_Z_NO_COMPRESSION;
-            }
-
-            if(is_set(exportFlags, ExportFlags::Lossy))
-            {
-                logError("Bitmap::saveImage: PNG does not support lossy compression mode.");
-                return;
-            }
-        }
-        else if (fileFormat == Bitmap::FileFormat::JpegFile)
-        {
-            FIBITMAP* pTemp = FreeImage_ConvertFromRawBits((BYTE*)pData, width, height, bytesPerPixel * width, bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
-            pImage = FreeImage_ConvertTo24Bits(pTemp);
-            FreeImage_Unload(pTemp);
-            if(is_set(exportFlags, ExportFlags::Lossy) == false || is_set(exportFlags, ExportFlags::Uncompressed))
-            {
-                flags = JPEG_QUALITYSUPERB | JPEG_SUBSAMPLING_444;
-            }
-
-            if(is_set(exportFlags, ExportFlags::ExportAlpha))
-            {
-                logError("Bitmap::saveImage: JPEG does not support alpha channel.");
-                return;
-            }
-        }
-        else if (fileFormat == Bitmap::FileFormat::PfmFile || fileFormat == Bitmap::FileFormat::ExrFile)
+        if (fileFormat == Bitmap::FileFormat::PfmFile || fileFormat == Bitmap::FileFormat::ExrFile)
         {
             if(bytesPerPixel != 16 && bytesPerPixel != 12)
             {
@@ -328,6 +295,70 @@ namespace Falcor
                 {
                     flags |= EXR_B44 | EXR_ZIP;
                 }
+            }
+        }
+        else
+        {
+            FIBITMAP* pTemp = FreeImage_ConvertFromRawBits((BYTE*)pData, width, height, bytesPerPixel * width, bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, isTopDown);
+            if(is_set(exportFlags, ExportFlags::ExportAlpha) == false || fileFormat == Bitmap::FileFormat::JpegFile)
+            {
+                pImage = FreeImage_ConvertTo24Bits(pTemp);
+                FreeImage_Unload(pTemp);
+            }
+            else
+            {
+                pImage = pTemp;
+            }
+
+            std::vector<std::string> warnings;
+            switch(fileFormat)
+            {
+            case FileFormat::JpegFile:
+                if (is_set(exportFlags, ExportFlags::Lossy) == false || is_set(exportFlags, ExportFlags::Uncompressed))
+                {
+                    flags = JPEG_QUALITYSUPERB | JPEG_SUBSAMPLING_444;
+                }
+                if (is_set(exportFlags, ExportFlags::ExportAlpha))
+                {
+                    warnings.push_back("JPEG format does not support alpha channel.");
+                }
+                break;
+
+            // Lossless formats
+            case FileFormat::PngFile:
+                flags = is_set(exportFlags, ExportFlags::Uncompressed) ? PNG_Z_NO_COMPRESSION : PNG_Z_BEST_COMPRESSION;
+
+                if (is_set(exportFlags, ExportFlags::Lossy))
+                {
+                    warnings.push_back("PNG format does not support lossy compression mode.");
+                }
+                break;
+
+            case FileFormat::TgaFile:
+                if (is_set(exportFlags, ExportFlags::Lossy))
+                {
+                    warnings.push_back("TGA format does not support lossy compression mode.");
+                }
+                break;
+
+            case FileFormat::BmpFile:
+                if (is_set(exportFlags, ExportFlags::Lossy))
+                {
+                    warnings.push_back("BMP format does not support lossy compression mode.");
+                }
+                if (is_set(exportFlags, ExportFlags::ExportAlpha))
+                {
+                    warnings.push_back("BMP format does not support alpha channel.");
+                }
+                break;
+
+            default:
+                should_not_get_here();
+            }
+
+            if(warnings.empty() == false)
+            {
+                logWarning("Bitmap::saveImage: " + joinStrings(warnings, " "));
             }
         }
 

@@ -276,6 +276,37 @@ namespace Falcor
         return modified;
     }
 
+    bool Gui::addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine)
+    {
+        bool modified = false;
+        std::string labelString(std::string("##") + label + '0');
+
+        for (uint32_t i = 0; i < numCheckboxes - 1; ++i)
+        {
+            labelString[labelString.size() - 1] = '0' + static_cast<int32_t>(i);
+            modified |= addCheckBox(labelString.c_str(), pData[i], (!i) ? sameLine : true);
+        }
+
+        addCheckBox(label, pData[numCheckboxes - 1], true );
+
+        return modified;
+    }
+
+    bool Gui::addBool2Var(const char label[], glm::bvec2& var, bool sameLine)
+    {
+        return addCheckboxes(label, glm::value_ptr(var), 2, sameLine);
+    }
+
+    bool Gui::addBool3Var(const char label[], glm::bvec3& var, bool sameLine)
+    {
+        return addCheckboxes(label, glm::value_ptr(var), 3, sameLine);
+    }
+
+    bool Gui::addBool4Var(const char label[], glm::bvec4& var, bool sameLine)
+    {
+        return addCheckboxes(label, glm::value_ptr(var), 4, sameLine);
+    }
+
     void Gui::addText(const char text[], bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
@@ -330,29 +361,26 @@ namespace Falcor
         return b;
     }
 
-    bool Gui::addFloat2Var(const char label[], glm::vec2& var, float minVal, float maxVal, bool sameLine)
+    bool Gui::addFloat2Var(const char label[], glm::vec2& var, float minVal, float maxVal, float step, bool sameLine, const char* displayFormat)
     {
         if (sameLine) ImGui::SameLine();
-        float speed = min(1.0f, (maxVal - minVal) * 0.01f);
-        bool b = ImGui::DragFloat2(label, glm::value_ptr(var), speed, minVal, maxVal);
+        bool b = ImGui::DragFloat2(label, glm::value_ptr(var), step, minVal, maxVal, displayFormat);
         var = clamp(var, minVal, maxVal);
         return b;
     }
 
-    bool Gui::addFloat3Var(const char label[], glm::vec3& var, float minVal, float maxVal, bool sameLine)
+    bool Gui::addFloat3Var(const char label[], glm::vec3& var, float minVal, float maxVal, float step, bool sameLine, const char* displayFormat)
     {
         if (sameLine) ImGui::SameLine();
-        float speed = min(1.0f, (maxVal - minVal) * 0.01f);
-        bool b = ImGui::DragFloat3(label, glm::value_ptr(var), speed, minVal, maxVal);
+        bool b = ImGui::DragFloat3(label, glm::value_ptr(var), step, minVal, maxVal, displayFormat);
         var = clamp(var, minVal, maxVal);
         return b;
     }
 
-    bool Gui::addFloat4Var(const char label[], glm::vec4& var, float minVal, float maxVal, bool sameLine)
+    bool Gui::addFloat4Var(const char label[], glm::vec4& var, float minVal, float maxVal, float step, bool sameLine, const char* displayFormat)
     {
         if (sameLine) ImGui::SameLine();
-        float speed = min(1.0f, (maxVal - minVal) * 0.01f);
-        bool b = ImGui::DragFloat4(label, glm::value_ptr(var), speed, maxVal, minVal);
+        bool b = ImGui::DragFloat4(label, glm::value_ptr(var), step, minVal, maxVal, displayFormat);
         var = clamp(var, minVal, maxVal);
         return b;
     }
@@ -362,6 +390,114 @@ namespace Falcor
         if (sameLine) ImGui::SameLine();
         bool b = ImGui::InputInt(label, &var, step);
         var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+    bool Gui::addInt2Var(const char label[], glm::ivec2& var, int32_t minVal, int32_t maxVal, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::InputInt2(label, static_cast<int*>(glm::value_ptr(var)), 0);
+        var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+    bool Gui::addInt3Var(const char label[], glm::ivec3& var, int32_t minVal, int32_t maxVal, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::InputInt3(label, static_cast<int*>(glm::value_ptr(var)), 0);
+        var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+    bool Gui::addInt4Var(const char label[], glm::ivec4& var, int32_t minVal, int32_t maxVal, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::InputInt4(label, static_cast<int*>(glm::value_ptr(var)), 0);
+        var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+    template <>
+    bool Gui::addFloatVecVar<glm::vec2>(const char label[], glm::vec2& var, float minVal, float maxVal, float step, bool sameLine)
+    {
+        return addFloat2Var(label, var, minVal, maxVal, step, sameLine);
+    }
+
+    template <>
+    bool Gui::addFloatVecVar<glm::vec3>(const char label[], glm::vec3& var, float minVal, float maxVal, float step, bool sameLine)
+    {
+        return addFloat3Var(label, var, minVal, maxVal, step, sameLine);
+    }
+
+    template <>
+    bool Gui::addFloatVecVar<glm::vec4>(const char label[], glm::vec4& var, float minVal, float maxVal, float step, bool sameLine)
+    {
+        return addFloat4Var(label, var, minVal, maxVal, step, sameLine);
+    }
+
+#define add_matrix_var(TypeName) template bool Gui::addMatrixVar(const char label[], TypeName& var, float minVal , float maxVal, bool sameLine)
+
+    add_matrix_var(glm::mat2x2);
+    add_matrix_var(glm::mat2x3);
+    add_matrix_var(glm::mat2x4);
+    add_matrix_var(glm::mat3x2);
+    add_matrix_var(glm::mat3x3);
+    add_matrix_var(glm::mat3x4);
+    add_matrix_var(glm::mat4x2);
+    add_matrix_var(glm::mat4x3);
+    add_matrix_var(glm::mat4x4);
+
+#undef add_matrix_var
+
+
+    template<typename MatrixType>
+    bool Gui::addMatrixVar(const char label[], MatrixType& var, float minVal, float maxVal, bool sameLine)
+    {
+        std::string labelString(label);
+        std::string hiddenLabelString("##");
+        hiddenLabelString += labelString + "[0]";
+        
+        ImVec2 topLeft = ImGui::GetCursorScreenPos();
+        ImVec2 bottomRight;
+        
+        bool b = false;
+        
+        for (uint32_t i = 0; i < static_cast<uint32_t>(var.length()); ++i)
+        {
+            std::string& stringToDisplay = hiddenLabelString;
+            hiddenLabelString[hiddenLabelString.size() - 2] = '0' + static_cast<int32_t>(i);
+            if (i == var.length() - 1)
+            {
+               stringToDisplay = labelString;
+            }
+
+            b |= addFloatVecVar<MatrixType::col_type>(stringToDisplay.c_str(), var[i], minVal, maxVal, 0.001f, sameLine);
+            
+            if (i == 0)
+            {
+                ImGui::SameLine();
+                bottomRight = ImGui::GetCursorScreenPos();
+                float oldSpacing = ImGui::GetStyle().ItemSpacing.y;
+                ImGui::GetStyle().ItemSpacing.y = 0.0f;
+                ImGui::Dummy({});
+                ImGui::Dummy({});
+                ImGui::GetStyle().ItemSpacing.y = oldSpacing;
+                ImVec2 correctedCursorPos = ImGui::GetCursorScreenPos();
+                correctedCursorPos.y += oldSpacing;
+                ImGui::SetCursorScreenPos(correctedCursorPos);
+                bottomRight.y = ImGui::GetCursorScreenPos().y;
+            }
+            else if(i == 1)
+            {
+                bottomRight.y = topLeft.y + (bottomRight.y - topLeft.y) * (var.length());
+                bottomRight.x -= ImGui::GetStyle().ItemInnerSpacing.x * 3 - 1;
+                bottomRight.y -= ImGui::GetStyle().ItemInnerSpacing.y  - 1;
+                topLeft.x -= 1; topLeft.y -= 1;
+                auto colorVec4 =ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarGrab); colorVec4.w *= 0.25f;
+                ImU32 color = ImGui::ColorConvertFloat4ToU32(colorVec4);
+                ImGui::GetOverlayDrawList()->AddRect(topLeft, bottomRight, color);
+            }
+        }
         return b;
     }
 
@@ -540,14 +676,18 @@ namespace Falcor
         char buf[maxSize];
         copyStringToBuffer(buf, maxSize, text);
 
+        bool result = false;
         if (lineCount > 1)
         {
-            return ImGui::InputTextMultiline(label, buf, maxSize, ImVec2(-1.0f, ImGui::GetTextLineHeight() * lineCount), flags);
+            result = ImGui::InputTextMultiline(label, buf, maxSize, ImVec2(-1.0f, ImGui::GetTextLineHeight() * lineCount), flags);
         }
         else
         {
-            return ImGui::InputText(label, buf, maxSize, flags);
+            result = ImGui::InputText(label, buf, maxSize, flags);
         }
+
+        text = std::string(buf);
+        return result;
     }
 
     void Gui::addTooltip(const char tip[], bool sameLine)
