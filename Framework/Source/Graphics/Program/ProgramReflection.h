@@ -438,7 +438,7 @@ namespace Falcor
 
         /** Get the variable type
         */
-        const ReflectionType::SharedConstPtr getType() const { return mpType; }
+        const ReflectionType::SharedConstPtr& getType() const { return mpType; }
 
         /** Get the variable offset
         */

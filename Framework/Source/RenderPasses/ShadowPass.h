@@ -44,7 +44,6 @@ namespace Falcor
         virtual bool isValid(std::string& log = std::string()) override;
         virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual PassData getRenderPassData() const override { return mRenderPassData; }
         virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
         virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
 
@@ -53,7 +52,6 @@ namespace Falcor
         ShadowPass(uint32_t width, uint32_t height);
         uint32_t mSmWidth;
         uint32_t mSmHeight;
-        PassData mRenderPassData;
         std::shared_ptr<Texture> mpShadowMap;
         std::shared_ptr<Texture> mpDepthIn;
         CascadedShadowMaps::UniquePtr mpCsm;

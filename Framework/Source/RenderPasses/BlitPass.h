@@ -44,14 +44,13 @@ namespace Falcor
         virtual bool isValid(std::string& log = std::string()) override;
         virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual PassData getRenderPassData() const override { return kRenderPassData; }
         virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
         virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
 
     private:
         BlitPass();
-        static const PassData kRenderPassData;
         Texture::SharedPtr mpSrc;
         Texture::SharedPtr mpDst;
+        void initRenderPassData();
     };
 }

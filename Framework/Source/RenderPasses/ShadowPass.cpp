@@ -35,21 +35,19 @@ namespace Falcor
 
     void ShadowPass::createRenderPassData()
     {
-        mRenderPassData = PassData();
-
-        RenderPass::PassData::Field shadowMap;
+        Reflection::Field shadowMap;
         shadowMap.bindFlags = Resource::BindFlags::RenderTarget;
         shadowMap.name = kShadowMap;
         shadowMap.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
         shadowMap.format = ResourceFormat::RGBA16Float;
-        mRenderPassData.outputs.push_back(shadowMap);
+        mReflection.outputs.push_back(shadowMap);
 
-        RenderPass::PassData::Field depth;
+        Reflection::Field depth;
         depth.name = kDepth;
-        depth.required = false;
+        depth.optional = true;
         depth.format = ResourceFormat::Unknown;
         depth.bindFlags = Resource::BindFlags::ShaderResource;
-        mRenderPassData.inputs.push_back(depth);
+        mReflection.inputs.push_back(depth);
     }
 
     ShadowPass::SharedPtr ShadowPass::create(uint32_t width, uint32_t height)

@@ -35,6 +35,7 @@ namespace Falcor
     class Resource;
     class Gui;
     class RenderContext;
+    class ProgramVars;
 
     /** Base class for render-passes. The class inherits from Renderer
     */
@@ -48,19 +49,19 @@ namespace Falcor
 
         /** This struct describes the available input/output resources fields by the render-pass
         */
-        struct PassData
+        struct Reflection
         {
             struct Field
             {
                 std::string name;                        ///< The field's name
-                ReflectionResourceType::SharedPtr pType; ///< The resource type
+                ReflectionResourceType::SharedConstPtr pType; ///< The resource type
                 uint32_t width = 0;         ///< For output resources, 0 means use the window size(textures) or the size in bytes (buffers). For input resources 0 means don't care
                 uint32_t height = 0;        ///< For output resources, 0 means use the window size. For input resources 0 means don't care
                 uint32_t depth = 0;         ///< For output resources, 0 means use the window size. For input resources 0 means don't care
                 uint32_t sampleCount = 0;   ///< 0 means don't care (which means 1 for output resources)
                 ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
                 Resource::BindFlags bindFlags = Resource::BindFlags::None;  ///< The required bind flags
-                bool required = true;      ///< If this is true, then the render-pass will not work if this field is not set. Otherwise, this field is optional
+                bool optional = false;      ///< If this is false, then the render-pass will not work if this field is not set. Otherwise, this field is optional
             };
 
             std::vector<Field> inputs;
@@ -73,7 +74,7 @@ namespace Falcor
 
         /** Get the render-pass data
         */
-        virtual PassData getRenderPassData() const = 0;
+        virtual const Reflection& getReflection() const final { return mReflection; }
 
         /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
         */
@@ -120,5 +121,18 @@ namespace Falcor
         std::string mName;
         std::shared_ptr<Scene> mpScene;
         RenderDataChangedFunc mpRenderDataChangedCallback;
+
+        bool addFieldFromProgramVars(const std::string& name, 
+            bool input,
+            const std::shared_ptr<ProgramVars>& pVars, 
+            ResourceFormat requiredFormat = ResourceFormat::Unknown,
+            Resource::BindFlags requiredFlags = Resource::BindFlags::None, 
+            uint32_t requiredWidth = 0, 
+            uint32_t requiredHeight = 0, 
+            uint32_t requiredDepth = 0,
+            uint32_t requiredSampleCount = 0,
+            bool optionalField = false);
+
+        Reflection mReflection;
     };
 }

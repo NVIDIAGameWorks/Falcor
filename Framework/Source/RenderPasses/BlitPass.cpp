@@ -34,25 +34,20 @@ namespace Falcor
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
 
-    static BlitPass::PassData createRenderPassData()
+    void BlitPass::initRenderPassData()
     {
-        RenderPass::PassData data;
-        RenderPass::PassData::Field dstField;
+        RenderPass::Reflection::Field dstField;
         dstField.bindFlags = Resource::BindFlags::RenderTarget;
         dstField.name = kDst;
         dstField.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Undefined);
-        data.outputs.push_back(dstField);
+        mReflection.outputs.push_back(dstField);
 
-        RenderPass::PassData::Field srcField;
+        RenderPass::Reflection::Field srcField;
         srcField.bindFlags = Resource::BindFlags::None;
         srcField.name = kSrc;
         srcField.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Undefined);
-        data.inputs.push_back(srcField);
-
-        return data;
+        mReflection.inputs.push_back(srcField);
     }
-
-    const BlitPass::PassData BlitPass::kRenderPassData = createRenderPassData();
 
     BlitPass::SharedPtr BlitPass::create()
     {
@@ -68,6 +63,7 @@ namespace Falcor
 
     BlitPass::BlitPass() : RenderPass("BlitPass", nullptr)
     {
+        initRenderPassData();
     }
 
     bool BlitPass::isValid(std::string& log)

@@ -32,22 +32,6 @@ namespace Falcor
 {
     static std::string kDepth = "depth";
 
-    static DepthPass::PassData createRenderPassData()
-    {
-        RenderPass::PassData data;
-
-        RenderPass::PassData::Field depth;
-        depth.name = kDepth;
-        depth.required = true;
-        depth.format = ResourceFormat::D32Float;
-        depth.bindFlags = Resource::BindFlags::DepthStencil;
-        data.outputs.push_back(depth);
-
-        return data;
-    }
-
-    const DepthPass::PassData DepthPass::kRenderPassData = createRenderPassData();
-
     DepthPass::SharedPtr DepthPass::create()
     {
         try
@@ -70,6 +54,13 @@ namespace Falcor
         
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthTest(false).setStencilTest(false);
+
+        Reflection::Field depth;
+        depth.name = kDepth;
+        depth.optional = false;
+        depth.format = ResourceFormat::D32Float;
+        depth.bindFlags = Resource::BindFlags::DepthStencil;
+        mReflection.outputs.push_back(depth);
     }
 
     void DepthPass::sceneChangedCB()

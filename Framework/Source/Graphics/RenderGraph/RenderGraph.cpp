@@ -117,7 +117,7 @@ namespace Falcor
     template<bool input>
     static bool checkRenderPassIoExist(const RenderPass* pPass, const std::string& name)
     {
-        const auto& ioVec = input ? pPass->getRenderPassData().inputs : pPass->getRenderPassData().outputs;
+        const auto& ioVec = input ? pPass->getReflection().inputs : pPass->getReflection().outputs;
         for (const auto& f : ioVec)
         {
             if (f.name == name) return true;
@@ -219,7 +219,7 @@ namespace Falcor
         return valid;
     }
 
-    Texture::SharedPtr RenderGraph::createTextureForPass(const RenderPass::PassData::Field& field)
+    Texture::SharedPtr RenderGraph::createTextureForPass(const RenderPass::Reflection::Field& field)
     {
         uint32_t width = field.width ? field.width : mSwapChainData.width;
         uint32_t height = field.height ? field.height : mSwapChainData.height;
@@ -288,7 +288,7 @@ namespace Falcor
         {
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
             RenderPass* pSrcPass = mNodeData[nodeIndex].get();
-            const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
+            const RenderPass::Reflection& passData = pSrcPass->getReflection();
 
             const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
             {

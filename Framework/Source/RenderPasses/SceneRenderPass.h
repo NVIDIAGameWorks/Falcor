@@ -47,7 +47,6 @@ namespace Falcor
         virtual bool isValid(std::string& log = std::string()) override;
         virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual PassData getRenderPassData() const override { return kRenderPassData; }
         virtual void sceneChangedCB() override;
         virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
         virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
@@ -55,7 +54,6 @@ namespace Falcor
         virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     private:
         SceneRenderPass();
-        static const PassData kRenderPassData;
         Fbo::SharedPtr mpFbo;
         GraphicsState::SharedPtr mpState;
         DepthStencilState::SharedPtr mpDsNoDepthWrite;
@@ -63,5 +61,6 @@ namespace Falcor
         GraphicsVars::SharedPtr mpVars;
         SceneRenderer::SharedPtr mpSceneRenderer;
         vec4 mClearColor = vec4(1);
+        void initRenderPassData();
     };
 }

@@ -34,33 +34,28 @@ namespace Falcor
     static std::string kDepth = "depth";
     static std::string kShadowMap = "shadowMap";
 
-    static SceneRenderPass::PassData createRenderPassData()
+    void SceneRenderPass::initRenderPassData()
     {
-        RenderPass::PassData data;
-        RenderPass::PassData::Field color;
+        RenderPass::Reflection::Field color;
         color.bindFlags = Resource::BindFlags::RenderTarget;
         color.name = kColor;
         color.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
-        data.outputs.push_back(color);
+        mReflection.outputs.push_back(color);
 
-        RenderPass::PassData::Field depth;
+        RenderPass::Reflection::Field depth;
         depth.name = kDepth;
-        depth.required = false;
+        depth.optional = true;
         depth.format = ResourceFormat::Unknown;
         depth.bindFlags = Resource::BindFlags::DepthStencil;
-        data.inputs.push_back(depth);
+        mReflection.inputs.push_back(depth);
 
-        RenderPass::PassData::Field shadowMap;
+        RenderPass::Reflection::Field shadowMap;
         shadowMap.name = kShadowMap;
-        shadowMap.required = true;
+        shadowMap.optional = false;
         shadowMap.format = ResourceFormat::Unknown;
         shadowMap.bindFlags = Resource::BindFlags::ShaderResource;
-        data.inputs.push_back(shadowMap);
-
-        return data;
+        mReflection.inputs.push_back(shadowMap);
     }
-
-    const SceneRenderPass::PassData SceneRenderPass::kRenderPassData = createRenderPassData();
 
     SceneRenderPass::SharedPtr SceneRenderPass::create()
     {
@@ -85,6 +80,8 @@ namespace Falcor
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthTest(true).setDepthWriteMask(false).setStencilTest(false).setDepthFunc(DepthStencilState::Func::LessEqual);
         mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
+
+        initRenderPassData();
     }
 
     void SceneRenderPass::sceneChangedCB()

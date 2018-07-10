@@ -27,6 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "RenderPass.h"
+#include "Graphics/Program/ProgramVars.h"
 
 namespace Falcor
 {
@@ -53,5 +54,58 @@ namespace Falcor
     {
         logWarning(mName + " doesn't have an input resource called `" + name + "`");
         return nullptr;
+    }
+
+    bool RenderPass::addFieldFromProgramVars(const std::string& name,
+        bool input,
+        const std::shared_ptr<ProgramVars>& pVars, 
+        ResourceFormat requiredFormat, 
+        Resource::BindFlags requiredFlags, 
+        uint32_t requiredWidth, 
+        uint32_t requiredHeight, 
+        uint32_t requiredDepth, 
+        uint32_t requiredSampleCount,
+        bool optionalField)
+    {
+        assert(pVars);
+        if (pVars->getReflection()->getResource(name) == nullptr)
+        {
+            logWarning("RenderPass::addFieldFromProgramVars() - can't find a resource named '" + name + "' in the program reflection");
+            return false;
+        }
+
+        Reflection::Field f;
+        f.pType = std::dynamic_pointer_cast<const ReflectionResourceType>(pVars->getReflection()->getResource(name)->getType());
+        if (f.pType == nullptr)
+        {
+            logWarning("RenderPass::addFieldFromProgramVars() - variable '" + name + "' is not a resource");
+            return false;
+        }
+
+        f.optional = optionalField;
+        f.depth = requiredDepth;
+        f.format = requiredFormat;
+        f.height = requiredHeight;
+        f.name = name;
+        f.sampleCount = requiredSampleCount;
+        f.width = requiredWidth;
+
+        if (requiredFlags == Resource::BindFlags::None)
+        {
+            f.bindFlags = Resource::BindFlags::ShaderResource;
+            if (input)
+            {
+                if (f.pType->getShaderAccess() == ReflectionResourceType::ShaderAccess::ReadWrite) f.bindFlags |= Resource::BindFlags::UnorderedAccess;
+            }
+            else
+            {
+                f.bindFlags |= Resource::BindFlags::RenderTarget;
+            }
+        }
+        else
+        {
+            f.bindFlags = requiredFlags;
+        }
+        return true;
     }
 }

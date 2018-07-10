@@ -137,7 +137,7 @@ namespace Falcor
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
-        std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
+        std::shared_ptr<Texture> createTextureForPass(const RenderPass::Reflection::Field& field);
 
         struct  
         {
