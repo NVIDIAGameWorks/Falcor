@@ -159,6 +159,8 @@ namespace Falcor
             const Reflection::Field* pField;
         };
 
+        bool addInputCommon(const Reflection::Field& field, Input::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars);
+
         std::unordered_map<std::string, Input> mInputs;
     };
 }

@@ -57,6 +57,26 @@ namespace Falcor
         return nullptr;
     }
 
+    bool RenderPass::addInputCommon(const Reflection::Field& field, Input::Type t, const Fbo::SharedPtr& pFbo, const std::shared_ptr<ProgramVars>& pVars)
+    {
+        if (mInputs.find(field.name) != mInputs.end())
+        {
+            logWarning("Error when adding the field `" + field.name + "` to render-pass `" + mName + "`. A field with the same name already exists");
+            return false;
+        }
+
+        mReflection.inputs.push_back(field);
+
+        Input input;
+        input.type = t;
+        input.pVars = pVars;
+        input.pFbo = pFbo;
+        input.pField = &mReflection.inputs.back();
+        mInputs[field.name] = input;
+
+        return true;
+    }
+
     static RenderPass::Reflection::Field initField(const std::string& name,
         ResourceFormat format,
         Resource::BindFlags bindFlags,
@@ -117,13 +137,7 @@ namespace Falcor
         }
 
         auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
-        mReflection.inputs.push_back(f);
-
-        Input input;
-        input.type = Input::Type::ShaderResource;
-        input.pVars = pVars;
-        input.pField = &mReflection.inputs.back();
-        mInputs[name] = input;
+        return addInputCommon(f, Input::Type::ShaderResource, nullptr, pVars);
 
         return true;
     }
@@ -153,12 +167,7 @@ namespace Falcor
 
         if (input)
         {
-            mReflection.inputs.push_back(f);
-            Input input;
-            input.pFbo = pFbo;
-            input.pField = &mReflection.inputs.back();
-            input.type = Input::Type::Depth;
-            mInputs[name] = input;
+            addInputCommon(f, Input::Type::Depth, pFbo, nullptr);
         }
         else
         {
