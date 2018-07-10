@@ -81,6 +81,10 @@ private:
     std::string mNextGraphString;
     std::string mNodeString;
 
+    // probably move this?
+    std::string mCurrentGraphOutput;
+    std::string mGraphOutputEditString;
+
     Gui::DropdownList mOpenGraphNames;
     Gui::DropdownList mRenderPassTypes; uint32_t mTypeSelection;
 

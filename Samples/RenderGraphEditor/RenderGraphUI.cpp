@@ -130,6 +130,11 @@ namespace Falcor
 
     static void setLink(const ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
     {
+        if (ImGui::IsMouseDown(0))
+        {
+            return;
+        }
+
         if (state == ImGui::NodeGraphEditor::LinkState::LS_ADDED)
         {
             RenderGraphNode* inputNode = static_cast<RenderGraphNode*>(link.InputNode), 

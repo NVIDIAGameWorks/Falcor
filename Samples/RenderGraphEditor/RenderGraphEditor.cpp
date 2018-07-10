@@ -72,6 +72,9 @@ RenderGraphEditor::RenderGraphEditor()
 
     mNextGraphString.resize(255, 0);
     mNodeString.resize(255, 0);
+    mCurrentGraphOutput = "BlitPass.dst";
+    mGraphOutputEditString = mCurrentGraphOutput;
+    mGraphOutputEditString.resize(255, 0);
 }
 
 void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
@@ -110,7 +113,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             continue;
         }
 
-        ImGui::GetCurrentWindow()->DrawList->AddRect(ImGui::GetCursorScreenPos(), { ImGui::GetCursorScreenPos().x + 320.0f, ImGui::GetCursorScreenPos().y + 180.0f }, 0xFFFFFFFF);
+        ImVec2 nextDragRegionPos{ ImGui::GetCursorScreenPos().x + 320.0f, ImGui::GetCursorScreenPos().y + 180.0f };
+        ImGui::GetCurrentWindow()->DrawList->AddRect(ImGui::GetCursorScreenPos(), nextDragRegionPos, 0xFFFFFFFF);
         ImGui::Dummy({ 320.0f , 180.0f });
 
         static bool payLoadSet = false;
@@ -132,10 +136,9 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
 
         ImGui::SameLine();
-        auto currentScreenPos = ImGui::GetCursorScreenPos();
-        ImGui::SetCursorScreenPos({ currentScreenPos.x - 160.0f, currentScreenPos.y});
         pGui->addText(availableRenderPasses.first.c_str());
-        ImGui::SetCursorScreenPos(currentScreenPos);
+
+        ImGui::SetCursorScreenPos(nextDragRegionPos);
         ImGui::SameLine();
     }
 
@@ -223,6 +226,21 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         // recompile the graph before a preview
         updateAndCompileGraph();
         mPreviewing = true;
+    }
+
+    
+    pGui->addTextBox("GraphOutput", mGraphOutputEditString);
+
+    if (pGui->addButton("Update"))
+    {
+        if (mCurrentGraphOutput != mGraphOutputEditString)
+        {
+            mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
+            mCurrentGraphOutput = mGraphOutputEditString;
+            mpGraphs[mCurrentGraphIndex]->markGraphOutput(mCurrentGraphOutput);
+            mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
+        }
+        
     }
 
     pGui->popWindow();
@@ -393,10 +411,10 @@ bool RenderGraphEditor::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    mpGraphs[mCurrentGraphIndex]->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
+    mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample, width, height);
 
-    mpEditorGraph->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
+    mpEditorGraph->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     mpEditorGraph->onResizeSwapChain(pSample, width, height);
 }
 
