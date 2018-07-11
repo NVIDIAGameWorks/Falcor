@@ -57,22 +57,25 @@ namespace Falcor
         return nullptr;
     }
 
-    bool RenderPass::addInputCommon(const Reflection::Field& field, Input::Type t, const Fbo::SharedPtr& pFbo, const std::shared_ptr<ProgramVars>& pVars)
+    bool RenderPass::addVariableCommon(bool inputVar, const Reflection::Field& field, Variable::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars)
     {
-        if (mInputs.find(field.name) != mInputs.end())
+        auto& map = inputVar ? mInputs : mOutputs;
+        auto& reflectionMap = inputVar ? mReflection.inputs : mReflection.outputs;
+
+        if (map.find(field.name) != map.end())
         {
             logWarning("Error when adding the field `" + field.name + "` to render-pass `" + mName + "`. A field with the same name already exists");
             return false;
         }
 
-        mReflection.inputs.push_back(field);
+        reflectionMap.push_back(field);
 
-        Input input;
-        input.type = t;
-        input.pVars = pVars;
-        input.pFbo = pFbo;
-        input.pField = &mReflection.inputs.back();
-        mInputs[field.name] = input;
+        Variable var;
+        var.type = t;
+        var.pVars = pVars;
+        var.pFbo = pFbo;
+        var.pField = &mReflection.inputs.back();
+        map[field.name] = var;
 
         return true;
     }
@@ -137,7 +140,7 @@ namespace Falcor
         }
 
         auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
-        return addInputCommon(f, Input::Type::ShaderResource, nullptr, pVars);
+        return addVariableCommon(true, f, Variable::Type::ShaderResource, nullptr, pVars);
 
         return true;
     }
@@ -146,7 +149,7 @@ namespace Falcor
         bool input,
         const std::shared_ptr<Fbo>& pFbo,
         ResourceFormat format,
-        Resource::BindFlags flags,
+        Resource::BindFlags bindFlags,
         uint32_t width,
         uint32_t height,
         uint32_t depth,
@@ -163,27 +166,34 @@ namespace Falcor
 
         auto dims = depth > 1 ? ReflectionResourceType::Dimensions::Texture3D : ReflectionResourceType::Dimensions::Texture2D;
         auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, dims, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::ReadWrite);
-        auto f = initField(name, format, Resource::BindFlags::DepthStencil | Resource::BindFlags::ShaderResource, width, height, depth, sampleCount, optionalField, pType);
+        auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
 
-        if (input)
-        {
-            addInputCommon(f, Input::Type::Depth, pFbo, nullptr);
-        }
-        else
-        {
-
-        }
-
-        return true;
+        return addVariableCommon(input, f, Variable::Type::Depth, pFbo, nullptr);
     }
 
-    bool RenderPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    bool RenderPass::addRenderTargetField(const std::string& name, const std::shared_ptr<Fbo>& pFbo, ResourceFormat format, Resource::BindFlags bindFlags, uint32_t width, uint32_t height, uint32_t depth, uint32_t sampleCount, bool optionalField)
     {
+        assert(pFbo);
+
+        auto dims = depth > 1 ? ReflectionResourceType::Dimensions::Texture3D : ReflectionResourceType::Dimensions::Texture2D;
+        auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, dims, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::ReadWrite);
+        auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
+
+        return addVariableCommon(false, f, Variable::Type::RenderTarget, pFbo, nullptr);
+
+    }
+
+    template<bool input>
+    bool RenderPass::setVariableCommon(const std::string& name, const std::shared_ptr<Resource>& pResource) const
+    {
+        const auto& varMap = input ? mInputs : mOutputs;
+        const std::string varType = input ? "input" : "output";
+
         // Check if the name exists here
-        const auto& inputIt = mInputs.find(name);
-        if (inputIt == mInputs.end())
+        const auto& varIt = varMap.find(name);
+        if (varIt == varMap.end())
         {
-            logWarning("Error when binding a resource to a render-pass. The input `" + name + "` doesn't exist");
+            logWarning("Error when binding a resource to a render-pass. The " + varType +" `" + name + "` doesn't exist");
             return false;
         }
 
@@ -191,22 +201,38 @@ namespace Falcor
         Texture::SharedPtr pTexture = std::dynamic_pointer_cast<Texture>(pResource);
         if (pTexture == nullptr)
         {
-            logWarning("Error when binding a resource to a render-pass. The resource provided for the input `" + name + "` is not a texture");
+            logWarning("Error when binding a resource to a render-pass. The resource provided for the " + varType + " `" + name + "` is not a texture");
             return false;
         }
 
-        const auto& input = inputIt->second;
-        switch (input.type)
+        const auto& var = varIt->second;
+        switch (var.type)
         {
-        case Input::Type::ShaderResource:
-            input.pVars->setTexture(name, pTexture);
+        case Variable::Type::ShaderResource:
+            assert(input);
+            var.pVars->setTexture(name, pTexture);
             break;
-        case Input::Type::Depth:
-            input.pFbo->attachDepthStencilTarget(pTexture);
+        case Variable::Type::Depth:
+            var.pFbo->attachDepthStencilTarget(pTexture);
+            break;
+        case Variable::Type::RenderTarget:
+            assert(input == false);
+            var.pFbo->attachColorTarget(pTexture, 0);
             break;
         default:
             should_not_get_here();
+            return false;
         }
         return true;
+    }
+
+    bool RenderPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        return setVariableCommon<true>(name, pResource);
+    }
+
+    bool RenderPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        return setVariableCommon<false>(name, pResource);
     }
 }

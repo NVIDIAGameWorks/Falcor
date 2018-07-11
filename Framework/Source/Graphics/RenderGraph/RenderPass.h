@@ -136,7 +136,17 @@ namespace Falcor
             bool input,
             const std::shared_ptr<Fbo>& pFbo,
             ResourceFormat format = ResourceFormat::D32Float,
-            Resource::BindFlags bindFlags = Resource::BindFlags::DepthStencil,
+            Resource::BindFlags bindFlags = Resource::BindFlags::DepthStencil | Resource::BindFlags::ShaderResource,
+            uint32_t width = 0,
+            uint32_t height = 0,
+            uint32_t depth = 0,
+            uint32_t sampleCount = 0,
+            bool optionalField = false);
+
+        bool addRenderTargetField(const std::string& name,
+            const std::shared_ptr<Fbo>& pFbo,
+            ResourceFormat format = ResourceFormat::Unknown,
+            Resource::BindFlags bindFlags = Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource,
             uint32_t width = 0,
             uint32_t height = 0,
             uint32_t depth = 0,
@@ -145,22 +155,26 @@ namespace Falcor
 
         Reflection mReflection;
 
-        struct Input
+        struct Variable
         {
             enum class Type
             {
                 Depth,
+                RenderTarget,
                 ShaderResource
             };
 
             Type type;
             std::shared_ptr<ProgramVars> pVars;
             std::shared_ptr<Fbo> pFbo;
-            const Reflection::Field* pField;
+            const Reflection::Field* pField = nullptr;
+            uint32_t index = 0;
         };
+        std::unordered_map<std::string, Variable> mInputs;
+        std::unordered_map<std::string, Variable> mOutputs;
+        bool addVariableCommon(bool inputVar, const Reflection::Field& field, Variable::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars);
 
-        bool addInputCommon(const Reflection::Field& field, Input::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars);
-
-        std::unordered_map<std::string, Input> mInputs;
+        template<bool input>
+        bool setVariableCommon(const std::string& name, const std::shared_ptr<Resource>& pResource) const;
     };
 }
