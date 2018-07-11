@@ -100,7 +100,7 @@ namespace Falcor
         var.type = t;
         var.pVars = pVars;
         var.pFbo = pFbo;
-        var.pField = &mReflection.inputs.back();
+        var.pField = &reflectionMap.back();
         var.rtIndex = rtIndex;
         map[field.name] = var;
 

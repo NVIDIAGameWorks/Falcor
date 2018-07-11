@@ -30,8 +30,6 @@
 
 namespace Falcor
 {
-    static std::string kDepth = "depth";
-
     DepthPass::SharedPtr DepthPass::create()
     {
         try
@@ -55,12 +53,7 @@ namespace Falcor
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthTest(false).setStencilTest(false);
 
-        Reflection::Field depth;
-        depth.name = kDepth;
-        depth.optional = false;
-        depth.format = ResourceFormat::D32Float;
-        depth.bindFlags = Resource::BindFlags::DepthStencil;
-        mReflection.outputs.push_back(depth);
+        addDepthBufferField("depth", false, mpFbo);
     }
 
     void DepthPass::sceneChangedCB()
@@ -97,34 +90,6 @@ namespace Falcor
         return b;
     }
 
-    bool DepthPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        logError("DepthPass::setInput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-        return false;
-    }
-
-    bool DepthPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        if (!mpFbo)
-        {
-            logError("DepthPass::setOutput() - please call onResizeSwapChain() before setting an input");
-            return false;
-        }
-
-        if (name == kDepth)
-        {
-            Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
-            mpFbo->attachDepthStencilTarget(pDepth);
-        }
-        else
-        {
-            logError("DepthPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-            return false;
-        }
-
-        return true;
-    }
-
     void DepthPass::execute(RenderContext* pContext)
     {
         pContext->clearDsv(mpFbo->getDepthStencilView().get(), 1, 0);
@@ -138,16 +103,7 @@ namespace Falcor
             pContext->popGraphicsVars();
         }
     }
-
-    std::shared_ptr<Resource> DepthPass::getOutput(const std::string& name) const
-    {
-        if (name == kDepth)
-        {
-            return mpFbo->getDepthStencilTexture();
-        }        
-        else return RenderPass::getOutput(name);
-    }
-    
+        
     void DepthPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
     }

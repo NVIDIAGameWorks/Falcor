@@ -45,10 +45,7 @@ namespace Falcor
 
         virtual void execute(RenderContext* pContext) override;
         virtual bool isValid(std::string& log = std::string()) override;
-        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
         virtual void sceneChangedCB() override;
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
 
         virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     private:
