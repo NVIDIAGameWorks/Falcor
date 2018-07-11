@@ -145,6 +145,7 @@ namespace Falcor
 
         bool addRenderTargetField(const std::string& name,
             const std::shared_ptr<Fbo>& pFbo,
+            uint32_t rtIndex,
             ResourceFormat format = ResourceFormat::Unknown,
             Resource::BindFlags bindFlags = Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource,
             uint32_t width = 0,
@@ -168,11 +169,11 @@ namespace Falcor
             std::shared_ptr<ProgramVars> pVars;
             std::shared_ptr<Fbo> pFbo;
             const Reflection::Field* pField = nullptr;
-            uint32_t index = 0;
+            uint32_t rtIndex = 0;
         };
         std::unordered_map<std::string, Variable> mInputs;
         std::unordered_map<std::string, Variable> mOutputs;
-        bool addVariableCommon(bool inputVar, const Reflection::Field& field, Variable::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars);
+        bool addVariableCommon(bool inputVar, const Reflection::Field& field, Variable::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars, uint32_t rtIndex);
 
         template<bool input>
         bool setVariableCommon(const std::string& name, const std::shared_ptr<Resource>& pResource) const;

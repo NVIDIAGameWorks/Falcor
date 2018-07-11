@@ -83,7 +83,7 @@ namespace Falcor
         return getVariableCommon<false>(name);
     }
 
-    bool RenderPass::addVariableCommon(bool inputVar, const Reflection::Field& field, Variable::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars)
+    bool RenderPass::addVariableCommon(bool inputVar, const Reflection::Field& field, Variable::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars, uint32_t rtIndex)
     {
         auto& map = inputVar ? mInputs : mOutputs;
         auto& reflectionMap = inputVar ? mReflection.inputs : mReflection.outputs;
@@ -101,6 +101,7 @@ namespace Falcor
         var.pVars = pVars;
         var.pFbo = pFbo;
         var.pField = &mReflection.inputs.back();
+        var.rtIndex = rtIndex;
         map[field.name] = var;
 
         return true;
@@ -166,7 +167,7 @@ namespace Falcor
         }
 
         auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
-        return addVariableCommon(true, f, Variable::Type::ShaderResource, nullptr, pVars);
+        return addVariableCommon(true, f, Variable::Type::ShaderResource, nullptr, pVars, 0);
 
         return true;
     }
@@ -194,10 +195,10 @@ namespace Falcor
         auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, dims, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::ReadWrite);
         auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
 
-        return addVariableCommon(input, f, Variable::Type::Depth, pFbo, nullptr);
+        return addVariableCommon(input, f, Variable::Type::Depth, pFbo, nullptr, 0);
     }
 
-    bool RenderPass::addRenderTargetField(const std::string& name, const std::shared_ptr<Fbo>& pFbo, ResourceFormat format, Resource::BindFlags bindFlags, uint32_t width, uint32_t height, uint32_t depth, uint32_t sampleCount, bool optionalField)
+    bool RenderPass::addRenderTargetField(const std::string& name, const std::shared_ptr<Fbo>& pFbo, uint32_t rtIndex, ResourceFormat format, Resource::BindFlags bindFlags, uint32_t width, uint32_t height, uint32_t depth, uint32_t sampleCount, bool optionalField)
     {
         assert(pFbo);
 
@@ -205,7 +206,7 @@ namespace Falcor
         auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, dims, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::ReadWrite);
         auto f = initField(name, format, bindFlags, width, height, depth, sampleCount, optionalField, pType);
 
-        return addVariableCommon(false, f, Variable::Type::RenderTarget, pFbo, nullptr);
+        return addVariableCommon(false, f, Variable::Type::RenderTarget, pFbo, nullptr, rtIndex);
 
     }
 
@@ -243,7 +244,7 @@ namespace Falcor
             break;
         case Variable::Type::RenderTarget:
             assert(input == false);
-            var.pFbo->attachColorTarget(pTexture, 0);
+            var.pFbo->attachColorTarget(pTexture, var.rtIndex);
             break;
         default:
             should_not_get_here();

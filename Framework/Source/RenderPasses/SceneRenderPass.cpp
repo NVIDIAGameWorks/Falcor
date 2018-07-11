@@ -36,7 +36,7 @@ namespace Falcor
     {
         bool b = addInputFieldFromProgramVars("visibilityBuffer", mpVars);
         b = b && addDepthBufferField(kDepth, true, mpFbo);
-        b = b && addRenderTargetField("color", mpFbo);
+        b = b && addRenderTargetField("color", mpFbo, 0);
 
         assert(b);
     }
