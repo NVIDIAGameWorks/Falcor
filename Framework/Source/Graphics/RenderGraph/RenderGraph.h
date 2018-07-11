@@ -107,6 +107,10 @@ namespace Falcor
         /** Get the attached scene
         */
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
+
+        /** Attempt to automatically generate edges
+        */
+        void autoGenerateEdges() {};
     private:
         RenderGraph();
         static const uint32_t kInvalidIndex = -1;
