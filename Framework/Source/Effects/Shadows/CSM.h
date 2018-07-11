@@ -28,7 +28,7 @@
 #pragma once
 #include "API/Texture.h"
 #include "Data/Effects/CsmData.h"
-#include "../Utils/GaussianBlur.h"
+#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
 #include "Graphics/Light.h"
 #include "Graphics/Scene/Scene.h"
 #include "Utils/Math/ParallelReduction.h"

@@ -127,9 +127,6 @@
     <ClCompile Include="Effects\Shadows\CSM.cpp">
       <Filter>Effects\Shadows</Filter>
     </ClCompile>
-    <ClCompile Include="Effects\Utils\GaussianBlur.cpp">
-      <Filter>Effects\Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Effects\SkyBox\SkyBox.cpp">
       <Filter>Effects\SkyBox</Filter>
     </ClCompile>
@@ -538,6 +535,9 @@
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\Utils\GaussianBlur\GaussianBlur.cpp">
+      <Filter>Effects\Utils\GaussianBlur</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -707,9 +707,6 @@
     </ClInclude>
     <ClInclude Include="Effects\Shadows\CSM.h">
       <Filter>Effects\Shadows</Filter>
-    </ClInclude>
-    <ClInclude Include="Effects\Utils\GaussianBlur.h">
-      <Filter>Effects\Utils</Filter>
     </ClInclude>
     <ClInclude Include="Effects\SkyBox\SkyBox.h">
       <Filter>Effects\SkyBox</Filter>
@@ -1699,6 +1696,9 @@
     <ClInclude Include="Utils\VariablesBufferUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\Utils\GaussianBlur\GaussianBlur.h">
+      <Filter>Effects\Utils\GaussianBlur</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1886,6 +1886,9 @@
     </Filter>
     <Filter Include="Effects\FXAA">
       <UniqueIdentifier>{51b693f1-34da-4d5e-a6d5-925944c92c79}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\Utils\GaussianBlur">
+      <UniqueIdentifier>{2fb7a0c8-86bf-424d-808b-fc18423602ba}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

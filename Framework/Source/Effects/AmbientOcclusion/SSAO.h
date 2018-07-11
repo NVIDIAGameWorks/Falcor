@@ -32,7 +32,7 @@
 #include "Graphics/Program/ProgramVars.h"
 #include "Graphics/FullScreenPass.h"
 #include "Data/Effects/SSAOData.h"
-#include "Effects/Utils/GaussianBlur.h"
+#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
 #include "Utils/Gui.h"
 
 namespace Falcor
