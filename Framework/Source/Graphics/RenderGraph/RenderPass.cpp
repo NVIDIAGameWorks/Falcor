@@ -45,16 +45,42 @@ namespace Falcor
         sceneChangedCB();
     }
 
-    std::shared_ptr<Resource> RenderPass::getOutput(const std::string& name) const
+    template<bool input>
+    std::shared_ptr<Resource> RenderPass::getVariableCommon(const std::string& name) const
     {
-        logWarning(mName + " doesn't have an output resource called `" + name + "`");
-        return nullptr;
+        const std::string type = input ? "input" : "output";
+        const auto& varMap = input ? mInputs : mOutputs;
+        auto& varIt = varMap.find(name);
+
+        if (varIt == varMap.end())
+        {
+            logWarning(mName + " doesn't have an " + type + " resource called `" + name + "`");
+            return nullptr;
+        }
+        const auto& var = varIt->second;
+
+        switch (var.type)
+        {
+        case Variable::Type::RenderTarget:
+            return var.pFbo->getColorTexture(0);
+        case Variable::Type::Depth:
+            return var.pFbo->getDepthStencilTexture();
+        case Variable::Type::ShaderResource:
+            return var.pVars->getTexture(name);
+        default:
+            should_not_get_here();
+            return nullptr;
+        }
     }
 
     std::shared_ptr<Resource> RenderPass::getInput(const std::string& name) const
     {
-        logWarning(mName + " doesn't have an input resource called `" + name + "`");
-        return nullptr;
+        return getVariableCommon<true>(name);
+    }
+
+    std::shared_ptr<Resource> RenderPass::getOutput(const std::string& name) const
+    {
+        return getVariableCommon<false>(name);
     }
 
     bool RenderPass::addVariableCommon(bool inputVar, const Reflection::Field& field, Variable::Type t, const std::shared_ptr<Fbo>& pFbo, const std::shared_ptr<ProgramVars>& pVars)
@@ -199,7 +225,7 @@ namespace Falcor
 
         // Currently we only support textures
         Texture::SharedPtr pTexture = std::dynamic_pointer_cast<Texture>(pResource);
-        if (pTexture == nullptr)
+        if (pResource && pTexture == nullptr)
         {
             logWarning("Error when binding a resource to a render-pass. The resource provided for the " + varType + " `" + name + "` is not a texture");
             return false;

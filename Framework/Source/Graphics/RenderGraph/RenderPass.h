@@ -82,7 +82,7 @@ namespace Falcor
 
         /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
         */
-        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) = 0;
+        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
 
         /** Get an input resource
         */
@@ -176,5 +176,7 @@ namespace Falcor
 
         template<bool input>
         bool setVariableCommon(const std::string& name, const std::shared_ptr<Resource>& pResource) const;
+        template<bool input>
+        std::shared_ptr<Resource> getVariableCommon(const std::string& name) const;
     };
 }

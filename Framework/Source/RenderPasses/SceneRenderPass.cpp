@@ -30,20 +30,13 @@
 
 namespace Falcor
 {
-    static std::string kColor = "color";
     static std::string kDepth = "depth";
-    static std::string kShadowMap = "visibilityBuffer";
 
     void SceneRenderPass::initRenderPassData()
     {
-        RenderPass::Reflection::Field color;
-        color.bindFlags = Resource::BindFlags::RenderTarget;
-        color.name = kColor;
-        color.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
-        mReflection.outputs.push_back(color);
-        
-        bool b = addInputFieldFromProgramVars(kShadowMap, mpVars);
-        b = b && addDepthBufferField("depth", true, mpFbo);
+        bool b = addInputFieldFromProgramVars("visibilityBuffer", mpVars);
+        b = b && addDepthBufferField(kDepth, true, mpFbo);
+        b = b && addRenderTargetField("color", mpFbo);
 
         assert(b);
     }
@@ -128,28 +121,6 @@ namespace Falcor
         return RenderPass::setInput(name, pResource);
     }
 
-    bool SceneRenderPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        if (!mpFbo)
-        {
-            logError("SceneRenderPass::setOutput() - please call onResizeSwapChain() before setting an input");
-            return false;
-        }
-
-        if (name == kColor)
-        {
-            Texture::SharedPtr pColor = std::dynamic_pointer_cast<Texture>(pResource);
-            mpFbo->attachColorTarget(pColor, 0);
-        }
-        else
-        {
-            logError("SceneRenderPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-            return false;
-        }
-
-        return true;
-    }
-
     void SceneRenderPass::execute(RenderContext* pContext)
     {
         if (mpFbo->getDepthStencilTexture() == nullptr)
@@ -169,28 +140,6 @@ namespace Falcor
             pContext->popGraphicsState();
             pContext->popGraphicsVars();
         }
-    }
-
-    std::shared_ptr<Resource> SceneRenderPass::getOutput(const std::string& name) const
-    {
-        if (name == kColor)
-        {
-            return mpFbo->getColorTexture(0);
-        }        
-        else return RenderPass::getOutput(name);
-    }
-
-    std::shared_ptr<Resource> SceneRenderPass::getInput(const std::string& name) const
-    {
-        if (name == kDepth)
-        {
-            return mpFbo->getDepthStencilTexture();
-        }
-        else if (name == kShadowMap)
-        {
-            return mpVars->getTexture("gVisibilityBuffer");
-        }
-        else return RenderPass::getInput(name);
     }
 
     void SceneRenderPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
