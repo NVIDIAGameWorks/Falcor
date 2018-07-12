@@ -302,6 +302,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
 
         mpToneMapper->renderUI(pGui, "Tone-Mapping");
+        mpBloom->renderUI(pGui, "Bloom");
 
         if (pGui->beginGroup("Shadows"))
         {

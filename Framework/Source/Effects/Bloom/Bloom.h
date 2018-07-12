@@ -41,7 +41,7 @@ namespace Falcor
     public:
         using UniquePtr = std::unique_ptr<Bloom>;
 
-        static UniquePtr create(float threshold, uint32_t kernelSize = 5, float sigma = 2.5f);
+        static UniquePtr create(float threshold, uint32_t kernelSize = 9, float sigma = 1.5f);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
 
@@ -53,15 +53,24 @@ namespace Falcor
         */
         void setBlurSigma(float sigma) { mpBlur->setSigma(sigma); }
 
+        /** Render UI controls for bloom settings.
+            \param[in] pGui GUI instance to render UI elements with
+            \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
+        */
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+
     private:
         Bloom(float threshold, uint32_t kernelSize, float sigma);
+        void updateLowResTexture(const Texture::SharedPtr& pTexture);
 
         PassFilter::UniquePtr mpFilter;
         Fbo::SharedPtr mpFilterResultFbo;
+        Texture::SharedPtr mpLowResTexture;
         GaussianBlur::UniquePtr mpBlur;
         FullScreenPass::UniquePtr mpBlitPass;
         GraphicsVars::SharedPtr mpVars;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         BlendState::SharedPtr mpAdditiveBlend;
+        Sampler::SharedPtr mpSampler;
     };
 }

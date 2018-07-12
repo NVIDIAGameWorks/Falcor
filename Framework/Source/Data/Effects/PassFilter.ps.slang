@@ -47,9 +47,9 @@ float4 main(PSIn pIn) : SV_TARGET0
     float lum = luminance(color.rgb);
 
 #ifdef HIGH_PASS
-    return color * step(gThreshold, lum);
+    return color * smoothstep(gThreshold * 0.9f, gThreshold * 1.1f, lum);
 #endif
 #ifdef LOW_PASS
-    return color * step(lum, gThreshold);
+    return color * smoothstep(gThreshold * 1.1f, gThreshold * 0.9f, lum);
 #endif
 }

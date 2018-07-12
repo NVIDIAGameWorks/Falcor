@@ -33,7 +33,7 @@
 *******************************************************************/
 
 #define MAX_INSTANCES 64    ///< Max supported instances per draw call
-#define MAX_BONES 128       ///< Max supported bones per model
+#define MAX_BONES 256       ///< Max supported bones per model
 
 /*******************************************************************
                     Glue code for CPU/GPU compilation

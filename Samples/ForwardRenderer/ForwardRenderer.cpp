@@ -257,6 +257,7 @@ void ForwardRenderer::initAA(SampleCallbacks* pSample)
 void ForwardRenderer::initPostProcess()
 {
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
+    mpBloom = Bloom::create(1.0f);
 }
 
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -304,7 +305,10 @@ void ForwardRenderer::endFrame(RenderContext* pContext)
 void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     PROFILE(postProcess);    
-    mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
+
+    mpBloom->execute(pContext, mpResolveFbo);
+    pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
+    //mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
 }
 
 void ForwardRenderer::depthPass(RenderContext* pContext)

@@ -60,15 +60,14 @@ namespace Falcor
         {
             createFbo = (pSrc->getWidth() != mpResultFbo->getWidth()) ||
                 (pSrc->getHeight() != mpResultFbo->getHeight()) ||
-                (pSrc->getFormat() != mpResultFbo->getColorTexture(0)->getFormat()) ||
-                pSrc->getArraySize() != mpResultFbo->getColorTexture(0)->getArraySize();
+                (pSrc->getFormat() != mpResultFbo->getColorTexture(0)->getFormat());
         }
 
         if(createFbo)
         {
             Fbo::Desc fboDesc;
             fboDesc.setColorTarget(0, pSrc->getFormat());
-            mpResultFbo = FboHelper::create2D(pSrc->getWidth(), pSrc->getHeight(), fboDesc, pSrc->getArraySize());
+            mpResultFbo = FboHelper::create2D(pSrc->getWidth(), pSrc->getHeight(), fboDesc, 1);
         }
     }
 

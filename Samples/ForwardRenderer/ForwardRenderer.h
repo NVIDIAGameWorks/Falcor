@@ -117,6 +117,7 @@ private:
 
 
     ToneMapping::UniquePtr mpToneMapper;
+    Bloom::UniquePtr mpBloom;
 
     struct
     {
