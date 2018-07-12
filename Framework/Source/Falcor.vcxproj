@@ -388,6 +388,7 @@
     <ClCompile Include="Effects\TAA\TAA.cpp" />
     <ClCompile Include="Effects\ToneMapping\ToneMapping.cpp" />
     <ClCompile Include="Effects\Utils\GaussianBlur\GaussianBlur.cpp" />
+    <ClCompile Include="Effects\Utils\PassFilter\PassFilter.cpp" />
     <ClCompile Include="Graphics\Camera\Camera.cpp" />
     <ClCompile Include="Graphics\Camera\CameraController.cpp" />
     <ClCompile Include="Graphics\ComputeState.cpp" />
@@ -941,6 +942,7 @@
     <ClInclude Include="Effects\TAA\TAA.h" />
     <ClInclude Include="Effects\ToneMapping\ToneMapping.h" />
     <ClInclude Include="Effects\Utils\GaussianBlur\GaussianBlur.h" />
+    <ClInclude Include="Effects\Utils\PassFilter\PassFilter.h" />
     <ClInclude Include="Falcor.h" />
     <ClInclude Include="FalcorConfig.h" />
     <ClInclude Include="Framework.h" />
@@ -1293,6 +1295,7 @@
     <None Include="Data\Effects\DepthPass.slang" />
     <None Include="Data\Effects\FXAA.slang" />
     <None Include="Data\Effects\GaussianBlur.ps.slang" />
+    <None Include="Data\Effects\PassFilter.ps.slang" />
     <None Include="Data\Effects\LeanMapping.slang" />
     <None Include="Data\Effects\ParticleConstColor.ps.slang" />
     <None Include="Data\Effects\ParticleEmit.cs.slang" />
