@@ -43,11 +43,9 @@ namespace Falcor
         */
         static SharedPtr create();
 
-        virtual void execute(RenderContext* pContext) override;
-        virtual bool isValid(std::string& log = std::string()) override;
-        virtual void sceneChangedCB() override;
-
-        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+        virtual void describe(RenderPassReflection& reflector) override;
+        virtual void execute(RenderContext* pContext, const RenderData* pData) override;
+        virtual void setScene(const Scene::SharedPtr& pScene);
     private:
         DepthPass();
         Fbo::SharedPtr mpFbo;

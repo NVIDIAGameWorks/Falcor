@@ -30,6 +30,8 @@
 
 namespace Falcor
 {
+    static const std::string& kDepth = "depth";
+
     DepthPass::SharedPtr DepthPass::create()
     {
         try
@@ -42,7 +44,7 @@ namespace Falcor
         }
     }
 
-    DepthPass::DepthPass() : RenderPass("DepthPass", nullptr)
+    DepthPass::DepthPass() : RenderPass("DepthPass")
     {
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create({});
         mpState = GraphicsState::create();
@@ -52,59 +54,40 @@ namespace Falcor
         
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthTest(false).setStencilTest(false);
-
-        addDepthBufferField("depth", false, mpFbo);
     }
 
-    void DepthPass::sceneChangedCB()
+    void DepthPass::describe(RenderPassReflection& reflector)
+    {
+        auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
+        reflector.addField(kDepth, RenderPassReflection::Field::Type::Output).setResourceType(pType).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(ResourceFormat::D32Float);
+    }
+
+    void DepthPass::setScene(const Scene::SharedPtr& pScene)
     {
         mpSceneRenderer = nullptr;
-        if (mpScene)
+        if (pScene)
         {
-            mpSceneRenderer = SceneRenderer::create(mpScene);
+            mpSceneRenderer = SceneRenderer::create(pScene);
         }
     }
 
-    bool DepthPass::isValid(std::string& log)
+    void DepthPass::execute(RenderContext* pContext, const RenderData* pData)
     {
-        bool b = true;
-        if (mpSceneRenderer == nullptr)
+        if(mpSceneRenderer)
         {
-            log += "DepthPass must have a scene attached to it\n";
-            b = false;
-        }
+            const auto& pDepth = std::dynamic_pointer_cast<Texture>(pData->getResource(kDepth));
+            mpFbo->attachDepthStencilTarget(pDepth);
 
-        const auto& pDepth = mpFbo->getDepthStencilTexture().get();
-        if (!pDepth)
-        {
-            log += "DepthPass must have a depth texture attached\n";
-            b = false;
+            pContext->clearDsv(mpFbo->getDepthStencilView().get(), 1, 0);
+            if (mpSceneRenderer)
+            {
+                mpState->setFbo(mpFbo);
+                pContext->pushGraphicsState(mpState);
+                pContext->pushGraphicsVars(mpVars);
+                mpSceneRenderer->renderScene(pContext);
+                pContext->popGraphicsState();
+                pContext->popGraphicsVars();
+            }
         }
-
-        if (mpFbo->checkStatus() == false)
-        {
-            log += "DepthPass FBO is invalid";
-            b = false;
-        }
-
-        return b;
-    }
-
-    void DepthPass::execute(RenderContext* pContext)
-    {
-        pContext->clearDsv(mpFbo->getDepthStencilView().get(), 1, 0);
-        if (mpSceneRenderer)
-        {
-            mpState->setFbo(mpFbo);
-            pContext->pushGraphicsState(mpState);
-            pContext->pushGraphicsVars(mpVars);
-            mpSceneRenderer->renderScene(pContext);
-            pContext->popGraphicsState();
-            pContext->popGraphicsVars();
-        }
-    }
-        
-    void DepthPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
-    {
     }
 }

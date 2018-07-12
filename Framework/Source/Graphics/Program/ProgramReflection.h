@@ -353,7 +353,7 @@ namespace Falcor
         
         /** Create a new object
         */
-        static SharedPtr create(Type type, Dimensions dims, StructuredType structuredType, ReturnType retType, ShaderAccess shaderAccess);
+        static SharedPtr create(Type type, Dimensions dims, StructuredType structuredType = StructuredType::Invalid, ReturnType retType = ReturnType::Unknown, ShaderAccess shaderAccess = ShaderAccess::Undefined);
 
         /** For structured- and constant-buffers, set a reflection-type describing the buffer's layout
         */
