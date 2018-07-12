@@ -136,6 +136,7 @@
 #include "Effects/Shadows/CSM.h"
 #include "Effects/Utils/GaussianBlur/GaussianBlur.h"
 #include "Effects/Utils/PassFilter/PassFilter.h"
+#include "Effects/Bloom/Bloom.h"
 #include "Effects/SkyBox/SkyBox.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Effects/AmbientOcclusion/SSAO.h"

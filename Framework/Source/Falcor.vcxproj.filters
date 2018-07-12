@@ -541,6 +541,9 @@
     <ClCompile Include="Effects\Utils\PassFilter\PassFilter.cpp">
       <Filter>Effects\Utils\PassFilter</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\Bloom\Bloom.cpp">
+      <Filter>Effects\Bloom</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1705,6 +1708,9 @@
     <ClInclude Include="Effects\Utils\PassFilter\PassFilter.h">
       <Filter>Effects\Utils\PassFilter</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\Bloom\Bloom.h">
+      <Filter>Effects\Bloom</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1898,6 +1904,9 @@
     </Filter>
     <Filter Include="Effects\Utils\PassFilter">
       <UniqueIdentifier>{35a26288-bb69-4054-98c8-4e35dd57f161}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\Bloom">
+      <UniqueIdentifier>{37f8e667-6994-4e6c-89a6-d51e8360feea}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
