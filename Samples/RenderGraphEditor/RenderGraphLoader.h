@@ -103,6 +103,8 @@ namespace Falcor
 
         static void ExecuteStatement(const std::string& statement, RenderGraph& renderGraph);
 
+        static std::string sGraphOutputString;
+
     private:
         
         template<typename ... U>

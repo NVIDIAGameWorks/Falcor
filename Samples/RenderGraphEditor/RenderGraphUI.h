@@ -70,7 +70,6 @@ namespace Falcor
         */
         void renderUI(Gui *pGui);
 
-
         /** static functions used for GUI callbacks required to be static
          */
         static bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
@@ -87,6 +86,10 @@ namespace Falcor
         */
         void updateDisplayData();
         
+        /** Helper function to calculate position of the next node in execution order
+         */
+        glm::vec2 getNextNodePosition(uint32_t nodeID);
+
         glm::vec2 mNewNodeStartPosition;
 
         // start with reference of render graph

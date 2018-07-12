@@ -54,7 +54,7 @@ public:
 
 
     // cast funcs for render pass types
-    static std::unordered_map<std::string, std::function<RenderPass::PassData(RenderPass::SharedPtr)> > sGetRenderPassData;
+    static std::unordered_map<std::string, std::function<RenderPass::PassData(RenderPass*)> > sGetRenderPassData;
     // simple lookup to create render pass type from string
     static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;
 
@@ -82,7 +82,7 @@ private:
     std::string mNodeString;
 
     // probably move this?
-    std::string mCurrentGraphOutput;
+    std::string mCurrentGraphOutput; // needs to be set by the loader as well
     std::string mGraphOutputEditString;
 
     Gui::DropdownList mOpenGraphNames;

@@ -29,19 +29,13 @@
 
 #include <fstream>
 
-#include "Externals/RapidJson/include/rapidjson/rapidjson.h"
-#include "Externals/RapidJson/include/rapidjson/document.h"
-#include "Externals/RapidJson/include/rapidjson/istreamwrapper.h"
-#include "Externals/RapidJson/include/rapidjson/ostreamwrapper.h"
-#include "Externals/RapidJson/include/rapidjson/prettywriter.h"
-
 #include "Externals/dear_imgui/imgui.h"
 #include "Externals/dear_imgui/imgui_internal.h"
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 
 std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphEditor::sBaseRenderCreateFuncs;
-std::unordered_map<std::string, std::function<RenderPass::PassData(RenderPass::SharedPtr)>> RenderGraphEditor::sGetRenderPassData;
+std::unordered_map<std::string, std::function<RenderPass::PassData(RenderPass*)>> RenderGraphEditor::sGetRenderPassData;
 
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
@@ -52,8 +46,8 @@ RenderGraphEditor::RenderGraphEditor()
     sBaseRenderCreateFuncs.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
         []() { return renderPassType::create(); }) )\
     ); \
-    sGetRenderPassData.insert(std::make_pair(#renderPassType, std::function<RenderPass::PassData(RenderPass::SharedPtr renderPass)> ( \
-        [](RenderPass::SharedPtr renderPass) { auto toReturn = dynamic_cast<renderPassType*>( renderPass.get() ); assert(toReturn); return toReturn->getRenderPassData(); }) )\
+    sGetRenderPassData.insert(std::make_pair(#renderPassType, std::function<RenderPass::PassData(RenderPass* renderPass)> ( \
+        [](RenderPass* renderPass) { auto toReturn = dynamic_cast<renderPassType*>( renderPass ); assert(toReturn); return toReturn->getRenderPassData(); }) )\
     ); \
     dropdownValue.label = #renderPassType; dropdownValue.value = static_cast<int32_t>(mRenderPassTypes.size()); \
     mRenderPassTypes.push_back(dropdownValue)
@@ -82,25 +76,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     mWindowSize = pGui->getCurrentWindowSize();
     mWindowPos = pGui->getCurrentWindowPosition();
 
+    uint32_t screenHeight = pSample->getWindow()->getClientAreaHeight();
+    uint32_t screenWidth = pSample->getWindow()->getClientAreaWidth();
+
     // please remove this
     static bool firstFrame = true;
 
     // we should move everything below here into the render graph ui struct
 
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes");
-
-    // Title menu bar for adding render pass dll s
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGui::BeginMenu("File"))
-        {
-
-            ImGui::EndMenu();
-        }
-
-        ImGui::EndMenuBar();
-    }
+    pGui->pushWindow("Render Passes", 0, screenHeight / 4, 0, screenHeight * 4 / 5);
 
     // for each dll that was found. (or manually imported????)
     for (auto& availableRenderPasses : sBaseRenderCreateFuncs)
@@ -144,9 +129,10 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     pGui->popWindow();
 
-
-
-    mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
+    // push a sub gui window for the node editor
+    pGui->pushWindow("Graph Editor", screenWidth * 7 / 8, screenHeight * 4 / 5, 1, 1);
+        mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
+    pGui->popWindow();
 
     if (!firstFrame)
     {
@@ -156,9 +142,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
     
     firstFrame = false;
-
-    uint32_t screenHeight = pSample->getWindow()->getClientAreaHeight();
-    uint32_t screenWidth = pSample->getWindow()->getClientAreaWidth();
     
     pGui->pushWindow("Graph Editor Settings", screenWidth / 8, screenHeight - 1, screenWidth - screenWidth / 8, 0, false);
 
@@ -202,7 +185,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         std::string renderGraphFileName;
         if (openFileDialog("", renderGraphFileName))
         {
-            mRenderGraphLoader.LoadAndRunScript(renderGraphFileName, *mpGraphs[mCurrentGraphIndex]);
+            deserializeRenderGraph(renderGraphFileName);
         }
     }
 
@@ -228,7 +211,14 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mPreviewing = true;
     }
 
-    
+    // update the display if the render graph loader has set a new output
+    if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
+    {
+        mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
+        mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
+        mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
+    }
+
     pGui->addTextBox("GraphOutput", mGraphOutputEditString);
 
     if (pGui->addButton("Update"))
@@ -240,7 +230,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             mpGraphs[mCurrentGraphIndex]->markGraphOutput(mCurrentGraphOutput);
             mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
         }
-        
     }
 
     pGui->popWindow();
@@ -267,6 +256,7 @@ void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 {
+    RenderGraphLoader::LoadAndRunScript(fileName, *mpGraphs[mCurrentGraphIndex]);
 }
 
 void RenderGraphEditor::updateAndCompileGraph()

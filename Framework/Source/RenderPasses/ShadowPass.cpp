@@ -147,6 +147,6 @@ namespace Falcor
 
     void ShadowPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
-        if (mpCsm) mpCsm->renderUi(pGui, "Shadow Pass");
+        if (mpCsm) mpCsm->renderUi(pGui, nullptr);
     }
 }

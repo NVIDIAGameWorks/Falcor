@@ -34,6 +34,7 @@
 namespace Falcor
 {
     std::unordered_map<std::string, RenderGraphLoader::ScriptBinding> RenderGraphLoader::mScriptBindings;
+    std::string RenderGraphLoader::sGraphOutputString;
 
     const std::string kAddRenderPassCommand = std::string("AddRenderPass");
     const std::string kAddEdgeCommand = std::string("AddEdge");
@@ -56,6 +57,8 @@ namespace Falcor
 #undef concat_strings
 #undef concat_strings_
 #undef  script_parameter_get
+
+    static RenderGraphLoader sRenderGraphLoaderInstance;
 
     template <> std::string& RenderGraphLoader::ScriptParameter::get<std::string>()
     {
@@ -96,6 +99,7 @@ namespace Falcor
         // More generic schema for copying serialization ??
 
         std::unordered_map<uint16_t, std::string> linkIDToSrcPassName;
+        std::string currentCommand;
 
         // do a prepass to map all of the outgoing connections to the names of the passes
         for (const auto& nameToIndex : renderGraph.mNameToIndex)
@@ -103,7 +107,6 @@ namespace Falcor
             auto pCurrentPass = renderGraph.mpGraph->getNode(nameToIndex.second);
 
             // add all of the add render pass commands here
-            std::string currentCommand;
             currentCommand = kAddRenderPassCommand + " " + nameToIndex.first + " " 
                 + renderGraph.mNodeData[nameToIndex.second]->getTypeName() + "\n";
             scriptFile.write(currentCommand.data(), currentCommand.size());
@@ -125,7 +128,6 @@ namespace Falcor
             // just go through incoming edges for each node
             for (uint32_t i = 0; i < pCurrentPass->getIncomingEdgeCount(); ++i)
             {
-                std::string currentCommand;
                 uint32_t edgeID = pCurrentPass->getIncomingEdge(i);
                 auto currentEdge = renderGraph.mEdgeData[edgeID];
                 
@@ -135,6 +137,42 @@ namespace Falcor
                 scriptFile.write(currentCommand.data(), currentCommand.size());
             }
         }
+
+        // set graph output command
+        for (const auto& graphOutput : renderGraph.mOutputs)
+        {
+            currentCommand = "AddGraphOutput ";
+
+            auto pCurrentPass = renderGraph.mpGraph->getNode(graphOutput.nodeId);
+
+            // if nodes have been deleted but graph outputs remain, if have to check if the nodeID is valid
+            if (pCurrentPass == nullptr)
+            {
+                logWarning(std::string("Failed to save graph output '") + graphOutput.field + "'. Render graph output is from a pass that no longer exists or is invalid.");
+                continue;
+            }
+
+            if (pCurrentPass->getOutgoingEdgeCount())
+            {
+                currentCommand += linkIDToSrcPassName[pCurrentPass->getOutgoingEdge(0)];
+            }
+            else
+            {
+                for (const auto& it : renderGraph.mNameToIndex)
+                {
+                    if (it.second == graphOutput.nodeId)
+                    {
+                        currentCommand += it.first;
+                        break;
+                    }
+                }
+            }
+
+            currentCommand += "." + graphOutput.field + "\n";
+            scriptFile.write(currentCommand.data(), currentCommand.size());
+        }
+
+        scriptFile.close();
     }
 
     void RenderGraphLoader::LoadAndRunScript(const std::string& fileNameString, RenderGraph& renderGraph)
@@ -212,6 +250,7 @@ namespace Falcor
     RenderGraphLoader::RenderGraphLoader()
     {
         // default script bindings
+        sGraphOutputString.resize(255, '0');
 
         RegisterStatement<std::string, std::string>("AddRenderPass", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) { 
             renderGraph.addRenderPass(RenderGraphEditor::sBaseRenderCreateFuncs[scriptBinding.mParameters[1].get<std::string>()](), scriptBinding.mParameters[0].get<std::string>());
@@ -223,6 +262,15 @@ namespace Falcor
 
         RegisterStatement<std::string>("RemoveRenderPass", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
             renderGraph.removeRenderPass(scriptBinding.mParameters[0].get<std::string>());
+        }, {});
+
+        RegisterStatement<std::string>("AddGraphOutput", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
+            sGraphOutputString = scriptBinding.mParameters[0].get<std::string>();
+            renderGraph.markGraphOutput(sGraphOutputString);
+        }, {});
+
+        RegisterStatement<std::string>("RemoveGraphOutput", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
+            renderGraph.unmarkGraphOutput(scriptBinding.mParameters[0].get<std::string>());
         }, {});
     }
 
