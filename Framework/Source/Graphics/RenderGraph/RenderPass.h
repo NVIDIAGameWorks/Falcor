@@ -26,8 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/Program/ProgramReflection.h"
-#include "Renderer.h"
+#include "RenderPassReflection.h"
+#include "ResourceDepositBox.h"
 
 namespace Falcor
 {
@@ -35,97 +35,27 @@ namespace Falcor
     class Resource;
     class Gui;
     class RenderContext;
-    class ProgramVars;
-
-    class RenderPassReflection
+    
+    class ScratchPad : public std::enable_shared_from_this<ScratchPad>
     {
     public:
-        class Field
-        {
-        public:
-            enum class Type
-            {
-                Input,
-                Output,
-                Inout
-            };
-
-            enum class Flags
-            {
-                None        = 0x0,
-                Optional    = 0x1,
-                Persistent  = 0x2,
-            };
-            
-            Field(const std::string& name, Type type);
-            Field& setResourceType(const ReflectionResourceType::SharedConstPtr& pType) { mpType = pType; return *this; }
-            Field& setDimensions(uint32_t w, uint32_t h, uint32_t d) { mWidth = w; mHeight = h; mDepth = d; return *this; }
-            Field& setSampleCount(uint32_t count) { mSampleCount = count; return *this; }
-            Field& setFormat(ResourceFormat format) { mFormat = format; return *this; }
-            Field& setBindFlags(Resource::BindFlags flags) { mBindFlags = flags; return *this; }
-            Field& setFlags(Flags flags) { mFlags = flags; }
-
-            const std::string& getName() const { return mName; }
-            const ReflectionResourceType::SharedConstPtr& getReflectionType() const { return mpType; }
-            uint32_t getWidth() const { return mWidth; }
-            uint32_t getHeight() const { return mHeight; }
-            uint32_t getDepth() const { return mDepth; }
-            uint32_t getSampleCount() const { return mSampleCount; }
-            ResourceFormat getFormat() const { return mFormat; }
-            Resource::BindFlags getBindFlags() const { return mBindFlags; }
-            Flags getFlags() const { return mFlags; }
-            Type getType() const { return mType; }
-        private:
-            std::string mName;                             ///< The field's name
-            ReflectionResourceType::SharedConstPtr mpType; ///< The resource type
-            uint32_t mWidth = 0;                           ///< For output resources, 0 means use the window size(textures) or the size in bytes (buffers). For input resources 0 means don't care
-            uint32_t mHeight = 0;                          ///< For output resources, 0 means use the window size. For input resources 0 means don't care
-            uint32_t mDepth = 0;                           ///< For output resources, 0 means use the window size. For input resources 0 means don't care
-            uint32_t mSampleCount = 0;                     ///< 0 means don't care (which means 1 for output resources)
-            ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
-            Resource::BindFlags mBindFlags = Resource::BindFlags::None;  ///< The required bind flags
-            Flags mFlags = Flags::None;
-            Type mType;
-        };
-
-        Field& addField(const std::string& name, Field::Type type);
-        size_t getFieldCount() const { return mFields.size(); }
-        const Field& getField(uint32_t f) const { return mFields[f]; }
-    private:
-        std::vector<Field> mFields;
-    };
-
-    enum_class_operators(RenderPassReflection::Field::Flags);
-
-    class RenderPassResourceAllocator : public std::enable_shared_from_this<RenderPassResourceAllocator>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RenderPassResourceAllocator>;
-        const std::shared_ptr<Resource>& getResource(const std::string& passName, const std::string& resourceName) const;
-    private:
-
-    };
-
-    class RenderPassScratchPad : public std::enable_shared_from_this<RenderPassScratchPad>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RenderPassScratchPad>;
+        using SharedPtr = std::shared_ptr<ScratchPad>;
     };
 
     class RenderData
     {
     public:
-        RenderData(const std::string& passName) : mName(passName) {}
+        RenderData(const std::string& passName, const ScratchPad::SharedPtr pScratchPad, const ResourceDepositBox::SharedPtr& pResourceDepositBox) : mName(passName), mpResources(pResourceDepositBox), mpScratchPad(pScratchPad) {}
         const std::shared_ptr<Resource>& getResource(const std::string& name) const
         {
-            return mpAllocator->getResource(mName, name);
+            return mpResources->getResource(mName + '.' + name);
         }
 
-        RenderPassScratchPad* getScratchPad() const { return mpScratchPad.get(); }
+        ScratchPad* getScratchPad() const { return mpScratchPad.get(); }
     protected:
-        std::string mName;
-        RenderPassResourceAllocator::SharedPtr mpAllocator;
-        RenderPassScratchPad::SharedPtr mpScratchPad;
+        const std::string& mName;
+        ResourceDepositBox::SharedPtr mpResources;
+        ScratchPad::SharedPtr mpScratchPad;
     };
 
     class RenderPass : public std::enable_shared_from_this<RenderPass>
@@ -142,7 +72,7 @@ namespace Falcor
         /** Called once before compilation. Describes I/O requirements of the pass.
             The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
         */
-        virtual void describe(RenderPassReflection& reflector) = 0;
+        virtual void describe(RenderPassReflection& reflector) const = 0;
 
         /** Executes the pass.
         */
@@ -178,7 +108,7 @@ namespace Falcor
         */
         const std::string& getName() const { return mName; }
     protected:
-        RenderPass(const std::string& name, Flags flags = Flags::None);
+        RenderPass(const std::string& name, Flags flags = Flags::None) : mName(name), mFlags(flags) {}
         Flags mFlags;
         std::string mName;
     };

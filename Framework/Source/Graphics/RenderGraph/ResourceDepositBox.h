@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,50 +25,24 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "BlitPass.h"
-#include "API/RenderContext.h"
+#pragma once
 
 namespace Falcor
 {
-    static const std::string kDst = "dst";
-    static const std::string kSrc = "src";
+    class RenderPass;
+    class Resource;
 
-    void BlitPass::describe(RenderPassReflection& reflector) const
+    class ResourceDepositBox : public std::enable_shared_from_this<ResourceDepositBox>
     {
-        ReflectionResourceType::SharedPtr pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
-        reflector.addField(kDst, RenderPassReflection::Field::Type::Output).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::RenderTarget);
-        reflector.addField(kSrc, RenderPassReflection::Field::Type::Input).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::ShaderResource);
-    }
+    public:
+        using SharedPtr = std::shared_ptr<ResourceDepositBox>;
+        static SharedPtr create();
 
-    BlitPass::SharedPtr BlitPass::create()
-    {
-        try
-        {
-            return SharedPtr(new BlitPass);
-        }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
-    }
+        void addResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
+        const std::shared_ptr<Resource>& getResource(const std::string& name) const;
+    private:
+        ResourceDepositBox() = default;
+        std::unordered_map<std::string, std::shared_ptr<Resource>> mResources;
+    };
 
-    BlitPass::BlitPass() : RenderPass("BlitPass")
-    {
-    }
-
-    void BlitPass::execute(RenderContext* pContext, const RenderData* pRenderData)
-    {
-        const auto& pSrcTex = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kSrc));
-        const auto& pDstTex = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kDst));
-
-        if(pSrcTex && pDstTex)
-        {
-            pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV());
-        }
-        else
-        {
-            logWarning("BlitPass::execute() - missing an input or output resource");
-        }
-    }
 }

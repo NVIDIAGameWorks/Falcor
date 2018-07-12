@@ -56,7 +56,7 @@ namespace Falcor
         dsDesc.setDepthTest(false).setStencilTest(false);
     }
 
-    void DepthPass::describe(RenderPassReflection& reflector)
+    void DepthPass::describe(RenderPassReflection& reflector) const
     {
         auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
         reflector.addField(kDepth, RenderPassReflection::Field::Type::Output).setResourceType(pType).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(ResourceFormat::D32Float);
@@ -78,7 +78,7 @@ namespace Falcor
             const auto& pDepth = std::dynamic_pointer_cast<Texture>(pData->getResource(kDepth));
             mpFbo->attachDepthStencilTarget(pDepth);
 
-            pContext->clearDsv(mpFbo->getDepthStencilView().get(), 1, 0);
+            pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
             if (mpSceneRenderer)
             {
                 mpState->setFbo(mpFbo);

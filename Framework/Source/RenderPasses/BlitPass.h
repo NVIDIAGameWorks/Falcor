@@ -40,17 +40,10 @@ namespace Falcor
         */
         static SharedPtr create();
 
-        virtual void execute(RenderContext* pContext) override;
-        virtual bool isValid(std::string& log = std::string()) override;
-        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
-        virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
-
+        virtual void describe(RenderPassReflection& reflector) const override;
+        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
     private:
         BlitPass();
-        Texture::SharedPtr mpSrc;
-        Texture::SharedPtr mpDst;
         void initRenderPassData();
     };
 }

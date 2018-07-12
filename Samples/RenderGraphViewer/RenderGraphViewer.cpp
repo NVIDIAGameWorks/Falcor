@@ -92,7 +92,7 @@ void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
     auto& pColor = Texture::create2D(width, height, pSample->getCurrentFbo()->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
     auto& pDepth = Texture::create2D(width, height, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
     mpGraph->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
-    mpGraph->onResizeSwapChain(pSample, width, height);
+    mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

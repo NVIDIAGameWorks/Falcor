@@ -26,17 +26,30 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "RenderPass.h"
+#include "ResourceDepositBox.h"
 
 namespace Falcor
 {
-    RenderPassReflection::Field::Field(const std::string& name, Type type) : mName(name), mType(type)
+    ResourceDepositBox::SharedPtr ResourceDepositBox::create()
     {
+        return SharedPtr(new ResourceDepositBox());
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, Field::Type type)
+    const std::shared_ptr<Resource>& ResourceDepositBox::getResource(const std::string& name) const
     {
-        mFields.push_back(Field(name, type));
-        return mFields.back();
+        static const std::shared_ptr<Resource> pNull;
+        const auto& resIt = mResources.find(name);
+        if (resIt == mResources.end())
+        {
+            logWarning("Can't find a resource named `" + name + "` in the resource deposit-box");
+            return pNull;
+        }
+
+        return resIt->second;
+    }
+
+    void ResourceDepositBox::addResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    {
+        mResources[name] = pResource;
     }
 }

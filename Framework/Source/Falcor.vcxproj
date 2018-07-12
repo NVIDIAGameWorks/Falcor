@@ -420,7 +420,8 @@
     <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPass.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\ResourceDepositBox.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
@@ -985,6 +986,8 @@
     <ClInclude Include="Graphics\Program\ShaderLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
+    <ClInclude Include="Graphics\RenderGraph\ResourceDepositBox.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>

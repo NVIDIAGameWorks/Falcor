@@ -31,15 +31,8 @@
 namespace Falcor
 {
     static std::string kDepth = "depth";
-
-    void SceneRenderPass::initRenderPassData()
-    {
-        bool b = addInputFieldFromProgramVars("visibilityBuffer", mpVars);
-        b = b && addDepthBufferField(kDepth, true, mpFbo);
-        b = b && addRenderTargetField("color", mpFbo, 0);
-
-        assert(b);
-    }
+    static std::string kColor = "color";
+    static std::string kVisBuffer = "visibilityBuffer";
 
     SceneRenderPass::SharedPtr SceneRenderPass::create()
     {
@@ -53,7 +46,7 @@ namespace Falcor
         }
     }
 
-    SceneRenderPass::SceneRenderPass() : RenderPass("SceneRenderPass", nullptr)
+    SceneRenderPass::SceneRenderPass() : RenderPass("SceneRenderPass")
     {
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/SceneRenderPass.slang", "", "ps");
         mpState = GraphicsState::create();
@@ -63,76 +56,58 @@ namespace Falcor
         
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthTest(true).setDepthWriteMask(false).setStencilTest(false).setDepthFunc(DepthStencilState::Func::LessEqual);
-        mpDsNoDepthWrite = DepthStencilState::create(dsDesc);
-
-        initRenderPassData();
+        mpDsNoDepthWrite = DepthStencilState::create(dsDesc);        
     }
 
-    void SceneRenderPass::sceneChangedCB()
+    void SceneRenderPass::describe(RenderPassReflection& reflector) const
+    {
+        const auto& pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
+        reflector.addField(kVisBuffer, RenderPassReflection::Field::Type::Input).setResourceType(pTex2DType);
+        reflector.addField(kDepth, RenderPassReflection::Field::Type::Input).setResourceType(pTex2DType).setFlags(RenderPassReflection::Field::Flags::Optional).setBindFlags(Resource::BindFlags::DepthStencil);
+        reflector.addField(kColor, RenderPassReflection::Field::Type::Output).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::RenderTarget);
+    }
+
+    void SceneRenderPass::setScene(const Scene::SharedPtr& pScene)
     {
         mpSceneRenderer = nullptr;
-        if (mpScene)
+        if (pScene)
         {
-            mpSceneRenderer = SceneRenderer::create(mpScene);
+            mpSceneRenderer = SceneRenderer::create(pScene);
         }
     }
 
-    bool SceneRenderPass::isValid(std::string& log)
+    void SceneRenderPass::initDepth(const RenderData* pRenderData)
     {
-        bool b = true;
-        if (mpSceneRenderer == nullptr)
+        const auto& pTexture = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kDepth));
+
+        if (pTexture)
         {
-            log += "SceneRenderPass must have a scene attached to it\n";
-            b = false;
+            mpState->setDepthStencilState(mpDsNoDepthWrite);
+            mClearFlags = FboAttachmentType::Color;
+            mpFbo->attachDepthStencilTarget(pTexture);
         }
-
-        const auto& pColor = mpFbo->getColorTexture(0).get();
-        if (!pColor)
+        else
         {
-            log += "SceneRenderPass must have a color texture attached\n";
-            b = false;
-        }
-
-        if (mpFbo->checkStatus() == false)
-        {
-            log += "SceneRenderPass FBO is invalid, probably because the depth and color textures have different dimensions";
-            b = false;
-        }
-
-        return b;
-    }
-
-    bool SceneRenderPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        if (name == kDepth)
-        {
-            if (pResource)
+            mpState->setDepthStencilState(nullptr);
+            mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
+            if(mpFbo->getDepthStencilTexture() == nullptr)
             {
-                mpState->setDepthStencilState(mpDsNoDepthWrite);
-                mClearFlags = FboAttachmentType::Color;
-            }
-            else
-            {
-                mpState->setDepthStencilState(nullptr);
-                mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
+                auto pDepth = Texture::create2D(mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
+                mpFbo->attachDepthStencilTarget(pDepth);
             }
         }
-
-        return RenderPass::setInput(name, pResource);
     }
 
-    void SceneRenderPass::execute(RenderContext* pContext)
+    void SceneRenderPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        if (mpFbo->getDepthStencilTexture() == nullptr)
-        {
-            Texture::SharedPtr pDepth = Texture::create2D(mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
-            mpFbo->attachDepthStencilTarget(pDepth);
-        }
-
+        initDepth(pRenderData);
+        mpFbo->attachColorTarget(std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kColor)), 0);
         pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0, mClearFlags);
 
         if (mpSceneRenderer)
         {
+            mpVars->setTexture(kVisBuffer, std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kVisBuffer)));
+
             mpState->setFbo(mpFbo);
             pContext->pushGraphicsState(mpState);
             pContext->pushGraphicsVars(mpVars);
@@ -142,7 +117,7 @@ namespace Falcor
         }
     }
 
-    void SceneRenderPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+    void SceneRenderPass::renderUI(Gui* pGui)
     {
         pGui->addRgbaColor("Clear color", mClearColor);
     }

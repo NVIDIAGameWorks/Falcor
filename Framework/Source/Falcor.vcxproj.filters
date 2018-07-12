@@ -535,9 +535,6 @@
     <ClCompile Include="Effects\FXAA\FXAA.cpp">
       <Filter>Effects\FXAA</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderPass.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
@@ -552,6 +549,12 @@
     </ClCompile>
     <ClCompile Include="RenderPasses\ShadowPass.cpp">
       <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\ResourceDepositBox.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1732,6 +1735,12 @@
     </ClInclude>
     <ClInclude Include="RenderPasses\ShadowPass.h">
       <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\ResourceDepositBox.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

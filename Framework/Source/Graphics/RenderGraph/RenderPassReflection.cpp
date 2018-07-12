@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,49 +26,17 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "BlitPass.h"
-#include "API/RenderContext.h"
+#include "RenderPassReflection.h"
 
 namespace Falcor
 {
-    static const std::string kDst = "dst";
-    static const std::string kSrc = "src";
-
-    void BlitPass::describe(RenderPassReflection& reflector) const
-    {
-        ReflectionResourceType::SharedPtr pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
-        reflector.addField(kDst, RenderPassReflection::Field::Type::Output).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::RenderTarget);
-        reflector.addField(kSrc, RenderPassReflection::Field::Type::Input).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::ShaderResource);
-    }
-
-    BlitPass::SharedPtr BlitPass::create()
-    {
-        try
-        {
-            return SharedPtr(new BlitPass);
-        }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
-    }
-
-    BlitPass::BlitPass() : RenderPass("BlitPass")
+    RenderPassReflection::Field::Field(const std::string& name, Type type) : mName(name), mType(type)
     {
     }
 
-    void BlitPass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, Field::Type type)
     {
-        const auto& pSrcTex = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kSrc));
-        const auto& pDstTex = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kDst));
-
-        if(pSrcTex && pDstTex)
-        {
-            pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV());
-        }
-        else
-        {
-            logWarning("BlitPass::execute() - missing an input or output resource");
-        }
+        mFields.push_back(Field(name, type));
+        return mFields.back();
     }
 }
