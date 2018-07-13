@@ -34,7 +34,7 @@ namespace Falcor
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
 
-    void BlitPass::describe(RenderPassReflection& reflector) const
+    void BlitPass::reflect(RenderPassReflection& reflector) const
     {
         reflector.addOutput(kDst);
         reflector.addInput(kSrc);

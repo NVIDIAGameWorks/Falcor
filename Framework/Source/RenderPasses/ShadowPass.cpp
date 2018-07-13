@@ -33,7 +33,7 @@ namespace Falcor
     static std::string kDepth = "depth";
     static std::string kShadowMap = "shadowMap";
 
-    void ShadowPass::describe(RenderPassReflection& reflector) const
+    void ShadowPass::reflect(RenderPassReflection& reflector) const
     {
         const auto& pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
         reflector.addOutput(kShadowMap).setFormat(ResourceFormat::RGBA16Float);

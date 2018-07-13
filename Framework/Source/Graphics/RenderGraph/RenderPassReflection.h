@@ -33,6 +33,14 @@ namespace Falcor
     class RenderPassReflection
     {
     public:
+        /** Global render-pass flags
+        */
+        enum class Flags
+        {
+            None = 0x0,
+            ForceExecution = 0x1,  ///< Will force the execution of the pass even if no edges are connected to it
+        };
+
         class Field
         {
         public:
@@ -86,14 +94,18 @@ namespace Falcor
         Field& addInput(const std::string& name);
         Field& addOutput(const std::string& name);
         Field& addInputOutput(const std::string& name);
+        RenderPassReflection& setFlags(RenderPassReflection::Flags flags) { mFlags = flags; }
 
         size_t getFieldCount() const { return mFields.size(); }
         const Field& getField(size_t f) const { return mFields[f]; }
+        Flags getFlags() const { return mFlags; }
     private:
         Field& addField(const std::string& name, Field::Type type);
+        RenderPassReflection::Flags mFlags = Flags::None;
         std::vector<Field> mFields;
     };
 
     enum_class_operators(RenderPassReflection::Field::Type);
     enum_class_operators(RenderPassReflection::Field::Flags);
+    enum_class_operators(RenderPassReflection::Flags);
 }

@@ -56,7 +56,7 @@ namespace Falcor
         dsDesc.setDepthTest(false).setStencilTest(false);
     }
 
-    void DepthPass::describe(RenderPassReflection& reflector) const
+    void DepthPass::reflect(RenderPassReflection& reflector) const
     {
         reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(ResourceFormat::D32Float);
     }

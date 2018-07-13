@@ -40,7 +40,7 @@ namespace Falcor
         */
         static SharedPtr create(uint32_t width = 2048, uint32_t height = 2048);
 
-        virtual void describe(RenderPassReflection& reflector) const override;
+        virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
         virtual void renderUI(Gui* pGui) override;
         virtual void setScene(const Scene::SharedPtr& pScene) { mpScene = pScene; }

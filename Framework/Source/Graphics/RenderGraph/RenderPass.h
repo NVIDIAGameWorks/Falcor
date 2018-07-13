@@ -63,16 +63,10 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<RenderPass>;
 
-        enum class Flags
-        {
-            None            = 0x0,
-            ForceExecution  = 0x1,  ///< Will force the execution of the pass even if no edges are connected to it
-        };
-
         /** Called once before compilation. Describes I/O requirements of the pass.
             The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
         */
-        virtual void describe(RenderPassReflection& reflector) const = 0;
+        virtual void reflect(RenderPassReflection& reflector) const = 0;
 
         /** Executes the pass.
         */
@@ -100,18 +94,11 @@ namespace Falcor
         */
         virtual bool onKeyEvent(const KeyboardEvent& keyEvent) { return false; }
 
-        /** Get the pass' flags
-        */
-        Flags getFlags() const { return mFlags; }
-
         /** Get the pass' name
         */
         const std::string& getName() const { return mName; }
     protected:
-        RenderPass(const std::string& name, Flags flags = Flags::None) : mName(name), mFlags(flags) {}
-        Flags mFlags;
+        RenderPass(const std::string& name) : mName(name) {}
         std::string mName;
     };
-
-    enum_class_operators(RenderPass::Flags);
 }

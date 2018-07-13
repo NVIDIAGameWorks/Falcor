@@ -119,7 +119,7 @@ namespace Falcor
     static bool checkRenderPassIoExist(const RenderPass* pPass, const std::string& name)
     {
         RenderPassReflection reflect;
-        pPass->describe(reflect);
+        pPass->reflect(reflect);
         for (size_t i = 0; i < reflect.getFieldCount(); i++)
         {
             const auto& f = reflect.getField(i);
@@ -280,7 +280,7 @@ namespace Falcor
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
             RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
             RenderPassReflection passReflection;
-            pSrcPass->describe(passReflection);
+            pSrcPass->reflect(passReflection);
 
             const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
             {

@@ -59,7 +59,7 @@ namespace Falcor
         mpDsNoDepthWrite = DepthStencilState::create(dsDesc);        
     }
 
-    void SceneRenderPass::describe(RenderPassReflection& reflector) const
+    void SceneRenderPass::reflect(RenderPassReflection& reflector) const
     {
         reflector.addInput(kVisBuffer);
         reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional).setBindFlags(Resource::BindFlags::DepthStencil);
