@@ -61,10 +61,9 @@ namespace Falcor
 
     void SceneRenderPass::describe(RenderPassReflection& reflector) const
     {
-        const auto& pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
-        reflector.addField(kVisBuffer, RenderPassReflection::Field::Type::Input).setResourceType(pTex2DType);
-        reflector.addField(kDepth, RenderPassReflection::Field::Type::Input).setResourceType(pTex2DType).setFlags(RenderPassReflection::Field::Flags::Optional).setBindFlags(Resource::BindFlags::DepthStencil);
-        reflector.addField(kColor, RenderPassReflection::Field::Type::Output).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::RenderTarget);
+        reflector.addInput(kVisBuffer);
+        reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional).setBindFlags(Resource::BindFlags::DepthStencil);
+        reflector.addOutput(kColor);
     }
 
     void SceneRenderPass::setScene(const Scene::SharedPtr& pScene)

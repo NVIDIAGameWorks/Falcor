@@ -36,9 +36,8 @@ namespace Falcor
 
     void BlitPass::describe(RenderPassReflection& reflector) const
     {
-        ReflectionResourceType::SharedPtr pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
-        reflector.addField(kDst, RenderPassReflection::Field::Type::Output).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::RenderTarget);
-        reflector.addField(kSrc, RenderPassReflection::Field::Type::Input).setResourceType(pTex2DType).setBindFlags(Resource::BindFlags::ShaderResource);
+        reflector.addOutput(kDst);
+        reflector.addInput(kSrc);
     }
 
     BlitPass::SharedPtr BlitPass::create()

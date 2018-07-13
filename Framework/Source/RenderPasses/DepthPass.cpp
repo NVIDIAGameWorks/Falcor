@@ -58,8 +58,7 @@ namespace Falcor
 
     void DepthPass::describe(RenderPassReflection& reflector) const
     {
-        auto pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
-        reflector.addField(kDepth, RenderPassReflection::Field::Type::Output).setResourceType(pType).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(ResourceFormat::D32Float);
+        reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(ResourceFormat::D32Float);
     }
 
     void DepthPass::setScene(const Scene::SharedPtr& pScene)

@@ -125,18 +125,7 @@ namespace Falcor
             const auto& f = reflect.getField(i);
             if (f.getName() == name)
             {
-                switch (f.getType())
-                {
-                case RenderPassReflection::Field::Type::Inout:
-                    return true;
-                case RenderPassReflection::Field::Type::Input:
-                    return input;
-                case RenderPassReflection::Field::Type::Output:
-                    return input == false;
-                default:
-                    should_not_get_here();
-                    return false;
-                }
+                return input ? is_set(f.getType(), RenderPassReflection::Field::Type::Input) : is_set(f.getType(), RenderPassReflection::Field::Type::Output);
             }
         }
 
@@ -306,7 +295,7 @@ namespace Falcor
             for (size_t i = 0 ; i < passReflection.getFieldCount() ; i++)
             {
                 const auto& field = passReflection.getField(i);
-                if(field.getType() == RenderPassReflection::Field::Type::Output || field.getType() == RenderPassReflection::Field::Type::Inout)
+                if(is_set(field.getType(), RenderPassReflection::Field::Type::Output))
                 {
                     if (isGraphOutput(nodeIndex, field.getName()) == false)
                     {
@@ -328,7 +317,7 @@ namespace Falcor
                     const auto& field = passReflection.getField(i);
 
                     // Skip the field if it's not an output field
-                    if (field.getType() != RenderPassReflection::Field::Type::Output && field.getType() != RenderPassReflection::Field::Type::Inout) continue;
+                    if (is_set(field.getType(), RenderPassReflection::Field::Type::Output) == false) continue;
 
                     if (field.getName() == edgeData.srcField)
                     {

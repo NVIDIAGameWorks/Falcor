@@ -38,16 +38,15 @@ namespace Falcor
         public:
             enum class Type
             {
-                Input,
-                Output,
-                Inout
+                Input       = 0x1,
+                Output      = 0x2,
             };
 
             enum class Flags
             {
-                None = 0x0,
-                Optional = 0x1,
-                Persistent = 0x2,
+                None = 0x0,         ///< None
+                Optional = 0x1,     ///< Mark that field as optional. For output resources, it means that they don't have to be bound unless their result is required by the caller. For input resources, it means that the pass can function correctly without them being bound (but the behavior might be different)
+                Persistent = 0x2,   ///< The resource bound to this field must not change between execute() calls (not the pointer nor the data). It can change only during the RenderGraph recompilation.
             };
 
             Field(const std::string& name, Type type);
@@ -69,24 +68,32 @@ namespace Falcor
             Flags getFlags() const { return mFlags; }
             Type getType() const { return mType; }
         private:
+            static const ReflectionResourceType::SharedPtr kpTex2DType;
             std::string mName;                             ///< The field's name
-            ReflectionResourceType::SharedConstPtr mpType; ///< The resource type
-            uint32_t mWidth = 0;                           ///< For output resources, 0 means use the window size(textures) or the size in bytes (buffers). For input resources 0 means don't care
-            uint32_t mHeight = 0;                          ///< For output resources, 0 means use the window size. For input resources 0 means don't care
-            uint32_t mDepth = 0;                           ///< For output resources, 0 means use the window size. For input resources 0 means don't care
+            ReflectionResourceType::SharedConstPtr mpType = kpTex2DType; ///< The resource type. The default is a 2D texture
+            uint32_t mWidth = 0;                           ///< For texture, the width. For buffers, the size in bytes. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
+            uint32_t mHeight = 0;                          ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
+            uint32_t mDepth = 0;                           ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mSampleCount = 0;                     ///< 0 means don't care (which means 1 for output resources)
+            uint32_t mMipLevels = 1;                       ///< The required mip-level count. Only valid for textures
+            uint32_t mArraySize = 1;                       ///< The required array-size. Only valid for textures
             ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
-            Resource::BindFlags mBindFlags = Resource::BindFlags::None;  ///< The required bind flags
-            Flags mFlags = Flags::None;
+            Resource::BindFlags mBindFlags = Resource::BindFlags::None;  ///< The required bind flags. The default for outputs is RenderTarget, for inputs is ShaderResource and for InOut (RenderTarget | ShaderResource)
+            Flags mFlags = Flags::None;                    ///< The field flags
             Type mType;
         };
 
-        Field& addField(const std::string& name, Field::Type type);
+        Field& addInput(const std::string& name);
+        Field& addOutput(const std::string& name);
+        Field& addInputOutput(const std::string& name);
+
         size_t getFieldCount() const { return mFields.size(); }
         const Field& getField(size_t f) const { return mFields[f]; }
     private:
+        Field& addField(const std::string& name, Field::Type type);
         std::vector<Field> mFields;
     };
 
+    enum_class_operators(RenderPassReflection::Field::Type);
     enum_class_operators(RenderPassReflection::Field::Flags);
 }

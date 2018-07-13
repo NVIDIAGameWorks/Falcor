@@ -36,8 +36,8 @@ namespace Falcor
     void ShadowPass::describe(RenderPassReflection& reflector) const
     {
         const auto& pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
-        reflector.addField(kShadowMap, RenderPassReflection::Field::Type::Output).setBindFlags(Resource::BindFlags::RenderTarget).setResourceType(pTex2DType).setFormat(ResourceFormat::RGBA16Float);
-        reflector.addField(kDepth, RenderPassReflection::Field::Type::Input).setBindFlags(Resource::BindFlags::ShaderResource).setResourceType(pTex2DType).setFlags(RenderPassReflection::Field::Flags::Optional);
+        reflector.addOutput(kShadowMap).setFormat(ResourceFormat::RGBA16Float);
+        reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional);
     }
 
     ShadowPass::SharedPtr ShadowPass::create(uint32_t width, uint32_t height)

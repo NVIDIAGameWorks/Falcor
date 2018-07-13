@@ -30,13 +30,33 @@
 
 namespace Falcor
 {
+    const ReflectionResourceType::SharedPtr RenderPassReflection::Field::kpTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
+
     RenderPassReflection::Field::Field(const std::string& name, Type type) : mName(name), mType(type)
     {
+        mBindFlags = Resource::BindFlags::None;
+        if (is_set(type, Type::Input)) mBindFlags |= Resource::BindFlags::ShaderResource;
+        if (is_set(type, Type::Output)) mBindFlags |= Resource::BindFlags::RenderTarget;
     }
 
     RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, Field::Type type)
     {
         mFields.push_back(Field(name, type));
         return mFields.back();
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::addInput(const std::string& name)
+    {
+        return addField(name, Field::Type::Input);
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::addOutput(const std::string& name)
+    {
+        return addField(name, Field::Type::Output);
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::addInputOutput(const std::string& name)
+    {
+        return addField(name, Field::Type::Input | Field::Type::Output);
     }
 }
