@@ -77,7 +77,7 @@ namespace Falcor
 
     void SceneRenderPass::initDepth(const RenderData* pRenderData)
     {
-        const auto& pTexture = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kDepth));
+        const auto& pTexture = pRenderData->getTexture(kDepth);
 
         if (pTexture)
         {
@@ -100,12 +100,12 @@ namespace Falcor
     void SceneRenderPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
         initDepth(pRenderData);
-        mpFbo->attachColorTarget(std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kColor)), 0);
+        mpFbo->attachColorTarget(pRenderData->getTexture(kColor), 0);
         pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0, mClearFlags);
 
         if (mpSceneRenderer)
         {
-            mpVars->setTexture(kVisBuffer, std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kVisBuffer)));
+            mpVars->setTexture(kVisBuffer, pRenderData->getTexture(kVisBuffer));
 
             mpState->setFbo(mpFbo);
             pContext->pushGraphicsState(mpState);

@@ -58,8 +58,8 @@ namespace Falcor
 
     void BlitPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        const auto& pSrcTex = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kSrc));
-        const auto& pDstTex = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kDst));
+        const auto& pSrcTex = pRenderData->getTexture(kSrc);
+        const auto& pDstTex = pRenderData->getTexture(kDst);
 
         if(pSrcTex && pDstTex)
         {

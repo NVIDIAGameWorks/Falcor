@@ -58,8 +58,8 @@ namespace Falcor
 
     void ShadowPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {   
-        const auto& pDepthIn = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kDepth));
-        const auto& pShadowMap = std::dynamic_pointer_cast<Texture>(pRenderData->getResource(kShadowMap));
+        const auto& pDepthIn = pRenderData->getTexture(kDepth);
+        const auto& pShadowMap = pRenderData->getTexture(kShadowMap);
 
         if(!mpCsm)
         {

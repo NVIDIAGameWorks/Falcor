@@ -31,7 +31,7 @@ namespace Falcor
 {
     class RenderPass;
     class Resource;
-
+    
     class ResourceCache : public std::enable_shared_from_this<ResourceCache>
     {
     public:

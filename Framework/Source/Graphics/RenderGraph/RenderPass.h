@@ -32,7 +32,7 @@
 namespace Falcor
 {
     class Scene;
-    class Resource;
+    class Texture;
     class Gui;
     class RenderContext;
     
@@ -46,9 +46,9 @@ namespace Falcor
     {
     public:
         RenderData(const std::string& passName, const ScratchPad::SharedPtr pScratchPad, const ResourceCache::SharedPtr& pResourceDepositBox) : mName(passName), mpResources(pResourceDepositBox), mpScratchPad(pScratchPad) {}
-        const std::shared_ptr<Resource>& getResource(const std::string& name) const
+        std::shared_ptr<Texture> getTexture(const std::string& name) const
         {
-            return mpResources->getResource(mName + '.' + name);
+            return std::dynamic_pointer_cast<Texture>(mpResources->getResource(mName + '.' + name));
         }
 
         ScratchPad* getScratchPad() const { return mpScratchPad.get(); }

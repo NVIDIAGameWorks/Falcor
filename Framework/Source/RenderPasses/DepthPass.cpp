@@ -74,7 +74,7 @@ namespace Falcor
     {
         if(mpSceneRenderer)
         {
-            const auto& pDepth = std::dynamic_pointer_cast<Texture>(pData->getResource(kDepth));
+            const auto& pDepth = pData->getTexture(kDepth);
             mpFbo->attachDepthStencilTarget(pDepth);
 
             pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
