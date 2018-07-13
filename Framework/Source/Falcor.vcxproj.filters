@@ -556,6 +556,9 @@
     <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\VariablesBufferUI.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1727,6 +1730,9 @@
       <Filter>RenderPasses</Filter>
     </ClInclude>
     <ClInclude Include="Utils\DirectedGraph.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+        <ClInclude Include="Utils\VariablesBufferUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h" />
