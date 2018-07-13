@@ -553,7 +553,7 @@
     <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\ResourceDepositBox.cpp">
+    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1739,7 +1739,7 @@
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\ResourceDepositBox.h">
+    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
   </ItemGroup>

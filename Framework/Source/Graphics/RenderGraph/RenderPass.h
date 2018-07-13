@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
-#include "ResourceDepositBox.h"
+#include "ResourceCache.h"
 
 namespace Falcor
 {
@@ -45,7 +45,7 @@ namespace Falcor
     class RenderData
     {
     public:
-        RenderData(const std::string& passName, const ScratchPad::SharedPtr pScratchPad, const ResourceDepositBox::SharedPtr& pResourceDepositBox) : mName(passName), mpResources(pResourceDepositBox), mpScratchPad(pScratchPad) {}
+        RenderData(const std::string& passName, const ScratchPad::SharedPtr pScratchPad, const ResourceCache::SharedPtr& pResourceDepositBox) : mName(passName), mpResources(pResourceDepositBox), mpScratchPad(pScratchPad) {}
         const std::shared_ptr<Resource>& getResource(const std::string& name) const
         {
             return mpResources->getResource(mName + '.' + name);
@@ -54,7 +54,7 @@ namespace Falcor
         ScratchPad* getScratchPad() const { return mpScratchPad.get(); }
     protected:
         const std::string& mName;
-        ResourceDepositBox::SharedPtr mpResources;
+        ResourceCache::SharedPtr mpResources;
         ScratchPad::SharedPtr mpScratchPad;
     };
 

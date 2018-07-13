@@ -47,7 +47,7 @@ namespace Falcor
     RenderGraph::RenderGraph()
     {
         mpGraph = DirectedGraph::create();
-        mpResourceDepositBox = ResourceDepositBox::create();
+        mpResourceDepositBox = ResourceCache::create();
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const

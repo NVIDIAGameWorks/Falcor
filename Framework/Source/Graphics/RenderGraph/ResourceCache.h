@@ -32,16 +32,16 @@ namespace Falcor
     class RenderPass;
     class Resource;
 
-    class ResourceDepositBox : public std::enable_shared_from_this<ResourceDepositBox>
+    class ResourceCache : public std::enable_shared_from_this<ResourceCache>
     {
     public:
-        using SharedPtr = std::shared_ptr<ResourceDepositBox>;
+        using SharedPtr = std::shared_ptr<ResourceCache>;
         static SharedPtr create();
 
         void addResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
         const std::shared_ptr<Resource>& getResource(const std::string& name) const;
     private:
-        ResourceDepositBox() = default;
+        ResourceCache() = default;
         std::unordered_map<std::string, std::shared_ptr<Resource>> mResources;
     };
 

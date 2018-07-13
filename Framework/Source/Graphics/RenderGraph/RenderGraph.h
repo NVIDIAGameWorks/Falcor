@@ -28,7 +28,7 @@
 #pragma once
 #include "RenderPass.h"
 #include "Utils/DirectedGraph.h"
-#include "ResourceDepositBox.h"
+#include "ResourceCache.h"
 
 namespace Falcor
 {
@@ -160,6 +160,6 @@ namespace Falcor
         } mSwapChainData;
 
         std::vector<uint32_t> mExecutionList;
-        ResourceDepositBox::SharedPtr mpResourceDepositBox;
+        ResourceCache::SharedPtr mpResourceDepositBox;
     };
 }

@@ -26,16 +26,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "ResourceDepositBox.h"
+#include "ResourceCache.h"
 
 namespace Falcor
 {
-    ResourceDepositBox::SharedPtr ResourceDepositBox::create()
+    ResourceCache::SharedPtr ResourceCache::create()
     {
-        return SharedPtr(new ResourceDepositBox());
+        return SharedPtr(new ResourceCache());
     }
 
-    const std::shared_ptr<Resource>& ResourceDepositBox::getResource(const std::string& name) const
+    const std::shared_ptr<Resource>& ResourceCache::getResource(const std::string& name) const
     {
         static const std::shared_ptr<Resource> pNull;
         const auto& resIt = mResources.find(name);
@@ -48,7 +48,7 @@ namespace Falcor
         return resIt->second;
     }
 
-    void ResourceDepositBox::addResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    void ResourceCache::addResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
         mResources[name] = pResource;
     }
