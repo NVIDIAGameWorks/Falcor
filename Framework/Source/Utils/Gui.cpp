@@ -687,7 +687,7 @@ namespace Falcor
 
     void Gui::addImageForContext(const std::string& contextName, const Texture::SharedPtr& texture, const glm::vec2& scale)
     {
-        addImage(texture, scale);
+        addImage(texture,{0, 0});
 
         const ImVec2& topLeft = ImGui::GetCurrentWindow()->DC.LastItemRect.GetTL();
         sContexts[contextName].second.position = { topLeft.x, topLeft.y };

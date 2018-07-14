@@ -90,6 +90,7 @@ private:
 
     bool mCreatingRenderGraph;
     bool mPreviewing;
+    bool mShowCreateGraphWindow;
 
     // TODO this should be in an abstraction for reuse
     glm::vec2 mWindowPos{0.0f, 0.0f};

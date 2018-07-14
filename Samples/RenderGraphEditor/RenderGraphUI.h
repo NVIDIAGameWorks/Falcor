@@ -45,9 +45,12 @@ namespace Falcor
         {
             uint32_t mGuiPinID;
             bool mIsInput;
+            std::string mConnectedPinName;
+            std::string mConnectedNodeName;
+            bool mIsGraphOutput;
         };
 
-        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput);
+        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);
 
         void renderUI(Gui *pGui);
 
@@ -70,6 +73,8 @@ namespace Falcor
         */
         void renderUI(Gui *pGui);
 
+        void reset();
+
         /** static functions used for GUI callbacks required to be static
          */
         static bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
@@ -86,19 +91,23 @@ namespace Falcor
         */
         void updateDisplayData();
         
+        void drawPins(bool addLinks = true);
+
         /** Helper function to calculate position of the next node in execution order
          */
         glm::vec2 getNextNodePosition(uint32_t nodeID);
 
-        glm::vec2 mNewNodeStartPosition;
+        glm::vec2 mNewNodeStartPosition{ -40.0f, 100.0f };
 
         // start with reference of render graph
         RenderGraph& mRenderGraphRef;
 
         std::unordered_set<std::string> mAllNodeTypeStrings;
         std::vector<const char*> mAllNodeTypes;
-        
+
         std::unordered_map <std::string, RenderPassUI> mRenderPassUI;
+
+        std::unordered_map <std::string, uint32_t> mInputPinStringToLinkID;
 
         // maps output pin name to input pin ids. Pair first is pin id, second is node id
         std::unordered_map <std::string, std::vector< std::pair<uint32_t, uint32_t > > > mOutputToInputPins;

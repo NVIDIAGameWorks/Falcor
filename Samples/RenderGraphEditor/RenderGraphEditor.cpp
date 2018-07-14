@@ -84,8 +84,57 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     // we should move everything below here into the render graph ui struct
 
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (!mShowCreateGraphWindow && ImGui::MenuItem("Create New Graph"))
+            {
+                mShowCreateGraphWindow = true;
+            }
+
+            if (ImGui::MenuItem("Load Graph"))
+            {
+                std::string renderGraphFileName;
+                if (openFileDialog("", renderGraphFileName))
+                {
+                    size_t nameOffset = renderGraphFileName.find_last_of('\\') + 1;
+                    size_t fileExtOffset = renderGraphFileName.find_last_of('.');
+                    if (fileExtOffset == std::string::npos)
+                    {
+                        fileExtOffset = renderGraphFileName.size();
+                    }
+
+                    createRenderGraph(renderGraphFileName.substr(nameOffset, fileExtOffset - nameOffset), renderGraphFileName);
+                }
+            }
+
+            if (ImGui::MenuItem("Save Graph"))
+            {
+                std::string renderGraphFileName;
+                if (saveFileDialog("", renderGraphFileName))
+                {
+                    serializeRenderGraph(renderGraphFileName);
+                }
+            }
+            
+            if (ImGui::MenuItem("RunScript"))
+            {
+                std::string renderGraphFileName;
+                if (openFileDialog("", renderGraphFileName))
+                {
+                    deserializeRenderGraph(renderGraphFileName);
+                }
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes", 0, screenHeight / 4, 0, screenHeight * 4 / 5);
+    pGui->pushWindow("Render Passes", screenWidth * 7 / 8, screenHeight / 4, screenWidth / 8, screenHeight * 4 / 5);
 
     // for each dll that was found. (or manually imported????)
     for (auto& availableRenderPasses : sBaseRenderCreateFuncs)
@@ -130,7 +179,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     pGui->popWindow();
 
     // push a sub gui window for the node editor
-    pGui->pushWindow("Graph Editor", screenWidth * 7 / 8, screenHeight * 4 / 5, 1, 1);
+    pGui->pushWindow("Graph Editor", screenWidth * 7 / 8, screenHeight * 4 / 5, screenWidth / 8, 1);
         mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
@@ -143,57 +192,17 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     
     firstFrame = false;
     
-    pGui->pushWindow("Graph Editor Settings", screenWidth / 8, screenHeight - 1, screenWidth - screenWidth / 8, 0, false);
+    pGui->pushWindow("Graph Editor Settings", screenWidth / 8, screenHeight / 2, 0, screenHeight / 2, false);
 
     // DO you want to keep these ?? -- possible custom contexts outside of what is rendered?  would that even be useful
     pGui->setContextSize(mWindowSize);
-    
-    pGui->addTextBox("Graph Name", mNextGraphString);
-    if (mCreatingRenderGraph)
-    {
-        pGui->addText("Creating Graph ...");
-    }
-    else
-    {
-        if (mNextGraphString[0] && pGui->addButton("Create New Graph"))
-        {
-            createRenderGraph(mNextGraphString, "");
-        }
-    }
-
-    if (pGui->addButton("Load Graph"))
-    {
-        std::string renderGraphFileName;
-        if (openFileDialog("", renderGraphFileName))
-        {
-            createRenderGraph(mNextGraphString, renderGraphFileName);
-        }
-        
-    }
-
-    if (pGui->addButton("Save Graph"))
-    {
-        std::string renderGraphFileName;
-        if (saveFileDialog("", renderGraphFileName))
-        {
-            serializeRenderGraph(renderGraphFileName);
-        }
-    }
-
-    if (pGui->addButton("RunScript"))
-    {
-        std::string renderGraphFileName;
-        if (openFileDialog("", renderGraphFileName))
-        {
-            deserializeRenderGraph(renderGraphFileName);
-        }
-    }
-
+ 
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
     {
         // Display graph
         mCurrentGraphIndex = selection;
+        mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
     pGui->addDropdown("RenderPassType", mRenderPassTypes, mTypeSelection);
@@ -214,7 +223,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // update the display if the render graph loader has set a new output
     if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
     {
-        mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
+        // mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
         mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
         mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     }
@@ -233,6 +242,30 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     pGui->popWindow();
+
+    if (mShowCreateGraphWindow)
+    {
+        pGui->pushWindow("CreateNewGraph", 256, 128, screenWidth / 2 - 128, screenHeight / 2 - 64);
+
+        pGui->addTextBox("Graph Name", mNextGraphString);
+
+        if (pGui->addButton("Create Graph") && mNextGraphString[0])
+        {
+            createRenderGraph(mNextGraphString, "");
+            mNextGraphString.clear();
+            mNextGraphString.resize(255, '0');
+            mShowCreateGraphWindow = false;
+        }
+
+        if (pGui->addButton("Cancel", true))
+        {
+            mNextGraphString.clear();
+            mNextGraphString.resize(255, '0');
+            mShowCreateGraphWindow = false;
+        }
+
+        pGui->popWindow();
+    }
 }
 
 void RenderGraphEditor::loadScene(const std::string& filename, bool showProgressBar)
