@@ -70,8 +70,8 @@ namespace Falcor
         pContext->blit(pVisBuffer->getSRV(0, 1, 0, 1), pShadowMap->getRTV(0, 0, 1));
     }
 
-    void ShadowPass::renderUI(Gui* pGui)
+    void ShadowPass::renderUI(Gui* pGui, const char* uiGroup)
     {
-        if (mpCsm) mpCsm->renderUi(pGui, "Shadow Pass");
+        if (mpCsm) mpCsm->renderUi(pGui, uiGroup);
     }
 }

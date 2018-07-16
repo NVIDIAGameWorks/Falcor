@@ -29,6 +29,7 @@
 #include "RenderGraph.h"
 #include "API/FBO.h"
 #include "Utils/DirectedGraphTraversal.h"
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
@@ -465,6 +466,23 @@ namespace Falcor
         for (const auto& it : mNodeData)
         {
             it.second.pPass->onResize(mSwapChainData.width, mSwapChainData.height);
+        }
+    }
+
+    void RenderGraph::renderUI(Gui* pGui, const char* uiGroup)
+    {
+        if (!uiGroup || pGui->beginGroup(uiGroup))
+        {
+            for (const auto& passId : mExecutionList)
+            {
+                const auto& pass = mNodeData[passId];
+                if (pGui->beginGroup(pass.nodeName))
+                {
+                    pass.pPass->renderUI(pGui, nullptr);
+                }
+            }
+
+            if (uiGroup) pGui->endGroup();
         }
     }
 }

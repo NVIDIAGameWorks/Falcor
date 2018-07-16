@@ -36,6 +36,8 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         std::string filename;
         if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
     }
+
+    if (mpGraph) mpGraph->renderUI(pGui, "Render Graph");
 }
 
 void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::string& filename, SampleCallbacks* pSample)
@@ -45,6 +47,7 @@ void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::s
     mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
     mpGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
     mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
+    mpGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
 
     // Add the skybox
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
@@ -61,7 +64,8 @@ void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::s
     mpGraph->addEdge("SkyBox.target", "SceneRenderer.color");
     mpGraph->addEdge("ShadowPass.shadowMap", "SceneRenderer.visibilityBuffer");
 
-    mpGraph->addEdge("SceneRenderer.color", "BlitPass.src");
+    mpGraph->addEdge("SceneRenderer.color", "ToneMapping.src");
+    mpGraph->addEdge("ToneMapping.dst", "BlitPass.src");
 
     mpGraph->setScene(pScene);
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());

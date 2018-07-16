@@ -45,7 +45,7 @@ namespace Falcor
 
     ToneMapping::~ToneMapping() = default;
 
-    ToneMapping::ToneMapping(ToneMapping::Operator op)
+    ToneMapping::ToneMapping(ToneMapping::Operator op) : RenderPass("ToneMappingPass")
     {
         createLuminancePass();
         createToneMapPass(op);
@@ -63,16 +63,16 @@ namespace Falcor
         return ToneMapping::UniquePtr(pTM);
     }
 
-    void ToneMapping::createLuminanceFbo(Fbo::SharedPtr pSrcFbo)
+    void ToneMapping::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     {
         bool createFbo = mpLuminanceFbo == nullptr;
-        ResourceFormat srcFormat = pSrcFbo->getColorTexture(0)->getFormat();
+        ResourceFormat srcFormat = pSrc->getFormat();
         uint32_t bytesPerChannel = getFormatBytesPerBlock(srcFormat) / getFormatChannelCount(srcFormat);
         
         // Find the required texture size and format
         ResourceFormat luminanceFormat = (bytesPerChannel == 32) ? ResourceFormat::R32Float : ResourceFormat::R16Float;
-        uint32_t requiredHeight = getLowerPowerOf2(pSrcFbo->getHeight());
-        uint32_t requiredWidth = getLowerPowerOf2(pSrcFbo->getWidth());
+        uint32_t requiredHeight = getLowerPowerOf2(pSrc->getHeight());
+        uint32_t requiredWidth = getLowerPowerOf2(pSrc->getWidth());
 
         if(createFbo == false)
         {
@@ -89,14 +89,14 @@ namespace Falcor
         }
     }
 
-    void ToneMapping::execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrc, Fbo::SharedPtr pDst)
+    void ToneMapping::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
     {
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         createLuminanceFbo(pSrc);
 
         //Set shared vars
-        mpToneMapVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getColorTexture(0)->getSRV());
-        mpLuminanceVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getColorTexture(0)->getSRV());
+        mpToneMapVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
+        mpLuminanceVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
         mpToneMapVars->getDefaultBlock()->setSampler(mBindLocations.colorSampler, 0, mpPointSampler);
         mpLuminanceVars->getDefaultBlock()->setSampler(mBindLocations.colorSampler, 0, mpLinearSampler);
 
@@ -223,5 +223,22 @@ namespace Falcor
     void ToneMapping::setWhiteScale(float whiteScale)
     {
         mConstBufferData.whiteScale = max(0.001f, whiteScale);
+    }
+
+    static const std::string kSrc = "src";
+    static const std::string kDst = "dst";
+
+    void ToneMapping::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInput(kSrc);
+        reflector.addOutput(kDst);
+    }
+
+    void ToneMapping::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        Fbo::SharedPtr pFbo = Fbo::create();
+        pFbo->attachColorTarget(pData->getTexture(kDst), 0);
+
+        execute(pRenderContext, pData->getTexture(kSrc), pFbo);
     }
 }

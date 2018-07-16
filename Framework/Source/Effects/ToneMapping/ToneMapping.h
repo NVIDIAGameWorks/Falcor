@@ -31,12 +31,13 @@
 #include "API/FBO.h"
 #include "API/Sampler.h"
 #include "Utils/Gui.h"
+#include "Graphics/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
     /** Tone-mapping effect
     */
-    class ToneMapping
+    class ToneMapping : public RenderPass, public inherit_shared_from_this<RenderPass, ToneMapping>
     {
     public:
         using UniquePtr = std::unique_ptr<ToneMapping>;
@@ -65,14 +66,14 @@ namespace Falcor
             \param[in] pGui GUI instance to render UI with
             \param[in] uiGroup Name for the group to render UI elements within
         */
-        void renderUI(Gui* pGui, const char* uiGroup);
+        void renderUI(Gui* pGui, const char* uiGroup) override;
 
         /** Run the tone-mapping program
             \param pRenderContext Render-context to use
-            \param pSrc The source FBO
+            \param pSrc The source texture
             \param pDst The destination FBO
         */
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrc, Fbo::SharedPtr pDst);
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
 
         /** Set a new operator. Triggers shader recompilation if operator has not been set on this instance before.
         */
@@ -99,9 +100,17 @@ namespace Falcor
         */
         void setWhiteScale(float whiteScale);
 
+        /** Called once before compilation. Describes I/O requirements of the pass.
+        The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+        */
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
+        /** Executes the pass.
+        */
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
     private:
         ToneMapping(Operator op);
-        void createLuminanceFbo(Fbo::SharedPtr pSrcFbo);
+        void createLuminanceFbo(const Texture::SharedPtr& pSrc);
 
         Operator mOperator;
         FullScreenPass::UniquePtr mpToneMapPass;

@@ -129,8 +129,13 @@ namespace Falcor
         }
     }
 
-    void SceneRenderPass::renderUI(Gui* pGui)
+    void SceneRenderPass::renderUI(Gui* pGui, const char* uiGroup)
     {
-        pGui->addRgbaColor("Clear color", mClearColor);
+        if(!uiGroup || pGui->beginGroup(uiGroup))
+        {
+            pGui->addRgbaColor("Clear color", mClearColor);
+
+            if (uiGroup) pGui->endGroup();
+        }
     }
 }

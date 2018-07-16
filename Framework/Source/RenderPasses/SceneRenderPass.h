@@ -47,7 +47,7 @@ namespace Falcor
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
 
         virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
-        virtual void renderUI(Gui* pGui) override;
+        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
     private:
         SceneRenderPass();
         void initDepth(const RenderData* pRenderData);
