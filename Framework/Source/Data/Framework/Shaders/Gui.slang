@@ -27,13 +27,11 @@
 ***************************************************************************/
 SamplerState gSampler;
 Texture2D gFont;
-Texture2D gOptionalImage;
 
 cbuffer PerFrameCB : register(b0)
 {
     float2 scale;
     float2 offset;
-    bool useOptionalImage;
 };
 
 struct VsIn
@@ -63,7 +61,6 @@ VsOut vs(VsIn vIn)
 float4 ps(VsOut vOut) : SV_TARGET
 {
     float4 c = vOut.color;
-    c *= useOptionalImage ? float4(1.0) : gOptionalImage.Sample(gSampler, vOut.texC).rgba;
     float fontMask = gFont.Sample(gSampler, vOut.texC).r;
     c *= fontMask;
     return c;

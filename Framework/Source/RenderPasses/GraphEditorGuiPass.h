@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,62 +25,40 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
-#include "GuiProperty.h"
+#pragma once
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/Program/GraphicsProgram.h"
+#include "Graphics/Program/ProgramVars.h"
+#include "Graphics/GraphicsState.h"
+#include "Graphics/Scene/SceneRenderer.h"
 
 namespace Falcor
 {
-    static uint32_t sUniqueIndexOffset = 0;
-
-    Property::Property(const std::string& labelString, const std::function<void(Property*)>& func)
-        : mLabel(labelString), mCallback(func) 
+    class GraphEditorGuiPass : public RenderPass, inherit_shared_from_this<RenderPass, GraphEditorGuiPass>
     {
-        mUniqueID = sUniqueIndexOffset++;
-    }
+    public:
+        using SharedPtr = std::shared_ptr<GraphEditorGuiPass>;
 
-    ButtonProperty::ButtonProperty() 
-        : Property("") 
-    {
-    }
+        /** Create a new object
+        */
+        static SharedPtr create();
 
-    ButtonProperty::ButtonProperty(const std::string& labelString, const std::function<void(Property*)>& func, bool startingVal)
-        : Property(labelString, func), mStatus(startingVal) 
-    {
-    }
+        // virtual void execute(RenderContext* pContext) override;
+        // virtual bool isValid(std::string& log) override;
+        // virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        // virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
+        // virtual PassData getRenderPassData() const override { return kRenderPassData; }
+        // virtual void sceneChangedCB() override;
 
-    void ButtonProperty::renderUI(Gui* pGui)
-    {
-        mStatus = pGui->addButton(mLabel.c_str());
+    private:
+        GraphEditorGuiPass();
+        void recreateShaders();
 
-        if (mStatus)
-        {
-            onUpdate();
-        }
-    }
-
-    StringProperty::StringProperty()
-        : Property("") 
-    {
-    }
-
-    StringProperty::StringProperty(const std::string& labelString, const std::function<void(Property*)>& func, const std::vector<std::string>& startingVal, const std::string& confirmationString)
-        : Property(labelString, func), mData(startingVal), mConfirmation(confirmationString) 
-    {
-    }
-
-    void StringProperty::renderUI(Gui* pGui)
-    {
-        unsigned i = 0;
-        for (auto& string : mData)
-        {
-            pGui->addTextBox(mLabel.c_str(), string);
-        }
-
-        mConfirmation.renderUI(pGui);
-
-        if (mConfirmation.mStatus)
-        {
-            onUpdate();
-        }
-    }
+        // static const PassData kRenderPassData;
+        Fbo::SharedPtr mpFbo;
+        GraphicsState::SharedPtr mpState;
+        GraphicsVars::SharedPtr mpVars;
+        SceneRenderer::SharedPtr mpSceneRenderer;
+        vec4 mClearColor = vec4(1);
+    };
 }

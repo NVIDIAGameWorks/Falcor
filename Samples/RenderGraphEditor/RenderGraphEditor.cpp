@@ -53,7 +53,6 @@ RenderGraphEditor::RenderGraphEditor()
     register_render_pass(BlitPass);
     register_render_pass(DepthPass);
     register_render_pass(ShadowPass);
-    register_render_pass(NodeGraphGuiPass);
 
 #undef register_render_pass
 
@@ -68,9 +67,6 @@ RenderGraphEditor::RenderGraphEditor()
 
 void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    mWindowSize = pGui->getCurrentWindowSize();
-    mWindowPos = pGui->getCurrentWindowPosition();
-
     uint32_t screenHeight = pSample->getWindow()->getClientAreaHeight();
     uint32_t screenWidth = pSample->getWindow()->getClientAreaWidth();
 
@@ -351,21 +347,6 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
 void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui)
 {
-    // TODO Make an abstraction for this
-    pGui->pushContext("RenderGraphContext");
-
-    pGui->beginFrame();
-
-    if (mPreviewing)
-    {
-        return;
-    }
-
-    // mpGraphs[mCurrentGraphIndex]->renderUI(pGui);
-
-    pGui->renderBeforeEndOfFrame(pSample->getRenderContext().get(), pSample->getLastFrameTime());
-
-    pGui->popContext();
 }
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
