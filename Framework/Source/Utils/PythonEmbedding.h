@@ -216,7 +216,7 @@ private:
 
     /** A common execution routine that handles all execute*() routines above to keep exection code localized in one spot
     */
-    bool commonExecRoutine(const pybind11::str &input, bool asString, bool useLocals = false, pybind11::object locals = class pybind11::object());
+    bool commonExecRoutine(const pybind11::str &input, bool asString, bool useLocals = false, pybind11::object locals = pybind11::object());
 
 };
 

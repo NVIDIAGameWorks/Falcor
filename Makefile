@@ -68,6 +68,8 @@ INCLUDES = \
 -I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/RapidJson/include" \
 -I "$(VULKAN_SDK)/include" \
+-I "$(HOME)/.local/include" \
+$(shell pkg-config --cflags python3) \
 $(shell pkg-config --cflags assimp gtk+-3.0 glfw3) \
 $(shell pkg-config --cflags libavcodec libavdevice libavformat libswscale libavutil)
 
