@@ -89,6 +89,11 @@ namespace Falcor
         }
     }
 
+    void ToneMapping::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
+    {
+        return execute(pRenderContext, pSrc->getColorTexture(0), pDst);
+    }
+
     void ToneMapping::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
     {
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();

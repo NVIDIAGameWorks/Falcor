@@ -69,6 +69,14 @@ namespace Falcor
         void renderUI(Gui* pGui, const char* uiGroup) override;
 
         /** Run the tone-mapping program
+        \param pRenderContext Render-context to use
+        \param pSrc The source FBO. Only color-texture 0 will be tone-mapped
+        \param pDst The destination FBO
+        */
+        deprecate("3.2")
+        void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
+
+        /** Run the tone-mapping program
             \param pRenderContext Render-context to use
             \param pSrc The source texture
             \param pDst The destination FBO
