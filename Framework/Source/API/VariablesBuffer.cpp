@@ -33,6 +33,7 @@
 #include "Texture.h"
 #include "Graphics/Program/ProgramReflection.h"
 #include "API/Device.h"
+#include "Utils/VariablesBufferUI.h"
 #include <cstring>
 
 namespace Falcor
@@ -392,5 +393,11 @@ namespace Falcor
         }
         std::memcpy(mData.data() + offset, pSrc, size);
         mDirty = true;
+    }
+
+    void VariablesBuffer::renderUI(Gui* pGui, const char* uiGroup)
+    {
+        VariablesBufferUI variablesBufferUI(*this);
+        variablesBufferUI.renderUI(pGui, uiGroup);
     }
 }

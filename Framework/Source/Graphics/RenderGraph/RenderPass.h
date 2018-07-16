@@ -26,104 +26,79 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/Program/ProgramReflection.h"
-#include "Renderer.h"
+#include "RenderPassReflection.h"
+#include "ResourceCache.h"
 
 namespace Falcor
 {
     class Scene;
-    class Resource;
+    class Texture;
     class Gui;
     class RenderContext;
+    
+    class ScratchPad : public std::enable_shared_from_this<ScratchPad>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<ScratchPad>;
+    };
 
-    /** Base class for render-passes. The class inherits from Renderer
-    */
-    class RenderPass : public Renderer, inherit_shared_from_this<Renderer, RenderPass>
+    class RenderData
+    {
+    public:
+        RenderData(const std::string& passName, const ScratchPad::SharedPtr pScratchPad, const ResourceCache::SharedPtr& pResourceDepositBox) : mName(passName), mpResources(pResourceDepositBox), mpScratchPad(pScratchPad) {}
+        std::shared_ptr<Texture> getTexture(const std::string& name) const
+        {
+            return std::dynamic_pointer_cast<Texture>(mpResources->getResource(mName + '.' + name));
+        }
+
+        ScratchPad* getScratchPad() const { return mpScratchPad.get(); }
+    protected:
+        const std::string& mName;
+        ResourceCache::SharedPtr mpResources;
+        ScratchPad::SharedPtr mpScratchPad;
+    };
+
+    class RenderPass : public std::enable_shared_from_this<RenderPass>
     {
     public:
         using SharedPtr = std::shared_ptr<RenderPass>;
-        using RenderDataChangedFunc = std::function<void(void)>;
 
-        virtual ~RenderPass() = 0;
-
-        /** This struct describes the available input/output resources fields by the render-pass
+        /** Called once before compilation. Describes I/O requirements of the pass.
+            The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
         */
-        struct PassData
-        {
-            struct Field
-            {
-                std::string name;                        ///< The field's name
-                ReflectionResourceType::SharedPtr pType; ///< The resource type
-                uint32_t width = 0;         ///< For output resources, 0 means use the window size(textures) or the size in bytes (buffers). For input resources 0 means don't care
-                uint32_t height = 0;        ///< For output resources, 0 means use the window size. For input resources 0 means don't care
-                uint32_t depth = 0;         ///< For output resources, 0 means use the window size. For input resources 0 means don't care
-                uint32_t sampleCount = 0;   ///< 0 means don't care (which means 1 for output resources)
-                ResourceFormat format = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
-                Resource::BindFlags bindFlags = Resource::BindFlags::None;  ///< The required bind flags
-                bool required = true;      ///< If this is true, then the render-pass will not work if this field is not set. Otherwise, this field is optional
-            };
+        virtual void reflect(RenderPassReflection& reflector) const = 0;
 
-            std::vector<Field> inputs;
-            std::vector<Field> outputs;
-        };
-
-        /** Execute the pass
+        /** Executes the pass.
         */
-        virtual void execute(RenderContext* pContext) = 0;
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) = 0;
 
-        /** Get the render-pass data
+        /** Render the pass's UI
         */
-        virtual PassData getRenderPassData() const = 0;
+        virtual void renderUI(Gui* pGui) {}
 
-        /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
+        /** Will be called whenever the backbuffer size changed
         */
-        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) = 0;
-
-        /** Set an input resource. The function will return true if the resource fulfills the slot requirements, otherwise it will return false
-        */
-        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) = 0;
-
-        /** Get an input resource
-        */
-        virtual std::shared_ptr<Resource> getInput(const std::string& name) const;
-
-        /** Get an output resource
-        */
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const;
-
-        /** Call this after the input/output resources are set to make sure the render-pass is ready for execution
-        */
-        virtual bool isValid(std::string& log) = 0;
+        virtual void onResize(uint32_t width, uint32_t height) {}
 
         /** Set a scene into the render-pass
         */
-        void setScene(const std::shared_ptr<Scene>& pScene);
+        virtual void setScene(const std::shared_ptr<Scene>& pScene) {}
 
-        /** Get the currently bound scene
+        /** Mouse event handler.
+            Returns true if the event was handled by the object, false otherwise
         */
-        const std::shared_ptr<Scene>& getScene() const { return mpScene; }
+        virtual bool onMouseEvent(const MouseEvent& mouseEvent) { return false; }
 
-        /** Optional callback function which will be invoked whenever a scene is set
+        /** Keyboard event handler
+        Returns true if the event was handled by the object, false otherwise
         */
-        virtual void sceneChangedCB() {};
+        virtual bool onKeyEvent(const KeyboardEvent& keyEvent) { return false; }
 
-        /** Optional serialization function. Use this to export custom data into the json file
+        /** Get the pass' name
         */
-        virtual void serializeJson() const {}
-
-        /** Set the DataChanged callback
-        */
-        void setRenderDataChangedCallback(RenderDataChangedFunc pDataChangedCB) { mpRenderDataChangedCallback = pDataChangedCB; }
-
-        /** Get render pass type name
-        */
-        const std::string& getTypeName() const { return mName;  };
-
+        const std::string& getName() const { return mName; }
     protected:
-        RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB = nullptr);
-        
+        RenderPass(const std::string& name) : mName(name) {}
         std::string mName;
-        std::shared_ptr<Scene> mpScene;
-        RenderDataChangedFunc mpRenderDataChangedCallback;
     };
 }

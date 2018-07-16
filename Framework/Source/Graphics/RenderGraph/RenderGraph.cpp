@@ -47,6 +47,7 @@ namespace Falcor
     RenderGraph::RenderGraph()
     {
         mpGraph = DirectedGraph::create();
+        mpResourceDepositBox = ResourceCache::create();
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
@@ -60,7 +61,7 @@ namespace Falcor
         mpScene = pScene;
         for (auto& it : mNodeData)
         {
-            it.second->setScene(pScene);
+            it.second.pPass->setScene(pScene);
         }
     }
 
@@ -76,7 +77,7 @@ namespace Falcor
         pPass->setScene(mpScene);
         uint32_t node = mpGraph->addNode();
         mNameToIndex[passName] = node;
-        mNodeData[node] = pPass;
+        mNodeData[node] = { passName, pPass };
         mRecompile = true;
         return true;
     }
@@ -109,7 +110,7 @@ namespace Falcor
             logWarning("RenderGraph::getRenderPass() - can't find a pass named `" + name + "`");
             return pNull;
         }
-        return mNodeData.at(index);
+        return mNodeData.at(index).pPass;
     }
     
     using str_pair = std::pair<std::string, std::string>;
@@ -117,11 +118,17 @@ namespace Falcor
     template<bool input>
     static bool checkRenderPassIoExist(const RenderPass* pPass, const std::string& name)
     {
-        const auto& ioVec = input ? pPass->getRenderPassData().inputs : pPass->getRenderPassData().outputs;
-        for (const auto& f : ioVec)
+        RenderPassReflection reflect;
+        pPass->reflect(reflect);
+        for (size_t i = 0; i < reflect.getFieldCount(); i++)
         {
-            if (f.name == name) return true;
+            const auto& f = reflect.getField(i);
+            if (f.getName() == name)
+            {
+                return input ? is_set(f.getType(), RenderPassReflection::Field::Type::Input) : is_set(f.getType(), RenderPassReflection::Field::Type::Output);
+            }
         }
+
         return false;
     }
 
@@ -235,53 +242,37 @@ namespace Falcor
 
     bool RenderGraph::isValid(std::string& log) const
     {
-        bool valid = true;
-        size_t logSize = log.size();
-
-        for (const auto& it : mNodeData)
-        {
-            RenderPass* pPass = it.second.get();
-            if (pPass->isValid(log) == false)
-            {
-                valid = false;
-                if (log.size() != logSize && log.back() != '\n')
-                {
-                    log += '\n';
-                    logSize = log.size();
-                }
-            }
-        }
-        return valid;
+        return true;
     }
 
-    Texture::SharedPtr RenderGraph::createTextureForPass(const RenderPass::PassData::Field& field)
+    Texture::SharedPtr RenderGraph::createTextureForPass(const RenderPassReflection::Field& field)
     {
-        uint32_t width = field.width ? field.width : mSwapChainData.width;
-        uint32_t height = field.height ? field.height : mSwapChainData.height;
-        uint32_t depth = field.depth ? field.depth : 1;
-        uint32_t sampleCount = field.sampleCount ? field.sampleCount : 1;
-        ResourceFormat format = field.format == ResourceFormat::Unknown ? mSwapChainData.colorFormat : field.format;
+        uint32_t width = field.getWidth() ? field.getWidth() : mSwapChainData.width;
+        uint32_t height = field.getHeight() ? field.getHeight() : mSwapChainData.height;
+        uint32_t depth = field.getDepth() ? field.getDepth() : 1;
+        uint32_t sampleCount = field.getSampleCount() ? field.getSampleCount() : 1;
+        ResourceFormat format = field.getFormat() == ResourceFormat::Unknown ? mSwapChainData.colorFormat : field.getFormat();
         Texture::SharedPtr pTexture;
 
         if (depth > 1)
         {
             assert(sampleCount == 1);
-            pTexture = Texture::create3D(width, height, depth, format, 1, nullptr, field.bindFlags | Resource::BindFlags::ShaderResource);
+            pTexture = Texture::create3D(width, height, depth, format, 1, nullptr, field.getBindFlags() | Resource::BindFlags::ShaderResource);
         }
         else if (height > 1 || sampleCount > 1)
         {
             if (sampleCount > 1)
             {
-                pTexture = Texture::create2DMS(width, height, format, sampleCount, 1, field.bindFlags | Resource::BindFlags::ShaderResource);
+                pTexture = Texture::create2DMS(width, height, format, sampleCount, 1, field.getBindFlags() | Resource::BindFlags::ShaderResource);
             }
             else
             {
-                pTexture = Texture::create2D(width, height, format, 1, 1, nullptr, field.bindFlags | Resource::BindFlags::ShaderResource);
+                pTexture = Texture::create2D(width, height, format, 1, 1, nullptr, field.getBindFlags() | Resource::BindFlags::ShaderResource);
             }
         }
         else
         {
-            pTexture = Texture::create1D(width, format, 1, 1, nullptr, field.bindFlags | Resource::BindFlags::ShaderResource);
+            pTexture = Texture::create1D(width, format, 1, 1, nullptr, field.getBindFlags() | Resource::BindFlags::ShaderResource);
         }
 
         return pTexture;
@@ -322,8 +313,9 @@ namespace Falcor
         for (const auto& nodeIndex : mExecutionList)
         {
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
-            RenderPass* pSrcPass = mNodeData[nodeIndex].get();
-            const RenderPass::PassData& passData = pSrcPass->getRenderPassData();
+            RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
+            RenderPassReflection passReflection;
+            pSrcPass->reflect(passReflection);
 
             const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
             {
@@ -335,11 +327,15 @@ namespace Falcor
             };
 
             // Set all the pass' outputs to null
-            for (const auto& output : passData.outputs)
+            for (size_t i = 0 ; i < passReflection.getFieldCount() ; i++)
             {
-                if(isGraphOutput(nodeIndex, output.name) == false)
+                const auto& field = passReflection.getField(i);
+                if(is_set(field.getType(), RenderPassReflection::Field::Type::Output))
                 {
-                    pSrcPass->setOutput(output.name, nullptr);
+                    if (isGraphOutput(nodeIndex, field.getName()) == false)
+                    {
+                        mpResourceDepositBox->addResource(mNodeData[nodeIndex].nodeName + '.' + field.getName(), nullptr);
+                    }
                 }
             }
 
@@ -354,22 +350,29 @@ namespace Falcor
                 const auto& edgeData = mEdgeData[edgeIndex];
 
                 // Find the input
-                for (const auto& src : passData.outputs)
+                for (size_t i = 0; i < passReflection.getFieldCount(); i++)
                 {
-                    if (src.name == edgeData.srcField)
+                    const auto& field = passReflection.getField(i);
+
+                    // Skip the field if it's not an output field
+                    if (is_set(field.getType(), RenderPassReflection::Field::Type::Output) == false) continue;
+
+                    if (field.getName() == edgeData.srcField)
                     {
+                        std::string srcResourceName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
+
                         Texture::SharedPtr pTexture;
-                        pTexture = std::dynamic_pointer_cast<Texture>(pSrcPass->getOutput(src.name));
+                        pTexture = std::dynamic_pointer_cast<Texture>(mpResourceDepositBox->getResource(srcResourceName));
 
                         if(pTexture == nullptr)
                         {
-                            pTexture = createTextureForPass(src);
-                            pSrcPass->setOutput(src.name, pTexture);
+                            pTexture = createTextureForPass(field);
+                            mpResourceDepositBox->addResource(srcResourceName, pTexture);
                         }
 
                         // Connect it to the dst pass
-                        RenderPass* pDstPass = mNodeData[pEdge->getDestNode()].get();
-                        pDstPass->setInput(edgeData.dstField, pTexture);
+                        const auto& dstPass = mNodeData[pEdge->getDestNode()].nodeName;
+                        mpResourceDepositBox->addResource(dstPass + '.' + edgeData.dstField, pTexture);
                         break;
                     }
                 }
@@ -401,7 +404,8 @@ namespace Falcor
 
         for (const auto& node : mExecutionList)
         {
-            mNodeData[node]->execute(pContext);
+            RenderData renderData(mNodeData[node].nodeName, nullptr, mpResourceDepositBox);
+            mNodeData[node].pPass->execute(pContext, &renderData);
         }
     }
 
@@ -410,7 +414,8 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<true>(this, name, "RenderGraph::setInput()", strPair);
         if (pPass == nullptr) return false;
-        return pPass->setInput(strPair.second, pResource);
+        mpResourceDepositBox->addResource(name, pResource);
+        return true;
     }
 
     bool RenderGraph::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
@@ -418,7 +423,7 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
         if (pPass == nullptr) return false;
-        if (pPass->setOutput(strPair.second, pResource) == false) return false;
+        mpResourceDepositBox->addResource(name, pResource);
         markGraphOutput(name);
         return true;
     }
@@ -470,33 +475,32 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
         
-        return pPass ? pPass->getOutput(strPair.second) : pNull;
+        return pPass ? mpResourceDepositBox->getResource(name) : pNull;
     }
-
-    void RenderGraph::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
+    
+    void RenderGraph::onResizeSwapChain(const Fbo* pTargetFbo)
     {
         // Store the back-buffer values
-        const Fbo* pFbo = pSample->getCurrentFbo().get();
-        const Texture* pColor = pFbo->getColorTexture(0).get();
-        const Texture* pDepth = pFbo->getDepthStencilTexture().get();
+        const Texture* pColor = pTargetFbo->getColorTexture(0).get();
+        const Texture* pDepth = pTargetFbo->getDepthStencilTexture().get();
         assert(pColor && pDepth);
 
         // If the back-buffer values changed, recompile
         mRecompile = mRecompile || (mSwapChainData.colorFormat != pColor->getFormat());
         mRecompile = mRecompile || (mSwapChainData.depthFormat != pDepth->getFormat());
-        mRecompile = mRecompile || (mSwapChainData.width != width);
-        mRecompile = mRecompile || (mSwapChainData.height != height);
+        mRecompile = mRecompile || (mSwapChainData.width != pTargetFbo->getWidth());
+        mRecompile = mRecompile || (mSwapChainData.height != pTargetFbo->getHeight());
 
         // Store the values
         mSwapChainData.colorFormat = pColor->getFormat();
         mSwapChainData.depthFormat = pDepth->getFormat();
-        mSwapChainData.width = width;
-        mSwapChainData.height = height;
+        mSwapChainData.width = pTargetFbo->getWidth();
+        mSwapChainData.height = pTargetFbo->getHeight();
 
         // Invoke the passes' callback
         for (const auto& it : mNodeData)
         {
-            it.second->onResizeSwapChain(pSample, width, height);
+            it.second.pPass->onResize(mSwapChainData.width, mSwapChainData.height);
         }
     }
 }

@@ -425,7 +425,7 @@ namespace Falcor
             }
 
             sNodeGraphEditor.removeAnyLinkFromNode(sNodeGraphEditor.pGraphOutputNode);
-            // can't rely ohn this func to delete links cause its wrong and crashes
+            // can't rely on this func to delete links cause its wrong and crashes
             sNodeGraphEditor.overrideNodeInputSlots(sNodeGraphEditor.pGraphOutputNode, inputsString.c_str());
         }
         
@@ -617,7 +617,6 @@ namespace Falcor
         std::unordered_set<std::string> nodeConnected;
         std::unordered_map<std::string, uint32_t> previousGuiNodeIDs;
         std::unordered_set<uint32_t> existingIDs;
-        std::unordered_map<uint32_t, std::string> indexToNodeName;
 
         for (const auto& currentRenderPassUI : mRenderPassUI)
         {
@@ -630,11 +629,6 @@ namespace Falcor
 
         mRenderPassUI.clear();
         mInputPinStringToLinkID.clear();
-
-        for (const auto& nameToIndex : mRenderGraphRef.mNameToIndex)
-        {
-            indexToNodeName.insert(std::make_pair(nameToIndex.second, nameToIndex.first));
-        }
 
         // build information for displaying graph
         for (const auto& nameToIndex : mRenderGraphRef.mNameToIndex)
@@ -663,9 +657,9 @@ namespace Falcor
                 nodeIndex++;
             }
 
-            auto passData =
-                RenderGraphEditor::sGetRenderPassData[mRenderGraphRef.mNodeData[nameToIndex.second]->getTypeName()]
-                (mRenderGraphRef.mNodeData[nameToIndex.second].get());
+            // clear and rebuild reflection for each pass. 
+            renderPassUI.mReflection = RenderPassReflection();
+            mRenderGraphRef.mNodeData[nameToIndex.second].pPass->reflect(renderPassUI.mReflection);
 
             // test to see if we have hit a graph output
             std::unordered_set<std::string> passGraphOutputs;
@@ -685,13 +679,18 @@ namespace Falcor
                 auto currentEdge = mRenderGraphRef.mEdgeData[edgeID];
                 uint32_t pinIndex = 0;
 
-                while (passData.inputs[pinIndex].name != currentEdge.dstField)
+                while (renderPassUI.mReflection.getField(inputPinIndex).getName() != currentEdge.dstField)
                 {
-                    pinIndex++;
+                    inputPinIndex++;
                 }
 
+                auto pSourceNode = mRenderGraphRef.mNodeData.find( mRenderGraphRef.mpGraph->getEdge(edgeID)->getSourceNode());
+                assert(pSourceNode != mRenderGraphRef.mNodeData.end());
+
+                
+                renderPassUI.addUIPin(currentEdge.dstField, pinIndex, true, currentEdge.srcField, pSourceNode->second.nodeName);
+
                 mOutputToInputPins[currentEdge.srcField].push_back(std::make_pair(pinIndex, renderPassUI.mGuiNodeID));
-                renderPassUI.addUIPin(currentEdge.dstField, pinIndex, true, currentEdge.srcField, indexToNodeName[mRenderGraphRef.mpGraph->getEdge(edgeID)->getSourceNode()]);
                 std::string pinString = nameToIndex.first + "." + currentEdge.dstField;
                 nodeConnected.insert(pinString);
                 mInputPinStringToLinkID.insert(std::make_pair(pinString, edgeID));
@@ -702,41 +701,45 @@ namespace Falcor
             {
                 uint32_t edgeID = pCurrentPass->getOutgoingEdge(i);
                 auto currentEdge = mRenderGraphRef.mEdgeData[edgeID];
-                uint32_t pinIndex = 0;
                 bool isGraphOutput = passGraphOutputs.find(currentEdge.srcField) != passGraphOutputs.end();
+                uint32_t pinIndex = 0;
 
-                while (passData.outputs[pinIndex].name != currentEdge.srcField)
+                while (renderPassUI.mReflection.getField(outputPinIndex).getName() != currentEdge.srcField)
                 {
-                    pinIndex++;
+                    outputPinIndex++;
                 }
+                
+                auto pDestNode = mRenderGraphRef.mNodeData.find(mRenderGraphRef.mpGraph->getEdge(edgeID)->getSourceNode());
+                assert(pDestNode != mRenderGraphRef.mNodeData.end());
 
-                renderPassUI.addUIPin(currentEdge.srcField, pinIndex, false, currentEdge.dstField, indexToNodeName[mRenderGraphRef.mpGraph->getEdge(edgeID)->getDestNode()], isGraphOutput);
+                renderPassUI.addUIPin(currentEdge.srcField, pinIndex, false, currentEdge.dstField, pDestNode->second.nodeName, isGraphOutput);
                 nodeConnected.insert(nameToIndex.first + "." + currentEdge.srcField);
             }
 
             // Now we know which nodes are connected within the graph and not
 
-            for (const auto& inputNode : passData.inputs)
+            for (uint32_t i = 0; i < renderPassUI.mReflection.getFieldCount(); ++i)
             {
-                if (nodeConnected.find(nameToIndex.first + "." + inputNode.name) == nodeConnected.end())
+                const auto& currentField = renderPassUI.mReflection.getField(i);
+
+                if (currentField.getType() == RenderPassReflection::Field::Type::Input)
                 {
-                    renderPassUI.addUIPin(inputNode.name, inputPinIndex++, true, "");
+                    if (nodeConnected.find(nameToIndex.first + "." + currentField.getName()) == nodeConnected.end())
+                    {
+                        renderPassUI.addUIPin(currentField.getName(), inputPinIndex++, true, "");
+                    }
                 }
-
-                // add the details description for each pin
-
+                else
+                {
+                    if (nodeConnected.find(nameToIndex.first + "." + currentField.getName()) == nodeConnected.end())
+                    {
+                        bool isGraphOutput = passGraphOutputs.find(currentField.getName()) != passGraphOutputs.end();
+                        renderPassUI.addUIPin(currentField.getName(), outputPinIndex++, false, "", "", isGraphOutput);
+                    }
+                }
+                
             }
 
-            for (const auto& outputNode : passData.outputs)
-            {
-                if (nodeConnected.find(nameToIndex.first + "." + outputNode.name) == nodeConnected.end())
-                {
-                    bool isGraphOutput = passGraphOutputs.find(outputNode.name) != passGraphOutputs.end();
-                    renderPassUI.addUIPin(outputNode.name, outputPinIndex++, false, "", "", isGraphOutput);
-                }
-
-                // add the details description for each pin
-            }
             mRenderPassUI.emplace(std::make_pair(nameToIndex.first, std::move(renderPassUI)));
         }
     }

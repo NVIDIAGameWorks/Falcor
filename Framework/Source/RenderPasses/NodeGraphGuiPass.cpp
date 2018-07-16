@@ -33,30 +33,17 @@ namespace Falcor
     static std::string kColor = "color";
     static std::string kDepth = "depth";
 
-    static NodeGraphGuiPass::PassData createRenderPassData()
+    void NodeGraphGuiPass::reflect(RenderPassReflection& reflector) const
     {
-        RenderPass::PassData data;
-        RenderPass::PassData::Field output;
-        output.bindFlags = Resource::BindFlags::RenderTarget;
-        output.name = kColor;
-        output.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
-        data.outputs.push_back(output);
-
-        output.name = kDepth;
-        output.format = ResourceFormat::D32Float;
-        output.bindFlags = Resource::BindFlags::DepthStencil;
-        data.outputs.push_back(output);
-
-        return data;
+        reflector.addOutput(kColor).setFormat(ResourceFormat::RGBA16Float);
+        reflector.addOutput(kDepth).setFormat(ResourceFormat::R16Float);
     }
 
-    const NodeGraphGuiPass::PassData NodeGraphGuiPass::kRenderPassData = createRenderPassData();
-
-    NodeGraphGuiPass::SharedPtr NodeGraphGuiPass::create()
+    NodeGraphGuiPass::SharedPtr NodeGraphGuiPass::create(uint32_t width, uint32_t height)
     {
         try
         {
-            return SharedPtr(new NodeGraphGuiPass);
+            return SharedPtr(new NodeGraphGuiPass(width, height));
         }
         catch (const std::exception&)
         {
@@ -64,73 +51,122 @@ namespace Falcor
         }
     }
 
-    NodeGraphGuiPass::NodeGraphGuiPass() : RenderPass("NodeGraphGuiPass", nullptr)
+    NodeGraphGuiPass::NodeGraphGuiPass(uint32_t width, uint32_t height) : RenderPass("NodeGraphGuiPass"), mSmHeight(height), mSmWidth(width)
     {
-        mpState = GraphicsState::create();
-        mpFbo = Fbo::create();
     }
 
-    bool NodeGraphGuiPass::isValid(std::string& log)
+
+    void NodeGraphGuiPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        bool b = true;
-        const auto& pColor = mpFbo->getColorTexture(0).get();
+        const auto& pOutput = pRenderData->getTexture(kColor)->getRTV();
 
-        if (!pColor)
-        {
-            log += "NodeGraphGuiPass must have a color texture attached\n";
-            b = false;
-        }
+        pContext->clearRtv(pOutput.get(), mClearColor);
+    }
+    
+    void NodeGraphGuiPass::renderUI(Gui* pGui)
+    {
 
-        if (mpFbo->checkStatus() == false)
-        {
-            log += "NodeGraphGuiPass FBO is invalid, probably incorrect dimensions";
-            b = false;
-        }
-
-        return b;
     }
 
-    bool NodeGraphGuiPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        logError("NodeGraphGuiPass::setInput() - trying to set `" + name + "` but this render-pass requires no inputs");
-        return false;
-    }
 
-    bool NodeGraphGuiPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        if (!mpFbo)
-        {
-            logError("NodeGraphGuiPass::setOutput() - please call onResizeSwapChain() before setting an input");
-            return false;
-        }
-
-        if (name == kColor)
-        {
-            Texture::SharedPtr pColor = std::dynamic_pointer_cast<Texture>(pResource);
-            mpFbo->attachColorTarget(pColor, 0);
-        }
-        else if (name == kDepth)
-        {
-            Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
-            mpFbo->attachDepthStencilTarget(pDepth, 0);
-        }
-        else
-        {
-            logError("NodeGraphGuiPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-            return false;
-        }
-
-        return true;
-    }
-
-    void NodeGraphGuiPass::execute(RenderContext* pContext)
-    {
-        pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0);
-        // draw the imgui stuff now
-    }
-
-    void NodeGraphGuiPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
-    {
-        pGui->addRgbaColor("Clear color", mClearColor);
-    }
+//     static NodeGraphGuiPass::PassData createRenderPassData()
+//     {
+//         RenderPass::PassData data;
+//         RenderPass::PassData::Field output;
+//         output.bindFlags = Resource::BindFlags::RenderTarget;
+//         output.name = kColor;
+//         output.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
+//         data.outputs.push_back(output);
+// 
+//         output.name = kDepth;
+//         output.format = ResourceFormat::D32Float;
+//         output.bindFlags = Resource::BindFlags::DepthStencil;
+//         data.outputs.push_back(output);
+// 
+//         return data;
+//     }
+// 
+//     const NodeGraphGuiPass::PassData NodeGraphGuiPass::kRenderPassData = createRenderPassData();
+// 
+//     NodeGraphGuiPass::SharedPtr NodeGraphGuiPass::create()
+//     {
+//         try
+//         {
+//             return SharedPtr(new NodeGraphGuiPass);
+//         }
+//         catch (const std::exception&)
+//         {
+//             return nullptr;
+//         }
+//     }
+// 
+//     NodeGraphGuiPass::NodeGraphGuiPass() : RenderPass("NodeGraphGuiPass", nullptr)
+//     {
+//         mpState = GraphicsState::create();
+//         mpFbo = Fbo::create();
+//     }
+// 
+//     bool NodeGraphGuiPass::isValid(std::string& log)
+//     {
+//         bool b = true;
+//         const auto& pColor = mpFbo->getColorTexture(0).get();
+// 
+//         if (!pColor)
+//         {
+//             log += "NodeGraphGuiPass must have a color texture attached\n";
+//             b = false;
+//         }
+// 
+//         if (mpFbo->checkStatus() == false)
+//         {
+//             log += "NodeGraphGuiPass FBO is invalid, probably incorrect dimensions";
+//             b = false;
+//         }
+// 
+//         return b;
+//     }
+// 
+//     bool NodeGraphGuiPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+//     {
+//         logError("NodeGraphGuiPass::setInput() - trying to set `" + name + "` but this render-pass requires no inputs");
+//         return false;
+//     }
+// 
+//     bool NodeGraphGuiPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
+//     {
+//         if (!mpFbo)
+//         {
+//             logError("NodeGraphGuiPass::setOutput() - please call onResizeSwapChain() before setting an input");
+//             return false;
+//         }
+// 
+//         if (name == kColor)
+//         {
+//             Texture::SharedPtr pColor = std::dynamic_pointer_cast<Texture>(pResource);
+//             mpFbo->attachColorTarget(pColor, 0);
+//         }
+//         else if (name == kDepth)
+//         {
+//             Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
+//             mpFbo->attachDepthStencilTarget(pDepth, 0);
+//         }
+//         else
+//         {
+//             logError("NodeGraphGuiPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
+//             return false;
+//         }
+// 
+//         return true;
+//     }
+// 
+//     void NodeGraphGuiPass::execute(RenderContext* pContext)
+//     {
+//         pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0);
+//         // draw the imgui stuff now
+//     }
+// 
+//     void NodeGraphGuiPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+//     {
+//         pGui->addRgbaColor("Clear color", mClearColor);
+//     }
 }

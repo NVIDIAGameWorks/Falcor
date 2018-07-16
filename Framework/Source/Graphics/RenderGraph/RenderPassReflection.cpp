@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,25 +25,38 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Graphics/RenderGraph/RenderPass.h"
-#include "API/Texture.h"
+#include "Framework.h"
+#include "RenderPassReflection.h"
 
 namespace Falcor
 {
-    class BlitPass : public RenderPass, inherit_shared_from_this<RenderPass, BlitPass>
+    const ReflectionResourceType::SharedPtr RenderPassReflection::Field::kpTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
+
+    RenderPassReflection::Field::Field(const std::string& name, Type type) : mName(name), mType(type)
     {
-    public:
-        using SharedPtr = std::shared_ptr<BlitPass>;
+        mBindFlags = Resource::BindFlags::None;
+        if (is_set(type, Type::Input)) mBindFlags |= Resource::BindFlags::ShaderResource;
+        if (is_set(type, Type::Output)) mBindFlags |= Resource::BindFlags::RenderTarget;
+    }
 
-        /** Create a new object
-        */
-        static SharedPtr create();
+    RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, Field::Type type)
+    {
+        mFields.push_back(Field(name, type));
+        return mFields.back();
+    }
 
-        virtual void reflect(RenderPassReflection& reflector) const override;
-        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
-    private:
-        BlitPass();
-        void initRenderPassData();
-    };
+    RenderPassReflection::Field& RenderPassReflection::addInput(const std::string& name)
+    {
+        return addField(name, Field::Type::Input);
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::addOutput(const std::string& name)
+    {
+        return addField(name, Field::Type::Output);
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::addInputOutput(const std::string& name)
+    {
+        return addField(name, Field::Type::Input | Field::Type::Output);
+    }
 }

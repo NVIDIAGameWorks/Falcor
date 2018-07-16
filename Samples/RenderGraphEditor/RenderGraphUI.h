@@ -31,6 +31,7 @@
 #include "Utils/GuiProperty.h"
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/RenderGraph/RenderPassReflection.h"
 
 #include <array>
 
@@ -58,9 +59,9 @@ namespace Falcor
 
     private:
 
-        std::unordered_map<std::string, PinUIData> mPins; // should this be a map? this probably can be a vec
+        std::unordered_map<std::string, PinUIData> mPins;
         uint32_t mGuiNodeID;
-
+        RenderPassReflection mReflection;
     };
 
     class RenderGraphUI

@@ -33,23 +33,11 @@ namespace Falcor
     static std::string kDepth = "depth";
     static std::string kShadowMap = "shadowMap";
 
-    void ShadowPass::createRenderPassData()
+    void ShadowPass::reflect(RenderPassReflection& reflector) const
     {
-        mRenderPassData = PassData();
-
-        RenderPass::PassData::Field shadowMap;
-        shadowMap.bindFlags = Resource::BindFlags::RenderTarget;
-        shadowMap.name = kShadowMap;
-        shadowMap.pType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D, ReflectionResourceType::StructuredType::Invalid, ReflectionResourceType::ReturnType::Unknown, ReflectionResourceType::ShaderAccess::Read);
-        shadowMap.format = ResourceFormat::RGBA16Float;
-        mRenderPassData.outputs.push_back(shadowMap);
-
-        RenderPass::PassData::Field depth;
-        depth.name = kDepth;
-        depth.required = false;
-        depth.format = ResourceFormat::Unknown;
-        depth.bindFlags = Resource::BindFlags::ShaderResource;
-        mRenderPassData.inputs.push_back(depth);
+        const auto& pTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
+        reflector.addOutput(kShadowMap).setFormat(ResourceFormat::RGBA16Float);
+        reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional);
     }
 
     ShadowPass::SharedPtr ShadowPass::create(uint32_t width, uint32_t height)
@@ -64,88 +52,25 @@ namespace Falcor
         }
     }
 
-    ShadowPass::ShadowPass(uint32_t width, uint32_t height) : RenderPass("ShadowPass", nullptr), mSmHeight(height), mSmWidth(width)
+    ShadowPass::ShadowPass(uint32_t width, uint32_t height) : RenderPass("ShadowMapPass"), mSmHeight(height), mSmWidth(width)
     {
-        createRenderPassData();
     }
 
-    bool ShadowPass::isValid(std::string& log)
-    {
-        bool b = true;
-        if (mpShadowMap == nullptr)
+    void ShadowPass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    {   
+        const auto& pDepthIn = pRenderData->getTexture(kDepth);
+        const auto& pShadowMap = pRenderData->getTexture(kShadowMap);
+
+        if(!mpCsm)
         {
-            log += "ShadowPass must have an shadow-map output attached\n";
-            b = false;
+            mpCsm = CascadedShadowMaps::create(mSmWidth, mSmHeight, pShadowMap->getWidth(), pShadowMap->getHeight(), mpScene->getLight(0), mpScene);
         }
 
-        return b;
+        auto& pVisBuffer = mpCsm->generateVisibilityBuffer(pContext, mpScene->getActiveCamera().get(), pDepthIn);
+        pContext->blit(pVisBuffer->getSRV(0, 1, 0, 1), pShadowMap->getRTV(0, 0, 1));
     }
 
-    bool ShadowPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        if (name == kDepth)
-        {
-            Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
-            mpDepthIn = pDepth;
-        }
-        else
-        {
-            logError("SceneRenderPass::setInput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-            return false;
-        }
-        return false;
-    }
-
-    bool ShadowPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        if (name == kShadowMap)
-        {
-            mpShadowMap = std::dynamic_pointer_cast<Texture>(pResource);
-            if (mpShadowMap)
-            {
-                mpCsm = CascadedShadowMaps::create(mSmWidth, mSmHeight, mpShadowMap->getWidth(), mpShadowMap->getHeight(), mpScene->getLight(0), mpScene);
-            }
-            else
-            {
-                mpCsm = nullptr;
-            }
-        }
-        else
-        {
-            logError("SceneRenderPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-            return false;
-        }
-
-        return true;
-    }
-
-    void ShadowPass::execute(RenderContext* pContext)
-    {
-        assert(mpCsm);
-        assert(mpShadowMap);
-        auto& pVisBuffer = mpCsm->generateVisibilityBuffer(pContext, mpScene->getActiveCamera().get(), mpDepthIn);
-        pContext->blit(pVisBuffer->getSRV(0, 1, 0, 1), mpShadowMap->getRTV(0, 0, 1));
-    }
-
-    std::shared_ptr<Resource> ShadowPass::getOutput(const std::string& name) const
-    {
-        if (name == kShadowMap)
-        {
-            return mpShadowMap;
-        }        
-        else return RenderPass::getOutput(name);
-    }
-
-    std::shared_ptr<Resource> ShadowPass::getInput(const std::string& name) const
-    {
-        if (name == kDepth)
-        {
-            return mpDepthIn;
-        }
-        else return RenderPass::getInput(name);
-    }
-
-    void ShadowPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
+    void ShadowPass::renderUI(Gui* pGui)
     {
         if (mpCsm) mpCsm->renderUi(pGui, nullptr);
     }

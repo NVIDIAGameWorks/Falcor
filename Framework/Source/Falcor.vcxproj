@@ -420,7 +420,8 @@
     <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPass.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
@@ -516,7 +517,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="RenderPasses\BlitPass.cpp" />
-    <ClCompile Include="RenderPasses\GraphEditorGuiPass.cpp" />
     <ClCompile Include="RenderPasses\DepthPass.cpp" />
     <ClCompile Include="RenderPasses\NodeGraphGuiPass.cpp" />
     <ClCompile Include="RenderPasses\SceneRenderPass.cpp" />
@@ -559,6 +559,7 @@
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
+    <ClCompile Include="Utils\VariablesBufferUI.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoderUI.cpp" />
@@ -988,6 +989,8 @@
     <ClInclude Include="Graphics\Program\ShaderLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
+    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
@@ -1106,7 +1109,6 @@
     <ClInclude Include="RenderPasses\DepthPass.h" />
     <ClInclude Include="RenderPasses\SceneRenderPass.h" />
     <ClInclude Include="RenderPasses\ShadowPass.h" />
-    <ClInclude Include="RenderPasses\GraphEditorGuiPass.h" />
     <ClInclude Include="RenderPasses\NodeGraphGuiPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
@@ -1142,6 +1144,7 @@
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
     <ClInclude Include="Utils\UserInput.h" />
+    <ClInclude Include="Utils\VariablesBufferUI.h" />
     <ClInclude Include="Utils\Video\VideoDecoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoderUI.h" />

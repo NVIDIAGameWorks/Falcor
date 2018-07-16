@@ -41,26 +41,24 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<NodeGraphGuiPass>;
 
-        /** Create a new object
-        */
-        static SharedPtr create();
+        NodeGraphGuiPass(uint32_t width = 2048, uint32_t height = 2048);
 
-        virtual void execute(RenderContext* pContext) override;
-        virtual bool isValid(std::string& log) override;
-        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual PassData getRenderPassData() const override { return kRenderPassData; }
+        // virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+        static SharedPtr create(uint32_t width = 2048, uint32_t height = 2048);
 
-        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+
+        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+        virtual void renderUI(Gui* pGui) override;
+
 
         // should move this. used for drawing imgui externally into the node's fbo
         const Fbo::SharedPtr& getFbo() const { return mpFbo; }
 
     private:
-        NodeGraphGuiPass();
 
-        static const PassData kRenderPassData;
-
+        // static const PassData kRenderPassData;
+        uint32_t mSmHeight, mSmWidth;
         Fbo::SharedPtr mpFbo; // just  need color buffer
         GraphicsState::SharedPtr mpState;
         GraphicsVars::SharedPtr mpVars;

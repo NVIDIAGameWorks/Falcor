@@ -26,34 +26,32 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "RenderPass.h"
+#include "ResourceCache.h"
 
 #include "Utils\Gui.h"
 
 namespace Falcor
 {
-    RenderPass::RenderPass(const std::string& name, std::shared_ptr<Scene> pScene, RenderDataChangedFunc pDataChangedCB) : mName(name), mpRenderDataChangedCallback(pDataChangedCB)
+    ResourceCache::SharedPtr ResourceCache::create()
     {
-        setScene(pScene);
+        return SharedPtr(new ResourceCache());
     }
 
-    RenderPass::~RenderPass() = default;
-
-    void RenderPass::setScene(const std::shared_ptr<Scene>& pScene)
+    const std::shared_ptr<Resource>& ResourceCache::getResource(const std::string& name) const
     {
-        mpScene = pScene;
-        sceneChangedCB();
+        static const std::shared_ptr<Resource> pNull;
+        const auto& resIt = mResources.find(name);
+        if (resIt == mResources.end())
+        {
+            logWarning("Can't find a resource named `" + name + "` in the resource deposit-box");
+            return pNull;
+        }
+
+        return resIt->second;
     }
 
-    std::shared_ptr<Resource> RenderPass::getOutput(const std::string& name) const
+    void ResourceCache::addResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        logWarning(mName + " doesn't have an output resource called `" + name + "`");
-        return nullptr;
-    }
-
-    std::shared_ptr<Resource> RenderPass::getInput(const std::string& name) const
-    {
-        logWarning(mName + " doesn't have an input resource called `" + name + "`");
-        return nullptr;
+        mResources[name] = pResource;
     }
 }

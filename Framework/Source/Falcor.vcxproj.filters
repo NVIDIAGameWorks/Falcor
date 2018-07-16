@@ -535,9 +535,6 @@
     <ClCompile Include="Effects\FXAA\FXAA.cpp">
       <Filter>Effects\FXAA</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderPass.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
@@ -547,21 +544,23 @@
     <ClCompile Include="RenderPasses\BlitPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\GraphEditorGuiPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
     <ClCompile Include="RenderPasses\DepthPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
     <ClCompile Include="RenderPasses\ShadowPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\NodeGraphGuiPass.cpp">
-      <Filter>RenderPasses</Filter>
+    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\GuiProperty.cpp">
+    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPasses\NodeGraphGuiPass.cpp" />
+    <ClCompile Include="Utils\GuiProperty.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1732,14 +1731,10 @@
     <ClInclude Include="RenderPasses\BlitPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\GraphEditorGuiPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderPasses\NodeGraphGuiPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\GuiProperty.h">
     <ClInclude Include="Utils\DirectedGraph.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\VariablesBufferUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h" />
@@ -1749,6 +1744,14 @@
     <ClInclude Include="RenderPasses\ShadowPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\NodeGraphGuiPass.h" />
+    <ClInclude Include="Utils\GuiProperty.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

@@ -28,11 +28,13 @@
 #pragma once
 #include "RenderPass.h"
 #include "Utils/DirectedGraph.h"
+#include "ResourceCache.h"
 
 namespace Falcor
 {
     class Scene;
     class Texture;
+    class Fbo;
 
     class RenderGraph
     {
@@ -92,12 +94,12 @@ namespace Falcor
             Calling this function will automatically mark the output as one of the graph's outputs (even if called with nullptr)
         */
         bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
-
+        
         /** Get an output resource. The name has the format `renderPassName.resourceName`.
-            This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
+        This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
         */
         const std::shared_ptr<Resource> getOutput(const std::string& name);
-        
+
         /** Mark a render-pass output as the graph's output. If the graph has no outputs it is invalid.
             The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs.
             If the user didn't set the output resource using `setOutput()`, the graph will automatically allocate it
@@ -111,7 +113,7 @@ namespace Falcor
 
         /** Call this when the swap-chain was resized
         */
-        void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height);
+        void onResizeSwapChain(const Fbo* pTargetFbo);
 
         /** Get the attached scene
         */
@@ -119,7 +121,8 @@ namespace Falcor
 
         friend class RenderGraphUI;
         friend class RenderGraphLoader;
-
+		
+        void autoGenerateEdges() {};
     private:
         RenderGraph();
         static const uint32_t kInvalidIndex = -1;
@@ -140,7 +143,13 @@ namespace Falcor
 
         DirectedGraph::SharedPtr mpGraph;
         std::unordered_map<uint32_t, EdgeData> mEdgeData;
-        std::unordered_map<uint32_t, RenderPass::SharedPtr> mNodeData;
+
+        struct NodeData
+        {
+            std::string nodeName;
+            RenderPass::SharedPtr pPass;
+        };
+        std::unordered_map<uint32_t, NodeData> mNodeData;
 
         struct GraphOut
         {
@@ -150,7 +159,7 @@ namespace Falcor
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
-        std::shared_ptr<Texture> createTextureForPass(const RenderPass::PassData::Field& field);
+        std::shared_ptr<Texture> createTextureForPass(const RenderPassReflection::Field& field);
 
         struct  
         {
@@ -161,5 +170,6 @@ namespace Falcor
         } mSwapChainData;
 
         std::vector<uint32_t> mExecutionList;
+        ResourceCache::SharedPtr mpResourceDepositBox;
     };
 }

@@ -197,6 +197,7 @@ private:
 
     enum class AAMode
     {
+        None,
         MSAA,
         TAA,
         FXAA

@@ -116,7 +116,6 @@
 #include "RenderPasses/SceneRenderPass.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/NodeGraphGuiPass.h"
-#include "RenderPasses/GraphEditorGuiPass.h"
 #include "RenderPasses/DepthPass.h"
 #include "RenderPasses/ShadowPass.h"
 
@@ -172,5 +171,5 @@
 #define FALCOR_MAJOR_VERSION 3
 #define FALCOR_MINOR_VERSION 0
 #define FALCOR_DEV_STAGE ""
-#define FALCOR_DEV_REVISION 4
-#define FALCOR_VERSION_STRING "3.0.4"
+#define FALCOR_DEV_REVISION 5
+#define FALCOR_VERSION_STRING "3.0.5"

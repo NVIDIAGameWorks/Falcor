@@ -101,14 +101,14 @@ namespace Falcor
         std::unordered_map<uint16_t, std::string> linkIDToSrcPassName;
         std::string currentCommand;
 
-        // do a prepass to map all of the outgoing connections to the names of the passes
+        // do a pre-pass to map all of the outgoing connections to the names of the passes
         for (const auto& nameToIndex : renderGraph.mNameToIndex)
         {
             auto pCurrentPass = renderGraph.mpGraph->getNode(nameToIndex.second);
 
             // add all of the add render pass commands here
             currentCommand = kAddRenderPassCommand + " " + nameToIndex.first + " " 
-                + renderGraph.mNodeData[nameToIndex.second]->getTypeName() + "\n";
+                + renderGraph.mNodeData[nameToIndex.second].pPass->getName() + "\n";
             scriptFile.write(currentCommand.data(), currentCommand.size());
 
             for (uint32_t i = 0; i < pCurrentPass->getOutgoingEdgeCount(); ++i)

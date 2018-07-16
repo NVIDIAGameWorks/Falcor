@@ -40,23 +40,15 @@ namespace Falcor
         */
         static SharedPtr create(uint32_t width = 2048, uint32_t height = 2048);
 
-        virtual void execute(RenderContext* pContext) override;
-        virtual bool isValid(std::string& log) override;
-        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual PassData getRenderPassData() const override { return mRenderPassData; }
-        virtual std::shared_ptr<Resource> getOutput(const std::string& name) const override;
-        virtual std::shared_ptr<Resource> getInput(const std::string& name) const override;
-
-        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+        virtual void renderUI(Gui* pGui) override;
+        virtual void setScene(const Scene::SharedPtr& pScene) { mpScene = pScene; }
     private:
         ShadowPass(uint32_t width, uint32_t height);
         uint32_t mSmWidth;
         uint32_t mSmHeight;
-        PassData mRenderPassData;
-        std::shared_ptr<Texture> mpShadowMap;
-        std::shared_ptr<Texture> mpDepthIn;
         CascadedShadowMaps::UniquePtr mpCsm;
-        void createRenderPassData();
+        Scene::SharedPtr mpScene;
     };
 }

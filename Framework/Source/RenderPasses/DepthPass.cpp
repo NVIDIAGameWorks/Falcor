@@ -30,23 +30,7 @@
 
 namespace Falcor
 {
-    static std::string kDepth = "depth";
-
-    static DepthPass::PassData createRenderPassData()
-    {
-        RenderPass::PassData data;
-
-        RenderPass::PassData::Field depth;
-        depth.name = kDepth;
-        depth.required = true;
-        depth.format = ResourceFormat::D32Float;
-        depth.bindFlags = Resource::BindFlags::DepthStencil;
-        data.outputs.push_back(depth);
-
-        return data;
-    }
-
-    const DepthPass::PassData DepthPass::kRenderPassData = createRenderPassData();
+    static const std::string& kDepth = "depth";
 
     DepthPass::SharedPtr DepthPass::create()
     {
@@ -60,7 +44,7 @@ namespace Falcor
         }
     }
 
-    DepthPass::DepthPass() : RenderPass("DepthPass", nullptr)
+    DepthPass::DepthPass() : RenderPass("DepthPass")
     {
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create({});
         mpState = GraphicsState::create();
@@ -72,92 +56,37 @@ namespace Falcor
         dsDesc.setDepthTest(false).setStencilTest(false);
     }
 
-    void DepthPass::sceneChangedCB()
+    void DepthPass::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(ResourceFormat::D32Float);
+    }
+
+    void DepthPass::setScene(const Scene::SharedPtr& pScene)
     {
         mpSceneRenderer = nullptr;
-        if (mpScene)
+        if (pScene)
         {
-            mpSceneRenderer = SceneRenderer::create(mpScene);
+            mpSceneRenderer = SceneRenderer::create(pScene);
         }
     }
 
-    bool DepthPass::isValid(std::string& log)
+    void DepthPass::execute(RenderContext* pContext, const RenderData* pData)
     {
-        bool b = true;
-        if (mpSceneRenderer == nullptr)
+        if(mpSceneRenderer)
         {
-            log += "DepthPass must have a scene attached to it\n";
-            b = false;
-        }
-
-        const auto& pDepth = mpFbo->getDepthStencilTexture().get();
-        if (!pDepth)
-        {
-            log += "DepthPass must have a depth texture attached\n";
-            b = false;
-        }
-
-        if (mpFbo->checkStatus() == false)
-        {
-            log += "DepthPass FBO is invalid";
-            b = false;
-        }
-
-        return b;
-    }
-
-    bool DepthPass::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        logError("DepthPass::setInput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-        return false;
-    }
-
-    bool DepthPass::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        if (!mpFbo)
-        {
-            logError("DepthPass::setOutput() - please call onResizeSwapChain() before setting an input");
-            return false;
-        }
-
-        if (name == kDepth)
-        {
-            Texture::SharedPtr pDepth = std::dynamic_pointer_cast<Texture>(pResource);
+            const auto& pDepth = pData->getTexture(kDepth);
             mpFbo->attachDepthStencilTarget(pDepth);
-        }
-        else
-        {
-            logError("DepthPass::setOutput() - trying to set `" + name + "` which doesn't exist in this render-pass");
-            return false;
-        }
 
-        return true;
-    }
-
-    void DepthPass::execute(RenderContext* pContext)
-    {
-        pContext->clearDsv(mpFbo->getDepthStencilView().get(), 1, 0);
-        if (mpSceneRenderer)
-        {
-            mpState->setFbo(mpFbo);
-            pContext->pushGraphicsState(mpState);
-            pContext->pushGraphicsVars(mpVars);
-            mpSceneRenderer->renderScene(pContext);
-            pContext->popGraphicsState();
-            pContext->popGraphicsVars();
+            pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
+            if (mpSceneRenderer)
+            {
+                mpState->setFbo(mpFbo);
+                pContext->pushGraphicsState(mpState);
+                pContext->pushGraphicsVars(mpVars);
+                mpSceneRenderer->renderScene(pContext);
+                pContext->popGraphicsState();
+                pContext->popGraphicsVars();
+            }
         }
-    }
-
-    std::shared_ptr<Resource> DepthPass::getOutput(const std::string& name) const
-    {
-        if (name == kDepth)
-        {
-            return mpFbo->getDepthStencilTexture();
-        }        
-        else return RenderPass::getOutput(name);
-    }
-    
-    void DepthPass::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
-    {
     }
 }

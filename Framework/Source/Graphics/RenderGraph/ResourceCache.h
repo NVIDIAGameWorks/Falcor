@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,39 +26,23 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/RenderGraph/RenderPass.h"
-#include "Graphics/Program/GraphicsProgram.h"
-#include "Graphics/Program/ProgramVars.h"
-#include "Graphics/GraphicsState.h"
-#include "Graphics/Scene/SceneRenderer.h"
 
 namespace Falcor
 {
-    class GraphEditorGuiPass : public RenderPass, inherit_shared_from_this<RenderPass, GraphEditorGuiPass>
+    class RenderPass;
+    class Resource;
+    
+    class ResourceCache : public std::enable_shared_from_this<ResourceCache>
     {
     public:
-        using SharedPtr = std::shared_ptr<GraphEditorGuiPass>;
-
-        /** Create a new object
-        */
+        using SharedPtr = std::shared_ptr<ResourceCache>;
         static SharedPtr create();
 
-        virtual void execute(RenderContext* pContext) override;
-        virtual bool isValid(std::string& log) override;
-        virtual bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource) override;
-        virtual PassData getRenderPassData() const override { return kRenderPassData; }
-        virtual void sceneChangedCB() override;
-
+        void addResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
+        const std::shared_ptr<Resource>& getResource(const std::string& name) const;
     private:
-        GraphEditorGuiPass();
-        void recreateShaders();
-
-        static const PassData kRenderPassData;
-        Fbo::SharedPtr mpFbo;
-        GraphicsState::SharedPtr mpState;
-        GraphicsVars::SharedPtr mpVars;
-        SceneRenderer::SharedPtr mpSceneRenderer;
-        vec4 mClearColor = vec4(1);
+        ResourceCache() = default;
+        std::unordered_map<std::string, std::shared_ptr<Resource>> mResources;
     };
+
 }
