@@ -47,7 +47,7 @@ namespace Falcor
     RenderGraph::RenderGraph()
     {
         mpGraph = DirectedGraph::create();
-        mpResourceDepositBox = ResourceCache::create();
+        mpResourcesCache = ResourceCache::create();
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
@@ -291,15 +291,17 @@ namespace Falcor
                 return false;
             };
 
-            // Set all the pass' outputs to null
+            // Set all the pass' outputs to either null or allocate a resource if it is required
             for (size_t i = 0 ; i < passReflection.getFieldCount() ; i++)
             {
                 const auto& field = passReflection.getField(i);
-                if(is_set(field.getType(), RenderPassReflection::Field::Type::Output))
+                if(is_set(field.getType(), RenderPassReflection::Field::Type::Input) == false)
                 {
                     if (isGraphOutput(nodeIndex, field.getName()) == false)
                     {
-                        mpResourceDepositBox->addResource(mNodeData[nodeIndex].nodeName + '.' + field.getName(), nullptr);
+                        bool allocate = is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false;
+                        Texture::SharedPtr pTex = allocate ? createTextureForPass(field) : nullptr;
+                        mpResourcesCache->addResource(mNodeData[nodeIndex].nodeName + '.' + field.getName(), pTex);
                     }
                 }
             }
@@ -324,17 +326,17 @@ namespace Falcor
                         std::string srcResourceName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
 
                         Texture::SharedPtr pTexture;
-                        pTexture = std::dynamic_pointer_cast<Texture>(mpResourceDepositBox->getResource(srcResourceName));
+                        pTexture = std::dynamic_pointer_cast<Texture>(mpResourcesCache->getResource(srcResourceName));
 
                         if(pTexture == nullptr)
                         {
                             pTexture = createTextureForPass(field);
-                            mpResourceDepositBox->addResource(srcResourceName, pTexture);
+                            mpResourcesCache->addResource(srcResourceName, pTexture);
                         }
 
                         // Connect it to the dst pass
                         const auto& dstPass = mNodeData[pEdge->getDestNode()].nodeName;
-                        mpResourceDepositBox->addResource(dstPass + '.' + edgeData.dstField, pTexture);
+                        mpResourcesCache->addResource(dstPass + '.' + edgeData.dstField, pTexture);
                         break;
                     }
                 }
@@ -366,7 +368,7 @@ namespace Falcor
 
         for (const auto& node : mExecutionList)
         {
-            RenderData renderData(mNodeData[node].nodeName, nullptr, mpResourceDepositBox);
+            RenderData renderData(mNodeData[node].nodeName, nullptr, mpResourcesCache);
             mNodeData[node].pPass->execute(pContext, &renderData);
         }
     }
@@ -376,7 +378,7 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<true>(this, name, "RenderGraph::setInput()", strPair);
         if (pPass == nullptr) return false;
-        mpResourceDepositBox->addResource(name, pResource);
+        mpResourcesCache->addResource(name, pResource);
         return true;
     }
 
@@ -385,7 +387,7 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
         if (pPass == nullptr) return false;
-        mpResourceDepositBox->addResource(name, pResource);
+        mpResourcesCache->addResource(name, pResource);
         markGraphOutput(name);
         return true;
     }
@@ -437,7 +439,7 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
         
-        return pPass ? mpResourceDepositBox->getResource(name) : pNull;
+        return pPass ? mpResourcesCache->getResource(name) : pNull;
     }
     
     void RenderGraph::onResizeSwapChain(const Fbo* pTargetFbo)

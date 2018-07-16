@@ -41,7 +41,7 @@ namespace Falcor
         const auto& resIt = mResources.find(name);
         if (resIt == mResources.end())
         {
-            logWarning("Can't find a resource named `" + name + "` in the resource deposit-box");
+            logWarning("Can't find a resource named `" + name + "` in the resource cache");
             return pNull;
         }
 

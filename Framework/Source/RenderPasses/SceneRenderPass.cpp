@@ -32,6 +32,8 @@ namespace Falcor
 {
     static std::string kDepth = "depth";
     static std::string kColor = "color";
+    static std::string kMotionVecs = "motionVecs";
+    static std::string kNormals = "normals";
     static std::string kVisBuffer = "visibilityBuffer";
 
     SceneRenderPass::SharedPtr SceneRenderPass::create()
@@ -52,6 +54,10 @@ namespace Falcor
         mpState = GraphicsState::create();
         mpState->setProgram(pProgram);
         mpVars = GraphicsVars::create(pProgram->getReflector());
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        mpVars->setSampler("gSampler", Sampler::create(samplerDesc));
+
         mpFbo = Fbo::create();
         
         DepthStencilState::Desc dsDesc;
@@ -62,8 +68,10 @@ namespace Falcor
     void SceneRenderPass::reflect(RenderPassReflection& reflector) const
     {
         reflector.addInput(kVisBuffer);
-        reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional).setBindFlags(Resource::BindFlags::DepthStencil);
-        reflector.addOutput(kColor);
+        reflector.addInputOutput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional).setBindFlags(Resource::BindFlags::DepthStencil);
+        reflector.addInputOutput(kColor);
+        reflector.addOutput(kNormals).setFormat(ResourceFormat::RGBA8Unorm);
+        reflector.addOutput(kMotionVecs).setFormat(ResourceFormat::RG16Float);
     }
 
     void SceneRenderPass::setScene(const Scene::SharedPtr& pScene)
@@ -101,10 +109,15 @@ namespace Falcor
     {
         initDepth(pRenderData);
         mpFbo->attachColorTarget(pRenderData->getTexture(kColor), 0);
-        pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0, mClearFlags);
+        mpFbo->attachColorTarget(pRenderData->getTexture(kNormals), 1);
+        mpFbo->attachColorTarget(pRenderData->getTexture(kMotionVecs), 2);
+//        pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0, mClearFlags);
+        pContext->clearRtv(mpFbo->getRenderTargetView(1).get(), vec4(0));
+        pContext->clearRtv(mpFbo->getRenderTargetView(2).get(), vec4(0));
 
         if (mpSceneRenderer)
         {
+            mpVars["PerFrameCB"]["gRenderTargetDim"] = vec2(mpFbo->getWidth(), mpFbo->getHeight());
             mpVars->setTexture(kVisBuffer, pRenderData->getTexture(kVisBuffer));
 
             mpState->setFbo(mpFbo);

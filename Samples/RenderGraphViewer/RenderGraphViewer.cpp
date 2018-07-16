@@ -27,32 +27,18 @@
 ***************************************************************************/
 #include "RenderGraphViewer.h"
 
-const std::string gkDefaultScene = "Arcade/Arcade.fscene";
+const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load Scene"))
     {
         std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true);
+        if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
     }
 }
 
-void RenderGraphViewer::loadScene(const std::string& filename, bool showProgressBar)
-{
-    ProgressBar::SharedPtr pBar;
-    if (showProgressBar)
-    {
-        pBar = ProgressBar::create("Loading Scene", 100);
-    }
-
-    mpGraph->setScene(nullptr);
-    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
-    mpGraph->setScene(pScene);
-    mCamControl.attachCamera(pScene->getCamera(0));
-}
-
-void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::string& filename, SampleCallbacks* pSample)
 {
     mpGraph = RenderGraph::create();
     mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
@@ -60,21 +46,57 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     mpGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
     mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
 
+    // Add the skybox
+    Scene::UserVariable var = pScene->getUserVariable("sky_box");
+    assert(var.type == Scene::UserVariable::Type::String);
+    std::string skyBox = getDirectoryFromFile(filename) + '/' + var.str;
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+    mpGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");
+
     mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
     mpGraph->addEdge("DepthPrePass.depth", "SceneRenderer.depth");
+    mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
+
+    mpGraph->addEdge("SkyBox.target", "SceneRenderer.color");
     mpGraph->addEdge("ShadowPass.shadowMap", "SceneRenderer.visibilityBuffer");
+
     mpGraph->addEdge("SceneRenderer.color", "BlitPass.src");
 
-    loadScene(gkDefaultScene, false);
+    mpGraph->setScene(pScene);
+    mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+}
+
+void RenderGraphViewer::loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample)
+{
+    ProgressBar::SharedPtr pBar;
+    if (showProgressBar)
+    {
+        pBar = ProgressBar::create("Loading Scene", 100);
+    }
+
+    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
+    mCamControl.attachCamera(pScene->getCamera(0));
+    pScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
+    createGraph(pScene, filename, pSample);
+}
+
+void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+{
+    loadScene(gkDefaultScene, false, pSample);
 }
 
 void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
-
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    mpGraph->execute(pRenderContext.get());
+
+    if (mpGraph)
+    {
+        mpGraph->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
+        mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
+        mpGraph->execute(pRenderContext.get());
+    }
 }
 
 bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
@@ -89,10 +111,10 @@ bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 
 void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    auto& pColor = Texture::create2D(width, height, pSample->getCurrentFbo()->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
-    auto& pDepth = Texture::create2D(width, height, ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
-    mpGraph->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
-    mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+    if(mpGraph)
+    {
+        mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+    }
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

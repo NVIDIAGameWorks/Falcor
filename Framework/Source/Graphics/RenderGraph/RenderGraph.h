@@ -160,6 +160,6 @@ namespace Falcor
         } mSwapChainData;
 
         std::vector<uint32_t> mExecutionList;
-        ResourceCache::SharedPtr mpResourceDepositBox;
+        ResourceCache::SharedPtr mpResourcesCache;
     };
 }
