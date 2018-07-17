@@ -41,7 +41,7 @@ Texture::SharedPtr createTmpTex(uint32_t width, uint32_t height)
     return Texture::create2D(width, height, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
 }
 
-void ComputeShader::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
+void ComputeShader::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext)
 {
     mpProg = ComputeProgram::createFromFile("compute.hlsl", "main");
     mpState = ComputeState::create();
@@ -70,7 +70,7 @@ void ComputeShader::loadImageFromFile(SampleCallbacks* pSample, std::string file
     pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
 }
 
-void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
+void ComputeShader::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext, const Fbo::SharedPtr& pTargetFbo)
 {
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
 

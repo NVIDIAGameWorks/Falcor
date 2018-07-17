@@ -230,7 +230,7 @@ void ModelViewer::renderModelUI(Gui* pGui)
     }
 }
 
-void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void ModelViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpCamera = Camera::create();
     mpProgram = GraphicsProgram::createFromFile("ModelViewer.ps.hlsl", "", "main");
@@ -277,7 +277,7 @@ void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRen
     loadModelFromFile(skDefaultModel, pRenderContext->getGraphicsState()->getFbo()->getColorTexture(0)->getFormat());
 }
 
-void ModelViewer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void ModelViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

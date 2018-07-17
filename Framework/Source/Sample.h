@@ -98,7 +98,7 @@ namespace Falcor
         void resizeSwapChain(uint32_t width, uint32_t height) override;
         bool isKeyPressed(const KeyboardEvent::Key& key) override;
         float getFrameRate() override { return mFrameRate.getAverageFrameTime(); }
-        float getLastFrameTime() override { return mFrameRate.getLastFrameTime();  }
+        float getLastFrameTime() override { return mFrameRate.getLastFrameTime(); }
         uint64_t getFrameID() override { return mFrameRate.getFrameCount(); }
         void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = vec2(1)) override;
         std::string getFpsMsg() override;

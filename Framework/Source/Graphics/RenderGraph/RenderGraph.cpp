@@ -66,7 +66,7 @@ namespace Falcor
         }
     }
 
-    bool RenderGraph::addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
+    uint32_t RenderGraph::addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
     {
         assert(pPass);
         if (getPassIndex(passName) != kInvalidIndex)
@@ -167,7 +167,7 @@ namespace Falcor
         return pPass;
     }
 
-    bool RenderGraph::addEdge(const std::string& src, const std::string& dst)
+    uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst)
     {
         EdgeData newEdge;
         str_pair srcPair, dstPair;
@@ -183,7 +183,7 @@ namespace Falcor
         // Check that the dst field is not already initialized
         const DirectedGraph::Node* pNode = mpGraph->getNode(dstIndex);
 
-        for (uint32_t e = 0 ; e < pNode->getOutgoingEdgeCount() ; e++)
+        for (uint32_t e = 0 ; e < pNode->getIncomingEdgeCount() ; e++)
         {
             const auto& edgeData = mEdgeData[pNode->getIncomingEdge(e)];
             if (edgeData.dstField == newEdge.dstField)
@@ -204,6 +204,42 @@ namespace Falcor
         mEdgeData[e] = newEdge;
         mRecompile = true;
         return true;
+    }
+
+    void RenderGraph::removeEdge(const std::string& src, const std::string& dst)
+    {
+        str_pair srcPair, dstPair;
+        const auto& pSrc = getRenderPassAndNamePair<false>(this, src, "Invalid src string in RenderGraph::addEdge()", srcPair);
+        const auto& pDst = getRenderPassAndNamePair<true>(this, dst, "Invalid dst string in RenderGraph::addEdge()", dstPair);
+
+        if (pSrc == nullptr || pDst == nullptr)
+        {
+            logWarning("Unable to remove edge. Input or output node not found.");
+            return;
+        }
+
+        uint32_t srcIndex = mNameToIndex[srcPair.first];
+
+        const DirectedGraph::Node* pSrcNode = mpGraph->getNode(srcIndex);
+
+        for (uint32_t i = 0; i < pSrcNode->getOutgoingEdgeCount(); ++i)
+        {
+            uint32_t edgeID = pSrcNode->getOutgoingEdge(i);
+            if (mEdgeData[edgeID].srcField == srcPair.second)
+            {
+                if (mEdgeData[edgeID].dstField == dstPair.second)
+                {
+                    removeEdge(edgeID);
+                    return;
+                }
+            }
+        }
+    }
+
+    void RenderGraph::removeEdge(uint32_t edgeID)
+    {
+        mEdgeData.erase(edgeID);
+        mpGraph->removeEdge(edgeID);
     }
 
     bool RenderGraph::isValid(std::string& log) const
@@ -279,6 +315,7 @@ namespace Falcor
         for (const auto& nodeIndex : mExecutionList)
         {
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
+            assert(pNode);
             RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
             RenderPassReflection passReflection;
             pSrcPass->reflect(passReflection);

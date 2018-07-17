@@ -42,7 +42,7 @@ void SkyBoxRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpCamera = Camera::create();
     mpCameraController = SixDoFCameraController::SharedPtr(new SixDoFCameraController);
@@ -63,7 +63,7 @@ void SkyBoxRenderer::loadTexture()
     }
 }
 
-void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

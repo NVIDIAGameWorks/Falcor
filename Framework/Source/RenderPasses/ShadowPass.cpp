@@ -52,7 +52,7 @@ namespace Falcor
         }
     }
 
-    ShadowPass::ShadowPass(uint32_t width, uint32_t height) : RenderPass("ShadowMapPass"), mSmHeight(height), mSmWidth(width)
+    ShadowPass::ShadowPass(uint32_t width, uint32_t height) : RenderPass("ShadowPass"), mSmHeight(height), mSmWidth(width)
     {
     }
 

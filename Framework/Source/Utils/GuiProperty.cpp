@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,35 +25,30 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Falcor.h"
-#include "SampleTest.h"
+#include "GuiProperty.h"
 
-using namespace Falcor;
-
-class SkyBoxRenderer : public Renderer
+namespace Falcor
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    static uint32_t sUniqueIndexOffset = 0;
 
-private:
-    void loadTexture();
+    GuiProperty::GuiProperty(const std::string& labelString)
+        : mLabel(labelString)
+    {
+        mUniqueID = sUniqueIndexOffset++;
+    }
     
-    Camera::SharedPtr mpCamera;
-    SixDoFCameraController::SharedPtr mpCameraController;
-    SkyBox::UniquePtr mpSkybox;  
-    Sampler::SharedPtr mpTriLinearSampler;
+    StringProperty::StringProperty(const std::string& labelString, const std::vector<std::string>& startingVal, const std::string& confirmationString)
+        : GuiProperty(labelString), mData(startingVal), mConfirmationStr(confirmationString)
+    {
+    }
 
-    static const std::string skDefaultSkyBoxTexture;
+    bool StringProperty::renderUI(Gui* pGui)
+    {
+        for (auto& string : mData)
+        {
+            pGui->addTextBox(mLabel.c_str(), string);
+        }
 
-    //Testing
-    void onInitializeTesting(SampleCallbacks* pSample) override;
-    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
-    std::vector<uint32_t> mChangeViewFrames;
-    std::vector<uint32_t>::iterator mChangeViewIt;
-};
+        return pGui->addButton(mConfirmationStr.c_str());
+    }
+}

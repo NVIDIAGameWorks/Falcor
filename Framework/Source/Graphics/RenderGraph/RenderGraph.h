@@ -51,7 +51,7 @@ namespace Falcor
 
         /** Add a render-pass. The name has to be unique, otherwise the call will be ignored
         */
-        bool addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
+        uint32_t addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
 
         /** Get a render-pass
         */
@@ -65,11 +65,18 @@ namespace Falcor
             The render passes must be different, the graph must be a DAG.
             The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `setRenderPass()` and the `resourceName` is the resource-name as described by the render-pass object
         */
-        bool addEdge(const std::string& src, const std::string& dst);
+        uint32_t addEdge(const std::string& src, const std::string& dst);
+
+        /** Remove an edge
+         */
+        void removeEdge(const std::string& src, const std::string& dst);
+        /** Remove an edge
+         */
+        void removeEdge(uint32_t edgeID);
 
         /** Check if the graph is ready for execution (all passes inputs/outputs have been initialized correctly, no loops in the graph)
         */
-        bool isValid(std::string& log = std::string()) const;
+        bool isValid(std::string& log) const;
 
         /** Execute the graph
         */
@@ -110,8 +117,9 @@ namespace Falcor
         */
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
-        /** Attempt to automatically generate edges
-        */
+        friend class RenderGraphUI;
+        friend class RenderGraphLoader;
+		
         void autoGenerateEdges() {};
 
         /** Render the UI

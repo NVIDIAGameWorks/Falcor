@@ -62,7 +62,7 @@ void AmbientOcclusion::resetCamera()
     }
 }
 
-void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void AmbientOcclusion::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     //
     // "GBuffer" rendering
@@ -110,7 +110,7 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr
     resetCamera();
 }
 
-void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     mpCamera->setDepthRange(mNearZ, mFarZ);
     mCameraController.update();

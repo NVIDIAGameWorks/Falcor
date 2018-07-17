@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,34 +26,26 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
-#include "SampleTest.h"
+#include "Graphics/Program/ProgramReflection.h"
+#include "Utils/Gui.h"
 
-using namespace Falcor;
-
-class SkyBoxRenderer : public Renderer
+namespace Falcor
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    struct GuiProperty
+    {
+        virtual bool renderUI(Gui* pGui) = 0;
+        GuiProperty(const std::string& labelString);        
+    protected:
+        std::string mLabel;
+        std::function<void(GuiProperty*)> mCallback;
+        uint32_t mUniqueID;
+    };
 
-private:
-    void loadTexture();
-    
-    Camera::SharedPtr mpCamera;
-    SixDoFCameraController::SharedPtr mpCameraController;
-    SkyBox::UniquePtr mpSkybox;  
-    Sampler::SharedPtr mpTriLinearSampler;
-
-    static const std::string skDefaultSkyBoxTexture;
-
-    //Testing
-    void onInitializeTesting(SampleCallbacks* pSample) override;
-    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
-    std::vector<uint32_t> mChangeViewFrames;
-    std::vector<uint32_t>::iterator mChangeViewIt;
-};
+    struct StringProperty : public GuiProperty
+    {
+        virtual bool renderUI(Gui* pGui) override;
+        StringProperty(const std::string& labelString, const std::vector<std::string>& startingVal, const std::string& confirmationString = "Update");
+        std::vector<std::string> mData;
+        std::string mConfirmationStr;
+    };
+}
