@@ -26,17 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-// TODO PLEASE NO
-#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 
 #include "Falcor.h"
-
-#include "RenderGraphUI.h"
-#include "RenderGraphLoader.h"
-
 #include <vector>
-
-
+#include "RenderGraphUI.h"
 
 using namespace Falcor;
 
@@ -72,7 +65,6 @@ private:
     Fbo::SharedPtr mpGuiFBO;
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
-    RenderGraphLoader mRenderGraphLoader;
 
     size_t mCurrentGraphIndex;
 

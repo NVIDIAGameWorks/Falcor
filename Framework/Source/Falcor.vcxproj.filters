@@ -1749,6 +1749,7 @@
     <ClInclude Include="RenderPasses\SceneLightingPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\GuiProperty.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

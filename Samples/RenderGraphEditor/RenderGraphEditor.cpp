@@ -25,12 +25,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderGraphEditor.h"
-
 #include <fstream>
-
+#include "RenderGraphEditor.h"
 #include "Externals/dear_imgui/imgui.h"
 #include "Externals/dear_imgui/imgui_internal.h"
+#include "Effects/ToneMapping/ToneMapping.h"
+#include "Utils/RenderGraphLoader.h"
+
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 
@@ -48,7 +49,6 @@ RenderGraphEditor::RenderGraphEditor()
     dropdownValue.label = #renderPassType; dropdownValue.value = static_cast<int32_t>(mRenderPassTypes.size()); \
     mRenderPassTypes.push_back(dropdownValue)
 
-
     register_render_pass(SceneLightingPass);
     register_render_pass(BlitPass);
     register_render_pass(DepthPass);
@@ -57,6 +57,14 @@ RenderGraphEditor::RenderGraphEditor()
 #undef register_render_pass
 
 #define register_resource_type() 
+
+    // specialized registries
+
+    sBaseRenderCreateFuncs.insert(std::make_pair("ToneMapping", std::function<RenderPass::SharedPtr()> (
+        []() { return ToneMapping::create(ToneMapping::Operator::Aces); }) )
+    );
+    dropdownValue.label = "ToneMapping"; dropdownValue.value = static_cast<int32_t>(mRenderPassTypes.size());
+    mRenderPassTypes.push_back(dropdownValue);
 
     mNextGraphString.resize(255, 0);
     mNodeString.resize(255, 0);
@@ -310,6 +318,9 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
         loadScene(gkDefaultScene, false);
     }
     
+    mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, mpLastSample->getCurrentFbo()->getColorTexture(0));
+    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
+
     mCreatingRenderGraph = false;
 }
 
@@ -338,6 +349,8 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     mpGuiFBO->attachColorTarget(Texture::create2D(static_cast<uint32_t>(mWindowSize.x), static_cast<uint32_t>(mWindowSize.y), ResourceFormat::RGBA32Float, 1, 1 , nullptr, Resource::BindFlags::RenderTarget), 0);
 
     mpEditorGraph->setInput("BlitPass.src", mpGuiFBO->getColorTexture(0));
+
+    mpLastSample = pSample;
 
     createRenderGraph("DefaultRenderGraph", "");
 

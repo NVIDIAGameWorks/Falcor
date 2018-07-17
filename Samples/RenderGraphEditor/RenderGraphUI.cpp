@@ -25,18 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 #include "RenderGraphUI.h"
-
 #include "Utils/Gui.h"
-
-// TODO get rid of this too
-
-#include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
-
+#include "Utils/RenderGraphLoader.h"
 #include "RenderGraphEditor.h"
-#include "RenderGraphLoader.h"
-
+#include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 // TODO Don't do this
 #include "Externals/dear_imgui/imgui.h"
 #include "Externals/dear_imgui/imgui_internal.h"
