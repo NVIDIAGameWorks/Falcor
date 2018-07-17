@@ -113,7 +113,7 @@
 #include "Graphics/RenderGraph/RenderPass.h"
 
 // Render passes
-#include "RenderPasses/SceneRenderPass.h"
+#include "RenderPasses/SceneLightingPass.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
 #include "RenderPasses/ShadowPass.h"

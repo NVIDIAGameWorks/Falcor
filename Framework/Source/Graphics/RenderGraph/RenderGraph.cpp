@@ -479,10 +479,9 @@ namespace Falcor
                 if (pGui->beginGroup(pass.nodeName))
                 {
                     pass.pPass->renderUI(pGui, nullptr);
+                    pGui->endGroup();
                 }
             }
-
-            if (uiGroup) pGui->endGroup();
         }
     }
 }

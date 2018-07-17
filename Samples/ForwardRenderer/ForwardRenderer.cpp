@@ -259,7 +259,7 @@ void ForwardRenderer::initPostProcess()
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
 }
 
-void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void ForwardRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpState = GraphicsState::create();
     initPostProcess();
@@ -304,7 +304,7 @@ void ForwardRenderer::endFrame(RenderContext* pContext)
 void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     PROFILE(postProcess);    
-    mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
+    mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo);
 }
 
 void ForwardRenderer::depthPass(RenderContext* pContext)
@@ -476,7 +476,7 @@ void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
     }
 }
 
-void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     if (mpSceneRenderer)
     {
