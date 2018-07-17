@@ -24,13 +24,13 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
+    <ClCompile Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
     <ClCompile Include="RenderGraphEditor.cpp" />
     <ClCompile Include="RenderGraphLoader.cpp" />
     <ClCompile Include="RenderGraphUI.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Framework\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
+    <ClInclude Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
     <ClInclude Include="RenderGraphEditor.h" />
     <ClInclude Include="RenderGraphLoader.h" />
     <ClInclude Include="RenderGraphUI.h" />

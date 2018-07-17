@@ -304,7 +304,7 @@ void ForwardRenderer::endFrame(RenderContext* pContext)
 void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
     PROFILE(postProcess);    
-    mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
+    mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo);
 }
 
 void ForwardRenderer::depthPass(RenderContext* pContext)

@@ -31,20 +31,23 @@ __import Shading;
 __import Helpers;
 __import BRDF;
 
-cbuffer PerFrameCB
+cbuffer PerFrameCB : register(b0)
 {
     float2 gRenderTargetDim;
 };
 
 SamplerState gSampler;
 Texture2D visibilityBuffer;
-VertexOut vsData;
 
-VertexOut vs(VertexIn vIn)
+VsOut vs(VertexIn vIn)
 {
-    VertexOut vsOut;
+    VsOut vsOut;
     vsOut = defaultVS(vIn);
+
+#ifdef _OUTPUT_MOTION_VECTORS
     vsOut.prevPosH.xy += vsOut.prevPosH.w * 2 * float2(gCamera.jitterX, gCamera.jitterY);
+#endif
+
     return vsOut;
 }
 
@@ -52,10 +55,12 @@ struct PsOut
 {
     float4 color : SV_TARGET0;
     float4 normal : SV_TARGET1;
+#ifdef _OUTPUT_MOTION_VECTORS
     float2 motion : SV_TARGET2;
+#endif
 };
 
-PsOut ps(VertexOut vOut, float4 pixelCrd : SV_POSITION)
+PsOut ps(VsOut vOut, float4 pixelCrd : SV_POSITION)
 {
     PsOut psOut;
 
@@ -66,19 +71,26 @@ PsOut ps(VertexOut vOut, float4 pixelCrd : SV_POSITION)
     for (uint l = 0; l < gLightsCount; l++)
     {
         float shadowFactor = 1;
-       if (l == 0)
+#ifdef _ENABLE_SHADOWS
+        if (l == 0)
         {
             shadowFactor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).r;
             shadowFactor *= sd.opacity;
         }
+#endif
         finalColor.rgb += evalMaterial(sd, gLights[l], shadowFactor).color.rgb;
     }
 
     // Add the emissive component
     finalColor.rgb += sd.emissive;
-    finalColor.a = sd.opacity;
-    finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
 
+#ifdef _ENABLE_TRANSPARENCY
+    finalColor.a = sd.opacity;
+#endif
+
+#ifdef _ENABLE_REFLECTIONS
+    finalColor.rgb += evalMaterial(sd, gLightProbe).color.rgb;
+#endif
 
     // Add light-map
     finalColor.rgb += sd.diffuse * sd.lightMap.rgb;
@@ -86,7 +98,9 @@ PsOut ps(VertexOut vOut, float4 pixelCrd : SV_POSITION)
     psOut.color = finalColor;
     psOut.normal = float4(vOut.normalW * 0.5f + 0.5f, 1.0f);
 
+#ifdef _OUTPUT_MOTION_VECTORS
     psOut.motion = calcMotionVector(pixelCrd.xy, vOut.prevPosH, gRenderTargetDim);
+#endif
 
 #if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
     float3 cascadeColor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).gba;

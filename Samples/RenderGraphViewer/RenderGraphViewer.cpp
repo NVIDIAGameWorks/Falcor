@@ -43,8 +43,12 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::string& filename, SampleCallbacks* pSample)
 {
     mpGraph = RenderGraph::create();
+
+    SceneLightingPass::Desc lightDesc;
+    lightDesc.setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
+    mpGraph->addRenderPass(SceneLightingPass::create(lightDesc), "LightingPass");
+
     mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
-    mpGraph->addRenderPass(SceneRenderPass::create(), "SceneRenderer");
     mpGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
     mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
     mpGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
@@ -58,13 +62,13 @@ void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::s
     mpGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");
 
     mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
-    mpGraph->addEdge("DepthPrePass.depth", "SceneRenderer.depth");
+    mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
     mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
 
-    mpGraph->addEdge("SkyBox.target", "SceneRenderer.color");
-    mpGraph->addEdge("ShadowPass.shadowMap", "SceneRenderer.visibilityBuffer");
+    mpGraph->addEdge("SkyBox.target", "LightingPass.color");
+    mpGraph->addEdge("ShadowPass.shadowMap", "LightingPass.visibilityBuffer");
 
-    mpGraph->addEdge("SceneRenderer.color", "ToneMapping.src");
+    mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
     mpGraph->addEdge("ToneMapping.dst", "BlitPass.src");
 
     mpGraph->setScene(pScene);

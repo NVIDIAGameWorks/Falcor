@@ -561,12 +561,12 @@ namespace Falcor
                 {
                     if (!currentPinUI.mConnectedNodeName.size())
                     {
-                        return;
+                        break;
                     }
 
                     std::pair<uint32_t, uint32_t> inputIDs{ currentPinUI.mGuiPinID, currentPassUI.mGuiNodeID };
                     const auto& connectedNodeUI = mRenderPassUI[currentPinUI.mConnectedNodeName];
-                    uint32_t inputPinID = connectedNodeUI.mNameToIndexInput.find(currentPinUI.mConnectedPinName)->second;
+                    uint32_t inputPinID = connectedNodeUI.mNameToIndexOutput.find(currentPinUI.mConnectedPinName)->second;
 
                     if (!sNodeGraphEditor.isLinkPresent(spIDToNode[connectedNodeUI.mGuiNodeID], inputPinID,
                         spIDToNode[inputIDs.second],inputIDs.first ))
@@ -580,7 +580,7 @@ namespace Falcor
                         
                         sRebuildDisplayData = true;
 
-                        return;
+                        break;
                     }
                 }
             }
@@ -615,7 +615,7 @@ namespace Falcor
 
         RenderGraphNode* pGraphOutputNode = static_cast<RenderGraphNode*>(sNodeGraphEditor.pGraphOutputNode);
         glm::vec2 graphOutputNodePos = pGraphOutputNode->getPos();
-        if (graphOutputNodePos.x < newNodePosition.x)
+        if (graphOutputNodePos.x <= newNodePosition.x)
         {
             pGraphOutputNode->setPos({ newNodePosition.x + 512.0f, newNodePosition.y });
         }
@@ -678,8 +678,6 @@ namespace Falcor
 
             // test to see if we have hit a graph output
             std::unordered_set<std::string> passGraphOutputs;
-            uint32_t inputPinIndex = 0;
-            uint32_t outputPinIndex = 0;
 
             for (const auto& output : mRenderGraphRef.mOutputs)
             {
@@ -688,6 +686,9 @@ namespace Falcor
                     passGraphOutputs.insert(output.field);
                 }
             }
+
+            uint32_t inputPinIndex = 0;
+            uint32_t outputPinIndex = 0;
 
             // add all of the incoming connections
             for (uint32_t i = 0; i < pCurrentPass->getIncomingEdgeCount(); ++i)

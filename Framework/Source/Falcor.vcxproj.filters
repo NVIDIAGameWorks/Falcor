@@ -538,9 +538,6 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\SceneRenderPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
     <ClCompile Include="RenderPasses\BlitPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
@@ -558,6 +555,9 @@
     </ClCompile>
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPasses\SceneLightingPass.cpp">
+      <Filter>RenderPasses</Filter>
     </ClCompile>
     <ClCompile Include="Utils\GuiProperty.cpp" />
   </ItemGroup>
@@ -1724,9 +1724,6 @@
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\SceneRenderPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
     <ClInclude Include="RenderPasses\BlitPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
@@ -1749,7 +1746,9 @@
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\GuiProperty.h" />
+    <ClInclude Include="RenderPasses\SceneLightingPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

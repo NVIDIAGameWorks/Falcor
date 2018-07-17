@@ -1,4 +1,0 @@
-RemoveGraphOutput SceneRenderer.color
-RemoveGraphOutput BlitPass.dst
-RemoveGraphOutput ShadowPass.shadowMap
-

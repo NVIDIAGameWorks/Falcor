@@ -49,7 +49,7 @@ RenderGraphEditor::RenderGraphEditor()
     mRenderPassTypes.push_back(dropdownValue)
 
 
-    register_render_pass(SceneRenderPass);
+    register_render_pass(SceneLightingPass);
     register_render_pass(BlitPass);
     register_render_pass(DepthPass);
     register_render_pass(ShadowPass);

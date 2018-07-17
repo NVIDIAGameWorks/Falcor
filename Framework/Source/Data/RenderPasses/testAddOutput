@@ -1,2 +1,0 @@
-AddGraphOutput SceneRenderer.color
-AddGraphOutput ShadowPass.shadowMap
