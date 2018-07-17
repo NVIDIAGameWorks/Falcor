@@ -252,6 +252,8 @@ namespace Falcor
 #include "Utils/Platform/OS.h"
 #include "Utils/Profiler.h"
 
+#define deprecate(_ver_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_))
+
 #if (_ENABLE_NVAPI == true)
 #include "nvapi.h"
 #pragma comment(lib, "nvapi64.lib")

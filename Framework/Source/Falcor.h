@@ -115,7 +115,6 @@
 // Render passes
 #include "RenderPasses/SceneRenderPass.h"
 #include "RenderPasses/BlitPass.h"
-#include "RenderPasses/NodeGraphGuiPass.h"
 #include "RenderPasses/DepthPass.h"
 #include "RenderPasses/ShadowPass.h"
 

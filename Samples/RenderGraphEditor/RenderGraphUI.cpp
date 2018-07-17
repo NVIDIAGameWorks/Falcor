@@ -232,10 +232,16 @@ namespace Falcor
         // update the ui to reflect the connections. This data is used for removal
         if (createdEdge)
         {
-            spCurrentGraphUI->mRenderPassUI[srcPass].mPins[srcField].mConnectedPinName = dstField;
-            spCurrentGraphUI->mRenderPassUI[srcPass].mPins[srcField].mConnectedNodeName = dstPass;
-            spCurrentGraphUI->mRenderPassUI[dstPass].mPins[dstField].mConnectedPinName = srcField;
-            spCurrentGraphUI->mRenderPassUI[dstPass].mPins[dstField].mConnectedNodeName = srcPass;
+            RenderPassUI& srcRenderGraphUI = spCurrentGraphUI->mRenderPassUI[srcPass];
+            RenderPassUI& dstRenderGraphUI = spCurrentGraphUI->mRenderPassUI[dstPass];
+
+            uint32_t srcPinIndex = srcRenderGraphUI.mNameToIndexOutput[srcField];
+            uint32_t dstPinIndex = srcRenderGraphUI.mNameToIndexInput[dstField];
+
+            srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedPinName = dstField;
+            srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedNodeName = dstPass;
+            dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedPinName = srcField;
+            dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedNodeName = srcPass;
 
             sRebuildDisplayData = true;
         }
@@ -295,13 +301,23 @@ namespace Falcor
 
     void RenderPassUI::addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName, const std::string& connectedNodeName, bool isGraphOutput)
     {
-        PinUIData pinUIData;
+        auto& pinsRef = isInput ? mInputPins : mOutputPins;
+        auto& nameToIndexMapRef = isInput ? mNameToIndexInput : mNameToIndexOutput;
+
+        if (pinsRef.size() <= guiPinID)
+        {
+            pinsRef.resize(guiPinID + 1);
+        }
+
+        PinUIData& pinUIData = pinsRef[guiPinID];
+        pinUIData.mPinName = fieldName;
         pinUIData.mGuiPinID = guiPinID;
         pinUIData.mIsInput = isInput;
         pinUIData.mConnectedPinName = connectedPinName;
         pinUIData.mConnectedNodeName = connectedNodeName;
         pinUIData.mIsGraphOutput = isGraphOutput;
-        mPins.insert(std::make_pair(fieldName, pinUIData));
+
+        nameToIndexMapRef.insert(std::make_pair(fieldName, static_cast<uint32_t>(guiPinID) ));
     }
 
     void RenderPassUI::renderUI(Gui* pGui)
@@ -437,23 +453,21 @@ namespace Falcor
             gOutputsString.clear();
             gInputsString.clear();
 
-            for (const auto& currentPin : currentPassUI.mPins)
+            for (const auto& currentPinUI : currentPassUI.mInputPins)
             {
                 // Connect the graph nodes for each of the edges
                 // need to iterate in here in order to use the right indices
-                const RenderPassUI::PinUIData& currentPinUI = currentPin.second;
-                const std::string& currentPinName = currentPin.first;
-                bool isInput = currentPinUI.mIsInput;
+                const std::string& currentPinName = currentPinUI.mPinName;
 
-                // draw label for input pin
-                if (isInput)
-                {
-                    gInputsString += gInputsString.size() ? (";" + currentPinName) : currentPinName;
-                }
-                else
-                {
-                    gOutputsString += gOutputsString.size() ? (";" + currentPinName) : currentPinName;
-                }
+                gInputsString += gInputsString.size() ? (";" + currentPinName) : currentPinName;
+                
+            }
+
+            for (const auto& currentPinUI : currentPassUI.mOutputPins)
+            {
+                const std::string& currentPinName = currentPinUI.mPinName;
+
+                gOutputsString += gOutputsString.size() ? (";" + currentPinName) : currentPinName;
             }
 
             gName = currentPass.first;
@@ -487,61 +501,63 @@ namespace Falcor
         {
             auto& currentPassUI = currentPass.second;
 
-            for (const auto& currentPin : currentPassUI.mPins)
+            for (const auto& currentPinUI : currentPassUI.mOutputPins)
             {
-                const RenderPassUI::PinUIData& currentPinUI = currentPin.second;
-                const std::string& currentPinName = currentPin.first;
-                bool isInput = currentPinUI.mIsInput;
+                const std::string& currentPinName = currentPinUI.mPinName;
 
-                // draw label for input pin
-                if (!isInput)
+                if (addLinks)
                 {
-                    if (addLinks)
+                    const auto& inputPins = mOutputToInputPins.find(currentPass.first + "." + currentPinName);
+                    if (inputPins != mOutputToInputPins.end())
                     {
-                        const auto& inputPins = mOutputToInputPins.find(currentPinName);
-                        if (inputPins != mOutputToInputPins.end())
+                        for (const auto& connectedPin : (inputPins->second))
                         {
-                            for (const auto& connectedPin : (inputPins->second))
-                            {
-                                if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                    spIDToNode[connectedPin.second], connectedPin.first))
-                                {
-                                    sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                        spIDToNode[connectedPin.second], connectedPin.first);
-
-                                    static_cast<RenderGraphNode*>(spIDToNode[connectedPin.second])->mInputPinConnected[connectedPin.first] = true;
-                                    static_cast<RenderGraphNode*>(spIDToNode[currentPassUI.mGuiNodeID])->mOutputPinConnected[currentPinUI.mGuiPinID] = true;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (currentPinUI.mIsGraphOutput)
-                        {
-                            // get the input pin for the graph output node
-                            uint32_t graphOutPinID = 0;
-
-                            for (const auto& output : mRenderGraphRef.mOutputs)
-                            {
-                                if (output.field == currentPinName)
-                                {
-                                    break;
-                                }
-
-                                graphOutPinID++;
-                            }
-
                             if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                sNodeGraphEditor.pGraphOutputNode, graphOutPinID))
+                                spIDToNode[connectedPin.second], connectedPin.first))
                             {
                                 sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                    sNodeGraphEditor.pGraphOutputNode, graphOutPinID, false, ImGui::GetColorU32({ 0.0f, 1.0f, 0.0f, 0.71f }));
+                                    spIDToNode[connectedPin.second], connectedPin.first);
+
+                                static_cast<RenderGraphNode*>(spIDToNode[connectedPin.second])->mInputPinConnected[connectedPin.first] = true;
+                                static_cast<RenderGraphNode*>(spIDToNode[currentPassUI.mGuiNodeID])->mOutputPinConnected[currentPinUI.mGuiPinID] = true;
                             }
                         }
                     }
                 }
-                else if(isInput && !addLinks)
+                else
+                {
+                    if (currentPinUI.mIsGraphOutput)
+                    {
+                        // get the input pin for the graph output node
+                        uint32_t graphOutPinID = 0;
+
+                        for (const auto& output : mRenderGraphRef.mOutputs)
+                        {
+                            if (output.field == currentPinName)
+                            {
+                                break;
+                            }
+
+                            graphOutPinID++;
+                        }
+
+                        if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                            sNodeGraphEditor.pGraphOutputNode, graphOutPinID))
+                        {
+                            sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                sNodeGraphEditor.pGraphOutputNode, graphOutPinID, false, ImGui::GetColorU32({ 0.0f, 1.0f, 0.0f, 0.71f }));
+                        }
+                    }
+                }
+            }
+
+            for (const auto& currentPinUI : currentPassUI.mInputPins)
+            {
+                const std::string& currentPinName = currentPinUI.mPinName;
+                bool isInput = currentPinUI.mIsInput;
+
+                // draw label for input pin
+                if(!addLinks)
                 {
                     if (!currentPinUI.mConnectedNodeName.size())
                     {
@@ -550,7 +566,7 @@ namespace Falcor
 
                     std::pair<uint32_t, uint32_t> inputIDs{ currentPinUI.mGuiPinID, currentPassUI.mGuiNodeID };
                     const auto& connectedNodeUI = mRenderPassUI[currentPinUI.mConnectedNodeName];
-                    uint32_t inputPinID = connectedNodeUI.mPins.find(currentPinUI.mConnectedPinName)->second.mGuiPinID;
+                    uint32_t inputPinID = connectedNodeUI.mNameToIndexInput.find(currentPinUI.mConnectedPinName)->second;
 
                     if (!sNodeGraphEditor.isLinkPresent(spIDToNode[connectedNodeUI.mGuiNodeID], inputPinID,
                         spIDToNode[inputIDs.second],inputIDs.first ))
@@ -614,7 +630,8 @@ namespace Falcor
         mOutputToInputPins.clear();
 
         // set of field names that have a connection and are represented in the graph
-        std::unordered_set<std::string> nodeConnected;
+        std::unordered_set<std::string> nodeConnectedInput;
+        std::unordered_set<std::string> nodeConnectedOutput;
         std::unordered_map<std::string, uint32_t> previousGuiNodeIDs;
         std::unordered_set<uint32_t> existingIDs;
 
@@ -633,8 +650,6 @@ namespace Falcor
         // build information for displaying graph
         for (const auto& nameToIndex : mRenderGraphRef.mNameToIndex)
         {
-            uint32_t inputPinIndex = 0;
-            uint32_t outputPinIndex = 0;
             auto pCurrentPass = mRenderGraphRef.mpGraph->getNode(nameToIndex.second);
             RenderPassUI renderPassUI;
 
@@ -663,6 +678,8 @@ namespace Falcor
 
             // test to see if we have hit a graph output
             std::unordered_set<std::string> passGraphOutputs;
+            uint32_t inputPinIndex = 0;
+            uint32_t outputPinIndex = 0;
 
             for (const auto& output : mRenderGraphRef.mOutputs)
             {
@@ -678,21 +695,32 @@ namespace Falcor
                 uint32_t edgeID = pCurrentPass->getIncomingEdge(i);
                 auto currentEdge = mRenderGraphRef.mEdgeData[edgeID];
                 uint32_t pinIndex = 0;
+                bool isInput = (static_cast<uint32_t>(renderPassUI.mReflection.getField(0).getType() & RenderPassReflection::Field::Type::Input) != 0);
 
-                while (renderPassUI.mReflection.getField(inputPinIndex).getName() != currentEdge.dstField)
+                while (!isInput || renderPassUI.mReflection.getField(pinIndex).getName() != currentEdge.dstField)
                 {
-                    inputPinIndex++;
+                    if (isInput)
+                    {
+                        inputPinIndex++;
+                    }
+
+                    pinIndex++;
+                    isInput = (static_cast<uint32_t>(renderPassUI.mReflection.getField(pinIndex).getType() & RenderPassReflection::Field::Type::Input) != 0);
                 }
 
                 auto pSourceNode = mRenderGraphRef.mNodeData.find( mRenderGraphRef.mpGraph->getEdge(edgeID)->getSourceNode());
                 assert(pSourceNode != mRenderGraphRef.mNodeData.end());
 
+                renderPassUI.addUIPin(currentEdge.dstField, inputPinIndex, true, currentEdge.srcField, pSourceNode->second.nodeName);
                 
-                renderPassUI.addUIPin(currentEdge.dstField, pinIndex, true, currentEdge.srcField, pSourceNode->second.nodeName);
-
-                mOutputToInputPins[currentEdge.srcField].push_back(std::make_pair(pinIndex, renderPassUI.mGuiNodeID));
                 std::string pinString = nameToIndex.first + "." + currentEdge.dstField;
-                nodeConnected.insert(pinString);
+                
+                if (nodeConnectedInput.find(pinString) == nodeConnectedInput.end())
+                {
+                    nodeConnectedInput.insert(pinString);
+                }
+
+                mOutputToInputPins[pSourceNode->second.nodeName + "." + currentEdge.srcField].push_back(std::make_pair(inputPinIndex, renderPassUI.mGuiNodeID));
                 mInputPinStringToLinkID.insert(std::make_pair(pinString, edgeID));
             }
 
@@ -701,41 +729,63 @@ namespace Falcor
             {
                 uint32_t edgeID = pCurrentPass->getOutgoingEdge(i);
                 auto currentEdge = mRenderGraphRef.mEdgeData[edgeID];
+
+                std::string pinString = nameToIndex.first + "." + currentEdge.srcField;
+                if (nodeConnectedOutput.find(pinString) != nodeConnectedOutput.end())
+                {
+                    break;
+                }
+
                 bool isGraphOutput = passGraphOutputs.find(currentEdge.srcField) != passGraphOutputs.end();
                 uint32_t pinIndex = 0;
+                bool isOutput = (static_cast<uint32_t>(renderPassUI.mReflection.getField(0).getType() & RenderPassReflection::Field::Type::Output) != 0);
 
-                while (renderPassUI.mReflection.getField(outputPinIndex).getName() != currentEdge.srcField)
+                while (!isOutput || renderPassUI.mReflection.getField(pinIndex).getName() != currentEdge.srcField)
                 {
-                    outputPinIndex++;
+                    if (isOutput)
+                    {
+                        outputPinIndex++;
+                    }
+
+                    pinIndex++;
+                    isOutput = (static_cast<uint32_t>(renderPassUI.mReflection.getField(pinIndex).getType() & RenderPassReflection::Field::Type::Output) != 0);
                 }
                 
                 auto pDestNode = mRenderGraphRef.mNodeData.find(mRenderGraphRef.mpGraph->getEdge(edgeID)->getSourceNode());
                 assert(pDestNode != mRenderGraphRef.mNodeData.end());
 
-                renderPassUI.addUIPin(currentEdge.srcField, pinIndex, false, currentEdge.dstField, pDestNode->second.nodeName, isGraphOutput);
-                nodeConnected.insert(nameToIndex.first + "." + currentEdge.srcField);
+                renderPassUI.addUIPin(currentEdge.srcField, outputPinIndex, false, currentEdge.dstField, pDestNode->second.nodeName, isGraphOutput);
+                nodeConnectedOutput.insert(pinString);
             }
 
             // Now we know which nodes are connected within the graph and not
+
+            inputPinIndex = 0;
+            outputPinIndex = 0;
 
             for (uint32_t i = 0; i < renderPassUI.mReflection.getFieldCount(); ++i)
             {
                 const auto& currentField = renderPassUI.mReflection.getField(i);
 
-                if (currentField.getType() == RenderPassReflection::Field::Type::Input)
+                if (static_cast<uint32_t>(currentField.getType() & RenderPassReflection::Field::Type::Input) != 0)
                 {
-                    if (nodeConnected.find(nameToIndex.first + "." + currentField.getName()) == nodeConnected.end())
+                    if (nodeConnectedInput.find(nameToIndex.first + "." + currentField.getName()) == nodeConnectedInput.end())
                     {
-                        renderPassUI.addUIPin(currentField.getName(), inputPinIndex++, true, "");
+                        renderPassUI.addUIPin(currentField.getName(), inputPinIndex, true, "");
                     }
+
+                    inputPinIndex++;
                 }
-                else
+                
+                if (static_cast<uint32_t>(currentField.getType() & RenderPassReflection::Field::Type::Output) != 0)
                 {
-                    if (nodeConnected.find(nameToIndex.first + "." + currentField.getName()) == nodeConnected.end())
+                    if (nodeConnectedOutput.find(nameToIndex.first + "." + currentField.getName()) == nodeConnectedOutput.end())
                     {
                         bool isGraphOutput = passGraphOutputs.find(currentField.getName()) != passGraphOutputs.end();
-                        renderPassUI.addUIPin(currentField.getName(), outputPinIndex++, false, "", "", isGraphOutput);
+                        renderPassUI.addUIPin(currentField.getName(), outputPinIndex, false, "", "", isGraphOutput);
                     }
+
+                    outputPinIndex++;
                 }
                 
             }

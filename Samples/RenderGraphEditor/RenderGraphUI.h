@@ -44,6 +44,7 @@ namespace Falcor
 
         struct PinUIData
         {
+            std::string mPinName;
             uint32_t mGuiPinID;
             bool mIsInput;
             std::string mConnectedPinName;
@@ -59,7 +60,12 @@ namespace Falcor
 
     private:
 
-        std::unordered_map<std::string, PinUIData> mPins;
+        std::vector<PinUIData> mInputPins;
+        std::unordered_map<std::string, uint32_t> mNameToIndexInput;
+
+        std::vector<PinUIData> mOutputPins;
+        std::unordered_map<std::string, uint32_t> mNameToIndexOutput;
+
         uint32_t mGuiNodeID;
         RenderPassReflection mReflection;
     };

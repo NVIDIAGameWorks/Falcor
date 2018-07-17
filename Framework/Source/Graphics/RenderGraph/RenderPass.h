@@ -74,7 +74,7 @@ namespace Falcor
 
         /** Render the pass's UI
         */
-        virtual void renderUI(Gui* pGui) {}
+        virtual void renderUI(Gui* pGui, const char* uiGroup) {}
 
         /** Will be called whenever the backbuffer size changed
         */

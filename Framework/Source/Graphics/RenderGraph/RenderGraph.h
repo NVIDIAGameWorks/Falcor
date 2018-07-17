@@ -123,6 +123,11 @@ namespace Falcor
         friend class RenderGraphLoader;
 		
         void autoGenerateEdges() {};
+
+        /** Render the UI
+        */
+        void renderUI(Gui* pGui, const char* uiGroup);
+
     private:
         RenderGraph();
         static const uint32_t kInvalidIndex = -1;
@@ -170,6 +175,6 @@ namespace Falcor
         } mSwapChainData;
 
         std::vector<uint32_t> mExecutionList;
-        ResourceCache::SharedPtr mpResourceDepositBox;
+        ResourceCache::SharedPtr mpResourcesCache;
     };
 }

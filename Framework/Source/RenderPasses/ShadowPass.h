@@ -42,7 +42,7 @@ namespace Falcor
 
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
-        virtual void renderUI(Gui* pGui) override;
+        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
         virtual void setScene(const Scene::SharedPtr& pScene) { mpScene = pScene; }
     private:
         ShadowPass(uint32_t width, uint32_t height);
