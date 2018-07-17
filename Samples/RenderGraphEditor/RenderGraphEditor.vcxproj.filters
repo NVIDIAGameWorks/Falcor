@@ -3,13 +3,11 @@
   <ItemGroup>
     <ClCompile Include="RenderGraphEditor.cpp" />
     <ClCompile Include="RenderGraphUI.cpp" />
-    <ClCompile Include="RenderGraphLoader.cpp" />
     <ClCompile Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderGraphEditor.h" />
     <ClInclude Include="RenderGraphUI.h" />
-    <ClInclude Include="RenderGraphLoader.h" />
     <ClInclude Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
   </ItemGroup>
   <ItemGroup>
