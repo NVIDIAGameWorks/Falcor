@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "RenderGraphViewer.h"
 
-const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
+const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {

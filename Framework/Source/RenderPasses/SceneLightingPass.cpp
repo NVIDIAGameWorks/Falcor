@@ -36,11 +36,11 @@ namespace Falcor
     static std::string kNormals = "normals";
     static std::string kVisBuffer = "visibilityBuffer";
 
-    SceneLightingPass::SharedPtr SceneLightingPass::create(const Desc& d)
+    SceneLightingPass::SharedPtr SceneLightingPass::create()
     {
         try
         {
-            return SharedPtr(new SceneLightingPass(d));
+            return SharedPtr(new SceneLightingPass());
         }
         catch (const std::exception&)
         {
@@ -48,20 +48,15 @@ namespace Falcor
         }
     }
 
-    SceneLightingPass::SceneLightingPass(const Desc& d) : RenderPass("SceneLightingPass"), mDesc(d)
+    SceneLightingPass::SceneLightingPass() : RenderPass("SceneLightingPass")
     {
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/SceneLightingPass.slang", "", "ps");
-        if (mDesc.mMotionVecFormat != ResourceFormat::Unknown)
-        {
-            pProgram->addDefine("_OUTPUT_MOTION_VECTORS");
-        }
-
         mpState = GraphicsState::create();
         mpState->setProgram(pProgram);
         mpVars = GraphicsVars::create(pProgram->getReflector());
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        mpVars->setSampler("gSampler", Sampler::create(samplerDesc));
+        setSampler(Sampler::create(samplerDesc));
 
         mpFbo = Fbo::create();
         
@@ -72,28 +67,27 @@ namespace Falcor
 
     void SceneLightingPass::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addInput(kVisBuffer);
-        reflector.addInputOutput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional).setBindFlags(Resource::BindFlags::DepthStencil);
-        reflector.addInputOutput(kColor).setFormat(mDesc.mColorFormat).setSampleCount(mDesc.mSampleCount);
+        reflector.addInput(kVisBuffer).setFlags(RenderPassReflection::Field::Flags::Optional);
+        reflector.addInputOutput(kColor).setFormat(mColorFormat).setSampleCount(mSampleCount);
 
-        if(mDesc.mNormalFormat != ResourceFormat::Unknown)
+        auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth) : reflector.addOutput(kDepth);
+        depthField.setBindFlags(Resource::BindFlags::DepthStencil);
+        
+        if(mNormalMapFormat != ResourceFormat::Unknown)
         {
-            reflector.addOutput(kNormals).setFormat(mDesc.mNormalFormat).setSampleCount(mDesc.mSampleCount);
+            reflector.addOutput(kNormals).setFormat(mNormalMapFormat).setSampleCount(mSampleCount);
         }
 
-        if (mDesc.mMotionVecFormat != ResourceFormat::Unknown)
+        if (mMotionVecFormat != ResourceFormat::Unknown)
         {
-            reflector.addOutput(kMotionVecs).setFormat(mDesc.mMotionVecFormat).setSampleCount(mDesc.mSampleCount);
+            reflector.addOutput(kMotionVecs).setFormat(mMotionVecFormat).setSampleCount(mSampleCount);
         }
     }
 
     void SceneLightingPass::setScene(const Scene::SharedPtr& pScene)
     {
         mpSceneRenderer = nullptr;
-        if (pScene)
-        {
-            mpSceneRenderer = SceneRenderer::create(pScene);
-        }
+        if (pScene) mpSceneRenderer = SceneRenderer::create(pScene);
     }
 
     void SceneLightingPass::initDepth(const RenderData* pRenderData)
@@ -103,13 +97,11 @@ namespace Falcor
         if (pTexture)
         {
             mpState->setDepthStencilState(mpDsNoDepthWrite);
-            mClearFlags = FboAttachmentType::Color;
             mpFbo->attachDepthStencilTarget(pTexture);
         }
         else
         {
             mpState->setDepthStencilState(nullptr);
-            mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
             if(mpFbo->getDepthStencilTexture() == nullptr)
             {
                 auto pDepth = Texture::create2D(mpFbo->getWidth(), mpFbo->getHeight(), ResourceFormat::D32Float, 1, 1, nullptr, Resource::BindFlags::DepthStencil);
@@ -118,15 +110,25 @@ namespace Falcor
         }
     }
 
-    void SceneLightingPass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    void SceneLightingPass::initFbo(RenderContext* pContext, const RenderData* pRenderData)
     {
-        initDepth(pRenderData);
         mpFbo->attachColorTarget(pRenderData->getTexture(kColor), 0);
         mpFbo->attachColorTarget(pRenderData->getTexture(kNormals), 1);
         mpFbo->attachColorTarget(pRenderData->getTexture(kMotionVecs), 2);
-//        pContext->clearFbo(mpFbo.get(), mClearColor, 1, 0, mClearFlags);
-        pContext->clearRtv(mpFbo->getRenderTargetView(1).get(), vec4(0));
-        pContext->clearRtv(mpFbo->getRenderTargetView(2).get(), vec4(0));
+
+        for(uint32_t i = 1 ; i < 3 ; i++)
+        {
+            const auto& pRtv = mpFbo->getRenderTargetView(i).get();
+            if(pRtv) pContext->clearRtv(pRtv, vec4(0));
+        }
+
+        if (mUsePreGenDepth == false) pContext->clearDsv(pRenderData->getTexture(kDepth)->getDSV().get(), 1, 0);
+    }
+
+    void SceneLightingPass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    {
+        initDepth(pRenderData);
+        initFbo(pContext, pRenderData);
 
         if (mpSceneRenderer)
         {
@@ -146,9 +148,74 @@ namespace Falcor
     {
         if(!uiGroup || pGui->beginGroup(uiGroup))
         {
-            pGui->addRgbaColor("Clear color", mClearColor);
-
             if (uiGroup) pGui->endGroup();
         }
+    }
+
+    SceneLightingPass& SceneLightingPass::setColorFormat(ResourceFormat format)
+    {
+        if (mColorFormat != format)
+        {
+            mColorFormat = format;
+            mPassChangedCB();
+        }
+        return *this;
+    }
+
+    SceneLightingPass& SceneLightingPass::setNormalMapFormat(ResourceFormat format)
+    {
+        if (mNormalMapFormat != format)
+        {
+            mNormalMapFormat = format;
+            mPassChangedCB();
+        }
+        return *this;
+    }
+
+    SceneLightingPass& SceneLightingPass::setMotionVecFormat(ResourceFormat format)
+    {
+        if (mMotionVecFormat != format)
+        {
+            mMotionVecFormat = format;
+            mPassChangedCB();
+            if(mMotionVecFormat != ResourceFormat::Unknown)
+            {
+                mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
+            }
+            else
+            {
+                mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
+            }
+
+        }
+        return *this;
+    }
+
+    SceneLightingPass& SceneLightingPass::setSampleCount(uint32_t samples)
+    {
+        if (mSampleCount != samples)
+        {
+            mSampleCount = samples;
+            mPassChangedCB();
+        }
+        return *this;
+    }
+
+    SceneLightingPass& SceneLightingPass::usePreGeneratedDepthBuffer(bool enable)
+    {
+        if (mUsePreGenDepth != enable)
+        {
+            mUsePreGenDepth = enable;
+            mPassChangedCB();
+            mpState->setDepthStencilState(mUsePreGenDepth ? mpDsNoDepthWrite : nullptr);
+        }
+
+        return *this;
+    }
+
+    SceneLightingPass& SceneLightingPass::setSampler(const Sampler::SharedPtr& pSampler)
+    {
+        mpVars->setSampler("gSampler", pSampler);
+        return *this;
     }
 }

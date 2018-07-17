@@ -39,53 +39,55 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<SceneLightingPass>;
 
-        class Desc
-        {
-        public:
-            /** Set the color target format. This is always enabled. Setting this to ResourceFormat::Unknown will default to the swapchain format
-            */
-            Desc& setColorFormat(ResourceFormat format) { mColorFormat = format; return *this; }
-
-            /** Set the output normal map format. Setting this to ResourceFormat::Unknown will disable this output
-            */
-            Desc& setNormalMapFormat(ResourceFormat format) { mNormalFormat = format; return *this; }
-
-            /** Set the motion vectors map format. Setting this to ResourceFormat::Unknown will disable this output
-            */
-            Desc& setMotionVecFormat(ResourceFormat format) { mMotionVecFormat = format; return *this; }
-
-            /** Set the required output sample-count. 0 will use the swapchain sample count
-            */
-            Desc& setSampleCount(uint32_t samples) { mSampleCount = samples; return *this; }
-        private:
-            friend class SceneLightingPass;
-            ResourceFormat mColorFormat = ResourceFormat::Unknown;
-            ResourceFormat mNormalFormat = ResourceFormat::Unknown;
-            ResourceFormat mMotionVecFormat = ResourceFormat::Unknown;
-            uint32_t mSampleCount = 1;
-        };
-
         /** Create a new object
         */
-        static SharedPtr create(const Desc& d = {});
+        static SharedPtr create();
 
         virtual void reflect(RenderPassReflection& reflector) const;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
 
         virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
-    private:
-        SceneLightingPass(const Desc& d);
-        void initDepth(const RenderData* pRenderData);
 
-        Desc mDesc;
+        /** Set the color target format. This is always enabled
+        */
+        SceneLightingPass& setColorFormat(ResourceFormat format);
+
+        /** Set the output normal map format. Setting this to ResourceFormat::Unknown will disable this output
+        */
+        SceneLightingPass& setNormalMapFormat(ResourceFormat format);
+
+        /** Set the motion vectors map format. Setting this to ResourceFormat::Unknown will disable this output
+        */
+        SceneLightingPass& setMotionVecFormat(ResourceFormat format);
+
+        /** Set the required output sample-count. 0 will use the swapchain sample count
+        */
+        SceneLightingPass& setSampleCount(uint32_t samples);
+        
+        /** If set to true, the pass requires the user to provide a pre-rendered depth-buffer
+        */
+        SceneLightingPass& usePreGeneratedDepthBuffer(bool enable);
+
+        /** Set a sampler-state to be used during rendering. The default is tri-linear
+        */
+        SceneLightingPass& setSampler(const std::shared_ptr<Sampler>& pSampler);
+
+    private:
+        SceneLightingPass();
+        void initDepth(const RenderData* pRenderData);
+        void initFbo(RenderContext* pContext, const RenderData* pRenderData);
 
         Fbo::SharedPtr mpFbo;
         GraphicsState::SharedPtr mpState;
         DepthStencilState::SharedPtr mpDsNoDepthWrite;
-        Falcor::FboAttachmentType mClearFlags = FboAttachmentType::Color | FboAttachmentType::Depth;
         GraphicsVars::SharedPtr mpVars;
         SceneRenderer::SharedPtr mpSceneRenderer;
-        vec4 mClearColor = vec4(1);
+
+        ResourceFormat mColorFormat = ResourceFormat::Unknown;
+        ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;
+        ResourceFormat mMotionVecFormat = ResourceFormat::Unknown;
+        uint32_t mSampleCount = 0;
+        bool mUsePreGenDepth = false;
     };
 }

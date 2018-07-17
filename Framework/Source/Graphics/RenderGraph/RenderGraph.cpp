@@ -75,6 +75,9 @@ namespace Falcor
             return false;
         }
 
+        auto passChangedCB = [this]() {mRecompile = true; };
+        pPass->setPassChangedCB(passChangedCB);
+
         pPass->setScene(mpScene);
         uint32_t node = mpGraph->addNode();
         mNameToIndex[passName] = node;
