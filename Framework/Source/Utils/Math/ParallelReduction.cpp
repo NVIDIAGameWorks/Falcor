@@ -142,7 +142,6 @@ namespace Falcor
         glm::vec4 result(0);
         if(mResultData[mCurFbo].pReadTask)
         {
-            PROFILE(getData);
             auto texData = mResultData[mCurFbo].pReadTask->getData();
             mResultData[mCurFbo].pReadTask = nullptr;
 

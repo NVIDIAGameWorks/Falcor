@@ -46,11 +46,16 @@ namespace Falcor
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pData) override;
         virtual void setScene(const Scene::SharedPtr& pScene);
+        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+
+        DepthPass& setDepthBufferFormat(ResourceFormat format);
+        DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
     private:
         DepthPass();
         Fbo::SharedPtr mpFbo;
         GraphicsState::SharedPtr mpState;
         GraphicsVars::SharedPtr mpVars;
         SceneRenderer::SharedPtr mpSceneRenderer;
+        ResourceFormat mDepthFormat = ResourceFormat::D32Float;
     };
 }

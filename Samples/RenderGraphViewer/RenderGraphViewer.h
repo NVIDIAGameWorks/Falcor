@@ -44,5 +44,9 @@ private:
     RenderGraph::SharedPtr mpGraph;
     FirstPersonCameraController mCamControl;
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
-    void createGraph(const Scene::SharedPtr& pScene, const std::string& filename, SampleCallbacks* pSample);
+    void createGraph(SampleCallbacks* pSample);
+
+    Scene::SharedPtr mpScene;
+    std::string mSceneFilename;
+    bool mEnableDepthPrePass = true;
 };

@@ -208,21 +208,17 @@ namespace Falcor
 
     CascadedShadowMaps::~CascadedShadowMaps() = default;
 
-    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat) : mpLight(pLight), mpScene(pScene)
+    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, const Light::SharedConstPtr& pLight)
+        : mpLight(pLight), RenderPass("CascadedShadowMaps")
     {
         if(mpLight->getType() != LightDirectional)
         {
-            if (cascadeCount != 1)
-            {
-                logWarning("CSM with point-light only supports a single cascade (the user requested " + std::to_string(cascadeCount) + ")");
-            }
-            cascadeCount = 1;
+            mCsmData.cascadeCount = 1;
         }
-        mCsmData.cascadeCount = cascadeCount;
 
         createDepthPassResources();
         createShadowPassResources(mapWidth, mapHeight);
-        createVisibilityPassResources(visibilityBufferWidth, visibilityBufferHeight);
+        createVisibilityPassResources();
 
         mpLightCamera = Camera::create();
 
@@ -243,15 +239,23 @@ namespace Falcor
         mpGaussianBlur->setKernelWidth(5);
     }
 
-    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedConstPtr pScene, uint32_t cascadeCount, ResourceFormat shadowMapFormat)
+    CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedPtr pScene, uint32_t cascadeCount, uint32_t visMapBitsPerChannel)
     {
-        if(isDepthFormat(shadowMapFormat) == false)
-        {
-            logError(std::string("Can't create CascadedShadowMaps effect. Requested resource format ") + to_string(shadowMapFormat) + " is not a depth format", true);
-        }
+        CascadedShadowMaps* pCsm = new CascadedShadowMaps(mapWidth, mapHeight, pLight);
+        pCsm->resizeVisibilityBuffer(visibilityBufferWidth, visibilityBufferHeight);
+        pCsm->setScene(pScene);
+        pCsm->setCascadeCount(cascadeCount);
+        pCsm->setVisibilityBufferBitsPerChannel(visMapBitsPerChannel);
 
-        CascadedShadowMaps* pCsm = new CascadedShadowMaps(mapWidth, mapHeight, visibilityBufferWidth, visibilityBufferHeight, pLight, pScene, cascadeCount, shadowMapFormat);
         return CascadedShadowMaps::UniquePtr(pCsm);
+    }
+
+    CascadedShadowMaps::SharedPtr CascadedShadowMaps::create(const Light::SharedConstPtr& pLight, uint32_t shadowMapWidth, uint32_t shadowMapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, const Scene::SharedPtr& pScene, uint32_t cascadeCount, uint32_t visMapBitsPerChannel)
+    {
+#pragma warning(suppress : 4996)
+        auto pUnique = create(shadowMapWidth, shadowMapHeight, visibilityBufferWidth, visibilityBufferHeight, pLight, pScene, cascadeCount, visMapBitsPerChannel);
+        SharedPtr pShared = std::move(pUnique);
+        return pShared;
     }
 
     void CascadedShadowMaps::setSdsmReadbackLatency(uint32_t latency)
@@ -344,39 +348,50 @@ namespace Falcor
         mShadowPass.pState->setDepthStencilState(nullptr);
         mShadowPass.pState->setFbo(mShadowPass.pFbo);
         const auto& pReflector = pProg->getReflector();
-        mShadowPass.pGraphicsVars = GraphicsVars::create(pReflector);
+        mShadowPass.pGraphicsVars = GraphicsVars::create(pProg->getReflector());
+    }
 
+    void CascadedShadowMaps::setScene(const std::shared_ptr<Scene>& pScene)
+    {
+        const auto& pReflector = mShadowPass.pGraphicsVars->getReflection();
         const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
         auto alphaSampler = pDefaultBlock->getResourceBinding("alphaSampler");
         auto alphaMapCB = pDefaultBlock->getResourceBinding("AlphaMapCB");
         auto alphaMap = pDefaultBlock->getResourceBinding("alphaMap");
         mPerLightCbLoc = pDefaultBlock->getResourceBinding("PerLightCB");
 
-        mpCsmSceneRenderer = CsmSceneRenderer::create(mpScene, alphaMapCB, alphaMap, alphaSampler);
-        mpSceneRenderer = SceneRenderer::create(std::const_pointer_cast<Scene>(mpScene));
-        mpSceneRenderer->toggleMeshCulling(true);
+        mpCsmSceneRenderer = CsmSceneRenderer::create(pScene, alphaMapCB, alphaMap, alphaSampler);
+        bool cullMeshes = mpSceneRenderer ? mpSceneRenderer->isMeshCullingEnabled() : true;
+        mpSceneRenderer = SceneRenderer::create(std::const_pointer_cast<Scene>(pScene));
+        mpSceneRenderer->toggleMeshCulling(cullMeshes);
     }
 
-    void CascadedShadowMaps::createVisibilityPassResources(uint32_t width, uint32_t height)
+    void CascadedShadowMaps::createVisibilityPassResources()
     {
         mVisibilityPass.pState = GraphicsState::create();
         mVisibilityPass.pPass = FullScreenPass::create(kVisibilityPassFile);
-        resizeVisibilityBuffer(width, height);
         mVisibilityPass.pGraphicsVars = GraphicsVars::create(mVisibilityPass.pPass->getProgram()->getReflector());
         mVisibilityPass.mVisualizeCascadesOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("visualizeCascades");
+        mVisibilityPass.pState->setFbo(Fbo::create());
     }
 
     void CascadedShadowMaps::setCascadeCount(uint32_t cascadeCount)
     {
         if(mpLight->getType() != LightDirectional)
         {
-            cascadeCount = 1;
+            if (cascadeCount != 1) logWarning("CascadedShadowMaps::setCascadeCount() - cascadeCount for directional light must be 1");
+            assert(mCsmData.cascadeCount == 1);
+            return;
         }
-        mCsmData.cascadeCount = cascadeCount;
-        createShadowPassResources(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
+
+        if(mCsmData.cascadeCount != cascadeCount)
+        {
+            mCsmData.cascadeCount = cascadeCount;
+            createShadowPassResources(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
+        }
     }
 
-    void CascadedShadowMaps::renderUi(Gui* pGui, const char* uiGroup)
+    void CascadedShadowMaps::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
@@ -387,6 +402,19 @@ namespace Falcor
                     setCascadeCount(mCsmData.cascadeCount);
                 }
             }
+
+            // Shadow-map size
+            ivec2 smDims = ivec2(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
+            if (pGui->addInt2Var("Shadow-Map Size", smDims, 0, 8192)) resizeShadowMap(smDims.x, smDims.y);
+
+            // Visibility buffer bits-per channel
+            static const Gui::DropdownList visBufferBits = 
+            {
+                {8, "8"},
+                {16, "16"},
+                {32, "32"}
+            };
+            if (pGui->addDropdown("Visibility Buffer Bits-Per-Channel", visBufferBits, mVisibilityPassData.mapBitsPerChannel)) setVisibilityBufferBitsPerChannel(mVisibilityPassData.mapBitsPerChannel);
 
             // Mesh culling
             bool cullEnabled = isMeshCullingEnabled();
@@ -404,6 +432,7 @@ namespace Falcor
 
             //partition mode
             uint32_t newPartitionMode = static_cast<uint32_t>(mControls.partitionMode);
+
             if (pGui->addDropdown("Partition Mode", kPartitionList, newPartitionMode))
             {
                 mControls.partitionMode = static_cast<PartitionMode>(newPartitionMode);
@@ -729,7 +758,7 @@ namespace Falcor
         mShadowPass.pVSMTrilinearSampler = Sampler::create(samplerDesc);
     }
 
-    void CascadedShadowMaps::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer)
+    void CascadedShadowMaps::reduceDepthSdsmMinMax(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
     {
         if(pDepthBuffer == nullptr)
         {
@@ -757,7 +786,7 @@ namespace Falcor
         }
     }
 
-    vec2 CascadedShadowMaps::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr& pDepthBuffer)
+    vec2 CascadedShadowMaps::calcDistanceRange(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer)
     {
         if(mControls.useMinMaxSdsm)
         {
@@ -770,13 +799,20 @@ namespace Falcor
         }
     }
 
-    Texture::SharedPtr CascadedShadowMaps::generateVisibilityBuffer(RenderContext* pRenderCtx, const Camera* pCamera, Texture::SharedPtr pDepthBuffer)
+    Texture::SharedPtr CascadedShadowMaps::generateVisibilityBuffer(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pDepthBuffer)
+    {
+        setupVisibilityPassFbo(nullptr);
+        executeInternal(pRenderCtx, pCamera, pDepthBuffer);
+        return mVisibilityPass.pState->getFbo()->getColorTexture(0);
+    }
+
+    void CascadedShadowMaps::executeInternal(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pSceneDepthBuffer)
     {
         const glm::vec4 clearColor(0);
         pRenderCtx->clearFbo(mShadowPass.pFbo.get(), clearColor, 1, 0, FboAttachmentType::All);
 
         // Calc the bounds
-        glm::vec2 distanceRange = calcDistanceRange(pRenderCtx, pCamera, pDepthBuffer);
+        glm::vec2 distanceRange = calcDistanceRange(pRenderCtx, pCamera, pSceneDepthBuffer);
 
         GraphicsState::Viewport VP;
         VP.originX = 0;
@@ -804,7 +840,7 @@ namespace Falcor
         auto pFbo = mVisibilityPass.pState->getFbo().get();
         pRenderCtx->clearFbo(pFbo, glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
         //Update Vars
-        mVisibilityPass.pGraphicsVars->setTexture("gDepth", pDepthBuffer);
+        mVisibilityPass.pGraphicsVars->setTexture("gDepth", pSceneDepthBuffer);
         setDataIntoGraphicsVars(mVisibilityPass.pGraphicsVars, "gCsmData");
         auto pCb = mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB");            
         mVisibilityPassData.camInvViewProj = pCamera->getInvViewProjMatrix();
@@ -816,8 +852,6 @@ namespace Falcor
         mVisibilityPass.pPass->execute(pRenderCtx);
         pRenderCtx->popGraphicsVars();
         pRenderCtx->popGraphicsState();
-
-        return mVisibilityPass.pState->getFbo()->getColorTexture(0);
     }
 
     void CascadedShadowMaps::setDataIntoGraphicsVars(GraphicsVars::SharedPtr pVars, const std::string& varName)
@@ -882,16 +916,93 @@ namespace Falcor
         return mpCsmSceneRenderer->isMeshCullingEnabled();
     }
 
-    void CascadedShadowMaps::resizeVisibilityBuffer(uint32_t width, uint32_t height)
+    static ResourceFormat getVisBufferFormat(uint32_t bitsPerChannel, bool visualizeCascades)
     {
-        Fbo::Desc fboDesc;
-        fboDesc.setColorTarget(0, mVisibilityPassData.shouldVisualizeCascades ? ResourceFormat::RGBA32Float : ResourceFormat::R32Float);
-        mVisibilityPass.pState->setFbo(FboHelper::create2D(width, height, fboDesc));
+        switch (bitsPerChannel)
+        {
+        case 8:
+            return visualizeCascades ? ResourceFormat::RGBA8Unorm : ResourceFormat::R8Unorm;
+        case 16:
+            return visualizeCascades ? ResourceFormat::RGBA16Float : ResourceFormat::R16Float;
+        case 32:
+            return visualizeCascades ? ResourceFormat::RGBA32Float : ResourceFormat::R32Float;
+        default:
+            should_not_get_here();
+            return ResourceFormat::Unknown;
+        }
+    }
+
+    void CascadedShadowMaps::setupVisibilityPassFbo(const Texture::SharedPtr& pVisBuffer)
+    {
+        const Fbo::SharedPtr& pFbo = mVisibilityPass.pState->getFbo();
+        Texture::SharedPtr pTex = pFbo->getColorTexture(0);
+        bool rebind = false;
+
+        if (pVisBuffer && (pVisBuffer != pTex))
+        {
+            rebind = true;
+            pTex = pVisBuffer;
+        }
+        else if (pTex == nullptr)
+        {
+            rebind = true;
+            ResourceFormat format = getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades);
+            pTex = Texture::create2D(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, format, 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+        }
+
+        if (rebind)
+        {
+            pFbo->attachColorTarget(pTex, 0);
+            mVisibilityPass.pState->setFbo(pFbo);
+        }
     }
 
     void CascadedShadowMaps::toggleCascadeVisualization(bool shouldVisualze)
     {
         mVisibilityPassData.shouldVisualizeCascades = shouldVisualze;
-        resizeVisibilityBuffer(mVisibilityPass.pState->getFbo()->getColorTexture(0)->getWidth(), mVisibilityPass.pState->getFbo()->getColorTexture(0)->getHeight());
+        mVisibilityPass.pState->getFbo()->attachColorTarget(nullptr, 0);
+        mPassChangedCB();
+    }
+
+    void CascadedShadowMaps::resizeVisibilityBuffer(uint32_t width, uint32_t height)
+    {
+        mVisibilityPassData.screenDim = uvec2(width, height);
+        mVisibilityPass.pState->getFbo()->attachColorTarget(nullptr, 0);
+        mPassChangedCB();
+    }
+
+    void CascadedShadowMaps::setVisibilityBufferBitsPerChannel(uint32_t bitsPerChannel)
+    {
+        if (bitsPerChannel != 8 && bitsPerChannel != 16 && bitsPerChannel != 32)
+        {
+            logWarning("CascadedShadowMaps::setVisibilityBufferBitsPerChannel() - bitsPerChannel must by 8, 16 or 32");
+            return;
+        }
+        mVisibilityPassData.mapBitsPerChannel = bitsPerChannel;
+        mVisibilityPass.pState->getFbo()->attachColorTarget(nullptr, 0);
+        mPassChangedCB();
+    }
+
+    static const std::string kDepth = "depth";
+    static const std::string kVisibility = "visibility";
+
+    void CascadedShadowMaps::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addOutput(kVisibility).setFormat(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades)).setDimensions(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, 1);
+        reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional);
+    }
+
+    void CascadedShadowMaps::execute(RenderContext* pContext, const RenderData* pRenderData)
+    {
+        PROFILE(CascadedShadowMaps);
+
+        setupVisibilityPassFbo(pRenderData->getTexture(kVisibility));
+        const auto& pDepth = pRenderData->getTexture(kDepth);
+        executeInternal(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), pDepth);
+    }
+
+    void CascadedShadowMaps::resizeShadowMap(uint32_t width, uint32_t height)
+    {
+        createShadowPassResources(width, height);
     }
 }

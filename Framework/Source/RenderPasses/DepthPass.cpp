@@ -51,14 +51,11 @@ namespace Falcor
         mpState->setProgram(pProgram);
         mpVars = GraphicsVars::create(pProgram->getReflector());
         mpFbo = Fbo::create();
-        
-        DepthStencilState::Desc dsDesc;
-        dsDesc.setDepthTest(false).setStencilTest(false);
     }
 
     void DepthPass::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(ResourceFormat::D32Float);
+        reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(mDepthFormat);
     }
 
     void DepthPass::setScene(const Scene::SharedPtr& pScene)
@@ -72,6 +69,8 @@ namespace Falcor
 
     void DepthPass::execute(RenderContext* pContext, const RenderData* pData)
     {
+        PROFILE(DepthPass);
+
         if(mpSceneRenderer)
         {
             const auto& pDepth = pData->getTexture(kDepth);
@@ -87,6 +86,45 @@ namespace Falcor
                 pContext->popGraphicsState();
                 pContext->popGraphicsVars();
             }
+        }
+    }
+
+    DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)
+    {
+        if (isDepthStencilFormat(format) == false)
+        {
+            logWarning("DepthPass buffer format must be a depth-stencil format");
+        }
+        else
+        {
+            mDepthFormat = format;
+            mPassChangedCB();
+        }
+        return *this;
+    }
+
+    DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState)
+    {
+        mpState->setDepthStencilState(pDsState);
+        return *this;
+    }
+
+    static const Gui::DropdownList kDepthFormats =
+    {
+        { (uint32_t)ResourceFormat::D16Unorm, "D16Unorm"},
+        { (uint32_t)ResourceFormat::D32Float, "D32Float" },
+        { (uint32_t)ResourceFormat::D24UnormS8, "D24UnormS8" },
+        { (uint32_t)ResourceFormat::D32FloatS8X24, "D32FloatS8X24" },
+    };
+
+    void DepthPass::renderUI(Gui* pGui, const char* uiGroup)
+    {
+        if (!uiGroup || pGui->beginGroup(uiGroup))
+        {
+            uint32_t depthFormat = (uint32_t)mDepthFormat;
+            if (pGui->addDropdown("Buffer Format", kDepthFormats, depthFormat)) setDepthBufferFormat(ResourceFormat(depthFormat));
+
+            if (uiGroup) pGui->endGroup();
         }
     }
 }

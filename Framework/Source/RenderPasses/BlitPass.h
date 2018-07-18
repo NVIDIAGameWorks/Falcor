@@ -42,8 +42,12 @@ namespace Falcor
 
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+
+        void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:
         BlitPass();
         void initRenderPassData();
+        Sampler::Filter mFilter = Sampler::Filter::Linear;
     };
 }
