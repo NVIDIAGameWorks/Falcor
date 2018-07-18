@@ -119,8 +119,8 @@ namespace Falcor
 
         friend class RenderGraphUI;
         friend class RenderGraphLoader;
-		
-        void autoGenerateEdges() {};
+
+        void autoGenerateEdges();
 
         /** Render the UI
         */
@@ -128,15 +128,20 @@ namespace Falcor
 
     private:
         RenderGraph();
-        static const uint32_t kInvalidIndex = -1;
-        std::unordered_map<std::string, uint32_t> mNameToIndex;
         uint32_t getPassIndex(const std::string& name) const;
         bool compile(std::string& log);
         bool resolveExecutionOrder();
         bool allocateResources();
 
+        // <Field index, Field>
+        std::vector<std::pair<uint32_t, RenderPassReflection::Field>> getUnsatisfiedInputs(const RenderPass::SharedPtr& pPass);
+
+        static const uint32_t kInvalidIndex = -1;
+
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;
+
+        std::unordered_map<std::string, uint32_t> mNameToIndex;
 
         struct EdgeData
         {
