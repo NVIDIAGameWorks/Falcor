@@ -140,7 +140,7 @@ namespace Falcor
     {
         if (std::count(fullname.begin(), fullname.end(), '.') != 1)
         {
-            logWarning("RenderGraph node field string is incorrect. Must be in the form of `PassName.FieldName` but got `" + fullname + "`");
+            logError("RenderGraph node field string is incorrect. Must be in the form of `PassName.FieldName` but got `" + fullname + "`", false);
             return false;
         }
 
@@ -158,13 +158,13 @@ namespace Falcor
         RenderPass* pPass = pGraph->getRenderPass(nameAndField.first).get();
         if (!pPass)
         {
-            logWarning(errorPrefix + " - can't find render-pass named '" + nameAndField.first + "'");
+            logError(errorPrefix + " - can't find render-pass named '" + nameAndField.first + "'");
             return nullptr;
         }
 
         if (checkRenderPassIoExist<input>(pPass, nameAndField.second) == false)
         {
-            logWarning(errorPrefix + "- can't find field named `" + nameAndField.second + "` in render-pass `" + nameAndField.first + "`");
+            logError(errorPrefix + "- can't find field named `" + nameAndField.second + "` in render-pass `" + nameAndField.first + "`");
             return nullptr;
         }
         return pPass;
