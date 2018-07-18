@@ -53,7 +53,7 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addRenderPass(pLightingPass, "LightingPass");
 
     mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
-    mpGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
+    mpGraph->addRenderPass(CascadedShadowMaps::create(mpScene->getLight(0)), "ShadowPass");
     mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
     mpGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
 
@@ -70,7 +70,7 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
 
     mpGraph->addEdge("SkyBox.target", "LightingPass.color");
-    mpGraph->addEdge("ShadowPass.shadowMap", "LightingPass.visibilityBuffer");
+    mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
 
     mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
     mpGraph->addEdge("ToneMapping.dst", "BlitPass.src");

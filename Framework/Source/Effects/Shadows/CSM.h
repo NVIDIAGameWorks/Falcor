@@ -70,7 +70,7 @@ namespace Falcor
         */
         deprecate("3.2")
         static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedPtr pScene, uint32_t cascadeCount = 4, uint32_t visMapBitsPerChannel = 16);
-        static SharedPtr create(uint32_t mapWidth, uint32_t mapHeight, const Light::SharedConstPtr& pLight, uint32_t visibilityBufferWidth = 0, uint32_t visibilityBufferHeight = 0, const Scene::SharedPtr& pScene = nullptr, uint32_t cascadeCount = 4, uint32_t visMapBitsPerChannel = 16);
+        static SharedPtr create(const Light::SharedConstPtr& pLight, uint32_t shadowMapWidth = 2048, uint32_t shadowMapHeight = 2048, uint32_t visibilityBufferWidth = 0, uint32_t visibilityBufferHeight = 0, const Scene::SharedPtr& pScene = nullptr, uint32_t cascadeCount = 4, uint32_t visMapBitsPerChannel = 16);
 
         /** Render UI controls
             \param[in] pGui GUI instance to render UI elements with
@@ -168,6 +168,10 @@ namespace Falcor
         /** Set the scene
         */
         void setScene(const Scene::SharedPtr& pScene) override;
+
+        /** Set the dimensions of the internal shadow-map
+        */
+        void resizeShadowMap(uint32_t width, uint32_t height);
 
     private:
         CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, const Light::SharedConstPtr& pLight);

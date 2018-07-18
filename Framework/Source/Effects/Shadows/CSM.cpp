@@ -250,10 +250,10 @@ namespace Falcor
         return CascadedShadowMaps::UniquePtr(pCsm);
     }
 
-    CascadedShadowMaps::SharedPtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, const Light::SharedConstPtr& pLight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, const Scene::SharedPtr& pScene, uint32_t cascadeCount, uint32_t visMapBitsPerChannel)
+    CascadedShadowMaps::SharedPtr CascadedShadowMaps::create(const Light::SharedConstPtr& pLight, uint32_t shadowMapWidth, uint32_t shadowMapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, const Scene::SharedPtr& pScene, uint32_t cascadeCount, uint32_t visMapBitsPerChannel)
     {
 #pragma warning(suppress : 4996)
-        auto pUnique = create(mapWidth, mapHeight, visibilityBufferWidth, visibilityBufferHeight, pLight, pScene, cascadeCount, visMapBitsPerChannel);
+        auto pUnique = create(shadowMapWidth, shadowMapHeight, visibilityBufferWidth, visibilityBufferHeight, pLight, pScene, cascadeCount, visMapBitsPerChannel);
         SharedPtr pShared = std::move(pUnique);
         return pShared;
     }
@@ -402,6 +402,10 @@ namespace Falcor
                     setCascadeCount(mCsmData.cascadeCount);
                 }
             }
+
+            // Shadow-map size
+            ivec2 smDims = ivec2(mShadowPass.pFbo->getWidth(), mShadowPass.pFbo->getHeight());
+            if (pGui->addInt2Var("Shadow-Map Size", smDims, 0, 8192)) resizeShadowMap(smDims.x, smDims.y);
 
             // Visibility buffer bits-per channel
             static const Gui::DropdownList visBufferBits = 
@@ -979,13 +983,24 @@ namespace Falcor
         mPassChangedCB();
     }
 
+    static const std::string kDepth = "depth";
+    static const std::string kVisibility = "visibility";
+
     void CascadedShadowMaps::reflect(RenderPassReflection& reflector) const
     {
-
+        reflector.addOutput(kVisibility).setFormat(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades)).setDimensions(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, 1);
+        reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional);
     }
 
     void CascadedShadowMaps::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
+        setupVisibilityPassFbo(pRenderData->getTexture(kVisibility));
+        const auto& pDepth = pRenderData->getTexture(kDepth);
+        executeInternal(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), pDepth);
+    }
 
+    void CascadedShadowMaps::resizeShadowMap(uint32_t width, uint32_t height)
+    {
+        createShadowPassResources(width, height);
     }
 }

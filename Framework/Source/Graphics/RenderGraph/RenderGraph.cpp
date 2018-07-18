@@ -191,7 +191,7 @@ namespace Falcor
             const auto& edgeData = mEdgeData[pNode->getIncomingEdge(e)];
             if (edgeData.dstField == newEdge.dstField)
             {
-                logWarning("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
+                logError("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
                 return false;
             }
         }
@@ -199,7 +199,7 @@ namespace Falcor
         // Make sure that this doesn't create a cycle
         if (DirectedGraphPathDetector::hasPath(mpGraph, dstIndex, srcIndex))
         {
-            logWarning("RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst + "]. This will create a cycle in the graph which is not allowed");
+            logError("RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst + "]. This will create a cycle in the graph which is not allowed");
             return false;
         }
 
