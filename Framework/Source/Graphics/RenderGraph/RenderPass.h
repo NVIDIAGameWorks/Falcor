@@ -97,8 +97,19 @@ namespace Falcor
         /** Get the pass' name
         */
         const std::string& getName() const { return mName; }
+
+        using PassChangedCallback = std::function<void(void)>;
+
+        /** Set the callback function
+        */
+        void setPassChangedCB(PassChangedCallback cb) { mPassChangedCB = cb; }
     protected:
-        RenderPass(const std::string& name) : mName(name) {}
+        RenderPass(const std::string& name) : mName(name) 
+        {
+            auto cb = [] {};
+            mPassChangedCB = cb;
+        }
         std::string mName;
+        PassChangedCallback mPassChangedCB;
     };
 }

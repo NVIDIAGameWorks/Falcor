@@ -246,14 +246,16 @@ void RenderGraphEditor::createForwardRendererGraph()
     newGraph->setScene(pScene);
     mCamControl.attachCamera(pScene->getCamera(0));
 
-    SceneLightingPass::Desc lightDesc;
-    lightDesc.setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
-    newGraph->addRenderPass(SceneLightingPass::create(lightDesc), "LightingPass");
+    auto pLightingPass = SceneLightingPass::create();
+    pLightingPass->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
+    newGraph->addRenderPass(pLightingPass, "LightingPass");
 
     newGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
-    newGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
+    newGraph->addRenderPass(CascadedShadowMaps::create(pScene->getLight(0)), "ShadowPass");
     newGraph->addRenderPass(BlitPass::create(), "BlitPass");
     newGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
+    newGraph->addRenderPass(SSAO::create(uvec2(1024)), "SSAO");
+    newGraph->addRenderPass(FXAA::create(), "FXAA");
 
     // Add the skybox
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
@@ -268,10 +270,15 @@ void RenderGraphEditor::createForwardRendererGraph()
     newGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
 
     newGraph->addEdge("SkyBox.target", "LightingPass.color");
-    newGraph->addEdge("ShadowPass.shadowMap", "LightingPass.visibilityBuffer");
+    newGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
 
     newGraph->addEdge("LightingPass.color", "ToneMapping.src");
-    newGraph->addEdge("ToneMapping.dst", "BlitPass.src");
+    newGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
+    newGraph->addEdge("LightingPass.normals", "SSAO.normals");
+    newGraph->addEdge("LightingPass.depth", "SSAO.depth");
+
+    newGraph->addEdge("SSAO.colorOut", "FXAA.src");
+    newGraph->addEdge("FXAA.dst", "BlitPass.src");
 
     newGraph->setScene(pScene);
     newGraph->onResizeSwapChain(mpLastSample->getCurrentFbo().get());

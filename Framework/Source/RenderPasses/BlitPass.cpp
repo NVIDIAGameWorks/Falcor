@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "BlitPass.h"
 #include "API/RenderContext.h"
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
@@ -58,16 +59,35 @@ namespace Falcor
 
     void BlitPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
+        PROFILE(BlitPass);
+
         const auto& pSrcTex = pRenderData->getTexture(kSrc);
         const auto& pDstTex = pRenderData->getTexture(kDst);
 
         if(pSrcTex && pDstTex)
         {
-            pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV());
+            pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), uvec4(-1), uvec4(-1), mFilter);
         }
         else
         {
             logWarning("BlitPass::execute() - missing an input or output resource");
+        }
+    }
+
+    void BlitPass::renderUI(Gui* pGui, const char* uiGroup)
+    {
+        if (!uiGroup || pGui->beginGroup(uiGroup))
+        {
+            static const Gui::DropdownList kFilterList = 
+            {
+                { (uint32_t)Sampler::Filter::Linear, "Linear" },
+                { (uint32_t)Sampler::Filter::Point, "Point" },
+            };
+
+            uint32_t f = (uint32_t)mFilter;
+            if (pGui->addDropdown("Filter", kFilterList, f)) setFilter((Sampler::Filter)f);
+
+            if (uiGroup) pGui->endGroup();
         }
     }
 }

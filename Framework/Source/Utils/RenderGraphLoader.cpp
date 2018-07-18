@@ -27,11 +27,7 @@
 ***************************************************************************/
 #include "RenderGraphLoader.h"
 #include "Framework.h"
-#include "RenderPasses/BlitPass.h"
-#include "RenderPasses/DepthPass.h"
-#include "RenderPasses/ShadowPass.h"
-#include "RenderPasses/SceneLightingPass.h"
-#include "Effects/ToneMapping/ToneMapping.h"
+#include "Falcor.h"
 #include <fstream>
 
 namespace Falcor
@@ -303,7 +299,7 @@ namespace Falcor
 
         register_render_pass(BlitPass);
         register_render_pass(DepthPass);
-        register_render_pass(ShadowPass);
+        register_render_pass(FXAA);
 
 #undef register_render_pass
 #define register_resource_type() 
@@ -313,15 +309,18 @@ namespace Falcor
         
         sBaseRenderCreateFuncs.insert(std::make_pair("SceneLightingPass", std::function<RenderPass::SharedPtr()>(
             []() { 
-                SceneLightingPass::Desc lightDesc;
-                lightDesc.setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
-                return SceneLightingPass::create(lightDesc); 
+                auto pLightPass = SceneLightingPass::create();
+                pLightPass->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
+                return pLightPass;
             }
         )));
 
         sBaseRenderCreateFuncs.insert(std::make_pair("ToneMappingPass", std::function<RenderPass::SharedPtr()>(
             []() { return ToneMapping::create(ToneMapping::Operator::Aces); }))
         );
+
+        // SkyBox
+        // CascadedShadowMaps
     }
 
 }
