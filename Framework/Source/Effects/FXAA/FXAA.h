@@ -26,18 +26,22 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/FullScreenPass.h"
+#include "Graphics/Program/ProgramVars.h"
 
 namespace Falcor
 {
     class Gui;
+    class Texture;
+    class Fbo;
 
     /** Temporal AA class
     */
-    class FXAA
+    class FXAA : public RenderPass, public inherit_shared_from_this<RenderPass, FXAA>
     {
     public:
-        using UniquePtr = std::unique_ptr<FXAA>;
+        using SharedPtr = std::shared_ptr<FXAA>;
 
         /** Destructor
         */
@@ -45,7 +49,7 @@ namespace Falcor
 
         /** Create a new instance
         */
-        static UniquePtr create();
+        static SharedPtr create();
 
         /** Render UI controls for this effect.
             \param[in] pGui GUI object to render UI elements with
@@ -58,8 +62,10 @@ namespace Falcor
             \param[in] pPrevColor Previous frame color buffer
             \param[in] pMotionVec Motion vector buffer
         */
-        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Fbo::SharedPtr& pDstFbo);
+        void execute(RenderContext* pRenderContext, const std::shared_ptr<Texture>& pSrcTex, const std::shared_ptr<Fbo>& pDstFbo);
 
+        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual void execute(RenderContext* pContext, const RenderData* pData) override;
     private:
         FXAA();
 
