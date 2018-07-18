@@ -285,6 +285,7 @@ namespace Falcor
 
     bool RenderGraph::resolveExecutionOrder()
     {
+        mExecutionList.clear();
         // Find all passes that affect the outputs
         std::unordered_set<uint32_t> participatingPasses;
         for (auto& o : mOutputs)
