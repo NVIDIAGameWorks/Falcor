@@ -248,6 +248,8 @@ namespace Falcor
 
     void SSAO::execute(RenderContext* pRenderContext, const RenderData* pData)
     {
+        PROFILE(SSAO);
+
         // Run the AO pass
         auto& pDepth = pData->getTexture(kDepth);
         auto& pNormals = pData->getTexture(kNormals);        

@@ -96,6 +96,8 @@ namespace Falcor
 
     void ToneMapping::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
     {
+        PROFILE(ToneMapping);
+
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         createLuminanceFbo(pSrc);
 
