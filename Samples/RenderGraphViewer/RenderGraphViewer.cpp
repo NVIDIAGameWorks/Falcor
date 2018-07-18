@@ -35,18 +35,22 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         std::string filename;
         if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
+
+        if (pGui->addCheckBox("Depth Pass", mEnableDepthPrePass))
+        {
+            createGraph(pSample);
+        }
     }
 
     if (mpGraph) mpGraph->renderUI(pGui, "Render Graph");
 }
 
-void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::string& filename, SampleCallbacks* pSample)
+void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
     mpGraph = RenderGraph::create();
-
-    SceneLightingPass::Desc lightDesc;
-    lightDesc.setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
-    mpGraph->addRenderPass(SceneLightingPass::create(lightDesc), "LightingPass");
+    auto pLightingPass = SceneLightingPass::create();    
+    pLightingPass->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(mEnableDepthPrePass);
+    mpGraph->addRenderPass(pLightingPass, "LightingPass");
 
     mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
     mpGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
@@ -54,9 +58,9 @@ void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::s
     mpGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
 
     // Add the skybox
-    Scene::UserVariable var = pScene->getUserVariable("sky_box");
+    Scene::UserVariable var = mpScene->getUserVariable("sky_box");
     assert(var.type == Scene::UserVariable::Type::String);
-    std::string skyBox = getDirectoryFromFile(filename) + '/' + var.str;
+    std::string skyBox = getDirectoryFromFile(mSceneFilename) + '/' + var.str;
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");
@@ -71,7 +75,7 @@ void RenderGraphViewer::createGraph(const Scene::SharedPtr& pScene, const std::s
     mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
     mpGraph->addEdge("ToneMapping.dst", "BlitPass.src");
 
-    mpGraph->setScene(pScene);
+    mpGraph->setScene(mpScene);
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
@@ -83,10 +87,11 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
         pBar = ProgressBar::create("Loading Scene", 100);
     }
 
-    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
-    mCamControl.attachCamera(pScene->getCamera(0));
-    pScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
-    createGraph(pScene, filename, pSample);
+    mpScene = Scene::loadFromFile(filename);
+    mSceneFilename = filename;
+    mCamControl.attachCamera(mpScene->getCamera(0));
+    mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
+    createGraph(pSample);
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

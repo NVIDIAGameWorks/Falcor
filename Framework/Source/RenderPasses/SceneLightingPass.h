@@ -65,6 +65,10 @@ namespace Falcor
         */
         SceneLightingPass& setSampleCount(uint32_t samples);
         
+        /** Enable super-sampling in the pixel-shader
+        */
+        SceneLightingPass& setSuperSampling(bool enable);
+
         /** If set to true, the pass requires the user to provide a pre-rendered depth-buffer
         */
         SceneLightingPass& usePreGeneratedDepthBuffer(bool enable);
@@ -88,6 +92,7 @@ namespace Falcor
         ResourceFormat mNormalMapFormat = ResourceFormat::Unknown;
         ResourceFormat mMotionVecFormat = ResourceFormat::Unknown;
         uint32_t mSampleCount = 0;
+        bool mEnableSuperSampling = false;
         bool mUsePreGenDepth = false;
     };
 }

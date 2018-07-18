@@ -146,8 +146,19 @@ namespace Falcor
 
     void SceneLightingPass::renderUI(Gui* pGui, const char* uiGroup)
     {
+        static const Gui::DropdownList kSampleCountList =
+        {
+            { 1, "1" },
+            { 2, "2" },
+            { 4, "4" },
+            { 8, "8" },
+        };
+
         if(!uiGroup || pGui->beginGroup(uiGroup))
         {
+            if (pGui->addDropdown("Sample Count", kSampleCountList, mSampleCount))              setSampleCount(mSampleCount);
+            if (mSampleCount > 1 && pGui->addCheckBox("Super Sampling", mEnableSuperSampling))  setSuperSampling(mEnableSuperSampling);
+
             if (uiGroup) pGui->endGroup();
         }
     }
@@ -198,6 +209,21 @@ namespace Falcor
             mSampleCount = samples;
             mPassChangedCB();
         }
+        return *this;
+    }
+
+    SceneLightingPass& SceneLightingPass::setSuperSampling(bool enable)
+    {
+        mEnableSuperSampling = enable;
+        if (mEnableSuperSampling)
+        {
+            mpState->getProgram()->addDefine("INTERPOLATION_MODE", "sample");
+        }
+        else
+        {
+            mpState->getProgram()->removeDefine("INTERPOLATION_MODE");
+        }
+
         return *this;
     }
 
