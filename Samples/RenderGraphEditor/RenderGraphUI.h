@@ -81,11 +81,11 @@ namespace Falcor
 
         /** static functions used for GUI callbacks required to be static
          */
-        static bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
+        bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
 
-        static void removeLink();
+        void removeRenderPass(const std::string& name);
 
-        static void removeRenderPass(const std::string& name);
+        void addOutput(const std::string& outputPass, const std::string& outputField);
 
         static bool sRebuildDisplayData;
 

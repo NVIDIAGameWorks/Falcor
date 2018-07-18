@@ -233,7 +233,47 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     nextGraphID.label = renderGraphName;
     mOpenGraphNames.push_back(nextGraphID);
     
-    RenderGraph::SharedPtr newGraph = RenderGraph::create();
+    RenderGraph::SharedPtr newGraph;
+
+    // test that this graph shows up in the editor correctly
+    newGraph = RenderGraph::create();
+
+    Scene::SharedPtr pScene = Scene::loadFromFile(gkDefaultScene);
+
+    if (!pScene) { logWarning("Failed to load scene for current render graph"); }
+
+    newGraph->setScene(pScene);
+    mCamControl.attachCamera(pScene->getCamera(0));
+
+    SceneLightingPass::Desc lightDesc;
+    lightDesc.setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
+    newGraph->addRenderPass(SceneLightingPass::create(lightDesc), "LightingPass");
+
+    newGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
+    newGraph->addRenderPass(ShadowPass::create(), "ShadowPass");
+    newGraph->addRenderPass(BlitPass::create(), "BlitPass");
+    newGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
+
+    // Add the skybox
+    Scene::UserVariable var = pScene->getUserVariable("sky_box");
+    assert(var.type == Scene::UserVariable::Type::String);
+    std::string skyBox = getDirectoryFromFile(gkDefaultScene) + '/' + var.str;
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+    newGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");
+
+    newGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
+    newGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
+    newGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
+
+    newGraph->addEdge("SkyBox.target", "LightingPass.color");
+    newGraph->addEdge("ShadowPass.shadowMap", "LightingPass.visibilityBuffer");
+
+    newGraph->addEdge("LightingPass.color", "ToneMapping.src");
+    newGraph->addEdge("ToneMapping.dst", "BlitPass.src");
+
+    newGraph->setScene(pScene);
+    newGraph->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
 
@@ -246,14 +286,14 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     }
 
     // only load the scene for the first graph for now
-    if (mCurrentGraphIndex >= 1)
-    {
-        mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
-    }
-    else
-    {
-        loadScene(gkDefaultScene, false);
-    }
+    // if (mCurrentGraphIndex >= 1)
+    // {
+    //     mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
+    // }
+    // else
+    // {
+    //     loadScene(gkDefaultScene, false);
+    // }
     
     mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, mpLastSample->getCurrentFbo()->getColorTexture(0));
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
@@ -326,6 +366,8 @@ void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
 {
     mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+
+    mpGraphs[mCurrentGraphIndex]->getScene()->getActiveCamera()->setAspectRatio((float)width / (float)height);
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
