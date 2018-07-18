@@ -544,9 +544,6 @@
     <ClCompile Include="RenderPasses\DepthPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\ShadowPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
@@ -1737,9 +1734,6 @@
     <ClInclude Include="RenderPasses\DepthPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\ShadowPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
@@ -1749,6 +1743,7 @@
     <ClInclude Include="RenderPasses\SceneLightingPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\GuiProperty.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
