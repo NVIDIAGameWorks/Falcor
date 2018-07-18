@@ -35,7 +35,6 @@ namespace Falcor
     class Fbo;
     class SampleTest;
     class ArgList;
-    class GraphicsState;
 
     class SampleCallbacks
     {
@@ -99,8 +98,6 @@ namespace Falcor
 
         /** Get the fixed delta time */
         virtual float getFixedTimeDelta() = 0;
-
-        virtual std::shared_ptr<GraphicsState> getDefaultPipelineState() = 0;
 
         /** Takes and outputs a screenshot. 
         */

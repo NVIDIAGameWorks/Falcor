@@ -28,8 +28,6 @@
 #include "Framework.h"
 #include "ResourceCache.h"
 
-#include "Utils\Gui.h"
-
 namespace Falcor
 {
     ResourceCache::SharedPtr ResourceCache::create()

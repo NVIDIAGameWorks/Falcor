@@ -67,12 +67,10 @@ namespace Falcor
         */
         uint32_t addEdge(const std::string& src, const std::string& dst);
 
-        /**
+        /** Remove an edge
          */
         void removeEdge(const std::string& src, const std::string& dst);
-
-        /**
-         * 
+        /** Remove an edge
          */
         void removeEdge(uint32_t edgeID);
 

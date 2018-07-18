@@ -25,15 +25,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 #include "RenderGraphLoader.h"
-
-#include "RenderGraphEditor.h"
 #include "Framework.h"
+#include "RenderPasses/BlitPass.h"
+#include "RenderPasses/DepthPass.h"
+#include "RenderPasses/ShadowPass.h"
+#include "RenderPasses/SceneLightingPass.h"
+#include "Effects/ToneMapping/ToneMapping.h"
+#include <fstream>
 
 namespace Falcor
 {
     std::unordered_map<std::string, RenderGraphLoader::ScriptBinding> RenderGraphLoader::mScriptBindings;
+    std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphLoader::sBaseRenderCreateFuncs;
     std::string RenderGraphLoader::sGraphOutputString;
 
     const std::string kAddRenderPassCommand = std::string("AddRenderPass");
@@ -187,11 +191,7 @@ namespace Falcor
         while (!scriptFile.eof())
         {
             scriptFile.getline(&*line.begin(), line.size());
-
-            if (!line.size())
-            {
-                break;
-            }
+            if (!line.size()) { break; }
 
             ExecuteStatement(line.substr(0, line.find_first_of('\0')), renderGraph);
         }
@@ -242,9 +242,6 @@ namespace Falcor
         }
         
         binding->second.mExecute(binding->second, renderGraph);
-        
-        // assume command ran if no assertions to this point
-        RenderGraphUI::sRebuildDisplayData = true;
     }
 
     RenderGraphLoader::RenderGraphLoader()
@@ -253,7 +250,7 @@ namespace Falcor
         sGraphOutputString.resize(255, '0');
 
         RegisterStatement<std::string, std::string>("AddRenderPass", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) { 
-            renderGraph.addRenderPass(RenderGraphEditor::sBaseRenderCreateFuncs[scriptBinding.mParameters[1].get<std::string>()](), scriptBinding.mParameters[0].get<std::string>());
+            renderGraph.addRenderPass(sBaseRenderCreateFuncs[scriptBinding.mParameters[1].get<std::string>()](), scriptBinding.mParameters[0].get<std::string>());
         }, {}, {});
 
         RegisterStatement<std::string, std::string>("AddEdge", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
@@ -272,6 +269,34 @@ namespace Falcor
         RegisterStatement<std::string>("RemoveGraphOutput", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
             renderGraph.unmarkGraphOutput(scriptBinding.mParameters[0].get<std::string>());
         }, {});
+
+        // register static passes
+#define register_render_pass(renderPassType) \
+    sBaseRenderCreateFuncs.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
+        []() { return renderPassType::create(); }) )\
+    );
+
+        register_render_pass(BlitPass);
+        register_render_pass(DepthPass);
+        register_render_pass(ShadowPass);
+
+#undef register_render_pass
+#define register_resource_type() 
+
+        // specialized registries
+
+        
+        sBaseRenderCreateFuncs.insert(std::make_pair("SceneLightingPass", std::function<RenderPass::SharedPtr()>(
+            []() { 
+                SceneLightingPass::Desc lightDesc;
+                lightDesc.setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
+                return SceneLightingPass::create(lightDesc); 
+            }
+        )));
+
+        sBaseRenderCreateFuncs.insert(std::make_pair("ToneMappingPass", std::function<RenderPass::SharedPtr()>(
+            []() { return ToneMapping::create(ToneMapping::Operator::Aces); }))
+        );
     }
 
 }

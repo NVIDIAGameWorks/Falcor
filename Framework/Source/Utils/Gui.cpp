@@ -501,6 +501,31 @@ namespace Falcor
         return b;
     }
 
+    bool Gui::beginMainMenuBar()
+    {
+        return ImGui::BeginMainMenuBar();
+    }
+
+    bool Gui::beginDropDownMenu(const char label[])
+    {
+        return ImGui::BeginMenu(label);
+    }
+
+    void Gui::endDropDownMenu()
+    {
+        ImGui::EndMenu();
+    }
+
+    bool Gui::addMenuItem(const char label[])
+    {
+        return ImGui::MenuItem(label);
+    }
+
+    void Gui::endMainMenuBar()
+    {
+        ImGui::EndMainMenuBar();
+    }
+
     bool Gui::addRgbColor(const char label[], glm::vec3& var, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
@@ -511,6 +536,36 @@ namespace Falcor
     {
         if (sameLine) ImGui::SameLine();
         return ImGui::ColorEdit4(label, glm::value_ptr(var));
+    }
+
+    bool Gui::dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString)
+    {
+        bool b = ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID);
+        if (b)
+        {
+            ImGui::SetDragDropPayload(dataLabel, payloadString.data(), payloadString.size() * sizeof(payloadString[0]), ImGuiCond_Once);
+            ImGui::EndDragDropSource();
+        }
+        return b;
+    }
+
+    bool Gui::dragDropDest(const char dataLabel[], std::string& payloadString)
+    {
+        bool b = false;
+        if (ImGui::BeginDragDropTarget())
+        {
+            auto dragDropPayload = ImGui::AcceptDragDropPayload(dataLabel);
+            b = dragDropPayload && dragDropPayload->IsDataType(dataLabel) && (dragDropPayload->Data != nullptr);
+            if (b)
+            {
+                payloadString.resize(dragDropPayload->DataSize);
+                std::memcpy(&payloadString.front(), dragDropPayload->Data, dragDropPayload->DataSize);
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+        
+        return b;
     }
 
     bool Gui::onKeyboardEvent(const KeyboardEvent& event)
@@ -688,6 +743,19 @@ namespace Falcor
 
         text = std::string(buf);
         return result;
+    }
+
+    bool Gui::addMultiTextBox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries)
+    {
+        static uint32_t sIdOffset = 0;
+        bool result = false;
+
+        for (uint32_t i = 0; i < textEntries.size(); ++i)
+        {
+            result |= addTextBox(std::string(textLabels[i] + "##" + std::to_string(sIdOffset)).c_str(), textEntries[i]);
+        }
+
+        return addButton(label) | result;
     }
 
     void Gui::addTooltip(const char tip[], bool sameLine)

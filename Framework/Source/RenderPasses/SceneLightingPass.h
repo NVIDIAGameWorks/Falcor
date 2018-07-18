@@ -31,7 +31,6 @@
 #include "Graphics/Program/ProgramVars.h"
 #include "Graphics/GraphicsState.h"
 #include "Graphics/Scene/SceneRenderer.h"
-#include "Utils/GuiProperty.h"
 
 namespace Falcor
 {
@@ -88,6 +87,5 @@ namespace Falcor
         GraphicsVars::SharedPtr mpVars;
         SceneRenderer::SharedPtr mpSceneRenderer;
         vec4 mClearColor = vec4(1);
-        StringProperty mShaderSource;
     };
 }

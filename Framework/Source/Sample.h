@@ -100,7 +100,6 @@ namespace Falcor
         float getFrameRate() override { return mFrameRate.getAverageFrameTime(); }
         float getLastFrameTime() override { return mFrameRate.getLastFrameTime(); }
         uint64_t getFrameID() override { return mFrameRate.getFrameCount(); }
-        GraphicsState::SharedPtr getDefaultPipelineState() override { return mpDefaultPipelineState; }
         void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = vec2(1)) override;
         std::string getFpsMsg() override;
         void toggleText(bool showText) override { mShowText = showText && gpDevice; }

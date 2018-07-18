@@ -476,7 +476,7 @@ void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
     }
 }
 
-void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, const  RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     if (mpSceneRenderer)
     {

@@ -131,7 +131,7 @@ void HDRToneMapping::onFrameRender(SampleCallbacks* pSample, const RenderContext
     mpGraphicsState->popFbo();
 
     //Run tone mapping
-    mpToneMapper->execute(pRenderContext.get(), mpHdrFbo, pTargetFbo);
+    mpToneMapper->execute(pRenderContext.get(), mpHdrFbo->getColorTexture(0), pTargetFbo);
 
     std::string txt = pSample->getFpsMsg() + '\n';
     pSample->renderText(txt, glm::vec2(10, 10));

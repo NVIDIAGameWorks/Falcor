@@ -1,9 +1,0 @@
-AddRenderPass SceneLightingPass SceneLightingPass
-AddRenderPass BlitPass BlitPass
-AddRenderPass DepthPass DepthPass
-AddRenderPass ShadowPass ShadowPass
-AddEdge ShadowPass.shadowMap SceneLightingPass.visibilityBuffer
-AddEdge DepthPass.depth SceneLightingPass.depth
-AddEdge SceneLightingPass.color BlitPass.src
-AddEdge DepthPass.depth ShadowPass.depth
-AddGraphOutput BlitPass.dst

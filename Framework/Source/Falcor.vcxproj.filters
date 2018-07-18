@@ -559,7 +559,9 @@
     <ClCompile Include="RenderPasses\SceneLightingPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\GuiProperty.cpp" />
+    <ClCompile Include="Utils\RenderGraphLoader.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1749,7 +1751,9 @@
     <ClInclude Include="RenderPasses\SceneLightingPass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\GuiProperty.h" />
+    <ClInclude Include="Utils\RenderGraphLoader.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

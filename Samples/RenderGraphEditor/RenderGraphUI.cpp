@@ -29,6 +29,9 @@
 #include "Utils/Gui.h"
 #include "Utils/RenderGraphLoader.h"
 #include "RenderGraphEditor.h"
+
+#   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
+
 #include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 // TODO Don't do this
 #include "Externals/dear_imgui/imgui.h"
@@ -128,7 +131,8 @@ namespace Falcor
             // grab all of the fields again
             RenderGraphNode* pCurrentNode = static_cast<RenderGraphNode*>(field.userData);
             RenderPass* pRenderPass = static_cast<RenderPass*>(pCurrentNode->mpRenderPass);
-
+            int32_t paddingSpace = glm::max(pCurrentNode->OutputsCount, pCurrentNode->InputsCount) / 2;
+            
             ImVec2 oldScreenPos = ImGui::GetCursorScreenPos();
             ImVec2 currentScreenPos{ sNodeGraphEditor.offset.x  + pCurrentNode->Pos.x * ImGui::GetCurrentWindow()->FontWindowScale, 
                 sNodeGraphEditor.offset.y + pCurrentNode->Pos.y * ImGui::GetCurrentWindow()->FontWindowScale };
@@ -141,10 +145,14 @@ namespace Falcor
             float pinOffsetx = kPinRadius * 2.0f;
             uint32_t pinCount = static_cast<uint32_t>(pCurrentNode->InputsCount);
             bool isInputs = true;
+            
+            for (int32_t i = 0; i < paddingSpace; ++i)
+            {
+                gpGui->addText(dummyText.c_str());
+            }
 
             for (uint32_t i = 0; i < 2; ++i)
             {
-                
                 for (uint32_t i = 0; i < pinCount; ++i)
                 {
                     // custom pins as an extension of the built ones
@@ -154,16 +162,16 @@ namespace Falcor
                     // fill in circle for the pin if connected to a link
                     if (pCurrentNode->pinIsConnected(i, isInputs))
                     {
-                        ImGui::GetOverlayDrawList()->AddCircleFilled(ImVec2(inputPos.x, inputPos.y), kPinRadius,pinColor);
+                        ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(inputPos.x, inputPos.y), kPinRadius,pinColor);
                     }
 
                     if (ImGui::IsMouseHoveringRect(ImVec2(inputPos.x + pinRectBoundsOffsetx.x, inputPos.y - kPinRadius), ImVec2(inputPos.x + pinRectBoundsOffsetx.y, inputPos.y + kPinRadius)))
                     {
-                        ImGui::GetOverlayDrawList()->AddCircleFilled(ImVec2(inputPos.x, inputPos.y), kPinRadius, ImGui::GetColorU32(ImGui::NodeGraphEditor::GetStyle().color_node_title));
+                        ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(inputPos.x, inputPos.y), kPinRadius, ImGui::GetColorU32(ImGui::NodeGraphEditor::GetStyle().color_node_title));
                     }
                     else
                     {
-                        ImGui::GetOverlayDrawList()->AddCircle(ImVec2(inputPos.x, inputPos.y), kPinRadius, pinColor);
+                        ImGui::GetWindowDrawList()->AddCircle(ImVec2(inputPos.x, inputPos.y), kPinRadius, pinColor);
                     }
                     ImGui::SetCursorScreenPos({ inputPos.x + pinOffsetx - ((pinOffsetx < 0.0f) ? ImGui::CalcTextSize(isInputs ? pCurrentNode->InputNames[i] : pCurrentNode->OutputNames[i]).x : 0.0f), inputPos.y - kPinRadius });
 
@@ -188,7 +196,11 @@ namespace Falcor
                 
             }
             
-            
+            for (int32_t i = 0; i < paddingSpace; ++i)
+            {
+                gpGui->addText(dummyText.c_str());
+            }
+
             gpGui->addText(dummyText.c_str());
 
             return false;
@@ -361,23 +373,17 @@ namespace Falcor
         {
             sNodeGraphEditor.render();
 
-            if (ImGui::BeginDragDropTarget())
+            std::string statement;
+            if (pGui->dragDropDest("RenderPassScript", statement))
             {
-                // Accept and run script from drag and drop
-                auto dragDropPayload = ImGui::AcceptDragDropPayload("RenderPassScript");
-
-                if (dragDropPayload)
-                {
-                    RenderGraphLoader::ExecuteStatement(std::string(static_cast<const char*>(dragDropPayload->Data), dragDropPayload->DataSize), mRenderGraphRef);
-                    mNewNodeStartPosition = { -sNodeGraphEditor.offset.x + mousePos.x, -sNodeGraphEditor.offset.y + mousePos.y };
-                    mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
-                }
-                else
-                {
-                    mNewNodeStartPosition = { -40.0f, 100.0f };
-                }
-
-                ImGui::EndDragDropTarget();
+                RenderGraphLoader::ExecuteStatement(statement, mRenderGraphRef);
+                mNewNodeStartPosition = { -sNodeGraphEditor.offset.x + mousePos.x, -sNodeGraphEditor.offset.y + mousePos.y };
+                mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
+                sRebuildDisplayData = true;
+            }
+            else
+            {
+                mNewNodeStartPosition = { -40.0f, 100.0f };
             }
 
             return;
@@ -544,17 +550,18 @@ namespace Falcor
                 }
             }
 
-            for (const auto& currentPinUI : currentPassUI.mInputPins)
+            if (!addLinks)
             {
-                const std::string& currentPinName = currentPinUI.mPinName;
-                bool isInput = currentPinUI.mIsInput;
-
-                // draw label for input pin
-                if(!addLinks)
+                for (const auto& currentPinUI : currentPassUI.mInputPins)
                 {
+                    const std::string& currentPinName = currentPinUI.mPinName;
+                    bool isInput = currentPinUI.mIsInput;
+
+                    // draw label for input pin
+                
                     if (!currentPinUI.mConnectedNodeName.size())
                     {
-                        break;
+                        continue;
                     }
 
                     std::pair<uint32_t, uint32_t> inputIDs{ currentPinUI.mGuiPinID, currentPassUI.mGuiNodeID };
@@ -570,10 +577,8 @@ namespace Falcor
 
                         static_cast<RenderGraphNode*>(spIDToNode[inputIDs.second])->mInputPinConnected[inputIDs.first] = false;
                         static_cast<RenderGraphNode*>(spIDToNode[connectedNodeUI.mGuiNodeID])->mOutputPinConnected[inputPinID] = false;
-                        
-                        sRebuildDisplayData = true;
 
-                        break;
+                        continue;
                     }
                 }
             }
@@ -583,6 +588,11 @@ namespace Falcor
     glm::vec2 RenderGraphUI::getNextNodePosition(uint32_t nodeID)
     {
         glm::vec2 newNodePosition = mNewNodeStartPosition;
+        
+        if (std::find(mRenderGraphRef.mExecutionList.begin(), mRenderGraphRef.mExecutionList.end(), nodeID) == mRenderGraphRef.mExecutionList.end())
+        {
+            return newNodePosition;
+        }
 
         for (const auto& passID : mRenderGraphRef.mExecutionList)
         {

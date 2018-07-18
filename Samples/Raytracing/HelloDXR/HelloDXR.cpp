@@ -83,7 +83,7 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
     mpRtRenderer = RtSceneRenderer::create(mpScene);
 }
 
-void HelloDXR::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void HelloDXR::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     RtProgram::Desc rtProgDesc;
     rtProgDesc.addShaderLibrary("HelloDXR.rt.hlsl").setRayGen("rayGen");
@@ -138,7 +138,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
-void HelloDXR::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void HelloDXR::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     pRenderContext->clearFbo(pTargetFbo.get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
 

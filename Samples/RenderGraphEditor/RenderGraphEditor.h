@@ -26,10 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-
 #include "Falcor.h"
-#include <vector>
 #include "RenderGraphUI.h"
+#include <vector>
 
 using namespace Falcor;
 
@@ -45,11 +44,7 @@ public:
 
     RenderGraphEditor();
 
-    // simple lookup to create render pass type from string
-    static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;
-
 private:
-    
     void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
     void createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName);
     void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
@@ -57,35 +52,23 @@ private:
     void deserializeRenderGraph(const std::string& fileName);
     void renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui);
 
-    void updateAndCompileGraph();
+    void loadScene(const std::string& filename, bool showProgressBar);
 
     SampleCallbacks* mpLastSample;
 
-    RenderGraph::SharedPtr mpEditorGraph;
-    Fbo::SharedPtr mpGuiFBO;
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
-
     size_t mCurrentGraphIndex;
 
     std::string mNextGraphString;
-    std::string mNodeString;
-
-    // probably move this?
     std::string mCurrentGraphOutput; // needs to be set by the loader as well
     std::string mGraphOutputEditString;
 
     Gui::DropdownList mOpenGraphNames;
-    Gui::DropdownList mRenderPassTypes; uint32_t mTypeSelection;
 
     bool mCreatingRenderGraph;
     bool mPreviewing;
     bool mShowCreateGraphWindow;
-
-    // TODO this should be in an abstraction for reuse
-    glm::vec2 mWindowPos{0.0f, 0.0f};
-    glm::vec2 mWindowSize{ 1600.0f, 900.0f }; // init this better
     
     FirstPersonCameraController mCamControl;
-    void loadScene(const std::string& filename, bool showProgressBar);
 };

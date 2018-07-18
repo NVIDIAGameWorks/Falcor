@@ -229,7 +229,7 @@ namespace Falcor
             {
                 if (mEdgeData[edgeID].dstField == dstPair.second)
                 {
-                    mpGraph->removeEdge(edgeID);
+                    removeEdge(edgeID);
                     return;
                 }
             }
@@ -238,6 +238,7 @@ namespace Falcor
 
     void RenderGraph::removeEdge(uint32_t edgeID)
     {
+        mEdgeData.erase(edgeID);
         mpGraph->removeEdge(edgeID);
     }
 
@@ -314,6 +315,7 @@ namespace Falcor
         for (const auto& nodeIndex : mExecutionList)
         {
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
+            assert(pNode);
             RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
             RenderPassReflection passReflection;
             pSrcPass->reflect(passReflection);
@@ -341,9 +343,6 @@ namespace Falcor
                     }
                 }
             }
-
-            // check this
-            if (!pNode) logWarning("Attempting to allocate resources on a null node.");
 
             // Go over the edges, allocate the required resources and attach them to the input pass
             for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)

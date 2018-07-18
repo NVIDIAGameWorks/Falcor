@@ -25,7 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 #pragma once
 #include "Graphics/RenderGraph/RenderGraph.h"
 
@@ -52,8 +51,6 @@ namespace Falcor
             T& get();
 
             void operator=(const std::string& val);
-
-            // renderUI ?
 
         private:
 
@@ -102,6 +99,9 @@ namespace Falcor
         static void ExecuteStatement(const std::string& statement, RenderGraph& renderGraph);
 
         static std::string sGraphOutputString;
+
+        // simple lookup to create render pass type from string
+        static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;
 
     private:
         

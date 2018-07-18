@@ -28,46 +28,14 @@
 #include <fstream>
 #include "RenderGraphEditor.h"
 #include "Externals/dear_imgui/imgui.h"
-#include "Externals/dear_imgui/imgui_internal.h"
-#include "Effects/ToneMapping/ToneMapping.h"
 #include "Utils/RenderGraphLoader.h"
 
-
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
-
-std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphEditor::sBaseRenderCreateFuncs;
 
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
 {
-    Gui::DropdownValue dropdownValue;
-
-#define register_render_pass(renderPassType) \
-    sBaseRenderCreateFuncs.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
-        []() { return renderPassType::create(); }) )\
-    ); \
-    dropdownValue.label = #renderPassType; dropdownValue.value = static_cast<int32_t>(mRenderPassTypes.size()); \
-    mRenderPassTypes.push_back(dropdownValue)
-
-    register_render_pass(SceneLightingPass);
-    register_render_pass(BlitPass);
-    register_render_pass(DepthPass);
-    register_render_pass(ShadowPass);
-
-#undef register_render_pass
-
-#define register_resource_type() 
-
-    // specialized registries
-
-    sBaseRenderCreateFuncs.insert(std::make_pair("ToneMapping", std::function<RenderPass::SharedPtr()> (
-        []() { return ToneMapping::create(ToneMapping::Operator::Aces); }) )
-    );
-    dropdownValue.label = "ToneMapping"; dropdownValue.value = static_cast<int32_t>(mRenderPassTypes.size());
-    mRenderPassTypes.push_back(dropdownValue);
-
     mNextGraphString.resize(255, 0);
-    mNodeString.resize(255, 0);
     mCurrentGraphOutput = "BlitPass.dst";
     mGraphOutputEditString = mCurrentGraphOutput;
     mGraphOutputEditString.resize(255, 0);
@@ -78,19 +46,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     uint32_t screenHeight = pSample->getWindow()->getClientAreaHeight();
     uint32_t screenWidth = pSample->getWindow()->getClientAreaWidth();
 
-
-    // we should move everything below here into the render graph ui struct
-
-    if (ImGui::BeginMainMenuBar())
+    if (pGui->beginMainMenuBar())
     {
-        if (ImGui::BeginMenu("File"))
+        if (pGui->beginDropDownMenu("File"))
         {
-            if (!mShowCreateGraphWindow && ImGui::MenuItem("Create New Graph"))
+            if (!mShowCreateGraphWindow && pGui->addMenuItem("Create New Graph"))
             {
                 mShowCreateGraphWindow = true;
             }
 
-            if (ImGui::MenuItem("Load Graph"))
+            if (pGui->addMenuItem("Load Graph"))
             {
                 std::string renderGraphFileName;
                 if (openFileDialog("", renderGraphFileName))
@@ -106,7 +71,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
-            if (ImGui::MenuItem("Save Graph"))
+            if (pGui->addMenuItem("Save Graph"))
             {
                 std::string renderGraphFileName;
                 if (saveFileDialog("", renderGraphFileName))
@@ -114,8 +79,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                     serializeRenderGraph(renderGraphFileName);
                 }
             }
-            
-            if (ImGui::MenuItem("RunScript"))
+
+            if (pGui->addMenuItem("RunScript"))
             {
                 std::string renderGraphFileName;
                 if (openFileDialog("", renderGraphFileName))
@@ -124,47 +89,24 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
-            ImGui::EndMenu();
+            pGui->endDropDownMenu();
         }
 
-        ImGui::EndMainMenuBar();
+        pGui->endMainMenuBar();
     }
 
     // sub window for listing available window passes
     pGui->pushWindow("Render Passes", screenWidth * 7 / 8, screenHeight / 4, screenWidth / 8, screenHeight * 4 / 5);
 
     // for each dll that was found. (or manually imported????)
-    for (auto& availableRenderPasses : sBaseRenderCreateFuncs)
+    for (auto& availableRenderPasses : RenderGraphLoader::sBaseRenderCreateFuncs)
     {
-        // ImGui::BeginChildFrame();
-        
-        // REMOVE THIS
-        if (availableRenderPasses.first[0] == 'N' || availableRenderPasses.first[0] == 'G')
-        {
-            continue;
-        }
+        ImVec2 nextDragRegionPos{ ImGui::GetCursorScreenPos().x + 64.0f, ImGui::GetCursorScreenPos().y + 32.0f };
+        ImGui::GetWindowDrawList()->AddRect(ImGui::GetCursorScreenPos(), nextDragRegionPos, 0xFFFFFFFF);
+        ImGui::Dummy({ 64.0f , 32.0f });
 
-        ImVec2 nextDragRegionPos{ ImGui::GetCursorScreenPos().x + 320.0f, ImGui::GetCursorScreenPos().y + 180.0f };
-        ImGui::GetCurrentWindow()->DrawList->AddRect(ImGui::GetCursorScreenPos(), nextDragRegionPos, 0xFFFFFFFF);
-        ImGui::Dummy({ 320.0f , 180.0f });
-
-        static bool payLoadSet = false;
-
-        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
-        {
-            if (!payLoadSet)
-            {
-                payLoadSet = true;
-                std::string addCommand = std::string("AddRenderPass ") + availableRenderPasses.first + " " + availableRenderPasses.first;
-                ImGui::SetDragDropPayload("RenderPassScript", addCommand.c_str(), addCommand.size(), ImGuiCond_Once);
-            }
-            
-            ImGui::EndDragDropSource();
-        }
-        else
-        {
-            payLoadSet = false;
-        }
+        std::string command = std::string("AddRenderPass ") + availableRenderPasses.first + " " + availableRenderPasses.first;
+        pGui->dragDropSource(availableRenderPasses.first.c_str(), "RenderPassScript", command);
 
         ImGui::SameLine();
         pGui->addText(availableRenderPasses.first.c_str());
@@ -177,11 +119,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     // push a sub GUI window for the node editor
     pGui->pushWindow("Graph Editor", screenWidth * 7 / 8, screenHeight * 4 / 5, screenWidth / 8, 1);
-        mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
+    mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
-    
+
     pGui->pushWindow("Graph Editor Settings", screenWidth / 8, screenHeight / 2, 0, screenHeight / 2, false);
- 
+
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
     {
@@ -190,18 +132,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
-    pGui->addDropdown("RenderPassType", mRenderPassTypes, mTypeSelection);
-
-    pGui->addTextBox("Render Pass Name", mNodeString);
-    if (pGui->addButton("Create Node"))
-    {
-        createAndAddRenderPass(mRenderPassTypes[mTypeSelection].label, mNodeString);
-    }
-
     if (pGui->addButton("Preview Graph"))
     {
-        // recompile the graph before a preview
-        updateAndCompileGraph();
         mPreviewing = true;
     }
 
@@ -213,9 +145,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     }
 
-    pGui->addTextBox("GraphOutput", mGraphOutputEditString);
-
-    if (pGui->addButton("Update"))
+    std::vector<std::string> graphOutputString{mGraphOutputEditString};
+    if (pGui->addMultiTextBox("Update", {"GraphOutput"}, graphOutputString)) // addButton("Update"))
     {
         if (mCurrentGraphOutput != mGraphOutputEditString)
         {
@@ -275,15 +206,7 @@ void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 {
     RenderGraphLoader::LoadAndRunScript(fileName, *mpGraphs[mCurrentGraphIndex]);
-}
-
-void RenderGraphEditor::updateAndCompileGraph()
-{
-    // force a resize event to configure the newly loaded render graph
-    Fbo::SharedPtr pBackBufferFBO = gpDevice->getSwapChainFbo();
-    auto width = pBackBufferFBO->getWidth();
-    auto height = pBackBufferFBO->getHeight();
-    //onResizeSwapChain(mpLastSample, width, height);
+    RenderGraphUI::sRebuildDisplayData = true;
 }
 
 void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
@@ -311,7 +234,6 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     if (mCurrentGraphIndex >= 1)
     {
         mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
-        updateAndCompileGraph();
     }
     else
     {
@@ -322,6 +244,7 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
 
     mCreatingRenderGraph = false;
+    RenderGraphUI::sRebuildDisplayData = true;
 }
 
 void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField)
@@ -336,26 +259,13 @@ void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass,
 
 void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName)
 {
-    mpGraphs[mCurrentGraphIndex]->addRenderPass(sBaseRenderCreateFuncs[renderPassType](), renderPassName);
+    mpGraphs[mCurrentGraphIndex]->addRenderPass(RenderGraphLoader::sBaseRenderCreateFuncs[renderPassType](), renderPassName);
 }
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
-    mpEditorGraph = RenderGraph::create();
-    // Maybe add another specialized node here for initial GUI drawing
-    mpEditorGraph->addRenderPass(sBaseRenderCreateFuncs["BlitPass"](), "BlitPass");
-    
-    mpGuiFBO = Fbo::create();
-    mpGuiFBO->attachColorTarget(Texture::create2D(static_cast<uint32_t>(mWindowSize.x), static_cast<uint32_t>(mWindowSize.y), ResourceFormat::RGBA32Float, 1, 1 , nullptr, Resource::BindFlags::RenderTarget), 0);
-
-    mpEditorGraph->setInput("BlitPass.src", mpGuiFBO->getColorTexture(0));
-
     mpLastSample = pSample;
-
     createRenderGraph("DefaultRenderGraph", "");
-
-    //std::string filePath("C:/Users/moakes/Documents/Falcor/Falcor/Bin/x64/Debug/Data/RenderPasses/DefaultRenderGraph");
-    //createRenderGraph("DefaultRenderGraph", filePath);
 }
 
 void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui)
@@ -374,13 +284,11 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
     // render the editor GUI graph
     const glm::vec4 clearColor(1, 1, 1 , 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    pRenderContext->clearFbo(mpGuiFBO.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
     if (!mPreviewing)
     {
         // draw node graph editor into specialized graph
         pSample->getRenderContext()->getGraphicsState()->setFbo(pTargetFbo);
-        //mpEditorGraph->execute(pRenderContext.get());
     }
     else
     {
@@ -403,9 +311,6 @@ void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
 {
     mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
-
-    mpEditorGraph->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
-    mpEditorGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

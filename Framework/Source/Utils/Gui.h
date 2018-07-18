@@ -121,6 +121,19 @@ namespace Falcor
         */
         void endGroup();
 
+        bool beginMainMenuBar();
+
+        bool beginDropDownMenu(const char label[]);
+
+        void endDropDownMenu();
+
+        /**
+         * 
+         */
+        bool addMenuItem(const char label[]);
+
+        void endMainMenuBar();
+
         /** Adds a floating-point UI element.
             \param[in] label The name of the widget.
             \param[in] var A reference to a float that will be updated directly when the widget state changes.
@@ -177,6 +190,17 @@ namespace Falcor
             \return true if the value changed, otherwise false
         */
         bool addRgbaColor(const char label[], glm::vec4& var, bool sameLine = false);
+        
+        /** Source for drag and drop
+         * 
+         */
+        bool dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString);
+
+        /** Destination for dropping data in drag and drop
+        *
+        */
+        bool dragDropDest(const char dataLabel[], std::string& payloadString);
+
 
         /** Adds a UI widget for integers.
             \param[in] label The name of the widget.
@@ -242,6 +266,12 @@ namespace Falcor
             \return true if the value changed, otherwise false
         */
         bool addTextBox(const char label[], std::string& text, uint32_t lineCount = 1);
+
+        /** Adds multiple text boxes for one confirmation button
+         * 
+         */
+        bool addMultiTextBox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries);
+
 
         using GraphCallback = float(*)(void*, int32_t index);
 

@@ -1,0 +1,11 @@
+AddRenderPass LightingPass SceneLightingPass
+AddRenderPass BlitPass BlitPass
+AddRenderPass DepthPrePass DepthPass
+AddRenderPass ShadowPass ShadowPass
+AddRenderPass ToneMapping ToneMappingPass
+AddEdge ShadowPass.shadowMap LightingPass.visibilityBuffer
+AddEdge DepthPrePass.depth LightingPass.depth
+AddEdge LightingPass.color ToneMapping.src
+AddEdge ToneMapping.dst BlitPass.src
+AddEdge DepthPrePass.depth ShadowPass.depth
+AddGraphOutput BlitPass.dst

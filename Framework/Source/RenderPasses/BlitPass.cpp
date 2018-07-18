@@ -29,8 +29,6 @@
 #include "BlitPass.h"
 #include "API/RenderContext.h"
 
-#include "Utils/Gui.h"
-
 namespace Falcor
 {
     static const std::string kDst = "dst";
