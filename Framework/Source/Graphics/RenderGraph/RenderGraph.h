@@ -134,7 +134,7 @@ namespace Falcor
         bool allocateResources();
 
         // <Field index, Field>
-        std::vector<std::pair<uint32_t, RenderPassReflection::Field>> getUnsatisfiedInputs(const RenderPass::SharedPtr& pPass);
+        std::vector<RenderPassReflection::Field> getUnsatisfiedInputs(const RenderPass::SharedPtr& pPass, const RenderPassReflection& passReflection);
 
         static const uint32_t kInvalidIndex = -1;
 

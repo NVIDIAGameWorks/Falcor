@@ -518,13 +518,10 @@ namespace Falcor
             src.getSampleCount() == dest.getSampleCount();
     }
 
-    // TODO: Generate reflection from all passes once at the start of autoGenerateEdges. Getting reflection here will be a heavily duplicated operation
-    bool connectFieldsIfPossible(RenderGraph* pRenderGraph, const RenderPass::SharedPtr& pSrcPass, const RenderPass::SharedPtr& pDestPass, std::vector<std::pair<uint32_t, RenderPassReflection::Field>>& unsatisfiedInputs)
+    // Given a pair of src and dest RenderPass data, check if any src outputs can fulfill unsatisfied dest inputs
+    bool connectFieldsIfPossible(RenderGraph* pRenderGraph, const RenderPass::SharedPtr& pSrcPass, const RenderPassReflection& srcReflection, const RenderPass::SharedPtr& pDestPass, std::vector<RenderPassReflection::Field>& unsatisfiedInputs)
     {
-        RenderPassReflection srcReflection;
-        pSrcPass->reflect(srcReflection);
-
-        bool fieldConnectionsFound = false;
+        bool connectionFound = false;
         for(auto destFieldIt = unsatisfiedInputs.begin(); destFieldIt != unsatisfiedInputs.end(); destFieldIt++)
         {
             for (uint32_t i = 0; i < srcReflection.getFieldCount(); i++)
@@ -532,26 +529,25 @@ namespace Falcor
                 const RenderPassReflection::Field& srcField = srcReflection.getField(i);
                 if (is_set(srcField.getType(), RenderPassReflection::Field::Type::Output))
                 {
-                    if (canFieldsConnect(srcField, destFieldIt->second))
+                    if (canFieldsConnect(srcField, *destFieldIt))
                     {
                         // Build src/dest param names and add the edge
                         std::string srcStr = pSrcPass->getName() + "." + srcField.getName();
-                        std::string destStr = pDestPass->getName() + "." + destFieldIt->second.getName();
+                        std::string destStr = pDestPass->getName() + "." + destFieldIt->getName();
                         pRenderGraph->addEdge(srcStr, destStr);
 
                         // Remove from unsatisfiedInputs list
                         destFieldIt = unsatisfiedInputs.erase(destFieldIt);
-                        fieldConnectionsFound = true;
+                        connectionFound = true;
                     }
                 }
             }
         }
 
-        return fieldConnectionsFound;
+        return connectionFound;
     }
 
-    // TODO: Might not need index
-    std::vector<std::pair<uint32_t, RenderPassReflection::Field>> RenderGraph::getUnsatisfiedInputs(const RenderPass::SharedPtr& pPass)
+    std::vector<RenderPassReflection::Field> RenderGraph::getUnsatisfiedInputs(const RenderPass::SharedPtr& pPass, const RenderPassReflection& passReflection)
     {
         assert(mNameToIndex.count(pPass->getName()) > 0);
 
@@ -564,18 +560,15 @@ namespace Falcor
             satisfiedFields.insert(edgeData.dstField);
         }
 
-        std::vector<std::pair<uint32_t, RenderPassReflection::Field>> unsatisfiedInputs;
+        std::vector<RenderPassReflection::Field> unsatisfiedInputs;
 
         // Build list of unsatisfied fields by comparing names with which edges/fields are connected
-        // TODO: See above, lots of repeated reflection getting. Move to top of autoGenerateEdges
-        RenderPassReflection reflection;
-        pPass->reflect(reflection);
-        for(uint32_t i = 0; i < reflection.getFieldCount(); i++)
+        for(uint32_t i = 0; i < passReflection.getFieldCount(); i++)
         {
-            const RenderPassReflection::Field& field = reflection.getField(i);
+            const RenderPassReflection::Field& field = passReflection.getField(i);
             if(is_set(field.getType(), RenderPassReflection::Field::Type::Input) && satisfiedFields.count(field.getName()) == 0)
             {
-                unsatisfiedInputs.emplace_back(i, reflection.getField(i));
+                unsatisfiedInputs.push_back(passReflection.getField(i));
             }
         }
 
@@ -586,11 +579,16 @@ namespace Falcor
     {
         // Generate list of passes by order they were added
         std::vector<NodeData*> nodeVec;
+        std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
         for(uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
         {
             if(mpGraph->doesNodeExist(i))
             {
                 nodeVec.push_back(&mNodeData[i]);
+
+                RenderPassReflection r;
+                mNodeData[i].pPass->reflect(r);
+                passReflectionMap[mNodeData[i].pPass.get()] = std::move(r);
             }
         }
 
@@ -598,15 +596,15 @@ namespace Falcor
         for(size_t i = nodeVec.size() - 1; i > 0; i--)
         {
             RenderPass::SharedPtr& pDestPass = (*nodeVec[i]).pPass;
-            auto unsatisfiedInputs = getUnsatisfiedInputs(pDestPass);
+            auto unsatisfiedInputs = getUnsatisfiedInputs(pDestPass, passReflectionMap[pDestPass.get()]);
 
             // Start one before i, iterate until the beginning of vector
             for(size_t j = i - 1; j >= 0; j--)
             {
                 RenderPass::SharedPtr& pSrcPass = (*nodeVec[j]).pPass;
 
-                // While there are unsatisfied inputs, keep searching for passes whose outputs can connect
-                connectFieldsIfPossible(this, pSrcPass, pDestPass, unsatisfiedInputs);
+                // While there are unsatisfied inputs, keep searching for passes with outputs that can connect
+                connectFieldsIfPossible(this, pSrcPass, passReflectionMap[pSrcPass.get()], pDestPass, unsatisfiedInputs);
 
                 if(unsatisfiedInputs.size() == 0)
                 {
