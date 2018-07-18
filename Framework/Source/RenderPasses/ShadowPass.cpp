@@ -63,6 +63,7 @@ namespace Falcor
 
         if(!mpCsm)
         {
+#pragma warning(suppress : 4996)
             mpCsm = CascadedShadowMaps::create(mSmWidth, mSmHeight, pShadowMap->getWidth(), pShadowMap->getHeight(), mpScene->getLight(0), mpScene);
         }
 
@@ -72,6 +73,6 @@ namespace Falcor
 
     void ShadowPass::renderUI(Gui* pGui, const char* uiGroup)
     {
-        if (mpCsm) mpCsm->renderUi(pGui, uiGroup);
+        if (mpCsm) mpCsm->renderUI(pGui, uiGroup);
     }
 }

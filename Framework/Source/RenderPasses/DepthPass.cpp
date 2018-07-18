@@ -89,29 +89,21 @@ namespace Falcor
 
     DepthPass& DepthPass::setDepthBufferFormat(ResourceFormat format)
     {
-        if (mDepthFormat != format)
+        if (isDepthStencilFormat(format) == false)
         {
-            if (isDepthStencilFormat(format) == false)
-            {
-                logWarning("DepthPass buffer format must be a depth-stencil format");
-            }
-            else
-            {
-                mDepthFormat = format;
-                mPassChangedCB();
-            }
+            logWarning("DepthPass buffer format must be a depth-stencil format");
+        }
+        else
+        {
+            mDepthFormat = format;
+            mPassChangedCB();
         }
         return *this;
     }
 
     DepthPass& DepthPass::setDepthStencilState(const DepthStencilState::SharedPtr& pDsState)
     {
-        if (pDsState != mpState->getDepthStencilState())
-        {
-            mpState->setDepthStencilState(pDsState);
-            mPassChangedCB();
-        }
-
+        mpState->setDepthStencilState(pDsState);
         return *this;
     }
 

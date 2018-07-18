@@ -165,50 +165,37 @@ namespace Falcor
 
     SceneLightingPass& SceneLightingPass::setColorFormat(ResourceFormat format)
     {
-        if (mColorFormat != format)
-        {
-            mColorFormat = format;
-            mPassChangedCB();
-        }
+        mColorFormat = format;
+        mPassChangedCB();
         return *this;
     }
 
     SceneLightingPass& SceneLightingPass::setNormalMapFormat(ResourceFormat format)
     {
-        if (mNormalMapFormat != format)
-        {
-            mNormalMapFormat = format;
-            mPassChangedCB();
-        }
+        mNormalMapFormat = format;
+        mPassChangedCB();
         return *this;
     }
 
     SceneLightingPass& SceneLightingPass::setMotionVecFormat(ResourceFormat format)
     {
-        if (mMotionVecFormat != format)
+        mMotionVecFormat = format;
+        mPassChangedCB();
+        if (mMotionVecFormat != ResourceFormat::Unknown)
         {
-            mMotionVecFormat = format;
-            mPassChangedCB();
-            if(mMotionVecFormat != ResourceFormat::Unknown)
-            {
-                mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
-            }
-            else
-            {
-                mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
-            }
-
+            mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
+        }
+        else
+        {
+            mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
         }
         return *this;
     }
 
     SceneLightingPass& SceneLightingPass::setSampleCount(uint32_t samples)
     {
-        if (mSampleCount != samples)
-        {
-            mSampleCount = samples;
-            mPassChangedCB();
-        }
+        mSampleCount = samples;
+        mPassChangedCB();
         return *this;
     }
 
@@ -229,12 +216,9 @@ namespace Falcor
 
     SceneLightingPass& SceneLightingPass::usePreGeneratedDepthBuffer(bool enable)
     {
-        if (mUsePreGenDepth != enable)
-        {
-            mUsePreGenDepth = enable;
-            mPassChangedCB();
-            mpState->setDepthStencilState(mUsePreGenDepth ? mpDsNoDepthWrite : nullptr);
-        }
+        mUsePreGenDepth = enable;
+        mPassChangedCB();
+        mpState->setDepthStencilState(mUsePreGenDepth ? mpDsNoDepthWrite : nullptr);
 
         return *this;
     }
