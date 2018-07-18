@@ -246,29 +246,35 @@ namespace Falcor
         reflector.addInput(kNormals).setFlags(RenderPassReflection::Field::Flags::Optional);
     }
 
-    void SSAO::execute(RenderContext* pRenderContext, const RenderData* pData)
+    void SSAO::execute(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pColorIn, const Texture::SharedPtr& pColorOut, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
     {
         PROFILE(SSAO);
 
-        // Run the AO pass
-        auto& pDepth = pData->getTexture(kDepth);
-        auto& pNormals = pData->getTexture(kNormals);        
-        auto& pAoMap = generateAOMap(pRenderContext, mpScene->getActiveCamera().get(), pDepth, pNormals);
+        assert(pColorOut != pColorIn);
+        auto& pAoMap = generateAOMap(pContext, mpScene->getActiveCamera().get(), pDepthTexture, pNormalTexture);
 
-        // Compose
-        auto& pColorIn = pData->getTexture(kColorIn);
         mComposeData.pVars->setTexture("gColor", pColorIn);
         mComposeData.pVars->setTexture("gAOMap", pAoMap);
         auto& pFbo = mComposeData.pState->getFbo();
-        pFbo->attachColorTarget(pData->getTexture(kColorOut), 0);
+        pFbo->attachColorTarget(pColorOut, 0);
         mComposeData.pState->setFbo(pFbo);
 
-        pRenderContext->pushGraphicsState(mComposeData.pState);
-        pRenderContext->pushGraphicsVars(mComposeData.pVars);
+        pContext->pushGraphicsState(mComposeData.pState);
+        pContext->pushGraphicsVars(mComposeData.pVars);
 
-        mComposeData.pApplySSAOPass->execute(pRenderContext);
+        mComposeData.pApplySSAOPass->execute(pContext);
 
-        pRenderContext->popGraphicsState();
-        pRenderContext->popGraphicsVars();
+        pContext->popGraphicsState();
+        pContext->popGraphicsVars();
+    }
+
+    void SSAO::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        // Run the AO pass
+        auto& pDepth = pData->getTexture(kDepth);
+        auto& pNormals = pData->getTexture(kNormals);        
+        auto& pColorOut = pData->getTexture(kColorOut);
+        auto& pColorIn = pData->getTexture(kColorIn);
+        execute(pRenderContext, mpScene->getActiveCamera().get(), pColorIn, pColorOut, pDepth, pNormals);
     }
 }

@@ -75,7 +75,12 @@ namespace Falcor
             \param[in] pNormalTexture Scene world-space normals buffer
             \return AO map texture
         */
-        Texture::SharedPtr generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexturer);
+        Texture::SharedPtr generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
+
+        /** Execute the SSAO pass and apply the result to the color target
+            pColorIn and pColorOut must be different
+        */
+        void execute(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pColorIn, const Texture::SharedPtr& pColorOut, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
 
         /** Sets blur kernel size
         */
