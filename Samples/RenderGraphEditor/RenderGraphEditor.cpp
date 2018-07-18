@@ -30,7 +30,7 @@
 #include "Externals/dear_imgui/imgui.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene = "Arcade/Arcade.fscene";
+const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
 
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
@@ -41,6 +41,7 @@ RenderGraphEditor::RenderGraphEditor()
     mGraphOutputEditString.resize(255, 0);
 }
 
+// some of this will need to be moved to render graph ui
 void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     uint32_t screenHeight = pSample->getWindow()->getClientAreaHeight();
@@ -137,6 +138,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mPreviewing = true;
     }
 
+    // Load scene for graph
+    if (pGui->addButton("LoadScene"))
+    {
+        std::string filename;
+        if (openFileDialog(Scene::kFileFormatString, filename))
+        {
+            loadScene(filename, true);
+        }
+    }
+
     // update the display if the render graph loader has set a new output
     if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
     {
@@ -159,6 +170,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     pGui->popWindow();
 
+    // pop up window for naming a new render graph
     if (mShowCreateGraphWindow)
     {
         pGui->pushWindow("CreateNewGraph", 256, 128, screenWidth / 2 - 128, screenHeight / 2 - 64);
@@ -194,6 +206,9 @@ void RenderGraphEditor::loadScene(const std::string& filename, bool showProgress
 
     mpGraphs[mCurrentGraphIndex]->setScene(nullptr);
     Scene::SharedPtr pScene = Scene::loadFromFile(filename);
+
+    if (!pScene) { logWarning("Failed to load scene for current render graph"); }
+
     mpGraphs[mCurrentGraphIndex]->setScene(pScene);
     mCamControl.attachCamera(pScene->getCamera(0));
 }

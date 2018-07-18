@@ -250,7 +250,14 @@ namespace Falcor
         sGraphOutputString.resize(255, '0');
 
         RegisterStatement<std::string, std::string>("AddRenderPass", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) { 
-            renderGraph.addRenderPass(sBaseRenderCreateFuncs[scriptBinding.mParameters[1].get<std::string>()](), scriptBinding.mParameters[0].get<std::string>());
+            std::string passTypeName = scriptBinding.mParameters[1].get<std::string>();
+            auto createPassCallbackIt = sBaseRenderCreateFuncs.find(passTypeName);
+            if (createPassCallbackIt == sBaseRenderCreateFuncs.end())
+            {
+                logWarning("Failed on attempt to create unknown pass : " + passTypeName);
+                return;
+            }
+            renderGraph.addRenderPass(createPassCallbackIt->second(), scriptBinding.mParameters[0].get<std::string>());
         }, {}, {});
 
         RegisterStatement<std::string, std::string>("AddEdge", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
@@ -297,6 +304,10 @@ namespace Falcor
         sBaseRenderCreateFuncs.insert(std::make_pair("ToneMappingPass", std::function<RenderPass::SharedPtr()>(
             []() { return ToneMapping::create(ToneMapping::Operator::Aces); }))
         );
+
+        // sBaseRenderCreateFuncs.insert(std::make_pair("SkyBox", std::function<RenderPass::SharedPtr()>(
+        //     []() { return SkyBox::create(ToneMapping::Operator::Aces); }))
+        // );
     }
 
 }
