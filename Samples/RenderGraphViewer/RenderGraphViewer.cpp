@@ -37,6 +37,11 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
     }
 
+    if (pGui->addButton("Edit RenderGraph"))
+    {
+
+    }
+
     if (mpGraph) mpGraph->renderUI(pGui, "Render Graph");
 }
 

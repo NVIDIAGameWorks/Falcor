@@ -29,7 +29,6 @@
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
 #include "Graphics/RenderGraph/RenderPassReflection.h"
-
 #include <array>
 
 namespace Falcor

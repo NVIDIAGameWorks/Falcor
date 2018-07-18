@@ -52,7 +52,9 @@ private:
     void deserializeRenderGraph(const std::string& fileName);
     void renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui);
 
+    void loadGraphFromSharedMemory(const std::string& renderGraphFileName, const std::string& renderGraphName);
     void loadScene(const std::string& filename, bool showProgressBar);
+    void createForwardRendererGraph();
 
     SampleCallbacks* mpLastSample;
 

@@ -556,6 +556,7 @@
     <ClCompile Include="Utils\Psychophysics\Experiment.cpp" />
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
+    <ClCompile Include="Utils\RenderGraphLiveEditor.cpp" />
     <ClCompile Include="Utils\RenderGraphLoader.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
     <ClCompile Include="Utils\VariablesBufferUI.cpp" />
@@ -1137,6 +1138,7 @@
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
     <ClInclude Include="Utils\PythonEmbedding.h" />
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
+    <ClInclude Include="Utils\RenderGraphLiveEditor.h" />
     <ClInclude Include="Utils\RenderGraphLoader.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />

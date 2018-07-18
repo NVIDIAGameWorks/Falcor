@@ -29,6 +29,7 @@
 #include "RenderGraphEditor.h"
 #include "Externals/dear_imgui/imgui.h"
 #include "Utils/RenderGraphLoader.h"
+#include "ArgList.h"
 
 const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
 
@@ -224,15 +225,15 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
     RenderGraphUI::sRebuildDisplayData = true;
 }
 
-void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
+void RenderGraphEditor::createForwardRendererGraph()
 {
     mCreatingRenderGraph = true;
 
     Gui::DropdownValue nextGraphID;
     nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
-    nextGraphID.label = renderGraphName;
+    nextGraphID.label = "ForwardRenderer";
     mOpenGraphNames.push_back(nextGraphID);
-    
+
     RenderGraph::SharedPtr newGraph;
 
     // test that this graph shows up in the editor correctly
@@ -280,20 +281,51 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     RenderGraphUI graphUI(*newGraph);
     mRenderGraphUIs.emplace_back(std::move(graphUI));
 
+    mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, mpLastSample->getCurrentFbo()->getColorTexture(0));
+    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
+
+    mCreatingRenderGraph = false;
+    RenderGraphUI::sRebuildDisplayData = true;
+}
+
+void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
+{
+    mCreatingRenderGraph = true;
+
+    Gui::DropdownValue nextGraphID;
+    nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
+    nextGraphID.label = renderGraphName;
+    mOpenGraphNames.push_back(nextGraphID);
+    
+    RenderGraph::SharedPtr newGraph;
+
+    // test that this graph shows up in the editor correctly
+    newGraph = RenderGraph::create();
+
+    Scene::SharedPtr pScene = Scene::loadFromFile(gkDefaultScene);
+    if (!pScene) { logWarning("Failed to load scene for current render graph"); }
+    newGraph->setScene(pScene);
+
+    newGraph->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
+    mCurrentGraphIndex = mpGraphs.size();
+    mpGraphs.push_back(newGraph);
+
+    RenderGraphUI graphUI(*newGraph);
+    mRenderGraphUIs.emplace_back(std::move(graphUI));
+
     if (renderGraphNameFileName.size())
     {
         RenderGraphLoader::LoadAndRunScript(renderGraphNameFileName, *newGraph);
     }
 
-    // only load the scene for the first graph for now
-    // if (mCurrentGraphIndex >= 1)
-    // {
-    //     mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
-    // }
-    // else
-    // {
-    //     loadScene(gkDefaultScene, false);
-    // }
+    if (mCurrentGraphIndex >= 1)
+    {
+        mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
+    }
+    else
+    {
+        loadScene(gkDefaultScene, false);
+    }
     
     mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, mpLastSample->getCurrentFbo()->getColorTexture(0));
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
@@ -320,7 +352,8 @@ void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpLastSample = pSample;
-    createRenderGraph("DefaultRenderGraph", "");
+    createForwardRendererGraph();
+    // createRenderGraph("DefaultRenderGraph", "");
 }
 
 void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui)
@@ -370,12 +403,33 @@ void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
     mpGraphs[mCurrentGraphIndex]->getScene()->getActiveCamera()->setAspectRatio((float)width / (float)height);
 }
 
+void RenderGraphEditor::loadGraphFromSharedMemory(const std::string& renderGraphFileName, const std::string& renderGraphName)
+{
+#ifdef _WIN32
+    
+#endif
+
+}
+
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     RenderGraphEditor::UniquePtr pEditor = std::make_unique<RenderGraphEditor>();
     SampleConfig config;
     config.windowDesc.title = "Render Graph Editor";
     config.windowDesc.resizableWindow = true;
+
+    // if editor opened from running rendergraph, get memory view for live update
+    ArgList argList;
+#ifdef _WIN32
+    argList.parseCommandLine(GetCommandLineA());
+#else
+    argList.parseCommandLine(concatCommandLine(argc, argv));
+#endif
+    
     Sample::run(config, pEditor);
     return 0;
 }

@@ -562,6 +562,9 @@
     <ClCompile Include="Utils\RenderGraphLoader.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\RenderGraphLiveEditor.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1752,6 +1755,9 @@
       <Filter>RenderPasses</Filter>
     </ClInclude>
     <ClInclude Include="Utils\RenderGraphLoader.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\RenderGraphLiveEditor.h">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>

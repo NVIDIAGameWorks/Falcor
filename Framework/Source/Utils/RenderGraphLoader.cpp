@@ -179,6 +179,16 @@ namespace Falcor
         scriptFile.close();
     }
 
+    void RenderGraphLoader::LoadAndRunScript(const char* fileData, RenderGraph& renderGraph)
+    {
+        size_t offset = 0;
+
+        
+        {
+
+        }
+    }
+
     void RenderGraphLoader::LoadAndRunScript(const std::string& fileNameString, RenderGraph& renderGraph)
     {
         std::ifstream scriptFile(fileNameString);
@@ -277,6 +287,14 @@ namespace Falcor
             renderGraph.unmarkGraphOutput(scriptBinding.mParameters[0].get<std::string>());
         }, {});
 
+        RegisterStatement<std::string>("SetScene", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
+            Scene::SharedPtr pScene =  Scene::loadFromFile(scriptBinding.mParameters[0].get<std::string>());
+            if (!pScene) { logWarning("Failed to load scene for current render graph"); return; }
+            renderGraph.setScene(pScene);
+        }, {});
+
+
+
         // register static passes
 #define register_render_pass(renderPassType) \
     sBaseRenderCreateFuncs.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
@@ -304,10 +322,6 @@ namespace Falcor
         sBaseRenderCreateFuncs.insert(std::make_pair("ToneMappingPass", std::function<RenderPass::SharedPtr()>(
             []() { return ToneMapping::create(ToneMapping::Operator::Aces); }))
         );
-
-        // sBaseRenderCreateFuncs.insert(std::make_pair("SkyBox", std::function<RenderPass::SharedPtr()>(
-        //     []() { return SkyBox::create(ToneMapping::Operator::Aces); }))
-        // );
     }
 
 }

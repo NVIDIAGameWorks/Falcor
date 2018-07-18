@@ -90,6 +90,8 @@ namespace Falcor
 
         RenderGraphLoader();
 
+        static void LoadAndRunScript(const char* fileNameString, RenderGraph& renderGraph);
+
         static void LoadAndRunScript(const std::string& fileNameString, RenderGraph& renderGraph);
 
         /** Serializes given render graph into a script that can reproduce it
