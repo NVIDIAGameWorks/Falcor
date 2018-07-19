@@ -530,7 +530,7 @@ namespace Falcor
     }
 
     // Given a pair of src and dest RenderPass data, check if any src outputs can fulfill unsatisfied dest inputs
-    void RenderGraph::connectFields(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs)
+    void RenderGraph::autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs)
     {
         // For every unsatisfied input in dest pass
         auto destFieldIt = unsatisfiedInputs.begin();

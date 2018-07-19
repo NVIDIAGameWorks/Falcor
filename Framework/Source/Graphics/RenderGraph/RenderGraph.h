@@ -147,7 +147,7 @@ namespace Falcor
         };
 
         std::vector<RenderPassReflection::Field> getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection);
-        void connectFields(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
+        void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
 
         static const uint32_t kInvalidIndex = -1;
 
