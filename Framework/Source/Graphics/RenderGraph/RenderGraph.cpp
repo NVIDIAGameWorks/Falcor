@@ -513,8 +513,10 @@ namespace Falcor
 
     bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dest)
     {
-        // TODO: compare more things
+        assert(is_set(src.getType(), RenderPassReflection::Field::Type::Output) && is_set(dest.getType(), RenderPassReflection::Field::Type::Input));
+        
         return (src.getFormat() == dest.getFormat() || dest.getFormat() == ResourceFormat::Unknown) &&
+            src.getResourceType() == dest.getResourceType() &&
             src.getSampleCount() == dest.getSampleCount();
     }
 
@@ -595,7 +597,7 @@ namespace Falcor
             }
         }
 
-        // Generate list of passes by order they were added
+        // Gather list of passes by order they were added
         std::vector<NodeData*> nodeVec;
         std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
         for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
