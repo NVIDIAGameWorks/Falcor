@@ -39,7 +39,6 @@
 #include "Graphics/FboHelper.h"
 #include <sstream>
 #include <iomanip>
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
 
 namespace Falcor
 {
@@ -265,8 +264,6 @@ namespace Falcor
         {
             mArgList.parseCommandLine(concatCommandLine(argc, argv));
         }
-
-        RenderPassLibrary::init();
 
         // Load and run
         mpRenderer->onLoad(this, mpRenderContext);

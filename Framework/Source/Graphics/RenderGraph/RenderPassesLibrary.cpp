@@ -46,7 +46,7 @@ namespace Falcor
 
     static std::unordered_map<std::string, RenderPassDesc> gRenderPassList;
 
-    void RenderPassLibrary::init()
+    static bool addBuiltinPasses()
     {
         RenderPassLibrary::addRenderPassClass("BlitPass", "Blit one texture into another", BlitPass::deserialize);
         RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::deserialize);
@@ -56,7 +56,11 @@ namespace Falcor
         RenderPassLibrary::addRenderPassClass("FXAA", "FXAA", FXAA::deserialize);
         RenderPassLibrary::addRenderPassClass("SSAO", "Fast Approximate Anti-Aliasing", SSAO::deserialize);
         RenderPassLibrary::addRenderPassClass("TAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
+
+        return true;
     };
+
+    static const bool b = addBuiltinPasses();
 
     void RenderPassLibrary::addRenderPassClass(const char* className, const char* desc, CreateFunc func)
     {
