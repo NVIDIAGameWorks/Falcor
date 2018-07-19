@@ -57,10 +57,10 @@ namespace Falcor
         mpLinearSampler = Sampler::create(samplerDesc);
     }
 
-    ToneMapping::UniquePtr ToneMapping::create(Operator op)
+    ToneMapping::SharedPtr ToneMapping::create(Operator op)
     {
         ToneMapping* pTM = new ToneMapping(op);
-        return ToneMapping::UniquePtr(pTM);
+        return ToneMapping::SharedPtr(pTM);
     }
 
     void ToneMapping::createLuminanceFbo(const Texture::SharedPtr& pSrc)

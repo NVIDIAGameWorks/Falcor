@@ -208,14 +208,9 @@ namespace Falcor
 
     CascadedShadowMaps::~CascadedShadowMaps() = default;
 
-    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, const Light::SharedConstPtr& pLight)
-        : mpLight(pLight), RenderPass("CascadedShadowMaps")
+    CascadedShadowMaps::CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight)
+        : RenderPass("CascadedShadowMaps")
     {
-        if(mpLight->getType() != LightDirectional)
-        {
-            mCsmData.cascadeCount = 1;
-        }
-
         createDepthPassResources();
         createShadowPassResources(mapWidth, mapHeight);
         createVisibilityPassResources();
@@ -239,13 +234,23 @@ namespace Falcor
         mpGaussianBlur->setKernelWidth(5);
     }
 
+    void CascadedShadowMaps::setLight(const Light::SharedConstPtr& pLight)
+    {
+        mpLight = pLight;
+        if (mpLight && mpLight->getType() != LightDirectional)
+        {
+            setCascadeCount(1);
+        }
+    }
+
     CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedPtr pScene, uint32_t cascadeCount, uint32_t visMapBitsPerChannel)
     {
-        CascadedShadowMaps* pCsm = new CascadedShadowMaps(mapWidth, mapHeight, pLight);
+        CascadedShadowMaps* pCsm = new CascadedShadowMaps(mapWidth, mapHeight);
         pCsm->resizeVisibilityBuffer(visibilityBufferWidth, visibilityBufferHeight);
         pCsm->setScene(pScene);
         pCsm->setCascadeCount(cascadeCount);
         pCsm->setVisibilityBufferBitsPerChannel(visMapBitsPerChannel);
+        pCsm->setLight(pLight);
 
         return CascadedShadowMaps::UniquePtr(pCsm);
     }
@@ -256,6 +261,11 @@ namespace Falcor
         auto pUnique = create(shadowMapWidth, shadowMapHeight, visibilityBufferWidth, visibilityBufferHeight, pLight, pScene, cascadeCount, visMapBitsPerChannel);
         SharedPtr pShared = std::move(pUnique);
         return pShared;
+    }
+
+    CascadedShadowMaps::SharedPtr CascadedShadowMaps::create()
+    {
+        return SharedPtr(new CascadedShadowMaps());
     }
 
     void CascadedShadowMaps::setSdsmReadbackLatency(uint32_t latency)
@@ -808,6 +818,8 @@ namespace Falcor
 
     void CascadedShadowMaps::executeInternal(RenderContext* pRenderCtx, const Camera* pCamera, const Texture::SharedPtr& pSceneDepthBuffer)
     {
+        if (!mpLight || !mpSceneRenderer) return;
+
         const glm::vec4 clearColor(0);
         pRenderCtx->clearFbo(mShadowPass.pFbo.get(), clearColor, 1, 0, FboAttachmentType::All);
 
