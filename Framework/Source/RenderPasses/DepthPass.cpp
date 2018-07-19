@@ -76,16 +76,13 @@ namespace Falcor
             const auto& pDepth = pData->getTexture(kDepth);
             mpFbo->attachDepthStencilTarget(pDepth);
 
+            mpState->setFbo(mpFbo);
+            pContext->pushGraphicsState(mpState);
+            pContext->pushGraphicsVars(mpVars);
             pContext->clearDsv(pDepth->getDSV().get(), 1, 0);
-            if (mpSceneRenderer)
-            {
-                mpState->setFbo(mpFbo);
-                pContext->pushGraphicsState(mpState);
-                pContext->pushGraphicsVars(mpVars);
-                mpSceneRenderer->renderScene(pContext);
-                pContext->popGraphicsState();
-                pContext->popGraphicsVars();
-            }
+            mpSceneRenderer->renderScene(pContext);
+            pContext->popGraphicsState();
+            pContext->popGraphicsVars();
         }
     }
 
