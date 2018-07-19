@@ -30,7 +30,6 @@
 #include "API/FBO.h"
 #include "Utils/DirectedGraphTraversal.h"
 #include "Utils/Gui.h"
-#include <set>
 
 namespace Falcor
 {
@@ -569,12 +568,12 @@ namespace Falcor
         assert(mNameToIndex.count(pNodeData->nodeName) > 0);
 
         // Get names of connected input edges
-        std::set<std::string> satisfiedFields;
+        std::vector<std::string> satisfiedFields;
         const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex[pNodeData->nodeName]);
         for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); i++)
         {
             const auto& edgeData = mEdgeData[pNode->getIncomingEdge(i)];
-            satisfiedFields.insert(edgeData.dstField);
+            satisfiedFields.push_back(edgeData.dstField);
         }
 
         std::vector<RenderPassReflection::Field> unsatisfiedInputs;
@@ -583,7 +582,9 @@ namespace Falcor
         for (uint32_t i = 0; i < passReflection.getFieldCount(); i++)
         {
             const RenderPassReflection::Field& field = passReflection.getField(i);
-            if (is_set(field.getType(), RenderPassReflection::Field::Type::Input) && satisfiedFields.count(field.getName()) == 0)
+
+            bool isUnsatisfied = std::find(satisfiedFields.begin(), satisfiedFields.end(), field.getName()) == satisfiedFields.end();
+            if (is_set(field.getType(), RenderPassReflection::Field::Type::Input) && isUnsatisfied)
             {
                 unsatisfiedInputs.push_back(passReflection.getField(i));
             }
@@ -634,7 +635,7 @@ namespace Falcor
             for (size_t src = dest - 1; src != size_t(-1) && unsatisfiedInputs.size() > 0; src--)
             {
                 // While there are unsatisfied inputs, keep searching for passes with outputs that can connect
-                connectFields(nodeVec[src], passReflectionMap[nodeVec[src]->pPass.get()], nodeVec[dest], unsatisfiedInputs);
+                autoConnectPasses(nodeVec[src], passReflectionMap[nodeVec[src]->pPass.get()], nodeVec[dest], unsatisfiedInputs);
             }
         }
     }
