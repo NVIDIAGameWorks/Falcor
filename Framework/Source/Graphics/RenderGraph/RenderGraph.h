@@ -65,7 +65,7 @@ namespace Falcor
             The render passes must be different, the graph must be a DAG.
             The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `setRenderPass()` and the `resourceName` is the resource-name as described by the render-pass object
         */
-        uint32_t addEdge(const std::string& src, const std::string& dst);
+        bool addEdge(const std::string& src, const std::string& dst);
 
         /** Remove an edge
          */
