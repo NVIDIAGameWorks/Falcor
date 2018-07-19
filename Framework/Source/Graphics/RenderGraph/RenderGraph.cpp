@@ -170,7 +170,7 @@ namespace Falcor
         return pPass;
     }
 
-    bool RenderGraph::addEdge(const std::string& src, const std::string& dst)
+    uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst)
     {
         EdgeData newEdge;
         str_pair srcPair, dstPair;
@@ -201,7 +201,7 @@ namespace Falcor
                 else
                 {
                     logError("RenderGraph::addEdge() - destination `" + dst + "` is already initialized. Please remove the existing connection before trying to add an edge");
-                    return false;
+                    return kInvalidIndex;
                 }
             }
         }
@@ -210,13 +210,13 @@ namespace Falcor
         if (DirectedGraphPathDetector::hasPath(mpGraph, dstIndex, srcIndex))
         {
             logError("RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst + "]. This will create a cycle in the graph which is not allowed");
-            return false;
+            return kInvalidIndex;
         }
 
         uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
         mEdgeData[e] = newEdge;
         mRecompile = true;
-        return true;
+        return e;
     }
 
     void RenderGraph::removeEdge(const std::string& src, const std::string& dst)

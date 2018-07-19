@@ -227,7 +227,8 @@ namespace Falcor
     bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
     {
         // outputs warning if edge could not be created 
-        bool createdEdge = spCurrentGraphUI->mRenderGraphRef.addEdge(srcPass + "." + srcField, dstPass + "." + dstField);
+        uint32_t edgeId = spCurrentGraphUI->mRenderGraphRef.addEdge(srcPass + "." + srcField, dstPass + "." + dstField);
+        bool createdEdge = edgeId != RenderGraph::kInvalidIndex;
 
         // update the ui to reflect the connections. This data is used for removal
         if (createdEdge)

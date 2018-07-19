@@ -41,6 +41,8 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<RenderGraph>;
 
+        static const uint32_t kInvalidIndex = -1;
+
         /** Create a new object
         */
         static SharedPtr create();
@@ -65,11 +67,12 @@ namespace Falcor
             The render passes must be different, the graph must be a DAG.
             The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `setRenderPass()` and the `resourceName` is the resource-name as described by the render-pass object
         */
-        bool addEdge(const std::string& src, const std::string& dst);
+        uint32_t addEdge(const std::string& src, const std::string& dst);
 
         /** Remove an edge
          */
         void removeEdge(const std::string& src, const std::string& dst);
+
         /** Remove an edge
          */
         void removeEdge(uint32_t edgeID);
@@ -148,8 +151,6 @@ namespace Falcor
 
         std::vector<RenderPassReflection::Field> getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection);
         void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
-
-        static const uint32_t kInvalidIndex = -1;
 
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;

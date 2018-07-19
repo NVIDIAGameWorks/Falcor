@@ -316,7 +316,7 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
 void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField)
 {
     // add information for GUI to avoid costly drawing in renderUI function for graph
-    if (!mpGraphs[mCurrentGraphIndex]->addEdge(srcRenderPass + std::string(".") + srcField, dstRenderPass + std::string(".") + dstField))
+    if (mpGraphs[mCurrentGraphIndex]->addEdge(srcRenderPass + std::string(".") + srcField, dstRenderPass + std::string(".") + dstField) == RenderGraph::kInvalidIndex)
     {
         logWarning(std::string("Failed to create edge between nodes: ").append(srcRenderPass)
             .append(" and ").append(dstRenderPass).append( " connecting fields ").append(srcField).append(" to ").append(dstField).append(".\n"));
