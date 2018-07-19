@@ -520,21 +520,21 @@ namespace Falcor
         }
     }
 
-    bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dest)
+    bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst)
     {
-        assert(is_set(src.getType(), RenderPassReflection::Field::Type::Output) && is_set(dest.getType(), RenderPassReflection::Field::Type::Input));
+        assert(is_set(src.getType(), RenderPassReflection::Field::Type::Output) && is_set(dst.getType(), RenderPassReflection::Field::Type::Input));
         
-        return (src.getFormat() == dest.getFormat() || dest.getFormat() == ResourceFormat::Unknown) &&
-            src.getResourceType() == dest.getResourceType() &&
-            src.getSampleCount() == dest.getSampleCount();
+        return (src.getFormat() == dst.getFormat() || dst.getFormat() == ResourceFormat::Unknown) &&
+            src.getResourceType() == dst.getResourceType() &&
+            src.getSampleCount() == dst.getSampleCount();
     }
 
-    // Given a pair of src and dest RenderPass data, check if any src outputs can fulfill unsatisfied dest inputs
-    void RenderGraph::autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs)
+    // Given a pair of src and dst RenderPass data, check if any src outputs can fulfill unsatisfied dst inputs
+    void RenderGraph::autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pdstNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs)
     {
-        // For every unsatisfied input in dest pass
-        auto destFieldIt = unsatisfiedInputs.begin();
-        while (destFieldIt != unsatisfiedInputs.end())
+        // For every unsatisfied input in dst pass
+        auto dstFieldIt = unsatisfiedInputs.begin();
+        while (dstFieldIt != unsatisfiedInputs.end())
         {
             bool inputSatisfied = false;
 
@@ -542,14 +542,14 @@ namespace Falcor
             for (uint32_t i = 0; i < srcReflection.getFieldCount(); i++)
             {
                 const RenderPassReflection::Field& srcField = srcReflection.getField(i);
-                if (is_set(srcField.getType(), RenderPassReflection::Field::Type::Output) && canFieldsConnect(srcField, *destFieldIt))
+                if (is_set(srcField.getType(), RenderPassReflection::Field::Type::Output) && canFieldsConnect(srcField, *dstFieldIt))
                 {
                     // Add Edge
                     uint32_t srcIndex = mNameToIndex[pSrcNode->nodeName];
-                    uint32_t destIndex = mNameToIndex[pDestNode->nodeName];
+                    uint32_t dstIndex = mNameToIndex[pdstNode->nodeName];
 
-                    uint32_t e = mpGraph->addEdge(srcIndex, destIndex);
-                    mEdgeData[e] = { true, srcField.getName(), destFieldIt->getName() };
+                    uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
+                    mEdgeData[e] = { true, srcField.getName(), dstFieldIt->getName() };
                     mRecompile = true;
 
                     // If connection was found, continue to next unsatisfied input
@@ -559,7 +559,7 @@ namespace Falcor
             }
 
             // If input was satisfied, remove from unsatisfied list, else increment iterator
-            destFieldIt = inputSatisfied ? unsatisfiedInputs.erase(destFieldIt) : destFieldIt + 1;
+            dstFieldIt = inputSatisfied ? unsatisfiedInputs.erase(dstFieldIt) : dstFieldIt + 1;
         }
     }
 
@@ -627,16 +627,16 @@ namespace Falcor
         }
 
         // For all nodes, starting at end, iterate until index 1 of vector
-        for (size_t dest = nodeVec.size() - 1; dest > 0; dest--)
+        for (size_t dst = nodeVec.size() - 1; dst > 0; dst--)
         {
-            auto unsatisfiedInputs = getUnsatisfiedInputs(nodeVec[dest], passReflectionMap[nodeVec[dest]->pPass.get()]);
+            auto unsatisfiedInputs = getUnsatisfiedInputs(nodeVec[dst], passReflectionMap[nodeVec[dst]->pPass.get()]);
 
             // Find outputs to connect.
             // Start one before i, iterate until the beginning of vector
-            for (size_t src = dest - 1; src != size_t(-1) && unsatisfiedInputs.size() > 0; src--)
+            for (size_t src = dst - 1; src != size_t(-1) && unsatisfiedInputs.size() > 0; src--)
             {
                 // While there are unsatisfied inputs, keep searching for passes with outputs that can connect
-                autoConnectPasses(nodeVec[src], passReflectionMap[nodeVec[src]->pPass.get()], nodeVec[dest], unsatisfiedInputs);
+                autoConnectPasses(nodeVec[src], passReflectionMap[nodeVec[src]->pPass.get()], nodeVec[dst], unsatisfiedInputs);
             }
         }
     }
