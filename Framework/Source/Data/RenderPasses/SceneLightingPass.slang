@@ -44,7 +44,9 @@ VertexOut vs(VertexIn vIn)
 {
     VertexOut vsOut;
     vsOut = defaultVS(vIn);
+#ifdef _OUTPUT_MOTION_VECTORS
     vsOut.prevPosH.xy += vsOut.prevPosH.w * 2 * float2(gCamera.jitterX, gCamera.jitterY);
+#endif
     return vsOut;
 }
 
@@ -52,7 +54,9 @@ struct PsOut
 {
     float4 color : SV_TARGET0;
     float4 normal : SV_TARGET1;
+#ifdef _OUTPUT_MOTION_VECTORS
     float2 motion : SV_TARGET2;
+#endif
 };
 
 PsOut ps(VertexOut vOut, float4 pixelCrd : SV_POSITION)
@@ -86,7 +90,9 @@ PsOut ps(VertexOut vOut, float4 pixelCrd : SV_POSITION)
     psOut.color = finalColor;
     psOut.normal = float4(vOut.normalW * 0.5f + 0.5f, 1.0f);
 
+#ifdef _OUTPUT_MOTION_VECTORS
     psOut.motion = calcMotionVector(pixelCrd.xy, vOut.prevPosH, gRenderTargetDim);
+#endif
 
 #if defined(_VISUALIZE_CASCADES) && defined(_ENABLE_SHADOWS)
     float3 cascadeColor = visibilityBuffer.Load(int3(vOut.posH.xy, 0)).gba;

@@ -182,7 +182,6 @@ namespace Falcor
     SceneLightingPass& SceneLightingPass::setMotionVecFormat(ResourceFormat format)
     {
         mMotionVecFormat = format;
-        mPassChangedCB();
         if (mMotionVecFormat != ResourceFormat::Unknown)
         {
             mpState->getProgram()->addDefine("_OUTPUT_MOTION_VECTORS");
@@ -191,6 +190,7 @@ namespace Falcor
         {
             mpState->getProgram()->removeDefine("_OUTPUT_MOTION_VECTORS");
         }
+        mPassChangedCB();
         return *this;
     }
 

@@ -76,7 +76,7 @@ namespace Falcor
             \param[in] pGui GUI instance to render UI elements with
             \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
-        void renderUI(Gui* pGui, const char* uiGroup) override;
+        void renderUI(Gui* pGui, const char* uiGroup = "") override;
 
         /** Run the shadow-map generation pass and the visibility pass. Returns the visibility buffer
             \params[in] pScene The scene to render

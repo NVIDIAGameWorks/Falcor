@@ -312,7 +312,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             if (mControls[ControlID::EnableShadows].enabled)
             {
                 pGui->addCheckBox("Update Map", mShadowPass.updateShadowMap);
-                mShadowPass.pCsm->renderUi(pGui);
+                mShadowPass.pCsm->renderUI(pGui);
                 if (pGui->addCheckBox("Visualize Cascades", mControls[ControlID::VisualizeCascades].enabled))
                 {
                     applyLightingProgramControl(ControlID::VisualizeCascades);
@@ -331,7 +331,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
             if (mControls[ControlID::EnableSSAO].enabled)
             {
-                mSSAO.pSSAO->renderGui(pGui);
+                mSSAO.pSSAO->renderUI(pGui);
             }
             pGui->endGroup();
         }

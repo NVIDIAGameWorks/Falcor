@@ -66,7 +66,7 @@ namespace Falcor
 
         /** Render GUI for tweaking SSAO settings
         */
-        void renderUI(Gui* pGui, const char* uiGroup) override;
+        void renderUI(Gui* pGui, const char* uiGroup = "") override;
 
         /** Generate the AO map
             \param[in] pContext Render context
