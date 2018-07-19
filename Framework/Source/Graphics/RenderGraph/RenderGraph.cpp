@@ -603,6 +603,7 @@ namespace Falcor
             {
                 mpGraph->removeEdge(it->first);
                 it = mEdgeData.erase(it);
+                mRecompile = true;
             }
             else
             {
