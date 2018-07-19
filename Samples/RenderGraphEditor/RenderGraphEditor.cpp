@@ -52,7 +52,7 @@ RenderGraphEditor::RenderGraphEditor()
     register_render_pass(SceneLightingPass);
     register_render_pass(BlitPass);
     register_render_pass(DepthPass);
-    register_render_pass(ShadowPass);
+    register_render_pass(CascadedShadowMaps);
 
 #undef register_render_pass
 

@@ -40,7 +40,8 @@ namespace Falcor
     class ToneMapping : public RenderPass, public inherit_shared_from_this<RenderPass, ToneMapping>
     {
     public:
-        using UniquePtr = std::unique_ptr<ToneMapping>;
+        using SharedPtr = std::shared_ptr<ToneMapping>;
+
         /** Destructor
         */
         ~ToneMapping();
@@ -60,7 +61,8 @@ namespace Falcor
 
         /** Create a new object
         */
-        static UniquePtr create(Operator op);
+        static SharedPtr create(Operator op);
+        static SharedPtr create() { return create(Operator::Aces); }
 
         /** Render UI elements
             \param[in] pGui GUI instance to render UI with

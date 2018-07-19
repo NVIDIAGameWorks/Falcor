@@ -52,11 +52,13 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     pLightingPass->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(mEnableDepthPrePass);
     mpGraph->addRenderPass(pLightingPass, "LightingPass");
 
+    auto pCsm = CascadedShadowMaps::create();
+    pCsm->setLight(mpScene->getLight(0));
     mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
-    mpGraph->addRenderPass(CascadedShadowMaps::create(mpScene->getLight(0)), "ShadowPass");
+    mpGraph->addRenderPass(pCsm, "ShadowPass");
     mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
-    mpGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
-    mpGraph->addRenderPass(SSAO::create(uvec2(1024)), "SSAO");
+    mpGraph->addRenderPass(ToneMapping::create(), "ToneMapping");
+    mpGraph->addRenderPass(SSAO::create(), "SSAO");
     mpGraph->addRenderPass(FXAA::create(), "FXAA");
 
     // Add the skybox

@@ -63,6 +63,7 @@ namespace Falcor
             \return SSAO pass object.
         */
         static SharedPtr create(const uvec2& aoMapSize, uint32_t kernelSize = 16, uint32_t blurSize = 5, float blurSigma = 2.0f, const uvec2& noiseSize = uvec2(16), SampleDistribution distribution = SampleDistribution::CosineHammersley);
+        static SharedPtr create() { return create(uvec2(1024)); }
 
         /** Render GUI for tweaking SSAO settings
         */
