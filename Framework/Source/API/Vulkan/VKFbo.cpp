@@ -37,7 +37,10 @@ namespace Falcor
         mColorAttachments.resize(getMaxColorTargetCount());
     }
 
-    Fbo::~Fbo() = default;
+    Fbo::~Fbo()
+    {
+        gpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
+    }
 
     const Fbo::ApiHandle& Fbo::getApiHandle() const
     {
@@ -91,6 +94,7 @@ namespace Falcor
 
         VkFramebuffer frameBuffer;
         vkCreateFramebuffer(gpDevice->getApiHandle(), &frameBufferInfo, nullptr, &frameBuffer);
+        if (mApiHandle) gpDevice->releaseResource(std::static_pointer_cast<VkBaseApiHandle>(mApiHandle));
         mApiHandle = ApiHandle::create(pass, frameBuffer);
     }
 
