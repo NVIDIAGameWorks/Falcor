@@ -35,7 +35,11 @@ namespace Falcor
     class Texture;
     class Gui;
     class RenderContext;
-    
+    class RenderPassSerializer
+    {
+    public:
+    };
+
     class ScratchPad : public std::enable_shared_from_this<ScratchPad>
     {
     public:

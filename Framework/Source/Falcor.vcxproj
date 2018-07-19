@@ -420,6 +420,7 @@
     <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
     <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
@@ -987,6 +988,7 @@
     <ClInclude Include="Graphics\Program\ShaderLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">

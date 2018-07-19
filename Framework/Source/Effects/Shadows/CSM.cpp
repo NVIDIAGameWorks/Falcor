@@ -263,7 +263,7 @@ namespace Falcor
         return pShared;
     }
 
-    CascadedShadowMaps::SharedPtr CascadedShadowMaps::create()
+    CascadedShadowMaps::SharedPtr CascadedShadowMaps::deserialize(const RenderPassSerializer& serializer)
     {
         return SharedPtr(new CascadedShadowMaps());
     }
@@ -374,6 +374,8 @@ namespace Falcor
         bool cullMeshes = mpSceneRenderer ? mpSceneRenderer->isMeshCullingEnabled() : true;
         mpSceneRenderer = SceneRenderer::create(std::const_pointer_cast<Scene>(pScene));
         mpSceneRenderer->toggleMeshCulling(cullMeshes);
+
+        setLight(pScene ? pScene->getLight(0) : nullptr);
     }
 
     void CascadedShadowMaps::createVisibilityPassResources()

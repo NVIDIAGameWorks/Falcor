@@ -48,6 +48,13 @@ namespace Falcor
         }
     }
 
+    SceneLightingPass::SharedPtr SceneLightingPass::deserialize(const RenderPassSerializer& serializer)
+    {
+        auto pThis = create();
+        pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
+        return pThis;
+    }
+
     SceneLightingPass::SceneLightingPass() : RenderPass("SceneLightingPass")
     {
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/SceneLightingPass.slang", "", "ps");

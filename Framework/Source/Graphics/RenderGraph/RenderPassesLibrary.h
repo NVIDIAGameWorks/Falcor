@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,37 +26,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/RenderGraph/RenderPass.h"
-#include "Graphics/Program/GraphicsProgram.h"
-#include "Graphics/Program/ProgramVars.h"
-#include "Graphics/GraphicsState.h"
-#include "Graphics/Scene/SceneRenderer.h"
 
 namespace Falcor
 {
-    class DepthPass : public RenderPass, inherit_shared_from_this<RenderPass, DepthPass>
+    class RenderPass;
+    class RenderPassSerializer;
+
+    class RenderPassLibrary
     {
     public:
-        using SharedPtr = std::shared_ptr<DepthPass>;
-
-        /** Create a new object
-        */
-        static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
-
-        virtual void reflect(RenderPassReflection& reflector) const override;
-        virtual void execute(RenderContext* pContext, const RenderData* pData) override;
-        virtual void setScene(const Scene::SharedPtr& pScene);
-        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
-
-        DepthPass& setDepthBufferFormat(ResourceFormat format);
-        DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);
-    private:
-        DepthPass();
-        Fbo::SharedPtr mpFbo;
-        GraphicsState::SharedPtr mpState;
-        GraphicsVars::SharedPtr mpVars;
-        SceneRenderer::SharedPtr mpSceneRenderer;
-        ResourceFormat mDepthFormat = ResourceFormat::D32Float;
+        using CreateFunc = std::function<std::shared_ptr<RenderPass>(const RenderPassSerializer&)>;
+        static void addRenderPassClass(const char* className, const char* desc, CreateFunc func);
+        static std::shared_ptr<RenderPass> createRenderPass(const char* className);
+        static size_t getRenderPassCount();
+        static const std::string& getRenderPassDesc(size_t pass);
+        static const std::string& getRenderPassClassName(size_t pass);
     };
 }

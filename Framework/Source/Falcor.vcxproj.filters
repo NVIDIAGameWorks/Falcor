@@ -557,6 +557,9 @@
       <Filter>RenderPasses</Filter>
     </ClCompile>
     <ClCompile Include="Utils\GuiProperty.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1744,6 +1747,9 @@
       <Filter>RenderPasses</Filter>
     </ClInclude>
     <ClInclude Include="Utils\GuiProperty.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
