@@ -133,8 +133,20 @@ namespace Falcor
         bool resolveExecutionOrder();
         bool allocateResources();
 
-        // <Field index, Field>
-        std::vector<RenderPassReflection::Field> getUnsatisfiedInputs(const RenderPass::SharedPtr& pPass, const RenderPassReflection& passReflection);
+        struct EdgeData
+        {
+            std::string srcField;
+            std::string dstField;
+        };
+
+        struct NodeData
+        {
+            std::string nodeName;
+            RenderPass::SharedPtr pPass;
+        };
+
+        std::vector<RenderPassReflection::Field> getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection);
+        void connectFields(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
 
         static const uint32_t kInvalidIndex = -1;
 
@@ -143,20 +155,8 @@ namespace Falcor
 
         std::unordered_map<std::string, uint32_t> mNameToIndex;
 
-        struct EdgeData
-        {
-            std::string srcField;
-            std::string dstField;
-        };
-
         DirectedGraph::SharedPtr mpGraph;
         std::unordered_map<uint32_t, EdgeData> mEdgeData;
-
-        struct NodeData
-        {
-            std::string nodeName;
-            RenderPass::SharedPtr pPass;
-        };
         std::unordered_map<uint32_t, NodeData> mNodeData;
 
         struct GraphOut
