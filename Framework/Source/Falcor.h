@@ -116,6 +116,7 @@
 #include "RenderPasses/SceneLightingPass.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
+#include "Graphics/RenderGraph/RenderPassesLibrary.h"
 
 // Utils
 #include "Utils/Bitmap.h"

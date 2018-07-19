@@ -48,7 +48,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
     mpGraph = RenderGraph::create();
-    auto pLightingPass = SceneLightingPass::deserialize({});
+    auto pLightingPass = RenderPassLibrary::createRenderPass("SceneLightingPass");
     mpGraph->addRenderPass(pLightingPass, "LightingPass");
 
     mpGraph->addRenderPass(DepthPass::deserialize({}), "DepthPrePass");
