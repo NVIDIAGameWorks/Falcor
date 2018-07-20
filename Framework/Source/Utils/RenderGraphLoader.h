@@ -30,6 +30,26 @@
 
 namespace Falcor
 {
+    // Move this
+    // If in editor mode, if a type of pass is unknown, still create a node for it with the correct 
+    // reflection and warn. Do not let exectute be called on these.
+    class DummyEditorPass : public RenderPass, public inherit_shared_from_this<RenderPass, DummyEditorPass>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<DummyEditorPass>;
+
+        static SharedPtr create(const std::string& name = "Unknown");
+
+        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+
+    private:
+        DummyEditorPass(const std::string& name);
+
+        RenderPassReflection mReflector;
+    };
+
     class RenderGraphLoader
     {
     public:
@@ -90,17 +110,23 @@ namespace Falcor
 
         RenderGraphLoader();
 
-        static void LoadAndRunScript(const char* fileNameString, RenderGraph& renderGraph);
+        static void runScript(const std::string& scriptData, RenderGraph& renderGraph);
+        static void runScript(const char* scriptData, size_t dataSize, RenderGraph& renderGraph);
 
         static void LoadAndRunScript(const std::string& fileNameString, RenderGraph& renderGraph);
 
         /** Serializes given render graph into a script that can reproduce it
          */
-        static void SaveRenderGraphAsScript(const std::string& fileNameString, RenderGraph& renderGraph);
+        static void SaveRenderGraphAsScript(const std::string& fileNameString, const RenderGraph& renderGraph);
+
+        static std::string saveRenderGraphAsScriptBuffer(const RenderGraph& renderGraph);
 
         static void ExecuteStatement(const std::string& statement, RenderGraph& renderGraph);
 
         static std::string sGraphOutputString;
+
+        // Set for 
+        static bool sSharedEditingMode;
 
         // simple lookup to create render pass type from string
         static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;

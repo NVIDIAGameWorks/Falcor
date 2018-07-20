@@ -78,13 +78,19 @@ namespace Falcor
 
         void reset();
 
-        /** static functions used for GUI callbacks required to be static
+        void writeUpdateScriptToFile(const std::string& filePath);
+
+        /** functions used for GUI callbacks to fill out commands to send to other process
          */
         bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
+
+        void removeEdge(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
 
         void removeRenderPass(const std::string& name);
 
         void addOutput(const std::string& outputPass, const std::string& outputField);
+
+        void addRenderPass(const std::string& name, const std::string& nodeTypeName);
 
         static bool sRebuildDisplayData;
 
@@ -114,5 +120,8 @@ namespace Falcor
 
         // maps output pin name to input pin ids. Pair first is pin id, second is node id
         std::unordered_map <std::string, std::vector< std::pair<uint32_t, uint32_t > > > mOutputToInputPins;
+
+        // if in external editing mode, building list of commands for changes to send to the other process
+        std::vector<std::string> mCommandStrings;
     };
 }

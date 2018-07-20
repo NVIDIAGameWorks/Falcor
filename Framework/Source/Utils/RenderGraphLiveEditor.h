@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-
+#include "Falcor.h"
 
 namespace Falcor
 {
@@ -34,11 +34,25 @@ namespace Falcor
     {
     public:
         RenderGraphLiveEditor();
+        ~RenderGraphLiveEditor();
 
-        void openEditor();
-
+        bool isOpen() { return mIsOpen; }
+        void openEditor(const RenderGraph& renderGraph);
+        void openEditorTest(const std::string& fileName);
         void closeEditor();
+        void updateGraph(RenderGraph& renderGraph);
+        void forceUpdateGraph(RenderGraph& renderGraph);
 
     private:
+        bool mIsOpen = false;
+        std::string mSharedMemoryStage;
+#ifdef _WIN32
+        HANDLE mTempFileHndl;
+        HANDLE mTempFileMappingHndl;
+        HANDLE mProcess;
+#endif
+        std::string mTempFileName;
+        std::string mTempFilePath;
+        char* mpToWrite;
     };
 }

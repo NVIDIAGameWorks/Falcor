@@ -8,5 +8,4 @@ AddEdge DepthPrePass.depth LightingPass.depth
 AddEdge LightingPass.color ToneMapping.src
 AddEdge ShadowPass.shadowMap LightingPass.visibilityBuffer
 AddEdge ToneMapping.dst BlitPass.src
-
 AddGraphOutput BlitPass.dst

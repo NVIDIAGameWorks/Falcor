@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Utils/RenderGraphLiveEditor.h"
 
 using namespace Falcor;
 
@@ -49,4 +50,5 @@ private:
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;
     bool mEnableDepthPrePass = true;
+    RenderGraphLiveEditor mTempRenderGraphLiveEditor;
 };

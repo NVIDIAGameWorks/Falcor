@@ -52,7 +52,7 @@ private:
     void deserializeRenderGraph(const std::string& fileName);
     void renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui);
 
-    void loadGraphFromSharedMemory(const std::string& renderGraphFileName, const std::string& renderGraphName);
+    void loadGraphFromSharedMemory(const std::string& renderGraphFileName);
     void loadScene(const std::string& filename, bool showProgressBar);
     void createForwardRendererGraph();
 
@@ -65,6 +65,8 @@ private:
     std::string mNextGraphString;
     std::string mCurrentGraphOutput; // needs to be set by the loader as well
     std::string mGraphOutputEditString;
+
+    std::string mFilePath;
 
     Gui::DropdownList mOpenGraphNames;
 

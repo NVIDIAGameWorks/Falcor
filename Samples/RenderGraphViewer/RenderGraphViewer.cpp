@@ -44,7 +44,16 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (pGui->addButton("Edit RenderGraph"))
     {
+        // std::string filePath;
+        // findFileInDataDirectories("ForwardRenderer.graph", filePath);
+        // mTempRenderGraphLiveEditor.openEditorTest(filePath);
 
+        mTempRenderGraphLiveEditor.openEditor(*mpGraph);
+    }
+
+    if (pGui->addButton("Update Graph"))
+    {
+        if (mTempRenderGraphLiveEditor.isOpen()) { mTempRenderGraphLiveEditor.forceUpdateGraph(*mpGraph);  }
     }
 
     if (mpGraph) mpGraph->renderUI(pGui, "Render Graph");
@@ -89,6 +98,8 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 
     mpGraph->setScene(mpScene);
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+
+
 }
 
 void RenderGraphViewer::loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample)
@@ -122,6 +133,8 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
         mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
         mpGraph->execute(pRenderContext.get());
     }
+
+    if (mTempRenderGraphLiveEditor.isOpen()) { mTempRenderGraphLiveEditor.updateGraph(*mpGraph); }
 }
 
 bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

@@ -29,15 +29,49 @@
 #include "Framework.h"
 #include "Falcor.h"
 #include <fstream>
+#include <sstream>
 
 namespace Falcor
 {
     std::unordered_map<std::string, RenderGraphLoader::ScriptBinding> RenderGraphLoader::mScriptBindings;
     std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphLoader::sBaseRenderCreateFuncs;
     std::string RenderGraphLoader::sGraphOutputString;
+    bool RenderGraphLoader::sSharedEditingMode = false;
 
     const std::string kAddRenderPassCommand = std::string("AddRenderPass");
     const std::string kAddEdgeCommand = std::string("AddEdge");
+
+    DummyEditorPass::DummyEditorPass(const std::string& name) : RenderPass(name)
+    {
+    }
+
+    DummyEditorPass::SharedPtr DummyEditorPass::create(const std::string& name)
+    {
+        try
+        {
+            return SharedPtr(new DummyEditorPass(name));
+        }
+        catch (const std::exception&)
+        {
+            return nullptr;
+        }
+    }
+
+    void DummyEditorPass::reflect(RenderPassReflection& reflector) const
+    {
+        reflector = mReflector;
+    }
+    
+    void DummyEditorPass::execute(RenderContext*, const RenderData*)
+    {
+        should_not_get_here();
+    }
+    
+    void DummyEditorPass::renderUI(Gui* pGui, const char* uiGroup)
+    {
+        pGui->addText((std::string("This Render Pass Type") + mName + " is not registered").c_str());
+    }
+
 
     // moved to framework with the constant buffer ui stuff
 #define concat_strings_(a_, b_) a_##b_
@@ -91,13 +125,10 @@ namespace Falcor
         }
     }
 
-    void RenderGraphLoader::SaveRenderGraphAsScript(const std::string& fileNameString, RenderGraph& renderGraph)
+    std::string RenderGraphLoader::saveRenderGraphAsScriptBuffer(const RenderGraph& renderGraph)
     {
-        std::ofstream scriptFile(fileNameString);
-        assert(scriptFile.is_open());
-
+        std::string scriptString;
         // More generic schema for copying serialization ??
-
         std::unordered_map<uint16_t, std::string> linkIDToSrcPassName;
         std::string currentCommand;
 
@@ -107,9 +138,9 @@ namespace Falcor
             auto pCurrentPass = renderGraph.mpGraph->getNode(nameToIndex.second);
 
             // add all of the add render pass commands here
-            currentCommand = kAddRenderPassCommand + " " + nameToIndex.first + " " 
-                + renderGraph.mNodeData[nameToIndex.second].pPass->getName() + "\n";
-            scriptFile.write(currentCommand.data(), currentCommand.size());
+            currentCommand = kAddRenderPassCommand + " " + nameToIndex.first + " "
+                + renderGraph.mNodeData.find(nameToIndex.second)->second.pPass->getName() + "\n";
+            scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
 
             for (uint32_t i = 0; i < pCurrentPass->getOutgoingEdgeCount(); ++i)
             {
@@ -129,12 +160,12 @@ namespace Falcor
             for (uint32_t i = 0; i < pCurrentPass->getIncomingEdgeCount(); ++i)
             {
                 uint32_t edgeID = pCurrentPass->getIncomingEdge(i);
-                auto currentEdge = renderGraph.mEdgeData[edgeID];
-                
-                currentCommand = kAddEdgeCommand + " " + linkIDToSrcPassName[edgeID] + "." + currentEdge.srcField + " "
-                    + nameToIndex.first + "."  + currentEdge.dstField + "\n";
+                auto currentEdge = renderGraph.mEdgeData.find(edgeID)->second;
 
-                scriptFile.write(currentCommand.data(), currentCommand.size());
+                currentCommand = kAddEdgeCommand + " " + linkIDToSrcPassName[edgeID] + "." + currentEdge.srcField + " "
+                    + nameToIndex.first + "." + currentEdge.dstField + "\n";
+
+                scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
             }
         }
 
@@ -169,19 +200,39 @@ namespace Falcor
             }
 
             currentCommand += "." + graphOutput.field + "\n";
-            scriptFile.write(currentCommand.data(), currentCommand.size());
+            scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
         }
 
+        return scriptString;
+    }
+
+    void RenderGraphLoader::SaveRenderGraphAsScript(const std::string& fileNameString, const RenderGraph& renderGraph)
+    {
+        std::ofstream scriptFile(fileNameString);
+        assert(scriptFile.is_open());
+        std::string script = saveRenderGraphAsScriptBuffer(renderGraph);
+        scriptFile.write(script.c_str(), script.size());
         scriptFile.close();
     }
 
-    void RenderGraphLoader::LoadAndRunScript(const char* fileData, RenderGraph& renderGraph)
+    void RenderGraphLoader::runScript(const std::string& scriptData, RenderGraph& renderGraph)
+    {
+        runScript(scriptData.data(), scriptData.size(), renderGraph);
+    }
+
+    void RenderGraphLoader::runScript(const char* scriptData, size_t dataSize, RenderGraph& renderGraph)
     {
         size_t offset = 0;
+        std::istringstream scriptStream(scriptData);
+        std::string nextCommand;
+        nextCommand.resize(255);
 
-        
+        // run through scriptdata
+        while (scriptStream.getline(&nextCommand.front(), 255))
         {
+            if (!nextCommand.front()) { break; }
 
+            ExecuteStatement(nextCommand.substr(0, nextCommand.find_first_of('\0')), renderGraph);
         }
     }
 
@@ -198,6 +249,7 @@ namespace Falcor
         {
             scriptFile.getline(&*line.begin(), line.size());
             if (!line.size()) { break; }
+            if (line.find_first_of('\0') == 0) { break; }
 
             ExecuteStatement(line.substr(0, line.find_first_of('\0')), renderGraph);
         }
@@ -220,16 +272,18 @@ namespace Falcor
         size_t lastIndex = 0;
         
         std::vector<std::string> statementPeices;
+        std::string nextStatement = statement;
+        nextStatement.erase(std::remove(nextStatement.begin(), nextStatement.end(), '\r'), nextStatement.end());
 
         for (;;)
         {
-            charIndex = statement.find_first_of(' ', lastIndex);
+            charIndex = nextStatement.find_first_of(' ', lastIndex);
             if (charIndex == std::string::npos)
             {
-                statementPeices.push_back(statement.substr(lastIndex, statement.size() - lastIndex));
+                statementPeices.push_back(nextStatement.substr(lastIndex, nextStatement.size() - lastIndex));
                 break;
             }
-            statementPeices.push_back(statement.substr(lastIndex, charIndex - lastIndex));
+            statementPeices.push_back(nextStatement.substr(lastIndex, charIndex - lastIndex));
             lastIndex = charIndex + 1;
         }
 
@@ -260,10 +314,19 @@ namespace Falcor
             auto createPassCallbackIt = sBaseRenderCreateFuncs.find(passTypeName);
             if (createPassCallbackIt == sBaseRenderCreateFuncs.end())
             {
+                if (sSharedEditingMode)
+                {
+                    renderGraph.addRenderPass(DummyEditorPass::create(passTypeName), scriptBinding.mParameters[0].get<std::string>());
+                }
+
                 logWarning("Failed on attempt to create unknown pass : " + passTypeName);
                 return;
             }
             renderGraph.addRenderPass(createPassCallbackIt->second(), scriptBinding.mParameters[0].get<std::string>());
+        }, {}, {});
+
+        RegisterStatement<std::string, std::string>("RemoveEdge", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
+            renderGraph.removeEdge(scriptBinding.mParameters[0].get<std::string>(), scriptBinding.mParameters[1].get<std::string>());
         }, {}, {});
 
         RegisterStatement<std::string, std::string>("AddEdge", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
@@ -318,6 +381,8 @@ namespace Falcor
         sBaseRenderCreateFuncs.insert(std::make_pair("ToneMappingPass", std::function<RenderPass::SharedPtr()>(
             []() { return ToneMapping::create(ToneMapping::Operator::Aces); }))
         );
+
+        // These passes require a scene before creation
 
         // SkyBox
         // CascadedShadowMaps

@@ -134,6 +134,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
+    if (pGui->addButton("Update Graph"))
+    {
+        mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath);   
+    }
+
     if (pGui->addButton("Preview Graph"))
     {
         mPreviewing = true;
@@ -359,8 +364,25 @@ void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mpLastSample = pSample;
-    createForwardRendererGraph();
-    // createRenderGraph("DefaultRenderGraph", "");
+    
+#ifdef _WIN32
+    // if editor opened from running render graph, get memory view for live update
+    std::string commandLine(GetCommandLineA());
+    size_t firstSpace = commandLine.find_first_of(' ') + 1;
+    mFilePath = (commandLine.substr(firstSpace, commandLine.size() - firstSpace));
+    msgBox(mFilePath);
+#endif
+
+    if (mFilePath.size())
+    {
+        createRenderGraph("Test", mFilePath);
+        // loadGraphFromSharedMemory(filePath);
+    }
+    else
+    {
+        createRenderGraph("DefaultRenderGraph", "");
+        //createForwardRendererGraph();
+    }
 }
 
 void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui)
@@ -410,12 +432,49 @@ void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
     mpGraphs[mCurrentGraphIndex]->getScene()->getActiveCamera()->setAspectRatio((float)width / (float)height);
 }
 
-void RenderGraphEditor::loadGraphFromSharedMemory(const std::string& renderGraphFileName, const std::string& renderGraphName)
+void RenderGraphEditor::loadGraphFromSharedMemory(const std::string& renderGraphFilePath)
 {
 #ifdef _WIN32
+    OFSTRUCT of;
+    // HFILE fileHandle =  OpenFile(renderGraphFilePath.c_str(), &of, OF_READ);
     
-#endif
+    std::string wideFilePath;
+    wideFilePath.resize(renderGraphFilePath.size() * 2 + 1);
+    mbstowcs((wchar_t*)&wideFilePath.front(), renderGraphFilePath.c_str(), renderGraphFilePath.size());
 
+    HFILE fileHandle = OpenFile(renderGraphFilePath.c_str(), &of, OF_READ);
+    if (!fileHandle)
+    {
+        logError("Can't open the file");
+        return;
+    }
+
+    HANDLE tempFileHndl = *reinterpret_cast<HANDLE*>(&fileHandle);
+    //CreateFileMapping(tempFileHndl, NULL, PAGE_READWRITE, 0, 0, NULL); //=
+    HANDLE tempFileMappingHndl =  OpenFileMapping(FILE_MAP_ALL_ACCESS, TRUE, (LPCWSTR)wideFilePath.c_str());
+    if (!tempFileMappingHndl)
+    {
+        logError("Unable to map temporary file for graph editor");
+        return;
+    }
+
+    // change this to a persistant mapping
+    char* pData = (char*)MapViewOfFile(tempFileMappingHndl, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
+
+    if (!pData)
+    {
+        logError("Unable to map temporary file for render graph data");
+        if (tempFileMappingHndl) { CloseHandle(tempFileMappingHndl);  }
+    }
+
+    // copy over the memory for any change
+    std::string sharedMemoryStage;
+    sharedMemoryStage.resize((size_t)0x01400000);
+    CopyMemory(&sharedMemoryStage.front(), pData, sharedMemoryStage.size());
+
+    // read and execute the data
+    RenderGraphLoader::runScript(sharedMemoryStage.data() + sizeof(size_t), *(size_t*)sharedMemoryStage.data(), *mpGraphs[mCurrentGraphIndex]);
+#endif
 }
 
 #ifdef _WIN32
@@ -428,15 +487,6 @@ int main(int argc, char** argv)
     SampleConfig config;
     config.windowDesc.title = "Render Graph Editor";
     config.windowDesc.resizableWindow = true;
-
-    // if editor opened from running rendergraph, get memory view for live update
-    ArgList argList;
-#ifdef _WIN32
-    argList.parseCommandLine(GetCommandLineA());
-#else
-    argList.parseCommandLine(concatCommandLine(argc, argv));
-#endif
-    
     Sample::run(config, pEditor);
     return 0;
 }
