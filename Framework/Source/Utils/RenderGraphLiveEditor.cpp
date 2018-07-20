@@ -92,6 +92,7 @@ namespace Falcor
             return;
         }
         
+
         // write out the commands to execute
         mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_WRITE, 0, 0, 0);
         
@@ -169,12 +170,18 @@ namespace Falcor
         }
 
         // write out the commands to execute
-        mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_WRITE, 0, 0, 0);
+        mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_READ, 0, 0, 0);
         assert(mpToWrite);
 
         CopyMemory(&mSharedMemoryStage.front(), mpToWrite, 0x01400000 / 2);
 
         RenderGraphLoader::runScript(mSharedMemoryStage.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(mSharedMemoryStage.data()), renderGraph);
+
+        UnmapViewOfFile(mpToWrite);
+        mpToWrite = nullptr;
+
+        CloseHandle(mTempFileMappingHndl);
+        mTempFileMappingHndl = (HANDLE)nullptr;
     }
 
     void RenderGraphLiveEditor::updateGraph(RenderGraph& renderGraph)

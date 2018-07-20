@@ -294,11 +294,14 @@ namespace Falcor
 
     void RenderGraphUI::writeUpdateScriptToFile(const std::string& filePath)
     {
-        std::ofstream ofstream(filePath, std::ios_base::out);
+
+        if (!mCommandStrings.size()) { return; }
+        static std::ofstream ofstream(filePath, std::ios_base::out);
         size_t totalSize = 0;
+        char sizeData[sizeof(size_t)] = {};
 
-        ofstream.write((const char*)&totalSize, sizeof(size_t));
-
+        ofstream.write(sizeData, sizeof(size_t));
+        
         for (std::string& statement : mCommandStrings)
         {
             statement.push_back('\n');
@@ -309,8 +312,9 @@ namespace Falcor
         mCommandStrings.clear();
 
         ofstream.seekp(0, std::ios::beg);
+        std::memcpy(sizeData, &totalSize, sizeof(size_t));
         ofstream.write((const char*)&totalSize, sizeof(size_t));
-        ofstream.close();
+        ofstream.seekp(0, std::ios::beg);
     }
 
     RenderGraphUI::RenderGraphUI(RenderGraph& renderGraphRef)
@@ -711,6 +715,7 @@ namespace Falcor
         std::unordered_set<std::string> nodeConnectedOutput;
         std::unordered_map<std::string, uint32_t> previousGuiNodeIDs;
         std::unordered_set<uint32_t> existingIDs;
+
 
         for (const auto& currentRenderPassUI : mRenderPassUI)
         {
