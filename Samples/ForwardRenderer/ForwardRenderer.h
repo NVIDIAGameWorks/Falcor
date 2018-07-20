@@ -91,7 +91,7 @@ private:
     class
     {
     public:
-        TemporalAA::UniquePtr pTAA;
+        TemporalAA::SharedPtr pTAA;
         Fbo::SharedPtr getActiveFbo() { return pTAAFbos[activeFboIndex]; }
         Fbo::SharedPtr getInactiveFbo()  { return pTAAFbos[1 - activeFboIndex]; }
         void createFbos(uint32_t width, uint32_t height, const Fbo::Desc & fboDesc)
@@ -120,12 +120,12 @@ private:
 
     struct
     {
-        SSAO::UniquePtr pSSAO;
+        SSAO::SharedPtr pSSAO;
         FullScreenPass::UniquePtr pApplySSAOPass;
         GraphicsVars::SharedPtr pVars;
     } mSSAO;
 
-    FXAA::UniquePtr mpFXAA;
+    FXAA::SharedPtr mpFXAA;
 
     void beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint64_t frameId);
     void endFrame(RenderContext* pContext);

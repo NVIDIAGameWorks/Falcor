@@ -66,7 +66,7 @@ namespace Falcor
             Field& setFlags(Flags flags) { mFlags = flags; return *this; }
 
             const std::string& getName() const { return mName; }
-            const ReflectionResourceType::SharedConstPtr& getReflectionType() const { return mpType; }
+            const ReflectionResourceType::SharedConstPtr& getResourceType() const { return mpType; }
             uint32_t getWidth() const { return mWidth; }
             uint32_t getHeight() const { return mHeight; }
             uint32_t getDepth() const { return mDepth; }

@@ -71,12 +71,13 @@ namespace Falcor
         deprecate("3.2")
         static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedPtr pScene, uint32_t cascadeCount = 4, uint32_t visMapBitsPerChannel = 16);
         static SharedPtr create(const Light::SharedConstPtr& pLight, uint32_t shadowMapWidth = 2048, uint32_t shadowMapHeight = 2048, uint32_t visibilityBufferWidth = 0, uint32_t visibilityBufferHeight = 0, const Scene::SharedPtr& pScene = nullptr, uint32_t cascadeCount = 4, uint32_t visMapBitsPerChannel = 16);
+        static SharedPtr create();
 
         /** Render UI controls
             \param[in] pGui GUI instance to render UI elements with
             \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
-        void renderUI(Gui* pGui, const char* uiGroup) override;
+        void renderUI(Gui* pGui, const char* uiGroup = "") override;
 
         /** Run the shadow-map generation pass and the visibility pass. Returns the visibility buffer
             \params[in] pScene The scene to render
@@ -173,8 +174,12 @@ namespace Falcor
         */
         void resizeShadowMap(uint32_t width, uint32_t height);
 
+        /** Set the light-source
+        */
+        void setLight(const Light::SharedConstPtr& pLight);
+
     private:
-        CascadedShadowMaps(uint32_t mapWidth, uint32_t mapHeight, const Light::SharedConstPtr& pLight);
+        CascadedShadowMaps(uint32_t mapWidth = 2048, uint32_t mapHeight = 2048);
         Light::SharedConstPtr mpLight;
         Camera::SharedPtr mpLightCamera;
         std::shared_ptr<CsmSceneRenderer> mpCsmSceneRenderer;

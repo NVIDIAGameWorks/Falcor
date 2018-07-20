@@ -2397,7 +2397,7 @@
     <None Include="Data\Effects\FXAA.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\RenderPasses\SceneRenderPass.slang">
+    <None Include="Data\RenderPasses\SceneLightingPass.slang">
       <Filter>Data\RenderPasses</Filter>
     </None>
   </ItemGroup>
