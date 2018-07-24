@@ -51,9 +51,16 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mTempRenderGraphLiveEditor.openEditor(*mpGraph);
     }
 
-    if (pGui->addButton("Update Graph"))
+    if (mTempRenderGraphLiveEditor.isOpen())
     {
-        if (mTempRenderGraphLiveEditor.isOpen()) { mTempRenderGraphLiveEditor.forceUpdateGraph(*mpGraph);  }
+        static float someTime = -10.0f;
+        someTime += 1.0f / 180.0f;
+
+        if (pGui->addButton("Update Graph") || (someTime >= 1.0f))
+        {
+            someTime = 0.0f;
+            if (mTempRenderGraphLiveEditor.isOpen()) { mTempRenderGraphLiveEditor.forceUpdateGraph(*mpGraph); }
+        }
     }
 
     if (mpGraph) mpGraph->renderUI(pGui, "Render Graph");
@@ -62,18 +69,15 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
     mpGraph = RenderGraph::create();
-    auto pLightingPass = SceneLightingPass::create();    
-    pLightingPass->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(mEnableDepthPrePass);
+    auto pLightingPass = RenderPassLibrary::createRenderPass("SceneLightingPass");
     mpGraph->addRenderPass(pLightingPass, "LightingPass");
 
-    auto pCsm = CascadedShadowMaps::create();
-    pCsm->setLight(mpScene->getLight(0));
-    mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
-    mpGraph->addRenderPass(pCsm, "ShadowPass");
-    mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
-    mpGraph->addRenderPass(ToneMapping::create(), "ToneMapping");
-    mpGraph->addRenderPass(SSAO::create(), "SSAO");
-    mpGraph->addRenderPass(FXAA::create(), "FXAA");
+    mpGraph->addRenderPass(DepthPass::deserialize({}), "DepthPrePass");
+    mpGraph->addRenderPass(CascadedShadowMaps::deserialize({}), "ShadowPass");
+    mpGraph->addRenderPass(BlitPass::deserialize({}), "BlitPass");
+    mpGraph->addRenderPass(ToneMapping::deserialize({}), "ToneMapping");
+    mpGraph->addRenderPass(SSAO::deserialize({}), "SSAO");
+    mpGraph->addRenderPass(FXAA::deserialize({}), "FXAA");
 
     // Add the skybox
     Scene::UserVariable var = mpScene->getUserVariable("sky_box");

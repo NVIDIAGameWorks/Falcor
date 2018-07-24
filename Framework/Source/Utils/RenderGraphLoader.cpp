@@ -34,7 +34,7 @@
 namespace Falcor
 {
     std::unordered_map<std::string, RenderGraphLoader::ScriptBinding> RenderGraphLoader::mScriptBindings;
-    std::unordered_map<std::string, std::function<RenderPass::SharedPtr()>> RenderGraphLoader::sBaseRenderCreateFuncs;
+    std::unordered_map<std::string, RenderGraphLoader::ScriptParameter> RenderGraphLoader::mActiveVariables;
     std::string RenderGraphLoader::sGraphOutputString;
     bool RenderGraphLoader::sSharedEditingMode = false;
 
@@ -72,52 +72,40 @@ namespace Falcor
         pGui->addText((std::string("This Render Pass Type") + mName + " is not registered").c_str());
     }
 
-
-    // moved to framework with the constant buffer ui stuff
-#define concat_strings_(a_, b_) a_##b_
-#define concat_strings(a, b) concat_strings_(a, b)
-
-#define script_parameter_get(type_, memberName_)  template <> type_& RenderGraphLoader::ScriptParameter::get<type_>() \
+#define script_parameter_get(type_, member_, typeNameEnum_)  template <> type_& RenderGraphLoader::ScriptParameter::get<type_>() \
         { \
-            mType = VariantType::memberName_; \
-            return concat_strings(mData.m, memberName_); \
-        } \
+            type = Type::typeNameEnum_; \
+            return member_; \
+        }
 
-    script_parameter_get( int32_t, Int);
-    script_parameter_get(uint32_t, UInt);
-    script_parameter_get(bool, Bool);
-    script_parameter_get(float, Float);
+    script_parameter_get(int32_t, i32, Int)
+    script_parameter_get(uint32_t, u32, Uint);
+    script_parameter_get(bool,   b, Bool);
+    script_parameter_get(double, d64, Double);
+    script_parameter_get(std::string, str, String);
 
-#undef concat_strings
-#undef concat_strings_
 #undef  script_parameter_get
 
     static RenderGraphLoader sRenderGraphLoaderInstance;
 
-    template <> std::string& RenderGraphLoader::ScriptParameter::get<std::string>()
-    {
-        mType = VariantType::String;
-        return mData.mString;
-    }
-
     void RenderGraphLoader::ScriptParameter::operator=(const std::string& val)
     {
-        switch (mType)
+        switch (type)
         {
-        case VariantType::Float:
-            get<float>() = static_cast<float>(std::atof(val.c_str()));
+        case Type::Double:
+            get<double>() = static_cast<double>(std::atof(val.c_str()));
             break;
-        case VariantType::UInt:
+        case Type::Uint:
             get<uint32_t>() = static_cast<uint32_t>(std::atoi(val.c_str()));
             break;
-        case VariantType::Int:
+        case Type::Int:
             get<int32_t>() = std::atoi(val.c_str());
             break;
-        case VariantType::Bool:
+        case Type::Bool:
             if (val == "true") get<bool>() = true;
             if (val == "false") get<bool>() = false;
             break;
-        case VariantType::String:
+        case Type::String:
             get<std::string>() = val;
             break;
         default:
@@ -128,18 +116,64 @@ namespace Falcor
     std::string RenderGraphLoader::saveRenderGraphAsScriptBuffer(const RenderGraph& renderGraph)
     {
         std::string scriptString;
-        // More generic schema for copying serialization ??
         std::unordered_map<uint16_t, std::string> linkIDToSrcPassName;
         std::string currentCommand;
+        std::string sceneFilename = mActiveVariables["gSceneFilename"].get<std::string>() = renderGraph.getScene()->mFileName;
+        Scene::UserVariable var = renderGraph.getScene()->getUserVariable("sky_box");
+        assert(var.type == Scene::UserVariable::Type::String);
+        mActiveVariables["gSkyBoxFilename"] = ScriptParameter(var.str);
+
+        // first set the name of the scene for the passes that dependent on it during their initialization
+        currentCommand = "SetScene ";
+        currentCommand += sceneFilename + '\n';
+        scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
 
         // do a pre-pass to map all of the outgoing connections to the names of the passes
         for (const auto& nameToIndex : renderGraph.mNameToIndex)
         {
             auto pCurrentPass = renderGraph.mpGraph->getNode(nameToIndex.second);
+            std::string renderPassClassName = renderGraph.mNodeData.find(nameToIndex.second)->second.pPass->getName();
+            
+            // need to deserialize the serialization data. stored in the RenderPassLibrary
+            RenderPassSerializer& renderPassSerializerRef = RenderPassLibrary::getRenderPassSerializer(renderPassClassName.c_str());
+
+            for (size_t i = 0; i < renderPassSerializerRef.getVariableCount(); ++i )
+            {
+                const auto& variableRef = renderPassSerializerRef.getValue(i);
+                const std::string& varName =  renderPassSerializerRef.getVariableName(i);
+                if (varName[0] == 'g') continue;
+
+                switch (variableRef.type)
+                {
+                case Scene::UserVariable::Type::Bool:
+                    currentCommand = "VarBool ";
+                    currentCommand += varName + " " + (renderPassSerializerRef.getValue(i).b ? "true" : "false") + '\n';
+                    break;
+                case Scene::UserVariable::Type::Double:
+                    currentCommand = "VarFloat ";
+                    currentCommand += varName + " " + std::to_string(static_cast<float>(renderPassSerializerRef.getValue(i).d64)) + '\n';
+                    break;
+                case Scene::UserVariable::Type::String:
+                    currentCommand = "VarString ";
+                    currentCommand += varName + " " + renderPassSerializerRef.getValue(i).str + '\n';
+                    break;
+                case Scene::UserVariable::Type::Uint:
+                    currentCommand = "VarUInt ";
+                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).u32) + '\n';
+                    break;
+                case Scene::UserVariable::Type::Int:
+                    currentCommand = "VarInt ";
+                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).i32) + '\n';
+                    break;
+                default:
+                    should_not_get_here();
+                };
+                
+                scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
+            }
 
             // add all of the add render pass commands here
-            currentCommand = kAddRenderPassCommand + " " + nameToIndex.first + " "
-                + renderGraph.mNodeData.find(nameToIndex.second)->second.pPass->getName() + "\n";
+            currentCommand = kAddRenderPassCommand + " " + nameToIndex.first + " " + renderPassClassName + "\n";
             scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
 
             for (uint32_t i = 0; i < pCurrentPass->getOutgoingEdgeCount(); ++i)
@@ -154,8 +188,7 @@ namespace Falcor
         for (const auto& nameToIndex : renderGraph.mNameToIndex)
         {
             auto pCurrentPass = renderGraph.mpGraph->getNode(nameToIndex.second);
-            // pCurrentPass->
-
+            
             // just go through incoming edges for each node
             for (uint32_t i = 0; i < pCurrentPass->getIncomingEdgeCount(); ++i)
             {
@@ -222,6 +255,7 @@ namespace Falcor
 
     void RenderGraphLoader::runScript(const char* scriptData, size_t dataSize, RenderGraph& renderGraph)
     {
+        if (!dataSize) return;
         size_t offset = 0;
         std::istringstream scriptStream(scriptData);
         std::string nextCommand;
@@ -311,8 +345,17 @@ namespace Falcor
 
         RegisterStatement<std::string, std::string>("AddRenderPass", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) { 
             std::string passTypeName = scriptBinding.mParameters[1].get<std::string>();
-            auto createPassCallbackIt = sBaseRenderCreateFuncs.find(passTypeName);
-            if (createPassCallbackIt == sBaseRenderCreateFuncs.end())
+            
+            RenderPassSerializer renderPassSerializer = RenderPassLibrary::getRenderPassSerializer(passTypeName.c_str());
+            for (size_t i = 0; i < renderPassSerializer.getVariableCount(); ++i)
+            {
+                std::string variableName = renderPassSerializer.getVariableName(i);
+                renderPassSerializer.setValue(variableName, mActiveVariables[variableName]);
+            }
+            
+            auto pRenderPass = RenderPassLibrary::createRenderPass(passTypeName.c_str(), renderPassSerializer);
+
+            if (pRenderPass == nullptr)
             {
                 if (sSharedEditingMode)
                 {
@@ -322,7 +365,7 @@ namespace Falcor
                 logWarning("Failed on attempt to create unknown pass : " + passTypeName);
                 return;
             }
-            renderGraph.addRenderPass(createPassCallbackIt->second(), scriptBinding.mParameters[0].get<std::string>());
+            renderGraph.addRenderPass(pRenderPass, scriptBinding.mParameters[0].get<std::string>());
         }, {}, {});
 
         RegisterStatement<std::string, std::string>("RemoveEdge", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
@@ -347,45 +390,30 @@ namespace Falcor
         }, {});
 
         RegisterStatement<std::string>("SetScene", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
-            Scene::SharedPtr pScene =  Scene::loadFromFile(scriptBinding.mParameters[0].get<std::string>());
+            const std::string& sceneFilename = scriptBinding.mParameters[0].get<std::string>();
+            Scene::SharedPtr pScene =  Scene::loadFromFile(sceneFilename);
             if (!pScene) { logWarning("Failed to load scene for current render graph"); return; }
-            renderGraph.setScene(pScene);
+            renderGraph.setScene(pScene); 
+
+            mActiveVariables["gSceneFilename"] = ScriptParameter( sceneFilename );
+
+            Scene::UserVariable var = pScene->getUserVariable("sky_box");
+            assert(var.type == Scene::UserVariable::Type::String);
+            mActiveVariables["gSkyBoxFilename"] = ScriptParameter( var.str );
         }, {});
 
+#define register_var_statement(_type, _statement) \
+        RegisterStatement<std::string, _type>(_statement, [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) { \
+            mActiveVariables[scriptBinding.mParameters[0].get<std::string>()] = scriptBinding.mParameters[1]; \
+        }, {}, {});
 
+        register_var_statement(std::string, "VarString");
+        register_var_statement(uint32_t, "VarUInt");
+        register_var_statement(int32_t, "VarInt");
+        register_var_statement(bool, "VarBool");
+        register_var_statement(double, "VarFloat");
 
-        // register static passes
-#define register_render_pass(renderPassType) \
-    sBaseRenderCreateFuncs.insert(std::make_pair(#renderPassType, std::function<RenderPass::SharedPtr()> ( \
-        []() { return renderPassType::create(); }) )\
-    );
-
-        register_render_pass(BlitPass);
-        register_render_pass(DepthPass);
-        register_render_pass(FXAA);
-
-#undef register_render_pass
-#define register_resource_type() 
-
-        // specialized registries
-
-        
-        sBaseRenderCreateFuncs.insert(std::make_pair("SceneLightingPass", std::function<RenderPass::SharedPtr()>(
-            []() { 
-                auto pLightPass = SceneLightingPass::create();
-                pLightPass->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1);
-                return pLightPass;
-            }
-        )));
-
-        sBaseRenderCreateFuncs.insert(std::make_pair("ToneMappingPass", std::function<RenderPass::SharedPtr()>(
-            []() { return ToneMapping::create(ToneMapping::Operator::Aces); }))
-        );
-
-        // These passes require a scene before creation
-
-        // SkyBox
-        // CascadedShadowMaps
+#undef register_var_statement
     }
 
 }

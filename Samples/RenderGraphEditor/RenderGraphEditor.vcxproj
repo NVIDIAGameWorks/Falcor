@@ -26,12 +26,10 @@
   <ItemGroup>
     <ClCompile Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
     <ClCompile Include="RenderGraphEditor.cpp" />
-    <ClCompile Include="RenderGraphUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
     <ClInclude Include="RenderGraphEditor.h" />
-    <ClInclude Include="RenderGraphUI.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\DefaultRenderGraph.json" />

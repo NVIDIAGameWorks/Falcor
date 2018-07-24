@@ -1,11 +1,28 @@
-AddRenderPass LightingPass SceneLightingPass
+SetScene Arcade/Arcade.fscene
+AddRenderPass CascadedShadowMaps CascadedShadowMaps
 AddRenderPass BlitPass BlitPass
-AddRenderPass DepthPrePass DepthPass
-AddRenderPass ShadowPass ShadowPass
-AddRenderPass ToneMapping ToneMappingPass
-AddEdge DepthPrePass.depth ShadowPass.depth
-AddEdge DepthPrePass.depth LightingPass.depth
-AddEdge LightingPass.color ToneMapping.src
-AddEdge ShadowPass.shadowMap LightingPass.visibilityBuffer
-AddEdge ToneMapping.dst BlitPass.src
+AddRenderPass SSAO SSAO
+AddRenderPass DepthPass DepthPass
+AddRenderPass SceneLightingPass SceneLightingPass
+AddRenderPass FXAA FXAA
+AddRenderPass TemporalAA TemporalAA
+AddRenderPass ToneMapping ToneMapping
+VarUInt sampleDesc.minFilter 1
+VarUInt sampleDesc.magFilter 1
+VarUInt sampleDesc.mipFilter 1
+VarInt loadAsSrgb 1
+AddRenderPass SkyBox SkyBox
+AddEdge DepthPass.depth CascadedShadowMaps.depth
+AddEdge FXAA.dst BlitPass.src
+AddEdge SkyBox.target LightingPass.color
+AddEdge SceneLightingPass.color SSAO.colorIn
+AddEdge SceneLightingPass.depth SSAO.depth
+AddEdge SceneLightingPass.normals SSAO.normals
+AddEdge CascadedShadowMaps.visibility SceneLightingPass.visibilityBuffer
+AddEdge DepthPass.depth SceneLightingPass.depth
+AddEdge ToneMapping.dst FXAA.src
+AddEdge DepthPrePass.depth SkyBox.depth
+AddEdge SceneLightingPass.motionVecs TemporalAA.motionVecs
+AddEdge SSAO.colorOut TemporalAA.colorIn
+AddEdge TemporalAA.colorOut ToneMapping.src
 AddGraphOutput BlitPass.dst

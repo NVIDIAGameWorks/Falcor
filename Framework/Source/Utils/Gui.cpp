@@ -262,6 +262,28 @@ namespace Falcor
         pContext->popGraphicsState();
     }
 
+    void Gui::addRect(const char label[], const glm::vec2& size, const glm::vec4& color, bool filled, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        
+        const ImVec2& cursorPos = ImGui::GetCursorScreenPos();
+        ImVec2 bottomLeft{ cursorPos.x + size.x, cursorPos.y + size.y };
+        ImVec4 rectColor{color.x, color.y, color.z, color.w};
+        
+        if (filled)
+        {
+            ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetCursorScreenPos(), bottomLeft, ImGui::ColorConvertFloat4ToU32(rectColor));
+        }
+        else
+        {
+            ImGui::GetWindowDrawList()->AddRect(ImGui::GetCursorScreenPos(), bottomLeft, ImGui::ColorConvertFloat4ToU32(rectColor));
+        }
+        
+        ImGui::PushID(label);
+        ImGui::Dummy({size.x, size.y});
+        ImGui::PopID();
+    }
+
     bool Gui::addCheckBox(const char label[], bool& var, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
@@ -495,7 +517,7 @@ namespace Falcor
                 topLeft.x -= 1; topLeft.y -= 1;
                 auto colorVec4 =ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarGrab); colorVec4.w *= 0.25f;
                 ImU32 color = ImGui::ColorConvertFloat4ToU32(colorVec4);
-                ImGui::GetOverlayDrawList()->AddRect(topLeft, bottomRight, color);
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, color);
             }
         }
         return b;

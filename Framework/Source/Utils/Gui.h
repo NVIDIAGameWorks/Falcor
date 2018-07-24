@@ -90,6 +90,12 @@ namespace Falcor
         */
         bool onKeyboardEvent(const KeyboardEvent& event);
 
+        /** Display rectangle with specified color
+            \param[in] 
+            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        */
+        void addRect(const char label[], const glm::vec2& size, const glm::vec4& color, bool filled = false, bool sameLine = false);
+
         /** Static text
             \param[in] text The string to display
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget

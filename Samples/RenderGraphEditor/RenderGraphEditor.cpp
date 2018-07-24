@@ -27,7 +27,6 @@
 ***************************************************************************/
 #include <fstream>
 #include "RenderGraphEditor.h"
-#include "Externals/dear_imgui/imgui.h"
 #include "Utils/RenderGraphLoader.h"
 #include "ArgList.h"
 
@@ -100,21 +99,18 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // sub window for listing available window passes
     pGui->pushWindow("Render Passes", screenWidth * 7 / 8, screenHeight / 4, screenWidth / 8, screenHeight * 4 / 5);
 
-    // for each dll that was found. (or manually imported????)
-    for (auto& availableRenderPasses : RenderGraphLoader::sBaseRenderCreateFuncs)
+    // TODO - abstract draw rect in pGui
+    size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
+    for (size_t i = 0; i < numRenderPasses; ++i)
     {
-        ImVec2 nextDragRegionPos{ ImGui::GetCursorScreenPos().x + 64.0f, ImGui::GetCursorScreenPos().y + 32.0f };
-        ImGui::GetWindowDrawList()->AddRect(ImGui::GetCursorScreenPos(), nextDragRegionPos, 0xFFFFFFFF);
-        ImGui::Dummy({ 64.0f , 32.0f });
+        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 64.0f, 32.0f }, {1.0f, 1.0f, 1.0f, 1.0f}, false, true);
+        std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
 
-        std::string command = std::string("AddRenderPass ") + availableRenderPasses.first + " " + availableRenderPasses.first;
-        pGui->dragDropSource(availableRenderPasses.first.c_str(), "RenderPassScript", command);
+        std::string command = std::string("AddRenderPass ") + renderPassClassName + " " + renderPassClassName;
+        pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
 
-        ImGui::SameLine();
-        pGui->addText(availableRenderPasses.first.c_str());
-
-        ImGui::SetCursorScreenPos(nextDragRegionPos);
-        ImGui::SameLine();
+        pGui->addText(renderPassClassName.c_str(), true);
+        pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), true);
     }
 
     pGui->popWindow();
@@ -134,8 +130,12 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
-    if (pGui->addButton("Update Graph"))
+    static float someTime = 0.0f;
+    someTime += 1.0f / 60.0f;
+
+    if (pGui->addButton("Update Graph") || someTime >= 1.0f)
     {
+        someTime = 0.0f;
         mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath);   
     }
 
@@ -168,11 +168,12 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (mCurrentGraphOutput != mGraphOutputEditString)
         {
             mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
-            mCurrentGraphOutput = mGraphOutputEditString;
+            mCurrentGraphOutput = graphOutputString[0];
             mpGraphs[mCurrentGraphIndex]->markGraphOutput(mCurrentGraphOutput);
             mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
         }
     }
+    mGraphOutputEditString = graphOutputString[0];
 
     pGui->popWindow();
 
@@ -358,7 +359,7 @@ void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass,
 
 void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName)
 {
-    mpGraphs[mCurrentGraphIndex]->addRenderPass(RenderGraphLoader::sBaseRenderCreateFuncs[renderPassType](), renderPassName);
+    mpGraphs[mCurrentGraphIndex]->addRenderPass(RenderPassLibrary::createRenderPass(renderPassType.c_str()), renderPassName);
 }
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

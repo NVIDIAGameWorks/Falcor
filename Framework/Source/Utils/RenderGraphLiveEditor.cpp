@@ -56,17 +56,8 @@ namespace Falcor
         }
     }
 
-    void RenderGraphLiveEditor::openEditor(const RenderGraph& renderGraph)
+    bool RenderGraphLiveEditor::createMemoryMappedFile(const RenderGraph& renderGraph)
     {
-        if (mIsOpen)
-        {
-            logWarning("Render Graph Editor is already open for this graph!");
-            return;
-        }
-
-        // create mapped memory
-#ifdef _WIN32
-
         // create a new temporary file through windows
         mTempFileName.resize(255);
         mTempFilePath.resize(255);
@@ -75,50 +66,67 @@ namespace Falcor
         GetTempFileName((LPCWSTR)mTempFilePath.c_str(), L"PW", 0, (LPWSTR)&mTempFileName.front());
         SECURITY_ATTRIBUTES secAttribs{};
         secAttribs.bInheritHandle = TRUE;
-        
+
         mTempFileHndl = CreateFile((LPCWSTR)mTempFileName.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, &secAttribs, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
         if (!mTempFileHndl)
         {
             logError("Unable to create temporary file for graph editor");
-            return;
+            return false;
         }
-        
+
         // map file so we can do things with it
         mTempFileMappingHndl = CreateFileMapping(mTempFileHndl, NULL, PAGE_READWRITE, 0, 0x01400000, NULL);
         if (!mTempFileMappingHndl)
         {
             logError("Unable to map temporary file for graph editor");
             if (mTempFileHndl) { CloseHandle(mTempFileHndl); }
-            return;
+            return false;
         }
-        
+
 
         // write out the commands to execute
         mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_WRITE, 0, 0, 0);
-        
+
         if (!mpToWrite)
         {
             logError("Unable to map view of memory for graph editor.");
+            return false;
         }
-        
+
+        mSharedMemoryStage.reserve(0x01400000 / 2);
         mSharedMemoryStage.resize(sizeof(size_t));
         std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(renderGraph);
-        size_t* pSize = reinterpret_cast<size_t*>(&mSharedMemoryStage[0]);
+        size_t* pSize = reinterpret_cast<size_t*>(&mSharedMemoryStage.front());
         *pSize = renderGraphScript.size();
         mSharedMemoryStage.insert(mSharedMemoryStage.end(), renderGraphScript.begin(), renderGraphScript.end());
-        mSharedMemoryStage.resize(0x01400000 / 2);
-        
-        // how to handle changed callbacks from here ???
-        // serialize the reflectors for the graph 
-        
+
         CopyMemory(mpToWrite, mSharedMemoryStage.data(), mSharedMemoryStage.size());
         FlushViewOfFile(mpToWrite, mSharedMemoryStage.size());
-        
+
         UnmapViewOfFile(mpToWrite);
-        
-        CloseHandle(mTempFileMappingHndl);
         mpToWrite = nullptr;
-        
+
+        CloseHandle(mTempFileMappingHndl);
+
+        return true;
+    }
+
+    void RenderGraphLiveEditor::openEditor(const RenderGraph& renderGraph)
+    {
+        if (mIsOpen)
+        {
+            logWarning("Render Graph Editor is already open for this graph!");
+            return;
+        }
+
+        // create mapped memory and launch editor process
+#ifdef _WIN32
+
+        if (!createMemoryMappedFile(renderGraph))
+        {
+            return;
+        }
+
         // load application for the editor given it the name of the mapped file
         std::string commandLine = kEditorExecutableName;
         std::string fileName;
@@ -161,6 +169,8 @@ namespace Falcor
         // load changes from the modified graph file
         std::string script;
 
+        assert(mTempFileHndl);
+
         mTempFileMappingHndl = CreateFileMapping(mTempFileHndl, NULL, PAGE_READWRITE, 0, 0x01400000, NULL);
         if (!mTempFileMappingHndl)
         {
@@ -170,12 +180,15 @@ namespace Falcor
         }
 
         // write out the commands to execute
-        mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_READ, 0, 0, 0);
+        mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
         assert(mpToWrite);
 
         CopyMemory(&mSharedMemoryStage.front(), mpToWrite, 0x01400000 / 2);
 
         RenderGraphLoader::runScript(mSharedMemoryStage.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(mSharedMemoryStage.data()), renderGraph);
+
+        const size_t zero = 0;
+        CopyMemory(mpToWrite, &zero, sizeof(size_t));
 
         UnmapViewOfFile(mpToWrite);
         mpToWrite = nullptr;
@@ -187,6 +200,17 @@ namespace Falcor
     void RenderGraphLiveEditor::updateGraph(RenderGraph& renderGraph)
     {
         bool status = false;
+
+        // check to see if the editor has closed and react accordingly
+        uint32_t exitCode = 0;
+        if (GetExitCodeProcess(mProcess, (LPDWORD)&exitCode))
+        {
+            if (exitCode != STILL_ACTIVE)
+            {
+                CloseHandle(mProcess);
+                mProcess = nullptr;
+            }
+        }
 
 #ifdef _WIN32
         

@@ -44,6 +44,8 @@ namespace Falcor
         void forceUpdateGraph(RenderGraph& renderGraph);
 
     private:
+        bool createMemoryMappedFile(const RenderGraph& renderGraph);
+
         bool mIsOpen = false;
         std::string mSharedMemoryStage;
 #ifdef _WIN32

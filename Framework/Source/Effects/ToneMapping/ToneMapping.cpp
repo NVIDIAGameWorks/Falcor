@@ -45,7 +45,7 @@ namespace Falcor
 
     ToneMapping::~ToneMapping() = default;
 
-    ToneMapping::ToneMapping(ToneMapping::Operator op) : RenderPass("ToneMappingPass")
+    ToneMapping::ToneMapping(ToneMapping::Operator op) : RenderPass("ToneMapping")
     {
         createLuminancePass();
         createToneMapPass(op);

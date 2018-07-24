@@ -560,7 +560,10 @@
       <Filter>Utils</Filter>
     </ClCompile>
     <ClCompile Include="Utils\RenderGraphLiveEditor.cpp">
-      <Filter>Utils</Filter>
+          <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1752,7 +1755,7 @@
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\RenderGraphLiveEditor.h">
-      <Filter>Utils</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

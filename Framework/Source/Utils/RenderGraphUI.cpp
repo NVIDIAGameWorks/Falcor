@@ -25,17 +25,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#include "Framework.h"
 #include "RenderGraphUI.h"
 #include "Utils/Gui.h"
 #include "Utils/RenderGraphLoader.h"
-#include "RenderGraphEditor.h"
-
 #   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
-
 #include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 // TODO Don't do this
 #include "Externals/dear_imgui/imgui.h"
 #include "Externals/dear_imgui/imgui_internal.h"
+#include <fstream>
 
 namespace Falcor
 {
@@ -294,7 +293,6 @@ namespace Falcor
 
     void RenderGraphUI::writeUpdateScriptToFile(const std::string& filePath)
     {
-
         if (!mCommandStrings.size()) { return; }
         static std::ofstream ofstream(filePath, std::ios_base::out);
         size_t totalSize = 0;
@@ -665,6 +663,8 @@ namespace Falcor
 
     glm::vec2 RenderGraphUI::getNextNodePosition(uint32_t nodeID)
     {
+        const float offsetX = 384.0f;
+        const float offsetY = 128.0f;
         glm::vec2 newNodePosition = mNewNodeStartPosition;
         
         if (std::find(mRenderGraphRef.mExecutionList.begin(), mRenderGraphRef.mExecutionList.end(), nodeID) == mRenderGraphRef.mExecutionList.end())
@@ -674,7 +674,7 @@ namespace Falcor
 
         for (const auto& passID : mRenderGraphRef.mExecutionList)
         {
-            newNodePosition.x += 512.0f;
+            newNodePosition.x += offsetX;
 
             if (passID == nodeID)
             {
@@ -686,7 +686,8 @@ namespace Falcor
                     if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
                     {
                         // move down by index in 
-                        newNodePosition.y += 256.0f * (outgoingEdgeCount - pNode->getIncomingEdgeCount() );
+                        newNodePosition.y += offsetY * (outgoingEdgeCount - pNode->getIncomingEdgeCount() );
+                        break;
                     }
                 }
 
@@ -698,7 +699,7 @@ namespace Falcor
         glm::vec2 graphOutputNodePos = pGraphOutputNode->getPos();
         if (graphOutputNodePos.x <= newNodePosition.x)
         {
-            pGraphOutputNode->setPos({ newNodePosition.x + 512.0f, newNodePosition.y });
+            pGraphOutputNode->setPos({ newNodePosition.x + offsetX, newNodePosition.y });
         }
 
         return newNodePosition;
