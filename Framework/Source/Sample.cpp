@@ -305,73 +305,86 @@ namespace Falcor
 
     void Sample::renderGUI()
     {
-        mpGui->beginFrame();
+        if(mShowUI || gProfileEnabled)
+        {
+            mpGui->beginFrame();
 
-        constexpr char help[] =
-            "  'F1'      - Show\\Hide text\n"
-            "  'F2'      - Show\\Hide GUI\n"
-            "  'F5'      - Reload shaders\n"
-            "  'ESC'     - Quit\n"
-            "  'V'       - Toggle VSync\n"
-            "  'F12'     - Capture screenshot\n"
-            "  'Shift+F12' - Video capture\n"
-            "  'Pause'     - Pause\\resume timer\n"
-            "  'Z'       - Zoom in on a pixel\n"
-            "  'MouseWheel' - Change level of zoom\n"
+            constexpr char help[] =
+                "  'F1'      - Show\\Hide text\n"
+                "  'F2'      - Show\\Hide GUI\n"
+                "  'F5'      - Reload shaders\n"
+                "  'ESC'     - Quit\n"
+                "  'V'       - Toggle VSync\n"
+                "  'F12'     - Capture screenshot\n"
+                "  'Shift+F12' - Video capture\n"
+                "  'Pause'     - Pause\\resume timer\n"
+                "  'Z'       - Zoom in on a pixel\n"
+                "  'MouseWheel' - Change level of zoom\n"
 #if _PROFILING_ENABLED
-            "  'P'       - Enable profiling\n";
+                "  'P'       - Enable profiling\n";
 #else
-            ;
+                ;
 #endif
 
-        mpGui->pushWindow("Falcor", mSampleGuiWidth, mSampleGuiHeight, mSampleGuiPositionX, mSampleGuiPositionY, false);
-        mpGui->addText("Keyboard Shortcuts");
-        mpGui->addTooltip(help, true);
-
-        if (mpGui->beginGroup("Global Controls"))
-        {
-            mpGui->addFloatVar("Time", mCurrentTime, 0, FLT_MAX);
-            mpGui->addFloatVar("Time Scale", mTimeScale, 0, FLT_MAX);
-
-            if (mVideoCapture.pVideoCapture == nullptr)
+            if(mShowUI)
             {
-                mpGui->addFloatVar("Fixed Time Delta", mFixedTimeDelta, 0, FLT_MAX);
+                mpGui->pushWindow("Falcor", mSampleGuiWidth, mSampleGuiHeight, mSampleGuiPositionX, mSampleGuiPositionY, false);
+                mpGui->addText("Keyboard Shortcuts");
+                mpGui->addTooltip(help, true);
+
+                if (mpGui->beginGroup("Global Controls"))
+                {
+                    mpGui->addFloatVar("Time", mCurrentTime, 0, FLT_MAX);
+                    mpGui->addFloatVar("Time Scale", mTimeScale, 0, FLT_MAX);
+
+                    if (mVideoCapture.pVideoCapture == nullptr)
+                    {
+                        mpGui->addFloatVar("Fixed Time Delta", mFixedTimeDelta, 0, FLT_MAX);
+                    }
+
+                    if (mpGui->addButton("Reset"))
+                    {
+                        mCurrentTime = 0.0f;
+                    }
+
+                    if (mpGui->addButton(mFreezeTime ? "Play" : "Pause", true))
+                    {
+                        mFreezeTime = !mFreezeTime;
+                    }
+
+                    if (mpGui->addButton("Stop", true))
+                    {
+                        mFreezeTime = true;
+                        mCurrentTime = 0.0f;
+                    }
+
+                    mCaptureScreen = mpGui->addButton("Screen Capture");
+                    if (mpGui->addButton("Video Capture", true))
+                    {
+                        initVideoCapture();
+                    }
+
+                    mpGui->endGroup();
+                }
+
+                mpRenderer->onGuiRender(this, mpGui.get());
+                mpGui->popWindow();
+
+                if (mVideoCapture.pUI)
+                {
+                    mVideoCapture.pUI->render(mpGui.get());
+                }
             }
 
-            if (mpGui->addButton("Reset"))
+            if (gProfileEnabled)
             {
-                mCurrentTime = 0.0f;
+                mpGui->pushWindow("Profiler", 650, 200, 10, 300);
+                mpGui->addText(Profiler::getEventsString().c_str());
+                mpGui->popWindow();
             }
 
-            if (mpGui->addButton(mFreezeTime ? "Play" : "Pause", true))
-            {
-                mFreezeTime = !mFreezeTime;
-            }
-
-            if (mpGui->addButton("Stop", true))
-            {
-                mFreezeTime = true;
-                mCurrentTime = 0.0f;
-            }
-            
-            mCaptureScreen = mpGui->addButton("Screen Capture");
-            if (mpGui->addButton("Video Capture", true))
-            {
-                initVideoCapture();
-            }
-
-            mpGui->endGroup();
+            mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
         }
-
-        mpRenderer->onGuiRender(this, mpGui.get());
-        mpGui->popWindow();
-        
-        if (mVideoCapture.pUI)
-        {
-            mVideoCapture.pUI->render(mpGui.get());
-        }
-
-        mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
     }
 
     bool Sample::initializeTesting()
@@ -443,10 +456,7 @@ namespace Falcor
             mpRenderContext->setGraphicsState(mpDefaultPipelineState);
             {
                 PROFILE(renderGUI);
-                if (mShowUI)
-                {
-                    renderGUI();
-                }
+                renderGUI();
             }
 
             renderText(getFpsMsg(), glm::vec2(10, 10));
@@ -455,7 +465,9 @@ namespace Falcor
                 mpPixelZoom->render(mpRenderContext.get(), mpBackBufferFBO.get());
             }
 
-            printProfileData();
+#if _PROFILING_ENABLED
+            Profiler::endFrame();
+#endif
             captureVideoFrame();
 
             if (mCaptureScreen)
@@ -543,17 +555,6 @@ namespace Falcor
             mpTextRenderer->renderLine(msg);
             mpTextRenderer->end();
         }
-    }
-
-    void Sample::printProfileData()
-    {
-#if _PROFILING_ENABLED
-        if (gProfileEnabled)
-        {
-            renderText(Profiler::getEventsString(), glm::vec2(10, 300));
-        }
-        Profiler::endFrame();
-#endif
     }
 
     void Sample::initVideoCapture()

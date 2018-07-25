@@ -48,6 +48,7 @@ namespace Falcor
         static std::hash<std::string> hashFunc;
 
         HashedString(const std::string& s) : str(s), hash(hashFunc(s)) {}
+        HashedString(const char* c) : str(c), hash(hashFunc(c)) {}
 
         const std::string str;
         const size_t hash;
