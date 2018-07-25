@@ -126,6 +126,9 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* uiGroup);
 
+        /** Enable/disable pass profiling
+        */
+        void profilePasses(bool enabled) { mProfilePasses = enabled; }
     private:
         RenderGraph();
         static const uint32_t kInvalidIndex = -1;
@@ -174,5 +177,6 @@ namespace Falcor
 
         std::vector<uint32_t> mExecutionList;
         ResourceCache::SharedPtr mpResourcesCache;
+        bool mProfilePasses = false;
     };
 }

@@ -79,8 +79,6 @@ namespace Falcor
 
     void FXAA::execute(RenderContext* pContext, const RenderData* pData)
     {
-        PROFILE(FXAA);
-
         auto& pSrc = pData->getTexture(kSrc);
         auto& pDst = pData->getTexture(kDst);
 

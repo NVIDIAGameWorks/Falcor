@@ -72,8 +72,8 @@ namespace Falcor
         sLogFile = openLogFile();
         sInit = sLogFile != nullptr;
         assert(sInit);
-        return sInit;
 #endif
+        return sInit;
     }
 
     bool Logger::sInit = Logger::init();

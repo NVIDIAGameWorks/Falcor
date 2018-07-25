@@ -49,9 +49,7 @@ namespace Falcor
     void Profiler::initNewEvent(EventData *pEvent, const HashedString& name)
     {
         pEvent->name = name.str;
-        pEvent->level = sCurrentLevel;
         sProfilerEvents[name.hash] = pEvent;
-        sProfilerVector.push_back(pEvent);
     }
 
     Profiler::EventData* Profiler::createNewEvent(const HashedString& name)
@@ -87,8 +85,12 @@ namespace Falcor
         }
     }
 
-    void Profiler::startEvent(const HashedString& name, EventData* pData)
+    void Profiler::startEvent(const HashedString& name, bool showInMsg)
     {
+        EventData* pData = getEvent(name);
+        sProfilerVector.push_back(pData);
+        pData->showInMsg = showInMsg;
+        pData->level = sCurrentLevel;
         pData->cpuStart = CpuTimer::getCurrentTimePoint();
         EventData::FrameData& frame = pData->frameData[sGpuTimerIndex];
         if (frame.currentTimer >= frame.pTimers.size())
@@ -101,8 +103,9 @@ namespace Falcor
         sCurrentLevel++;
     }
 
-    void Profiler::endEvent(const HashedString& name, EventData* pData)
+    void Profiler::endEvent(const HashedString& name)
     {
+        EventData* pData = getEvent(name);
         pData->cpuEnd = CpuTimer::getCurrentTimePoint();
         pData->cpuTotal += CpuTimer::calcDuration(pData->cpuStart, pData->cpuEnd);
 
@@ -112,25 +115,48 @@ namespace Falcor
         sCurrentLevel--;
     }
 
-    void Profiler::endFrame(std::string& profileResults)
+    double Profiler::getEventGpuTime(const HashedString& name)
     {
-        profileResults = "Name\t\t\tCPU time(ms)\t\t\tGPU time(ms)\n";
+        const auto& pEvent = getEvent(name);
+        return pEvent ? getGpuTime(pEvent) : 0;
+    }
+
+    double Profiler::getEventCpuTime(const HashedString& name)
+    {
+        const auto& pEvent = getEvent(name);
+        return pEvent ? getCpuTime(pEvent) : 0;
+    }
+
+    double Profiler::getGpuTime(const EventData* pData)
+    {
+        double gpuTime = 0;
+        for (size_t i = 0; i < pData->frameData[1 - sGpuTimerIndex].currentTimer; i++)
+        {
+            gpuTime += pData->frameData[1 - sGpuTimerIndex].pTimers[i]->getElapsedTime();
+        }
+        return gpuTime;
+    }
+
+    double Profiler::getCpuTime(const EventData* pData)
+    {
+        return pData->cpuTotal;
+    }
+
+    std::string Profiler::getEventsString()
+    {
+        std::string results("Name\t\t\tCPU time(ms)\t\t\tGPU time(ms)\n");
 
         for (EventData* pData : sProfilerVector)
         {
-            double gpuTime = 0;
-            for (size_t i = 0; i < pData->frameData[1 - sGpuTimerIndex].currentTimer; i++)
-            {
-                gpuTime += pData->frameData[1 - sGpuTimerIndex].pTimers[i]->getElapsedTime();
-            }
+            if(pData->showInMsg == false) continue;
 
-            pData->frameData[1 - sGpuTimerIndex].currentTimer = 0;
+            double gpuTime = getGpuTime(pData);
             assert(pData->callStack.empty());
 
             char event[1000];
             uint32_t nameIndent = pData->level * 2 + 1;
             uint32_t cpuIndent = 32 - (nameIndent + (uint32_t)pData->name.size());
-            std::snprintf(event, 1000, "%*s%s %*.3f %36.3f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, pData->cpuTotal, gpuTime);
+            std::snprintf(event, 1000, "%*s%s %*.3f %36.3f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, getCpuTime(pData), gpuTime);
 #if _PROFILING_LOG == 1
             pData->cpuMs[pData->stepNr] = pData->cpuTotal;
             pData->gpuMs[pData->stepNr] = (float)gpuTime;
@@ -149,11 +175,21 @@ namespace Falcor
                 pData->stepNr = 0;
             }
 #endif
-            pData->cpuTotal = 0;
-            pData->gpuTotal = 0;
-            profileResults += event;
+            results += event;
         }
 
+        return results;
+    }
+
+    void Profiler::endFrame()
+    {
+        for (EventData* pData : sProfilerVector)
+        {
+            pData->showInMsg = false;
+            pData->cpuTotal = 0;
+            pData->frameData[1 - sGpuTimerIndex].currentTimer = 0;
+        }
+        sProfilerVector.clear();
         sGpuTimerIndex = 1 - sGpuTimerIndex;
     }
 

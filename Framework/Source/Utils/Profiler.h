@@ -76,12 +76,11 @@ namespace Falcor
                 size_t currentTimer = 0;
             };
             FrameData frameData[2]; // Double-buffering, to avoid GPU flushes
-
+            bool showInMsg;
             std::stack<size_t> callStack;
             CpuTimer::TimePoint cpuStart;
             CpuTimer::TimePoint cpuEnd;
             float cpuTotal = 0;
-            float gpuTotal = 0;
             uint32_t level;
 #if _PROFILING_LOG == 1
             int stepNr = 0;
@@ -94,32 +93,22 @@ namespace Falcor
         /** Start profiling a new event and update the events hierarchies.
             \param[in] name The event name.
         */
-        inline static void startEvent(const HashedString& name) { startEvent(name, getEvent(name)); }
-
-        /** Start profiling a new event and update the events hierarchies.
-            \param[in] name The event name.
-            \param[in] event The event if previously looked up.
-            \note This version supports dropping the event-lookup if the event is already available.
-        */
-        static void startEvent(const HashedString& name, EventData *pEvent);
+        static void startEvent(const HashedString& name, bool showInMsg = true);
 
         /** Finish profiling a new event and update the events hierarchies.
             \param[in] name The event name.
         */
-        inline static void endEvent(const HashedString& name) { endEvent(name, getEvent(name)); }
-
-        /** Finish profiling a new event and update the events hierarchies.
-            \param[in] name The event name.
-            \param[in] event The event if previously looked up.
-            \note This version supports dropping the event-lookup if the event is already available.
-        */
-        static void endEvent(const HashedString& name, EventData *pEvent);
+        static void endEvent(const HashedString& name);
 
         /** Finish profiling for the entire frame.
             Due to the double-buffering nature of the profiler, the results returned are for the previous frame.
             \param[out] profileResults A string containing the the profiling results.
         */
-        static void endFrame(std::string& profileResults);
+        static void endFrame();
+
+        /** Get a string with the current frame results
+        */
+        static std::string getEventsString();
 
         /** Create a new event and register and initialize it using \ref initNewEvent.
             \param[in] name The event name.
@@ -138,6 +127,16 @@ namespace Falcor
         */
         static EventData* getEvent(const HashedString& name);
 
+        /** Get the event, or create a new one if the event does not yet exist.
+        This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
+        */
+        static double getEventCpuTime(const HashedString& name);
+
+        /** Get the event, or create a new one if the event does not yet exist.
+        This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
+        */
+        static double getEventGpuTime(const HashedString& name);
+
         /** Returns the event or \c nullptr if the event is not known.
             Can be used as a predicate.
         */
@@ -149,6 +148,9 @@ namespace Falcor
         static void clearEvents();
 
     private:
+        static double getGpuTime(const EventData* pData);
+        static double getCpuTime(const EventData* pData);
+
         static std::map<size_t, EventData*> sProfilerEvents;
         static std::vector<EventData*> sProfilerVector;
         static uint32_t sCurrentLevel;

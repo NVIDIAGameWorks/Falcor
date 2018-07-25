@@ -550,10 +550,9 @@ namespace Falcor
 #if _PROFILING_ENABLED
         if (gProfileEnabled)
         {
-            std::string profileMsg;
-            Profiler::endFrame(profileMsg);
-            renderText(profileMsg, glm::vec2(10, 300));
+            renderText(Profiler::getEventsString(), glm::vec2(10, 300));
         }
+        Profiler::endFrame();
 #endif
     }
 

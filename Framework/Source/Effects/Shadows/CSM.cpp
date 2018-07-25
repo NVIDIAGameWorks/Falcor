@@ -1008,8 +1008,6 @@ namespace Falcor
 
     void CascadedShadowMaps::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        PROFILE(CascadedShadowMaps);
-
         setupVisibilityPassFbo(pRenderData->getTexture(kVisibility));
         const auto& pDepth = pRenderData->getTexture(kDepth);
         executeInternal(pContext, mpSceneRenderer->getScene()->getActiveCamera().get(), pDepth);

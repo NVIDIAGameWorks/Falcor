@@ -410,8 +410,10 @@ namespace Falcor
 
         for (const auto& node : mExecutionList)
         {
+            if (mProfilePasses) Profiler::startEvent(mNodeData[node].nodeName);
             RenderData renderData(mNodeData[node].nodeName, nullptr, mpResourcesCache);
             mNodeData[node].pPass->execute(pContext, &renderData);
+            if (mProfilePasses) Profiler::endEvent(mNodeData[node].nodeName);
         }
     }
 
@@ -514,10 +516,22 @@ namespace Falcor
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
+            pGui->addCheckBox("Profile Passes", mProfilePasses);
+
             for (const auto& passId : mExecutionList)
             {
-                const auto& pass = mNodeData[passId];
-                if (pGui->beginGroup(pass.nodeName))
+                const auto& pass = mNodeData[passId];                
+                std::string title = pass.nodeName;
+                if (mProfilePasses)
+                {
+                    char msg[256];
+                    int32_t indent = 20 - (int32_t)title.size();
+                    indent = max(1, indent);
+                    std::snprintf(msg, arraysize(msg), "\tcpu(%.2f), gpu(%.2f)", Profiler::getEventCpuTime(pass.nodeName), Profiler::getEventGpuTime(pass.nodeName));
+                    title += msg;
+                }
+
+                if (pGui->beginGroup(title))
                 {
                     pass.pPass->renderUI(pGui, nullptr);
                     pGui->endGroup();
