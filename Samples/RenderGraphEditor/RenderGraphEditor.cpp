@@ -157,13 +157,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // update the display if the render graph loader has set a new output
     if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
     {
-        // mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
         mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
-        mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     }
 
     std::vector<std::string> graphOutputString{mGraphOutputEditString};
-    if (pGui->addMultiTextBox("Update", {"GraphOutput"}, graphOutputString)) // addButton("Update"))
+    if (pGui->addMultiTextBox("Update", {"GraphOutput"}, graphOutputString))
     {
         if (mCurrentGraphOutput != mGraphOutputEditString)
         {
@@ -337,10 +335,19 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     }
     else
     {
-        loadScene(gkDefaultScene, false);
+        // load the default scene if none was specified
+        if (mpGraphs[mCurrentGraphIndex]->getScene() == nullptr)
+        {
+            loadScene(gkDefaultScene, false);
+        }
     }
     
-    mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, mpLastSample->getCurrentFbo()->getColorTexture(0));
+    // update the display if the render graph loader has set a new output
+    if (RenderGraphLoader::sGraphOutputString[0] != '0')
+    {
+        mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
+    }
+
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
 
     mCreatingRenderGraph = false;
@@ -371,7 +378,6 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     std::string commandLine(GetCommandLineA());
     size_t firstSpace = commandLine.find_first_of(' ') + 1;
     mFilePath = (commandLine.substr(firstSpace, commandLine.size() - firstSpace));
-    msgBox(mFilePath);
 #endif
 
     if (mFilePath.size())
@@ -427,7 +433,6 @@ bool RenderGraphEditor::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
 
     mpGraphs[mCurrentGraphIndex]->getScene()->getActiveCamera()->setAspectRatio((float)width / (float)height);

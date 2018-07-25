@@ -38,7 +38,6 @@ namespace Falcor
 
         bool isOpen() { return mIsOpen; }
         void openEditor(const RenderGraph& renderGraph);
-        void openEditorTest(const std::string& fileName);
         void closeEditor();
         void updateGraph(RenderGraph& renderGraph);
         void forceUpdateGraph(RenderGraph& renderGraph);

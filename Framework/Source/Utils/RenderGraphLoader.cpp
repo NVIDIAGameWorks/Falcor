@@ -282,7 +282,10 @@ namespace Falcor
         while (!scriptFile.eof())
         {
             scriptFile.getline(&*line.begin(), line.size());
-            if (!line.size()) { break; }
+            if (!line.size()) 
+            {
+                break;
+            }
             if (line.find_first_of('\0') == 0) { break; }
 
             ExecuteStatement(line.substr(0, line.find_first_of('\0')), renderGraph);
@@ -307,6 +310,7 @@ namespace Falcor
         
         std::vector<std::string> statementPeices;
         std::string nextStatement = statement;
+        nextStatement.erase(std::remove(nextStatement.begin(), nextStatement.end(), '0'), nextStatement.end());
         nextStatement.erase(std::remove(nextStatement.begin(), nextStatement.end(), '\r'), nextStatement.end());
 
         for (;;)
@@ -395,10 +399,13 @@ namespace Falcor
             if (!pScene) { logWarning("Failed to load scene for current render graph"); return; }
             renderGraph.setScene(pScene); 
 
+            msgBox(sceneFilename);
+            
             mActiveVariables["gSceneFilename"] = ScriptParameter( sceneFilename );
 
             Scene::UserVariable var = pScene->getUserVariable("sky_box");
             assert(var.type == Scene::UserVariable::Type::String);
+
             mActiveVariables["gSkyBoxFilename"] = ScriptParameter( var.str );
         }, {});
 

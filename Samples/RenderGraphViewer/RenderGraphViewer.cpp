@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "RenderGraphViewer.h"
 
-const std::string gkDefaultScene = "Arcade/Arcade.fscene";
+const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
@@ -42,24 +42,22 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
     }
 
-    if (pGui->addButton("Edit RenderGraph"))
-    {
-        // std::string filePath;
-        // findFileInDataDirectories("ForwardRenderer.graph", filePath);
-        // mTempRenderGraphLiveEditor.openEditorTest(filePath);
-
-        mTempRenderGraphLiveEditor.openEditor(*mpGraph);
-    }
-
     if (mTempRenderGraphLiveEditor.isOpen())
     {
-        static float someTime = -10.0f;
+        static float someTime = -20.0f;
         someTime += 1.0f / 180.0f;
 
-        if (pGui->addButton("Update Graph") || (someTime >= 1.0f))
+        if (someTime >= 1.0f)
         {
             someTime = 0.0f;
-            if (mTempRenderGraphLiveEditor.isOpen()) { mTempRenderGraphLiveEditor.forceUpdateGraph(*mpGraph); }
+            mTempRenderGraphLiveEditor.forceUpdateGraph(*mpGraph);
+        }
+    }
+    else
+    {
+        if (pGui->addButton("Edit RenderGraph"))
+        {
+            mTempRenderGraphLiveEditor.openEditor(*mpGraph);
         }
     }
 
