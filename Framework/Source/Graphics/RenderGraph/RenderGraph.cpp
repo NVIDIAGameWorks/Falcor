@@ -412,6 +412,8 @@ namespace Falcor
 
     void RenderGraph::execute(RenderContext* pContext)
     {
+        if (mProfileGraph) Profiler::startEvent("RenderGraph::execute()");
+
         std::string log;
         if (!compile(log))
         {
@@ -421,9 +423,13 @@ namespace Falcor
 
         for (const auto& node : mExecutionList)
         {
+            if (mProfileGraph) Profiler::startEvent(mNodeData[node].nodeName);
             RenderData renderData(mNodeData[node].nodeName, nullptr, mpResourcesCache);
             mNodeData[node].pPass->execute(pContext, &renderData);
+            if (mProfileGraph) Profiler::endEvent(mNodeData[node].nodeName);
         }
+
+        if (mProfileGraph) Profiler::endEvent("RenderGraph::execute()");
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
@@ -650,9 +656,14 @@ namespace Falcor
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
+            pGui->addCheckBox("Profile Passes", mProfileGraph);
+            pGui->addTooltip("Profile the render-passes. The results will be shown in the profiler window. If you can't see it, click 'P'");
+
             for (const auto& passId : mExecutionList)
             {
                 const auto& pass = mNodeData[passId];
+
+                // If you are thinking about displaying the profiler results next to the group label, it won't work. Since the times change every frame, IMGUI thinks it's a different group and will not expand it
                 if (pGui->beginGroup(pass.nodeName))
                 {
                     pass.pPass->renderUI(pGui, nullptr);

@@ -83,7 +83,7 @@ namespace Falcor
         uint8_t* pFontData;
         int32_t width, height;
         std::string fontFile;
-        if(findFileInDataDirectories("Framework/Fonts/trebucbd.ttf", fontFile))
+        if(findFileInDataDirectories("Framework/Fonts/consolab.ttf", fontFile))
         {
             io.Fonts->AddFontFromFileTTF(fontFile.c_str(), 14);
         }

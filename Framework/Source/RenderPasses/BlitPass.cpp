@@ -59,8 +59,6 @@ namespace Falcor
 
     void BlitPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        PROFILE(BlitPass);
-
         const auto& pSrcTex = pRenderData->getTexture(kSrc);
         const auto& pDstTex = pRenderData->getTexture(kDst);
 

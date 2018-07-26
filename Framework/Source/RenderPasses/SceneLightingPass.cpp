@@ -134,8 +134,6 @@ namespace Falcor
 
     void SceneLightingPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        PROFILE(SceneLightingPass);
-
         initDepth(pRenderData);
         initFbo(pContext, pRenderData);
 

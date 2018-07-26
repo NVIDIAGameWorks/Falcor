@@ -146,7 +146,6 @@ namespace Falcor
 
         // Private functions
         void initUI();
-        void printProfileData();
         void calculateTime();
 
         void startVideoCapture();

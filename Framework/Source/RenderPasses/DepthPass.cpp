@@ -69,8 +69,6 @@ namespace Falcor
 
     void DepthPass::execute(RenderContext* pContext, const RenderData* pData)
     {
-        PROFILE(DepthPass);
-
         if(mpSceneRenderer)
         {
             const auto& pDepth = pData->getTexture(kDepth);

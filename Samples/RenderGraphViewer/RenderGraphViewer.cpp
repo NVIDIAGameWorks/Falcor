@@ -199,7 +199,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 {
     RenderGraphViewer::UniquePtr pRenderer = std::make_unique<RenderGraphViewer>();
     SampleConfig config;
-    config.windowDesc.title = "Render Graph Renderer";
+    config.windowDesc.title = "Render Graph Viewer";
     config.windowDesc.resizableWindow = true;
     Sample::run(config, pRenderer);
     return 0;
