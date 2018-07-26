@@ -78,7 +78,7 @@ namespace Falcor
 
         void reset();
 
-        void writeUpdateScriptToFile(const std::string& filePath);
+        void writeUpdateScriptToFile(const std::string& filePath, float lastFrameTimes);
 
         /** functions used for GUI callbacks to fill out commands to send to other process
          */
@@ -87,6 +87,8 @@ namespace Falcor
         void removeEdge(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
 
         void removeRenderPass(const std::string& name);
+
+        void addOutput(const std::string& outputParam);
 
         void addOutput(const std::string& outputPass, const std::string& outputField);
 
@@ -123,5 +125,7 @@ namespace Falcor
 
         // if in external editing mode, building list of commands for changes to send to the other process
         std::vector<std::string> mCommandStrings;
+
+        float mTimeSinceLastUpdate = 0.0f;
     };
 }

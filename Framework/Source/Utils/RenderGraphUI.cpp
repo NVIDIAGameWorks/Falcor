@@ -31,9 +31,10 @@
 #include "Utils/RenderGraphLoader.h"
 #   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
 #include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
-// TODO Don't do this
 #include "Externals/dear_imgui/imgui.h"
+// TODO Don't do this
 #include "Externals/dear_imgui/imgui_internal.h"
+#include <experimental/filesystem>
 #include <fstream>
 
 namespace Falcor
@@ -44,6 +45,7 @@ namespace Falcor
     Gui* gpGui;
     uint32_t gGuiNodeID;
     RenderPass* gpCurrentRenderPass; // This is for renderUI callback
+    const float kUpdateTimeInterval = 3.0f;
 
     const float kPinRadius = 6.0f;
 
@@ -236,13 +238,33 @@ namespace Falcor
         mCommandStrings.push_back(std::string("AddRenderPass ") + name + " " + nodeTypeName);
     }
 
+    void RenderGraphUI::addOutput(const std::string& outputParam)
+    {
+        size_t offset = outputParam.find('.');
+        std::string outputPass = outputParam.substr(0, offset);
+        std::string outputField = outputParam.substr(offset + 1, outputParam.size());
+
+        const auto passUIIt = mRenderPassUI.find(outputPass);
+        if (passUIIt == mRenderPassUI.end())
+        {
+            msgBox("Error setting graph output. Can't find node name.");
+        }
+        auto& passUI = passUIIt->second;
+        const auto outputIt = passUI.mNameToIndexOutput.find(outputField);
+        if (outputIt == passUI.mNameToIndexOutput.end())
+        {
+            msgBox("Error setting graph output. Can't find output name.");
+        }
+        passUI.mOutputPins[outputIt->second].mIsGraphOutput = true;
+
+        mRenderGraphRef.markGraphOutput(outputParam);
+        mCommandStrings.push_back(std::string("AddGraphOutput ") + outputParam);
+    }
+
     void RenderGraphUI::addOutput(const std::string& outputPass, const std::string& outputField)
     {
         std::string outputParam = outputPass + "." + outputField;
-        
-        // generalize this?
         mCommandStrings.push_back(std::string("AddGraphOutput ") + outputParam);
-
         mRenderGraphRef.markGraphOutput(outputParam);
         auto& passUI = mRenderPassUI[outputPass];
         passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = true;
@@ -291,14 +313,15 @@ namespace Falcor
         spCurrentGraphUI->mRenderGraphRef.removeRenderPass(name);
     }
 
-    void RenderGraphUI::writeUpdateScriptToFile(const std::string& filePath)
+    void RenderGraphUI::writeUpdateScriptToFile(const std::string& filePath, float lastFrameTime)
     {
-        if (!mCommandStrings.size()) { return; }
+        if ((mTimeSinceLastUpdate += lastFrameTime) < kUpdateTimeInterval) return;
+        mTimeSinceLastUpdate = 0.0f;
+        if (!mCommandStrings.size()) return;
         static std::ofstream ofstream(filePath, std::ios_base::out);
         size_t totalSize = 0;
-        char sizeData[sizeof(size_t)] = {};
-
-        ofstream.write(sizeData, sizeof(size_t));
+        
+        ofstream.write(reinterpret_cast<const char*>(&totalSize), sizeof(size_t));
         
         for (std::string& statement : mCommandStrings)
         {
@@ -308,11 +331,13 @@ namespace Falcor
         }
 
         mCommandStrings.clear();
+        
+        // rewind and write the size of the script changes for the viewer to execute
+        ofstream.seekp(0, std::ios::beg);
+        ofstream.write(reinterpret_cast<const char*>(&totalSize), sizeof(size_t));
+        ofstream.seekp(0, std::ios::beg);
 
-        ofstream.seekp(0, std::ios::beg);
-        std::memcpy(sizeData, &totalSize, sizeof(size_t));
-        ofstream.write((const char*)&totalSize, sizeof(size_t));
-        ofstream.seekp(0, std::ios::beg);
+        std::experimental::filesystem::last_write_time(filePath, std::chrono::system_clock::now());
     }
 
     RenderGraphUI::RenderGraphUI(RenderGraph& renderGraphRef)

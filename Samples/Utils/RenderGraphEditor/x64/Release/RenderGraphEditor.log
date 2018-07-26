@@ -1,0 +1,1 @@
+﻿C:\Users\moakes\Documents\Falcor\Falcor\Samples\Utils\RenderGraphEditor\RenderGraphEditor.vcxproj(89,5): error MSB4019: The imported project "C:\Users\moakes\Documents\Falcor\Falcor\Samples\Framework\Source\Falcor.props" was not found. Confirm that the path in the <Import> declaration is correct, and that the file exists on disk.

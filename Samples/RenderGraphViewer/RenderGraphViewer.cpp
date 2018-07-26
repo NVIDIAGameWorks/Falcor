@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphViewer.h"
+#include "Utils/RenderGraphLoader.h"
 
 const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
 
@@ -44,14 +45,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (mTempRenderGraphLiveEditor.isOpen())
     {
-        static float someTime = -20.0f;
-        someTime += 1.0f / 180.0f;
-
-        if (someTime >= 1.0f)
-        {
-            someTime = 0.0f;
-            mTempRenderGraphLiveEditor.forceUpdateGraph(*mpGraph);
-        }
+        mTempRenderGraphLiveEditor.updateGraph(*mpGraph, pSample->getLastFrameTime());
     }
     else
     {
@@ -61,7 +55,27 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
     }
 
-    if (mpGraph) mpGraph->renderUI(pGui, "Render Graph");
+    if (mpGraph)
+    {
+        Gui::DropdownList renderGraphOutputs;
+        for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+        {
+            Gui::DropdownValue graphOutput;
+            graphOutput.label = mpGraph->getGraphOutputName(i);
+            graphOutput.value = i;
+            renderGraphOutputs.push_back(graphOutput);
+        }
+        
+        if (renderGraphOutputs.size() && pGui->addDropdown("Render Graph Output", renderGraphOutputs, mGraphOutputIndex))
+        {
+            mpGraph->setOutput(mOutputString, nullptr);
+            mOutputString = renderGraphOutputs[mGraphOutputIndex].label;
+            mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
+        }
+        
+        
+        mpGraph->renderUI(pGui, "Render Graph");
+    }
 }
 
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
@@ -101,9 +115,9 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addEdge("FXAA.dst", "BlitPass.src");
 
     mpGraph->setScene(mpScene);
+
+    mpGraph->markGraphOutput("BlitPass.dst");
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-
-
 }
 
 void RenderGraphViewer::loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample)
@@ -118,12 +132,36 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     mSceneFilename = filename;
     mCamControl.attachCamera(mpScene->getCamera(0));
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
-    createGraph(pSample);
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
+#ifdef _WIN32
+    // if editor opened from running render graph, get memory view for live update
+    std::string commandLine(GetCommandLineA());
+    size_t firstSpace = commandLine.find_first_of(' ') + 1;
+    std::string filePath = (commandLine.substr(firstSpace, commandLine.size() - firstSpace));
+    if (filePath.size())
+    {
+        mpGraph = RenderGraph::create();
+        RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
+        mTempRenderGraphLiveEditor.openUpdatesFile(filePath);
+        mpScene = mpGraph->getScene();
+        if (!mpScene)
+        {
+            loadScene(gkDefaultScene, false, pSample);
+        }
+        else
+        {
+            mCamControl.attachCamera(mpScene->getCamera(0));
+            mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
+        }
+        mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+        return;
+    }
+#endif
     loadScene(gkDefaultScene, false, pSample);
+    createGraph(pSample);
 }
 
 void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
@@ -133,12 +171,10 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
     if (mpGraph)
     {
-        mpGraph->setOutput("BlitPass.dst", pSample->getCurrentFbo()->getColorTexture(0));
+        mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
         mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
         mpGraph->execute(pRenderContext.get());
     }
-
-    if (mTempRenderGraphLiveEditor.isOpen()) { mTempRenderGraphLiveEditor.updateGraph(*mpGraph); }
 }
 
 bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

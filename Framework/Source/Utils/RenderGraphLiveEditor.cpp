@@ -38,19 +38,44 @@ namespace Falcor
 #else
         "./RenderGraphEditor";
 #endif
-    const size_t kMaxTempFileSize = 0x01400000 / 16;
+    const char* kViewerExecutableName =
+#ifdef _WIN32
+        "RenderGraphViewer.exe";
+#else
+        "./RenderGraphViewer";
+#endif
 
     RenderGraphLiveEditor::RenderGraphLiveEditor()
     {
 
     }
 
+    void RenderGraphLiveEditor::openUpdatesFile(const std::string filePath)
+    {
+        mUpdatesFile.open(filePath);
+        if (!mUpdatesFile.is_open())
+        {
+            logError("Failed to open temporary file for render graph viewer.");
+        }
+
+        if ((mUpdatesFile.rdstate() & std::ifstream::failbit) != 0)
+        {
+            logError("Unable to read temporary file for render graph viewer.");
+        }
+
+        mTempFileName = filePath;
+
+        mIsOpen = true;
+    }
+
     bool RenderGraphLiveEditor::createMemoryMappedFile(const RenderGraph& renderGraph)
     {
         // create a new temporary file through windows
-        mTempFileName.resize(510);
-        mTempFilePath.resize(510);
-
+        mTempFileNameW.resize(510, '0');
+        mTempFilePathW.resize(510, '0');
+        mTempFileName.resize(255, '0');
+        mTempFilePath.resize(255, '0');
+        
         std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(renderGraph);
         if (!renderGraphScript.size())
         {
@@ -58,47 +83,55 @@ namespace Falcor
             return false;
         }
 
-        GetTempPath(255, (LPWSTR)(&mTempFilePath.front()));
-        GetTempFileName((LPCWSTR)mTempFilePath.c_str(), L"PW", 0, (LPWSTR)&mTempFileName.front());
-        SECURITY_ATTRIBUTES secAttribs{};
-        secAttribs.bInheritHandle = TRUE;
-
-        mTempFileHndl = CreateFile((LPCWSTR)mTempFileName.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, &secAttribs, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
-        if (!mTempFileHndl)
-        {
-            logError("Unable to create temporary file for graph editor");
-            return false;
-        }
-
-        // map file so we can do things with it
-        mTempFileMappingHndl = CreateFileMapping(mTempFileHndl, NULL, PAGE_READWRITE, 0, kMaxTempFileSize, NULL);
-        if (!mTempFileMappingHndl)
-        {
-            logError("Unable to map temporary file for graph editor");
-            if (mTempFileHndl) { CloseHandle(mTempFileHndl); }
-            return false;
-        }
-
-
-        // write out the commands to execute
-        mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_WRITE, 0, 0, 0);
-
-        if (!mpToWrite)
-        {
-            logError("Unable to map view of memory for graph editor.");
-            return false;
-        }
- 
-        CopyMemory(mpToWrite, renderGraphScript.data(), renderGraphScript.size());
-        FlushViewOfFile(mpToWrite, renderGraphScript.size());
-
-        UnmapViewOfFile(mpToWrite);
-        mpToWrite = nullptr;
+#ifdef _WIN32
+        GetTempPath(255, (LPWSTR)(&mTempFilePathW.front()));
+        GetTempFileName((LPCWSTR)mTempFilePathW.c_str(), L"PW", 0, (LPWSTR)&mTempFileNameW.front());
+        wcstombs(&mTempFileName.front(), (wchar_t*)mTempFileNameW.c_str(), mTempFileNameW.size());
+        wcstombs(&mTempFilePath.front(), (wchar_t*)mTempFilePathW.c_str(), mTempFilePathW.size());
+#endif
         
-        CloseHandle(mTempFileMappingHndl);
-        mTempFileMappingHndl = nullptr;
+        std::ofstream updatesFileOut(mTempFileName);
+        assert(updatesFileOut.is_open());
+        updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+        updatesFileOut.close();
+
+        openUpdatesFile(mTempFileName);
+        mLastWriteTime = getFileModifiedTime(mTempFileName);
 
         return true;
+    }
+
+    bool RenderGraphLiveEditor::open(const std::string& commandLine)
+    {
+#ifdef _WIN32
+        STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
+        if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
+        {
+            logError("Unable to execute the render graph editor");
+            close();
+            return false;
+        }
+
+        mProcess = processInformation.hProcess;
+#endif
+        mIsOpen = true;
+        return true;
+    }
+
+    void RenderGraphLiveEditor::openViewer(const RenderGraph& renderGraph)
+    {
+        if (mIsOpen)
+        {
+            logWarning("Render Graph Editor is already open for this graph!");
+            return;
+        }
+
+        if (!createMemoryMappedFile(renderGraph)) return;
+
+        std::string commandLine = kViewerExecutableName;
+        commandLine += std::string(" ") + mTempFileName;
+        
+        if (!open(commandLine)) return;
     }
 
     void RenderGraphLiveEditor::openEditor(const RenderGraph& renderGraph)
@@ -110,89 +143,30 @@ namespace Falcor
         }
 
         // create mapped memory and launch editor process
-#ifdef _WIN32
-
-        if (!createMemoryMappedFile(renderGraph))
-        {
-            return;
-        }
+        if (!createMemoryMappedFile(renderGraph)) return;
 
         // load application for the editor given it the name of the mapped file
         std::string commandLine = kEditorExecutableName;
-        std::string fileName;
-        fileName.resize(mTempFileName.size() / 2);
-        wcstombs(&fileName.front(), (wchar_t*)mTempFileName.c_str(), mTempFileName.size());
-        commandLine += std::string(" ") + fileName;
+        commandLine += std::string(" ") + mTempFileName;
         
-        STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
-        
-        if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
-        {
-            logError("Unable to execute the render graph editor");
-            closeEditor();
-            return;
-        }
-        
-        mProcess = processInformation.hProcess;
-        
-#endif
-        
-        mIsOpen = true;
-
+        if (!open(commandLine)) return;
     }
-
-#ifdef _WIN32
-    static void processFileWatchCompletion(
-        _In_    DWORD        dwErrorCode,
-        _In_    DWORD        dwNumberOfBytesTransfered,
-        _Inout_ LPOVERLAPPED lpOverlapped)
-    {
-        if (dwErrorCode)
-        {
-            logError("Failed to process file change");
-        }
-    }
-#endif
 
     void RenderGraphLiveEditor::forceUpdateGraph(RenderGraph& renderGraph)
     {
         // load changes from the modified graph file
-        std::string script;
-
-        assert(mTempFileHndl);
-
-        mTempFileMappingHndl = CreateFileMapping(mTempFileHndl, NULL, PAGE_READWRITE, 0, kMaxTempFileSize, NULL);
-        if (!mTempFileMappingHndl)
-        {
-            logError("Unable to map temporary file for graph editor");
-            if (mTempFileHndl) { CloseHandle(mTempFileHndl); }
-            return;
-        }
-
-        // write out the commands to execute
-        mpToWrite = (char*)MapViewOfFile(mTempFileMappingHndl, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
-        assert(mpToWrite);
-
-        mSharedMemoryStage.resize(kMaxTempFileSize);
-        CopyMemory(&mSharedMemoryStage.front(), mpToWrite, kMaxTempFileSize);
-
+        mSharedMemoryStage = std::string((std::istreambuf_iterator<char>(mUpdatesFile)), std::istreambuf_iterator<char>());
+        mUpdatesFile.seekg(0, std::ios::beg);
+        
         RenderGraphLoader::runScript(mSharedMemoryStage.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(mSharedMemoryStage.data()), renderGraph);
-
-        const size_t zero = 0;
-        CopyMemory(mpToWrite, &zero, sizeof(size_t));
-
-        UnmapViewOfFile(mpToWrite);
-        mpToWrite = nullptr;
-
-        CloseHandle(mTempFileMappingHndl);
-        mTempFileMappingHndl = (HANDLE)nullptr;
     }
 
-    void RenderGraphLiveEditor::updateGraph(RenderGraph& renderGraph)
+    void RenderGraphLiveEditor::updateGraph(RenderGraph& renderGraph, float lastFrameTime)
     {
         bool status = false;
 
         // check to see if the editor has closed and react accordingly
+#ifdef _WIN32
         uint32_t exitCode = 0;
         if (GetExitCodeProcess(mProcess, (LPDWORD)&exitCode))
         {
@@ -200,31 +174,17 @@ namespace Falcor
             {
                 CloseHandle(mProcess);
                 mProcess = nullptr;
+                mIsOpen = false;
+                return;
             }
         }
-
-        return;
-
-#ifdef _WIN32
-        
-        uint32_t fileInfoBuffer[sizeof(FILE_NOTIFY_INFORMATION)];
-        OVERLAPPED overlappedData{};
-        uint32_t bytesReturned = 0;
-
-        status = ReadDirectoryChangesW(mTempFileHndl, fileInfoBuffer, sizeof(fileInfoBuffer),
-            false, FILE_NOTIFY_CHANGE_LAST_WRITE, (LPDWORD)&bytesReturned, &overlappedData, processFileWatchCompletion);
 #endif
 
-        if (status)
+        time_t lastWriteTime = getFileModifiedTime(mTempFileName);
+        if (mLastWriteTime < lastWriteTime)
         {
-#ifdef _WIN32
-            if ((*(FILE_NOTIFY_INFORMATION*)fileInfoBuffer).Action == FILE_ACTION_MODIFIED)
-            {
-                msgBox("File has been modified");
-            }
-#endif
-
-            msgBox("Test");
+            mLastWriteTime = lastWriteTime;
+            forceUpdateGraph(renderGraph);
         }
     }
 
@@ -233,21 +193,21 @@ namespace Falcor
         if (mIsOpen) {  }
     }
 
-    void RenderGraphLiveEditor::closeEditor()
+    void RenderGraphLiveEditor::close()
     {
 #ifdef _WIN32
-        CloseHandle(mTempFileHndl);
-        CloseHandle(mTempFileMappingHndl);
-#endif
         if (mProcess)
         {
             TerminateProcess(mProcess, 0);
             CloseHandle(mProcess);
             mProcess = nullptr;
         }
-
+#endif
         mSharedMemoryStage.clear();
         mpToWrite = nullptr;
         mIsOpen = false;
+
+
+        // delete temporary file
     }
 }

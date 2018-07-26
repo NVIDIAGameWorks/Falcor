@@ -442,6 +442,7 @@ namespace Falcor
         if (pPass == nullptr) return false;
         mpResourcesCache->addResource(name, pResource);
         markGraphOutput(name);
+        if (!pResource) mRecompile = true;
         return true;
     }
 
@@ -480,6 +481,7 @@ namespace Falcor
             if (mOutputs[i].nodeId == removeMe.nodeId && mOutputs[i].field == removeMe.field)
             {
                 mOutputs.erase(mOutputs.begin() + i);
+                mpResourcesCache->removeResource(name);
                 mRecompile = true;
                 return;
             }
@@ -493,6 +495,13 @@ namespace Falcor
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
 
         return pPass ? mpResourcesCache->getResource(name) : pNull;
+    }
+
+    std::string RenderGraph::getGraphOutputName(size_t index) const
+    {
+        assert(index < mOutputs.size());
+        const GraphOut& graphOut = mOutputs[index];
+        return mNodeData.find(graphOut.nodeId)->second.nodeName + "." + graphOut.field;
     }
 
     void RenderGraph::onResizeSwapChain(const Fbo* pTargetFbo)

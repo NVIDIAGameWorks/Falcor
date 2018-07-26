@@ -120,6 +120,14 @@ namespace Falcor
         */
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
+        /** Get an graph output name from the graph outputs
+        */
+        std::string getGraphOutputName(size_t index) const;
+
+        /** Get the num of 
+        */
+        size_t getGraphOutputCount() const { return mOutputs.size(); }
+
         friend class RenderGraphUI;
         friend class RenderGraphLoader;
 

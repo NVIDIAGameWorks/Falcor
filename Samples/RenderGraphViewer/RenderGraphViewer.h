@@ -50,5 +50,7 @@ private:
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;
     bool mEnableDepthPrePass = true;
+    uint32_t mGraphOutputIndex = 0;
+    std::string mOutputString = "BlitPass.dst";
     RenderGraphLiveEditor mTempRenderGraphLiveEditor;
 };

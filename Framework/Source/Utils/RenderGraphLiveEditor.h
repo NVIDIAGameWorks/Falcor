@@ -27,6 +27,8 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include <fstream>
+#include <experimental/filesystem>
 
 namespace Falcor
 {
@@ -37,23 +39,30 @@ namespace Falcor
         ~RenderGraphLiveEditor();
 
         bool isOpen() { return mIsOpen; }
+        void openUpdatesFile(const std::string filePath);
         void openEditor(const RenderGraph& renderGraph);
-        void closeEditor();
-        void updateGraph(RenderGraph& renderGraph);
+        void openViewer(const RenderGraph& renderGraph);
+        void close();
+        void updateGraph(RenderGraph& renderGraph, float lastFrameTime = 1.0f / 60.0f);
         void forceUpdateGraph(RenderGraph& renderGraph);
+        const std::string& getTempFilePath() { return mTempFileName; }
 
     private:
         bool createMemoryMappedFile(const RenderGraph& renderGraph);
+        bool open(const std::string& commandLine);
 
         bool mIsOpen = false;
         std::string mSharedMemoryStage;
+        std::ifstream mUpdatesFile;
 #ifdef _WIN32
-        HANDLE mTempFileHndl;
-        HANDLE mTempFileMappingHndl;
         HANDLE mProcess;
+        std::string mTempFileNameW;
+        std::string mTempFilePathW;
 #endif
+        time_t mLastWriteTime;
         std::string mTempFileName;
         std::string mTempFilePath;
+        
         char* mpToWrite;
     };
 }

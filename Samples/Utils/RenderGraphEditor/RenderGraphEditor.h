@@ -28,6 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "Utils/RenderGraphUI.h"
+#include "Utils/RenderGraphLiveEditor.h"
 #include <vector>
 
 using namespace Falcor;
@@ -50,12 +51,7 @@ private:
     void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
-    void renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui);
-
-    void loadGraphFromSharedMemory(const std::string& renderGraphFileName);
     void loadScene(const std::string& filename, bool showProgressBar);
-    void createForwardRendererGraph();
-
     SampleCallbacks* mpLastSample;
 
     std::vector<RenderGraph::SharedPtr> mpGraphs;
@@ -69,6 +65,8 @@ private:
     std::string mFilePath;
 
     Gui::DropdownList mOpenGraphNames;
+
+    RenderGraphLiveEditor mRenderGraphLiveEditor;
 
     bool mCreatingRenderGraph;
     bool mPreviewing;

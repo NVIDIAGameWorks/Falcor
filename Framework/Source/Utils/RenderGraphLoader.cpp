@@ -262,10 +262,15 @@ namespace Falcor
         nextCommand.resize(255);
 
         // run through scriptdata
-        while (scriptStream.getline(&nextCommand.front(), 255))
+        while ((offset < dataSize) && scriptStream.getline(&nextCommand.front(), 255))
         {
+            size_t prevOffset = offset;
+            offset += nextCommand.size();
+            if (offset > dataSize)
+            {
+                nextCommand.resize(dataSize - prevOffset);
+            }
             if (!nextCommand.front()) { break; }
-
             ExecuteStatement(nextCommand.substr(0, nextCommand.find_first_of('\0')), renderGraph);
         }
     }
@@ -398,8 +403,6 @@ namespace Falcor
             Scene::SharedPtr pScene =  Scene::loadFromFile(sceneFilename);
             if (!pScene) { logWarning("Failed to load scene for current render graph"); return; }
             renderGraph.setScene(pScene); 
-
-            msgBox(sceneFilename);
             
             mActiveVariables["gSceneFilename"] = ScriptParameter( sceneFilename );
 

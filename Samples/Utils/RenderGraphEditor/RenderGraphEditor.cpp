@@ -130,15 +130,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
-    static float someTime = 0.0f;
-    someTime += 1.0f / 60.0f;
-
-    if (pGui->addButton("Update Graph") || someTime >= 1.0f)
+    if (mFilePath.size())
     {
-        someTime = 0.0f;
-        mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath);   
+        mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath, pSample->getLastFrameTime());
     }
-
+    
     if (pGui->addButton("Preview Graph"))
     {
         mPreviewing = true;
@@ -161,17 +157,23 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     std::vector<std::string> graphOutputString{mGraphOutputEditString};
-    if (pGui->addMultiTextBox("Update", {"GraphOutput"}, graphOutputString))
+    if (pGui->addMultiTextBox("Add Output", {"GraphOutput"}, graphOutputString))
     {
         if (mCurrentGraphOutput != mGraphOutputEditString)
         {
             mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
             mCurrentGraphOutput = graphOutputString[0];
-            mpGraphs[mCurrentGraphIndex]->markGraphOutput(mCurrentGraphOutput);
+            mRenderGraphUIs[mCurrentGraphIndex].addOutput(mCurrentGraphOutput);
             mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
         }
     }
     mGraphOutputEditString = graphOutputString[0];
+
+    if (!mRenderGraphLiveEditor.isOpen() && pGui->addButton("Open Graph Viewer"))
+    {
+        mRenderGraphLiveEditor.openViewer(*mpGraphs[mCurrentGraphIndex]);
+        mFilePath = mRenderGraphLiveEditor.getTempFilePath();
+    }
 
     pGui->popWindow();
 
@@ -229,76 +231,6 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
     RenderGraphUI::sRebuildDisplayData = true;
 }
 
-void RenderGraphEditor::createForwardRendererGraph()
-{
-    mCreatingRenderGraph = true;
-
-    Gui::DropdownValue nextGraphID;
-    nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
-    nextGraphID.label = "ForwardRenderer";
-    mOpenGraphNames.push_back(nextGraphID);
-
-    RenderGraph::SharedPtr newGraph;
-
-    // test that this graph shows up in the editor correctly
-    newGraph = RenderGraph::create();
-
-    Scene::SharedPtr pScene = Scene::loadFromFile(gkDefaultScene);
-
-    if (!pScene) { logWarning("Failed to load scene for current render graph"); }
-
-    newGraph->setScene(pScene);
-    mCamControl.attachCamera(pScene->getCamera(0));
-
-    auto pLightingPass = SceneLightingPass::create();
-    pLightingPass->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
-    newGraph->addRenderPass(pLightingPass, "LightingPass");
-
-    newGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
-    newGraph->addRenderPass(CascadedShadowMaps::create(pScene->getLight(0)), "ShadowPass");
-    newGraph->addRenderPass(BlitPass::create(), "BlitPass");
-    newGraph->addRenderPass(ToneMapping::create(ToneMapping::Operator::Aces), "ToneMapping");
-    newGraph->addRenderPass(SSAO::create(uvec2(1024)), "SSAO");
-    newGraph->addRenderPass(FXAA::create(), "FXAA");
-
-    // Add the skybox
-    Scene::UserVariable var = pScene->getUserVariable("sky_box");
-    assert(var.type == Scene::UserVariable::Type::String);
-    std::string skyBox = getDirectoryFromFile(gkDefaultScene) + '/' + var.str;
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    newGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");
-
-    newGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
-    newGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
-    newGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
-
-    newGraph->addEdge("SkyBox.target", "LightingPass.color");
-    newGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
-
-    newGraph->addEdge("LightingPass.color", "ToneMapping.src");
-    newGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
-    newGraph->addEdge("LightingPass.normals", "SSAO.normals");
-    newGraph->addEdge("LightingPass.depth", "SSAO.depth");
-
-    newGraph->addEdge("SSAO.colorOut", "FXAA.src");
-    newGraph->addEdge("FXAA.dst", "BlitPass.src");
-
-    newGraph->setScene(pScene);
-    newGraph->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
-    mCurrentGraphIndex = mpGraphs.size();
-    mpGraphs.push_back(newGraph);
-
-    RenderGraphUI graphUI(*newGraph);
-    mRenderGraphUIs.emplace_back(std::move(graphUI));
-
-    mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, mpLastSample->getCurrentFbo()->getColorTexture(0));
-    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
-
-    mCreatingRenderGraph = false;
-    RenderGraphUI::sRebuildDisplayData = true;
-}
-
 void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
 {
     mCreatingRenderGraph = true;
@@ -313,10 +245,6 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     // test that this graph shows up in the editor correctly
     newGraph = RenderGraph::create();
 
-    Scene::SharedPtr pScene = Scene::loadFromFile(gkDefaultScene);
-    if (!pScene) { logWarning("Failed to load scene for current render graph"); }
-    newGraph->setScene(pScene);
-
     newGraph->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
@@ -329,17 +257,10 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
         RenderGraphLoader::LoadAndRunScript(renderGraphNameFileName, *newGraph);
     }
 
-    if (mCurrentGraphIndex >= 1)
+    // load the default scene if none was specified
+    if (mpGraphs[mCurrentGraphIndex]->getScene() == nullptr)
     {
-        mpGraphs[mCurrentGraphIndex]->setScene(mpGraphs[0]->getScene());
-    }
-    else
-    {
-        // load the default scene if none was specified
-        if (mpGraphs[mCurrentGraphIndex]->getScene() == nullptr)
-        {
-            loadScene(gkDefaultScene, false);
-        }
+        loadScene(gkDefaultScene, false);
     }
     
     // update the display if the render graph loader has set a new output
@@ -382,18 +303,13 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
     if (mFilePath.size())
     {
+        // TODO -- what do we actually want to name this graph?
         createRenderGraph("Test", mFilePath);
-        // loadGraphFromSharedMemory(filePath);
     }
     else
     {
         createRenderGraph("DefaultRenderGraph", "");
-        //createForwardRendererGraph();
     }
-}
-
-void RenderGraphEditor::renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui)
-{
 }
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
@@ -434,53 +350,7 @@ bool RenderGraphEditor::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
-
     mpGraphs[mCurrentGraphIndex]->getScene()->getActiveCamera()->setAspectRatio((float)width / (float)height);
-}
-
-void RenderGraphEditor::loadGraphFromSharedMemory(const std::string& renderGraphFilePath)
-{
-#ifdef _WIN32
-    OFSTRUCT of;
-    // HFILE fileHandle =  OpenFile(renderGraphFilePath.c_str(), &of, OF_READ);
-    
-    std::string wideFilePath;
-    wideFilePath.resize(renderGraphFilePath.size() * 2 + 1);
-    mbstowcs((wchar_t*)&wideFilePath.front(), renderGraphFilePath.c_str(), renderGraphFilePath.size());
-
-    HFILE fileHandle = OpenFile(renderGraphFilePath.c_str(), &of, OF_READ);
-    if (!fileHandle)
-    {
-        logError("Can't open the file");
-        return;
-    }
-
-    HANDLE tempFileHndl = *reinterpret_cast<HANDLE*>(&fileHandle);
-    //CreateFileMapping(tempFileHndl, NULL, PAGE_READWRITE, 0, 0, NULL); //=
-    HANDLE tempFileMappingHndl =  OpenFileMapping(FILE_MAP_ALL_ACCESS, TRUE, (LPCWSTR)wideFilePath.c_str());
-    if (!tempFileMappingHndl)
-    {
-        logError("Unable to map temporary file for graph editor");
-        return;
-    }
-
-    // change this to a persistant mapping
-    char* pData = (char*)MapViewOfFile(tempFileMappingHndl, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
-
-    if (!pData)
-    {
-        logError("Unable to map temporary file for render graph data");
-        if (tempFileMappingHndl) { CloseHandle(tempFileMappingHndl);  }
-    }
-
-    // copy over the memory for any change
-    std::string sharedMemoryStage;
-    sharedMemoryStage.resize((size_t)0x01400000);
-    CopyMemory(&sharedMemoryStage.front(), pData, sharedMemoryStage.size());
-
-    // read and execute the data
-    RenderGraphLoader::runScript(sharedMemoryStage.data() + sizeof(size_t), *(size_t*)sharedMemoryStage.data(), *mpGraphs[mCurrentGraphIndex]);
-#endif
 }
 
 #ifdef _WIN32
