@@ -72,6 +72,8 @@ namespace Falcor
 
         RenderGraphUI(RenderGraph& renderGraphRef);
 
+        ~RenderGraphUI();
+
         /** Display enter graph in GUI.
         */
         void renderUI(Gui *pGui);
@@ -94,6 +96,10 @@ namespace Falcor
 
         void addRenderPass(const std::string& name, const std::string& nodeTypeName);
 
+        /** function selects the unique color based on the provided name
+        */
+        static glm::vec4 pickNodeColor(const std::string& key);
+
         static bool sRebuildDisplayData;
 
     private:
@@ -102,7 +108,7 @@ namespace Falcor
         */
         void updateDisplayData();
         
-        void drawPins(bool addLinks = true);
+        void updatePins(bool addLinks = true);
 
         /** Helper function to calculate position of the next node in execution order
          */
@@ -125,6 +131,8 @@ namespace Falcor
 
         // if in external editing mode, building list of commands for changes to send to the other process
         std::vector<std::string> mCommandStrings;
+
+        static std::unordered_map<std::string, glm::vec4> sUniqueColors;
 
         float mTimeSinceLastUpdate = 0.0f;
     };

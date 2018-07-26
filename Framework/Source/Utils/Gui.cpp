@@ -284,6 +284,16 @@ namespace Falcor
         ImGui::PopID();
     }
 
+    void Gui::beginColumns(uint32_t numColumns)
+    {
+        ImGui::Columns(numColumns);
+    }
+
+    void Gui::nextColumn()
+    {
+        ImGui::NextColumn();
+    }
+
     bool Gui::addCheckBox(const char label[], bool& var, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();

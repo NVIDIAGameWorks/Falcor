@@ -62,7 +62,6 @@ namespace Falcor
         time_t mLastWriteTime;
         std::string mTempFileName;
         std::string mTempFilePath;
-        
-        char* mpToWrite;
+        float mTimeSinceLastCheck = 0.0f;
     };
 }

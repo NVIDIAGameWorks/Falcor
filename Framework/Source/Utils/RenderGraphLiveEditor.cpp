@@ -45,6 +45,8 @@ namespace Falcor
         "./RenderGraphViewer";
 #endif
 
+    const float kCheckFileInterval = 0.5f;
+
     RenderGraphLiveEditor::RenderGraphLiveEditor()
     {
 
@@ -175,22 +177,26 @@ namespace Falcor
                 CloseHandle(mProcess);
                 mProcess = nullptr;
                 mIsOpen = false;
+                mUpdatesFile.close();
                 return;
             }
         }
 #endif
-
-        time_t lastWriteTime = getFileModifiedTime(mTempFileName);
-        if (mLastWriteTime < lastWriteTime)
+        if ((mTimeSinceLastCheck += lastFrameTime) > kCheckFileInterval)
         {
-            mLastWriteTime = lastWriteTime;
-            forceUpdateGraph(renderGraph);
+            time_t lastWriteTime = getFileModifiedTime(mTempFileName);
+            mTimeSinceLastCheck = 0.0f;
+            if (mLastWriteTime < lastWriteTime)
+            {
+                mLastWriteTime = lastWriteTime;
+                forceUpdateGraph(renderGraph);
+            }
         }
     }
 
     RenderGraphLiveEditor::~RenderGraphLiveEditor()
     {
-        if (mIsOpen) {  }
+        if (mIsOpen) { close(); }
     }
 
     void RenderGraphLiveEditor::close()
@@ -204,10 +210,7 @@ namespace Falcor
         }
 #endif
         mSharedMemoryStage.clear();
-        mpToWrite = nullptr;
         mIsOpen = false;
-
-
         // delete temporary file
     }
 }

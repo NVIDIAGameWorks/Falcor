@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,7 +36,7 @@ RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
 {
     mNextGraphString.resize(255, 0);
-    mCurrentGraphOutput = "BlitPass.dst";
+    mCurrentGraphOutput = "";
     mGraphOutputEditString = mCurrentGraphOutput;
     mGraphOutputEditString.resize(255, 0);
 }
@@ -58,17 +58,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
             if (pGui->addMenuItem("Load Graph"))
             {
-                std::string renderGraphFileName;
-                if (openFileDialog("", renderGraphFileName))
+                std::string renderGraphFilePath;
+                if (openFileDialog("", renderGraphFilePath))
                 {
-                    size_t nameOffset = renderGraphFileName.find_last_of('\\') + 1;
-                    size_t fileExtOffset = renderGraphFileName.find_last_of('.');
-                    if (fileExtOffset == std::string::npos)
-                    {
-                        fileExtOffset = renderGraphFileName.size();
-                    }
-
-                    createRenderGraph(renderGraphFileName.substr(nameOffset, fileExtOffset - nameOffset), renderGraphFileName);
+                    std::string renderGraphFileName = getFilenameFromPath(renderGraphFilePath);
+                    createRenderGraph(renderGraphFileName, renderGraphFilePath);
                 }
             }
 
@@ -97,30 +91,29 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes", screenWidth * 7 / 8, screenHeight / 4, screenWidth / 8, screenHeight * 4 / 5);
+    pGui->pushWindow("Render Passes", screenWidth * 2 / 3, screenHeight / 4 - 16, screenWidth / 3, screenHeight * 3 / 4 + 16);
 
-    // TODO - abstract draw rect in pGui
     size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
+    pGui->beginColumns(5);
     for (size_t i = 0; i < numRenderPasses; ++i)
     {
-        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 64.0f, 32.0f }, {1.0f, 1.0f, 1.0f, 1.0f}, false, true);
         std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
-
         std::string command = std::string("AddRenderPass ") + renderPassClassName + " " + renderPassClassName;
+        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, RenderGraphUI::pickNodeColor(renderPassClassName), false, true);
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
-
-        pGui->addText(renderPassClassName.c_str(), true);
+        pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
         pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), true);
+        pGui->nextColumn();
     }
 
     pGui->popWindow();
 
     // push a sub GUI window for the node editor
-    pGui->pushWindow("Graph Editor", screenWidth * 7 / 8, screenHeight * 4 / 5, screenWidth / 8, 1);
+    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 16);
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
-    pGui->pushWindow("Graph Editor Settings", screenWidth / 8, screenHeight / 2, 0, screenHeight / 2, false);
+    pGui->pushWindow("Graph Editor Settings", screenWidth / 3, screenHeight / 4 - 16, 0, screenHeight * 3 / 4 + 16);
 
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
@@ -146,7 +139,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         std::string filename;
         if (openFileDialog(Scene::kFileFormatString, filename))
         {
-            loadScene(filename, true);
+            RenderGraphLoader::ExecuteStatement(std::string("SetScene ") + filename, *mpGraphs[mCurrentGraphIndex]);
         }
     }
 
@@ -161,7 +154,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         if (mCurrentGraphOutput != mGraphOutputEditString)
         {
-            mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
+            if (mCurrentGraphOutput.size())
+            {
+                mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
+            }
+
             mCurrentGraphOutput = graphOutputString[0];
             mRenderGraphUIs[mCurrentGraphIndex].addOutput(mCurrentGraphOutput);
             mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));

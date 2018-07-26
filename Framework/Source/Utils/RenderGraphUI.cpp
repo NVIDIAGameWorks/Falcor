@@ -126,8 +126,6 @@ namespace Falcor
             gpGui->addText(dummyText.c_str());
             gpGui->addText(dummyText.c_str());
 
-            // static_cast<RenderPass*>(field.userData)->onGuiRender(nullptr, gpGui);
-
             // with this library there is no way of modifying the positioning of the labels on the node
             // manually making labels to align correctly from within the node
 
@@ -193,12 +191,6 @@ namespace Falcor
 
             ImGui::SetCursorScreenPos(oldScreenPos);
             
-            if (!pRenderPass)
-            {
-                // special formatting for render graph output nodes
-                
-            }
-            
             for (int32_t i = 0; i < paddingSpace; ++i)
             {
                 gpGui->addText(dummyText.c_str());
@@ -216,9 +208,13 @@ namespace Falcor
 
             node->init(gName.c_str(), pos, gInputsString.c_str(), gOutputsString.c_str(), gGuiNodeID);
 
-            node->overrideTitleBgColor = ImGui::GetColorU32(ImGuiCol_Header);
-            node->mpRenderPass = gpCurrentRenderPass;
-
+            if (gpCurrentRenderPass)
+            {
+                node->mpRenderPass = gpCurrentRenderPass;
+                const glm::vec4 nodeColor = RenderGraphUI::pickNodeColor(node->mpRenderPass->getName());
+                node->overrideTitleBgColor = ImGui::GetColorU32({ nodeColor.x, nodeColor.y, nodeColor.z, nodeColor.w });
+            }
+            
             node->fields.addFieldCustom(static_cast<ImGui::FieldInfo::RenderFieldDelegate>(renderUI), nullptr, node);
             
             return node;
@@ -227,6 +223,8 @@ namespace Falcor
     };
 
     bool RenderGraphNode::sAddedFromCode = false;
+    
+    std::unordered_map<std::string, glm::vec4> RenderGraphUI::sUniqueColors;
 
     static ImGui::Node* createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&)
     {
@@ -248,17 +246,20 @@ namespace Falcor
         if (passUIIt == mRenderPassUI.end())
         {
             msgBox("Error setting graph output. Can't find node name.");
+            return;
         }
         auto& passUI = passUIIt->second;
         const auto outputIt = passUI.mNameToIndexOutput.find(outputField);
         if (outputIt == passUI.mNameToIndexOutput.end())
         {
             msgBox("Error setting graph output. Can't find output name.");
+            return;
         }
         passUI.mOutputPins[outputIt->second].mIsGraphOutput = true;
 
         mRenderGraphRef.markGraphOutput(outputParam);
         mCommandStrings.push_back(std::string("AddGraphOutput ") + outputParam);
+        sRebuildDisplayData = true;
     }
 
     void RenderGraphUI::addOutput(const std::string& outputPass, const std::string& outputField)
@@ -268,13 +269,14 @@ namespace Falcor
         mRenderGraphRef.markGraphOutput(outputParam);
         auto& passUI = mRenderPassUI[outputPass];
         passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = true;
+        sRebuildDisplayData = true;
     }
 
     bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
     {
         // outputs warning if edge could not be created 
         std::string srcString = srcPass + "." + srcField, dstString = dstPass + "." + dstField;
-        bool createdEdge = spCurrentGraphUI->mRenderGraphRef.addEdge(srcString, dstString);
+        bool createdEdge = (spCurrentGraphUI->mRenderGraphRef.addEdge(srcString, dstString) != ((uint32_t)-1));
 
         mCommandStrings.push_back(std::string("AddEdge ") + srcString + " " + dstString);
 
@@ -346,6 +348,12 @@ namespace Falcor
         sNodeGraphEditor.clear();
     }
 
+    RenderGraphUI::~RenderGraphUI()
+    {
+        sNodeGraphEditor.setNodeCallback(nullptr);
+        sNodeGraphEditor.setLinkCallback(nullptr);
+    }
+
     static void setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor)
     {
         if (!editor.isInited())
@@ -384,15 +392,15 @@ namespace Falcor
                 return;
             }
 
-            bool addEdgeStatus = false;
+            bool addStatus = false;
             if (!RenderGraphNode::sAddedFromCode)
             {
-                spCurrentGraphUI->addLink(inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot));
+                addStatus = spCurrentGraphUI->addLink(inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot));
             }
             RenderGraphNode::sAddedFromCode = false;
 
             // immediately remove link if it is not a legal edge in the render graph
-            if (!editor.isInited() && !addEdgeStatus) //  only call after graph is setup
+            if (!addStatus && !editor.isInited()) //  only call after graph is setup
             {
                 // does not call link callback surprisingly enough
                 editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
@@ -432,8 +440,6 @@ namespace Falcor
     void RenderGraphUI::renderUI(Gui* pGui)
     {
         gpGui = pGui;
-
-
         ImGui::GetIO().FontAllowUserScaling = true;
 
         sNodeGraphEditor.show_top_pane = false;
@@ -455,17 +461,8 @@ namespace Falcor
             sNodeGraphEditor.setNodeCallback(nullptr);
             sNodeGraphEditor.reset();
         }
-        else
-        {
-            drawPins(false);
 
-            if (sRebuildDisplayData)
-            {
-                sRebuildDisplayData = false;
-                sNodeGraphEditor.setNodeCallback(nullptr);
-                sNodeGraphEditor.reset();
-            }
-        }
+        updatePins(false);
 
         if (!sNodeGraphEditor.isInited())
         {
@@ -578,7 +575,7 @@ namespace Falcor
             }
         }
 
-        drawPins();
+        updatePins();
 
         sNodeGraphEditor.render();
     }
@@ -590,7 +587,17 @@ namespace Falcor
         sRebuildDisplayData = true;
     }
 
-    void RenderGraphUI::drawPins(bool addLinks)
+    glm::vec4 RenderGraphUI::pickNodeColor(const std::string& key)
+    {
+        if (sUniqueColors.find(key) == sUniqueColors.end())
+        {
+            sUniqueColors.insert(std::make_pair(key, glm::vec4(std::rand() % 1000 / 2000.0f, std::rand() % 1000 / 2000.0f, std::rand() % 1000 / 2000.0f, 1.0f)));
+        }
+
+        return sUniqueColors[key];
+    }
+
+    void RenderGraphUI::updatePins(bool addLinks)
     {
         //  Draw pin connections. All the nodes have to be added to the GUI before the connections can be drawn
         for (auto& currentPass : mRenderPassUI)

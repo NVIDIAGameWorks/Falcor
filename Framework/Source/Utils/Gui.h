@@ -236,6 +236,15 @@ namespace Falcor
         template <typename MatrixType>
         bool addMatrixVar(const char label[], MatrixType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
 
+        /** Begin a column within the current window
+            \param[in] numColumns requires number of columns within the window.
+         */
+        void beginColumns(uint32_t numColumns);
+
+        /** Proceed to the next column within the window.
+         */
+        void nextColumn();
+
         /** Add a separator
         */
         void addSeparator();
