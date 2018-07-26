@@ -35,7 +35,7 @@ void AmbientOcclusion::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         if(pGui->beginGroup("SSAO"))
         {
-            mpSSAO->renderGui(pGui);
+            mpSSAO->renderUI(pGui);
             pGui->endGroup();
         }
     }

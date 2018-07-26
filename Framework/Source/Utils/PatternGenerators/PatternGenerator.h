@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,45 +26,19 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
 
-using namespace Falcor;
-
-class AmbientOcclusion : public Renderer
+namespace Falcor
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    class PatternGenerator : public std::enable_shared_from_this<PatternGenerator>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<PatternGenerator>;
+        virtual ~PatternGenerator() = 0 {}
 
-private:
-
-    void resetCamera();
-
-    Model::SharedPtr mpModel;
-
-    Camera::SharedPtr mpCamera;
-    ModelViewCameraController mCameraController;
-
-    float mNearZ = 1e-2f;
-    float mFarZ = 1e3f;
-
-    Fbo::SharedPtr mpGBufferFbo;
-
-    GraphicsProgram::SharedPtr mpPrePassProgram;
-    GraphicsVars::SharedPtr mpPrePassVars;
-    GraphicsState::SharedPtr mpPrePassState;
-
-    FullScreenPass::UniquePtr mpCopyPass;
-    GraphicsVars::SharedPtr mpCopyVars;
-
-    Sampler::SharedPtr mpPointSampler;
-    Sampler::SharedPtr mpLinearSampler;
-
-    SSAO::SharedPtr mpSSAO;
- 
-    static const std::string skDefaultModel;
-};
+        virtual uint32_t getSampleCount() const = 0;
+        virtual void reset(uint32_t startID = 0) = 0;
+        virtual vec2 next() = 0;
+    protected:
+        PatternGenerator() = default;
+    };
+}

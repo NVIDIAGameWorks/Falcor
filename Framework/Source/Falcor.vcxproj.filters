@@ -565,6 +565,12 @@
     <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1757,6 +1763,15 @@
     <ClInclude Include="Utils\RenderGraphLiveEditor.h">
     <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
     </ClInclude>
+    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1953,6 +1968,9 @@
     </Filter>
     <Filter Include="Data\RenderPasses">
       <UniqueIdentifier>{6fb02568-1f63-46b7-baee-85e961051a76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\PatternGenerators">
+      <UniqueIdentifier>{cc98beaa-c9ed-4457-98c6-89955706cd91}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

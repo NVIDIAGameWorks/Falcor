@@ -56,7 +56,7 @@ private:
     struct ShadowPass
     {
         bool updateShadowMap = true;
-        CascadedShadowMaps::UniquePtr pCsm;
+        CascadedShadowMaps::SharedPtr pCsm;
         Texture::SharedPtr pVisibilityBuffer;
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     };
@@ -116,7 +116,7 @@ private:
     } mTAA;
 
 
-    ToneMapping::UniquePtr mpToneMapper;
+    ToneMapping::SharedPtr mpToneMapper;
 
     struct
     {
@@ -218,4 +218,6 @@ private:
     bool mUseCsSkinning = false;
     void applyCsSkinningMode();
     static const std::string skDefaultScene;
+
+    void createTaaPatternGenerator(uint32_t fboWidth, uint32_t fboHeight);
 };
