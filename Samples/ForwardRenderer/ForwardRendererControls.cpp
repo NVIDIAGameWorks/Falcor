@@ -79,6 +79,22 @@ void ForwardRenderer::applyLightingProgramControl(ControlID controlId)
     }
 }
 
+void ForwardRenderer::createTaaPatternGenerator()
+{
+    switch (mTAASamplePattern)
+    {
+    case SamplePattern::Halton:
+        mpPatternGenerator = HaltonSamplePattern::create();
+        break;
+    case SamplePattern::DX11:
+        mpPatternGenerator = DxSamplePattern::create();
+        break;
+    default:
+        should_not_get_here();
+        mpPatternGenerator = nullptr;
+    }
+}
+
 void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
 {
     if (mLightingPass.pProgram == nullptr) return;
@@ -104,9 +120,11 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
         Fbo::Desc taaFboDesc;
         taaFboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
         mTAA.createFbos(w, h, taaFboDesc);
+        createTaaPatternGenerator();
     }
     else
     {
+        mpPatternGenerator = nullptr;
         mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
         fboDesc.setSampleCount(mAAMode == AAMode::MSAA ? mMSAASampleCount : 1);

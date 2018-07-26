@@ -218,4 +218,7 @@ private:
     bool mUseCsSkinning = false;
     void applyCsSkinningMode();
     static const std::string skDefaultScene;
+
+    PatternGenerator::SharedPtr mpPatternGenerator;
+    void createTaaPatternGenerator();
 };

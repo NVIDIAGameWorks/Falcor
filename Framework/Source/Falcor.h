@@ -136,6 +136,8 @@
 #include "Utils/Platform/OS.h"
 #include "Utils/Platform/ProgressBar.h"
 #include "Utils/ThreadPool.h"
+#include "Utils/PatternGenerators/DxSamplePattern.h"
+#include "Utils/PatternGenerators/HaltonSamplePattern.h"
 
 // VR
 #include "VR/OpenVR/VRSystem.h"
