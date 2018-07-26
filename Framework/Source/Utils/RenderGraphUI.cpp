@@ -121,7 +121,7 @@ namespace Falcor
                 return false;
             }
 
-            std::string dummyText; dummyText.resize(64, ' ');
+            std::string dummyText; dummyText.resize(32, ' ');
             gpGui->addText(dummyText.c_str());
             gpGui->addText(dummyText.c_str());
             gpGui->addText(dummyText.c_str());
@@ -134,7 +134,7 @@ namespace Falcor
             // grab all of the fields again
             RenderGraphNode* pCurrentNode = static_cast<RenderGraphNode*>(field.userData);
             RenderPass* pRenderPass = static_cast<RenderPass*>(pCurrentNode->mpRenderPass);
-            int32_t paddingSpace = glm::max(pCurrentNode->OutputsCount, pCurrentNode->InputsCount) / 2;
+            int32_t paddingSpace = glm::max(pCurrentNode->OutputsCount, pCurrentNode->InputsCount) / 2 + 1;
             
             ImVec2 oldScreenPos = ImGui::GetCursorScreenPos();
             ImVec2 currentScreenPos{ sNodeGraphEditor.offset.x  + pCurrentNode->Pos.x * ImGui::GetCurrentWindow()->FontWindowScale, 
