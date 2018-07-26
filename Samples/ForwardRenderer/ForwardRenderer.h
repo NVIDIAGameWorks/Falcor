@@ -218,4 +218,6 @@ private:
     bool mUseCsSkinning = false;
     void applyCsSkinningMode();
     static const std::string skDefaultScene;
+
+    void createTaaPatternGenerator(uint32_t fboWidth, uint32_t fboHeight);
 };

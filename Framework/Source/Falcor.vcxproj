@@ -531,6 +531,8 @@
     <ClCompile Include="Utils\Logger.cpp" />
     <ClCompile Include="Utils\Math\ParallelReduction.cpp" />
     <ClCompile Include="Utils\MonitorInfo.cpp" />
+    <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp" />
+    <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp" />
     <ClCompile Include="Utils\Picking\Picking.cpp" />
     <ClCompile Include="Utils\PixelZoom.cpp" />
     <ClCompile Include="Utils\Platform\Linux\Linux.cpp">
@@ -1129,6 +1131,9 @@
     <ClInclude Include="Utils\Math\FalcorMath.h" />
     <ClInclude Include="Utils\Math\ParallelReduction.h" />
     <ClInclude Include="Utils\MonitorInfo.h" />
+    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h" />
+    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h" />
+    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h" />
     <ClInclude Include="Utils\Picking\Picking.h" />
     <ClInclude Include="Utils\PixelZoom.h" />
     <ClInclude Include="Utils\Platform\OS.h" />
