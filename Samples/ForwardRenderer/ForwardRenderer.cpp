@@ -77,7 +77,7 @@ void ForwardRenderer::initLightingPass()
 
 void ForwardRenderer::initShadowPass(uint32_t windowWidth, uint32_t windowHeight)
 {
-    mShadowPass.pCsm = CascadedShadowMaps::create(2048, 2048, windowWidth, windowHeight, mpSceneRenderer->getScene()->getLight(0), mpSceneRenderer->getScene()->shared_from_this(), 4);
+    mShadowPass.pCsm = CascadedShadowMaps::create(mpSceneRenderer->getScene()->getLight(0), 2048, 2048, windowWidth, windowHeight, mpSceneRenderer->getScene()->shared_from_this());
     mShadowPass.pCsm->setFilterMode(CsmFilterEvsm4);
     mShadowPass.pCsm->setVsmLightBleedReduction(0.3f);
     mShadowPass.pCsm->setVsmMaxAnisotropy(4);

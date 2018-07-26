@@ -64,7 +64,7 @@ private:
     Sampler::SharedPtr mpPointSampler;
     Sampler::SharedPtr mpLinearSampler;
 
-    SSAO::UniquePtr mpSSAO;
+    SSAO::SharedPtr mpSSAO;
  
     static const std::string skDefaultModel;
 };

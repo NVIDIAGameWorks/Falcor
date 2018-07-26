@@ -74,7 +74,7 @@ void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mpScene->getLight(mControls.lightIndex)->renderUI(pGui);
         pGui->endGroup();
     }
-    mpCsmTech[mControls.lightIndex]->renderUi(pGui, "CSM");
+    mpCsmTech[mControls.lightIndex]->renderUI(pGui, "CSM");
 }
 
 void Shadows::displayLoadSceneDialog()
@@ -110,7 +110,7 @@ void Shadows::createScene(const std::string& filename)
     mpVisibilityBuffers.resize(lightCount);
     for(uint32_t i = 0; i < lightCount; i++)
     {
-        mpCsmTech[i] = CascadedShadowMaps::create(2048, 2048, mWindowDimensions.x, mWindowDimensions.y, mpScene->getLight(i), mpScene, mControls.cascadeCount);
+        mpCsmTech[i] = CascadedShadowMaps::create(mpScene->getLight(i), 2048, 2048, mWindowDimensions.x, mWindowDimensions.y, mpScene, mControls.cascadeCount);
         mpCsmTech[i]->setFilterMode(CsmFilterHwPcf);
         mpCsmTech[i]->setVsmLightBleedReduction(0.3f);
     }

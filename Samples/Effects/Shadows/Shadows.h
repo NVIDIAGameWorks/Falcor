@@ -50,7 +50,7 @@ private:
     void displayLoadSceneDialog();
     void setLightIndex(int32_t index);
 
-    std::vector<CascadedShadowMaps::UniquePtr> mpCsmTech;
+    std::vector<CascadedShadowMaps::SharedPtr> mpCsmTech;
     Scene::SharedPtr mpScene;
 
     struct
