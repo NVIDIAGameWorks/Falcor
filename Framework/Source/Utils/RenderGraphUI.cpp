@@ -223,8 +223,9 @@ namespace Falcor
     };
 
     bool RenderGraphNode::sAddedFromCode = false;
-    
     std::unordered_map<std::string, glm::vec4> RenderGraphUI::sUniqueColors;
+    bool RenderGraphUI::sRebuildDisplayData = true;
+
 
     static ImGui::Node* createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&)
     {
@@ -429,14 +430,7 @@ namespace Falcor
 
         nameToIndexMapRef.insert(std::make_pair(fieldName, static_cast<uint32_t>(guiPinID) ));
     }
-
-    void RenderPassUI::renderUI(Gui* pGui)
-    {
-
-    }
-
-    bool RenderGraphUI::sRebuildDisplayData = true;
-
+    
     void RenderGraphUI::renderUI(Gui* pGui)
     {
         gpGui = pGui;

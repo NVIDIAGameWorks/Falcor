@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,41 +36,9 @@ namespace Falcor
     std::unordered_map<std::string, RenderGraphLoader::ScriptBinding> RenderGraphLoader::mScriptBindings;
     std::unordered_map<std::string, RenderGraphLoader::ScriptParameter> RenderGraphLoader::mActiveVariables;
     std::string RenderGraphLoader::sGraphOutputString;
-    bool RenderGraphLoader::sSharedEditingMode = false;
 
     const std::string kAddRenderPassCommand = std::string("AddRenderPass");
     const std::string kAddEdgeCommand = std::string("AddEdge");
-
-    DummyEditorPass::DummyEditorPass(const std::string& name) : RenderPass(name)
-    {
-    }
-
-    DummyEditorPass::SharedPtr DummyEditorPass::create(const std::string& name)
-    {
-        try
-        {
-            return SharedPtr(new DummyEditorPass(name));
-        }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
-    }
-
-    void DummyEditorPass::reflect(RenderPassReflection& reflector) const
-    {
-        reflector = mReflector;
-    }
-    
-    void DummyEditorPass::execute(RenderContext*, const RenderData*)
-    {
-        should_not_get_here();
-    }
-    
-    void DummyEditorPass::renderUI(Gui* pGui, const char* uiGroup)
-    {
-        pGui->addText((std::string("This Render Pass Type") + mName + " is not registered").c_str());
-    }
 
 #define script_parameter_get(type_, member_, typeNameEnum_)  template <> type_& RenderGraphLoader::ScriptParameter::get<type_>() \
         { \
@@ -366,11 +334,6 @@ namespace Falcor
 
             if (pRenderPass == nullptr)
             {
-                if (sSharedEditingMode)
-                {
-                    renderGraph.addRenderPass(DummyEditorPass::create(passTypeName), scriptBinding.mParameters[0].get<std::string>());
-                }
-
                 logWarning("Failed on attempt to create unknown pass : " + passTypeName);
                 return;
             }

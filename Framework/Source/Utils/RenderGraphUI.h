@@ -36,8 +36,6 @@ namespace Falcor
     class RenderPassUI
     {
     public:
-        // pin type enum?
-
         struct PinUIData
         {
             std::string mPinName;
@@ -48,9 +46,8 @@ namespace Falcor
             bool mIsGraphOutput;
         };
 
+        // wrapper around inserting new pin for a given pass
         void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);
-
-        void renderUI(Gui *pGui);
 
         friend class RenderGraphUI;
 
@@ -80,26 +77,40 @@ namespace Falcor
 
         void reset();
 
+        /** Writes out all the changes made to the graph 
+        */
         void writeUpdateScriptToFile(const std::string& filePath, float lastFrameTimes);
 
-        /** functions used for GUI callbacks to fill out commands to send to other process
+        /** function used to add an edge for the internally referenced render graph and update ui data
          */
         bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
 
+        /** function used to remove edge referenced graph and update ui data
+        */
         void removeEdge(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
 
+        /** function used to remove pass on referenced graph and update ui data
+        */
         void removeRenderPass(const std::string& name);
 
+        /** function used to add a graph output on referenced graph from one string
+        */
         void addOutput(const std::string& outputParam);
 
+        /** function used to add a graph output on referenced graph and update ui data
+        */
         void addOutput(const std::string& outputPass, const std::string& outputField);
 
+        /** function used to add a new node for a render passon referenced graph and update ui data
+        */
         void addRenderPass(const std::string& name, const std::string& nodeTypeName);
 
         /** function selects the unique color based on the provided name
         */
         static glm::vec4 pickNodeColor(const std::string& key);
 
+        /** Flag to retraverse the graph and build on of the intermediate data again.
+         */
         static bool sRebuildDisplayData;
 
     private:
@@ -108,6 +119,8 @@ namespace Falcor
         */
         void updateDisplayData();
         
+        /** Updates information about pin connections and graph output.
+        */
         void updatePins(bool addLinks = true);
 
         /** Helper function to calculate position of the next node in execution order
@@ -134,6 +147,7 @@ namespace Falcor
 
         static std::unordered_map<std::string, glm::vec4> sUniqueColors;
 
+        // to avoid attempting to write changes every frame.
         float mTimeSinceLastUpdate = 0.0f;
     };
 }
