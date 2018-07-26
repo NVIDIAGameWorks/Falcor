@@ -266,5 +266,4 @@ namespace Falcor
         mData.jitterY = jitterY; 
         mDirty = true; 
     }
-
 }
