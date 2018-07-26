@@ -36,7 +36,8 @@ namespace Falcor
         virtual ~PatternGenerator() = 0 {}
 
         virtual uint32_t getSampleCount() const = 0;
-        virtual vec2 getSample(uint32_t index, bool wrapIndexAround = true) const = 0;
+        virtual void reset(uint32_t startID = 0) = 0;
+        virtual vec2 next() = 0;
     protected:
         PatternGenerator() = default;
     };

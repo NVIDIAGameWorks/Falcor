@@ -36,19 +36,24 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<HaltonSamplePattern>;
         virtual ~HaltonSamplePattern() = default;
 
-        static SharedPtr create() { return SharedPtr(new HaltonSamplePattern()); }
+        static SharedPtr create(uint32_t sampleCount = 8) { return SharedPtr(new HaltonSamplePattern(sampleCount)); }
 
-        virtual uint32_t getSampleCount() const override { return kSampleCount; }
-        virtual vec2 getSample(uint32_t index, bool wrapIndexAround = true) const override
+        virtual uint32_t getSampleCount() const override { return mSampleCount; }
+
+        virtual void reset(uint32_t startID = 0) { mCurSample = 0; }
+
+        virtual vec2 next()
         {
-            assert(wrapIndexAround || index < kSampleCount);
-            index = wrapIndexAround ? index % kSampleCount : index;
-            return kPattern[index];
+            return kPattern[(mCurSample++) % mSampleCount];
         }
     protected:
-        HaltonSamplePattern() = default;
+        HaltonSamplePattern(uint32_t sampleCount) : mSampleCount(sampleCount)
+        {
+            assert(sampleCount == 8);
+        }
 
-        static const uint32_t kSampleCount = 8;
-        static const vec2 kPattern[kSampleCount];
+        uint32_t mCurSample = 0;
+        const uint32_t mSampleCount = 8;
+        static const vec2 kPattern[];
     };
 }

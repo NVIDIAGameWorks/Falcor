@@ -269,8 +269,6 @@ void ForwardRenderer::beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint6
         pContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0));
 
         //  Select the sample pattern and set the camera jitter
-        vec2 samplePattern = mpPatternGenerator->getSample((uint32_t)frameId);
-        mpSceneRenderer->getScene()->getActiveCamera()->setJitter(samplePattern.x / targetResolution.x, samplePattern.y / targetResolution.y);
     }
 }
 

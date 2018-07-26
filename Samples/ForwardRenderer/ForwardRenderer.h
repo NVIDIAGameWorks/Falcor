@@ -219,6 +219,5 @@ private:
     void applyCsSkinningMode();
     static const std::string skDefaultScene;
 
-    PatternGenerator::SharedPtr mpPatternGenerator;
-    void createTaaPatternGenerator();
+    void createTaaPatternGenerator(uint32_t fboWidth, uint32_t fboHeight);
 };

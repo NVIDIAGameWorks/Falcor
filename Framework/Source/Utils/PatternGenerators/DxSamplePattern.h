@@ -39,15 +39,17 @@ namespace Falcor
         static SharedPtr create() { return SharedPtr(new DxSamplePattern()); }
 
         virtual uint32_t getSampleCount() const override { return kSampleCount; }
-        virtual vec2 getSample(uint32_t index, bool wrapIndexAround = true) const override
+
+        virtual void reset(uint32_t startID = 0) { mCurSample = 0; }
+
+        virtual vec2 next()
         {
-            assert(wrapIndexAround || index < kSampleCount);
-            index = wrapIndexAround ? index % kSampleCount : index;
-            return kPattern[index];
+            return kPattern[(mCurSample++) % kSampleCount];
         }
     protected:
         DxSamplePattern() = default;
 
+        uint32_t mCurSample = 0;
         static const uint32_t kSampleCount = 8;
         static const vec2 kPattern[kSampleCount];
     };

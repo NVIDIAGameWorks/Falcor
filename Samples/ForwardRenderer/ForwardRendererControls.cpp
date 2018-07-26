@@ -79,20 +79,23 @@ void ForwardRenderer::applyLightingProgramControl(ControlID controlId)
     }
 }
 
-void ForwardRenderer::createTaaPatternGenerator()
+void ForwardRenderer::createTaaPatternGenerator(uint32_t fboWidth, uint32_t fboHeight)
 {
+    PatternGenerator::SharedPtr pGenerator;
     switch (mTAASamplePattern)
     {
     case SamplePattern::Halton:
-        mpPatternGenerator = HaltonSamplePattern::create();
+        pGenerator = HaltonSamplePattern::create();
         break;
     case SamplePattern::DX11:
-        mpPatternGenerator = DxSamplePattern::create();
+        pGenerator = DxSamplePattern::create();
         break;
     default:
         should_not_get_here();
-        mpPatternGenerator = nullptr;
+        pGenerator = nullptr;
     }
+
+    mpSceneRenderer->getScene()->getActiveCamera()->setPatternGenerator(pGenerator, 1.0f/vec2(fboWidth, fboHeight));
 }
 
 void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
@@ -120,11 +123,11 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
         Fbo::Desc taaFboDesc;
         taaFboDesc.setColorTarget(0, ResourceFormat::RGBA8UnormSrgb);
         mTAA.createFbos(w, h, taaFboDesc);
-        createTaaPatternGenerator();
+        createTaaPatternGenerator(w, h);
     }
     else
     {
-        mpPatternGenerator = nullptr;
+        mpSceneRenderer->getScene()->getActiveCamera()->setPatternGenerator(nullptr);
         mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
         fboDesc.setSampleCount(mAAMode == AAMode::MSAA ? mMSAASampleCount : 1);
