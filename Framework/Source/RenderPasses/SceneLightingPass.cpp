@@ -78,7 +78,7 @@ namespace Falcor
         reflector.addInputOutput(kColor).setFormat(mColorFormat).setSampleCount(mSampleCount);
 
         auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth) : reflector.addOutput(kDepth);
-        depthField.setBindFlags(Resource::BindFlags::DepthStencil);
+        depthField.setBindFlags(Resource::BindFlags::DepthStencil).setSampleCount(mSampleCount);
         
         if(mNormalMapFormat != ResourceFormat::Unknown)
         {
