@@ -100,19 +100,22 @@ namespace Falcor
             assert(ticks >= curKey.time);
             // Interpolate between them
             float diff = nextKey.time - curKey.time;
-            if(diff < 0)
-            {
-                diff += mDuration;
-            }
-            else if(diff == 0)
+
+            if (diff == 0)
             {
                 curValue = curKey.value;
             }
             else
             {
+                if (diff < 0)
+                {
+                    diff += mDuration;
+                }
+
                 float ratio = (ticks - curKey.time) / diff;
                 curValue = interpolate(curKey.value, nextKey.value, ratio);
             }
+            
             channel.lastKeyUsed = curKeyIndex;
         }
         return curValue;
@@ -131,7 +134,7 @@ namespace Falcor
             glm::mat4 scaling;
             if (Key.scaling.keys.size() > 0)
             {
-                glm::scale(calcCurrentKey(Key.scaling, ticks, Key.lastUpdateTime));
+                scaling = glm::scale(calcCurrentKey(Key.scaling, ticks, Key.lastUpdateTime));
             }
 
             glm::quat q = calcCurrentKey(Key.rotation, ticks, Key.lastUpdateTime);
