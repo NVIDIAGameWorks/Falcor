@@ -136,32 +136,40 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
-#ifdef _WIN32
-    // if editor opened from running render graph, get memory view for live update
-    std::string commandLine(GetCommandLineA());
-    size_t firstSpace = commandLine.find_first_of(' ') + 1;
-    std::string filePath = (commandLine.substr(firstSpace, commandLine.size() - firstSpace));
-    if (filePath.size())
+    // if editor opened from running render graph, get the name of the file to read
+    std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
+    std::string filePath;
+
+    if (commandArgs.size())
     {
-        mpGraph = RenderGraph::create();
-        RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
-        mTempRenderGraphLiveEditor.openUpdatesFile(filePath);
-        mpScene = mpGraph->getScene();
-        if (!mpScene)
+        filePath = commandArgs.front().asString();
+        if (filePath.size())
         {
-            loadScene(gkDefaultScene, false, pSample);
+            mpGraph = RenderGraph::create();
+            RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
+            mTempRenderGraphLiveEditor.openUpdatesFile(filePath);
+            mpScene = mpGraph->getScene();
+            if (!mpScene)
+            {
+                loadScene(gkDefaultScene, false, pSample);
+            }
+            else
+            {
+                mCamControl.attachCamera(mpScene->getCamera(0));
+                mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
+            }
+            mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
         }
         else
         {
-            mCamControl.attachCamera(mpScene->getCamera(0));
-            mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
+            msgBox("No path to temporary file provided");
         }
-        mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-        return;
     }
-#endif
-    loadScene(gkDefaultScene, false, pSample);
-    createGraph(pSample);
+    else
+    {
+        loadScene(gkDefaultScene, false, pSample);
+        createGraph(pSample);
+    }
 }
 
 void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)

@@ -60,14 +60,9 @@ namespace Falcor
             logError("Failed to open temporary file for render graph viewer.");
         }
 
-        if ((mUpdatesFile.rdstate() & std::ifstream::failbit) != 0)
-        {
-            logError("Unable to read temporary file for render graph viewer.");
-        }
-
         mTempFileName = filePath;
-
         mIsOpen = true;
+        mLastWriteTime = getFileModifiedTime(mTempFileName);
     }
 
     bool RenderGraphLiveEditor::createUpdateFile(const RenderGraph& renderGraph)
@@ -131,7 +126,7 @@ namespace Falcor
         if (!createUpdateFile(renderGraph)) return;
 
         std::string commandLine = kViewerExecutableName;
-        commandLine += std::string(" ") + mTempFileName;
+        commandLine += std::string(" -tempFile ") + mTempFileName;
         
         if (!open(commandLine)) return;
     }
@@ -149,7 +144,7 @@ namespace Falcor
 
         // load application for the editor given it the name of the mapped file
         std::string commandLine = kEditorExecutableName;
-        commandLine += std::string(" ") + mTempFileName;
+        commandLine += std::string(" -tempFile ") + mTempFileName;
         
         if (!open(commandLine)) return;
     }

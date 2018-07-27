@@ -53,15 +53,10 @@ namespace Falcor
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
         static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
-        static UniquePtr deserialize(const RenderPassSerializer& serializer) 
-        {
-            std::string skyBox = getDirectoryFromFile(serializer.getValue("gSceneFilename").str) + '/' + serializer.getValue("gSkyBoxFilename").str;
-            Sampler::Desc samplerDesc; 
-            samplerDesc.setFilterMode(static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.minFilter").i32), 
-                static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.magFilter").i32), 
-                static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.mipFilter").i32));
-            return createFromTexture(skyBox, serializer.getValue("loadAsSrgb").b, Sampler::create(samplerDesc));
-        }
+        
+        static UniquePtr deserialize(const RenderPassSerializer& serializer);
+        
+        static RenderPassSerializer serialize(const std::shared_ptr<RenderPass>& pRenderPass);
 
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory

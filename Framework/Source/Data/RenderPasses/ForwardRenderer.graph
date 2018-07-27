@@ -1,28 +1,28 @@
-      SetScene SunTemple/SunTemple.fscene
+SetScene SunTemple/SunTemple.fscene
 AddRenderPass CascadedShadowMaps CascadedShadowMaps
 AddRenderPass BlitPass BlitPass
+AddRenderPass SSAO SSAO
 VarUInt sampleDesc.magFilter 1
 VarUInt sampleDesc.minFilter 1
 VarUInt sampleDesc.mipFilter 1
 VarInt loadAsSrgb 1
 AddRenderPass SkyBox SkyBox
-AddRenderPass SSAO SSAO
-AddRenderPass SceneLightingPass SceneLightingPass
 AddRenderPass DepthPrePass DepthPass
+AddRenderPass SceneLightingPass SceneLightingPass
 AddRenderPass FXAA FXAA
 AddRenderPass TemporalAA TemporalAA
-AddRenderPass ToneMapping ToneMapping
+AddRenderPass ToneMappingPass ToneMappingPass
 AddEdge DepthPrePass.depth CascadedShadowMaps.depth
 AddEdge FXAA.dst BlitPass.src
-AddEdge DepthPrePass.depth SkyBox.depth
 AddEdge SceneLightingPass.depth SSAO.depth
 AddEdge SceneLightingPass.normals SSAO.normals
-AddEdge ToneMapping.dst SSAO.colorIn
+AddEdge ToneMappingPass.dst SSAO.colorIn
+AddEdge DepthPrePass.depth SkyBox.depth
 AddEdge SkyBox.target SceneLightingPass.color
 AddEdge CascadedShadowMaps.visibility SceneLightingPass.visibilityBuffer
 AddEdge DepthPrePass.depth SceneLightingPass.depth
 AddEdge TemporalAA.colorOut FXAA.src
 AddEdge SceneLightingPass.motionVecs TemporalAA.motionVecs
 AddEdge SSAO.colorOut TemporalAA.colorIn
-AddEdge SceneLightingPass.color ToneMapping.src
+AddEdge SceneLightingPass.color ToneMappingPass.src
 AddGraphOutput BlitPass.dst

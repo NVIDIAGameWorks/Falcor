@@ -36,13 +36,12 @@ namespace Falcor
     {
     public:
         using CreateFunc = std::function<std::shared_ptr<RenderPass>(const RenderPassSerializer&)>;
-        static void addRenderPassClass(const char* className, const char* desc, CreateFunc func, RenderPassSerializer serializer = {});
-        static std::shared_ptr<RenderPass> createRenderPass(const char* className);
-        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const RenderPassSerializer& serializer);
+        using SaveFunc = std::function<RenderPassSerializer(const std::shared_ptr<RenderPass>&)>;
+        static void addRenderPassClass(const char* className, const char* desc, CreateFunc func, SaveFunc saveFunc = nullptr);
+        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const RenderPassSerializer& serializer = {});
+        static RenderPassSerializer saveRenderPass(const char* className, const std::shared_ptr<RenderPass>& pRenderPass = nullptr);
         static size_t getRenderPassCount();
         static const std::string& getRenderPassDesc(size_t pass);
         static const std::string& getRenderPassClassName(size_t pass);
-        static const RenderPassSerializer& getRenderPassSerializer(size_t pass);
-        static RenderPassSerializer& getRenderPassSerializer(const char* className);
     };
 }
