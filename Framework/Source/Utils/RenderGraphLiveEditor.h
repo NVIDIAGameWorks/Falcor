@@ -47,7 +47,7 @@ namespace Falcor
         const std::string& getTempFilePath() { return mTempFileName; }
 
     private:
-        bool createMemoryMappedFile(const RenderGraph& renderGraph);
+        bool createUpdateFile(const RenderGraph& renderGraph);
         bool open(const std::string& commandLine);
 
         bool mIsOpen = false;

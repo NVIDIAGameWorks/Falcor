@@ -70,7 +70,7 @@ namespace Falcor
         mIsOpen = true;
     }
 
-    bool RenderGraphLiveEditor::createMemoryMappedFile(const RenderGraph& renderGraph)
+    bool RenderGraphLiveEditor::createUpdateFile(const RenderGraph& renderGraph)
     {
         // create a new temporary file through windows
         mTempFileNameW.resize(510, '0');
@@ -128,7 +128,7 @@ namespace Falcor
             return;
         }
 
-        if (!createMemoryMappedFile(renderGraph)) return;
+        if (!createUpdateFile(renderGraph)) return;
 
         std::string commandLine = kViewerExecutableName;
         commandLine += std::string(" ") + mTempFileName;
@@ -145,7 +145,7 @@ namespace Falcor
         }
 
         // create mapped memory and launch editor process
-        if (!createMemoryMappedFile(renderGraph)) return;
+        if (!createUpdateFile(renderGraph)) return;
 
         // load application for the editor given it the name of the mapped file
         std::string commandLine = kEditorExecutableName;
