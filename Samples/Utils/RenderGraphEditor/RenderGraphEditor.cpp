@@ -91,7 +91,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes", screenWidth * 2 / 3, screenHeight / 4 - 16, screenWidth / 3, screenHeight * 3 / 4 + 16);
+    pGui->pushWindow("Render Passes", screenWidth * 2 / 3, screenHeight / 4, screenWidth / 3, screenHeight * 3 / 4 + 16);
 
     size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
     pGui->beginColumns(5);
@@ -99,7 +99,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
         std::string command = std::string("AddRenderPass ") + renderPassClassName + " " + renderPassClassName;
-        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, Gui::pickUniqueColor(renderPassClassName), false, true);
+        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, Gui::pickUniqueColor(renderPassClassName), false);
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
         pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
         pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), true);
@@ -109,7 +109,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     pGui->popWindow();
 
     // push a sub GUI window for the node editor
-    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 16);
+    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 16, false);
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
@@ -292,6 +292,9 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     mFilePath = (commandLine.substr(firstSpace, commandLine.size() - firstSpace));
 #endif
 
+    pSample->toggleText(false);
+    pSample->toggleGlobalUI(false);
+    
     if (mFilePath.size())
     {
         // TODO -- what do we actually want to name this graph?

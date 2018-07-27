@@ -79,6 +79,11 @@ namespace Falcor
 
         static bool sAddedFromCode;
 
+        void OverrideName(const std::string& newName)
+        {
+            std::memcpy(Name, newName.c_str(), sizeof(Name));
+        }
+
         bool pinIsConnected(uint32_t id, bool isInput)
         {
             assert(isInput ? id < IMGUINODE_MAX_INPUT_SLOTS : id < IMGUINODE_MAX_OUTPUT_SLOTS);

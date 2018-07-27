@@ -84,6 +84,9 @@ namespace Falcor
         /** Show/hide the UI */
         virtual void toggleUI(bool showUI) = 0;
 
+        /** Show/hide the globalUI */
+        virtual void toggleGlobalUI(bool showGlobalUI) = 0;
+
         /** Set the default GUI size */
         virtual void setDefaultGuiSize(uint32_t width, uint32_t height) = 0;
 
