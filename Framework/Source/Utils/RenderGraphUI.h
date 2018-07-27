@@ -105,10 +105,6 @@ namespace Falcor
         */
         void addRenderPass(const std::string& name, const std::string& nodeTypeName);
 
-        /** function selects the unique color based on the provided name
-        */
-        static glm::vec4 pickNodeColor(const std::string& key);
-
         /** Flag to retraverse the graph and build on of the intermediate data again.
          */
         static bool sRebuildDisplayData;
@@ -144,8 +140,6 @@ namespace Falcor
 
         // if in external editing mode, building list of commands for changes to send to the other process
         std::vector<std::string> mCommandStrings;
-
-        static std::unordered_map<std::string, glm::vec4> sUniqueColors;
 
         // to avoid attempting to write changes every frame.
         float mTimeSinceLastUpdate = 0.0f;

@@ -29,6 +29,7 @@
 #include "RenderGraphLiveEditor.h"
 #include "RenderGraphLoader.h"
 #include <string>
+#include <experimental/filesystem>
 
 namespace Falcor
 {
@@ -178,6 +179,8 @@ namespace Falcor
                 mProcess = nullptr;
                 mIsOpen = false;
                 mUpdatesFile.close();
+                mTempFilePath.clear();
+                mTempFileName.clear();
                 return;
             }
         }
@@ -211,6 +214,10 @@ namespace Falcor
 #endif
         mSharedMemoryStage.clear();
         mIsOpen = false;
-        // delete temporary file
+        
+        if (mTempFilePath.size())
+        {
+            std::experimental::filesystem::remove(mTempFilePath);
+        }
     }
 }

@@ -52,7 +52,6 @@ private:
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
     void loadScene(const std::string& filename, bool showProgressBar);
-    SampleCallbacks* mpLastSample;
 
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
@@ -67,9 +66,6 @@ private:
     Gui::DropdownList mOpenGraphNames;
 
     RenderGraphLiveEditor mRenderGraphLiveEditor;
-
-    bool mCreatingRenderGraph;
-    bool mPreviewing;
     bool mShowCreateGraphWindow;
     
     FirstPersonCameraController mCamControl;

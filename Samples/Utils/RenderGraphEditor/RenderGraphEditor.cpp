@@ -33,7 +33,7 @@
 const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
 
 RenderGraphEditor::RenderGraphEditor()
-    : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
+    : mCurrentGraphIndex(0)
 {
     mNextGraphString.resize(255, 0);
     mCurrentGraphOutput = "";
@@ -99,7 +99,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
         std::string command = std::string("AddRenderPass ") + renderPassClassName + " " + renderPassClassName;
-        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, RenderGraphUI::pickNodeColor(renderPassClassName), false, true);
+        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, Gui::pickUniqueColor(renderPassClassName), false, true);
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
         pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
         pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), true);
@@ -128,9 +128,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath, pSample->getLastFrameTime());
     }
     
-    if (pGui->addButton("Preview Graph"))
+    // validate the graph and output the current status to the console
+    if (pGui->addButton("Validate Graph"))
     {
-        mPreviewing = true;
+        // TODO 
+        // mpGraphs[]
     }
 
     // Load scene for graph
@@ -230,8 +232,6 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 
 void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
 {
-    mCreatingRenderGraph = true;
-
     Gui::DropdownValue nextGraphID;
     nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
     nextGraphID.label = renderGraphName;
@@ -242,7 +242,6 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     // test that this graph shows up in the editor correctly
     newGraph = RenderGraph::create();
 
-    newGraph->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
 
@@ -266,9 +265,6 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
         mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
     }
 
-    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(mpLastSample->getCurrentFbo().get());
-
-    mCreatingRenderGraph = false;
     RenderGraphUI::sRebuildDisplayData = true;
 }
 
@@ -289,8 +285,6 @@ void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
-    mpLastSample = pSample;
-    
 #ifdef _WIN32
     // if editor opened from running render graph, get memory view for live update
     std::string commandLine(GetCommandLineA());
@@ -307,31 +301,15 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     {
         createRenderGraph("DefaultRenderGraph", "");
     }
+
+    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    if (mPreviewing && pSample->isKeyPressed(KeyboardEvent::Key::E))
-    {
-        mPreviewing = false;
-    }
-
-    mpLastSample = pSample;
-
-    // render the editor GUI graph
     const glm::vec4 clearColor(1, 1, 1 , 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-
-    if (!mPreviewing)
-    {
-        // draw node graph editor into specialized graph
-        pSample->getRenderContext()->getGraphicsState()->setFbo(pTargetFbo);
-    }
-    else
-    {
-        mpGraphs[mCurrentGraphIndex]->getScene()->update(pSample->getCurrentTime(), &mCamControl);
-        mpGraphs[mCurrentGraphIndex]->execute(pRenderContext.get());
-    }
+    pSample->getRenderContext()->getGraphicsState()->setFbo(pTargetFbo);
 }
 
 bool RenderGraphEditor::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

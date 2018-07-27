@@ -46,7 +46,6 @@ namespace Falcor
     uint32_t gGuiNodeID;
     RenderPass* gpCurrentRenderPass; // This is for renderUI callback
     const float kUpdateTimeInterval = 3.0f;
-
     const float kPinRadius = 6.0f;
 
     static std::unordered_map<uint32_t, ImGui::Node*> spIDToNode;
@@ -211,7 +210,7 @@ namespace Falcor
             if (gpCurrentRenderPass)
             {
                 node->mpRenderPass = gpCurrentRenderPass;
-                const glm::vec4 nodeColor = RenderGraphUI::pickNodeColor(node->mpRenderPass->getName());
+                const glm::vec4 nodeColor = Gui::pickUniqueColor(node->mpRenderPass->getName());
                 node->overrideTitleBgColor = ImGui::GetColorU32({ nodeColor.x, nodeColor.y, nodeColor.z, nodeColor.w });
             }
             
@@ -223,7 +222,6 @@ namespace Falcor
     };
 
     bool RenderGraphNode::sAddedFromCode = false;
-    std::unordered_map<std::string, glm::vec4> RenderGraphUI::sUniqueColors;
     bool RenderGraphUI::sRebuildDisplayData = true;
 
 
@@ -579,16 +577,6 @@ namespace Falcor
         sNodeGraphEditor.reset();
         sNodeGraphEditor.clear();
         sRebuildDisplayData = true;
-    }
-
-    glm::vec4 RenderGraphUI::pickNodeColor(const std::string& key)
-    {
-        if (sUniqueColors.find(key) == sUniqueColors.end())
-        {
-            sUniqueColors.insert(std::make_pair(key, glm::vec4(std::rand() % 1000 / 2000.0f, std::rand() % 1000 / 2000.0f, std::rand() % 1000 / 2000.0f, 1.0f)));
-        }
-
-        return sUniqueColors[key];
     }
 
     void RenderGraphUI::updatePins(bool addLinks)

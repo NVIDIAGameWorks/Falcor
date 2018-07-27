@@ -262,6 +262,19 @@ namespace Falcor
         pContext->popGraphicsState();
     }
 
+    glm::vec4 Gui::pickUniqueColor(const std::string& key)
+    {
+        union hashedValue
+        {
+            size_t st;
+            int32_t i32[2];
+        };
+        hashedValue color;
+        color.st = std::hash<std::string>()(key);
+
+        return glm::vec4(color.i32[0] % 1000 / 2000.0f, color.i32[1] % 1000 / 2000.0f, (color.i32[0] * color.i32[1]) % 1000 / 2000.0f, 1.0f);
+    }
+
     void Gui::addRect(const char label[], const glm::vec2& size, const glm::vec4& color, bool filled, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();

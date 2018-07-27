@@ -74,6 +74,8 @@ namespace Falcor
 
         ~Gui();
 
+        static glm::vec4 pickUniqueColor(const std::string& key);
+
         /** Render the GUI
         */
         void render(RenderContext* pContext, float elapsedTime);
@@ -127,17 +129,27 @@ namespace Falcor
         */
         void endGroup();
 
+        /** Begins main menu bar for top of the window
+        */
         bool beginMainMenuBar();
 
+        /** Begins a collapsable menu in the main menu bar of menu items
+            \param[in] label name of drop down menu to be displayed.
+        */
         bool beginDropDownMenu(const char label[]);
 
+        /** End the drop down menu list of items.
+        */
         void endDropDownMenu();
 
-        /**
-         * 
+        /** Item to be displayed in dropdown menu for the main menu bar
+            \param[in] label name of item to list in the menu.
+            \return true if the option was selected in the dropdown
          */
         bool addMenuItem(const char label[]);
 
+        /** Ends the main menu bar for top of the window
+        */
         void endMainMenuBar();
 
         /** Adds a floating-point UI element.
@@ -286,7 +298,6 @@ namespace Falcor
          * 
          */
         bool addMultiTextBox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries);
-
 
         using GraphCallback = float(*)(void*, int32_t index);
 
