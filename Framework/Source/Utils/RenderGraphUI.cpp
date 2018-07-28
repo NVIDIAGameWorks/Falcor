@@ -79,7 +79,8 @@ namespace Falcor
 
         static Gui* spGui;
         static NodeInitData sInitData;
-        static bool sAddedFromCode;
+        // set if node is added from graph data and not the ui
+        static bool sAddedFromGraphData;
 
         bool mDisplayProperties;
         bool mOutputPinConnected[IMGUINODE_MAX_OUTPUT_SLOTS];
@@ -237,7 +238,7 @@ namespace Falcor
     private:
     };
 
-    bool RenderGraphNode::sAddedFromCode = false;
+    bool RenderGraphNode::sAddedFromGraphData = false;
     RenderGraphNode::NodeInitData RenderGraphNode::sInitData;
     Gui* RenderGraphNode::spGui = nullptr;
 
@@ -400,23 +401,23 @@ namespace Falcor
 
             if (outputNode == sNodeGraphEditor.pGraphOutputNode)
             {
-                if (!RenderGraphNode::sAddedFromCode)
+                if (!RenderGraphNode::sAddedFromGraphData)
                 {
                     editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
                     spCurrentGraphUI->addOutput(inputNode->getName(), inputNode->getOutputName(link.InputSlot));
                 }
                 
-                RenderGraphNode::sAddedFromCode = false;
+                RenderGraphNode::sAddedFromGraphData = false;
 
                 return;
             }
 
             bool addStatus = false;
-            if (!RenderGraphNode::sAddedFromCode)
+            if (!RenderGraphNode::sAddedFromGraphData)
             {
                 addStatus = spCurrentGraphUI->addLink(inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot));
             }
-            RenderGraphNode::sAddedFromCode = false;
+            RenderGraphNode::sAddedFromGraphData = false;
 
             // immediately remove link if it is not a legal edge in the render graph
             if (!addStatus && !editor.isInited()) //  only call after graph is setup
@@ -624,7 +625,7 @@ namespace Falcor
                             if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
                                 spIDToNode[connectedPin.second], connectedPin.first))
                             {
-                                RenderGraphNode::sAddedFromCode = true;
+                                RenderGraphNode::sAddedFromGraphData = true;
 
                                 sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
                                     spIDToNode[connectedPin.second], connectedPin.first);
@@ -651,7 +652,7 @@ namespace Falcor
                         if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
                             sNodeGraphEditor.pGraphOutputNode, graphOutPinID))
                         {
-                            RenderGraphNode::sAddedFromCode = true;
+                            RenderGraphNode::sAddedFromGraphData = true;
                             sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
                                 sNodeGraphEditor.pGraphOutputNode, graphOutPinID, false, ImGui::GetColorU32({ 0.0f, 1.0f, 0.0f, 0.71f }));
                         }
