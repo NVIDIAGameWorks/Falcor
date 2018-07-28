@@ -54,8 +54,14 @@ namespace Falcor
         */
         static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         
+        /* Create a sky box using data from serializer
+            \param[in] serializer Object to obtain initialization data
+        */
         static UniquePtr deserialize(const RenderPassSerializer& serializer);
         
+        /* Save out data for sky box into serializer
+            \param[in] pRenderPass SkyBoxPass to serialize data from
+        */
         static RenderPassSerializer serialize(const std::shared_ptr<RenderPass>& pRenderPass);
 
         /** Load a texture and create a sky box using it.

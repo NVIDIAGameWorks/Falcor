@@ -127,17 +127,27 @@ namespace Falcor
         */
         void endGroup();
 
+        /** Begins main menu bar for top of the window
+        */
         bool beginMainMenuBar();
 
+        /** Begins a collapsable menu in the main menu bar of menu items
+            \param[in] label name of drop down menu to be displayed.
+        */
         bool beginDropDownMenu(const char label[]);
 
+        /** End the drop down menu list of items.
+        */
         void endDropDownMenu();
 
-        /**
-         * 
+        /** Item to be displayed in dropdown menu for the main menu bar
+            \param[in] label name of item to list in the menu.
+            \return true if the option was selected in the dropdown
          */
         bool addMenuItem(const char label[]);
 
+        /** Ends the main menu bar for top of the window
+        */
         void endMainMenuBar();
 
         /** Adds a floating-point UI element.
@@ -197,13 +207,18 @@ namespace Falcor
         */
         bool addRgbaColor(const char label[], glm::vec4& var, bool sameLine = false);
         
-        /** Source for drag and drop
-         * 
+        /** The source for drag and drop. Call this to allow users to drag out of last gui item.
+            \param[in] label The name of the drag and drop widget
+            \param[in] dataLabel Destination that has same dataLabel can accept the payload
+            \param[in] payloadString Data in payload to be sent and accepted by destination.
+            \return true if user is clicking and dragging
          */
         bool dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString);
 
-        /** Destination for dropping data in drag and drop
-        *
+        /** Destination area for dropping data in drag and drop of last gui item.
+            \param[in] dataLabel Named label needs to be the same as source datalabel to accept payload.
+            \param[in] payloadString Data sent from the drag and drop source
+            \return true if payload is dropped.
         */
         bool dragDropDest(const char dataLabel[], std::string& payloadString);
 
@@ -286,7 +301,6 @@ namespace Falcor
          * 
          */
         bool addMultiTextBox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries);
-
 
         using GraphCallback = float(*)(void*, int32_t index);
 

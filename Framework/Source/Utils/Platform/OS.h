@@ -123,10 +123,23 @@ namespace Falcor
     */
     bool createDirectory(const std::string& path);
 
+    /** Given the app name and full command line arguments, begin the process
+    */
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs);
+
+    /** Check if the given process is still active
+     */
+    bool isProcessRunning(size_t processID);
+
+    /** Terminate process
+     */
+    void terminateProcess(size_t processID);
+
     /** Get the current executable directory
         \return The full path of the application directory
     */
     const std::string& getExecutableDirectory();
+
     /** Get the current executable name
         \return The name of the executable
     */
@@ -135,6 +148,10 @@ namespace Falcor
     /** Get the working directory. This can be different from the executable directory (for example, by default when you launch an app from Visual Studio, the working the directory is the directory containing the project file).
     */ 
     const std::string getWorkingDirectory();
+
+    /** Returns a string with the path to a new temporary file.
+     */
+    std::string getNewTempFilePath();
 
     /** Get the content of a system environment variable.
         \param[in] varName Name of the environment variable

@@ -32,19 +32,8 @@
 
 namespace Falcor
 {
-    const char* kEditorExecutableName =
-#ifdef _WIN32
-        "RenderGraphEditor.exe";
-#else
-        "./RenderGraphEditor";
-#endif
-    const char* kViewerExecutableName =
-#ifdef _WIN32
-        "RenderGraphViewer.exe";
-#else
-        "./RenderGraphViewer";
-#endif
-
+    const char* kEditorExecutableName = "RenderGraphEditor";
+    const char* kViewerExecutableName = "RenderGraphViewer";
     const float kCheckFileInterval = 0.5f;
 
     RenderGraphLiveEditor::RenderGraphLiveEditor()
@@ -60,19 +49,13 @@ namespace Falcor
             logError("Failed to open temporary file for render graph viewer.");
         }
 
-        mTempFileName = filePath;
+        mTempFilePath = filePath;
         mIsOpen = true;
-        mLastWriteTime = getFileModifiedTime(mTempFileName);
+        mLastWriteTime = getFileModifiedTime(mTempFilePath);
     }
 
     bool RenderGraphLiveEditor::createUpdateFile(const RenderGraph& renderGraph)
     {
-        // create a new temporary file through windows
-        mTempFileNameW.resize(510, '0');
-        mTempFilePathW.resize(510, '0');
-        mTempFileName.resize(255, '0');
-        mTempFilePath.resize(255, '0');
-        
         std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(renderGraph);
         if (!renderGraphScript.size())
         {
@@ -80,38 +63,16 @@ namespace Falcor
             return false;
         }
 
-#ifdef _WIN32
-        GetTempPath(255, (LPWSTR)(&mTempFilePathW.front()));
-        GetTempFileName((LPCWSTR)mTempFilePathW.c_str(), L"PW", 0, (LPWSTR)&mTempFileNameW.front());
-        wcstombs(&mTempFileName.front(), (wchar_t*)mTempFileNameW.c_str(), mTempFileNameW.size());
-        wcstombs(&mTempFilePath.front(), (wchar_t*)mTempFilePathW.c_str(), mTempFilePathW.size());
-#endif
-        
-        std::ofstream updatesFileOut(mTempFileName);
+        mTempFilePath = getNewTempFilePath();
+
+        std::ofstream updatesFileOut(mTempFilePath);
         assert(updatesFileOut.is_open());
         updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
         updatesFileOut.close();
 
-        openUpdatesFile(mTempFileName);
-        mLastWriteTime = getFileModifiedTime(mTempFileName);
+        openUpdatesFile(mTempFilePath);
+        mLastWriteTime = getFileModifiedTime(mTempFilePath);
 
-        return true;
-    }
-
-    bool RenderGraphLiveEditor::open(const std::string& commandLine)
-    {
-#ifdef _WIN32
-        STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
-        if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
-        {
-            logError("Unable to execute the render graph editor");
-            close();
-            return false;
-        }
-
-        mProcess = processInformation.hProcess;
-#endif
-        mIsOpen = true;
         return true;
     }
 
@@ -125,10 +86,10 @@ namespace Falcor
 
         if (!createUpdateFile(renderGraph)) return;
 
-        std::string commandLine = kViewerExecutableName;
-        commandLine += std::string(" -tempFile ") + mTempFileName;
+        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
         
-        if (!open(commandLine)) return;
+        mProcess = executeProcess(kViewerExecutableName, commandLine);
+        if(mProcess) mIsOpen = true;
     }
 
     void RenderGraphLiveEditor::openEditor(const RenderGraph& renderGraph)
@@ -143,10 +104,10 @@ namespace Falcor
         if (!createUpdateFile(renderGraph)) return;
 
         // load application for the editor given it the name of the mapped file
-        std::string commandLine = kEditorExecutableName;
-        commandLine += std::string(" -tempFile ") + mTempFileName;
-        
-        if (!open(commandLine)) return;
+        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
+
+        mProcess = executeProcess(kEditorExecutableName, commandLine);
+        if (mProcess) mIsOpen = true;
     }
 
     void RenderGraphLiveEditor::forceUpdateGraph(RenderGraph& renderGraph)
@@ -163,23 +124,18 @@ namespace Falcor
         bool status = false;
 
         // check to see if the editor has closed and react accordingly
-#ifdef _WIN32
-        uint32_t exitCode = 0;
-        if (GetExitCodeProcess(mProcess, (LPDWORD)&exitCode))
+        if(!isProcessRunning(mProcess))
         {
-            if (exitCode != STILL_ACTIVE)
-            {
-                CloseHandle(mProcess);
-                mProcess = nullptr;
-                mIsOpen = false;
-                mUpdatesFile.close();
-                return;
-            }
+            CloseHandle((HANDLE)mProcess);
+            mProcess = 0;
+            mIsOpen = false;
+            mUpdatesFile.close();
+            return;
         }
-#endif
+
         if ((mTimeSinceLastCheck += lastFrameTime) > kCheckFileInterval)
         {
-            time_t lastWriteTime = getFileModifiedTime(mTempFileName);
+            time_t lastWriteTime = getFileModifiedTime(mTempFilePath);
             mTimeSinceLastCheck = 0.0f;
             if (mLastWriteTime < lastWriteTime)
             {
@@ -196,14 +152,13 @@ namespace Falcor
 
     void RenderGraphLiveEditor::close()
     {
-#ifdef _WIN32
+        // terminate process
         if (mProcess)
         {
-            TerminateProcess(mProcess, 0);
-            CloseHandle(mProcess);
-            mProcess = nullptr;
+            terminateProcess(mProcess);
+            mProcess = 0;
         }
-#endif
+
         mSharedMemoryStage.clear();
         mIsOpen = false;
         // delete temporary file
