@@ -67,6 +67,7 @@ private:
 
     RenderGraphLiveEditor mRenderGraphLiveEditor;
     bool mShowCreateGraphWindow;
+    bool mCanPreview = false;
     
     FirstPersonCameraController mCamControl;
 };

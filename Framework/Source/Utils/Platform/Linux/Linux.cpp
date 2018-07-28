@@ -131,6 +131,50 @@ namespace Falcor
         }
     }
 
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
+    {
+        std::string linuxAppName = "./"; linuxAppName += appName;
+        std::vector<const char*> argv;
+        size_t offset = 0;
+        size_t oldOffset = 0;
+
+        while ((offset = commandLineArgs.find_first_of(' ', oldOffset)) != std::string::npos)
+        {
+            argv.push_back(commandLineArgs.data() + oldOffset);
+            oldOffset = offset + 1;
+        }
+
+        if (execv(linuxAppName.c_str(), argv.data()))
+        {
+            msgBox("Failed to launch process");
+        }
+
+        return 0;
+    }
+
+    bool isProcessRunning(size_t processID)
+    {
+        return true;
+    }
+
+    void terminateProcess(size_t processID)
+    {
+        (void)processID;
+    }
+
+    std::string getNewTempFilePath()
+    {
+        char* result = nullptr;
+        char* name = tmpnam(result);
+
+        if (result)
+        {
+            return std::string(name);
+        }
+
+        return "";
+    }
+
     bool doesFileExist(const std::string& filename)
     {
         int32_t handle = open(filename.c_str(), O_RDONLY);

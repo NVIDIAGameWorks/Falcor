@@ -86,24 +86,28 @@ namespace Falcor
         std::string scriptString;
         std::unordered_map<uint16_t, std::string> linkIDToSrcPassName;
         std::string currentCommand;
-        std::string sceneFilename = mActiveVariables["gSceneFilename"].get<std::string>() = renderGraph.getScene()->mFileName;
-        Scene::UserVariable var = renderGraph.getScene()->getUserVariable("sky_box");
-        assert(var.type == Scene::UserVariable::Type::String);
-        mActiveVariables["gSkyBoxFilename"] = ScriptParameter(var.str);
+        if (renderGraph.getScene())
+        {
+            std::string sceneFilename = mActiveVariables["gSceneFilename"].get<std::string>() = renderGraph.getScene()->mFileName;
+            Scene::UserVariable var = renderGraph.getScene()->getUserVariable("sky_box");
+            assert(var.type == Scene::UserVariable::Type::String);
+            mActiveVariables["gSkyBoxFilename"] = ScriptParameter(var.str);
 
-        // first set the name of the scene for the passes that dependent on it during their initialization
-        currentCommand = "SetScene ";
-        currentCommand += sceneFilename + '\n';
-        scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
+            // first set the name of the scene for the passes that dependent on it during their initialization
+            currentCommand = "SetScene ";
+            currentCommand += sceneFilename + '\n';
+            scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
+        }
 
         // do a pre-pass to map all of the outgoing connections to the names of the passes
         for (const auto& nameToIndex : renderGraph.mNameToIndex)
         {
-            auto pCurrentPass = renderGraph.mpGraph->getNode(nameToIndex.second);
-            std::string renderPassClassName = renderGraph.mNodeData.find(nameToIndex.second)->second.pPass->getName();
+            auto pCurrentNode = renderGraph.mpGraph->getNode(nameToIndex.second);
+            auto pCurrentRenderPass = renderGraph.mNodeData.find(nameToIndex.second)->second.pPass;
+            std::string renderPassClassName = pCurrentRenderPass->getName();
             
             // need to deserialize the serialization data. stored in the RenderPassLibrary
-            RenderPassSerializer& renderPassSerializerRef = RenderPassLibrary::getRenderPassSerializer(renderPassClassName.c_str());
+            RenderPassSerializer renderPassSerializerRef = RenderPassLibrary::saveRenderPass(renderPassClassName.c_str(), pCurrentRenderPass);
 
             for (size_t i = 0; i < renderPassSerializerRef.getVariableCount(); ++i )
             {
@@ -144,9 +148,9 @@ namespace Falcor
             currentCommand = kAddRenderPassCommand + " " + nameToIndex.first + " " + renderPassClassName + "\n";
             scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
 
-            for (uint32_t i = 0; i < pCurrentPass->getOutgoingEdgeCount(); ++i)
+            for (uint32_t i = 0; i < pCurrentNode->getOutgoingEdgeCount(); ++i)
             {
-                uint32_t edgeID = pCurrentPass->getOutgoingEdge(i);
+                uint32_t edgeID = pCurrentNode->getOutgoingEdge(i);
 
                 linkIDToSrcPassName[edgeID] = nameToIndex.first;
             }
@@ -322,8 +326,8 @@ namespace Falcor
 
         RegisterStatement<std::string, std::string>("AddRenderPass", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) { 
             std::string passTypeName = scriptBinding.mParameters[1].get<std::string>();
-            
-            RenderPassSerializer renderPassSerializer = RenderPassLibrary::getRenderPassSerializer(passTypeName.c_str());
+            RenderPassSerializer renderPassSerializer = RenderPassLibrary::saveRenderPass(passTypeName.c_str());
+
             for (size_t i = 0; i < renderPassSerializer.getVariableCount(); ++i)
             {
                 std::string variableName = renderPassSerializer.getVariableName(i);

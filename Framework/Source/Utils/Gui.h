@@ -209,13 +209,18 @@ namespace Falcor
         */
         bool addRgbaColor(const char label[], glm::vec4& var, bool sameLine = false);
         
-        /** Source for drag and drop
-         * 
+        /** The source for drag and drop. Call this to allow users to drag out of last gui item.
+            \param[in] label The name of the drag and drop widget
+            \param[in] dataLabel Destination that has same dataLabel can accept the payload
+            \param[in] payloadString Data in payload to be sent and accepted by destination.
+            \return true if user is clicking and dragging
          */
         bool dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString);
 
-        /** Destination for dropping data in drag and drop
-        *
+        /** Destination area for dropping data in drag and drop of last gui item.
+            \param[in] dataLabel Named label needs to be the same as source datalabel to accept payload.
+            \param[in] payloadString Data sent from the drag and drop source
+            \return true if payload is dropped.
         */
         bool dragDropDest(const char dataLabel[], std::string& payloadString);
 

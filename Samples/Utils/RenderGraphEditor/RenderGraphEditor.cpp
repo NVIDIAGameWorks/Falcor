@@ -30,8 +30,6 @@
 #include "Utils/RenderGraphLoader.h"
 #include "ArgList.h"
 
-const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
-
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0)
 {
@@ -99,7 +97,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
         std::string command = std::string("AddRenderPass ") + renderPassClassName + " " + renderPassClassName;
-        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, Gui::pickUniqueColor(renderPassClassName), false);
+        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
         pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
         pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), true);
@@ -136,13 +134,14 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     // Load scene for graph
-    if (pGui->addButton("LoadScene"))
+    if (pGui->addButton("SetScene"))
     {
         std::string filename;
         if (openFileDialog(Scene::kFileFormatString, filename))
         {
             RenderGraphLoader::ExecuteStatement(std::string("SetScene ") + filename, *mpGraphs[mCurrentGraphIndex]);
         }
+        mCanPreview = true;
     }
 
     // update the display if the render graph loader has set a new output
@@ -168,7 +167,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
     mGraphOutputEditString = graphOutputString[0];
 
-    if (!mRenderGraphLiveEditor.isOpen() && pGui->addButton("Open Graph Viewer"))
+    if (mCanPreview && !mRenderGraphLiveEditor.isOpen() && pGui->addButton("Open Graph Viewer"))
     {
         mRenderGraphLiveEditor.openViewer(*mpGraphs[mCurrentGraphIndex]);
         mFilePath = mRenderGraphLiveEditor.getTempFilePath();
@@ -253,12 +252,6 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
         RenderGraphLoader::LoadAndRunScript(renderGraphNameFileName, *newGraph);
     }
 
-    // load the default scene if none was specified
-    if (mpGraphs[mCurrentGraphIndex]->getScene() == nullptr)
-    {
-        loadScene(gkDefaultScene, false);
-    }
-    
     // update the display if the render graph loader has set a new output
     if (RenderGraphLoader::sGraphOutputString[0] != '0')
     {
@@ -285,12 +278,12 @@ void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
-#ifdef _WIN32
-    // if editor opened from running render graph, get memory view for live update
-    std::string commandLine(GetCommandLineA());
-    size_t firstSpace = commandLine.find_first_of(' ') + 1;
-    mFilePath = (commandLine.substr(firstSpace, commandLine.size() - firstSpace));
-#endif
+    std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
+    
+    if (commandArgs.size())
+    {
+        mFilePath = commandArgs.front().asString();
+    }
 
     pSample->toggleText(false);
     pSample->toggleGlobalUI(false);
@@ -328,7 +321,6 @@ bool RenderGraphEditor::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
-    mpGraphs[mCurrentGraphIndex]->getScene()->getActiveCamera()->setAspectRatio((float)width / (float)height);
 }
 
 #ifdef _WIN32

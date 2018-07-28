@@ -44,22 +44,16 @@ namespace Falcor
         void close();
         void updateGraph(RenderGraph& renderGraph, float lastFrameTime = 1.0f / 60.0f);
         void forceUpdateGraph(RenderGraph& renderGraph);
-        const std::string& getTempFilePath() { return mTempFileName; }
+        const std::string& getTempFilePath() { return mTempFilePath; }
 
     private:
         bool createUpdateFile(const RenderGraph& renderGraph);
-        bool open(const std::string& commandLine);
 
         bool mIsOpen = false;
         std::string mSharedMemoryStage;
         std::ifstream mUpdatesFile;
-#ifdef _WIN32
-        HANDLE mProcess;
-        std::string mTempFileNameW;
-        std::string mTempFilePathW;
-#endif
+        size_t mProcess;
         time_t mLastWriteTime;
-        std::string mTempFileName;
         std::string mTempFilePath;
         float mTimeSinceLastCheck = 0.0f;
     };

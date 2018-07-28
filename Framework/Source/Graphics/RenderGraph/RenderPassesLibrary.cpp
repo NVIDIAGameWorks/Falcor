@@ -43,7 +43,7 @@ namespace Falcor
     {
         std::string passDesc;
         RenderPassLibrary::CreateFunc create;
-        RenderPassSerializer serializer;
+        RenderPassLibrary::SaveFunc save;
     };
 
     static std::unordered_map<std::string, RenderPassDesc> gRenderPassList;
@@ -54,25 +54,18 @@ namespace Falcor
         RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::deserialize);
         RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::deserialize);
         RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", CascadedShadowMaps::deserialize);
-        RenderPassLibrary::addRenderPassClass("ToneMapping", "Tone-Mapping", ToneMapping::deserialize);
+        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", ToneMapping::deserialize);
         RenderPassLibrary::addRenderPassClass("FXAA", "FXAA", FXAA::deserialize);
         RenderPassLibrary::addRenderPassClass("SSAO", "Fast Approximate Anti-Aliasing", SSAO::deserialize);
         RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
-        
-        RenderPassSerializer skyBoxSerializer;
-        skyBoxSerializer.addVariable<uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        skyBoxSerializer.addVariable<uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        skyBoxSerializer.addVariable<uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        skyBoxSerializer.addVariable<bool>("loadAsSrgb", true);
-        
-        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize, skyBoxSerializer);
+        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize, SkyBox::serialize);
 
         return true;
     };
 
     static const bool b = addBuiltinPasses();
 
-    void RenderPassLibrary::addRenderPassClass(const char* className, const char* desc, CreateFunc func, RenderPassSerializer serializer)
+    void RenderPassLibrary::addRenderPassClass(const char* className, const char* desc, CreateFunc func, SaveFunc saveFunc)
     {
         if (gRenderPassList.find(className) != gRenderPassList.end())
         {
@@ -80,20 +73,8 @@ namespace Falcor
         }
         else
         {
-            gRenderPassList[className] = { desc, func, serializer };
+            gRenderPassList[className] = { desc, func, saveFunc };
         }
-    }
-
-    std::shared_ptr<RenderPass> RenderPassLibrary::createRenderPass(const char* className)
-    {
-        if (gRenderPassList.find(className) == gRenderPassList.end())
-        {
-            logWarning(std::string("Trying to create a render-pass named `") + className + "`, but no such class exists in the library");
-            return nullptr;
-        }
-
-        auto& renderPass = gRenderPassList[className];
-        return renderPass.create(renderPass.serializer);
     }
 
     std::shared_ptr<RenderPass> RenderPassLibrary::createRenderPass(const char* className, const RenderPassSerializer& serializer)
@@ -106,6 +87,25 @@ namespace Falcor
 
         auto& renderPass = gRenderPassList[className];
         return renderPass.create(serializer);
+    }
+
+    RenderPassSerializer RenderPassLibrary::saveRenderPass(const char* className, const std::shared_ptr<RenderPass>& pRenderPass)
+    {
+        RenderPassSerializer renderPassSerializer{};
+        
+        if (gRenderPassList.find(className) == gRenderPassList.end())
+        {
+            logWarning(std::string("Trying to save a render-pass named `") + className + "`, but no such class exists in the library");
+            return renderPassSerializer;
+        }
+
+        const auto& renderPass = gRenderPassList[className];
+        if (renderPass.save)
+        {
+            return renderPass.save(pRenderPass);
+        }
+        // else no data to be saved return empty serializer
+        return renderPassSerializer;
     }
 
     size_t RenderPassLibrary::getRenderPassCount()
@@ -123,18 +123,5 @@ namespace Falcor
     {
         assert(pass < getRenderPassCount());
         return std::next(gRenderPassList.begin(), pass)->second.passDesc;
-    }
-
-    const RenderPassSerializer& RenderPassLibrary::getRenderPassSerializer(size_t pass)
-    {
-        assert(pass < getRenderPassCount());
-        return std::next(gRenderPassList.begin(), pass)->second.serializer;
-    }
-
-    RenderPassSerializer& RenderPassLibrary::getRenderPassSerializer(const char* className)
-    {
-        auto it = gRenderPassList.find(className);
-        assert(it != gRenderPassList.end());
-        return it->second.serializer;
     }
 }

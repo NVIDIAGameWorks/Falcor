@@ -148,6 +148,13 @@ namespace Falcor
             mData[name] = { temp };
         }
 
+        template<typename T>
+        void addVariable(const std::string& name)
+        {
+            T temp;
+            mData[name] = { temp };
+        }
+
         RenderPassSerializer() 
         {
             // set globals

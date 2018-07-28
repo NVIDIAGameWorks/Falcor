@@ -231,6 +231,55 @@ namespace Falcor
         __debugbreak();
     }
 
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
+    {
+        std::string commandLine = appName + ".exe " + commandLineArgs;
+        STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
+        if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
+        {
+            logError("Unable to execute the render graph editor");
+            return 0;
+        }
+
+        return reinterpret_cast<size_t>(processInformation.hProcess);
+    }
+
+    bool isProcessRunning(size_t processID)
+    {
+        uint32_t exitCode = 0;
+        if (GetExitCodeProcess((HANDLE)processID, (LPDWORD)&exitCode))
+        {
+            if (exitCode != STILL_ACTIVE)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void terminateProcess(size_t processID)
+    {
+        TerminateProcess((HANDLE)processID, 0);
+        CloseHandle((HANDLE)processID);
+    }
+
+    std::string getNewTempFilePath()
+    {
+        std::string tempFilePathW;
+        std::string tempFileNameW;
+        std::string tempFilePath;
+        tempFilePathW.resize(510);
+        tempFileNameW.resize(510);
+        tempFilePath.resize(255);
+
+        GetTempPath(255, (LPWSTR)(&tempFilePathW.front()));
+        GetTempFileName((LPCWSTR)tempFilePathW.c_str(), L"PW", 0, (LPWSTR)&tempFileNameW.front());
+        wcstombs(&tempFilePath.front(), (wchar_t*)tempFileNameW.c_str(), tempFileNameW.size());
+
+        return tempFilePath;
+    }
+
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
     {
         WIN32_FIND_DATAA ffd;
