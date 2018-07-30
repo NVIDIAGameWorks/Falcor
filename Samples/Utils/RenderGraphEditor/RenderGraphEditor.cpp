@@ -89,29 +89,34 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes", screenWidth * 2 / 3, screenHeight / 4, screenWidth / 3, screenHeight * 3 / 4 + 16);
+    pGui->pushWindow("Render Passes", screenWidth * 2 / 3, screenHeight / 4, screenWidth / 3, screenHeight * 3 / 4 + 20, true, false);
 
     size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
     pGui->beginColumns(5);
     for (size_t i = 0; i < numRenderPasses; ++i)
     {
         std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
-        std::string command = std::string("AddRenderPass ") + renderPassClassName + " " + renderPassClassName;
-        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 128.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
+        std::string renderPassName = renderPassClassName;
+        while (mpGraphs[mCurrentGraphIndex]->renderPassExist(renderPassName))
+        {
+            renderPassName.push_back('_');
+        }
+        std::string command = std::string("AddRenderPass ") + renderPassName + " " + renderPassClassName;
+        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
         pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
-        pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), true);
+        pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), false);
         pGui->nextColumn();
     }
 
     pGui->popWindow();
 
     // push a sub GUI window for the node editor
-    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 16, false);
+    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 20, false, false);
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
-    pGui->pushWindow("Graph Editor Settings", screenWidth / 3, screenHeight / 4 - 16, 0, screenHeight * 3 / 4 + 16);
+    pGui->pushWindow("Graph Editor Settings", screenWidth / 3, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true, false);
 
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
@@ -130,7 +135,13 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Validate Graph"))
     {
         // TODO 
-        // mpGraphs[]
+    }
+
+    if (pGui->addButton("Auto-Generate Edges"))
+    {
+        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getExecutionOrder();
+        mpGraphs[mCurrentGraphIndex]->autoGenerateEdges(executionOrder);
+        mRenderGraphUIs[mCurrentGraphIndex].sRebuildDisplayData = true;
     }
 
     // Load scene for graph
@@ -199,23 +210,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         pGui->popWindow();
     }
-}
-
-void RenderGraphEditor::loadScene(const std::string& filename, bool showProgressBar)
-{
-    ProgressBar::SharedPtr pBar;
-    if (showProgressBar)
-    {
-        pBar = ProgressBar::create("Loading Scene", 100);
-    }
-
-    mpGraphs[mCurrentGraphIndex]->setScene(nullptr);
-    Scene::SharedPtr pScene = Scene::loadFromFile(filename);
-
-    if (!pScene) { logWarning("Failed to load scene for current render graph"); }
-
-    mpGraphs[mCurrentGraphIndex]->setScene(pScene);
-    mCamControl.attachCamera(pScene->getCamera(0));
 }
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
@@ -303,19 +297,9 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    const glm::vec4 clearColor(1, 1, 1 , 1);
+    const glm::vec4 clearColor(0.25, 0.25, 0.25 , 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     pSample->getRenderContext()->getGraphicsState()->setFbo(pTargetFbo);
-}
-
-bool RenderGraphEditor::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
-{
-    return mCamControl.onKeyEvent(keyEvent);
-}
-
-bool RenderGraphEditor::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
-{
-    return mCamControl.onMouseEvent(mouseEvent);
 }
 
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)

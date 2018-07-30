@@ -332,7 +332,7 @@ namespace Falcor
 
         /** Create a new window on the stack
         */
-        void pushWindow(const char label[], uint32_t width = 0, uint32_t height = 0, uint32_t x = 0, uint32_t y = 0, bool showTitleBar = true);
+        void pushWindow(const char label[], uint32_t width = 0, uint32_t height = 0, uint32_t x = 0, uint32_t y = 0, bool showTitleBar = true, bool allowMove = true);
 
         /** End a window block
         */

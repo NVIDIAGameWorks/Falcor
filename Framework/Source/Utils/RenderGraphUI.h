@@ -101,11 +101,15 @@ namespace Falcor
         */
         void addOutput(const std::string& outputPass, const std::string& outputField);
 
-        /** function used to add a new node for a render passon referenced graph and update ui data
+        /** function used to add a new node for a render pass referenced graph and update ui data
         */
         void addRenderPass(const std::string& name, const std::string& nodeTypeName);
 
-        /** Flag to retraverse the graph and build on of the intermediate data again.
+        /** Get an execution order for graph based on the visual layout of the graph
+        */
+        std::vector<uint32_t> getExecutionOrder();
+
+        /** Flag to re-traverse the graph and build on of the intermediate data again.
          */
         static bool sRebuildDisplayData;
 
@@ -119,14 +123,22 @@ namespace Falcor
         */
         void updatePins(bool addLinks = true);
 
-        /** Helper function to calculate position of the next node in execution order
-         */
-        glm::vec2 getNextNodePosition(uint32_t nodeID);
+        /** Helper function. Validates graph before pushing commands for live update
+        */
+        bool pushUpdateCommand(const std::string& commandString);
 
-        glm::vec2 mNewNodeStartPosition{ -40.0f, 100.0f };
+        /** Helper function to calculate position of the next node in execution order
+        */
+        glm::vec2 getNextNodePosition(uint32_t nodeID);
 
         // start with reference of render graph
         RenderGraph& mRenderGraphRef;
+
+        uint32_t mEdgesColor = 0xFFFFFFFF;
+
+        uint32_t mAutoGenEdgesColor = 0xFFFF0400;
+
+        glm::vec2 mNewNodeStartPosition{ -40.0f, 100.0f };
 
         std::unordered_set<std::string> mAllNodeTypeStrings;
         std::vector<const char*> mAllNodeTypes;

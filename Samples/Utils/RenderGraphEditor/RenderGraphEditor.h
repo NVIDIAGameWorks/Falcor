@@ -39,8 +39,6 @@ public:
     void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
     void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
     RenderGraphEditor();
@@ -51,7 +49,6 @@ private:
     void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
-    void loadScene(const std::string& filename, bool showProgressBar);
 
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
@@ -68,6 +65,4 @@ private:
     RenderGraphLiveEditor mRenderGraphLiveEditor;
     bool mShowCreateGraphWindow;
     bool mCanPreview = false;
-    
-    FirstPersonCameraController mCamControl;
 };

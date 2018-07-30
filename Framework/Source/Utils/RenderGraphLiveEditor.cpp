@@ -162,7 +162,7 @@ namespace Falcor
         mSharedMemoryStage.clear();
         mIsOpen = false;
         
-        if (mTempFilePath.size())
+        if (mUpdatesFile.is_open())
         {
             std::experimental::filesystem::remove(mTempFilePath);
         }

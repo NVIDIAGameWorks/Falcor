@@ -293,7 +293,7 @@ namespace Falcor
         }
         
         ImGui::PushID(label);
-        ImGui::Dummy({size.x, size.y});
+        ImGui::Dummy({size.x, size.y - 20.0f});
         ImGui::PopID();
     }
 
@@ -684,7 +684,7 @@ namespace Falcor
         return io.WantCaptureMouse;
     }
 
-    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar)
+    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar, bool allowMove)
     {
         ImVec2 pos{ float(x), float(y) };
         ImVec2 size{ float(width), float(height) };
@@ -694,6 +694,7 @@ namespace Falcor
         if (!showTitleBar)
         {
             flags |= ImGuiWindowFlags_NoTitleBar;
+            if (!allowMove) flags |= ImGuiWindowFlags_NoMove;
         }
         ImGui::Begin(label, nullptr, flags);
     }

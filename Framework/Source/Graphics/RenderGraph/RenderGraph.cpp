@@ -609,7 +609,7 @@ namespace Falcor
         return unsatisfiedInputs;
     }
 
-    void RenderGraph::autoGenerateEdges()
+    void RenderGraph::autoGenerateEdges(const std::vector<uint32_t>& executionOrder)
     {
         // Remove all previously auto-generated edges
         auto it = mEdgeData.begin();

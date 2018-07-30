@@ -96,6 +96,10 @@ namespace Falcor
         */
         bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
         
+        /** Returns true if a render pass exists by this name in the graph.
+         */
+        bool renderPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
+
         /** Get an output resource. The name has the format `renderPassName.resourceName`.
         This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
         */
@@ -124,14 +128,17 @@ namespace Falcor
         */
         std::string getGraphOutputName(size_t index) const;
 
-        /** Get the num of 
+        /** Get the num of outputs from this graph
         */
         size_t getGraphOutputCount() const { return mOutputs.size(); }
 
         friend class RenderGraphUI;
         friend class RenderGraphLoader;
 
-        void autoGenerateEdges();
+        /** Auto generate edges based on render passes. Input order if order
+            is not based on order added to graph.
+        */
+        void autoGenerateEdges(const std::vector<uint32_t>& executionOrder = std::vector<uint32_t>());
 
         /** Render the UI
         */
