@@ -625,15 +625,25 @@ namespace Falcor
         // Gather list of passes by order they were added
         std::vector<NodeData*> nodeVec;
         std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
-        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
-        {
-            if (mpGraph->doesNodeExist(i))
-            {
-                nodeVec.push_back(&mNodeData[i]);
 
-                RenderPassReflection r;
-                mNodeData[i].pPass->reflect(r);
-                passReflectionMap[mNodeData[i].pPass.get()] = std::move(r);
+        if (executionOrder.size() > 0)
+        {
+            assert(executionOrder.size() == mNodeData.size());
+            for (const uint32_t& nodeId : executionOrder)
+            {
+                nodeVec.push_back(&mNodeData[nodeId]);
+                mNodeData[nodeId].pPass->reflect(passReflectionMap[mNodeData[nodeId].pPass.get()]);
+            }
+        }
+        else
+        {
+            for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
+            {
+                if (mpGraph->doesNodeExist(i))
+                {
+                    nodeVec.push_back(&mNodeData[i]);
+                    mNodeData[i].pPass->reflect(passReflectionMap[mNodeData[i].pPass.get()]);
+                }
             }
         }
 

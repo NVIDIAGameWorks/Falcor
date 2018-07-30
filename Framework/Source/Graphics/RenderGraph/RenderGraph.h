@@ -135,8 +135,8 @@ namespace Falcor
         friend class RenderGraphUI;
         friend class RenderGraphLoader;
 
-        /** Auto generate edges based on render passes. Input order if order
-            is not based on order added to graph.
+        /** Attempts to auto generate edges for render passes.
+            \param[in] executionOrder Optional. Ordered list of node ID's as an override of pass search order to use when generating edges.
         */
         void autoGenerateEdges(const std::vector<uint32_t>& executionOrder = std::vector<uint32_t>());
 
