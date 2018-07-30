@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
+#include "RenderPassSerializer.h"
 #include "ResourceCache.h"
 
 namespace Falcor

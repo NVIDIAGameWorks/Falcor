@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/Program/ProgramReflection.h"
-#include "Graphics/Scene/Scene.h"
 
 namespace Falcor
 {
@@ -109,72 +108,4 @@ namespace Falcor
     enum_class_operators(RenderPassReflection::Field::Type);
     enum_class_operators(RenderPassReflection::Field::Flags);
     enum_class_operators(RenderPassReflection::Flags);
-
-    class RenderPassSerializer
-    {
-    public:
-        const Scene::UserVariable& getValue(const std::string& key) const
-        {
-            auto it = mData.find(key); assert(it != mData.end());
-            return it->second;
-        }
-
-        const Scene::UserVariable& getValue(size_t index) const
-        {
-            assert(index < getVariableCount());
-            return std::next(mData.begin(), index)->second;
-        }
-
-        void setValue(const std::string& name, const Scene::UserVariable& data)
-        {
-            if (mData.find(name) == mData.end())
-            {
-                logWarning("Unable to find serialize variable.");
-                return;
-            }
-
-            mData[name] = data;
-        }
-
-        void addVariable(const std::string& name, const Scene::UserVariable& data)
-        {
-            mData[name] = data;
-        }
-
-        template<typename T>
-        void addVariable(const std::string& name, const T& defaultValue)
-        {
-            T temp = T(defaultValue);
-            mData[name] = { temp };
-        }
-
-        template<typename T>
-        void addVariable(const std::string& name)
-        {
-            T temp;
-            mData[name] = { temp };
-        }
-
-        RenderPassSerializer() 
-        {
-            // set globals
-            addVariable("gSkyBoxFilename", {std::string()});
-            addVariable("gSceneFilename", { std::string() });
-        }
-
-        size_t getVariableCount() const
-        {
-            return mData.size();
-        }
-
-        const std::string& getVariableName(size_t index) const
-        {
-            assert(index < getVariableCount());
-            return std::next(mData.begin(), index)->first;
-        }
-
-    private:
-        std::unordered_map<std::string, Scene::UserVariable> mData;
-
-    };
 }

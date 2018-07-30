@@ -154,25 +154,14 @@ namespace Falcor
 
     bool isProcessRunning(size_t processID)
     {
+        should_not_get_here();
         return true;
     }
 
     void terminateProcess(size_t processID)
     {
         (void)processID;
-    }
-
-    std::string getNewTempFilePath()
-    {
-        char* result = nullptr;
-        char* name = tmpnam(result);
-
-        if (result)
-        {
-            return std::string(name);
-        }
-
-        return "";
+        should_not_get_here();
     }
 
     bool doesFileExist(const std::string& filename)

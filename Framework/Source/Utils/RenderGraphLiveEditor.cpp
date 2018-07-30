@@ -63,7 +63,8 @@ namespace Falcor
             return false;
         }
 
-        mTempFilePath = getNewTempFilePath();
+        char* result = nullptr;
+        mTempFilePath = std::tmpnam(result);
 
         std::ofstream updatesFileOut(mTempFilePath);
         assert(updatesFileOut.is_open());

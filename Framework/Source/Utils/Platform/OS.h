@@ -149,10 +149,6 @@ namespace Falcor
     */ 
     const std::string getWorkingDirectory();
 
-    /** Returns a string with the path to a new temporary file.
-     */
-    std::string getNewTempFilePath();
-
     /** Get the content of a system environment variable.
         \param[in] varName Name of the environment variable
         \param[out] value On success, will hold the value of the environment variable.

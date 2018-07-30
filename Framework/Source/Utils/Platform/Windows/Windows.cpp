@@ -264,22 +264,6 @@ namespace Falcor
         CloseHandle((HANDLE)processID);
     }
 
-    std::string getNewTempFilePath()
-    {
-        std::string tempFilePathW;
-        std::string tempFileNameW;
-        std::string tempFilePath;
-        tempFilePathW.resize(510);
-        tempFileNameW.resize(510);
-        tempFilePath.resize(255);
-
-        GetTempPath(255, (LPWSTR)(&tempFilePathW.front()));
-        GetTempFileName((LPCWSTR)tempFilePathW.c_str(), L"PW", 0, (LPWSTR)&tempFileNameW.front());
-        wcstombs(&tempFilePath.front(), (wchar_t*)tempFileNameW.c_str(), tempFileNameW.size());
-
-        return tempFilePath;
-    }
-
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
     {
         WIN32_FIND_DATAA ffd;
