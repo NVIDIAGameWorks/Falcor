@@ -274,12 +274,11 @@ namespace Falcor
         std::string dir = filePath.substr(0, filePath.find_last_of('\\'));
         
         HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
-            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
+            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
         assert(hFile != INVALID_HANDLE_VALUE);
 
         // overlapped struct requires unique event handle to be valid
         OVERLAPPED overlapped;
-        overlapped.hEvent = CreateEventA(nullptr, false, false, "UpdateFile");
 
         while (true)
         {
@@ -291,11 +290,26 @@ namespace Falcor
             if (!ReadDirectoryChangesW(hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE,
                 FILE_NOTIFY_CHANGE_LAST_WRITE, 0, &overlapped, nullptr))
             {
-                logError("Filed to read directory changes for shared file.");
+                logError("Failed to read directory changes for shared file.");
                 CloseHandle(hFile);
-                CloseHandle(overlapped.hEvent);
                 return;
             }
+
+            if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
+            {
+                logError("Failed to read directory changes for shared file.");
+                CloseHandle(hFile);
+                return;
+                
+            }
+
+            // don't check for another overlapped result if main thread is closed
+            if (!fileThreads.at(filePath).second)
+            {
+                break;
+            }
+
+            if (!bytesReturned) continue;
 
             while (offset < buffer.size())
             {
@@ -313,14 +327,8 @@ namespace Falcor
                 if (!pNotifyInformation->NextEntryOffset) break;
                 offset += pNotifyInformation->NextEntryOffset;
             }
-
-            if (!fileThreads.at(filePath).second)
-            {
-                break;
-            }
         }
 
-        CloseHandle(overlapped.hEvent);
         CloseHandle(hFile);
     }
 
@@ -349,6 +357,8 @@ namespace Falcor
         if (fileThreadsIt != fileThreads.end())
         {
             fileThreadsIt->second.second = false;
+
+            fileThreadsIt->second.first.detach();
         }
     }
 

@@ -148,6 +148,6 @@ namespace Falcor
         static std::unordered_map<std::string, glm::vec4> sUniqueColors;
 
         // to avoid attempting to write changes every frame.
-        float mTimeSinceLastUpdate = 0.0f;
+        float mTimeSinceLastUpdate = -5.0f;
     };
 }

@@ -39,7 +39,7 @@
 
 namespace Falcor
 {
-    const float kUpdateTimeInterval = 3.0f;
+    const float kUpdateTimeInterval = 2.0f;
     const float kPinRadius = 6.0f;
 
     static std::unordered_map<uint32_t, ImGui::Node*> spIDToNode;

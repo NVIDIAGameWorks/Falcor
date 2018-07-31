@@ -27,13 +27,14 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "Utils/RenderGraphLiveEditor.h"
 
 using namespace Falcor;
 
 class RenderGraphViewer : public Renderer
 {
 public:
+    ~RenderGraphViewer();
+
     void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
     void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;

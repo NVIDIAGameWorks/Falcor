@@ -30,7 +30,6 @@
 
 const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
-static RenderGraph::SharedPtr gpCurrentGraph = nullptr;
 
 RenderGraphViewer::~RenderGraphViewer()
 {
@@ -87,7 +86,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (!isProcessRunning(mEditorProcess))
         {
             terminateProcess(mEditorProcess);
-            mEditorRunning = 0;
+            mEditorProcess = 0;
             mEditorRunning = false;
         }
     }
@@ -191,7 +190,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
         if (filePath.size())
         {
-            gpCurrentGraph = mpGraph = RenderGraph::create();
+            mpGraph = RenderGraph::create();
             RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
             mpScene = mpGraph->getScene();
             if (!mpScene)
@@ -223,7 +222,6 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    gpCurrentGraph = mpGraph;
 
     if (mpGraph)
     {

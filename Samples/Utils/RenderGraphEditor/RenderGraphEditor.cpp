@@ -30,6 +30,8 @@
 #include "Utils/RenderGraphLoader.h"
 #include "ArgList.h"
 
+const char* kViewerExecutableName = "RenderGraphViewer";
+
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0), mCreatingRenderGraph(false), mPreviewing(false)
 {
@@ -37,6 +39,15 @@ RenderGraphEditor::RenderGraphEditor()
     mCurrentGraphOutput = "";
     mGraphOutputEditString = mCurrentGraphOutput;
     mGraphOutputEditString.resize(255, 0);
+}
+
+RenderGraphEditor::~RenderGraphEditor()
+{
+    if (mViewerProcess)
+    {
+        terminateProcess(mViewerProcess);
+        mViewerProcess = 0;
+    }
 }
 
 // some of this will need to be moved to render graph ui
@@ -121,9 +132,19 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
-    if (mFilePath.size())
+    if (mViewerRunning)
     {
         mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath, pSample->getLastFrameTime());
+        
+        if (mViewerProcess)
+        {
+            if (!isProcessRunning(mViewerProcess))
+            {
+                terminateProcess(mViewerProcess);
+                mViewerProcess = 0;
+                mViewerRunning = false;
+            }
+        }
     }
     
     if (pGui->addButton("Preview Graph"))
@@ -164,10 +185,28 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
     mGraphOutputEditString = graphOutputString[0];
 
-    if (!mRenderGraphLiveEditor.isOpen() && pGui->addButton("Open Graph Viewer"))
+    if (!mViewerRunning && pGui->addButton("Open Graph Viewer"))
     {
-        mRenderGraphLiveEditor.openViewer(*mpGraphs[mCurrentGraphIndex]);
-        mFilePath = mRenderGraphLiveEditor.getTempFilePath();
+        std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
+        if (!renderGraphScript.size())
+        {
+            logError("No graph data to display in editor.");
+        }
+
+        char* result = nullptr;
+        mFilePath = std::tmpnam(result);
+        std::ofstream updatesFileOut(mFilePath);
+        assert(updatesFileOut.is_open());
+
+        updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+        updatesFileOut.close();
+
+        // load application for the editor given it the name of the mapped file
+        std::string commandLine = std::string("-tempFile ") + mFilePath;
+        mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+
+        assert(mViewerProcess);
+        mViewerRunning = true;
     }
 
     pGui->popWindow();
@@ -226,7 +265,7 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
     RenderGraphUI::sRebuildDisplayData = true;
 }
 
-void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName)
+void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphFileName)
 {
     mCreatingRenderGraph = true;
 
@@ -247,9 +286,9 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     RenderGraphUI graphUI(*newGraph);
     mRenderGraphUIs.emplace_back(std::move(graphUI));
 
-    if (renderGraphNameFileName.size())
+    if (renderGraphFileName.size())
     {
-        RenderGraphLoader::LoadAndRunScript(renderGraphNameFileName, *newGraph);
+        RenderGraphLoader::LoadAndRunScript(renderGraphFileName, *newGraph);
     }
 
     // update the display if the render graph loader has set a new output
