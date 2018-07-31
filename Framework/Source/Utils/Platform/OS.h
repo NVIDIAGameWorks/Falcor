@@ -119,6 +119,14 @@ namespace Falcor
     */
     bool isDirectoryExists(const std::string& filename);
     
+    /**
+    */
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback);
+
+    /**
+    */
+    void closeSharedFile(const std::string& filePath);
+
     /** Create a directory from path.
     */
     bool createDirectory(const std::string& path);

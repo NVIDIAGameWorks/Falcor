@@ -46,11 +46,14 @@ private:
     FirstPersonCameraController mCamControl;
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
     void createGraph(SampleCallbacks* pSample);
+    void fileWriteCallback(const std::string& fileName);
 
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;
     bool mEnableDepthPrePass = true;
     uint32_t mGraphOutputIndex = 0;
     std::string mOutputString = "BlitPass.dst";
-    RenderGraphLiveEditor mTempRenderGraphLiveEditor;
+    bool mEditorRunning = false;
+    size_t mEditorProcess = 0;
+    std::string mTempFilePath;
 };

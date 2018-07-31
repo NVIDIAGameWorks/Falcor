@@ -32,50 +32,7 @@
 
 namespace Falcor
 {
-    const char* kEditorExecutableName = "RenderGraphEditor";
     const char* kViewerExecutableName = "RenderGraphViewer";
-    const float kCheckFileInterval = 0.5f;
-
-    RenderGraphLiveEditor::RenderGraphLiveEditor()
-    {
-
-    }
-
-    void RenderGraphLiveEditor::openUpdatesFile(const std::string filePath)
-    {
-        mUpdatesFile.open(filePath);
-        if (!mUpdatesFile.is_open())
-        {
-            logError("Failed to open temporary file for render graph viewer.");
-        }
-
-        mTempFilePath = filePath;
-        mIsOpen = true;
-        mLastWriteTime = getFileModifiedTime(mTempFilePath);
-    }
-
-    bool RenderGraphLiveEditor::createUpdateFile(const RenderGraph& renderGraph)
-    {
-        std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(renderGraph);
-        if (!renderGraphScript.size())
-        {
-            logError("No graph data to display in editor.");
-            return false;
-        }
-
-        char* result = nullptr;
-        mTempFilePath = std::tmpnam(result);
-
-        std::ofstream updatesFileOut(mTempFilePath);
-        assert(updatesFileOut.is_open());
-        updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-        updatesFileOut.close();
-
-        openUpdatesFile(mTempFilePath);
-        mLastWriteTime = getFileModifiedTime(mTempFilePath);
-
-        return true;
-    }
 
     void RenderGraphLiveEditor::openViewer(const RenderGraph& renderGraph)
     {
@@ -85,82 +42,17 @@ namespace Falcor
             return;
         }
 
-        if (!createUpdateFile(renderGraph)) return;
-
         std::string commandLine = std::string("-tempFile ") + mTempFilePath;
         
         mProcess = executeProcess(kViewerExecutableName, commandLine);
         if(mProcess) mIsOpen = true;
     }
 
-    void RenderGraphLiveEditor::openEditor(const RenderGraph& renderGraph)
-    {
-        if (mIsOpen)
-        {
-            logWarning("Render Graph Editor is already open for this graph!");
-            return;
-        }
-
-        // create mapped memory and launch editor process
-        if (!createUpdateFile(renderGraph)) return;
-
-        // load application for the editor given it the name of the mapped file
-        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
-
-        mProcess = executeProcess(kEditorExecutableName, commandLine);
-        if (mProcess) mIsOpen = true;
-    }
-
-    void RenderGraphLiveEditor::forceUpdateGraph(RenderGraph& renderGraph)
-    {
-        // load changes from the modified graph file
-        mSharedMemoryStage = std::string((std::istreambuf_iterator<char>(mUpdatesFile)), std::istreambuf_iterator<char>());
-        mUpdatesFile.seekg(0, std::ios::beg);
-        
-        RenderGraphLoader::runScript(mSharedMemoryStage.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(mSharedMemoryStage.data()), renderGraph);
-    }
-
-    void RenderGraphLiveEditor::updateGraph(RenderGraph& renderGraph, float lastFrameTime)
-    {
-        bool status = false;
-
-        // check to see if the editor has closed and react accordingly
-        if(!isProcessRunning(mProcess))
-        {
-            CloseHandle((HANDLE)mProcess);
-            mProcess = 0;
-            mIsOpen = false;
-            mUpdatesFile.close();
-            return;
-        }
-
-        if ((mTimeSinceLastCheck += lastFrameTime) > kCheckFileInterval)
-        {
-            time_t lastWriteTime = getFileModifiedTime(mTempFilePath);
-            mTimeSinceLastCheck = 0.0f;
-            if (mLastWriteTime < lastWriteTime)
-            {
-                mLastWriteTime = lastWriteTime;
-                forceUpdateGraph(renderGraph);
-            }
-        }
-    }
-
-    RenderGraphLiveEditor::~RenderGraphLiveEditor()
-    {
-        if (mIsOpen) { close(); }
-    }
-
     void RenderGraphLiveEditor::close()
     {
         // terminate process
-        if (mProcess)
-        {
-            terminateProcess(mProcess);
-            mProcess = 0;
-        }
+        
 
-        mSharedMemoryStage.clear();
         mIsOpen = false;
         // delete temporary file
     }

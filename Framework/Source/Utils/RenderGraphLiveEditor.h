@@ -34,27 +34,15 @@ namespace Falcor
     class RenderGraphLiveEditor
     {
     public:
-        RenderGraphLiveEditor();
-        ~RenderGraphLiveEditor();
 
         bool isOpen() { return mIsOpen; }
-        void openUpdatesFile(const std::string filePath);
-        void openEditor(const RenderGraph& renderGraph);
         void openViewer(const RenderGraph& renderGraph);
         void close();
-        void updateGraph(RenderGraph& renderGraph, float lastFrameTime = 1.0f / 60.0f);
-        void forceUpdateGraph(RenderGraph& renderGraph);
         const std::string& getTempFilePath() { return mTempFilePath; }
 
     private:
-        bool createUpdateFile(const RenderGraph& renderGraph);
-
         bool mIsOpen = false;
-        std::string mSharedMemoryStage;
-        std::ifstream mUpdatesFile;
         size_t mProcess;
-        time_t mLastWriteTime;
         std::string mTempFilePath;
-        float mTimeSinceLastCheck = 0.0f;
     };
 }
