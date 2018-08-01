@@ -43,7 +43,6 @@ namespace Falcor
     {
         std::string passDesc;
         RenderPassLibrary::CreateFunc create;
-        RenderPassLibrary::SaveFunc save;
     };
 
     static std::unordered_map<std::string, RenderPassDesc> gRenderPassList;
@@ -58,14 +57,14 @@ namespace Falcor
         RenderPassLibrary::addRenderPassClass("FXAA", "FXAA", FXAA::deserialize);
         RenderPassLibrary::addRenderPassClass("SSAO", "Fast Approximate Anti-Aliasing", SSAO::deserialize);
         RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize, SkyBox::serialize);
+        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize);
 
         return true;
     };
 
     static const bool b = addBuiltinPasses();
 
-    void RenderPassLibrary::addRenderPassClass(const char* className, const char* desc, CreateFunc func, SaveFunc saveFunc)
+    void RenderPassLibrary::addRenderPassClass(const char* className, const char* desc, CreateFunc func)
     {
         if (gRenderPassList.find(className) != gRenderPassList.end())
         {
@@ -73,7 +72,7 @@ namespace Falcor
         }
         else
         {
-            gRenderPassList[className] = { desc, func, saveFunc };
+            gRenderPassList[className] = { desc, func };
         }
     }
 
@@ -87,25 +86,6 @@ namespace Falcor
 
         auto& renderPass = gRenderPassList[className];
         return renderPass.create(serializer);
-    }
-
-    RenderPassSerializer RenderPassLibrary::saveRenderPass(const char* className, const std::shared_ptr<RenderPass>& pRenderPass)
-    {
-        RenderPassSerializer renderPassSerializer{};
-        
-        if (gRenderPassList.find(className) == gRenderPassList.end())
-        {
-            logWarning(std::string("Trying to save a render-pass named `") + className + "`, but no such class exists in the library");
-            return renderPassSerializer;
-        }
-
-        const auto& renderPass = gRenderPassList[className];
-        if (renderPass.save)
-        {
-            return renderPass.save(pRenderPass);
-        }
-        // else no data to be saved return empty serializer
-        return renderPassSerializer;
     }
 
     size_t RenderPassLibrary::getRenderPassCount()

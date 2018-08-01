@@ -65,9 +65,9 @@ namespace Falcor
         return createFromTexture(skyBox, serializer.getValue("loadAsSrgb").b, Sampler::create(samplerDesc));
     }
 
-    RenderPassSerializer SkyBox::serialize(const std::shared_ptr<RenderPass>& pRenderPass)
+    RenderPassSerializer SkyBox::serialize()
     {
-        RenderPassSerializer renderPassSerializer{};
+        RenderPassSerializer renderPassSerializer;
         renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
         renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
         renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(Sampler::Filter::Linear));

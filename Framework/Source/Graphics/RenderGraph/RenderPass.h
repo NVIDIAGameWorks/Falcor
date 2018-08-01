@@ -73,6 +73,10 @@ namespace Falcor
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) = 0;
 
+        /** Serialize pass into serialization object
+        */
+        virtual RenderPassSerializer serialize() { return {}; }
+
         /** Render the pass's UI
         */
         virtual void renderUI(Gui* pGui, const char* uiGroup) {}

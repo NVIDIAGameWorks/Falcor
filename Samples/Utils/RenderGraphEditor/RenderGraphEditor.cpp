@@ -132,18 +132,19 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
-    if (mViewerRunning)
+    if (mFilePath.size())
     {
         mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath, pSample->getLastFrameTime());
-        
-        if (mViewerProcess)
+    }
+
+    if (mViewerRunning && mViewerProcess)
+    {
+        if (!isProcessRunning(mViewerProcess))
         {
-            if (!isProcessRunning(mViewerProcess))
-            {
-                terminateProcess(mViewerProcess);
-                mViewerProcess = 0;
-                mViewerRunning = false;
-            }
+            terminateProcess(mViewerProcess);
+            mViewerProcess = 0;
+            mViewerRunning = false;
+            mFilePath.clear();
         }
     }
     
