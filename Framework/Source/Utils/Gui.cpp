@@ -694,8 +694,12 @@ namespace Falcor
         if (!showTitleBar)
         {
             flags |= ImGuiWindowFlags_NoTitleBar;
-            if (!allowMove) flags |= ImGuiWindowFlags_NoMove;
         }
+        if (!allowMove)
+        {
+            flags |= ImGuiWindowFlags_NoMove;
+        }
+
         ImGui::Begin(label, nullptr, flags);
     }
 

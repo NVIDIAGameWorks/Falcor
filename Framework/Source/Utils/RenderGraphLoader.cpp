@@ -107,7 +107,7 @@ namespace Falcor
             std::string renderPassClassName = pCurrentRenderPass->getName();
             
             // need to deserialize the serialization data. stored in the RenderPassLibrary
-            RenderPassSerializer renderPassSerializerRef = RenderPassLibrary::saveRenderPass(renderPassClassName.c_str(), pCurrentRenderPass);
+            RenderPassSerializer renderPassSerializerRef = pCurrentRenderPass->serialize();
 
             for (size_t i = 0; i < renderPassSerializerRef.getVariableCount(); ++i )
             {
@@ -326,12 +326,11 @@ namespace Falcor
 
         RegisterStatement<std::string, std::string>("AddRenderPass", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) { 
             std::string passTypeName = scriptBinding.mParameters[1].get<std::string>();
-            RenderPassSerializer renderPassSerializer = RenderPassLibrary::saveRenderPass(passTypeName.c_str());
+            RenderPassSerializer renderPassSerializer;
 
-            for (size_t i = 0; i < renderPassSerializer.getVariableCount(); ++i)
+            for (const auto& nameVarPair : mActiveVariables)
             {
-                std::string variableName = renderPassSerializer.getVariableName(i);
-                renderPassSerializer.setValue(variableName, mActiveVariables[variableName]);
+                renderPassSerializer.addVariable(nameVarPair.first, nameVarPair.second);
             }
             
             auto pRenderPass = RenderPassLibrary::createRenderPass(passTypeName.c_str(), renderPassSerializer);

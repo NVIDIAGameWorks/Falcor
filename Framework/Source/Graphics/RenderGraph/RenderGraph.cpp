@@ -565,7 +565,7 @@ namespace Falcor
                     uint32_t dstIndex = mNameToIndex[pdstNode->nodeName];
 
                     uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
-                    mEdgeData[e] = { true, srcField.getName(), dstFieldIt->getName() };
+                    mEdgeData[e] = { true, RenderGraph::EdgeData::Flags::None, srcField.getName(), dstFieldIt->getName() };
                     mRecompile = true;
 
                     // If connection was found, continue to next unsatisfied input

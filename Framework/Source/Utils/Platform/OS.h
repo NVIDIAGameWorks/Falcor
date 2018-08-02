@@ -119,6 +119,17 @@ namespace Falcor
     */
     bool isDirectoryExists(const std::string& filename);
     
+    /** Open watch thread for file changes and call callback when the file is written to.
+        \param[in] full path to the file to watch for changes
+        \param[in] callback function. parameter is filePath.
+    */
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback = {});
+
+    /** Close watch thread for file changes
+        \param[in] full path to the file that was being watched for changes
+    */
+    void closeSharedFile(const std::string& filePath);
+
     /** Create a directory from path.
     */
     bool createDirectory(const std::string& path);
@@ -148,10 +159,6 @@ namespace Falcor
     /** Get the working directory. This can be different from the executable directory (for example, by default when you launch an app from Visual Studio, the working the directory is the directory containing the project file).
     */ 
     const std::string getWorkingDirectory();
-
-    /** Returns a string with the path to a new temporary file.
-     */
-    std::string getNewTempFilePath();
 
     /** Get the content of a system environment variable.
         \param[in] varName Name of the environment variable

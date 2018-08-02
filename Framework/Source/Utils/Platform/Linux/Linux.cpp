@@ -154,25 +154,14 @@ namespace Falcor
 
     bool isProcessRunning(size_t processID)
     {
+        should_not_get_here();
         return true;
     }
 
     void terminateProcess(size_t processID)
     {
         (void)processID;
-    }
-
-    std::string getNewTempFilePath()
-    {
-        char* result = nullptr;
-        char* name = tmpnam(result);
-
-        if (result)
-        {
-            return std::string(name);
-        }
-
-        return "";
+        should_not_get_here();
     }
 
     bool doesFileExist(const std::string& filename)
@@ -189,6 +178,18 @@ namespace Falcor
         const char* pathname = filename.c_str();
         struct stat sb;
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
+    }
+    
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback = {})
+    {
+        (void)filePath; (void)callback;
+        should_not_get_here();
+    }
+
+    void closeSharedFile(const std::string& filePath)
+    {
+        (void)filePath;
+        should_not_get_here();
     }
 
     const std::string& getExecutableDirectory()

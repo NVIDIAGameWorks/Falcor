@@ -28,7 +28,6 @@
 #pragma once
 #include "Falcor.h"
 #include "Utils/RenderGraphUI.h"
-#include "Utils/RenderGraphLiveEditor.h"
 #include <vector>
 
 using namespace Falcor;
@@ -42,6 +41,7 @@ public:
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
     RenderGraphEditor();
+    ~RenderGraphEditor();
 
 private:
     void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
@@ -53,16 +53,15 @@ private:
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
     size_t mCurrentGraphIndex;
-
+    
     std::string mNextGraphString;
     std::string mCurrentGraphOutput; // needs to be set by the loader as well
     std::string mGraphOutputEditString;
-
     std::string mFilePath;
 
     Gui::DropdownList mOpenGraphNames;
-
-    RenderGraphLiveEditor mRenderGraphLiveEditor;
-    bool mShowCreateGraphWindow;
+    bool mShowCreateGraphWindow = false;
+    bool mViewerRunning = false;
+    size_t mViewerProcess = 0;
     bool mCanPreview = false;
 };

@@ -59,11 +59,6 @@ namespace Falcor
         */
         static UniquePtr deserialize(const RenderPassSerializer& serializer);
         
-        /* Save out data for sky box into serializer
-            \param[in] pRenderPass SkyBoxPass to serialize data from
-        */
-        static RenderPassSerializer serialize(const std::shared_ptr<RenderPass>& pRenderPass);
-
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
             \param[in] loadAsSrgb Whether to load the texture into an sRGB format
@@ -78,6 +73,11 @@ namespace Falcor
             \param[in, optional] The target FBO. If this is nullptr, the currently bound FBO will be used
         */
         void render(RenderContext* pRenderCtx, Camera* pCamera, const Fbo::SharedPtr& pTarget = nullptr);
+
+        /* Save out data for sky box into serializer
+            \param[in] pRenderPass SkyBoxPass to serialize data from
+        */
+        RenderPassSerializer serialize() override;
 
         /** Set the sampler used to render the sky box.
         */

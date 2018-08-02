@@ -29,6 +29,18 @@
 #include "Utils/RenderGraphLoader.h"
 
 const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
+const char* kEditorExecutableName = "RenderGraphEditor";
+
+RenderGraphViewer::~RenderGraphViewer()
+{
+    closeSharedFile(mTempFilePath);
+
+    if (mEditorProcess)
+    {
+        terminateProcess(mEditorProcess);
+        mEditorProcess = 0;
+    }
+}
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
@@ -43,15 +55,39 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
     }
 
-    if (mTempRenderGraphLiveEditor.isOpen())
+    if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
     {
-        mTempRenderGraphLiveEditor.updateGraph(*mpGraph, pSample->getLastFrameTime());
-    }
-    else
-    {
-        if (pGui->addButton("Edit RenderGraph"))
+        std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraph);
+        if (!renderGraphScript.size())
         {
-            mTempRenderGraphLiveEditor.openEditor(*mpGraph);
+            logError("No graph data to display in editor.");
+        }
+        
+        char* result = nullptr;
+        mTempFilePath = std::tmpnam(result);
+        std::ofstream updatesFileOut(mTempFilePath);
+        assert(updatesFileOut.is_open());
+
+        updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+        updatesFileOut.close();
+
+        openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+
+        // load application for the editor given it the name of the mapped file
+        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
+        mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
+
+        assert(mEditorProcess);
+        mEditorRunning = true;
+    }
+    
+    if (mEditorProcess && mEditorRunning)
+    {
+        if (!isProcessRunning(mEditorProcess))
+        {
+            terminateProcess(mEditorProcess);
+            mEditorProcess = 0;
+            mEditorRunning = false;
         }
     }
 
@@ -134,20 +170,28 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
 }
 
+void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
+{
+    std::ifstream inputStream(fileName);
+    std::string script = std::string((std::istreambuf_iterator<char>(inputStream)), std::istreambuf_iterator<char>());
+    RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *mpGraph);
+}
+
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     // if editor opened from running render graph, get the name of the file to read
     std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
     std::string filePath;
-
+    
     if (commandArgs.size())
     {
         filePath = commandArgs.front().asString();
+        mEditorRunning = true;
+
         if (filePath.size())
         {
             mpGraph = RenderGraph::create();
             RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
-            mTempRenderGraphLiveEditor.openUpdatesFile(filePath);
             mpScene = mpGraph->getScene();
             if (!mpScene)
             {
@@ -159,6 +203,8 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
                 mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
             }
             mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+
+            openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
         }
         else
         {

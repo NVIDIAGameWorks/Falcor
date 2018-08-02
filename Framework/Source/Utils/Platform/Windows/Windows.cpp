@@ -36,6 +36,8 @@
 #include <sys/types.h>
 #include "API/Window.h"
 #include "psapi.h"
+#include "Utils/ThreadPool.h"
+#include <future>
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -264,20 +266,100 @@ namespace Falcor
         CloseHandle((HANDLE)processID);
     }
 
-    std::string getNewTempFilePath()
+    static std::unordered_map<std::string, std::pair<std::thread, bool> > fileThreads;
+
+    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void(const std::string&)>& callback)
     {
-        std::string tempFilePathW;
-        std::string tempFileNameW;
-        std::string tempFilePath;
-        tempFilePathW.resize(510);
-        tempFileNameW.resize(510);
-        tempFilePath.resize(255);
+        std::string fileName = getFilenameFromPath(filePath);
+        std::string dir = filePath.substr(0, filePath.find_last_of('\\'));
+        
+        HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+        assert(hFile != INVALID_HANDLE_VALUE);
 
-        GetTempPath(255, (LPWSTR)(&tempFilePathW.front()));
-        GetTempFileName((LPCWSTR)tempFilePathW.c_str(), L"PW", 0, (LPWSTR)&tempFileNameW.front());
-        wcstombs(&tempFilePath.front(), (wchar_t*)tempFileNameW.c_str(), tempFileNameW.size());
+        // overlapped struct requires unique event handle to be valid
+        OVERLAPPED overlapped;
 
-        return tempFilePath;
+        while (true)
+        {
+            size_t offset = 0;
+            uint32_t bytesReturned = 0;
+            std::vector<uint32_t> buffer;
+            buffer.resize(1024);
+
+            if (!ReadDirectoryChangesW(hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE,
+                FILE_NOTIFY_CHANGE_LAST_WRITE, 0, &overlapped, nullptr))
+            {
+                logError("Failed to read directory changes for shared file.");
+                CloseHandle(hFile);
+                return;
+            }
+
+            if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
+            {
+                logError("Failed to read directory changes for shared file.");
+                CloseHandle(hFile);
+                return;
+                
+            }
+
+            // don't check for another overlapped result if main thread is closed
+            if (!fileThreads.at(filePath).second)
+            {
+                break;
+            }
+
+            if (!bytesReturned) continue;
+
+            while (offset < buffer.size())
+            {
+                _FILE_NOTIFY_INFORMATION* pNotifyInformation = reinterpret_cast<_FILE_NOTIFY_INFORMATION*>(buffer.data());
+                std::string currentFileName;
+                currentFileName.resize(pNotifyInformation->FileNameLength / 2);
+                wcstombs(&currentFileName.front(), pNotifyInformation->FileName, pNotifyInformation->FileNameLength);
+
+                if (currentFileName == fileName && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
+                {
+                    callback(filePath);
+                    break;
+                }
+
+                if (!pNotifyInformation->NextEntryOffset) break;
+                offset += pNotifyInformation->NextEntryOffset;
+            }
+        }
+
+        CloseHandle(hFile);
+    }
+
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    {
+        const auto& fileThreadsIt = fileThreads.find(filePath);
+
+        // only have one thread waiting on file write
+        if(fileThreadsIt != fileThreads.end())
+        {
+            if (fileThreadsIt->second.first.joinable())
+            {
+                fileThreadsIt->second.first.join();
+            }
+        }
+        
+        fileThreads[filePath].first = std::thread(checkFileModifiedStatus, filePath, callback);
+        fileThreads[filePath].second = true;
+    }
+
+    void closeSharedFile(const std::string& filePath)
+    {
+        const auto& fileThreadsIt = fileThreads.find(filePath);
+
+        // only have one thread waiting on file write
+        if (fileThreadsIt != fileThreads.end())
+        {
+            fileThreadsIt->second.second = false;
+
+            fileThreadsIt->second.first.detach();
+        }
     }
 
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)

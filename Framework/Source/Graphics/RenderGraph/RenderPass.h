@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
+#include "RenderPassSerializer.h"
 #include "ResourceCache.h"
 
 namespace Falcor
@@ -71,6 +72,10 @@ namespace Falcor
         /** Executes the pass.
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) = 0;
+
+        /** Serialize pass into serialization object
+        */
+        virtual RenderPassSerializer serialize() { return {}; }
 
         /** Render the pass's UI
         */

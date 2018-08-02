@@ -48,6 +48,8 @@ namespace Falcor
 
         // wrapper around inserting new pin for a given pass
         void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);
+        
+        void renderPinUI(Gui* pGui, uint32_t pinIndex, bool isInput = true);
 
         friend class RenderGraphUI;
 
@@ -131,14 +133,19 @@ namespace Falcor
         */
         glm::vec2 getNextNodePosition(uint32_t nodeID);
 
+        /** Renders specialized pop up menu.
+        */
+        void renderPopupMenu(Gui* pGui);
+
         // start with reference of render graph
         RenderGraph& mRenderGraphRef;
 
         uint32_t mEdgesColor = 0xFFFFFFFF;
-
         uint32_t mAutoGenEdgesColor = 0xFFFF0400;
+        uint32_t mAutoResolveEdgesColor = 0xFF0104FF;
 
         glm::vec2 mNewNodeStartPosition{ -40.0f, 100.0f };
+        float mMaxNodePositionX = 0.0f;
 
         std::unordered_set<std::string> mAllNodeTypeStrings;
         std::vector<const char*> mAllNodeTypes;
