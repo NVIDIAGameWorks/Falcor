@@ -101,7 +101,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes", screenWidth * 2 / 3, screenHeight / 4, screenWidth / 3, screenHeight * 3 / 4 + 20, true, false);
+    pGui->pushWindow("Render Passes", screenWidth / 2, screenHeight / 4, screenWidth / 4, screenHeight * 3 / 4 + 20, true, false);
 
     size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
     pGui->beginColumns(5);
@@ -128,7 +128,10 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
-    pGui->pushWindow("Graph Editor Settings", screenWidth / 3, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true, false);
+    mCurrentLog += RenderGraphUI::sLogString;
+    RenderGraphUI::sLogString.clear();
+
+    pGui->pushWindow("Graph Editor Settings", screenWidth / 4, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true, false);
 
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
@@ -157,7 +160,9 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // validate the graph and output the current status to the console
     if (pGui->addButton("Validate Graph"))
     {
-        // TODO 
+        std::string currentLog;
+        mpGraphs[mCurrentGraphIndex]->isValid(currentLog);
+        mCurrentLog += currentLog;
     }
 
     if (pGui->addButton("Auto-Generate Edges"))
@@ -227,6 +232,12 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     pGui->popWindow();
 
+
+    
+    pGui->pushWindow("output", screenWidth / 4, screenHeight / 4 - 20, screenWidth * 3 / 4, screenHeight * 3 / 4 + 20, true, false);
+    renderLogWindow(pGui);
+    pGui->popWindow();
+
     // pop up window for naming a new render graph
     if (mShowCreateGraphWindow)
     {
@@ -252,6 +263,13 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         pGui->popWindow();
     }
+}
+
+void RenderGraphEditor::renderLogWindow(Gui* pGui)
+{
+    // window for displaying log from render graph validation
+
+    pGui->addText(mCurrentLog.c_str());
 }
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)

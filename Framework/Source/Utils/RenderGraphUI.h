@@ -115,6 +115,10 @@ namespace Falcor
          */
         static bool sRebuildDisplayData;
 
+        /** String containing the most recent log results from and isValid render graph call
+        */
+        static std::string sLogString;
+
     private:
 
         /** Updates structure for drawing the GUI graph

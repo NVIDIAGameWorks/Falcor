@@ -263,7 +263,7 @@ namespace Falcor
     uint32_t RenderGraphNode::sPinIndexToDisplay = 0;
 
     bool RenderGraphUI::sRebuildDisplayData = true;
-
+    std::string RenderGraphUI::sLogString;
 
     static ImGui::Node* createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&)
     {
@@ -273,14 +273,17 @@ namespace Falcor
     bool RenderGraphUI::pushUpdateCommand(const std::string& commandString)
     {
         // make sure the graph is compiled
-        std::string log;
-        mRenderGraphRef.compile(log);
+        mRenderGraphRef.resolveExecutionOrder();
 
         // only send updates that we know are valid.
-        if (mRenderGraphRef.isValid(log))
+        if (mRenderGraphRef.isValid(sLogString))
         {
+            sLogString = commandString + " successful\n";
             mCommandStrings.push_back(commandString);
             return true;
+        }
+        else
+        {
         }
 
         return false;
@@ -713,7 +716,6 @@ namespace Falcor
         // create graph output node first
         if (!sNodeGraphEditor.pGraphOutputNode)
         {
-            // TODO - add optional list of inputs
             RenderGraphNode::setInitData("GraphOutput", "", "inputs", 0, nullptr);
             sNodeGraphEditor.pGraphOutputNode = sNodeGraphEditor.addNode(0, { mMaxNodePositionX + 384.0f, mNewNodeStartPosition.y });
         }
@@ -754,7 +756,8 @@ namespace Falcor
         
                 RenderGraphNode::setInitData(nameString, outputsString, inputsString, guiNodeID, pNodeRenderPass);
                 spIDToNode[guiNodeID] = sNodeGraphEditor.addNode(guiNodeID, ImVec2(nextPosition.x, nextPosition.y));
-                if (bFromDragAndDrop) addRenderPass(nameString, pNodeRenderPass->getName()); bFromDragAndDrop = false;
+                if (bFromDragAndDrop) addRenderPass(nameString, pNodeRenderPass->getName()); 
+                bFromDragAndDrop = false;
             }
         }
         
@@ -947,7 +950,6 @@ namespace Falcor
         std::unordered_set<std::string> nodeConnectedOutput;
         std::unordered_map<std::string, uint32_t> previousGuiNodeIDs;
         std::unordered_set<uint32_t> existingIDs;
-
 
         for (const auto& currentRenderPassUI : mRenderPassUI)
         {

@@ -49,11 +49,14 @@ private:
     void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
+    void renderLogWindow(Gui* pGui);
 
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
     size_t mCurrentGraphIndex;
     
+    std::string mCurrentLog;
+
     std::string mNextGraphString;
     std::string mCurrentGraphOutput; // needs to be set by the loader as well
     std::string mGraphOutputEditString;
