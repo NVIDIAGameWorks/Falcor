@@ -114,9 +114,14 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             {
                 Gui::DropdownValue graphOutput;
                 graphOutput.label = outputName;
+                if (outputName == mOutputString)
+                {
+                    mGraphOutputIndex = i;
+                }
                 graphOutput.value = i++;
                 renderGraphOutputs.push_back(graphOutput);
             }
+
         }
         else
         {
@@ -229,6 +234,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
             if (!mpScene)
             {
                 loadScene(gkDefaultScene, false, pSample);
+                mpGraph->setScene(mpScene);
             }
             else
             {
