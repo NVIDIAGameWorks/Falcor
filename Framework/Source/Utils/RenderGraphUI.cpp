@@ -895,10 +895,23 @@ namespace Falcor
         const float offsetX = 384.0f;
         const float offsetY = 128.0f;
         glm::vec2 newNodePosition = mNewNodeStartPosition;
-        
+
         if (std::find(mRenderGraphRef.mExecutionList.begin(), mRenderGraphRef.mExecutionList.end(), nodeID) == mRenderGraphRef.mExecutionList.end())
         {
-            return newNodePosition;
+            mNewNodeStartPosition.x += offsetX;
+            const DirectedGraph::Node* pNode = mRenderGraphRef.mpGraph->getNode(nodeID);
+            for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); ++i)
+            {
+                uint32_t outgoingEdgeCount = mRenderGraphRef.mpGraph->getNode(mRenderGraphRef.mpGraph->getEdge(pNode->getIncomingEdge(i))->getSourceNode())->getOutgoingEdgeCount();
+                if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
+                {
+                    // move down by index in 
+                    mNewNodeStartPosition.y += offsetY * (outgoingEdgeCount - pNode->getIncomingEdgeCount());
+                    break;
+                }
+            }
+
+            return mNewNodeStartPosition;
         }
 
         for (const auto& passID : mRenderGraphRef.mExecutionList)
@@ -911,7 +924,6 @@ namespace Falcor
                 for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); ++i)
                 {
                     uint32_t outgoingEdgeCount = mRenderGraphRef.mpGraph->getNode(mRenderGraphRef.mpGraph->getEdge(pNode->getIncomingEdge(i))->getSourceNode())->getOutgoingEdgeCount();
-                    
                     if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
                     {
                         // move down by index in 

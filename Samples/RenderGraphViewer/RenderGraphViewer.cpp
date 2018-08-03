@@ -57,6 +57,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
     {
+        // reset outputs to original state
+        mpGraph->unmarkGraphOutput(mOutputString);
+        for (const std::string& output : mOriginalOutputs)
+        {
+            mpGraph->markGraphOutput(output);
+        }
+
         std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraph);
         if (!renderGraphScript.size())
         {
@@ -79,6 +86,8 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         assert(mEditorProcess);
         mEditorRunning = true;
+
+        mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
     }
     
     if (mEditorProcess && mEditorRunning)
@@ -239,6 +248,11 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     {
         loadScene(gkDefaultScene, false, pSample);
         createGraph(pSample);
+    }
+
+    for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+    {
+        mOriginalOutputs.push_back(mpGraph->getGraphOutputName(i));
     }
 }
 
