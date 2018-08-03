@@ -1,3 +1,10 @@
+v3.0.7
+------
+- Updated Slang to 0.10.31
+
+Bug Fixes:
+- Fixed a crash when rendering a VariablesBuffer/ConstantBuffer UI without specifying a group name
+
 v3.0.6
 ------
 - Changed max bones to 256
