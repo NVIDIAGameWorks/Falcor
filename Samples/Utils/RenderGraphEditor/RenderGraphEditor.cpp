@@ -114,7 +114,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             renderPassName.push_back('_');
         }
         std::string command = std::string("AddRenderPass ") + renderPassName + " " + renderPassClassName;
-        pGui->addRect((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
+        pGui->addRect({ 148.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
+        pGui->addDummyItem((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 44.0f });
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
         pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
         pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), false);

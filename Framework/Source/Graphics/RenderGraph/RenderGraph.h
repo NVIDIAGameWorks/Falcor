@@ -132,6 +132,10 @@ namespace Falcor
         */
         size_t getGraphOutputCount() const { return mOutputs.size(); }
 
+        /** Get all output names for the render graph
+        */
+        std::vector<std::string> getAllOutputs() const;
+
         friend class RenderGraphUI;
         friend class RenderGraphLoader;
 

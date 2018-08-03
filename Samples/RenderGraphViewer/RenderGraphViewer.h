@@ -53,6 +53,7 @@ private:
     std::string mSceneFilename;
     bool mEnableDepthPrePass = true;
     uint32_t mGraphOutputIndex = 0;
+    bool mShowAllOutputs = true;
     std::string mOutputString = "BlitPass.dst";
     bool mEditorRunning = false;
     size_t mEditorProcess = 0;

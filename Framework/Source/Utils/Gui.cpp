@@ -275,7 +275,15 @@ namespace Falcor
         return glm::vec4(color.i32[0] % 1000 / 2000.0f, color.i32[1] % 1000 / 2000.0f, (color.i32[0] * color.i32[1]) % 1000 / 2000.0f, 1.0f);
     }
 
-    void Gui::addRect(const char label[], const glm::vec2& size, const glm::vec4& color, bool filled, bool sameLine)
+    void Gui::addDummyItem(const char label[], const glm::vec2& size, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        ImGui::PushID(label);
+        ImGui::Dummy({ size.x, size.y });
+        ImGui::PopID();
+    }
+
+    void Gui::addRect(const glm::vec2& size, const glm::vec4& color, bool filled, bool sameLine)
     {
         if (sameLine) ImGui::SameLine();
         
@@ -291,10 +299,6 @@ namespace Falcor
         {
             ImGui::GetWindowDrawList()->AddRect(ImGui::GetCursorScreenPos(), bottomLeft, ImGui::ColorConvertFloat4ToU32(rectColor));
         }
-        
-        ImGui::PushID(label);
-        ImGui::Dummy({size.x, size.y - 20.0f});
-        ImGui::PopID();
     }
 
     void Gui::beginColumns(uint32_t numColumns)

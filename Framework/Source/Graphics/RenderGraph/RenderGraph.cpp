@@ -325,6 +325,28 @@ namespace Falcor
         return true;
     }
 
+    std::vector<std::string> RenderGraph::getAllOutputs() const 
+    {
+        std::vector<std::string> outputs;
+        for (const auto& node : mNodeData)
+        {
+            RenderPassReflection reflector;
+            node.second.pPass->reflect(reflector);
+
+            for (size_t i = 0; i < reflector.getFieldCount(); ++i)
+            {
+                const RenderPassReflection::Field& field = reflector.getField(i);
+                if (static_cast<bool>(field.getType() & RenderPassReflection::Field::Type::Output))
+                {
+                    outputs.push_back(node.second.nodeName + "." + field.getName());
+                }
+            }
+        }
+
+        return outputs;
+    }
+
+
     bool RenderGraph::allocateResources()
     {
         for (const auto& nodeIndex : mExecutionList)

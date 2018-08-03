@@ -875,10 +875,10 @@ namespace Falcor
                         assert(edgeIt != mInputPinStringToLinkID.end()); 
                         uint32_t edgeID = edgeIt->second;
                         
-                        currentPinUI.mConnectedNodeName = "";
-
                         removeEdge(spIDToNode[connectedNodeUI.mGuiNodeID]->getName(), spIDToNode[inputIDs.second]->getName(), mRenderGraphRef.mEdgeData[edgeID].srcField, mRenderGraphRef.mEdgeData[edgeID].dstField);
                         mRenderGraphRef.removeEdge(edgeID);
+
+                        currentPinUI.mConnectedNodeName = "";
 
                         static_cast<RenderGraphNode*>(spIDToNode[inputIDs.second])->mInputPinConnected[inputIDs.first] = false;
                         static_cast<RenderGraphNode*>(spIDToNode[connectedNodeUI.mGuiNodeID])->mOutputPinConnected[inputPinID] = false;

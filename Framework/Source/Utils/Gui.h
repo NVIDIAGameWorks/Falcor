@@ -93,10 +93,19 @@ namespace Falcor
         bool onKeyboardEvent(const KeyboardEvent& event);
 
         /** Display rectangle with specified color
-            \param[in] 
+            \param[in] size size in pixels of rectangle
+            \param[in] color Optional. color as an rgba vec4
+            \param[in] filled Optional. If set to true, rectangle will be filled
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
         */
-        void addRect(const char label[], const glm::vec2& size, const glm::vec4& color, bool filled = false, bool sameLine = false);
+        void addRect(const glm::vec2& size, const glm::vec4& color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), bool filled = false, bool sameLine = false);
+
+        /** Dummy object especially useful for spacing
+            \param[in] label. Name for id of item
+            \param[in] size. size in pixels of the item.
+            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        */
+        void addDummyItem(const char label[], const glm::vec2& size, bool sameLine = false);
 
         /** Static text
             \param[in] text The string to display
@@ -223,7 +232,6 @@ namespace Falcor
             \return true if payload is dropped.
         */
         bool dragDropDest(const char dataLabel[], std::string& payloadString);
-
 
         /** Adds a UI widget for integers.
             \param[in] label The name of the widget.

@@ -93,22 +93,46 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (mpGraph)
     {
+        pGui->addCheckBox("Show All Outputs", mShowAllOutputs);
+
         Gui::DropdownList renderGraphOutputs;
-        for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+        if (mShowAllOutputs)
         {
-            Gui::DropdownValue graphOutput;
-            graphOutput.label = mpGraph->getGraphOutputName(i);
-            graphOutput.value = i;
-            renderGraphOutputs.push_back(graphOutput);
+            std::vector<std::string> outputs = mpGraph->getAllOutputs();
+            int32_t i = 0;
+
+            for (const std::string& outputName : outputs)
+            {
+                Gui::DropdownValue graphOutput;
+                graphOutput.label = outputName;
+                graphOutput.value = i++;
+                renderGraphOutputs.push_back(graphOutput);
+            }
+        }
+        else
+        {
+            for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+            {
+                Gui::DropdownValue graphOutput;
+                graphOutput.label = mpGraph->getGraphOutputName(i);
+                graphOutput.value = i;
+                renderGraphOutputs.push_back(graphOutput);
+            }
         }
         
+        // with switching between all outputs and only graph outputs
+        if (mGraphOutputIndex > renderGraphOutputs.size())
+        {
+            mGraphOutputIndex = static_cast<uint32_t>(renderGraphOutputs.size()) - 1;
+        }
+
         if (renderGraphOutputs.size() && pGui->addDropdown("Render Graph Output", renderGraphOutputs, mGraphOutputIndex))
         {
             mpGraph->setOutput(mOutputString, nullptr);
+            mpGraph->unmarkGraphOutput(mOutputString);
             mOutputString = renderGraphOutputs[mGraphOutputIndex].label;
             mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
         }
-        
         
         mpGraph->renderUI(pGui, "Render Graph");
     }
