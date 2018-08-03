@@ -345,7 +345,7 @@ namespace Falcor
             RenderPassUI& dstRenderGraphUI = spCurrentGraphUI->mRenderPassUI[dstPass];
 
             uint32_t srcPinIndex = srcRenderGraphUI.mNameToIndexOutput[srcField];
-            uint32_t dstPinIndex = srcRenderGraphUI.mNameToIndexInput[dstField];
+            uint32_t dstPinIndex = dstRenderGraphUI.mNameToIndexInput[dstField];
 
             srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedPinName = dstField;
             srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedNodeName = dstPass;
@@ -1098,7 +1098,6 @@ namespace Falcor
 
                     outputPinIndex++;
                 }
-                
             }
 
             mRenderPassUI.emplace(std::make_pair(nameToIndex.first, std::move(renderPassUI)));

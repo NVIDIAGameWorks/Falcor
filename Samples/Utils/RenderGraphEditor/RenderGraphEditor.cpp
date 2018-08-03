@@ -81,6 +81,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string renderGraphFileName;
                 if (saveFileDialog("", renderGraphFileName))
                 {
+                    std::string log;
+                    bool bSaveGraph = true;
+
+                    if (!mpGraphs[mCurrentGraphIndex]->isValid(log))
+                    {
+                        MsgBoxButton msgBoxButton = msgBox("Attempting to save invalid graph.\nGraph may not execute correctly when loaded\nAre you sure you want to save the graph?"
+                            , MsgBoxType::OkCancel);
+                        bSaveGraph = !(msgBoxButton == MsgBoxButton::Cancel);
+                    }
+
                     serializeRenderGraph(renderGraphFileName);
                 }
             }
@@ -233,8 +243,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     pGui->popWindow();
 
-
-    
     pGui->pushWindow("output", screenWidth / 4, screenHeight / 4 - 20, screenWidth * 3 / 4, screenHeight * 3 / 4 + 20, true, false);
     renderLogWindow(pGui);
     pGui->popWindow();
