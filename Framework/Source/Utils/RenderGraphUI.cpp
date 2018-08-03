@@ -524,7 +524,6 @@ namespace Falcor
             pGui->addText("Output", true);
         }
 
-
         pGui->addText("ResourceType : ");
         pGui->addText(to_string(field.getResourceType()->getType()).c_str(), true);
 
@@ -563,9 +562,6 @@ namespace Falcor
         }
         
         ImGui::Separator();
-
-        // ImGui::MenuItem();
-
     }
 
     void RenderGraphUI::renderPopupMenu(Gui* pGui)
@@ -898,20 +894,7 @@ namespace Falcor
 
         if (std::find(mRenderGraphRef.mExecutionList.begin(), mRenderGraphRef.mExecutionList.end(), nodeID) == mRenderGraphRef.mExecutionList.end())
         {
-            mNewNodeStartPosition.x += offsetX;
-            const DirectedGraph::Node* pNode = mRenderGraphRef.mpGraph->getNode(nodeID);
-            for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); ++i)
-            {
-                uint32_t outgoingEdgeCount = mRenderGraphRef.mpGraph->getNode(mRenderGraphRef.mpGraph->getEdge(pNode->getIncomingEdge(i))->getSourceNode())->getOutgoingEdgeCount();
-                if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
-                {
-                    // move down by index in 
-                    mNewNodeStartPosition.y += offsetY * (outgoingEdgeCount - pNode->getIncomingEdgeCount());
-                    break;
-                }
-            }
-
-            return mNewNodeStartPosition;
+            return newNodePosition;
         }
 
         for (const auto& passID : mRenderGraphRef.mExecutionList)
