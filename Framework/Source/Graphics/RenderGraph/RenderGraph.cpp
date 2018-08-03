@@ -562,7 +562,12 @@ namespace Falcor
     {
         assert(is_set(src.getType(), RenderPassReflection::Field::Type::Output) && is_set(dst.getType(), RenderPassReflection::Field::Type::Input));
         
-        return (src.getFormat() == dst.getFormat() || dst.getFormat() == ResourceFormat::Unknown) &&
+        return src.getName() == dst.getName() &&
+            (dst.getWidth() == 0 || src.getWidth() == dst.getWidth()) &&
+            (dst.getHeight() == 0 || src.getHeight() == dst.getHeight()) &&
+            (dst.getDepth() == 0 || src.getDepth() == dst.getDepth()) &&
+            (dst.getFormat() == ResourceFormat::Unknown || src.getFormat() == dst.getFormat()) &&
+            src.getSampleCount() == dst.getSampleCount() && // TODO: allow dst sample count to be 1 when auto MSAA resolve is implemented in graph compilation
             src.getResourceType() == dst.getResourceType() &&
             src.getSampleCount() == dst.getSampleCount();
     }
@@ -601,7 +606,7 @@ namespace Falcor
         }
     }
 
-    std::vector<RenderPassReflection::Field> RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection)
+    void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList)
     {
         assert(mNameToIndex.count(pNodeData->nodeName) > 0);
 
@@ -614,8 +619,6 @@ namespace Falcor
             satisfiedFields.push_back(edgeData.dstField);
         }
 
-        std::vector<RenderPassReflection::Field> unsatisfiedInputs;
-
         // Build list of unsatisfied fields by comparing names with which edges/fields are connected
         for (uint32_t i = 0; i < passReflection.getFieldCount(); i++)
         {
@@ -624,11 +627,9 @@ namespace Falcor
             bool isUnsatisfied = std::find(satisfiedFields.begin(), satisfiedFields.end(), field.getName()) == satisfiedFields.end();
             if (is_set(field.getType(), RenderPassReflection::Field::Type::Input) && isUnsatisfied)
             {
-                unsatisfiedInputs.push_back(passReflection.getField(i));
+                outList.push_back(passReflection.getField(i));
             }
         }
-
-        return unsatisfiedInputs;
     }
 
     void RenderGraph::autoGenerateEdges(const std::vector<uint32_t>& executionOrder)
@@ -672,7 +673,8 @@ namespace Falcor
         // For all nodes, starting at end, iterate until index 1 of vector
         for (size_t dst = nodeVec.size() - 1; dst > 0; dst--)
         {
-            auto unsatisfiedInputs = getUnsatisfiedInputs(nodeVec[dst], passReflectionMap[nodeVec[dst]->pPass.get()]);
+            std::vector<RenderPassReflection::Field> unsatisfiedInputs;
+            getUnsatisfiedInputs(nodeVec[dst], passReflectionMap[nodeVec[dst]->pPass.get()], unsatisfiedInputs);
 
             // Find outputs to connect.
             // Start one before i, iterate until the beginning of vector

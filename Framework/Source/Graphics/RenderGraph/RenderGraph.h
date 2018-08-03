@@ -178,7 +178,7 @@ namespace Falcor
             RenderPass::SharedPtr pPass;
         };
 
-        std::vector<RenderPassReflection::Field> getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection);
+        void getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList);
         void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
 
         bool mRecompile = true;
