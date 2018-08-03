@@ -82,8 +82,9 @@ namespace Falcor
             std::vector<float> vector;
 
             UserVariable() { }
-            UserVariable(const int32_t      v) : i32(v),            type(Type::Int)       { }
-            UserVariable(const float        v) : d64((double)v),    type(Type::Double)    { }
+            UserVariable(const uint32_t&     v) : u32(v),           type(Type::Uint)      { }
+            UserVariable(const int32_t&     v) : i32(v),            type(Type::Int)       { }
+            UserVariable(const float&       v) : d64((double)v),    type(Type::Double)    { }
             UserVariable(const glm::vec2&   v) : vec2(v),           type(Type::Vec2)      { }
             UserVariable(const glm::vec3&   v) : vec3(v),           type(Type::Vec3)      { }
             UserVariable(const std::string& s) : str(s),            type(Type::String)    { }
@@ -212,6 +213,8 @@ namespace Falcor
         /** Attach skinning cache to all models in scene.
         */
         void attachSkinningCacheToModels(SkinningCache::SharedPtr pSkinningCache);
+
+        std::string mFileName;
     protected:
 
         Scene();

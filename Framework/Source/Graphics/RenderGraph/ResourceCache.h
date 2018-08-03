@@ -39,6 +39,7 @@ namespace Falcor
         static SharedPtr create();
 
         void addResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
+        void removeResource(const std::string& name);
         const std::shared_ptr<Resource>& getResource(const std::string& name) const;
     private:
         ResourceCache() = default;

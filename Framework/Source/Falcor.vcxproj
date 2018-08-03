@@ -527,7 +527,6 @@
     <ClCompile Include="Utils\DXHeader.cpp" />
     <ClCompile Include="Utils\Font.cpp" />
     <ClCompile Include="Utils\Gui.cpp" />
-    <ClCompile Include="Utils\GuiProperty.cpp" />
     <ClCompile Include="Utils\Logger.cpp" />
     <ClCompile Include="Utils\Math\ParallelReduction.cpp" />
     <ClCompile Include="Utils\MonitorInfo.cpp" />
@@ -559,6 +558,8 @@
     <ClCompile Include="Utils\Psychophysics\Experiment.cpp" />
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
+    <ClCompile Include="Utils\RenderGraphLoader.cpp" />
+    <ClCompile Include="Utils\RenderGraphUI.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
     <ClCompile Include="Utils\VariablesBufferUI.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
@@ -992,6 +993,7 @@
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h" />
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
@@ -1125,7 +1127,6 @@
     <ClInclude Include="Utils\FrameRate.h" />
     <ClInclude Include="Utils\Graph.h" />
     <ClInclude Include="Utils\Gui.h" />
-    <ClInclude Include="Utils\GuiProperty.h" />
     <ClInclude Include="Utils\Logger.h" />
     <ClInclude Include="Utils\Math\CubicSpline.h" />
     <ClInclude Include="Utils\Math\FalcorMath.h" />
@@ -1143,6 +1144,8 @@
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
     <ClInclude Include="Utils\PythonEmbedding.h" />
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
+    <ClInclude Include="Utils\RenderGraphLoader.h" />
+    <ClInclude Include="Utils\RenderGraphUI.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />

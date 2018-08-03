@@ -325,6 +325,28 @@ namespace Falcor
         return true;
     }
 
+    std::vector<std::string> RenderGraph::getAllOutputs() const 
+    {
+        std::vector<std::string> outputs;
+        for (const auto& node : mNodeData)
+        {
+            RenderPassReflection reflector;
+            node.second.pPass->reflect(reflector);
+
+            for (size_t i = 0; i < reflector.getFieldCount(); ++i)
+            {
+                const RenderPassReflection::Field& field = reflector.getField(i);
+                if (static_cast<bool>(field.getType() & RenderPassReflection::Field::Type::Output))
+                {
+                    outputs.push_back(node.second.nodeName + "." + field.getName());
+                }
+            }
+        }
+
+        return outputs;
+    }
+
+
     bool RenderGraph::allocateResources()
     {
         for (const auto& nodeIndex : mExecutionList)
@@ -448,6 +470,7 @@ namespace Falcor
         if (pPass == nullptr) return false;
         mpResourcesCache->addResource(name, pResource);
         markGraphOutput(name);
+        if (!pResource) mRecompile = true;
         return true;
     }
 
@@ -486,6 +509,7 @@ namespace Falcor
             if (mOutputs[i].nodeId == removeMe.nodeId && mOutputs[i].field == removeMe.field)
             {
                 mOutputs.erase(mOutputs.begin() + i);
+                mpResourcesCache->removeResource(name);
                 mRecompile = true;
                 return;
             }
@@ -499,6 +523,13 @@ namespace Falcor
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
 
         return pPass ? mpResourcesCache->getResource(name) : pNull;
+    }
+
+    std::string RenderGraph::getGraphOutputName(size_t index) const
+    {
+        assert(index < mOutputs.size());
+        const GraphOut& graphOut = mOutputs[index];
+        return mNodeData.find(graphOut.nodeId)->second.nodeName + "." + graphOut.field;
     }
 
     void RenderGraph::onResizeSwapChain(const Fbo* pTargetFbo)
@@ -531,7 +562,12 @@ namespace Falcor
     {
         assert(is_set(src.getType(), RenderPassReflection::Field::Type::Output) && is_set(dst.getType(), RenderPassReflection::Field::Type::Input));
         
-        return (src.getFormat() == dst.getFormat() || dst.getFormat() == ResourceFormat::Unknown) &&
+        return src.getName() == dst.getName() &&
+            (dst.getWidth() == 0 || src.getWidth() == dst.getWidth()) &&
+            (dst.getHeight() == 0 || src.getHeight() == dst.getHeight()) &&
+            (dst.getDepth() == 0 || src.getDepth() == dst.getDepth()) &&
+            (dst.getFormat() == ResourceFormat::Unknown || src.getFormat() == dst.getFormat()) &&
+            src.getSampleCount() == dst.getSampleCount() && // TODO: allow dst sample count to be 1 when auto MSAA resolve is implemented in graph compilation
             src.getResourceType() == dst.getResourceType() &&
             src.getSampleCount() == dst.getSampleCount();
     }
@@ -556,7 +592,7 @@ namespace Falcor
                     uint32_t dstIndex = mNameToIndex[pdstNode->nodeName];
 
                     uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
-                    mEdgeData[e] = { true, srcField.getName(), dstFieldIt->getName() };
+                    mEdgeData[e] = { true, RenderGraph::EdgeData::Flags::None, srcField.getName(), dstFieldIt->getName() };
                     mRecompile = true;
 
                     // If connection was found, continue to next unsatisfied input
@@ -570,7 +606,7 @@ namespace Falcor
         }
     }
 
-    std::vector<RenderPassReflection::Field> RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection)
+    void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList)
     {
         assert(mNameToIndex.count(pNodeData->nodeName) > 0);
 
@@ -583,8 +619,6 @@ namespace Falcor
             satisfiedFields.push_back(edgeData.dstField);
         }
 
-        std::vector<RenderPassReflection::Field> unsatisfiedInputs;
-
         // Build list of unsatisfied fields by comparing names with which edges/fields are connected
         for (uint32_t i = 0; i < passReflection.getFieldCount(); i++)
         {
@@ -593,14 +627,12 @@ namespace Falcor
             bool isUnsatisfied = std::find(satisfiedFields.begin(), satisfiedFields.end(), field.getName()) == satisfiedFields.end();
             if (is_set(field.getType(), RenderPassReflection::Field::Type::Input) && isUnsatisfied)
             {
-                unsatisfiedInputs.push_back(passReflection.getField(i));
+                outList.push_back(passReflection.getField(i));
             }
         }
-
-        return unsatisfiedInputs;
     }
 
-    void RenderGraph::autoGenerateEdges()
+    void RenderGraph::autoGenerateEdges(const std::vector<uint32_t>& executionOrder)
     {
         // Remove all previously auto-generated edges
         auto it = mEdgeData.begin();
@@ -616,22 +648,33 @@ namespace Falcor
         // Gather list of passes by order they were added
         std::vector<NodeData*> nodeVec;
         std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
-        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
-        {
-            if (mpGraph->doesNodeExist(i))
-            {
-                nodeVec.push_back(&mNodeData[i]);
 
-                RenderPassReflection r;
-                mNodeData[i].pPass->reflect(r);
-                passReflectionMap[mNodeData[i].pPass.get()] = std::move(r);
+        if (executionOrder.size() > 0)
+        {
+            assert(executionOrder.size() == mNodeData.size());
+            for (const uint32_t& nodeId : executionOrder)
+            {
+                nodeVec.push_back(&mNodeData[nodeId]);
+                mNodeData[nodeId].pPass->reflect(passReflectionMap[mNodeData[nodeId].pPass.get()]);
+            }
+        }
+        else
+        {
+            for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
+            {
+                if (mpGraph->doesNodeExist(i))
+                {
+                    nodeVec.push_back(&mNodeData[i]);
+                    mNodeData[i].pPass->reflect(passReflectionMap[mNodeData[i].pPass.get()]);
+                }
             }
         }
 
         // For all nodes, starting at end, iterate until index 1 of vector
         for (size_t dst = nodeVec.size() - 1; dst > 0; dst--)
         {
-            auto unsatisfiedInputs = getUnsatisfiedInputs(nodeVec[dst], passReflectionMap[nodeVec[dst]->pPass.get()]);
+            std::vector<RenderPassReflection::Field> unsatisfiedInputs;
+            getUnsatisfiedInputs(nodeVec[dst], passReflectionMap[nodeVec[dst]->pPass.get()], unsatisfiedInputs);
 
             // Find outputs to connect.
             // Start one before i, iterate until the beginning of vector

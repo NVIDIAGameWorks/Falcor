@@ -26,18 +26,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "RenderPassReflection.h"
+#include "RenderPassSerializer.h"
 
 namespace Falcor
 {
     class RenderPass;
-    class RenderPassSerializer;
-
+    
     class RenderPassLibrary
     {
     public:
         using CreateFunc = std::function<std::shared_ptr<RenderPass>(const RenderPassSerializer&)>;
+        using SaveFunc = std::function<RenderPassSerializer(const std::shared_ptr<RenderPass>&)>;
         static void addRenderPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createRenderPass(const char* className);
+        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const RenderPassSerializer& serializer = {});
         static size_t getRenderPassCount();
         static const std::string& getRenderPassDesc(size_t pass);
         static const std::string& getRenderPassClassName(size_t pass);

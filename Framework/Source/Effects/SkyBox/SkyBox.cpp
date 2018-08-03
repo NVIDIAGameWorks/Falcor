@@ -47,6 +47,34 @@ namespace Falcor
         return pSkyBox;
     }
 
+    SkyBox::UniquePtr SkyBox::deserialize(const RenderPassSerializer& serializer)
+    {
+        std::string sceneFileName = serializer.getValue("gSceneFilename").str;
+        std::string skyBoxName = serializer.getValue("gSkyBoxFilename").str;
+        if (!sceneFileName.size() || !skyBoxName.size())
+        {
+            msgBox("No scene or skybox file specified.");
+            return nullptr;
+        }
+
+        std::string skyBox = getDirectoryFromFile(serializer.getValue("gSceneFilename").str) + '/' + skyBoxName;
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.minFilter").i32),
+            static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.magFilter").i32),
+            static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.mipFilter").i32));
+        return createFromTexture(skyBox, serializer.getValue("loadAsSrgb").b, Sampler::create(samplerDesc));
+    }
+
+    RenderPassSerializer SkyBox::serialize()
+    {
+        RenderPassSerializer renderPassSerializer;
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
+        renderPassSerializer.addVariable<bool>("loadAsSrgb", true);
+        return renderPassSerializer;
+    }
+
     bool SkyBox::createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo)
     {
         if(pTexture == nullptr)

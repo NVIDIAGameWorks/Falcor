@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
+#include "RenderPassSerializer.h"
 #include "ResourceCache.h"
 
 namespace Falcor
@@ -35,11 +36,7 @@ namespace Falcor
     class Texture;
     class Gui;
     class RenderContext;
-    class RenderPassSerializer
-    {
-    public:
-    };
-
+    
     class ScratchPad : public std::enable_shared_from_this<ScratchPad>
     {
     public:
@@ -75,6 +72,10 @@ namespace Falcor
         /** Executes the pass.
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) = 0;
+
+        /** Serialize pass into serialization object
+        */
+        virtual RenderPassSerializer serialize() { return {}; }
 
         /** Render the pass's UI
         */

@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,10 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 #pragma once
-
-#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
 #include "Graphics/RenderGraph/RenderGraph.h"
 
 namespace Falcor
@@ -37,12 +34,14 @@ namespace Falcor
     {
     public:
 
-        class ScriptParameter
+        class ScriptParameter : public Scene::UserVariable
         {
         public:
 
             template<typename T>
             ScriptParameter(const T& val) { get<T>() = val; }
+            
+            ScriptParameter() {}
 
             template<typename T>
             void operator=(const T& val)
@@ -55,32 +54,16 @@ namespace Falcor
 
             void operator=(const std::string& val);
 
-            // renderUI ?
-
-        private:
-
-            enum VariantType
+            void operator=(const ScriptParameter& param) 
             {
-                Float = 0, UInt, Int, Bool, String
-            };
-
-            VariantType mType;
-
-            // simple variant
-            union var
-            {
-                var() :mString(){}
-                var(const var& val) : mString({}) { mString = val.mString; }
-                ~var() {}
-
-                float mFloat; 
-                uint32_t mUInt;
-                int32_t mInt; 
-                bool mBool;
-                std::string mString;
-            };
-            
-            var mData;
+                type = param.type;
+                d64 = param.d64;
+                str = param.str;
+                vec2 = param.vec2;
+                vec3 = param.vec3;
+                vec4 = param.vec4;
+                vector = param.vector; 
+            }
         };
 
         class ScriptBinding
@@ -89,17 +72,30 @@ namespace Falcor
             ScriptBinding() {}
             ScriptBinding(const ScriptBinding&& ref) : mParameters(ref.mParameters), mExecute(ref.mExecute) {}
 
+            using ScriptFunc = std::function<void(ScriptBinding& scriptBinding, RenderGraph& renderGraph)>;
+
             std::vector<ScriptParameter > mParameters;
-            std::function<void(ScriptBinding& scriptBinding, RenderGraph& renderGraph)> mExecute;
+            ScriptFunc mExecute;
         };
 
         RenderGraphLoader();
 
+        /** Runs render graph script file from string on graph
+        */
+        static void runScript(const std::string& scriptData, RenderGraph& renderGraph);
+        static void runScript(const char* scriptData, size_t dataSize, RenderGraph& renderGraph);
+
+        /** Runs render graph script from file on graph
+        */
         static void LoadAndRunScript(const std::string& fileNameString, RenderGraph& renderGraph);
 
-        /** Serializes given render graph into a script that can reproduce it
+        /** Serializes given render graph into a script that can reproduce it and saves to a file
          */
-        static void SaveRenderGraphAsScript(const std::string& fileNameString, RenderGraph& renderGraph);
+        static void SaveRenderGraphAsScript(const std::string& fileNameString, const RenderGraph& renderGraph);
+
+        /** Serializes given render graph into a script that can reproduce it
+        */
+        static std::string saveRenderGraphAsScriptBuffer(const RenderGraph& renderGraph);
 
         static void ExecuteStatement(const std::string& statement, RenderGraph& renderGraph);
 
@@ -108,7 +104,7 @@ namespace Falcor
     private:
         
         template<typename ... U>
-        void RegisterStatement(const std::string& keyword, const std::function<void(ScriptBinding& scriptBinding, RenderGraph& renderGraph)>& function, U ... defaultValues)
+        void RegisterStatement(const std::string& keyword, const ScriptBinding::ScriptFunc& function, U ... defaultValues)
         {
             ScriptBinding newBinding;
             newBinding.mExecute = function;
@@ -117,5 +113,6 @@ namespace Falcor
         }
 
         static std::unordered_map<std::string, ScriptBinding> mScriptBindings;
+        static std::unordered_map<std::string, ScriptParameter> mActiveVariables;
     };
 }

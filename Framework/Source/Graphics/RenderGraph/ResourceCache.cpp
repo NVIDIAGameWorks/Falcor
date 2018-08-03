@@ -52,4 +52,10 @@ namespace Falcor
     {
         mResources[name] = pResource;
     }
+
+    void ResourceCache::removeResource(const std::string& name)
+    {
+        mResources.erase(name);
+    }
+
 }

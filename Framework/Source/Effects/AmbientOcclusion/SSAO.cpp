@@ -116,7 +116,7 @@ namespace Falcor
         return mpAOFbo->getColorTexture(0);
     }
 
-    SSAO::SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution) : RenderPass("SsaoPass")
+    SSAO::SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution) : RenderPass("SSAO")
     {
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, Falcor::ResourceFormat::R8Unorm);

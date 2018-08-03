@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,17 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-// TODO PLEASE NO
-#define _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
-
 #include "Falcor.h"
-
-#include "RenderGraphUI.h"
-#include "RenderGraphLoader.h"
-
+#include "Utils/RenderGraphUI.h"
 #include <vector>
-
-
 
 using namespace Falcor;
 
@@ -46,54 +38,33 @@ public:
     void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
     void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
     RenderGraphEditor();
-
-    // simple lookup to create render pass type from string
-    static std::unordered_map<std::string, std::function<RenderPass::SharedPtr()> > sBaseRenderCreateFuncs;
+    ~RenderGraphEditor();
 
 private:
-    
     void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
     void createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName);
     void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
-    void renderGraphEditorGUI(SampleCallbacks* pSample, Gui* pGui);
+    void renderLogWindow(Gui* pGui);
 
-    void updateAndCompileGraph();
-
-    SampleCallbacks* mpLastSample;
-
-    RenderGraph::SharedPtr mpEditorGraph;
-    Fbo::SharedPtr mpGuiFBO;
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
-    RenderGraphLoader mRenderGraphLoader;
-
     size_t mCurrentGraphIndex;
+    
+    std::string mCurrentLog;
 
     std::string mNextGraphString;
-    std::string mNodeString;
-
-    // probably move this?
     std::string mCurrentGraphOutput; // needs to be set by the loader as well
     std::string mGraphOutputEditString;
+    std::string mFilePath;
 
     Gui::DropdownList mOpenGraphNames;
-    Gui::DropdownList mRenderPassTypes; uint32_t mTypeSelection;
-
-    bool mCreatingRenderGraph;
-    bool mPreviewing;
-    bool mShowCreateGraphWindow;
-
-    // TODO this should be in an abstraction for reuse
-    glm::vec2 mWindowPos{0.0f, 0.0f};
-    glm::vec2 mWindowSize{ 1600.0f, 900.0f }; // init this better
-    
-    FirstPersonCameraController mCamControl;
-    void loadScene(const std::string& filename, bool showProgressBar);
+    bool mShowCreateGraphWindow = false;
+    bool mViewerRunning = false;
+    size_t mViewerProcess = 0;
+    bool mCanPreview = false;
 };

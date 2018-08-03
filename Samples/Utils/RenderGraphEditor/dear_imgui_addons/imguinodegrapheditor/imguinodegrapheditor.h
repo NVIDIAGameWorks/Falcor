@@ -353,7 +353,7 @@ struct NodeLink
 {
     Node*  InputNode;   int InputSlot;
     Node*  OutputNode;  int OutputSlot;
-    ImU32 LinkColor;
+    ImU32 LinkColor; bool LinkHovered = false; bool LinkSelected = false;
 
     NodeLink(Node* input_node, int input_slot, Node* output_node, int output_slot, ImU32 linkColor) {
         InputNode = input_node; InputSlot = input_slot;
@@ -375,6 +375,7 @@ class NodeGraphEditor
     enum LinkState {LS_ADDED,LS_DELETED};
     bool inited;
     ImVec2 offset;
+    int selectedLink = -1;
 
     protected:
     ImVector<Node*> nodes;          // used as a garbage collector too
