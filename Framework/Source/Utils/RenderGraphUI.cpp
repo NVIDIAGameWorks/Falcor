@@ -330,6 +330,16 @@ namespace Falcor
         sRebuildDisplayData = true;
     }
 
+
+    void RenderGraphUI::removeOutput(const std::string& outputPass, const std::string& outputField)
+    {
+        std::string outputParam = outputPass + "." + outputField;
+        mRenderGraphRef.unmarkGraphOutput(outputParam);
+        pushUpdateCommand("RemoveGraphOutput " + outputParam);
+        auto& passUI = mRenderPassUI[outputPass];
+        passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = false;
+    }
+
     bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
     {
         // outputs warning if edge could not be created 
@@ -829,9 +839,7 @@ namespace Falcor
                             }
                         }
                     }
-                }
-                else
-                {
+
                     // mark graph outputs to graph output node
                     if (currentPinUI.mIsGraphOutput)
                     {
@@ -839,8 +847,23 @@ namespace Falcor
                             sNodeGraphEditor.pGraphOutputNode, 0))
                         {
                             RenderGraphNode::sAddedFromGraphData = true;
+                            ImU32 linkColor = ImGui::GetColorU32({ mGraphOutputsColor.x, mGraphOutputsColor.y, mGraphOutputsColor.z, mGraphOutputsColor.w });
                             sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                sNodeGraphEditor.pGraphOutputNode, 0, false, ImGui::GetColorU32({ 0.0f, 1.0f, 0.0f, 0.71f }));
+                                sNodeGraphEditor.pGraphOutputNode, 0, false, linkColor);
+                        }
+                    }
+                }
+                else
+                {
+                    // remove graph output links
+                    if (currentPinUI.mIsGraphOutput)
+                    {
+                        if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                            sNodeGraphEditor.pGraphOutputNode, 0))
+                        {
+                            removeOutput(currentPass.first, currentPinUI.mPinName);
+                            sNodeGraphEditor.removeLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                sNodeGraphEditor.pGraphOutputNode, 0);
                         }
                     }
                 }
