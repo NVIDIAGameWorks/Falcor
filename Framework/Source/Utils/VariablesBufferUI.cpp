@@ -287,7 +287,7 @@ namespace Falcor
             // dirty flag for uploading will be set by GUI
             mVariablesBufferRef.uploadToGPU();
 
-            pGui->endGroup();
+            if(uiGroup != nullptr) pGui->endGroup();
         }
     }
 }
