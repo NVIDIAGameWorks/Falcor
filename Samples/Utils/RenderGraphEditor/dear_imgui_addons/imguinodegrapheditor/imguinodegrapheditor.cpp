@@ -1378,9 +1378,14 @@ void NodeGraphEditor::render()
                     cp1 = p1+link_cp;
                     cp2 = p2-link_cp;
 
+                    const float distanceSquared = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
+                    if (ImGui::IsMouseClicked(0) && ImGui::GetIO().KeyCtrl)
+                    {
+                        if (distanceSquared < 5.0f) selectedLink = link_idx;
+                    }
                     // highlight nearest link
                     if (mustCheckForNearestLink && nearestLinkId==-1 && (enableLinkCulling ? cullLink.Contains(io.MousePos) : true)) {
-                        const float distanceSquared = GetSquaredDistanceToBezierCurve(io.MousePos,p1,cp1, cp2,p2);
+                        
                         if (distanceSquared<hoveredLinkDistSqrThres) nearestLinkId=link_idx;
                         // dbg line:
                         //if (io.MouseDelta.x!=0.f || io.MouseDelta.y!=0.f)   fprintf(stderr,"%d) MP{%1.0f,%1.0f} p1{%1.0f,%1.0f} p2{%1.0f,%1.0f} distanceSquared=%1.4f hoveredLinkDistSqrThres=%1.4f\n",link_idx,io.MousePos.x,io.MousePos.y,p1.x,p1.y,p2.x,p2.y,distanceSquared,hoveredLinkDistSqrThres);

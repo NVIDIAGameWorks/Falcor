@@ -119,14 +119,38 @@ namespace Falcor
     */
     bool isDirectoryExists(const std::string& filename);
     
+    /** Open watch thread for file changes and call callback when the file is written to.
+        \param[in] full path to the file to watch for changes
+        \param[in] callback function. parameter is filePath.
+    */
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback = {});
+
+    /** Close watch thread for file changes
+        \param[in] full path to the file that was being watched for changes
+    */
+    void closeSharedFile(const std::string& filePath);
+
     /** Create a directory from path.
     */
     bool createDirectory(const std::string& path);
+
+    /** Given the app name and full command line arguments, begin the process
+    */
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs);
+
+    /** Check if the given process is still active
+     */
+    bool isProcessRunning(size_t processID);
+
+    /** Terminate process
+     */
+    void terminateProcess(size_t processID);
 
     /** Get the current executable directory
         \return The full path of the application directory
     */
     const std::string& getExecutableDirectory();
+
     /** Get the current executable name
         \return The name of the executable
     */

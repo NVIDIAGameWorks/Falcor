@@ -30,6 +30,7 @@
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
 #include "RenderPasses/SceneLightingPass.h"
+#include "Effects/SkyBox/SkyBox.h"
 #include "Effects/Shadows/CSM.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Effects/FXAA/FXAA.h"
@@ -52,10 +53,11 @@ namespace Falcor
         RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::deserialize);
         RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::deserialize);
         RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", CascadedShadowMaps::deserialize);
-        RenderPassLibrary::addRenderPassClass("ToneMapping", "Tone-Mapping", ToneMapping::deserialize);
-        RenderPassLibrary::addRenderPassClass("FXAA", "FXAA", FXAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SSAO", "Fast Approximate Anti-Aliasing", SSAO::deserialize);
-        RenderPassLibrary::addRenderPassClass("TAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
+        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", ToneMapping::deserialize);
+        RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::deserialize);
+        RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", SSAO::deserialize);
+        RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
+        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize);
 
         return true;
     };
@@ -70,11 +72,11 @@ namespace Falcor
         }
         else
         {
-            gRenderPassList[className] = {desc, func};
+            gRenderPassList[className] = { desc, func };
         }
     }
 
-    std::shared_ptr<RenderPass> RenderPassLibrary::createRenderPass(const char* className)
+    std::shared_ptr<RenderPass> RenderPassLibrary::createRenderPass(const char* className, const RenderPassSerializer& serializer)
     {
         if (gRenderPassList.find(className) == gRenderPassList.end())
         {
@@ -82,7 +84,8 @@ namespace Falcor
             return nullptr;
         }
 
-        return gRenderPassList[className].create({});
+        auto& renderPass = gRenderPassList[className];
+        return renderPass.create(serializer);
     }
 
     size_t RenderPassLibrary::getRenderPassCount()

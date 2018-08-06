@@ -131,6 +131,39 @@ namespace Falcor
         }
     }
 
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
+    {
+        std::string linuxAppName = "./"; linuxAppName += appName;
+        std::vector<const char*> argv;
+        size_t offset = 0;
+        size_t oldOffset = 0;
+
+        while ((offset = commandLineArgs.find_first_of(' ', oldOffset)) != std::string::npos)
+        {
+            argv.push_back(commandLineArgs.data() + oldOffset);
+            oldOffset = offset + 1;
+        }
+
+        if (execv(linuxAppName.c_str(), argv.data()))
+        {
+            msgBox("Failed to launch process");
+        }
+
+        return 0;
+    }
+
+    bool isProcessRunning(size_t processID)
+    {
+        should_not_get_here();
+        return true;
+    }
+
+    void terminateProcess(size_t processID)
+    {
+        (void)processID;
+        should_not_get_here();
+    }
+
     bool doesFileExist(const std::string& filename)
     {
         int32_t handle = open(filename.c_str(), O_RDONLY);
@@ -145,6 +178,18 @@ namespace Falcor
         const char* pathname = filename.c_str();
         struct stat sb;
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
+    }
+    
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback = {})
+    {
+        (void)filePath; (void)callback;
+        should_not_get_here();
+    }
+
+    void closeSharedFile(const std::string& filePath)
+    {
+        (void)filePath;
+        should_not_get_here();
     }
 
     const std::string& getExecutableDirectory()
