@@ -325,9 +325,9 @@ namespace Falcor
         return true;
     }
 
-    std::vector<std::string> RenderGraph::getAllOutputs() const 
+    RenderGraph::StringVec RenderGraph::getAllOutputs() const
     {
-        std::vector<std::string> outputs;
+        StringVec outputs;
         for (const auto& node : mNodeData)
         {
             RenderPassReflection reflector;
@@ -336,7 +336,7 @@ namespace Falcor
             for (size_t i = 0; i < reflector.getFieldCount(); ++i)
             {
                 const RenderPassReflection::Field& field = reflector.getField(i);
-                if (static_cast<bool>(field.getType() & RenderPassReflection::Field::Type::Output))
+                if (is_set(field.getType(),  RenderPassReflection::Field::Type::Output))
                 {
                     outputs.push_back(node.second.nodeName + "." + field.getName());
                 }
@@ -592,7 +592,7 @@ namespace Falcor
                     uint32_t dstIndex = mNameToIndex[pdstNode->nodeName];
 
                     uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
-                    mEdgeData[e] = { true, RenderGraph::EdgeData::Flags::None, srcField.getName(), dstFieldIt->getName() };
+                    mEdgeData[e] = EdgeData( srcField.getName(), dstFieldIt->getName(), true, RenderGraph::EdgeData::Flags::None );
                     mRecompile = true;
 
                     // If connection was found, continue to next unsatisfied input
@@ -611,7 +611,7 @@ namespace Falcor
         assert(mNameToIndex.count(pNodeData->nodeName) > 0);
 
         // Get names of connected input edges
-        std::vector<std::string> satisfiedFields;
+        StringVec satisfiedFields;
         const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex[pNodeData->nodeName]);
         for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); i++)
         {
@@ -632,7 +632,7 @@ namespace Falcor
         }
     }
 
-    void RenderGraph::autoGenerateEdges(const std::vector<uint32_t>& executionOrder)
+    void RenderGraph::autoGenerateEdges(const std::vector<uint32_t>& passOrder)
     {
         // Remove all previously auto-generated edges
         auto it = mEdgeData.begin();
@@ -649,10 +649,10 @@ namespace Falcor
         std::vector<NodeData*> nodeVec;
         std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
 
-        if (executionOrder.size() > 0)
+        if (passOrder.size() > 0)
         {
-            assert(executionOrder.size() == mNodeData.size());
-            for (const uint32_t& nodeId : executionOrder)
+            assert(passOrder.size() == mNodeData.size());
+            for (const uint32_t& nodeId : passOrder)
             {
                 nodeVec.push_back(&mNodeData[nodeId]);
                 mNodeData[nodeId].pPass->reflect(passReflectionMap[mNodeData[nodeId].pPass.get()]);
@@ -660,13 +660,10 @@ namespace Falcor
         }
         else
         {
-            for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
+            for (const auto& nameIndexPair : mNameToIndex)
             {
-                if (mpGraph->doesNodeExist(i))
-                {
-                    nodeVec.push_back(&mNodeData[i]);
-                    mNodeData[i].pPass->reflect(passReflectionMap[mNodeData[i].pPass.get()]);
-                }
+                nodeVec.push_back(&mNodeData[nameIndexPair.second]);
+                mNodeData[nameIndexPair.second].pPass->reflect(passReflectionMap[mNodeData[nameIndexPair.second].pPass.get()]);
             }
         }
 

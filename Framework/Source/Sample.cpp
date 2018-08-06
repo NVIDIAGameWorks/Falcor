@@ -111,7 +111,7 @@ namespace Falcor
                         toggleText(!mShowText);
                         break;
                     case KeyboardEvent::Key::F2:
-                        toggleUI((mShowUI == UIStatus::ShowAll));
+                        toggleUI(!mShowUI);
                         break;
                     case KeyboardEvent::Key::F5:
                         Program::reloadAllPrograms();
@@ -247,7 +247,7 @@ namespace Falcor
         else
         {
             mShowText = false;
-            mShowUI = UIStatus::HideAll;
+            mShowUI = false;
         }
 
 #ifdef _WIN32
@@ -305,7 +305,7 @@ namespace Falcor
 
     void Sample::renderGUI()
     {
-        if((mShowUI != UIStatus::HideAll) || gProfileEnabled)
+        if((mShowUI && mUIMode!= UIMode::HideAll) || gProfileEnabled)
         {
             mpGui->beginFrame();
 
@@ -326,7 +326,7 @@ namespace Falcor
                 ;
 #endif
 
-            if(mShowUI == UIStatus::ShowAll)
+            if(mShowUI && mUIMode == UIMode::ShowAll)
             {
                 mpGui->pushWindow("Falcor", mSampleGuiWidth, mSampleGuiHeight, mSampleGuiPositionX, mSampleGuiPositionY, false);
                 mpGui->addText("Keyboard Shortcuts");
@@ -376,7 +376,7 @@ namespace Falcor
                 }
             }
 
-            if (mShowUI == UIStatus::HideGlobal)
+            if (mUIMode == UIMode::HideGlobal && mShowUI)
             {
                 mpRenderer->onGuiRender(this, mpGui.get());
             }
@@ -607,7 +607,7 @@ namespace Falcor
         if (mVideoCapture.pVideoCapture)
         {
             mVideoCapture.pVideoCapture->endCapture();
-            mShowUI = UIStatus::ShowAll;
+            mShowUI = true;
         }
         mVideoCapture.pUI = nullptr;
         mVideoCapture.pVideoCapture = nullptr;
