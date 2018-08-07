@@ -49,9 +49,9 @@ namespace Falcor
 
         BlendState::Desc desc;
         desc.setRtBlend(0, true);
-        desc.setRtParams(0, 
-            BlendState::BlendOp::Add, BlendState::BlendOp::Add, 
-            BlendState::BlendFunc::One, BlendState::BlendFunc::One, 
+        desc.setRtParams(0,
+            BlendState::BlendOp::Add, BlendState::BlendOp::Add,
+            BlendState::BlendFunc::One, BlendState::BlendFunc::One,
             BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha);
 
         mpAdditiveBlend = BlendState::create(desc);
@@ -61,7 +61,7 @@ namespace Falcor
         mpSampler = Sampler::create(samplerDesc);
         mpVars->setSampler("gSampler", mpSampler);
 
-        mpFilter = PassFilter::create(PassFilter::Type::HighPass, threshold);
+        mpFilter = PassFilter::create(PassFilter::Type::LowPass, threshold);
         mpFilterResultFbo = Fbo::create();
     }
 
@@ -86,10 +86,10 @@ namespace Falcor
             mpLowResTexture = Texture::create2D(
                 lowResWidth,
                 lowResHeight,
-                pTexture->getFormat(), 
-                1, 
-                1, 
-                nullptr, 
+                pTexture->getFormat(),
+                1,
+                1,
+                nullptr,
                 Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
         }
     }
@@ -121,28 +121,6 @@ namespace Falcor
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
-            float threshold = mpFilter->getThreshold();
-            if (pGui->addFloatVar("Threshold", threshold, 0.0f))
-            {
-                mpFilter->setThreshold(threshold);
-            }
-
-            int32_t kernelWidth = mpBlur->getKernelWidth();
-            if (pGui->addIntVar("Kernel Width", (int&)kernelWidth, 1, 15, 2))
-            {
-                mpBlur->setKernelWidth(kernelWidth);
-            }
-
-            float sigma = mpBlur->getSigma();
-            if (pGui->addFloatVar("Sigma", sigma, 0.001f))
-            {
-                mpBlur->setSigma(sigma);
-            }
-
-            if (uiGroup) 
-            {
-                pGui->endGroup();
-            }
         }
     }
 

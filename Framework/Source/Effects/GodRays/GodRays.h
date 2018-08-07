@@ -25,31 +25,45 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "HostDeviceSharedCode.h"
+#pragma once
+#include <memory>
+#include "API/FBO.h"
+#include "Graphics/FullScreenPass.h"
+#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
+#include "Effects/Utils/PassFilter/PassFilter.h"
 
-Texture2D gSrcTex;
-SamplerState gSampler;
-
-cbuffer ParamCB : register(b0)
+namespace Falcor
 {
-    float gThreshold;
-};
+    class RenderContext;
 
-struct PSIn
-{
-    float2 texC : TEXCOORD;
-    float4 pos : SV_POSITION;
-};
+    class GodRays
+    {
+    public:
+        using UniquePtr = std::unique_ptr<GodRays>;
 
-float4 main(PSIn pIn) : SV_TARGET0
-{
-    float4 color = gSrcTex.SampleLevel(gSampler, pIn.texC, 0);
-    float lum = luminance(color.rgb);
+        static UniquePtr create(float threshold, uint32_t kernelSize = 9, float sigma = 1.5f);
 
-#ifdef HIGH_PASS
-    return color * max(smoothstep(gThreshold * 0.9f, gThreshold * 1.1f, lum), 0.0);
-#endif
-#ifdef LOW_PASS
-    return color * smoothstep(gThreshold * 1.1f, gThreshold * 0.9f, lum);
-#endif
+        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
+
+
+        /** Render UI controls for bloom settings.
+        \param[in] pGui GUI instance to render UI elements with
+        \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
+        */
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+
+    private:
+        Bloom(float threshold, uint32_t kernelSize, float sigma);
+        void updateLowResTexture(const Texture::SharedPtr& pTexture);
+
+        PassFilter::UniquePtr mpFilter;
+        Fbo::SharedPtr mpFilterResultFbo;
+        Texture::SharedPtr mpLowResTexture;
+        GaussianBlur::UniquePtr mpBlur;
+        FullScreenPass::UniquePtr mpBlitPass;
+        GraphicsVars::SharedPtr mpVars;
+        ParameterBlockReflection::BindLocation mSrcTexLoc;
+        BlendState::SharedPtr mpAdditiveBlend;
+        Sampler::SharedPtr mpSampler;
+    };
 }
