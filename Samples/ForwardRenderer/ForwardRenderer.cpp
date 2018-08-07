@@ -258,6 +258,7 @@ void ForwardRenderer::initPostProcess()
 {
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
     mpBloom = Bloom::create(1.0f);
+    mpGodRays = GodRays::create(0.5f);
 }
 
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -306,7 +307,9 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
 {
     PROFILE(postProcess);    
 
-    mpBloom->execute(pContext, mpResolveFbo);
+    //mpGodRays->mpVars->setConstantBuffer("PerFrameCB", mLightingPass.pVars->getConstantBuffer("PerFrameCB"));
+    mpGodRays->execute(pContext, mpResolveFbo);
+   // mpBloom->execute(pContext, mpResolveFbo);
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
     //mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
 }

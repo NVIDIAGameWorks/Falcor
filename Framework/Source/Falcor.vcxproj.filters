@@ -544,6 +544,9 @@
     <ClCompile Include="Effects\Bloom\Bloom.cpp">
       <Filter>Effects\Bloom</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\GodRays\GodRays.cpp">
+      <Filter>Effects\GodRays</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1711,6 +1714,9 @@
     <ClInclude Include="Effects\Bloom\Bloom.h">
       <Filter>Effects\Bloom</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\GodRays\GodRays.h">
+      <Filter>Effects\GodRays</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1907,6 +1913,9 @@
     </Filter>
     <Filter Include="Effects\Bloom">
       <UniqueIdentifier>{37f8e667-6994-4e6c-89a6-d51e8360feea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\GodRays">
+      <UniqueIdentifier>{7b5e6001-911f-444f-b24e-4ce40fd78cdc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

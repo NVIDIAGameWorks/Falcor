@@ -26,26 +26,32 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "Bloom.h"
+#include "GodRays.h"
 #include "Graphics/Program/ProgramVars.h"
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
 
 namespace Falcor
 {
-    Bloom::UniquePtr Bloom::create(float threshold, uint32_t kernelSize, float sigma)
+    GodRays::UniquePtr GodRays::create(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, int32_t numSamples)
     {
-        return Bloom::UniquePtr(new Bloom(threshold, kernelSize, sigma));
+        return GodRays::UniquePtr(new GodRays(threshold, mediumDensity, mediumDecay, mediumWeight, numSamples));
     }
 
-    Bloom::Bloom(float threshold, uint32_t kernelSize, float sigma)
+    GodRays::GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, int32_t numSamples)
+        : mMediumDensity(mediumDensity), mMediumDecay(mediumDecay), mMediumWeight(mediumWeight), mNumSamples(numSamples)
     {
-        mpBlur = GaussianBlur::create(kernelSize, sigma);
-        mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Framework/Shaders/Blit.ps.slang");
-        mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("gTex");
+        mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Effects/GodRays.ps.slang");
+        mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("gColor");
         mpVars = GraphicsVars::create(mpBlitPass->getProgram()->getReflector());
         mpVars["SrcRectCB"]["gOffset"] = vec2(0.0f);
         mpVars["SrcRectCB"]["gScale"] = vec2(1.0f);
+
+        mpVars["GodRaySettings"]["gMedia.density"] = mediumDensity;
+        mpVars["GodRaySettings"]["gMedia.decay"] = mediumDecay;
+        mpVars["GodRaySettings"]["gMedia.weight"] = mediumWeight;
+        mpVars["GodRaySettings"]["numSamples"] = numSamples;
+        mpVars["GodRaySettings"]["lightIndex"] = 0;
 
         BlendState::Desc desc;
         desc.setRtBlend(0, true);
@@ -57,22 +63,23 @@ namespace Falcor
         mpAdditiveBlend = BlendState::create(desc);
 
         Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
         mpSampler = Sampler::create(samplerDesc);
         mpVars->setSampler("gSampler", mpSampler);
 
-        mpFilter = PassFilter::create(PassFilter::Type::LowPass, threshold);
+        mpFilter = PassFilter::create(PassFilter::Type::HighPass, threshold);
         mpFilterResultFbo = Fbo::create();
     }
 
-    void Bloom::updateLowResTexture(const Texture::SharedPtr& pTexture)
+    void GodRays::updateLowResTexture(const Texture::SharedPtr& pTexture)
     {
         // Create FBO if not created already, or properties have changed since last use
         bool createFbo = mpLowResTexture == nullptr;
 
         float aspectRatio = (float)pTexture->getWidth() / (float)pTexture->getHeight();
-        uint32_t lowResHeight = max(pTexture->getHeight() / 4, 256u);
-        uint32_t lowResWidth = max(pTexture->getWidth() / 4, (uint32_t)(256.0f * aspectRatio));
+        uint32_t lowResHeight = max(pTexture->getHeight(), 512u);
+        uint32_t lowResWidth = max(pTexture->getWidth(), (uint32_t)(512.0f * aspectRatio));
 
         if (createFbo == false)
         {
@@ -94,33 +101,54 @@ namespace Falcor
         }
     }
 
-    void Bloom::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
+    void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
     {
+        // experimenting with a down sampled image for GodRays
         updateLowResTexture(pFbo->getColorTexture(0));
-
         pRenderContext->blit(pFbo->getColorTexture(0)->getSRV(), mpLowResTexture->getRTV());
 
         // Run high-pass filter and attach it to an FBO for blurring
         Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);
         mpFilterResultFbo->attachColorTarget(pHighPassResult, 0);
-        mpBlur->execute(pRenderContext, pHighPassResult, mpFilterResultFbo);
 
-        // Execute bloom
         mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         pState->pushFbo(pFbo);
         pRenderContext->pushGraphicsVars(mpVars);
-
         mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
-
         pRenderContext->popGraphicsVars();
         pState->popFbo();
     }
 
-    void Bloom::renderUI(Gui* pGui, const char* uiGroup)
+    void GodRays::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
+            if (pGui->addFloatVar("Threshold", mThreshold))
+            {
+                mpFilter->setThreshold(mThreshold);
+            }
+            if (pGui->addFloatVar("Medium Density", mMediumDensity))
+            {
+                mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
+            }
+            if (pGui->addFloatVar("Medium Decay", mMediumDecay))
+            {
+                mpVars["GodRaySettings"]["gMedia.decay"] = mMediumDecay;
+            }
+            if (pGui->addFloatVar("Medium Weight", mMediumWeight))
+            {
+                mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
+            }
+            if (pGui->addIntVar("Num Samples", mNumSamples, 0, 100))
+            {
+                mpVars["GodRaySettings"]["numSamples"] = static_cast<float>(mNumSamples);
+            }
+            if (pGui->addIntVar("Light Index", mLightIndex))
+            {
+                mpVars["GodRaySettings"]["lightIndex"] = mLightIndex;
+            }
+            pGui->endGroup();
         }
     }
 

@@ -25,52 +25,60 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include <memory>
-#include "API/FBO.h"
-#include "Graphics/FullScreenPass.h"
-#include "Effects/Utils/PassFilter/PassFilter.h"
 
-namespace Falcor
+__import ShaderCommon;
+__import Lights;
+__import Helpers;
+
+SamplerState gSampler;
+
+Texture2D gColor;
+
+struct Media
 {
-    class RenderContext;
+    float density;
+    float decay;
+    float weight; // intensity at each sample
+};
 
-    class GodRays
-    {
-    public:
-        using UniquePtr = std::unique_ptr<GodRays>;
+layout(binding = 0) cbuffer GodRaySettings
+{
+   Media gMedia;
+   float numSamples;
+   uint lightIndex;
+};
 
-        static UniquePtr create(float threshold, float mediumDensity = 100, float mediumDecay = 0.125f, float mediumWeight = 0.015f, int32_t numSamples = 10);
+float4 main(float2 texC : TEXCOORD) : SV_TARGET0
+{
+	float3 finalColor = float3(0, 0, 0);
 
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
+    //for( uint lightIndex = 0; lightIndex < 1; ++lightIndex)
+	{
+		float4 screenSpaceLightPosition = 
+		    mul(float4(gLights[int(lightIndex)].posW, 1.0f), gCamera.viewProjMat);
+		float2 texPosition = texC;
+		float2 toLightSource = texPosition - screenSpaceLightPosition.xy;
+		toLightSource *= 1.0f / ( numSamples * gMedia.density);
+		toLightSource.y *= -1.0f;
+		
+		float accumulatedDecay = 1.0f;
+		float3 currentColor = gColor.Sample( gSampler, texPosition ).xyz;
+		float3 lightIntensity = gLights[int(lightIndex)].intensity;
+		
+		for( uint i = 0; i < int(numSamples); i++)
+		{
+		    texPosition -= toLightSource;
+		    
+		    float3 nextColor = currentColor;//gColor.Sample( gSampler, texPosition ).xyz;
+		    nextColor *= accumulatedDecay * gMedia.weight;
 
+		    currentColor += nextColor * lightIntensity;
 
-        /** Render UI controls for bloom settings.
-        \param[in] pGui GUI instance to render UI elements with
-        \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
-        */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+		    accumulatedDecay *= gMedia.decay;
+		}
 
-        // move this back to private
-        GraphicsVars::SharedPtr mpVars;
+		finalColor += float3(screenSpaceLightPosition.xy, 0.0f);
+	}
 
-    private:
-        GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, int32_t numSamples);
-        void updateLowResTexture(const Texture::SharedPtr& pTexture);
-
-        float mMediumDensity;
-        float mMediumDecay;
-        float mMediumWeight;
-        float mThreshold = 1.0f;
-        int32_t mNumSamples;
-        int32_t mLightIndex = 0;
-
-        PassFilter::UniquePtr mpFilter;
-        Fbo::SharedPtr mpFilterResultFbo;
-        Texture::SharedPtr mpLowResTexture;
-        FullScreenPass::UniquePtr mpBlitPass;
-        ParameterBlockReflection::BindLocation mSrcTexLoc;
-        BlendState::SharedPtr mpAdditiveBlend;
-        Sampler::SharedPtr mpSampler;
-    };
+    return float4(finalColor, 1.0f);
 }

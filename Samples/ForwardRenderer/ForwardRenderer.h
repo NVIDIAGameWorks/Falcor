@@ -118,6 +118,7 @@ private:
 
     ToneMapping::UniquePtr mpToneMapper;
     Bloom::UniquePtr mpBloom;
+    GodRays::UniquePtr mpGodRays;
 
     struct
     {
@@ -146,7 +147,7 @@ private:
     void renderOpaqueObjects(RenderContext* pContext);
     void renderTransparentObjects(RenderContext* pContext);
 
-        void initSkyBox(const std::string& name);
+    void initSkyBox(const std::string& name);
     void initPostProcess();
     void initLightingPass();
     void initDepthPass();
