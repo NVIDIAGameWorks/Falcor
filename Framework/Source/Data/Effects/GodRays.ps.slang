@@ -41,7 +41,7 @@ struct Media
     float weight; // intensity at each sample
 };
 
-layout(binding = 0) cbuffer GodRaySettings
+cbuffer GodRaySettings
 {
    Media gMedia;
    float numSamples;
@@ -52,14 +52,25 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
 	float3 finalColor = float3(0, 0, 0);
 
-    //for( uint lightIndex = 0; lightIndex < 1; ++lightIndex)
+    //for( uint lightIndex = 0; lightIndex < gLightsCount; ++lightIndex)
 	{
-		float4 screenSpaceLightPosition = 
-		    mul(float4(gLights[int(lightIndex)].posW, 1.0f), gCamera.viewProjMat);
-		float2 texPosition = texC;
-		float2 toLightSource = texPosition - screenSpaceLightPosition.xy;
+		float2 toLightSource;
+	    float2 texPosition = texC;
+		
+		if(gLights[int(lightIndex)].type != 0)
+		{
+			float4 screenSpaceLightDir = 
+				mul(float4(gLights[int(lightIndex)].dirW, 1.0f), gCamera.viewProjMat);
+			toLightSource = -screenSpaceLightDir.xy;
+		}
+		else
+		{
+			float4 screenSpaceLightPosition = 
+				mul(float4(gLights[int(lightIndex)].posW, 1.0f), gCamera.viewProjMat);
+			toLightSource = texPosition - screenSpaceLightPosition.xy;
+		}
+			
 		toLightSource *= 1.0f / ( numSamples * gMedia.density);
-		toLightSource.y *= -1.0f;
 		
 		float accumulatedDecay = 1.0f;
 		float3 currentColor = gColor.Sample( gSampler, texPosition ).xyz;
@@ -69,15 +80,15 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 		{
 		    texPosition -= toLightSource;
 		    
-		    float3 nextColor = currentColor;//gColor.Sample( gSampler, texPosition ).xyz;
+		    float3 nextColor = gColor.Sample( gSampler, texPosition ).xyz;
 		    nextColor *= accumulatedDecay * gMedia.weight;
 
-		    currentColor += nextColor * lightIntensity;
+		    currentColor += nextColor;
 
 		    accumulatedDecay *= gMedia.decay;
 		}
 
-		finalColor += float3(screenSpaceLightPosition.xy, 0.0f);
+		finalColor += currentColor;
 	}
 
     return float4(finalColor, 1.0f);

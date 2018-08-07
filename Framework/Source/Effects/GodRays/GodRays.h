@@ -40,7 +40,7 @@ namespace Falcor
     public:
         using UniquePtr = std::unique_ptr<GodRays>;
 
-        static UniquePtr create(float threshold, float mediumDensity = 100, float mediumDecay = 0.125f, float mediumWeight = 0.015f, int32_t numSamples = 10);
+        static UniquePtr create(float threshold, float mediumDensity = 100, float mediumDecay = 0.995f, float mediumWeight = 0.015f, int32_t numSamples = 1000);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
 

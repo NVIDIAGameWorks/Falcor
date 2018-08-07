@@ -64,7 +64,7 @@ namespace Falcor
 
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+        samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         mpSampler = Sampler::create(samplerDesc);
         mpVars->setSampler("gSampler", mpSampler);
 
@@ -124,7 +124,7 @@ namespace Falcor
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
-            if (pGui->addFloatVar("Threshold", mThreshold))
+            if (pGui->addFloatVar("Medium Threshold", mThreshold))
             {
                 mpFilter->setThreshold(mThreshold);
             }
@@ -140,7 +140,7 @@ namespace Falcor
             {
                 mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
             }
-            if (pGui->addIntVar("Num Samples", mNumSamples, 0, 100))
+            if (pGui->addIntVar("Num Samples", mNumSamples, 0, 1000))
             {
                 mpVars["GodRaySettings"]["numSamples"] = static_cast<float>(mNumSamples);
             }
