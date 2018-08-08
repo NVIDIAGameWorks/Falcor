@@ -70,6 +70,7 @@ namespace Falcor
 
         mpFilter = PassFilter::create(PassFilter::Type::HighPass, threshold);
         mpFilterResultFbo = Fbo::create();
+
     }
 
     void GodRays::updateLowResTexture(const Texture::SharedPtr& pTexture)
@@ -78,8 +79,8 @@ namespace Falcor
         bool createFbo = mpLowResTexture == nullptr;
 
         float aspectRatio = (float)pTexture->getWidth() / (float)pTexture->getHeight();
-        uint32_t lowResHeight = max(pTexture->getHeight(), 512u);
-        uint32_t lowResWidth = max(pTexture->getWidth(), (uint32_t)(512.0f * aspectRatio));
+        uint32_t lowResHeight = max(pTexture->getHeight() / 4, 512u);
+        uint32_t lowResWidth = max(pTexture->getWidth() / 4, (uint32_t)(512.0f * aspectRatio));
 
         if (createFbo == false)
         {
@@ -103,6 +104,10 @@ namespace Falcor
 
     void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
     {
+        // if number of possible lights change
+        //mpBuf = TypedBuffer<uint>::create(, Resource::BindFlags::ShaderResource);
+        //mpVars->setTypedBuffer("lightIndices", mpBuf);
+
         // experimenting with a down sampled image for GodRays
         updateLowResTexture(pFbo->getColorTexture(0));
         pRenderContext->blit(pFbo->getColorTexture(0)->getSRV(), mpLowResTexture->getRTV());

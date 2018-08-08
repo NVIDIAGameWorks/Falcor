@@ -307,7 +307,10 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
 {
     PROFILE(postProcess);    
 
-    mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
+    // mpGodRays->update ();
+    // mpSceneRenderer->getScene()->getLights().at(0)->;
+
+    mpGodRays->mpVars["InternalPerFrameCB"] = mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB");
     mpBloom->execute(pContext, mpResolveFbo);
     mpGodRays->execute(pContext, mpResolveFbo);
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
@@ -362,7 +365,7 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
         mpSceneRenderer->setRenderMode(ForwardRendererSceneRenderer::Mode::All);
         mpSceneRenderer->renderScene(pContext);
     }
-    // pContext->flush();
+    pContext->flush();
     mpState->setDepthStencilState(nullptr);
 }
 

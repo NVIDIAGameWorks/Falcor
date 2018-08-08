@@ -64,7 +64,9 @@ namespace Falcor
         float mThreshold = 1.0f;
         int32_t mNumSamples;
         int32_t mLightIndex = 0;
+        TypedBuffer<uint>::SharedPtr mpBuf;
 
+        //Scene::SharedPtr mpScene;
         PassFilter::UniquePtr mpFilter;
         Fbo::SharedPtr mpFilterResultFbo;
         Texture::SharedPtr mpLowResTexture;
