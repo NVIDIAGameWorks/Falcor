@@ -259,6 +259,7 @@ void ForwardRenderer::initPostProcess()
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
     mpBloom = Bloom::create(1.0f);
     mpGodRays = GodRays::create(0.5f);
+    mpMotionBlur = MotionBlur::create(20);
     mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
 }
 
@@ -315,6 +316,9 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     mpBloom->execute(pContext, mpResolveFbo);
     mpGodRays->execute(pContext, mpResolveFbo);
     mpDepthOfField->execute(pContext, mpResolveFbo);
+    mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
+
+
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
     mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
 }
@@ -354,8 +358,10 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     if (mAAMode == AAMode::TAA)
     {
         pContext->clearFbo(mTAA.getActiveFbo().get(), vec4(0.0, 0.0, 0.0, 0.0), 1, 0, FboAttachmentType::Color);
-        pCB["gRenderTargetDim"] = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     }
+
+    pContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0.0, 0.0, 0.0, 0.0));
+    pCB["gRenderTargetDim"] = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
 
     if(mControls[EnableTransparency].enabled)
     {

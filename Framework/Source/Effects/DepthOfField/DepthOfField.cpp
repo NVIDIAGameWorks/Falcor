@@ -48,10 +48,7 @@ namespace Falcor
 
     DepthOfField::DepthOfField(const Camera::SharedConstPtr& pCamera)
     {
-        for (uint32_t i = 0; i < mpBlurPasses.size(); ++i)
-        {
-            mpBlurPasses[i] = GaussianBlur::create(5 + 2 * i, (7.0f + 2.0f * i) / 2.0f);
-        }
+        mpBlurPass = GaussianBlur::create();
         
         mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Effects/DepthOfField.ps.slang");
         mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("gSrcTex");
@@ -76,69 +73,104 @@ namespace Falcor
         mpVars->setSampler("gSampler", mpSampler);
         
         mpBlurredFbo = Fbo::create();
-        mpTempFbo = Fbo::create();
         
-
         setCamera(pCamera);
     }
 
     DepthOfField::DepthOfField(float planeOfFocus, float aperture, float focalLength, float nearZ, float farZ)
-        : mPlaneOfFocus(planeOfFocus), mAperture(aperture), mFocalLength(focalLength), mNearZ(nearZ), mFarZ(farZ)
+        : DepthOfField(nullptr)
     {
+        mpVars["DepthOfField"]["planeOfFocus"] = planeOfFocus;
+        mpVars["DepthOfField"]["aperture"] = aperture;
+        mpVars["DepthOfField"]["focalLength"] = focalLength;
+        mpVars["DepthOfField"]["nearZ"] = nearZ;
+        mpVars["DepthOfField"]["farZ"] = farZ;
     }
 
     void DepthOfField::setCamera(const Camera::SharedConstPtr& pCamera)
     {
         mpCamera = pCamera;
+        updateFromCamera();
+    }
 
-        if (pCamera)
+    void DepthOfField::updateFromCamera()
+    {
+        if (mpCamera)
         {
-            mPlaneOfFocus = pCamera->getFocalDistance();
-            mAperture = pCamera->getApertureRadius();
-            mFocalLength = pCamera->getFocalLength();
-            mNearZ = pCamera->getNearPlane();
-            mFarZ = pCamera->getFarPlane();
+            mpVars["DepthOfField"]["planeOfFocus"] = mpCamera->getFocalDistance();
+            mpVars["DepthOfField"]["aperture"] = mpCamera->getApertureRadius();
+            mpVars["DepthOfField"]["focalLength"] = mpCamera->getFocalLength();
+            mpVars["DepthOfField"]["nearZ"] = mpCamera->getNearPlane();
+            mpVars["DepthOfField"]["farZ"] = mpCamera->getFarPlane();
         }
+    }
 
-        mpVars["DepthOfField"]["planeOfFocus"] = mPlaneOfFocus;
-        mpVars["DepthOfField"]["aperture"] = mAperture;
-        mpVars["DepthOfField"]["focalLength"] = mFocalLength;
-        mpVars["DepthOfField"]["nearZ"] = mNearZ;
-        mpVars["DepthOfField"]["farZ"] = mFarZ;
+    void DepthOfField::updateTextures(const Texture::SharedPtr& pTexture)
+    {
+        uint32_t imageWidth = pTexture->getWidth(), imageHeight = pTexture->getHeight();
+
+        // resize the images so they will fit with the blit
+        for (uint32_t i = 0; i < mpBlurredImages.size(); ++i)
+        {
+            if (!mpBlurredImages[i] ||
+                (mpBlurredImages[i]->getWidth() != imageWidth ||
+                    mpBlurredImages[i]->getHeight() != imageHeight))
+            {
+                mpBlurredImages[i] = Texture::create2D(
+                    imageWidth, imageHeight,
+                    pTexture->getFormat(), 1, 1, nullptr,
+                    Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
+
+                if (i >= 1)
+                {
+                    if (!mpTempImages[i - 1] ||
+                        (mpBlurredImages[i]->getWidth() != mpTempImages[i - 1]->getWidth() ||
+                            mpBlurredImages[i]->getHeight() != mpTempImages[i - 1]->getHeight()))
+                    {
+                        mpTempImages[i - 1] = Texture::create2D(
+                            imageWidth, imageHeight,
+                            pTexture->getFormat(), 1, 1, nullptr,
+                            Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
+                    }
+                }
+            }
+
+            imageWidth /= 2;
+            imageHeight /= 2;
+        }
     }
 
     void DepthOfField::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
     {
         Texture::SharedPtr pSrcColorTexture = pFbo->getColorTexture(0);
-        mpVars["DepthOfField"]["nearZ"] = mNearZ;
-
-        if (!mpBlurredFbo->getColorTexture(0) ||
-            (mpBlurredFbo->getColorTexture(0)->getWidth()  != pSrcColorTexture->getWidth() ||
-             mpBlurredFbo->getColorTexture(0)->getHeight() != pSrcColorTexture->getHeight()))
-        {
-            Texture::SharedPtr pBlurredArrayImage = Texture::create2D(
-                pSrcColorTexture->getWidth(), pSrcColorTexture->getHeight(),
-                pFbo->getColorTexture(0)->getFormat(), static_cast<uint32_t>(mpBlurPasses.size()), 
-                1, nullptr,
-                Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget);
-
-            mpBlurredFbo->attachColorTarget(pBlurredArrayImage, 0, 0, 0, 1);
-            mpTempFbo->attachColorTarget(pBlurredArrayImage, 0, 0, 0, 1);
-        }
-
-        pRenderContext->blit(pSrcColorTexture->getSRV(), mpBlurredFbo->getColorTexture(0)->getRTV());
         
-        // blur the entire array texture
-        for (uint32_t i = 0; i < mpBlurredFbo->getColorTexture(0)->getArraySize() - 1; ++i)
+        if (!mOverrideCamera)
         {
-            mpTempFbo->attachColorTarget(mpTempFbo->getColorTexture(0), 0, 0, i, 1);
-            mpBlurredFbo->attachColorTarget(mpBlurredFbo->getColorTexture(0), 0, 0, i + 1, 1);
-            mpBlurPasses[i]->execute(pRenderContext, mpTempFbo->getColorTexture(0), mpBlurredFbo, i);
+            updateFromCamera();
         }
 
-        mpBlurredFbo->attachColorTarget(mpBlurredFbo->getColorTexture(0), 0);
+        updateTextures(pFbo->getColorTexture(0)); mpCamera->getNearPlane();
+        mpVars["DepthOfField"]["nearZ"] = 0.1f;
 
-        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, mpBlurredFbo->getColorTexture(0)->getSRV());
+        pRenderContext->blit(pSrcColorTexture->getSRV(), mpBlurredImages[0]->getRTV());
+        
+        // down scale the screen 4 times
+        pRenderContext->blit(mpBlurredImages[0]->getSRV(), mpTempImages[0]->getRTV());
+        pRenderContext->blit(mpTempImages[0]->getSRV(), mpTempImages[1]->getRTV());
+        pRenderContext->blit(mpTempImages[1]->getSRV(), mpTempImages[2]->getRTV());
+        pRenderContext->blit(mpTempImages[2]->getSRV(), mpTempImages[3]->getRTV());
+
+        // blur the last three images
+        for (uint32_t i = 0; i < 4; ++i)
+        {
+            mpBlurredFbo->attachColorTarget(mpBlurredImages[i + 1], 0);
+            mpBlurPass->execute(pRenderContext, mpTempImages[i], mpBlurredFbo);
+        }
+
+        for (uint32_t i = 0; i < mpBlurredImages.size(); ++i)
+        {
+            mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, i, mpBlurredImages[i]->getSRV());
+        }
         mpVars->getDefaultBlock()->setSrv(mSrcDepthLoc, 0, pFbo->getDepthStencilTexture()->getSRV());
         
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
@@ -153,7 +185,12 @@ namespace Falcor
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
-            //if (!mpCamera)
+            if (mpCamera)
+            {
+                pGui->addCheckBox("Override Camera", mOverrideCamera);
+            }
+
+            if (!mpCamera || mOverrideCamera)
             {
                 mpVars["DepthOfField"]->renderUI(pGui, "");
             }

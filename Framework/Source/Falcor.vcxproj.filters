@@ -550,6 +550,9 @@
     <ClCompile Include="Effects\DepthOfField\DepthOfField.cpp">
       <Filter>Effects\DepthOfField</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\MotionBlur\MotionBlur.cpp">
+      <Filter>Effects\MotionBlur</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1723,6 +1726,9 @@
     <ClInclude Include="Effects\DepthOfField\DepthOfField.h">
       <Filter>Effects\DepthOfField</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\MotionBlur\MotionBlur.h">
+      <Filter>Effects\MotionBlur</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1925,6 +1931,9 @@
     </Filter>
     <Filter Include="Effects\DepthOfField">
       <UniqueIdentifier>{b01006f8-f182-40d4-a4b8-d01b0526411c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\MotionBlur">
+      <UniqueIdentifier>{77f52c8b-bf1e-483a-8f05-a800e8b3a7a0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

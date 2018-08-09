@@ -95,6 +95,8 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
     // Release the TAA FBOs
     mTAA.resetFbos();
 
+    mLightingPass.pProgram->addDefine("_OUTPUT_MOTION_VECTORS");
+    fboDesc.setColorTarget(2, ResourceFormat::RG16Float);
     if (mAAMode == AAMode::TAA)
     {
         mLightingPass.pProgram->removeDefine("INTERPOLATION_MODE");
@@ -107,7 +109,7 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
     }
     else
     {
-        mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
+        //mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
         fboDesc.setSampleCount(mAAMode == AAMode::MSAA ? mMSAASampleCount : 1);
 
@@ -305,6 +307,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mpBloom->renderUI(pGui, "Bloom");
         mpGodRays->renderUI(pGui, "GodRays");
         mpDepthOfField->renderUI(pGui, "DepthOfField");
+        mpMotionBlur->renderUI(pGui, "MotionBlur");
 
         if (pGui->beginGroup("Shadows"))
         {

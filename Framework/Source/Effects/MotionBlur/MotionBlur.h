@@ -25,49 +25,55 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
+#pragma once
+#include <memory>
+#include <array>
+#include "API/FBO.h"
+#include "Graphics/FullScreenPass.h"
+#include "Graphics/Camera/Camera.h"
+#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
+#include "Effects/Utils/PassFilter/PassFilter.h"
 
-__import Helpers;
-
-Texture2D gSrcTex[5];
-Texture2D gSrcDepthTex;
-
-SamplerState gSampler;
-
-cbuffer DepthOfField
+namespace Falcor
 {
-    float planeOfFocus;
-    float aperture;
-    float focalLength;
-    float nearZ;
-    float farZ;
-};
+    class RenderContext;
 
-float4 depthOfField(float2 texC)
-{
-   // read depth from scene render and calculate CoC per pixel
-   float depth = gSrcDepthTex.SampleLevel(gSampler, texC, 0).r;
+    class MotionBlur
+    {
+    public:
+        using UniquePtr = std::unique_ptr<MotionBlur>;
 
-   float objectDistance = -farZ * nearZ / (depth * (farZ - nearZ) - farZ);
+        static UniquePtr create(int32_t numSamples);
 
-   float circleOfConfusionRadius = aperture * (focalLength * (objectDistance - planeOfFocus));
-   float denom = max(0.00001, abs(objectDistance * (planeOfFocus - focalLength)));
-   circleOfConfusionRadius /= denom;
-   circleOfConfusionRadius = abs(circleOfConfusionRadius);
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pVelocityTex, Fbo::SharedPtr pFbo);
 
-   uint width, height;
-   gSrcTex[int(round(circleOfConfusionRadius))].GetDimensions(width, height);
 
-   // jitter texC to reduce artifacts
-   // texC += sineHash3D(float3(texC, objectDistance)) / width;
+        /** Render UI controls for bloom settings.
+        \param[in] pGui GUI instance to render UI elements with
+        \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
+        */
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
-   float result = (circleOfConfusionRadius > 1.5) ? 1.0f : 0.0f;
+        void setNumSamples(int32_t numSamples);
+        void setIntensity(float intensity);
 
-   return  gSrcTex[int(round(circleOfConfusionRadius))].SampleLevel(gSampler, texC, 0);
-}
+        // move this back to private
+        GraphicsVars::SharedPtr mpVars;
 
-float4 main(float2 texC : TEXCOORD) : SV_TARGET0
-{
-    float4 fragColor = float4(1.f, 1.f, 1.f, 1.f);
-    fragColor = depthOfField(texC);
-    return fragColor;
+    private:
+        MotionBlur(int32_t numSamples = 20);
+
+        void createShader();
+
+        int32_t mNumSamples = 20;
+        float mIntensity = 1.0f;
+        bool mDirty = false;
+
+        Texture::SharedPtr mpSrcTex = nullptr;
+        FullScreenPass::UniquePtr mpBlitPass;
+        ParameterBlockReflection::BindLocation mSrcTexLoc;
+        ParameterBlockReflection::BindLocation mSrcVelocityLoc;
+        BlendState::SharedPtr mpAdditiveBlend;
+        Sampler::SharedPtr mpSampler;
+    };
 }

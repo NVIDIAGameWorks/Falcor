@@ -28,46 +28,32 @@
 
 __import Helpers;
 
-Texture2D gSrcTex[5];
-Texture2D gSrcDepthTex;
+Texture2D gSrcTex;
+Texture2D gSrcVelocityTex;
 
 SamplerState gSampler;
 
-cbuffer DepthOfField
+float3 motionBlur(float2 texC)
 {
-    float planeOfFocus;
-    float aperture;
-    float focalLength;
-    float nearZ;
-    float farZ;
-};
-
-float4 depthOfField(float2 texC)
-{
-   // read depth from scene render and calculate CoC per pixel
-   float depth = gSrcDepthTex.SampleLevel(gSampler, texC, 0).r;
-
-   float objectDistance = -farZ * nearZ / (depth * (farZ - nearZ) - farZ);
-
-   float circleOfConfusionRadius = aperture * (focalLength * (objectDistance - planeOfFocus));
-   float denom = max(0.00001, abs(objectDistance * (planeOfFocus - focalLength)));
-   circleOfConfusionRadius /= denom;
-   circleOfConfusionRadius = abs(circleOfConfusionRadius);
-
+   float2 vel = gSrcVelocityTex.SampleLevel(gSampler, texC, 0).xy;
+   float3 color = float3(0.0f, 0.0f, 0.0f);
    uint width, height;
-   gSrcTex[int(round(circleOfConfusionRadius))].GetDimensions(width, height);
-
-   // jitter texC to reduce artifacts
-   // texC += sineHash3D(float3(texC, objectDistance)) / width;
-
-   float result = (circleOfConfusionRadius > 1.5) ? 1.0f : 0.0f;
-
-   return  gSrcTex[int(round(circleOfConfusionRadius))].SampleLevel(gSampler, texC, 0);
+   gSrcTex.GetDimensions(width, height);
+   
+   vel.x /= float(width);
+   vel.y /= float(height);
+   
+   for(uint i = 0; i < _NUM_SAMPLES; ++i)
+   {
+	    texC += vel;
+		color += gSrcTex.SampleLevel(gSampler, texC, 0).xyz;
+   }
+   return color / float(_NUM_SAMPLES);
 }
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-    float4 fragColor = float4(1.f, 1.f, 1.f, 1.f);
-    fragColor = depthOfField(texC);
+    float4 fragColor = gSrcTex.SampleLevel(gSampler, texC, 0);
+    fragColor.xyz += motionBlur(texC);
     return fragColor;
 }

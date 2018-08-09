@@ -120,6 +120,7 @@ private:
     Bloom::UniquePtr mpBloom;
     GodRays::UniquePtr mpGodRays;
     DepthOfField::UniquePtr mpDepthOfField;
+    MotionBlur::UniquePtr mpMotionBlur;
 
     struct
     {

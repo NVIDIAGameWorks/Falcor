@@ -63,6 +63,8 @@ namespace Falcor
         DepthOfField(const Camera::SharedConstPtr& mpCamera);
 
         void setCamera(const Camera::SharedConstPtr& pCamera);
+        void updateFromCamera();
+        void updateTextures(const Texture::SharedPtr& pTexture);
 
         Camera::SharedConstPtr mpCamera;
         float mPlaneOfFocus;
@@ -70,10 +72,13 @@ namespace Falcor
         float mFocalLength;
         float mNearZ;
         float mFarZ;
-        
-        std::array<GaussianBlur::UniquePtr, 4> mpBlurPasses;
+        bool mOverrideCamera;
+
+        GaussianBlur::UniquePtr mpBlurPass;
+        std::array<Texture::SharedPtr, 5> mpBlurredImages;
+        std::array<Texture::SharedPtr, 4> mpTempImages;
+
         Fbo::SharedPtr mpBlurredFbo;
-        Fbo::SharedPtr mpTempFbo;
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         ParameterBlockReflection::BindLocation mSrcDepthLoc;
