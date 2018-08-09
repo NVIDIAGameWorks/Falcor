@@ -27,23 +27,27 @@
 ***************************************************************************/
 #pragma once
 #include <memory>
+#include <array>
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
+#include "Graphics/Camera/Camera.h"
+#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
 #include "Effects/Utils/PassFilter/PassFilter.h"
 
 namespace Falcor
 {
     class RenderContext;
 
-    class GodRays
+    class DepthOfField
     {
     public:
-        using UniquePtr = std::unique_ptr<GodRays>;
+        using UniquePtr = std::unique_ptr<DepthOfField>;
 
-        static UniquePtr create(float threshold, float mediumDensity = 1000, float mediumDecay = 0.887f, float mediumWeight = 0.725f, int32_t numSamples = 50);
+        static UniquePtr create(const Camera::SharedConstPtr& mpCamera);
+        static UniquePtr create(float mPlaneOfFocus, float mAperture, float mFocalLength, float mNearZ, float mFarZ);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
-        void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrcFbo, Fbo::SharedPtr pFbo);
+
 
         /** Render UI controls for bloom settings.
         \param[in] pGui GUI instance to render UI elements with
@@ -55,23 +59,24 @@ namespace Falcor
         GraphicsVars::SharedPtr mpVars;
 
     private:
-        GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, int32_t numSamples);
-        void updateLowResTexture(const Texture::SharedPtr& pTexture);
+        DepthOfField(float planeOfFocus, float aperture, float focalLength, float nearZ, float farZ);
+        DepthOfField(const Camera::SharedConstPtr& mpCamera);
 
-        float mMediumDensity;
-        float mMediumDecay;
-        float mMediumWeight;
-        float mThreshold = 1.0f;
-        int32_t mNumSamples;
-        int32_t mLightIndex = 0;
-        TypedBuffer<uint>::SharedPtr mpBuf;
+        void setCamera(const Camera::SharedConstPtr& pCamera);
 
-        //Scene::SharedPtr mpScene;
-        PassFilter::UniquePtr mpFilter;
-        Fbo::SharedPtr mpFilterResultFbo;
-        Texture::SharedPtr mpLowResTexture;
+        Camera::SharedConstPtr mpCamera;
+        float mPlaneOfFocus;
+        float mAperture;
+        float mFocalLength;
+        float mNearZ;
+        float mFarZ;
+        
+        std::array<GaussianBlur::UniquePtr, 4> mpBlurPasses;
+        Fbo::SharedPtr mpBlurredFbo;
+        Fbo::SharedPtr mpTempFbo;
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
+        ParameterBlockReflection::BindLocation mSrcDepthLoc;
         BlendState::SharedPtr mpAdditiveBlend;
         Sampler::SharedPtr mpSampler;
     };

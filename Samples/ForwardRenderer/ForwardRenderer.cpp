@@ -259,13 +259,15 @@ void ForwardRenderer::initPostProcess()
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
     mpBloom = Bloom::create(1.0f);
     mpGodRays = GodRays::create(0.5f);
+    mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
 }
 
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
 {
     mpState = GraphicsState::create();
-    initPostProcess();
     loadScene(pSample, skDefaultScene, true);
+    // after scene to give depthOfFieldPass the active camera
+    initPostProcess();
 }
 
 void ForwardRenderer::renderSkyBox(RenderContext* pContext)
@@ -307,12 +309,12 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
 {
     PROFILE(postProcess);    
 
-    // mpGodRays->update ();
-    // mpSceneRenderer->getScene()->getLights().at(0)->;
+    // TODO --  abstract this away
+    mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
 
-    mpGodRays->mpVars["InternalPerFrameCB"] = mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB");
     mpBloom->execute(pContext, mpResolveFbo);
     mpGodRays->execute(pContext, mpResolveFbo);
+    mpDepthOfField->execute(pContext, mpResolveFbo);
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
     mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
 }

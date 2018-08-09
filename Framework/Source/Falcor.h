@@ -138,6 +138,7 @@
 #include "Effects/Utils/PassFilter/PassFilter.h"
 #include "Effects/Bloom/Bloom.h"
 #include "Effects/GodRays/GodRays.h"
+#include "Effects/DepthOfField/DepthOfField.h"
 #include "Effects/SkyBox/SkyBox.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Effects/AmbientOcclusion/SSAO.h"

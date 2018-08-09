@@ -26,62 +26,48 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-__import ShaderCommon;
-__import Lights;
 __import Helpers;
+
+Texture2DArray gSrcTex;
+Texture2D gSrcDepthTex;
 
 SamplerState gSampler;
 
-Texture2D gColor;
-
-struct Media
+cbuffer DepthOfField
 {
-    float density;
-    float decay;
-    float weight; // intensity at each sample
+    float planeOfFocus;
+    float aperture;
+    float focalLength;
+    float nearZ;
+    float farZ;
 };
 
-cbuffer GodRaySettings
+float4 depthOfField(float2 texC)
 {
-   Media gMedia;
-   float numSamples;
-   uint lightIndex;
-};
+   // read depth from scene render and calculate CoC per pixel
+   float depth = gSrcDepthTex.SampleLevel(gSampler, texC, 0).r;
+
+   float objectDistance = -farZ * nearZ / (depth * (farZ - nearZ) - farZ);
+
+   float circleOfConfusionRadius = aperture * (focalLength * (objectDistance - planeOfFocus));
+   float denom = max(0.00001, abs(objectDistance * (planeOfFocus - focalLength)));
+   circleOfConfusionRadius /= denom;
+   circleOfConfusionRadius = abs(circleOfConfusionRadius);
+
+   uint width, height, elements;
+   gSrcTex.GetDimensions(width, height, elements);
+
+   // jitter texC to reduce artifacts
+   // texC += sineHash3D(float3(texC, objectDistance)) / width;
+
+   float result = (circleOfConfusionRadius > 1.5) ? 1.0f : 0.0f;
+
+   return  gSrcTex.SampleLevel(gSampler, float3(texC, circleOfConfusionRadius), 0);
+}
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-	float3 finalColor = float3(0, 0, 0);
-
-    //for( uint lightIndex = 0; lightIndex < gLightsCount; ++lightIndex)
-	{
-		float2 toLightSource;
-	    float2 texPosition = texC;
-		
-		float4 screenSpaceLightPosition = 
-			mul(float4(gLights[int(lightIndex)].posW, 1.0f), gCamera.viewProjMat);
-		screenSpaceLightPosition.xyz / screenSpaceLightPosition.w;
-		toLightSource = texPosition - screenSpaceLightPosition.xy;
-		toLightSource.y *= -1.0f;
-		toLightSource *= 1.0f / ( numSamples * gMedia.density);
-		
-		float accumulatedDecay = 1.0f;
-		float3 currentColor = gColor.Sample( gSampler, texPosition ).xyz;
-		float3 lightIntensity = gLights[int(lightIndex)].intensity;
-		
-		for(uint i = 0; i < int(numSamples); i++)
-		{
-		    texPosition -= toLightSource;
-		    
-		    float3 nextColor = gColor.Sample( gSampler, texPosition ).xyz;
-		    nextColor *= accumulatedDecay * gMedia.weight;
-
-		    currentColor += nextColor * gLights[int(lightIndex)].intensity;
-
-		    accumulatedDecay *= gMedia.decay;
-		}
-		
-		finalColor += currentColor;
-	}
-
-    return float4(finalColor, 1.0f);
+    float4 fragColor = float4(1.f, 1.f, 1.f, 1.f);
+    fragColor = depthOfField(texC);
+    return fragColor;
 }

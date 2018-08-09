@@ -79,8 +79,8 @@ namespace Falcor
         bool createFbo = mpLowResTexture == nullptr;
 
         float aspectRatio = (float)pTexture->getWidth() / (float)pTexture->getHeight();
-        uint32_t lowResHeight = max(pTexture->getHeight() / 4, 512u);
-        uint32_t lowResWidth = max(pTexture->getWidth() / 4, (uint32_t)(512.0f * aspectRatio));
+        uint32_t lowResHeight = max(pTexture->getHeight() / 4, 256u);
+        uint32_t lowResWidth = max(pTexture->getWidth() / 4, (uint32_t)(256.0f * aspectRatio));
 
         if (createFbo == false)
         {
@@ -104,13 +104,19 @@ namespace Falcor
 
     void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
     {
-        // if number of possible lights change
-        //mpBuf = TypedBuffer<uint>::create(, Resource::BindFlags::ShaderResource);
-        //mpVars->setTypedBuffer("lightIndices", mpBuf);
+        execute(pRenderContext, pFbo, pFbo);
+    }
+
+    void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrcFbo, Fbo::SharedPtr pFbo)
+    {
+        assert(pFbo->getWidth() == pSrcFbo->getWidth() && pSrcFbo->getHeight() == pFbo->getHeight());
+
+        // if the buffer is not updated ever frame it doesn't see the InternalPerFrameCB changes??
+        mpVars["GodRaySettings"]["numSamples"] = mMediumDensity;
 
         // experimenting with a down sampled image for GodRays
         updateLowResTexture(pFbo->getColorTexture(0));
-        pRenderContext->blit(pFbo->getColorTexture(0)->getSRV(), mpLowResTexture->getRTV());
+        pRenderContext->blit(pSrcFbo->getColorTexture(0)->getSRV(), mpLowResTexture->getRTV());
 
         // Run high-pass filter and attach it to an FBO for blurring
         Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);

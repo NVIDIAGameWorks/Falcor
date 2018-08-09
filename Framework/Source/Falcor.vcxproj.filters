@@ -547,6 +547,9 @@
     <ClCompile Include="Effects\GodRays\GodRays.cpp">
       <Filter>Effects\GodRays</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\DepthOfField\DepthOfField.cpp">
+      <Filter>Effects\DepthOfField</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1717,6 +1720,9 @@
     <ClInclude Include="Effects\GodRays\GodRays.h">
       <Filter>Effects\GodRays</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\DepthOfField\DepthOfField.h">
+      <Filter>Effects\DepthOfField</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1916,6 +1922,9 @@
     </Filter>
     <Filter Include="Effects\GodRays">
       <UniqueIdentifier>{7b5e6001-911f-444f-b24e-4ce40fd78cdc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\DepthOfField">
+      <UniqueIdentifier>{b01006f8-f182-40d4-a4b8-d01b0526411c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

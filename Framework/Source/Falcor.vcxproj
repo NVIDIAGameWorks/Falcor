@@ -381,6 +381,7 @@
     <ClCompile Include="ArgList.cpp" />
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp" />
     <ClCompile Include="Effects\Bloom\Bloom.cpp" />
+    <ClCompile Include="Effects\DepthOfField\DepthOfField.cpp" />
     <ClCompile Include="Effects\FXAA\FXAA.cpp" />
     <ClCompile Include="Effects\GodRays\GodRays.cpp" />
     <ClCompile Include="Effects\NormalMap\LeanMap.cpp" />
@@ -937,6 +938,7 @@
     <ClInclude Include="Data\VertexAttrib.h" />
     <ClInclude Include="Effects\AmbientOcclusion\SSAO.h" />
     <ClInclude Include="Effects\Bloom\Bloom.h" />
+    <ClInclude Include="Effects\DepthOfField\DepthOfField.h" />
     <ClInclude Include="Effects\FXAA\FXAA.h" />
     <ClInclude Include="Effects\GodRays\GodRays.h" />
     <ClInclude Include="Effects\NormalMap\LeanMap.h" />

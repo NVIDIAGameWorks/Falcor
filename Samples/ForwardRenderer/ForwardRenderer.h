@@ -119,6 +119,7 @@ private:
     ToneMapping::UniquePtr mpToneMapper;
     Bloom::UniquePtr mpBloom;
     GodRays::UniquePtr mpGodRays;
+    DepthOfField::UniquePtr mpDepthOfField;
 
     struct
     {
