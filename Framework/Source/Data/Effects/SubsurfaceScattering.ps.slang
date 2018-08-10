@@ -25,56 +25,66 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include <memory>
-#include <array>
-#include "API/FBO.h"
-#include "Graphics/FullScreenPass.h"
-#include "Graphics/Camera/Camera.h"
-#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
-#include "Effects/Utils/PassFilter/PassFilter.h"
 
-namespace Falcor
+Texture2D gSrcTex;
+Texture2D gSrcDepthTex;
+
+// depth map ???
+
+SamplerState gSampler;
+
+cbuffer subsurface
 {
-    class RenderContext;
+	float2 dir;
+	float2 pixelSize;
+	float gaussianWidth; // 
+	float level;         // 31.5f
+	float scattering;    // 800
+	float maxDepth;      // 0.001
+};
 
-    class FilmGrain
+#define _KERNEL_WIDTH 3
+buffer<float> gaussianWeights;
+
+float3 subsurface(float2 texC)
+{
+	float depth = gSrcDepthTex.SampleLevel(gSampler, texC, 0).x;
+	float widthXLevel = gaussianWidth * level;
+	
+	// early breakout if width is too small to blur in neighboring pixels
+	if (0.5f * widthXLevel > depth)
+	{
+		return diffuseColor;
+	}
+	
+	// divide by depth for closer objects to have higher blur
+	float2 offsetStep = (pixelSize * dir * widthXLevel) / depth;
+	float2 texOffset = -offsetStep;
+	
+	// calculate stretch factor based on the depths for the gaussianWeights
+	float depthGradient = abs( min( dir.x > 0 ? ddx(depth) : ddy(depth), maxDepth ) );
+	float sfDenom = depth + scattering * depthGradient;
+	float stretchFactor = level / sfDenom;
+	
+	float3 diffuseColor = gSrcTex.SampleLevel(gSampler, texC, 0).xyz;
+	
+	$for(i in Range(_KERNEL_WIDTH))
     {
-    public:
-        using UniquePtr = std::unique_ptr<FilmGrain>;
+		float3 sample = gSrcTex.SampleLevel(gSampler, texC + texOffset, 0).xyz;
+		float sampleDepth = gSrcDepthTex.SampleLevel(gSampler, texC + texOffset, 0).x;
+		
+		// test change of depth from first pixel. go back to original color if too big
+		float lerpVal = min(1.0f, 0.0125f * scattering * abs(depth - sampleDepth));
+		sample = lerp(sample, diffuseColor, lerpVal);
+		
+		diffuseColor += gaussianWeights[i] * sample;
+		texOffset += offsetStep / _KERNEL_WIDTH;
+	}
+	
+	return diffuseColor;
+}
 
-        static UniquePtr create(float grainSize);
-
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
-
-
-        /** Render UI controls for bloom settings.
-        \param[in] pGui GUI instance to render UI elements with
-        \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
-        */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
-
-        void setGrainSize(float grainSize);
-        void setSeed(float seed);
-
-        // move this back to private
-        GraphicsVars::SharedPtr mpVars;
-
-    private:
-        FilmGrain(float grainSize = 1.0f);
-
-        void createShader();
-        
-
-        float mGrainSize = 1.0f;
-        float mIntensity = 1.0f;
-        bool mDirty = false;
-
-        Texture::SharedPtr mpSrcTex = nullptr;
-        FullScreenPass::UniquePtr mpBlitPass;
-        ParameterBlockReflection::BindLocation mSrcTexLoc;
-        ParameterBlockReflection::BindLocation mSrcVelocityLoc;
-        BlendState::SharedPtr mpAdditiveBlend;
-        Sampler::SharedPtr mpSampler;
-    };
+float4 main(float2 texC : TEXCOORD) : SV_TARGET0
+{
+    return subsurface(texC);
 }

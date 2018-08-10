@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,55 +26,63 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include <memory>
-#include <array>
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
-#include "Graphics/Camera/Camera.h"
-#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
-#include "Effects/Utils/PassFilter/PassFilter.h"
+#include "API/Sampler.h"
+#include "Graphics/Program/ProgramVars.h"
+#include <memory>
 
 namespace Falcor
 {
     class RenderContext;
+    class Texture;
+    class Fbo;
+    class Gui;
 
-    class FilmGrain
+    /** Seperable Screen-Space Subsurface Scattering Technique. Requires diffuse lit texture, depth texture, and mask for accurate output
+    */
+    class SubsurfaceScattering
     {
     public:
-        using UniquePtr = std::unique_ptr<FilmGrain>;
+        using UniquePtr = std::unique_ptr<SubsurfaceScattering>;
+        /** Destructor
+        */
+        ~SubsurfaceScattering();
 
-        static UniquePtr create(float grainSize);
+        /** Create a new object
+        \param[in] kernelSize Number of samples taken along each axis
+        \param[in] sigma Gaussian distribution sigma value used to calculate sample weights. Values smaller than twice the sigma are ineffective
+        */
+        static UniquePtr create(uint32_t kernelSize = 5, float sssStrength = 31.5f,  float scatteringCorrection = 800);
 
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
+        /** Apply gaussian blur by rendering one texture into another.
+        \param pRenderContext Render context to use
+        \param pSrc The source texture
+        \param pDst The destination texture
+        */
+        void execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcStencilMask);
 
-
-        /** Render UI controls for bloom settings.
+        /** Render UI controls for blur settings.
         \param[in] pGui GUI instance to render UI elements with
         \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
-        void setGrainSize(float grainSize);
-        void setSeed(float seed);
+    private:
+        SubsurfaceScattering(uint32_t kernelSize = 5, float sssStrength = 31.5f, float scatteringCorrection = 800);
+        
+        void createTmpFbo(const Texture* pSrc);
+        void createProgram();
+        void updateDiffusionProfile();
 
-        // move this back to private
+        FullScreenPass::UniquePtr mpBlurPass;
+        Fbo::SharedPtr mpTmpFbo;
+        Sampler::SharedPtr mpSampler;
+        bool mDirty = false;
         GraphicsVars::SharedPtr mpVars;
 
-    private:
-        FilmGrain(float grainSize = 1.0f);
-
-        void createShader();
-        
-
-        float mGrainSize = 1.0f;
-        float mIntensity = 1.0f;
-        bool mDirty = false;
-
-        Texture::SharedPtr mpSrcTex = nullptr;
-        FullScreenPass::UniquePtr mpBlitPass;
-        ParameterBlockReflection::BindLocation mSrcTexLoc;
-        ParameterBlockReflection::BindLocation mSrcVelocityLoc;
-        BlendState::SharedPtr mpAdditiveBlend;
-        Sampler::SharedPtr mpSampler;
+        uint32_t mKernelWidth;
+        float mScatteringLevel;
+        float scatteringCorrection
     };
 }

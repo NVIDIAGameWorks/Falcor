@@ -121,6 +121,7 @@ private:
     GodRays::UniquePtr mpGodRays;
     DepthOfField::UniquePtr mpDepthOfField;
     MotionBlur::UniquePtr mpMotionBlur;
+    FilmGrain::UniquePtr mpFilmGrain;
 
     struct
     {

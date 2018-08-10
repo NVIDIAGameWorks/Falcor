@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,56 +25,25 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include <memory>
-#include <array>
-#include "API/FBO.h"
-#include "Graphics/FullScreenPass.h"
-#include "Graphics/Camera/Camera.h"
-#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
-#include "Effects/Utils/PassFilter/PassFilter.h"
 
-namespace Falcor
+__import Helpers;
+
+Texture2D gNoiseTex;
+
+SamplerState gSampler;
+
+cbuffer filmGrain
+{ 
+    float intensity;
+    float time;
+};
+
+float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-    class RenderContext;
+    float4 fragColor = float4(0.0f, 0.0f, 0.0f, 1.f);
 
-    class FilmGrain
-    {
-    public:
-        using UniquePtr = std::unique_ptr<FilmGrain>;
+    // jitter texC to reduce artifacts
+    fragColor.xyz += intensity * abs(sineHash3D(float3(texC / intensity, time)));
 
-        static UniquePtr create(float grainSize);
-
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
-
-
-        /** Render UI controls for bloom settings.
-        \param[in] pGui GUI instance to render UI elements with
-        \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
-        */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
-
-        void setGrainSize(float grainSize);
-        void setSeed(float seed);
-
-        // move this back to private
-        GraphicsVars::SharedPtr mpVars;
-
-    private:
-        FilmGrain(float grainSize = 1.0f);
-
-        void createShader();
-        
-
-        float mGrainSize = 1.0f;
-        float mIntensity = 1.0f;
-        bool mDirty = false;
-
-        Texture::SharedPtr mpSrcTex = nullptr;
-        FullScreenPass::UniquePtr mpBlitPass;
-        ParameterBlockReflection::BindLocation mSrcTexLoc;
-        ParameterBlockReflection::BindLocation mSrcVelocityLoc;
-        BlendState::SharedPtr mpAdditiveBlend;
-        Sampler::SharedPtr mpSampler;
-    };
+    return fragColor;
 }

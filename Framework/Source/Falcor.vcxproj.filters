@@ -553,6 +553,9 @@
     <ClCompile Include="Effects\MotionBlur\MotionBlur.cpp">
       <Filter>Effects\MotionBlur</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\FilmGrain\FilmGrain.cpp">
+      <Filter>Effects\FilmGrain</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1729,6 +1732,9 @@
     <ClInclude Include="Effects\MotionBlur\MotionBlur.h">
       <Filter>Effects\MotionBlur</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\FilmGrain\FilmGrain.h">
+      <Filter>Effects\FilmGrain</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1934,6 +1940,12 @@
     </Filter>
     <Filter Include="Effects\MotionBlur">
       <UniqueIdentifier>{77f52c8b-bf1e-483a-8f05-a800e8b3a7a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\FilmGrain">
+      <UniqueIdentifier>{c43a43bc-1062-4b46-97b2-7499fab68dd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\SubsurfaceScattering">
+      <UniqueIdentifier>{0ded2ef7-fdc4-46f0-8b17-cc11304a61db}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

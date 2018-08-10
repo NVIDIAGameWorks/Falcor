@@ -49,6 +49,13 @@ struct MainVsOut
     float shadowsDepthC : DEPTH;
 };
 
+struct Test
+{
+    float testFloat[3];
+};
+
+StructuredBuffer<Test> StructureTest;
+
 MainVsOut vs(VertexIn vIn)
 {
     MainVsOut vsOut;

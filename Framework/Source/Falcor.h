@@ -140,6 +140,7 @@
 #include "Effects/GodRays/GodRays.h"
 #include "Effects/DepthOfField/DepthOfField.h"
 #include "Effects/MotionBlur/MotionBlur.h"
+#include "Effects/FilmGrain/FilmGrain.h"
 #include "Effects/SkyBox/SkyBox.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Effects/AmbientOcclusion/SSAO.h"

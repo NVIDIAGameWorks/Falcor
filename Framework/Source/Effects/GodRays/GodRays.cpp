@@ -51,7 +51,7 @@ namespace Falcor
         mpVars["GodRaySettings"]["gMedia.decay"] = mediumDecay;
         mpVars["GodRaySettings"]["gMedia.weight"] = mediumWeight;
         mpVars["GodRaySettings"]["numSamples"] = numSamples;
-        mpVars["GodRaySettings"]["lightIndex"] = 0;
+        mpVars["GodRaySettings"]["lightIndex"] = int(0);
 
         BlendState::Desc desc;
         desc.setRtBlend(0, true);

@@ -62,6 +62,8 @@ void ForwardRenderer::initLightingPass()
     initControls();
     mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
     
+    mLightingPass.pVars->setStructuredBuffer("StructureTest", StructuredBuffer::create(mLightingPass.pProgram, "StructureTest", 120));
+
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthTest(true).setStencilTest(false)./*setDepthWriteMask(false).*/setDepthFunc(DepthStencilState::Func::LessEqual);
     mLightingPass.pDsState = DepthStencilState::create(dsDesc);
@@ -261,6 +263,7 @@ void ForwardRenderer::initPostProcess()
     mpGodRays = GodRays::create(0.5f);
     mpMotionBlur = MotionBlur::create(20);
     mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
+    mpFilmGrain = FilmGrain::create(1.0f);
 }
 
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -317,6 +320,8 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     mpGodRays->execute(pContext, mpResolveFbo);
     mpDepthOfField->execute(pContext, mpResolveFbo);
     mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
+    mpFilmGrain->execute(pContext, mpResolveFbo);
+
 
 
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
@@ -511,6 +516,8 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
         renderSkyBox(pRenderContext.get());
         lightingPass(pRenderContext.get(), pTargetFbo.get());
         resolveMSAA(pRenderContext.get());      // This will only run if we are in MSAA mode
+
+        mpFilmGrain->setSeed(pSample->getCurrentTime());
 
         Fbo::SharedPtr pPostProcessDst = mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo;
         postProcess(pRenderContext.get(), pPostProcessDst);

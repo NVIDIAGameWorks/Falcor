@@ -308,6 +308,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mpGodRays->renderUI(pGui, "GodRays");
         mpDepthOfField->renderUI(pGui, "DepthOfField");
         mpMotionBlur->renderUI(pGui, "MotionBlur");
+        mpFilmGrain->renderUI(pGui, "Film Grain");
 
         if (pGui->beginGroup("Shadows"))
         {
@@ -356,5 +357,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         {
             applyLightingProgramControl(ControlID::EnableHashedAlpha);
         }
+
+        mLightingPass.pVars->getStructuredBuffer("StructureTest")->renderUI(pGui, "STRUCTS");
     }
 }
