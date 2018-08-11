@@ -1,3 +1,8 @@
+v3.0.8
+------
+- Added support for StructuredBuffers with VariableBuffer::renderUI
+
+
 v3.0.7
 ------
 - Updated Slang to 0.10.31
