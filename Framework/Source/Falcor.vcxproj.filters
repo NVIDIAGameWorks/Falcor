@@ -556,6 +556,9 @@
     <ClCompile Include="Effects\FilmGrain\FilmGrain.cpp">
       <Filter>Effects\FilmGrain</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\SubsurfaceScattering\SubsurfaceScattering.cpp">
+      <Filter>Effects\SubsurfaceScattering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1734,6 +1737,9 @@
     </ClInclude>
     <ClInclude Include="Effects\FilmGrain\FilmGrain.h">
       <Filter>Effects\FilmGrain</Filter>
+    </ClInclude>
+    <ClInclude Include="Effects\SubsurfaceScattering\SubsurfaceScattering.h">
+      <Filter>Effects\SubsurfaceScattering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

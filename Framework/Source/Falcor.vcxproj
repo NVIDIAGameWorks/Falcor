@@ -390,6 +390,7 @@
     <ClCompile Include="Effects\ParticleSystem\ParticleSystem.cpp" />
     <ClCompile Include="Effects\Shadows\CSM.cpp" />
     <ClCompile Include="Effects\SkyBox\SkyBox.cpp" />
+    <ClCompile Include="Effects\SubsurfaceScattering\SubsurfaceScattering.cpp" />
     <ClCompile Include="Effects\TAA\TAA.cpp" />
     <ClCompile Include="Effects\ToneMapping\ToneMapping.cpp" />
     <ClCompile Include="Effects\Utils\GaussianBlur\GaussianBlur.cpp" />
@@ -949,6 +950,7 @@
     <ClInclude Include="Effects\ParticleSystem\ParticleSystem.h" />
     <ClInclude Include="Effects\Shadows\CSM.h" />
     <ClInclude Include="Effects\SkyBox\SkyBox.h" />
+    <ClInclude Include="Effects\SubsurfaceScattering\SubsurfaceScattering.h" />
     <ClInclude Include="Effects\TAA\TAA.h" />
     <ClInclude Include="Effects\ToneMapping\ToneMapping.h" />
     <ClInclude Include="Effects\Utils\GaussianBlur\GaussianBlur.h" />

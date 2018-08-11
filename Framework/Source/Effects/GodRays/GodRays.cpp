@@ -50,8 +50,8 @@ namespace Falcor
         mpVars["GodRaySettings"]["gMedia.density"] = mediumDensity;
         mpVars["GodRaySettings"]["gMedia.decay"] = mediumDecay;
         mpVars["GodRaySettings"]["gMedia.weight"] = mediumWeight;
-        mpVars["GodRaySettings"]["numSamples"] = numSamples;
-        mpVars["GodRaySettings"]["lightIndex"] = int(0);
+        mpVars["GodRaySettings"]["numSamples"] = static_cast<float>(numSamples);
+        mpVars["GodRaySettings"]["lightIndex"] = static_cast<uint32_t>(0);
 
         BlendState::Desc desc;
         desc.setRtBlend(0, true);
@@ -104,19 +104,19 @@ namespace Falcor
 
     void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
     {
-        execute(pRenderContext, pFbo, pFbo);
+        execute(pRenderContext, pFbo->getColorTexture(0), pFbo);
     }
 
-    void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrcFbo, Fbo::SharedPtr pFbo)
+    void GodRays::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrcTex, Fbo::SharedPtr pFbo)
     {
-        assert(pFbo->getWidth() == pSrcFbo->getWidth() && pSrcFbo->getHeight() == pFbo->getHeight());
+        assert(pFbo->getWidth() == pSrcTex->getWidth() && pSrcTex->getHeight() == pFbo->getHeight());
 
         // if the buffer is not updated ever frame it doesn't see the InternalPerFrameCB changes??
         mpVars["GodRaySettings"]["numSamples"] = mMediumDensity;
 
         // experimenting with a down sampled image for GodRays
-        updateLowResTexture(pFbo->getColorTexture(0));
-        pRenderContext->blit(pSrcFbo->getColorTexture(0)->getSRV(), mpLowResTexture->getRTV());
+        updateLowResTexture(pSrcTex);
+        pRenderContext->blit(pSrcTex->getSRV(), mpLowResTexture->getRTV());
 
         // Run high-pass filter and attach it to an FBO for blurring
         Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);

@@ -39,16 +39,17 @@ namespace Falcor
 
     SubsurfaceScattering::~SubsurfaceScattering() = default;
 
-    SubsurfaceScattering::SubsurfaceScattering(uint32_t kernelWidth, float scatteringLevel, float scatteringCorrection) : mKernelWidth(kernelWidth), mScatteringLevel(scatteringLevel), mScatteringCorrection(scatteringCorrection)
+    SubsurfaceScattering::SubsurfaceScattering(uint32_t kernelWidth, float scatteringLevel, float scatteringCorrection, const glm::vec3& falloffColor)
+        : mKernelWidth(kernelWidth), mScatteringLevel(scatteringLevel), mScatteringCorrection(scatteringCorrection), mFalloffColor(falloffColor)
     {
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         mpSampler = Sampler::create(samplerDesc);
     }
 
-    SubsurfaceScattering::UniquePtr SubsurfaceScattering::create(uint32_t kernelSize, float sssStrength, float scatteringCorrection)
+    SubsurfaceScattering::UniquePtr SubsurfaceScattering::create(uint32_t kernelSize, float sssStrength, float scatteringCorrection, const glm::vec3& mFalloffColor)
     {
-        SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, sigma);
+        SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, sssStrength, scatteringCorrection, mFalloffColor);
         return SubsurfaceScattering::UniquePtr(pBlur);
     }
 
@@ -56,19 +57,27 @@ namespace Falcor
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
-            if (pGui->addIntVar("Kernel Width", (int&)mKernelWidth, 1, 15, 2))
+            pGui->addCheckBox("Enable sss", mEnableSSS);
+            if (pGui->addFloat3Var("Falloff Color", mFalloffColor))
             {
-                setKernelWidth(mKernelWidth);
+                updateDiffusionProfile();
+                mpVars->setTypedBuffer("gaussianWeights", mpWeights);
             }
-            if (pGui->addFloatVar("Sigma", mSigma, 0.001f))
+
+            if (pGui->addFloatVar("SSSSS Level", mScatteringLevel))
             {
-                setSigma(mSigma);
+                mpVars["SubsurfaceParams"]["level"] = mScatteringLevel;
             }
+            if (pGui->addFloatVar("Scattering Correction", mScatteringCorrection))
+            {
+                mpVars["SubsurfaceParams"]["scattering"] = mScatteringCorrection;
+            }
+
             if (uiGroup) pGui->endGroup();
         }
     }
 
-    float getCoefficient(float sigma, float kernelWidth, float x)
+    float getCoefficient(float sigma, float x)
     {
         float sigmaSquared = sigma * sigma;
         float p = -(x*x) / (2 * sigmaSquared);
@@ -78,9 +87,53 @@ namespace Falcor
         return e / a;
     }
 
+    float getProfile(float offset)
+    {
+        float profileValue = 0.1f * getCoefficient(0.0484f, offset);
+        profileValue += 0.118f * getCoefficient(0.1847f, offset);
+        profileValue += 0.113f * getCoefficient(0.567f, offset);
+        profileValue += 0.358f * getCoefficient(1.99f, offset);
+        profileValue += 0.078f * getCoefficient(7.41f, offset);
+        return profileValue;
+    }
+
+
     void SubsurfaceScattering::updateDiffusionProfile()
     {
+        mpWeights = TypedBuffer<float>::create(mKernelWidth * 4, Resource::BindFlags::ShaderResource);
 
+        // set per sample offset for gaussian
+        for (uint32_t i = 0; i < mKernelWidth; ++i)
+        {
+            float offset = -2.0f + i * 4.0f / (float(mKernelWidth) - 1.0f);
+            float sign = glm::sign(offset);
+            mpWeights[i * 4 + 3] = sign * offset * offset / 2.0f;
+        }
+
+        glm::vec3 sum{0.0f, 0.0f, 0.0f};
+
+        // calculate the gaussian weights using the profile described in the paper
+        for (uint32_t i = 0; i < mKernelWidth; ++i)
+        {
+            float offsetArea = 0.0f;
+            if(i < mKernelWidth - 1) offsetArea += std::abs(mpWeights[i * 4 + 3] - mpWeights[(i + 1) * 4 + 3]);
+            if (i > 0) offsetArea += std::abs(mpWeights[i * 4 + 3] - mpWeights[(i - 1) * 4 + 3]);
+            offsetArea /= 2;
+            for (uint32_t j = 0; j < 3; ++j)
+            {
+                float weight = offsetArea * getProfile(mpWeights[i * 4 + 3] / mFalloffColor[i]);
+                mpWeights[i * 4 + j] = weight;
+                sum[j] += weight;
+            }
+        }
+
+        // normalize the diffusion weights similar to the old paper
+        for (uint32_t i = 0; i < mKernelWidth; ++i)
+        {
+            mpWeights[i * 4 ] = mpWeights[i * 4] / sum.x;
+            mpWeights[i * 4 + 1] = mpWeights[i * 4 + 1] / sum.y;
+            mpWeights[i * 4 + 2] = mpWeights[i * 4 + 2] / sum.z;
+        }
     }
 
     void SubsurfaceScattering::createTmpFbo(const Texture* pSrc)
@@ -108,27 +161,30 @@ namespace Falcor
     {
         Program::DefineList defines;
         defines.add("_KERNEL_WIDTH", std::to_string(mKernelWidth));
-        if (mpTmpFbo->getColorTexture(0)->getArraySize() > 1)
-        {
-            defines.add("_USE_TEX2D_ARRAY");
-        }
-
+        
         uint32_t arraySize = mpTmpFbo->getColorTexture(0)->getArraySize();
-        uint32_t layerMask = (arraySize > 1) ? ((1 << arraySize) - 1) : 0;
-        mpHorizontalBlur = FullScreenPass::create(kShaderFilename, defines, true, true, layerMask);
-        mpHorizontalBlur->getProgram()->addDefine("_HORIZONTAL_BLUR");
-        mpVerticalBlur = FullScreenPass::create(kShaderFilename, defines, true, true, layerMask);
-        mpVerticalBlur->getProgram()->addDefine("_VERTICAL_BLUR");
-
-        ProgramReflection::SharedConstPtr pReflector = mpHorizontalBlur->getProgram()->getReflector();
+        mpBlurPass = FullScreenPass::create(kShaderFilename, defines, true, true);
+        
+        ProgramReflection::SharedConstPtr pReflector = mpBlurPass->getProgram()->getReflector();
         mpVars = GraphicsVars::create(pReflector);
 
-        mBindLocations.sampler = pReflector->getDefaultParameterBlock()->getResourceBinding("gSampler");
-        mBindLocations.srcTexture = pReflector->getDefaultParameterBlock()->getResourceBinding("gSrcTex");
+        mSrcTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("gSrcTex");
+        mSrcDepthTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("gSrcDepthTex");
+        mpVars->setSampler("gSampler", mpSampler);
+
+        mpVars->setTypedBuffer("gaussianWeights", mpWeights);
+
+        mpVars["SubsurfaceParams"]["level"] = mScatteringLevel;
+        mpVars["SubsurfaceParams"]["scattering"] = mScatteringCorrection;
+        mpVars["SubsurfaceParams"]["maxDepth"] = 0.001f;
+        mpVars["SubsurfaceParams"]["gaussianWidth"] = 0.1f; // what should this actually be in the separable model ?
     }
 
-    void SubsurfaceScattering::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Fbo::SharedPtr pDst, uint srcArrayIndex)
+    void SubsurfaceScattering::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcStencilMask)
     {
+        if (!mEnableSSS)
+            return;
+
         createTmpFbo(pSrc.get());
         if (mDirty)
         {
@@ -145,29 +201,34 @@ namespace Falcor
         vp.width = (float)mpTmpFbo->getWidth();
         vp.minDepth = 0;
         vp.maxDepth = 1;
-
+         
         GraphicsState* pState = pRenderContext->getGraphicsState().get();
         for (uint32_t i = 0; i < arraySize; i++)
         {
             pState->pushViewport(i, vp);
         }
 
-        // Horizontal pass
-        ParameterBlock* pDefaultBlock = mpVars->getDefaultBlock().get();
-        pDefaultBlock->setSampler(mBindLocations.sampler, 0, mpSampler);
-        pDefaultBlock->setSrv(mBindLocations.srcTexture, 0, pSrc->getSRV(0, uint32_t(-1), srcArrayIndex != uint32_t(-1) ? srcArrayIndex : 0, srcArrayIndex != uint32_t(-1) ? 1 : uint32_t(-1)));
+        mpVars["SubsurfaceParams"]["dir"] = glm::vec2(1.0f, 0.0f);
+        mpVars->getDefaultBlock()->setSrv(mSrcDepthTexLoc, 0, pSrcDepth->getSRV());
+        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pSrc->getSRV());
 
+        // Horizontal pass
         pState->pushFbo(mpTmpFbo);
         pRenderContext->pushGraphicsVars(mpVars);
-        mpHorizontalBlur->execute(pRenderContext);
+        mpBlurPass->execute(pRenderContext);
+
+        mpVars->setTypedBuffer("gaussianWeights", mpWeights);
 
         // set direction
+        mpVars["SubsurfaceParams"]["dir"] = glm::vec2(0.0f, 1.0f);
 
         // Vertical pass
-        pDefaultBlock->setSrv(mBindLocations.srcTexture, 0, mpTmpFbo->getColorTexture(0)->getSRV());
+        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, mpTmpFbo->getColorTexture(0)->getSRV());
+        mpVars->getDefaultBlock()->setSrv(mSrcDepthTexLoc, 0, pSrcDepth->getSRV());
+
         pRenderContext->setGraphicsVars(mpVars);
         pState->setFbo(pDst);
-        mpVerticalBlur->execute(pRenderContext);
+        mpBlurPass->execute(pRenderContext);
 
         pState->popFbo();
         for (uint32_t i = 0; i < arraySize; i++)

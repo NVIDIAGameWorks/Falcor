@@ -62,6 +62,8 @@ private:
     };
     ShadowPass mShadowPass;
 
+    Texture::SharedPtr pSkyBoxResult = nullptr;
+
     //  SkyBox Pass.
     struct
     {
@@ -122,6 +124,7 @@ private:
     DepthOfField::UniquePtr mpDepthOfField;
     MotionBlur::UniquePtr mpMotionBlur;
     FilmGrain::UniquePtr mpFilmGrain;
+    SubsurfaceScattering::UniquePtr mpSubsurface;
 
     struct
     {

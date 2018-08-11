@@ -43,7 +43,7 @@ namespace Falcor
         static UniquePtr create(float threshold, float mediumDensity = 1000, float mediumDecay = 0.887f, float mediumWeight = 0.725f, int32_t numSamples = 50);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
-        void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrcFbo, Fbo::SharedPtr pFbo);
+        void execute(RenderContext* pRenderContext, Texture::SharedPtr pSrcTex, Fbo::SharedPtr pFbo);
 
         /** Render UI controls for bloom settings.
         \param[in] pGui GUI instance to render UI elements with

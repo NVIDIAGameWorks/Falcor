@@ -61,9 +61,7 @@ void ForwardRenderer::initLightingPass()
     mLightingPass.pProgram->addDefine("_LIGHT_COUNT", std::to_string(mpSceneRenderer->getScene()->getLightCount()));
     initControls();
     mLightingPass.pVars = GraphicsVars::create(mLightingPass.pProgram->getReflector());
-    
-    mLightingPass.pVars->setStructuredBuffer("StructureTest", StructuredBuffer::create(mLightingPass.pProgram, "StructureTest", 120));
-
+  
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthTest(true).setStencilTest(false)./*setDepthWriteMask(false).*/setDepthFunc(DepthStencilState::Func::LessEqual);
     mLightingPass.pDsState = DepthStencilState::create(dsDesc);
@@ -264,6 +262,7 @@ void ForwardRenderer::initPostProcess()
     mpMotionBlur = MotionBlur::create(20);
     mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
     mpFilmGrain = FilmGrain::create(1.0f);
+    mpSubsurface = SubsurfaceScattering::create();
 }
 
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -276,12 +275,21 @@ void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr 
 
 void ForwardRenderer::renderSkyBox(RenderContext* pContext)
 {
+    auto pContextFboTex = pContext->getGraphicsState()->getFbo()->getColorTexture(0);
+    
+    if (!pSkyBoxResult)
+    {
+        pSkyBoxResult = Texture::create2D(pContextFboTex->getWidth(), pContextFboTex->getHeight(), pContextFboTex->getFormat());
+    }
+
     if (mSkyBox.pEffect)
     {
         PROFILE(skyBox);
         mpState->setDepthStencilState(mSkyBox.pDS);
         mSkyBox.pEffect->render(pContext, mpSceneRenderer->getScene()->getActiveCamera().get());
         mpState->setDepthStencilState(nullptr);
+
+        //pContext->blit(pContextFboTex->getSRV(), pSkyBoxResult->getRTV());
     }
 }
 
@@ -316,14 +324,14 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     // TODO --  abstract this away
     mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
 
-    mpBloom->execute(pContext, mpResolveFbo);
-    mpGodRays->execute(pContext, mpResolveFbo);
-    mpDepthOfField->execute(pContext, mpResolveFbo);
-    mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
-    mpFilmGrain->execute(pContext, mpResolveFbo);
-
-
-
+    // subsurface
+    mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, nullptr);
+    // mpBloom->execute(pContext, mpResolveFbo);
+    // mpGodRays->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo);
+    // mpDepthOfField->execute(pContext, mpResolveFbo);
+    // mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
+    // mpFilmGrain->execute(pContext, mpResolveFbo);
+    
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
     mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
 }

@@ -33,7 +33,7 @@ Texture2D gSrcDepthTex;
 
 SamplerState gSampler;
 
-cbuffer subsurface
+cbuffer SubsurfaceParams
 {
 	float2 dir;
 	float2 pixelSize;
@@ -43,19 +43,15 @@ cbuffer subsurface
 	float maxDepth;      // 0.001
 };
 
-#define _KERNEL_WIDTH 3
-buffer<float> gaussianWeights;
+Buffer<float> gaussianWeights;
 
 float3 subsurface(float2 texC)
 {
+	float3 diffuseColor = gSrcTex.SampleLevel(gSampler, texC, 0).xyz;
 	float depth = gSrcDepthTex.SampleLevel(gSampler, texC, 0).x;
 	float widthXLevel = gaussianWidth * level;
 	
 	// early breakout if width is too small to blur in neighboring pixels
-	if (0.5f * widthXLevel > depth)
-	{
-		return diffuseColor;
-	}
 	
 	// divide by depth for closer objects to have higher blur
 	float2 offsetStep = (pixelSize * dir * widthXLevel) / depth;
@@ -66,7 +62,6 @@ float3 subsurface(float2 texC)
 	float sfDenom = depth + scattering * depthGradient;
 	float stretchFactor = level / sfDenom;
 	
-	float3 diffuseColor = gSrcTex.SampleLevel(gSampler, texC, 0).xyz;
 	
 	$for(i in Range(_KERNEL_WIDTH))
     {
@@ -77,8 +72,8 @@ float3 subsurface(float2 texC)
 		float lerpVal = min(1.0f, 0.0125f * scattering * abs(depth - sampleDepth));
 		sample = lerp(sample, diffuseColor, lerpVal);
 		
-		diffuseColor += gaussianWeights[i] * sample;
-		texOffset += offsetStep / _KERNEL_WIDTH;
+		diffuseColor += float3(gaussianWeights[i * 4], gaussianWeights[i * 4 + 1], gaussianWeights[i * 4 + 2]) * sample;
+		texOffset += gaussianWeights[i * 4 + 3] * offsetStep / _KERNEL_WIDTH;
 	}
 	
 	return diffuseColor;
@@ -86,5 +81,5 @@ float3 subsurface(float2 texC)
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-    return subsurface(texC);
+    return float4(subsurface(texC), 1.0f);
 }
