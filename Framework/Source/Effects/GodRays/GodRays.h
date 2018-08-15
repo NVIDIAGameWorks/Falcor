@@ -28,6 +28,7 @@
 #pragma once
 #include <memory>
 #include "API/FBO.h"
+#include "Graphics/Scene/Scene.h"
 #include "Graphics/FullScreenPass.h"
 #include "Effects/Utils/PassFilter/PassFilter.h"
 
@@ -40,31 +41,35 @@ namespace Falcor
     public:
         using UniquePtr = std::unique_ptr<GodRays>;
 
-        static UniquePtr create(float threshold, float mediumDensity = 1000, float mediumDecay = 0.887f, float mediumWeight = 0.725f, int32_t numSamples = 50);
+        static UniquePtr create(float threshold = 1.0f, float mediumDensity = 1000.0f, float mediumDecay = 0.964f, float mediumWeight = 0.196f, float exposer = 0.259f, int32_t numSamples = 250);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
-        void execute(RenderContext* pRenderContext, Texture::SharedPtr pSrcTex, Fbo::SharedPtr pFbo);
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Texture::SharedPtr& pSrcDepthTex, Fbo::SharedPtr pFbo);
 
         /** Render UI controls for bloom settings.
         \param[in] pGui GUI instance to render UI elements with
         \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr, const Scene::SharedPtr& pScene = nullptr);
+
+        void setNumSamples(int32_t numSamples);
 
         // move this back to private
         GraphicsVars::SharedPtr mpVars;
 
     private:
-        GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, int32_t numSamples);
+        GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples);
         void updateLowResTexture(const Texture::SharedPtr& pTexture);
+        void createShader();
 
         float mMediumDensity;
         float mMediumDecay;
         float mMediumWeight;
         float mThreshold = 1.0f;
+        float mExposer = 1.0f;
         int32_t mNumSamples;
         int32_t mLightIndex = 0;
-        TypedBuffer<uint>::SharedPtr mpBuf;
+        bool mDirty = false;
 
         //Scene::SharedPtr mpScene;
         PassFilter::UniquePtr mpFilter;
@@ -72,6 +77,7 @@ namespace Falcor
         Texture::SharedPtr mpLowResTexture;
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
+        ParameterBlockReflection::BindLocation mSrcDepthLoc;
         BlendState::SharedPtr mpAdditiveBlend;
         Sampler::SharedPtr mpSampler;
     };

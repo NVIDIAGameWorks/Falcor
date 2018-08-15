@@ -33,6 +33,7 @@ __import Helpers;
 SamplerState gSampler;
 
 Texture2D gColor;
+Texture2D gDepth;
 
 struct Media
 {
@@ -44,44 +45,40 @@ struct Media
 cbuffer GodRaySettings
 {
    Media gMedia;
-   float numSamples;
+   float exposer;
    uint lightIndex;
 };
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
 	float3 finalColor = float3(0, 0, 0);
+	float2 toLightSource;
+	float2 texPosition = texC;
+	
+	float4 screenSpaceLightPosition = 
+		mul(float4(gLights[int(lightIndex)].posW, 1.0f), gCamera.viewProjMat);
+	toLightSource = texPosition - screenSpaceLightPosition.xy;
+	
+	toLightSource *= 1.0f / (float(_NUM_SAMPLES) * gMedia.density);
+	toLightSource.y *= -1.0f;
+	
+	float accumulatedDecay = 1.0f;
+	float mask = (abs(gDepth.SampleLevel(gSampler, texC, 0).x) < 1.0f ? 0.0f : 1.0f);
+	float3 currentColor = gColor.Sample( gSampler, texPosition ).xyz * mask;
+	float3 lightIntensity = gLights[int(lightIndex)].intensity;
 
-    //for( uint lightIndex = 0; lightIndex < gLightsCount; ++lightIndex)
+	for(uint i = 0; i < _NUM_SAMPLES; i++)
 	{
-		float2 toLightSource;
-	    float2 texPosition = texC;
+		texPosition -= toLightSource;
 		
-		float4 screenSpaceLightPosition = 
-			mul(float4(gLights[int(lightIndex)].posW, 1.0f), gCamera.viewProjMat);
-		screenSpaceLightPosition.xyz / screenSpaceLightPosition.w;
-		toLightSource = texPosition - screenSpaceLightPosition.xy;
-		toLightSource.y *= -1.0f;
-		toLightSource *= 1.0f / ( numSamples * gMedia.density);
-		
-		float accumulatedDecay = 1.0f;
-		float3 currentColor = gColor.Sample( gSampler, texPosition ).xyz;
-		float3 lightIntensity = gLights[int(lightIndex)].intensity;
-		
-		for(uint i = 0; i < int(numSamples); i++)
-		{
-		    texPosition -= toLightSource;
-		    
-		    float3 nextColor = gColor.Sample( gSampler, texPosition ).xyz;
-		    nextColor *= accumulatedDecay * gMedia.weight;
-
-		    currentColor += nextColor * gLights[int(lightIndex)].intensity;
-
-		    accumulatedDecay *= gMedia.decay;
-		}
-		
-		finalColor += currentColor;
+		float3 nextColor = gColor.Sample( gSampler, texPosition ).xyz * (abs(gDepth.SampleLevel(gSampler, texPosition, 0).x) < 1.0f ? 0.0f : 1.0f);
+		nextColor *= accumulatedDecay * gMedia.weight;
+	
+		currentColor += nextColor * lightIntensity;
+	
+		accumulatedDecay *= gMedia.decay;
 	}
-
-    return float4(finalColor, 1.0f);
+	
+	finalColor += currentColor;
+    return float4(finalColor * exposer, 1.0f);
 }

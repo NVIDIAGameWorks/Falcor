@@ -62,8 +62,6 @@ private:
     };
     ShadowPass mShadowPass;
 
-    Texture::SharedPtr pSkyBoxResult = nullptr;
-
     //  SkyBox Pass.
     struct
     {
@@ -125,6 +123,7 @@ private:
     MotionBlur::UniquePtr mpMotionBlur;
     FilmGrain::UniquePtr mpFilmGrain;
     SubsurfaceScattering::UniquePtr mpSubsurface;
+    BlendPass::UniquePtr mpBlendPass;
 
     struct
     {
@@ -197,6 +196,18 @@ private:
         Count
     };
 
+    enum PostProcessID
+    {
+        ToneMapping,
+        Bloom,
+        GodRays,
+        DepthOfField,
+        MotionBlur,
+        FilmGrain,
+        SubsurfaceScattering,
+        PostProcessCount
+    };
+
     enum class SamplePattern : uint32_t
     {
         Halton,
@@ -217,6 +228,7 @@ private:
     SamplePattern mTAASamplePattern = SamplePattern::Halton;
     void applyAaMode(SampleCallbacks* pSample);
     std::vector<ProgramControl> mControls;
+    std::bitset<PostProcessID::PostProcessCount> mPostProcessingControls;
     void applyLightingProgramControl(ControlID controlID);
 
     bool mUseCameraPath = true;

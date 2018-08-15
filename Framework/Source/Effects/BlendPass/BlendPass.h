@@ -27,27 +27,22 @@
 ***************************************************************************/
 #pragma once
 #include <memory>
-#include <array>
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
-#include "Graphics/Camera/Camera.h"
-#include "Effects/Utils/GaussianBlur/GaussianBlur.h"
-#include "Effects/Utils/PassFilter/PassFilter.h"
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
     class RenderContext;
 
-    class DepthOfField
+    class BlendPass
     {
     public:
-        using UniquePtr = std::unique_ptr<DepthOfField>;
+        using UniquePtr = std::unique_ptr<BlendPass>;
 
-        static UniquePtr create(const Camera::SharedConstPtr& mpCamera);
-        static UniquePtr create(float mPlaneOfFocus, float mAperture, float mFocalLength, float mNearZ, float mFarZ);
+        static UniquePtr create();
 
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
-
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, Fbo::SharedPtr pFbo);
 
         /** Render UI controls for bloom settings.
         \param[in] pGui GUI instance to render UI elements with
@@ -55,33 +50,13 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
-        // move this back to private
-        GraphicsVars::SharedPtr mpVars;
-
     private:
-        DepthOfField(float planeOfFocus, float aperture, float focalLength, float nearZ, float farZ);
-        DepthOfField(const Camera::SharedConstPtr& mpCamera);
-
-        void setCamera(const Camera::SharedConstPtr& pCamera);
-        void updateFromCamera();
-        void updateTextures(const Texture::SharedPtr& pTexture);
-
-        Camera::SharedConstPtr mpCamera;
-        float mPlaneOfFocus;
-        float mAperture;
-        float mFocalLength;
-        float mNearZ;
-        float mFarZ;
-        bool mOverrideCamera;
-
-        GaussianBlur::UniquePtr mpBlurPass;
-        std::array<Texture::SharedPtr, 6> mpBlurredImages;
-        std::array<Texture::SharedPtr, 5> mpTempImages;
-
-        Fbo::SharedPtr mpBlurredFbo;
+        BlendPass();
+        
+        GraphicsVars::SharedPtr mpVars;
+        Fbo::SharedPtr mpFilterResultFbo;
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
-        ParameterBlockReflection::BindLocation mSrcDepthLoc;
         BlendState::SharedPtr mpAdditiveBlend;
         Sampler::SharedPtr mpSampler;
     };

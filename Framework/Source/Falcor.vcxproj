@@ -380,6 +380,7 @@
     <ClCompile Include="API\Window.cpp" />
     <ClCompile Include="ArgList.cpp" />
     <ClCompile Include="Effects\AmbientOcclusion\SSAO.cpp" />
+    <ClCompile Include="Effects\BlendPass\BlendPass.cpp" />
     <ClCompile Include="Effects\Bloom\Bloom.cpp" />
     <ClCompile Include="Effects\DepthOfField\DepthOfField.cpp" />
     <ClCompile Include="Effects\FilmGrain\FilmGrain.cpp" />
@@ -940,6 +941,7 @@
     <ClInclude Include="Data\HostDeviceSharedMacros.h" />
     <ClInclude Include="Data\VertexAttrib.h" />
     <ClInclude Include="Effects\AmbientOcclusion\SSAO.h" />
+    <ClInclude Include="Effects\BlendPass\BlendPass.h" />
     <ClInclude Include="Effects\Bloom\Bloom.h" />
     <ClInclude Include="Effects\DepthOfField\DepthOfField.h" />
     <ClInclude Include="Effects\FilmGrain\FilmGrain.h" />

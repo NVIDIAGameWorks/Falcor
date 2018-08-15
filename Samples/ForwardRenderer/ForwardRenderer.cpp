@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "ForwardRenderer.h"
 
-const std::string ForwardRenderer::skDefaultScene = "Arcade/Arcade.fscene";
+const std::string ForwardRenderer::skDefaultScene = "SunTemple/SunTemple.fscene"; // "Arcade/Arcade.fscene";
 
 //  Halton Sampler Pattern.
 static const float kHaltonSamplePattern[8][2] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
@@ -263,6 +263,7 @@ void ForwardRenderer::initPostProcess()
     mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
     mpFilmGrain = FilmGrain::create(1.0f);
     mpSubsurface = SubsurfaceScattering::create();
+    mpBlendPass = BlendPass::create();
 }
 
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -277,19 +278,12 @@ void ForwardRenderer::renderSkyBox(RenderContext* pContext)
 {
     auto pContextFboTex = pContext->getGraphicsState()->getFbo()->getColorTexture(0);
     
-    if (!pSkyBoxResult)
-    {
-        pSkyBoxResult = Texture::create2D(pContextFboTex->getWidth(), pContextFboTex->getHeight(), pContextFboTex->getFormat());
-    }
-
     if (mSkyBox.pEffect)
     {
         PROFILE(skyBox);
         mpState->setDepthStencilState(mSkyBox.pDS);
         mSkyBox.pEffect->render(pContext, mpSceneRenderer->getScene()->getActiveCamera().get());
         mpState->setDepthStencilState(nullptr);
-
-        //pContext->blit(pContextFboTex->getSRV(), pSkyBoxResult->getRTV());
     }
 }
 
@@ -321,16 +315,34 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
 {
     PROFILE(postProcess);    
 
-    // TODO --  abstract this away
-    mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
-
     // subsurface
-    mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, nullptr);
-    // mpBloom->execute(pContext, mpResolveFbo);
-    // mpGodRays->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo);
-    // mpDepthOfField->execute(pContext, mpResolveFbo);
-    // mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
-    // mpFilmGrain->execute(pContext, mpResolveFbo);
+    if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
+    {
+        mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, nullptr);
+        mpBlendPass->execute(pContext, mpResolveFbo->getColorTexture(3), mpResolveFbo);
+    }
+    if (mPostProcessingControls[PostProcessID::Bloom])
+    {
+        mpBloom->execute(pContext, mpResolveFbo);
+    }
+    if (mPostProcessingControls[PostProcessID::GodRays])
+    {
+        // TODO --  abstract this away
+        mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
+        mpGodRays->execute(pContext, mpResolveFbo->getColorTexture(0), mpMainFbo->getDepthStencilTexture(), mpResolveFbo);
+    }
+    if (mPostProcessingControls[PostProcessID::DepthOfField])
+    {
+        mpDepthOfField->execute(pContext, mpResolveFbo);
+    }
+    if (mPostProcessingControls[PostProcessID::MotionBlur])
+    {
+        mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
+    }
+    if (mPostProcessingControls[PostProcessID::FilmGrain])
+    {
+        mpFilmGrain->execute(pContext, mpResolveFbo);
+    }
     
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
     mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
@@ -539,7 +551,6 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::Sha
     {
         pRenderContext->clearFbo(pTargetFbo.get(), vec4(0.2f, 0.4f, 0.5f, 1), 1, 0);
     }
-
 }
 
 void ForwardRenderer::applyCameraPathState()

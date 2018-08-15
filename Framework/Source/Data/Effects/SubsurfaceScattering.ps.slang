@@ -37,49 +37,44 @@ cbuffer SubsurfaceParams
 {
 	float2 dir;
 	float2 pixelSize;
-	float gaussianWidth; // 
-	float level;         // 31.5f
-	float scattering;    // 800
-	float maxDepth;      // 0.001
+	float scatteringWidth; // 
 };
 
 Buffer<float> gaussianWeights;
 
-float3 subsurface(float2 texC)
+#define MAX_DEPTH_GRADIENT 0.001f
+
+float4 subsurface(float2 texC)
 {
 	float3 diffuseColor = gSrcTex.SampleLevel(gSampler, texC, 0).xyz;
 	float depth = gSrcDepthTex.SampleLevel(gSampler, texC, 0).x;
-	float widthXLevel = gaussianWidth * level;
 	
-	// early breakout if width is too small to blur in neighboring pixels
+	if (depth >= 0.99999f)
+	{
+	  return float4(diffuseColor, 1.0f);
+	}
 	
 	// divide by depth for closer objects to have higher blur
-	float2 offsetStep = (pixelSize * dir * widthXLevel) / depth;
-	float2 texOffset = -offsetStep;
+	float2 offsetStep = (pixelSize * scatteringWidth * dir) / (3.0f );
 	
-	// calculate stretch factor based on the depths for the gaussianWeights
-	float depthGradient = abs( min( dir.x > 0 ? ddx(depth) : ddy(depth), maxDepth ) );
-	float sfDenom = depth + scattering * depthGradient;
-	float stretchFactor = level / sfDenom;
-	
-	
-	$for(i in Range(_KERNEL_WIDTH))
+	for(uint i = 1; i < _KERNEL_WIDTH; ++i)
     {
+	    float2 texOffset = gaussianWeights[i * 4 + 3] * offsetStep;
 		float3 sample = gSrcTex.SampleLevel(gSampler, texC + texOffset, 0).xyz;
 		float sampleDepth = gSrcDepthTex.SampleLevel(gSampler, texC + texOffset, 0).x;
 		
 		// test change of depth from first pixel. go back to original color if too big
-		float lerpVal = min(1.0f, 0.0125f * scattering * abs(depth - sampleDepth));
+		float lerpVal = min(1.0f, 0.0125f * scatteringWidth * abs(depth - sampleDepth));
 		sample = lerp(sample, diffuseColor, lerpVal);
 		
 		diffuseColor += float3(gaussianWeights[i * 4], gaussianWeights[i * 4 + 1], gaussianWeights[i * 4 + 2]) * sample;
-		texOffset += gaussianWeights[i * 4 + 3] * offsetStep / _KERNEL_WIDTH;
+		
 	}
 	
-	return diffuseColor;
+	return float4(diffuseColor, 1.0f);
 }
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-    return float4(subsurface(texC), 1.0f);
+    return subsurface(texC);
 }

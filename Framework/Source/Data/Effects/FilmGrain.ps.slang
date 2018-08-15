@@ -43,7 +43,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
     float4 fragColor = float4(0.0f, 0.0f, 0.0f, 1.f);
 
     // jitter texC to reduce artifacts
-    fragColor.xyz += intensity * abs(sineHash3D(float3(texC / intensity, time)));
+    fragColor.xyz += intensity * abs(sineHash3D(float3(texC, time)));
 
     return fragColor;
 }

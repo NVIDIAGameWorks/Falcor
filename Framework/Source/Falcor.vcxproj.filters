@@ -559,6 +559,9 @@
     <ClCompile Include="Effects\SubsurfaceScattering\SubsurfaceScattering.cpp">
       <Filter>Effects\SubsurfaceScattering</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\BlendPass\BlendPass.cpp">
+      <Filter>Effects\BlendPass</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1741,6 +1744,9 @@
     <ClInclude Include="Effects\SubsurfaceScattering\SubsurfaceScattering.h">
       <Filter>Effects\SubsurfaceScattering</Filter>
     </ClInclude>
+    <ClInclude Include="Effects\BlendPass\BlendPass.h">
+      <Filter>Effects\BlendPass</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1952,6 +1958,9 @@
     </Filter>
     <Filter Include="Effects\SubsurfaceScattering">
       <UniqueIdentifier>{0ded2ef7-fdc4-46f0-8b17-cc11304a61db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\BlendPass">
+      <UniqueIdentifier>{30552aa6-f692-4e97-8617-e71fb46c76e7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

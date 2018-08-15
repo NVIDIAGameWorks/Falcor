@@ -305,11 +305,38 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         mpToneMapper->renderUI(pGui, "Tone-Mapping");
         mpBloom->renderUI(pGui, "Bloom");
-        mpGodRays->renderUI(pGui, "GodRays");
+        mpGodRays->renderUI(pGui, "GodRays", mpSceneRenderer->getScene());
         mpDepthOfField->renderUI(pGui, "DepthOfField");
         mpMotionBlur->renderUI(pGui, "MotionBlur");
         mpFilmGrain->renderUI(pGui, "Film Grain");
-        mpSubsurface->renderUI(pGui, "Subsurface Scattering");
+
+        
+        if (pGui->beginGroup("Subsurface Scattering"))
+        {
+            int32_t isSet = mPostProcessingControls[PostProcessID::SubsurfaceScattering];
+            if (pGui->addCheckBox("Enable sss", isSet))
+            {
+                mPostProcessingControls[PostProcessID::SubsurfaceScattering] = isSet;
+            }
+            mpSubsurface->renderUI(pGui);
+            pGui->endGroup();
+        }
+        
+        // set lighting pass to split the specular and diffuse outputs
+        if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
+        {
+            mLightingPass.pProgram->addDefine("_SEPERATE_DIFFUSE_AND_SPECULAR");
+            if (!mpMainFbo->getColorTexture(3))
+            {
+                Texture::SharedPtr pSpecColorTex = Texture::create2D(mpMainFbo->getWidth(), mpMainFbo->getHeight(), mpMainFbo->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
+                mpMainFbo->attachColorTarget(pSpecColorTex, 3);
+            }
+        }
+        else
+        {
+            mpMainFbo->attachColorTarget(nullptr, 3); // TODO test if this breaks
+            mLightingPass.pProgram->removeDefine("_SEPERATE_DIFFUSE_AND_SPECULAR");
+        }
 
         if (pGui->beginGroup("Shadows"))
         {

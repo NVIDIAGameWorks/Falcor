@@ -135,8 +135,11 @@ namespace Falcor
                 }
             }
 
-            imageWidth /= 2;
-            imageHeight /= 2;
+            if (i >= 1)
+            {
+                imageWidth /= 2;
+                imageHeight /= 2;
+            }
         }
     }
 
@@ -159,6 +162,7 @@ namespace Falcor
         pRenderContext->blit(mpTempImages[0]->getSRV(), mpTempImages[1]->getRTV());
         pRenderContext->blit(mpTempImages[1]->getSRV(), mpTempImages[2]->getRTV());
         pRenderContext->blit(mpTempImages[2]->getSRV(), mpTempImages[3]->getRTV());
+        pRenderContext->blit(mpTempImages[3]->getSRV(), mpTempImages[4]->getRTV());
 
         // blur the last three images
         for (uint32_t i = 0; i < 4; ++i)

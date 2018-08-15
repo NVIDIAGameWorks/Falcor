@@ -134,6 +134,7 @@
 // Effects
 #include "Effects/NormalMap/LeanMap.h"
 #include "Effects/Shadows/CSM.h"
+#include "Effects/BlendPass/BlendPass.h"
 #include "Effects/Utils/GaussianBlur/GaussianBlur.h"
 #include "Effects/Utils/PassFilter/PassFilter.h"
 #include "Effects/Bloom/Bloom.h"

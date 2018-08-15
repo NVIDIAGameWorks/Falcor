@@ -39,17 +39,17 @@ namespace Falcor
 
     SubsurfaceScattering::~SubsurfaceScattering() = default;
 
-    SubsurfaceScattering::SubsurfaceScattering(uint32_t kernelWidth, float scatteringLevel, float scatteringCorrection, const glm::vec3& falloffColor)
-        : mKernelWidth(kernelWidth), mScatteringLevel(scatteringLevel), mScatteringCorrection(scatteringCorrection), mFalloffColor(falloffColor)
+    SubsurfaceScattering::SubsurfaceScattering(uint32_t kernelWidth, float scatteringWidth, const glm::vec3& falloffColor, const glm::vec3& intensityColor)
+        : mKernelWidth(kernelWidth), mScatteringWidth(scatteringWidth), mFalloffColor(falloffColor), mIntensityColor(intensityColor)
     {
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         mpSampler = Sampler::create(samplerDesc);
     }
 
-    SubsurfaceScattering::UniquePtr SubsurfaceScattering::create(uint32_t kernelSize, float sssStrength, float scatteringCorrection, const glm::vec3& mFalloffColor)
+    SubsurfaceScattering::UniquePtr SubsurfaceScattering::create(uint32_t kernelSize, float scatteringWidth, const glm::vec3& falloffColor, const glm::vec3& intensityColor)
     {
-        SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, sssStrength, scatteringCorrection, mFalloffColor);
+        SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, scatteringWidth, falloffColor, intensityColor);
         return SubsurfaceScattering::UniquePtr(pBlur);
     }
 
@@ -57,20 +57,25 @@ namespace Falcor
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
-            pGui->addCheckBox("Enable sss", mEnableSSS);
-            if (pGui->addFloat3Var("Falloff Color", mFalloffColor))
+            if (pGui->addFloat3Var("Falloff Color", mFalloffColor, 0))
             {
                 updateDiffusionProfile();
                 mpVars->setTypedBuffer("gaussianWeights", mpWeights);
             }
-
-            if (pGui->addFloatVar("SSSSS Level", mScatteringLevel))
+            if (pGui->addFloat3Var("Intensity Color", mIntensityColor))
             {
-                mpVars["SubsurfaceParams"]["level"] = mScatteringLevel;
+                updateDiffusionProfile();
+                mpVars->setTypedBuffer("gaussianWeights", mpWeights);
             }
-            if (pGui->addFloatVar("Scattering Correction", mScatteringCorrection))
+            int32_t kernelWidth = (int32_t)mKernelWidth;
+            if (pGui->addIntVar("Kernel Width", kernelWidth, 1))
             {
-                mpVars["SubsurfaceParams"]["scattering"] = mScatteringCorrection;
+                mKernelWidth = kernelWidth;
+                mDirty = true;
+            }
+            if (pGui->addFloatVar("Scattering Width", mScatteringWidth, 0))
+            {
+                mpVars["SubsurfaceParams"]["scatteringWidth"] = mScatteringWidth;
             }
 
             if (uiGroup) pGui->endGroup();
@@ -121,18 +126,26 @@ namespace Falcor
             offsetArea /= 2;
             for (uint32_t j = 0; j < 3; ++j)
             {
-                float weight = offsetArea * getProfile(mpWeights[i * 4 + 3] / mFalloffColor[i]);
+                float weight = offsetArea * getProfile(mpWeights[i * 4 + 3] / (0.0001f + mFalloffColor[j]));
                 mpWeights[i * 4 + j] = weight;
                 sum[j] += weight;
             }
         }
 
+        for (int32_t i = mKernelWidth / 2; i > 0; --i)
+        {
+            mpWeights[i * 4] = mpWeights[(i - 1) * 4];
+            mpWeights[i * 4 + 1] = mpWeights[(i - 1) * 4 + 1];
+            mpWeights[i * 4 + 2] = mpWeights[(i - 1) * 4 + 2];
+            mpWeights[i * 4 + 3] = mpWeights[(i - 1) * 4 + 3];
+        }
+
         // normalize the diffusion weights similar to the old paper
         for (uint32_t i = 0; i < mKernelWidth; ++i)
         {
-            mpWeights[i * 4 ] = mpWeights[i * 4] / sum.x;
-            mpWeights[i * 4 + 1] = mpWeights[i * 4 + 1] / sum.y;
-            mpWeights[i * 4 + 2] = mpWeights[i * 4 + 2] / sum.z;
+            mpWeights[i * 4 ] = mpWeights[i * 4] * mIntensityColor.x / sum.x;
+            mpWeights[i * 4 + 1] = mpWeights[i * 4 + 1] * mIntensityColor.y / sum.y;
+            mpWeights[i * 4 + 2] = mpWeights[i * 4 + 2] * mIntensityColor.z / sum.z;
         }
     }
 
@@ -174,18 +187,12 @@ namespace Falcor
 
         mpVars->setTypedBuffer("gaussianWeights", mpWeights);
 
-        mpVars["SubsurfaceParams"]["level"] = mScatteringLevel;
-        mpVars["SubsurfaceParams"]["scattering"] = mScatteringCorrection;
-        mpVars["SubsurfaceParams"]["maxDepth"] = 0.001f;
-        mpVars["SubsurfaceParams"]["gaussianWidth"] = 0.1f; // what should this actually be in the separable model ?
+        mpVars["SubsurfaceParams"]["scatteringWidth"] = mScatteringWidth;
     }
 
-    void SubsurfaceScattering::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcStencilMask)
+    void SubsurfaceScattering::execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcStencilMask)
     {
-        if (!mEnableSSS)
-            return;
-
-        createTmpFbo(pSrc.get());
+        createTmpFbo(pDiffuseSrc.get());
         if (mDirty)
         {
             updateDiffusionProfile();
@@ -193,7 +200,7 @@ namespace Falcor
             mDirty = false;
         }
 
-        uint32_t arraySize = pSrc->getArraySize();
+        uint32_t arraySize = pDiffuseSrc->getArraySize();
         GraphicsState::Viewport vp;
         vp.originX = 0;
         vp.originY = 0;
@@ -207,10 +214,12 @@ namespace Falcor
         {
             pState->pushViewport(i, vp);
         }
+        
+        mpVars["SubsurfaceParams"]["pixelSize"] = glm::vec2(1.0f / pDst->getWidth(), 1.0f / pDst->getHeight());
 
         mpVars["SubsurfaceParams"]["dir"] = glm::vec2(1.0f, 0.0f);
         mpVars->getDefaultBlock()->setSrv(mSrcDepthTexLoc, 0, pSrcDepth->getSRV());
-        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pSrc->getSRV());
+        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pDiffuseSrc->getSRV());
 
         // Horizontal pass
         pState->pushFbo(mpTmpFbo);

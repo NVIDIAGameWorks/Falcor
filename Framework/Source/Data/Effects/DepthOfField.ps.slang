@@ -28,7 +28,7 @@
 
 __import Helpers;
 
-Texture2D gSrcTex[5];
+Texture2D gSrcTex[6];
 Texture2D gSrcDepthTex;
 
 SamplerState gSampler;
@@ -52,17 +52,15 @@ float4 depthOfField(float2 texC)
    float circleOfConfusionRadius = aperture * (focalLength * (objectDistance - planeOfFocus));
    float denom = max(0.00001, abs(objectDistance * (planeOfFocus - focalLength)));
    circleOfConfusionRadius /= denom;
-   circleOfConfusionRadius = abs(circleOfConfusionRadius);
+   circleOfConfusionRadius = min(abs(circleOfConfusionRadius), 5.0f);
 
-   uint width, height;
-   gSrcTex[int(round(circleOfConfusionRadius))].GetDimensions(width, height);
-
-   // jitter texC to reduce artifacts
-   // texC += sineHash3D(float3(texC, objectDistance)) / width;
-
-   float result = (circleOfConfusionRadius > 1.5) ? 1.0f : 0.0f;
-
-   return  gSrcTex[int(round(circleOfConfusionRadius))].SampleLevel(gSampler, texC, 0);
+   float low = floor(circleOfConfusionRadius);
+   float high = ceil(circleOfConfusionRadius);
+	
+	float4 lowSample = gSrcTex[int(low)].SampleLevel(gSampler, texC, 0);
+	float4 highSample = gSrcTex[int(high)].SampleLevel(gSampler, texC, 0);
+	
+   return  lerp(lowSample, highSample, circleOfConfusionRadius - low);
 }
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
