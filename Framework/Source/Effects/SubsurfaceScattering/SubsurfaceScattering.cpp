@@ -42,7 +42,7 @@ namespace Falcor
     SubsurfaceScattering::~SubsurfaceScattering() = default;
 
     SubsurfaceScattering::SubsurfaceScattering(uint32_t kernelWidth, float scatteringWidth, const glm::vec3& color)
-        : mKernelWidth(kernelWidth), mScatteringWidth(scatteringWidth), mColor(color)
+        : RenderPass("SubsurfaceScattering"), mKernelWidth(kernelWidth), mScatteringWidth(scatteringWidth), mColor(color)
     {
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
@@ -63,6 +63,17 @@ namespace Falcor
     {
         SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, scatteringWidth, color);
         return SubsurfaceScattering::UniquePtr(pBlur);
+    }
+
+    SubsurfaceScattering::UniquePtr SubsurfaceScattering::deserialize(const RenderPassSerializer& serializer)
+    {
+        return create();
+    }
+
+    RenderPassSerializer SubsurfaceScattering::serialize()
+    {
+        RenderPassSerializer renderPassSerializer;
+        return renderPassSerializer;
     }
 
     void SubsurfaceScattering::renderUI(Gui* pGui, const char* uiGroup)
@@ -228,6 +239,30 @@ namespace Falcor
         mpVars->setTypedBuffer("gaussianWeights", mpWeights);
 
         mpVars["SubsurfaceParams"]["scatteringWidth"] = mScatteringWidth;
+    }
+
+    const char* kDiffuseName = "diffuse";
+    const char* kDepthName = "depth";
+    const char* kOcclusionName = "occlusion";
+    const char* kDstName = "blurred";
+
+    void SubsurfaceScattering::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInput(kDiffuseName);
+        reflector.addInput(kDepthName);
+        reflector.addInput(kOcclusionName);
+        reflector.addOutput(kDstName);
+    }
+
+    void SubsurfaceScattering::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        if (!mpTargetFbo)
+        {
+            mpTargetFbo = Fbo::create();
+        }
+        mpTargetFbo->attachColorTarget(pData->getTexture(kDstName), 0);
+
+        execute(pRenderContext, pData->getTexture(kDiffuseName), pData->getTexture(kDepthName), mpTargetFbo, pData->getTexture(kOcclusionName));
     }
 
     void SubsurfaceScattering::execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcMaskTex)

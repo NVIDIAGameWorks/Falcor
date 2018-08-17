@@ -51,6 +51,13 @@ namespace Falcor
 
     void Camera::beginFrame()
     {
+        if (mJitterPattern.pGenerator)
+        {
+            vec2 jitter = mJitterPattern.pGenerator->next();
+            jitter *= mJitterPattern.scale;
+            setJitterInternal(jitter.x, jitter.y);
+        }
+
         mData.prevViewProjMat = mViewProjMatNoJitter;
         mData.rightEyePrevViewProjMat = mData.rightEyeViewProjMat;
     }
@@ -231,5 +238,32 @@ namespace Falcor
         setPosition(position);
         setTarget(target);
         setUpVector(up);
+    }
+
+    void Camera::setPatternGenerator(const PatternGenerator::SharedPtr& pGenerator, const vec2& scale)
+    {
+        mJitterPattern.pGenerator = pGenerator;
+        mJitterPattern.scale = scale;
+        if (!pGenerator)
+        {
+            setJitterInternal(0, 0);
+        }
+    }
+
+    void Camera::setJitter(float jitterX, float jitterY)
+    {
+        if (mJitterPattern.pGenerator)
+        {
+            logWarning("Camera::setJitter() called when a pattern-generator object was attached to the camera. Detaching the pattern-generator");
+            mJitterPattern.pGenerator = nullptr;
+        }
+        setJitterInternal(jitterX, jitterY);
+    }
+
+    void Camera::setJitterInternal(float jitterX, float jitterY)
+    { 
+        mData.jitterX = jitterX; 
+        mData.jitterY = jitterY; 
+        mDirty = true; 
     }
 }

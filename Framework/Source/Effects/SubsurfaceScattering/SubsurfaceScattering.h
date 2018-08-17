@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "Graphics/RenderGraph/RenderPass.h"
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
 #include "API/Sampler.h"
@@ -41,10 +42,11 @@ namespace Falcor
 
     /** Seperable Screen-Space Subsurface Scattering Technique. Requires diffuse lit texture, depth texture, and mask for accurate output
     */
-    class SubsurfaceScattering
+    class SubsurfaceScattering : public RenderPass, inherit_shared_from_this<RenderPass, SubsurfaceScattering>
     {
     public:
         using UniquePtr = std::unique_ptr<SubsurfaceScattering>;
+        using SharedPtr = std::unique_ptr<SubsurfaceScattering>;
         /** Destructor
         */
         ~SubsurfaceScattering();
@@ -55,12 +57,18 @@ namespace Falcor
         */
         static UniquePtr create(uint32_t kernelSize = 20, float scatteringWidth = 1.0f, const glm::vec3& color = {1.0f, 1.0f, 1.0f});
 
-        /** Apply gaussian blur by rendering one texture into another.
-        \param pRenderContext Render context to use
-        \param pSrc The source texture
-        \param pDst The destination texture
-        */
+        static SubsurfaceScattering::UniquePtr deserialize(const RenderPassSerializer& serializer);
+        
+        RenderPassSerializer serialize();
+
         void execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcMaskTex);
+
+        /** Called once before compilation. Describes I/O requirements of the pass.
+        The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+        */
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
         /** Render UI controls for blur settings.
         \param[in] pGui GUI instance to render UI elements with
@@ -82,6 +90,7 @@ namespace Falcor
         void updateDiffusionProfile();
 
         FullScreenPass::UniquePtr mpBlurPass;
+        Fbo::SharedPtr mpTargetFbo;
         Fbo::SharedPtr mpTmpFbo;
         Sampler::SharedPtr mpSampler;
         bool mDirty = true;

@@ -31,9 +31,11 @@
 #include "Graphics/TextureHelper.h"
 #include "Graphics/Camera/Camera.h"
 #include "Graphics/Model/ModelRenderer.h"
+#include "Graphics/Scene/Scene.h"
 
 namespace Falcor
 {
+    SkyBox::SkyBox() : RenderPass("SkyBox") {}
 
     SkyBox::UniquePtr SkyBox::create(Texture::SharedPtr& pSkyTexture, Sampler::SharedPtr pSampler, bool renderStereo)
     {
@@ -43,6 +45,34 @@ namespace Falcor
             return nullptr;
         }
         return pSkyBox;
+    }
+
+    SkyBox::UniquePtr SkyBox::deserialize(const RenderPassSerializer& serializer)
+    {
+        std::string sceneFileName = serializer.getValue("gSceneFilename").str;
+        std::string skyBoxName = serializer.getValue("gSkyBoxFilename").str;
+        if (!sceneFileName.size() || !skyBoxName.size())
+        {
+            msgBox("No scene or skybox file specified.");
+            return nullptr;
+        }
+
+        std::string skyBox = getDirectoryFromFile(serializer.getValue("gSceneFilename").str) + '/' + skyBoxName;
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.minFilter").i32),
+            static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.magFilter").i32),
+            static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.mipFilter").i32));
+        return createFromTexture(skyBox, serializer.getValue("loadAsSrgb").b, Sampler::create(samplerDesc));
+    }
+
+    RenderPassSerializer SkyBox::serialize()
+    {
+        RenderPassSerializer renderPassSerializer;
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
+        renderPassSerializer.addVariable<bool>("loadAsSrgb", true);
+        return renderPassSerializer;
     }
 
     bool SkyBox::createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo)
@@ -110,7 +140,6 @@ namespace Falcor
         dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual).setDepthTest(true);
         mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
         mpState->setProgram(mpProgram);
-
         return true;
     }
 
@@ -139,16 +168,14 @@ namespace Falcor
         return create(pTexture, pSampler, renderStereo);
     }
 
-    void SkyBox::render(RenderContext* pRenderCtx, Camera* pCamera)
+    void SkyBox::render(RenderContext* pRenderCtx, Camera* pCamera, const Fbo::SharedPtr& pTarget)
     {
         glm::mat4 world = glm::translate(pCamera->getPosition());
         ConstantBuffer* pCB = mpVars->getDefaultBlock()->getConstantBuffer(mBindLocations.perFrameCB, 0).get();
         pCB->setVariable(mMatOffset, world);
         pCB->setVariable(mScaleOffset, mScale);
 
-        mpState->setFbo(pRenderCtx->getGraphicsState()->getFbo());
-        mpState->setViewport(0, pRenderCtx->getGraphicsState()->getViewport(0));
-        mpState->setScissors(0, pRenderCtx->getGraphicsState()->getScissors(0));
+        mpState->setFbo(pTarget ? pTarget : pRenderCtx->getGraphicsState()->getFbo());
         pRenderCtx->pushGraphicsVars(mpVars);
         pRenderCtx->pushGraphicsState(mpState);
 
@@ -156,5 +183,28 @@ namespace Falcor
 
         pRenderCtx->popGraphicsVars();
         pRenderCtx->popGraphicsState();
+    }
+
+    static const std::string kTarget = "target";
+    static const std::string kDepth = "depth";
+
+    void SkyBox::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addOutput(kTarget).setFormat(ResourceFormat::RGBA32Float);
+        reflector.addInputOutput(kDepth);
+    }
+
+    void SkyBox::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        DepthStencilState::Desc dsDesc;
+        dsDesc.setDepthFunc(DepthStencilState::Func::Always);
+        auto pDS = DepthStencilState::create(dsDesc);
+
+        if (!mpFbo) mpFbo = Fbo::create();
+        mpFbo->attachColorTarget(pData->getTexture(kTarget), 0);
+        mpFbo->attachDepthStencilTarget(pData->getTexture(kDepth));
+
+        pRenderContext->clearRtv(mpFbo->getRenderTargetView(0).get(), vec4(0));
+        render(pRenderContext, mpScene->getActiveCamera().get(), mpFbo);
     }
 }

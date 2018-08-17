@@ -108,6 +108,16 @@
 #include "Utils/Math/CubicSpline.h"
 #include "Utils/Math/ParallelReduction.h"
 
+// RenderGraph
+#include "Graphics/RenderGraph/RenderGraph.h"
+#include "Graphics/RenderGraph/RenderPass.h"
+
+// Render passes
+#include "RenderPasses/SceneLightingPass.h"
+#include "RenderPasses/BlitPass.h"
+#include "RenderPasses/DepthPass.h"
+#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+
 // Utils
 #include "Utils/Bitmap.h"
 #include "Utils/DDSHeader.h"
@@ -126,6 +136,8 @@
 #include "Utils/Platform/OS.h"
 #include "Utils/Platform/ProgressBar.h"
 #include "Utils/ThreadPool.h"
+#include "Utils/PatternGenerators/DxSamplePattern.h"
+#include "Utils/PatternGenerators/HaltonSamplePattern.h"
 
 // VR
 #include "VR/OpenVR/VRSystem.h"

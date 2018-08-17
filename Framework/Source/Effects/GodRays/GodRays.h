@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include <memory>
+#include "Graphics/RenderGraph/RenderPass.h"
 #include "API/FBO.h"
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/FullScreenPass.h"
@@ -36,15 +37,18 @@ namespace Falcor
 {
     class RenderContext;
 
-    class GodRays
+    class GodRays : public RenderPass, public inherit_shared_from_this<RenderPass, GodRays>
     {
     public:
         using UniquePtr = std::unique_ptr<GodRays>;
+        using SharedPtr = std::shared_ptr<GodRays>;
 
         static UniquePtr create(float threshold = 1.0f, float mediumDensity = 1000.0f, float mediumDecay = 0.964f, float mediumWeight = 0.196f, float exposer = 0.259f, int32_t numSamples = 250);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
         void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Texture::SharedPtr& pSrcDepthTex, Fbo::SharedPtr pFbo);
+
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pRenderData) override;
 
         /** Render UI controls for bloom settings.
         \param[in] pGui GUI instance to render UI elements with
@@ -52,7 +56,14 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr, const Scene::SharedPtr& pScene = nullptr);
 
+        /** Called once before compilation. Describes I/O requirements of the pass.
+        The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+        */
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
         void setNumSamples(int32_t numSamples);
+
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
 
         // move this back to private
         GraphicsVars::SharedPtr mpVars;

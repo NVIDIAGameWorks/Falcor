@@ -30,6 +30,7 @@
 #include "Graphics/Program/ProgramVars.h"
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
+#include "Graphics/RenderGraph/RenderPassSerializer.h"
 
 namespace Falcor
 {
@@ -59,6 +60,23 @@ namespace Falcor
         mpFilterResultFbo = Fbo::create();
 
         createShader();
+    }
+
+    UniquePtr GodRays::deserialize(const RenderPassSerializer& serializer)
+    { 
+        float threshold = static_cast<float>(serializer.getValue("threshold").d64);
+        float mediumDensity = static_cast<float>(serializer.getValue("mediumDensity").d64);
+        float mediumDecay = static_cast<float>(serializer.getValue("mediumDecay").d64);
+        float mediumWeight = static_cast<float>(serializer.getValue("mediumWeight").d64);
+        float exposer = static_cast<float>(serializer.getValue("exposer").d64);
+        int32_t numSamples = serializer.getValue("numSamples").i32;
+
+        return create(threshold, mediumDensity, mediumDecay, mediumWeight, exposer, numSamples); 
+    }
+
+    void GodRays::serialize()
+    {
+
     }
 
     void GodRays::createShader()

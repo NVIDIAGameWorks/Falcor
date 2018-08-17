@@ -38,7 +38,6 @@ namespace Falcor
     bool Logger::sShowErrorBox = false;
 #endif
 
-    bool Logger::sInit = false;
     FILE* Logger::sLogFile = nullptr;
     Logger::Level Logger::sVerbosity = Logger::Level::Warning;
 
@@ -67,17 +66,17 @@ namespace Falcor
         return pFile;
     }
 
-    void Logger::init()
+    bool Logger::init()
     {
 #if _LOG_ENABLED
-        if(sInit == false)
-        {
-            sLogFile = openLogFile();
-            sInit = sLogFile != nullptr;
-            assert(sInit);
-        }
+        sLogFile = openLogFile();
+        sInit = sLogFile != nullptr;
+        assert(sInit);
 #endif
+        return sInit;
     }
+
+    bool Logger::sInit = Logger::init();
 
     void Logger::shutdown()
     {

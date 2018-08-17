@@ -427,6 +427,10 @@
     <ClCompile Include="Graphics\Program\ProgramVars.cpp" />
     <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
@@ -521,6 +525,9 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="RenderPasses\BlitPass.cpp" />
+    <ClCompile Include="RenderPasses\DepthPass.cpp" />
+    <ClCompile Include="RenderPasses\SceneLightingPass.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
@@ -531,6 +538,8 @@
     <ClCompile Include="Utils\Logger.cpp" />
     <ClCompile Include="Utils\Math\ParallelReduction.cpp" />
     <ClCompile Include="Utils\MonitorInfo.cpp" />
+    <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp" />
+    <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp" />
     <ClCompile Include="Utils\Picking\Picking.cpp" />
     <ClCompile Include="Utils\PixelZoom.cpp" />
     <ClCompile Include="Utils\Platform\Linux\Linux.cpp">
@@ -557,6 +566,8 @@
     <ClCompile Include="Utils\Psychophysics\Experiment.cpp" />
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
+    <ClCompile Include="Utils\RenderGraphLoader.cpp" />
+    <ClCompile Include="Utils\RenderGraphUI.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
     <ClCompile Include="Utils\VariablesBufferUI.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
@@ -994,6 +1005,12 @@
     <ClInclude Include="Graphics\Program\ProgramVars.h" />
     <ClInclude Include="Graphics\Program\ProgramVersion.h" />
     <ClInclude Include="Graphics\Program\ShaderLibrary.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h" />
+    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
@@ -1108,14 +1125,19 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="RenderPasses\BlitPass.h" />
+    <ClInclude Include="RenderPasses\DepthPass.h" />
+    <ClInclude Include="RenderPasses\SceneLightingPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
     <ClInclude Include="Utils\AABB.h" />
     <ClInclude Include="Utils\BinaryFileStream.h" />
     <ClInclude Include="Utils\Bitmap.h" />
     <ClInclude Include="Utils\CpuTimer.h" />
+    <ClInclude Include="Utils\DirectedGraph.h" />
     <ClInclude Include="Utils\DDSHeader.h" />
     <ClInclude Include="Utils\DebugDrawer.h" />
+    <ClInclude Include="Utils\DirectedGraphTraversal.h" />
     <ClInclude Include="Utils\DXHeader.h" />
     <ClInclude Include="Utils\Font.h" />
     <ClInclude Include="Utils\FrameRate.h" />
@@ -1126,6 +1148,9 @@
     <ClInclude Include="Utils\Math\FalcorMath.h" />
     <ClInclude Include="Utils\Math\ParallelReduction.h" />
     <ClInclude Include="Utils\MonitorInfo.h" />
+    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h" />
+    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h" />
+    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h" />
     <ClInclude Include="Utils\Picking\Picking.h" />
     <ClInclude Include="Utils\PixelZoom.h" />
     <ClInclude Include="Utils\Platform\OS.h" />
@@ -1135,6 +1160,8 @@
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
     <ClInclude Include="Utils\PythonEmbedding.h" />
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
+    <ClInclude Include="Utils\RenderGraphLoader.h" />
+    <ClInclude Include="Utils\RenderGraphUI.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
@@ -1336,6 +1363,7 @@
     <None Include="Data\Framework\Shaders\SceneEditor.slang" />
     <None Include="Data\Framework\Shaders\TextRenderer.slang" />
     <None Include="Data\HostDeviceData.slang" />
+    <None Include="Data\RenderPasses\SceneLightingPass.slang" />
     <None Include="Data\ShaderCommon.slang" />
     <None Include="ShadingUtils\BRDF.slang" />
     <None Include="ShadingUtils\Helpers.slang" />

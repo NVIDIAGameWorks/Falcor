@@ -6,6 +6,12 @@ Bug Fixes:
 - Updated Slang to 0.10.30. Fixes SceneEditor shaders in Vulkan configs
 - Apply scaling transforms in animations
 - Fixed interpolation issues at the end of animations
+v3.whatever-render-graph-is
+---------------------------
+- Added a PatternGenerator interface to help sample pattern. DxSamplePattern and HaltonSamplePattern implement the interface
+- A Camera object can accept a PatternGenerator object. It will be used to jitter the camera on every beginFrame() call
+- Changed the GUI font to a monospace font (consolas bold)
+- The profiler results are not displayed in a GUI window
 
 v3.0.5
 ------

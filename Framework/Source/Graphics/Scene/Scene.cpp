@@ -46,6 +46,7 @@ namespace Falcor
         {
             pScene = nullptr;
         }
+        pScene->mFileName = filename;
         return pScene;
     }
 

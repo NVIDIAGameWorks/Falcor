@@ -35,8 +35,8 @@ using namespace Falcor;
 class ForwardRenderer : public Renderer
 {
 public:
-    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
@@ -56,7 +56,7 @@ private:
     struct ShadowPass
     {
         bool updateShadowMap = true;
-        CascadedShadowMaps::UniquePtr pCsm;
+        CascadedShadowMaps::SharedPtr pCsm;
         Texture::SharedPtr pVisibilityBuffer;
         glm::mat4 camVpAtLastCsmUpdate = glm::mat4();
     };
@@ -91,7 +91,7 @@ private:
     class
     {
     public:
-        TemporalAA::UniquePtr pTAA;
+        TemporalAA::SharedPtr pTAA;
         Fbo::SharedPtr getActiveFbo() { return pTAAFbos[activeFboIndex]; }
         Fbo::SharedPtr getInactiveFbo()  { return pTAAFbos[1 - activeFboIndex]; }
         void createFbos(uint32_t width, uint32_t height, const Fbo::Desc & fboDesc)
@@ -116,7 +116,7 @@ private:
     } mTAA;
 
 
-    ToneMapping::UniquePtr mpToneMapper;
+    ToneMapping::SharedPtr mpToneMapper;
     Bloom::UniquePtr mpBloom;
     GodRays::UniquePtr mpGodRays;
     DepthOfField::UniquePtr mpDepthOfField;
@@ -129,12 +129,12 @@ private:
 
     struct
     {
-        SSAO::UniquePtr pSSAO;
+        SSAO::SharedPtr pSSAO;
         FullScreenPass::UniquePtr pApplySSAOPass;
         GraphicsVars::SharedPtr pVars;
     } mSSAO;
 
-    FXAA::UniquePtr mpFXAA;
+    FXAA::SharedPtr mpFXAA;
 
     void beginFrame(RenderContext* pContext, Fbo* pTargetFbo, uint64_t frameId);
     void endFrame(RenderContext* pContext);
@@ -240,4 +240,6 @@ private:
     bool mUseCsSkinning = false;
     void applyCsSkinningMode();
     static const std::string skDefaultScene;
+
+    void createTaaPatternGenerator(uint32_t fboWidth, uint32_t fboHeight);
 };

@@ -74,7 +74,7 @@ void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mpScene->getLight(mControls.lightIndex)->renderUI(pGui);
         pGui->endGroup();
     }
-    mpCsmTech[mControls.lightIndex]->renderUi(pGui, "CSM");
+    mpCsmTech[mControls.lightIndex]->renderUI(pGui, "CSM");
 }
 
 void Shadows::displayLoadSceneDialog()
@@ -110,7 +110,7 @@ void Shadows::createScene(const std::string& filename)
     mpVisibilityBuffers.resize(lightCount);
     for(uint32_t i = 0; i < lightCount; i++)
     {
-        mpCsmTech[i] = CascadedShadowMaps::create(2048, 2048, mWindowDimensions.x, mWindowDimensions.y, mpScene->getLight(i), mpScene, mControls.cascadeCount);
+        mpCsmTech[i] = CascadedShadowMaps::create(mpScene->getLight(i), 2048, 2048, mWindowDimensions.x, mWindowDimensions.y, mpScene, mControls.cascadeCount);
         mpCsmTech[i]->setFilterMode(CsmFilterHwPcf);
         mpCsmTech[i]->setVsmLightBleedReduction(0.3f);
     }
@@ -127,7 +127,7 @@ void Shadows::createScene(const std::string& filename)
     ConstantBuffer::SharedPtr pCB = mLightingPass.pProgramVars->getConstantBuffer(0, 0, 0);
 }
 
-void Shadows::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void Shadows::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     auto pTargetFbo = pRenderContext->getGraphicsState()->getFbo();
     mWindowDimensions.x = pTargetFbo->getWidth();
@@ -171,7 +171,7 @@ void Shadows::displayVisibilityBuffer(RenderContext* pContext)
     pContext->popGraphicsVars();
 }
 
-void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void Shadows::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

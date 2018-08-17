@@ -35,14 +35,16 @@
 #include "API/DepthStencilState.h"
 #include "API/RasterizerState.h"
 #include "API/BlendState.h"
+#include "Graphics/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
     class RenderContext;
 
-    class SkyBox
+    class SkyBox : public RenderPass, inherit_shared_from_this<RenderPass, SkyBox>
     {
     public:
+        using SharedPtr = std::shared_ptr<SkyBox>;
         using UniquePtr = std::unique_ptr<SkyBox>;
 
         /** Create a sky box using an existing texture
@@ -51,7 +53,12 @@ namespace Falcor
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
         static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
-
+        
+        /* Create a sky box using data from serializer
+            \param[in] serializer Object to obtain initialization data
+        */
+        static UniquePtr deserialize(const RenderPassSerializer& serializer);
+        
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
             \param[in] loadAsSrgb Whether to load the texture into an sRGB format
@@ -63,8 +70,14 @@ namespace Falcor
         /** Render the sky box.
             \param[in] pRenderCtx Render context
             \param[in] pCamera Camera to use when rendering
+            \param[in, optional] The target FBO. If this is nullptr, the currently bound FBO will be used
         */
-        void render(RenderContext* pRenderCtx, Camera* pCamera);
+        void render(RenderContext* pRenderCtx, Camera* pCamera, const Fbo::SharedPtr& pTarget = nullptr);
+
+        /* Save out data for sky box into serializer
+            \param[in] pRenderPass SkyBoxPass to serialize data from
+        */
+        RenderPassSerializer serialize() override;
 
         /** Set the sampler used to render the sky box.
         */
@@ -81,8 +94,18 @@ namespace Falcor
         void setScale(float scale) { mScale = scale; }
         float getScale() const { return mScale; }
 
+        /** Called once before compilation. Describes I/O requirements of the pass.
+        The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+        */
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
+        /** Executes the pass.
+        */
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
+
+        virtual void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
     private:
-        SkyBox() = default;
+        SkyBox();
         bool createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo);
 
         size_t mMatOffset;
@@ -95,6 +118,8 @@ namespace Falcor
         GraphicsProgram::SharedPtr mpProgram;
         GraphicsVars::SharedPtr mpVars;
         GraphicsState::SharedPtr mpState;
+        Fbo::SharedPtr mpFbo;
+        std::shared_ptr<Scene> mpScene;
 
         struct
         {

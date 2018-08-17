@@ -185,7 +185,7 @@ void StereoRendering::loadScene(const std::string& filename)
     }
 }
 
-void StereoRendering::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void StereoRendering::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     mSPSSupported = gpDevice->isExtensionSupported("VK_NVX_multiview_per_view_attributes");
 
@@ -214,7 +214,7 @@ void StereoRendering::blitTexture(RenderContext* pContext, Fbo* pTargetFbo, Text
     }
 }
 
-void StereoRendering::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void StereoRendering::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     static uint32_t frameCount = 0u;
 
