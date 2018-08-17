@@ -434,8 +434,9 @@ namespace Falcor
 
         if (gpDevice)
         {
-            //blits the temp fbo given to user's renderer onto the backbuffer
-            mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
+            // Copy the render-target
+            mpRenderContext->copyResource(mpBackBufferFBO->getColorTexture(0).get(), mpTargetFBO->getColorTexture(0).get());
+
             //Takes testing screenshots if desired (leaves out gui and fps text)
             endTestFrame();
 
