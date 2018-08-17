@@ -77,7 +77,7 @@ namespace Falcor
         /* Save out data for sky box into serializer
             \param[in] pRenderPass SkyBoxPass to serialize data from
         */
-        RenderPassSerializer serialize() override;
+        void serialize(RenderPassSerializer& renderPassSerializer) override;
 
         /** Set the sampler used to render the sky box.
         */

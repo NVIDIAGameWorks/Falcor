@@ -39,6 +39,14 @@ namespace Falcor
     class SampleCallbacks
     {
     public:
+        /** Mode for displaying the UI */
+        enum class UIMode
+        {
+            HideAll = 0,
+            HideGlobal,
+            ShowAll
+        };
+
         /** Get the render-context for the current frame. This might change each frame*/
         virtual std::shared_ptr<RenderContext> getRenderContext() = 0;
 
@@ -85,7 +93,7 @@ namespace Falcor
         virtual void toggleUI(bool showUI) = 0;
 
         /** Show/hide the globalUI */
-        virtual void toggleGlobalUI(bool showGlobalUI) = 0;
+        virtual void setUiMode(UIMode uiStatus) = 0;
 
         /** Set the default GUI size */
         virtual void setDefaultGuiSize(uint32_t width, uint32_t height) = 0;

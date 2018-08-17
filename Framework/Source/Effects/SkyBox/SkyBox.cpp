@@ -65,14 +65,12 @@ namespace Falcor
         return createFromTexture(skyBox, serializer.getValue("loadAsSrgb").b, Sampler::create(samplerDesc));
     }
 
-    RenderPassSerializer SkyBox::serialize()
+    void SkyBox::serialize(RenderPassSerializer& renderPassSerializer)
     {
-        RenderPassSerializer renderPassSerializer;
-        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        renderPassSerializer.addVariable<bool>("loadAsSrgb", true);
-        return renderPassSerializer;
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(getSampler()->getMinFilter()));
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(getSampler()->getMagFilter()));
+        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(getSampler()->getMipFilter()));
+        renderPassSerializer.addVariable<bool>("loadAsSrgb",isSrgbFormat(getTexture()->getFormat()));
     }
 
     bool SkyBox::createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo)
