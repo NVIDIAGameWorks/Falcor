@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "ForwardRenderer.h"
 
-const std::string ForwardRenderer::skDefaultScene = "SunTemple/SunTemple.fscene"; // "Arcade/Arcade.fscene";
+const std::string ForwardRenderer::skDefaultScene = "ParagonCharacters/Grux/FScene.fscene"; // "SunTemple/SunTemple.fscene"; // "Arcade/Arcade.fscene";
 
 //  Halton Sampler Pattern.
 static const float kHaltonSamplePattern[8][2] = { { 1.0f / 2.0f - 0.5f, 1.0f / 3.0f - 0.5f },
@@ -153,6 +153,12 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
         pProbe->setSampler(mpSceneSampler);
     }
 
+    PointLight::SharedPtr pPointLight = PointLight::create();
+    pPointLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
+    pPointLight->setWorldPosition({ -0.015f, 1.679f, 0.495f });
+    pPointLight->setName("PointLight");
+    pScene->addLight(pPointLight);
+
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
     mpSceneRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
     mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
@@ -264,6 +270,8 @@ void ForwardRenderer::initPostProcess()
     mpFilmGrain = FilmGrain::create(1.0f);
     mpSubsurface = SubsurfaceScattering::create();
     mpBlendPass = BlendPass::create();
+
+    mpTempToneMappingFbo = Fbo::create();
 }
 
 void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
@@ -315,12 +323,6 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
 {
     PROFILE(postProcess);    
 
-    // subsurface
-    if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
-    {
-        mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, nullptr);
-        mpBlendPass->execute(pContext, mpResolveFbo->getColorTexture(3), mpResolveFbo);
-    }
     if (mPostProcessingControls[PostProcessID::Bloom])
     {
         mpBloom->execute(pContext, mpResolveFbo);
@@ -330,6 +332,16 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
         // TODO --  abstract this away
         mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
         mpGodRays->execute(pContext, mpResolveFbo->getColorTexture(0), mpMainFbo->getDepthStencilTexture(), mpResolveFbo);
+    }
+    // everything needs to be tone mapped by this point
+    // subsurface
+    ///mpToneMapper->execute(pContext, mpResolveFbo, mpResolveFbo);
+
+    if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
+    {
+        mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, mpMainFbo->getColorTexture(4));
+        mpBlendPass->execute(pContext, mpMainFbo->getColorTexture(3), mpResolveFbo);
+       // mpToneMapper->execute(pContext, mpResolveFbo, mpResolveFbo);
     }
     if (mPostProcessingControls[PostProcessID::DepthOfField])
     {
@@ -343,9 +355,10 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     {
         mpFilmGrain->execute(pContext, mpResolveFbo);
     }
-    
-    pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
-    mpToneMapper->execute(pContext, mpResolveFbo, pTargetFbo);
+
+
+    mpToneMapper->execute(pContext, mpResolveFbo, mpResolveFbo);
+    pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getColorTexture(0)->getRTV());
 }
 
 void ForwardRenderer::depthPass(RenderContext* pContext)
@@ -386,6 +399,13 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     }
 
     pContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0.0, 0.0, 0.0, 0.0));
+
+    if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
+    {
+        pContext->clearRtv(mpMainFbo->getColorTexture(3)->getRTV().get(), vec4(0.0, 0.0, 0.0, 0.0));
+        pContext->clearRtv(mpMainFbo->getColorTexture(4)->getRTV().get(), vec4(0.0, 0.0, 0.0, 0.0));
+    }
+
     pCB["gRenderTargetDim"] = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
 
     if(mControls[EnableTransparency].enabled)

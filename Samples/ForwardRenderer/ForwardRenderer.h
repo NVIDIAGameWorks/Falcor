@@ -125,6 +125,8 @@ private:
     SubsurfaceScattering::UniquePtr mpSubsurface;
     BlendPass::UniquePtr mpBlendPass;
 
+    Fbo::SharedPtr mpTempToneMappingFbo;
+
     struct
     {
         SSAO::UniquePtr pSSAO;

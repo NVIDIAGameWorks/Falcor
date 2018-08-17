@@ -72,6 +72,9 @@ struct PsOut
 #ifdef _SEPERATE_DIFFUSE_AND_SPECULAR
     float4 specular : SV_TARGET3;
 #endif
+#ifdef _OUTPUT_SUBSURFACE
+    float subsurface : SV_TARGET4;
+#endif
 };
 
 PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
@@ -140,6 +143,9 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 
 #ifdef _SEPERATE_DIFFUSE_AND_SPECULAR
     psOut.specular = finalSpecular;
+#endif
+#ifdef _OUTPUT_SUBSURFACE
+    psOut.subsurface = 1.0f;
 #endif
     return psOut;
 }

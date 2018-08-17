@@ -55,7 +55,7 @@ float4 subsurface(float2 texC)
 	}
 	
 	// divide by depth for closer objects to have higher blur
-	float2 offsetStep = (pixelSize * scatteringWidth * dir) / (3.0f );
+	float2 offsetStep = (pixelSize * scatteringWidth * dir) / (3.0f * depth);
 	
 	for(uint i = 1; i < _KERNEL_WIDTH; ++i)
     {

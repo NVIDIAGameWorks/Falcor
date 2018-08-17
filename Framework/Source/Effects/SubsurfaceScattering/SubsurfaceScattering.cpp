@@ -31,25 +31,37 @@
 #include "Graphics/FboHelper.h"
 #include "Utils/Gui.h"
 #define _USE_MATH_DEFINES
+#include "glm/gtx/compatibility.hpp"
 #include <math.h>
 
 namespace Falcor
 {
     static std::string kShaderFilename("Effects/SubsurfaceScattering.ps.slang");
+    static Gui::DropdownList sScatteringTypeDropdown;
 
     SubsurfaceScattering::~SubsurfaceScattering() = default;
 
-    SubsurfaceScattering::SubsurfaceScattering(uint32_t kernelWidth, float scatteringWidth, const glm::vec3& falloffColor, const glm::vec3& intensityColor)
-        : mKernelWidth(kernelWidth), mScatteringWidth(scatteringWidth), mFalloffColor(falloffColor), mIntensityColor(intensityColor)
+    SubsurfaceScattering::SubsurfaceScattering(uint32_t kernelWidth, float scatteringWidth, const glm::vec3& color)
+        : mKernelWidth(kernelWidth), mScatteringWidth(scatteringWidth), mColor(color)
     {
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         mpSampler = Sampler::create(samplerDesc);
+
+        Gui::DropdownValue value;
+        value.label = "Translucent";
+        value.value = SubsurfaceScatteringMode::Translucent;
+        sScatteringTypeDropdown.push_back(value);
+        value.label = "Skin";
+        value.value = SubsurfaceScatteringMode::Skin;
+        sScatteringTypeDropdown.push_back(value);
+
+        mDirty = true;
     }
 
-    SubsurfaceScattering::UniquePtr SubsurfaceScattering::create(uint32_t kernelSize, float scatteringWidth, const glm::vec3& falloffColor, const glm::vec3& intensityColor)
+    SubsurfaceScattering::UniquePtr SubsurfaceScattering::create(uint32_t kernelSize, float scatteringWidth, const glm::vec3& color)
     {
-        SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, scatteringWidth, falloffColor, intensityColor);
+        SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, scatteringWidth, color);
         return SubsurfaceScattering::UniquePtr(pBlur);
     }
 
@@ -57,12 +69,12 @@ namespace Falcor
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
-            if (pGui->addFloat3Var("Falloff Color", mFalloffColor, 0))
+            if (pGui->addRgbColor("Color", mColor, 0))
             {
                 updateDiffusionProfile();
                 mpVars->setTypedBuffer("gaussianWeights", mpWeights);
             }
-            if (pGui->addFloat3Var("Intensity Color", mIntensityColor))
+            if (pGui->addFloatVar("Strength", mStrength, 0.01f))
             {
                 updateDiffusionProfile();
                 mpVars->setTypedBuffer("gaussianWeights", mpWeights);
@@ -73,9 +85,12 @@ namespace Falcor
                 mKernelWidth = kernelWidth;
                 mDirty = true;
             }
-            if (pGui->addFloatVar("Scattering Width", mScatteringWidth, 0))
+            uint32_t dropdownValue = static_cast<uint32_t>(mMode);
+            if (pGui->addDropdown("", sScatteringTypeDropdown, dropdownValue))
             {
-                mpVars["SubsurfaceParams"]["scatteringWidth"] = mScatteringWidth;
+                mMode = static_cast<SubsurfaceScatteringMode>(dropdownValue);
+                updateDiffusionProfile();
+                mpVars->setTypedBuffer("gaussianWeights", mpWeights);
             }
 
             if (uiGroup) pGui->endGroup();
@@ -87,21 +102,27 @@ namespace Falcor
         float sigmaSquared = sigma * sigma;
         float p = -(x*x) / (2 * sigmaSquared);
         float e = exp(p);
-
+    
         float a = 2 * (float)M_PI * sigmaSquared;
         return e / a;
     }
-
-    float getProfile(float offset)
+    
+    float getProfile(float s, float r)
     {
-        float profileValue = 0.1f * getCoefficient(0.0484f, offset);
-        profileValue += 0.118f * getCoefficient(0.1847f, offset);
-        profileValue += 0.113f * getCoefficient(0.567f, offset);
-        profileValue += 0.358f * getCoefficient(1.99f, offset);
-        profileValue += 0.078f * getCoefficient(7.41f, offset);
+        // guassian from seperable paper
+        float profileValue = 0.1f * getCoefficient(0.0484f, r);
+        profileValue += 0.118f * getCoefficient(0.1847f, r);
+        profileValue += 0.113f * getCoefficient(0.567f, r);
+        profileValue += 0.358f * getCoefficient(1.99f, r);
+        profileValue += 0.078f * getCoefficient(7.41f, r);
         return profileValue;
+        // float sr = s * r;
+        // float p1 = -sr;
+        // float p2 = -sr / 3.0f;
+        // float e1 = exp(p1);
+        // float e2 = exp(p2);
+        // return (e1 + e2) / (8.0f * static_cast<float>(M_PI) * r);
     }
-
 
     void SubsurfaceScattering::updateDiffusionProfile()
     {
@@ -110,9 +131,9 @@ namespace Falcor
         // set per sample offset for gaussian
         for (uint32_t i = 0; i < mKernelWidth; ++i)
         {
-            float offset = -2.0f + i * 4.0f / (float(mKernelWidth) - 1.0f);
+            float offset = -2.0f + i * 6.0f / (float(mKernelWidth) - 1.0f);
             float sign = glm::sign(offset);
-            mpWeights[i * 4 + 3] = sign * offset * offset / 2.0f;
+            mpWeights[i * 4 + 3] = sign * offset * offset / 3.0f;
         }
 
         glm::vec3 sum{0.0f, 0.0f, 0.0f};
@@ -126,13 +147,26 @@ namespace Falcor
             offsetArea /= 2;
             for (uint32_t j = 0; j < 3; ++j)
             {
-                float weight = offsetArea * getProfile(mpWeights[i * 4 + 3] / (0.0001f + mFalloffColor[j]));
+                // float m = (mStrength - 0.33f);
+                // mScatteringWidth = (3.5f + 100.0f * m * m * m * m);
+                float m = (mStrength - 0.8f);
+                mScatteringWidth = (1.9f - mStrength + 3.5f * m * m);
+
+                float weight = offsetArea * getProfile(mScatteringWidth, mpWeights[i * 4 + 3]);
                 mpWeights[i * 4 + j] = weight;
                 sum[j] += weight;
             }
         }
 
-        for (int32_t i = mKernelWidth / 2; i > 0; --i)
+        mpWeights[3] = mStrength;
+
+        int32_t halfKernelWidth = mKernelWidth / 2;
+        glm::vec4 middleWeight{ mpWeights[halfKernelWidth * 4],
+            mpWeights[halfKernelWidth * 4 + 1], 
+            mpWeights[halfKernelWidth * 4 + 2],
+            mpWeights[halfKernelWidth * 4 + 3] };
+
+        for (int32_t i = halfKernelWidth; i > 0; --i)
         {
             mpWeights[i * 4] = mpWeights[(i - 1) * 4];
             mpWeights[i * 4 + 1] = mpWeights[(i - 1) * 4 + 1];
@@ -140,12 +174,17 @@ namespace Falcor
             mpWeights[i * 4 + 3] = mpWeights[(i - 1) * 4 + 3];
         }
 
+        mpWeights[0] = glm::lerp(1.0f, static_cast<float>(middleWeight.x), mStrength);
+        mpWeights[1] = glm::lerp(1.0f, static_cast<float>(middleWeight.y), mStrength);
+        mpWeights[2] = glm::lerp(1.0f, static_cast<float>(middleWeight.z), mStrength);
+
+
         // normalize the diffusion weights similar to the old paper
         for (uint32_t i = 0; i < mKernelWidth; ++i)
         {
-            mpWeights[i * 4 ] = mpWeights[i * 4] * mIntensityColor.x / sum.x;
-            mpWeights[i * 4 + 1] = mpWeights[i * 4 + 1] * mIntensityColor.y / sum.y;
-            mpWeights[i * 4 + 2] = mpWeights[i * 4 + 2] * mIntensityColor.z / sum.z;
+            mpWeights[i * 4 ] = mpWeights[i * 4] * mStrength / sum.x;
+            mpWeights[i * 4 + 1] = mpWeights[i * 4 + 1] * mStrength  / sum.y;
+            mpWeights[i * 4 + 2] = mpWeights[i * 4 + 2] * mStrength  / sum.z;
         }
     }
 
@@ -183,6 +222,7 @@ namespace Falcor
 
         mSrcTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("gSrcTex");
         mSrcDepthTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("gSrcDepthTex");
+        mSrcOcclTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("gSrcOcclusionTex");
         mpVars->setSampler("gSampler", mpSampler);
 
         mpVars->setTypedBuffer("gaussianWeights", mpWeights);
@@ -190,7 +230,7 @@ namespace Falcor
         mpVars["SubsurfaceParams"]["scatteringWidth"] = mScatteringWidth;
     }
 
-    void SubsurfaceScattering::execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcStencilMask)
+    void SubsurfaceScattering::execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcMaskTex)
     {
         createTmpFbo(pDiffuseSrc.get());
         if (mDirty)
@@ -220,6 +260,7 @@ namespace Falcor
         mpVars["SubsurfaceParams"]["dir"] = glm::vec2(1.0f, 0.0f);
         mpVars->getDefaultBlock()->setSrv(mSrcDepthTexLoc, 0, pSrcDepth->getSRV());
         mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pDiffuseSrc->getSRV());
+        mpVars->getDefaultBlock()->setSrv(mSrcOcclTexLoc, 0, pSrcMaskTex->getSRV());
 
         // Horizontal pass
         pState->pushFbo(mpTmpFbo);
@@ -227,6 +268,7 @@ namespace Falcor
         mpBlurPass->execute(pRenderContext);
 
         mpVars->setTypedBuffer("gaussianWeights", mpWeights);
+        mpVars["SubsurfaceParams"]["scatteringWidth"] = mScatteringWidth;
 
         // set direction
         mpVars["SubsurfaceParams"]["dir"] = glm::vec2(0.0f, 1.0f);

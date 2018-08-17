@@ -53,14 +53,14 @@ namespace Falcor
         \param[in] kernelSize Number of samples taken along each axis
         \param[in] sigma Gaussian distribution sigma value used to calculate sample weights. Values smaller than twice the sigma are ineffective
         */
-        static UniquePtr create(uint32_t kernelSize = 20, float scatteringWidth = 1.0f, const glm::vec3& mFalloffColor = {1.0f, 1.0f, 1.0f}, const glm::vec3& intensityColor = { 1.0f, 1.0f, 1.0f });
+        static UniquePtr create(uint32_t kernelSize = 20, float scatteringWidth = 1.0f, const glm::vec3& color = {1.0f, 1.0f, 1.0f});
 
         /** Apply gaussian blur by rendering one texture into another.
         \param pRenderContext Render context to use
         \param pSrc The source texture
         \param pDst The destination texture
         */
-        void execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcStencilMask);
+        void execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcMaskTex);
 
         /** Render UI controls for blur settings.
         \param[in] pGui GUI instance to render UI elements with
@@ -68,8 +68,14 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
+        enum SubsurfaceScatteringMode
+        {
+            Translucent,
+            Skin
+        };
+
     private:
-        SubsurfaceScattering(uint32_t kernelWidth, float scatteringWidth, const glm::vec3& falloffColor, const glm::vec3& intensityColor);
+        SubsurfaceScattering(uint32_t kernelWidth, float scatteringWidth, const glm::vec3& color);
         
         void createTmpFbo(const Texture* pSrc);
         void createProgram();
@@ -83,10 +89,12 @@ namespace Falcor
         GraphicsVars::SharedPtr mpVars;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         ParameterBlockReflection::BindLocation mSrcDepthTexLoc;
+        ParameterBlockReflection::BindLocation mSrcOcclTexLoc;
 
+        SubsurfaceScatteringMode mMode;
         uint32_t mKernelWidth;
         float mScatteringWidth;
-        glm::vec3 mFalloffColor;
-        glm::vec3 mIntensityColor;
+        glm::vec3 mColor;
+        float mStrength;
     };
 }
