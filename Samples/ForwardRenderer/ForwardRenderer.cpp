@@ -323,11 +323,11 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
 {
     PROFILE(postProcess);    
 
-    if (mPostProcessingControls[PostProcessID::Bloom])
+   // if (mPostProcessingControls[PostProcessID::Bloom])
     {
         mpBloom->execute(pContext, mpResolveFbo);
     }
-    if (mPostProcessingControls[PostProcessID::GodRays])
+    //if (mPostProcessingControls[PostProcessID::GodRays])
     {
         // TODO --  abstract this away
         mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
@@ -343,15 +343,15 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
         mpBlendPass->execute(pContext, mpMainFbo->getColorTexture(3), mpResolveFbo);
        // mpToneMapper->execute(pContext, mpResolveFbo, mpResolveFbo);
     }
-    if (mPostProcessingControls[PostProcessID::DepthOfField])
+    //if (mPostProcessingControls[PostProcessID::DepthOfField])
     {
         mpDepthOfField->execute(pContext, mpResolveFbo);
     }
-    if (mPostProcessingControls[PostProcessID::MotionBlur])
+    //if (mPostProcessingControls[PostProcessID::MotionBlur])
     {
         mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
     }
-    if (mPostProcessingControls[PostProcessID::FilmGrain])
+   // if (mPostProcessingControls[PostProcessID::FilmGrain])
     {
         mpFilmGrain->execute(pContext, mpResolveFbo);
     }

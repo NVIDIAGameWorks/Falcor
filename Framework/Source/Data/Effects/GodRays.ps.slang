@@ -33,6 +33,7 @@ __import Helpers;
 SamplerState gSampler;
 
 Texture2D gColor;
+Texture2D gVisibility;
 Texture2D gDepth;
 
 struct Media
@@ -71,6 +72,7 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 	{
 		texPosition -= toLightSource;
 		
+		float visibility = gVisibility.SampleLevel(gSampler, texPosition, 0).r;
 		float3 nextColor = gColor.Sample( gSampler, texPosition ).xyz * (abs(gDepth.SampleLevel(gSampler, texPosition, 0).x) < 1.0f ? 0.0f : 1.0f);
 		nextColor *= accumulatedDecay * gMedia.weight;
 	
