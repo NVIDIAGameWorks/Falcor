@@ -54,7 +54,7 @@ namespace Falcor
         \param[in] pGui GUI instance to render UI elements with
         \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr, const Scene::SharedPtr& pScene = nullptr);
+        virtual void renderUI(Gui* pGui, const char* uiGroup = nullptr) override;
 
         /** Called once before compilation. Describes I/O requirements of the pass.
         The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
@@ -63,9 +63,13 @@ namespace Falcor
 
         void setNumSamples(int32_t numSamples);
 
-        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+        static UniquePtr deserialize(const RenderPassSerializer& serializer);
 
-        // move this back to private
+        void serialize(RenderPassSerializer& renderPassSerializer) override;
+
+        virtual void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
+
+        // TODO --- move this back to private
         GraphicsVars::SharedPtr mpVars;
 
     private:
@@ -82,8 +86,9 @@ namespace Falcor
         int32_t mLightIndex = 0;
         bool mDirty = false;
 
-        //Scene::SharedPtr mpScene;
+        Scene::SharedPtr mpScene;
         PassFilter::UniquePtr mpFilter;
+        Fbo::SharedPtr mpTargetFbo;
         Fbo::SharedPtr mpFilterResultFbo;
         Texture::SharedPtr mpLowResTexture;
         FullScreenPass::UniquePtr mpBlitPass;

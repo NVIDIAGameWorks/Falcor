@@ -46,7 +46,8 @@ namespace Falcor
     {
     public:
         using UniquePtr = std::unique_ptr<SubsurfaceScattering>;
-        using SharedPtr = std::unique_ptr<SubsurfaceScattering>;
+        using SharedPtr = std::shared_ptr<SubsurfaceScattering>;
+
         /** Destructor
         */
         ~SubsurfaceScattering();
@@ -55,11 +56,11 @@ namespace Falcor
         \param[in] kernelSize Number of samples taken along each axis
         \param[in] sigma Gaussian distribution sigma value used to calculate sample weights. Values smaller than twice the sigma are ineffective
         */
-        static UniquePtr create(uint32_t kernelSize = 20, float scatteringWidth = 1.0f, const glm::vec3& color = {1.0f, 1.0f, 1.0f});
+        static SharedPtr create(uint32_t kernelSize = 20, float scatteringWidth = 1.0f, const glm::vec3& color = {1.0f, 1.0f, 1.0f});
 
-        static SubsurfaceScattering::UniquePtr deserialize(const RenderPassSerializer& serializer);
-        
-        RenderPassSerializer serialize();
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+
+        void serialize(RenderPassSerializer& renderPassSerializer) override;
 
         void execute(RenderContext* pRenderContext, Texture::SharedPtr pDiffuseSrc, Texture::SharedPtr pSrcDepth, Fbo::SharedPtr pDst, Texture::SharedPtr pSrcMaskTex);
 
@@ -74,7 +75,7 @@ namespace Falcor
         \param[in] pGui GUI instance to render UI elements with
         \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+        virtual void renderUI(Gui* pGui, const char* uiGroup = nullptr) override;
 
         enum SubsurfaceScatteringMode
         {
@@ -100,7 +101,7 @@ namespace Falcor
         ParameterBlockReflection::BindLocation mSrcDepthTexLoc;
         ParameterBlockReflection::BindLocation mSrcOcclTexLoc;
 
-        SubsurfaceScatteringMode mMode;
+        SubsurfaceScatteringMode mMode = Skin;
         uint32_t mKernelWidth;
         float mScatteringWidth;
         glm::vec3 mColor;

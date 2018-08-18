@@ -33,12 +33,16 @@
 
 namespace Falcor
 {
-    BlendPass::UniquePtr BlendPass::create()
+    static const char* kInputOutput = "color";
+    static const char* kColorB = "src";
+
+    BlendPass::SharedPtr BlendPass::create()
     {
-        return BlendPass::UniquePtr(new BlendPass());
+        return SharedPtr(new BlendPass());
     }
 
     BlendPass::BlendPass()
+        : RenderPass("BlendPass")
     {
         BlendState::Desc desc;
         desc.setRtBlend(0, true);
@@ -62,6 +66,24 @@ namespace Falcor
         mpVars->setSampler("gSampler", mpSampler);
     }
 
+    BlendPass::SharedPtr BlendPass::deserialize(const RenderPassSerializer& serializer)
+    {
+        return create();
+    }
+
+    void BlendPass::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInputOutput(kInputOutput);
+        reflector.addInput(kColorB);
+    }
+
+    void BlendPass::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        if (!mpTargetFbo) mpTargetFbo = Fbo::create();
+        mpTargetFbo->attachColorTarget(pData->getTexture(kInputOutput), 0);
+        execute(pRenderContext, pData->getTexture(kColorB), mpTargetFbo);
+    }
+
     void BlendPass::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, Fbo::SharedPtr pFbo)
     {
         assert(pFbo->getWidth() == pSrcTex->getWidth() && pSrcTex->getHeight() == pFbo->getHeight());
@@ -78,8 +100,11 @@ namespace Falcor
 
     void BlendPass::renderUI(Gui* pGui, const char* uiGroup)
     {
-        if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
-        {
-        }
+        // TODO -- add more than just add blend
+
+        // if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
+        // {
+        //     if (uiGroup) pGui->endGroup();
+        // }
     }
 }

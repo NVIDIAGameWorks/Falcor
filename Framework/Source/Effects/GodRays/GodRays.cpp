@@ -34,13 +34,17 @@
 
 namespace Falcor
 {
+    static const char* kInputName = "color";
+    static const char* kInputDepthName = "depth";
+    static const char* kDstName = "dst";
+
     GodRays::UniquePtr GodRays::create(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples)
     {
         return GodRays::UniquePtr(new GodRays(threshold, mediumDensity, mediumDecay, mediumWeight, exposer, numSamples));
     }
 
     GodRays::GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples)
-        : mMediumDensity(mediumDensity), mMediumDecay(mediumDecay), mMediumWeight(mediumWeight), mNumSamples(numSamples), mExposer(exposer)
+        : RenderPass("GodRays"), mMediumDensity(mediumDensity), mMediumDecay(mediumDecay), mMediumWeight(mediumWeight), mNumSamples(numSamples), mExposer(exposer)
     {
         BlendState::Desc desc;
         desc.setRtBlend(0, true);
@@ -62,21 +66,33 @@ namespace Falcor
         createShader();
     }
 
-    UniquePtr GodRays::deserialize(const RenderPassSerializer& serializer)
+    void GodRays::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInput(kInputName);
+        reflector.addInput(kInputDepthName);
+        reflector.addOutput(kDstName);
+    }
+
+    GodRays::UniquePtr GodRays::deserialize(const RenderPassSerializer& serializer)
     { 
-        float threshold = static_cast<float>(serializer.getValue("threshold").d64);
-        float mediumDensity = static_cast<float>(serializer.getValue("mediumDensity").d64);
-        float mediumDecay = static_cast<float>(serializer.getValue("mediumDecay").d64);
-        float mediumWeight = static_cast<float>(serializer.getValue("mediumWeight").d64);
-        float exposer = static_cast<float>(serializer.getValue("exposer").d64);
-        int32_t numSamples = serializer.getValue("numSamples").i32;
+        float threshold = static_cast<float>(serializer.getValue("godRays.threshold").d64);
+        float mediumDensity = static_cast<float>(serializer.getValue("godRays.mediumDensity").d64);
+        float mediumDecay = static_cast<float>(serializer.getValue("godRays.mediumDecay").d64);
+        float mediumWeight = static_cast<float>(serializer.getValue("godRays.mediumWeight").d64);
+        float exposer = static_cast<float>(serializer.getValue("godRays.exposer").d64);
+        int32_t numSamples = serializer.getValue("godRays.numSamples").i32;
 
         return create(threshold, mediumDensity, mediumDecay, mediumWeight, exposer, numSamples); 
     }
 
-    void GodRays::serialize()
+    void GodRays::serialize(RenderPassSerializer& renderPassSerializer)
     {
-
+        renderPassSerializer.addVariable("godRays.threshold", mThreshold);
+        renderPassSerializer.addVariable("godRays.mediumDensity", mMediumDensity);
+        renderPassSerializer.addVariable("godRays.mediumDecay", mMediumDecay);
+        renderPassSerializer.addVariable("godRays.mediumWeight", mMediumWeight);
+        renderPassSerializer.addVariable("godRays.exposer", mExposer);
+        renderPassSerializer.addVariable("godRays.numSamples", mNumSamples);
     }
 
     void GodRays::createShader()
@@ -130,6 +146,16 @@ namespace Falcor
         }
     }
 
+    void GodRays::execute(RenderContext* pRenderContext, const RenderData* pRenderData)
+    {
+        if (!mpTargetFbo) mpTargetFbo = Fbo::create();
+
+        pRenderContext->blit(pRenderData->getTexture(kInputName)->getSRV(), pRenderData->getTexture(kDstName)->getRTV());
+        mpTargetFbo->attachColorTarget(pRenderData->getTexture(kDstName), 0);
+
+        execute(pRenderContext, pRenderData->getTexture(kInputName), pRenderData->getTexture(kInputDepthName), mpTargetFbo);
+    }
+
     void GodRays::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
     {
         execute(pRenderContext, pFbo->getColorTexture(0), pFbo->getDepthStencilTexture(), pFbo);
@@ -176,7 +202,7 @@ namespace Falcor
         mDirty = true;
     }
 
-    void GodRays::renderUI(Gui* pGui, const char* uiGroup, const Scene::SharedPtr& pScene)
+    void GodRays::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
@@ -200,24 +226,21 @@ namespace Falcor
             {
                 setNumSamples(mNumSamples);
             }
-            if (pScene)
+            if (mpScene->getLightCount())
             {
-                if (pScene->getLightCount())
+                Gui::DropdownList lightList;
+                for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
                 {
-                    Gui::DropdownList lightList;
-                    for (uint32_t i = 0; i < pScene->getLightCount(); i++)
-                    {
-                        Gui::DropdownValue value;
-                        value.label = pScene->getLight(i)->getName();
-                        value.value = i;
-                        lightList.push_back(value);
-                    }
+                    Gui::DropdownValue value;
+                    value.label = mpScene->getLight(i)->getName();
+                    value.value = i;
+                    lightList.push_back(value);
+                }
 
-                    uint32_t lightIndex = mLightIndex;
-                    if (pGui->addDropdown("Source Light", lightList, lightIndex))
-                    {
-                        mpVars["GodRaySettings"]["lightIndex"] = (mLightIndex = lightIndex);
-                    }
+                uint32_t lightIndex = mLightIndex;
+                if (pGui->addDropdown("Source Light", lightList, lightIndex))
+                {
+                    mpVars["GodRaySettings"]["lightIndex"] = (mLightIndex = lightIndex);
                 }
             }
             else

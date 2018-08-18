@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include <memory>
+#include "Graphics/RenderGraph/RenderPass.h"
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
 #include "Utils/Gui.h"
@@ -35,12 +36,17 @@ namespace Falcor
 {
     class RenderContext;
 
-    class BlendPass
+    class BlendPass : public RenderPass, public inherit_shared_from_this<RenderPass, BlendPass>
     {
     public:
         using UniquePtr = std::unique_ptr<BlendPass>;
+        using SharedPtr = std::shared_ptr<BlendPass>;
 
-        static UniquePtr create();
+        static SharedPtr create();
+
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
         void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, Fbo::SharedPtr pFbo);
 
@@ -49,12 +55,14 @@ namespace Falcor
         \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+        
+        virtual void reflect(RenderPassReflection& reflector) const override;
 
     private:
         BlendPass();
         
         GraphicsVars::SharedPtr mpVars;
-        Fbo::SharedPtr mpFilterResultFbo;
+        Fbo::SharedPtr mpTargetFbo;
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         BlendState::SharedPtr mpAdditiveBlend;

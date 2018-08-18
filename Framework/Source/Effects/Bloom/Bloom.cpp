@@ -33,9 +33,9 @@
 
 namespace Falcor
 {
-    Bloom::UniquePtr Bloom::create(float threshold, uint32_t kernelSize, float sigma)
+    Bloom::SharedPtr Bloom::create(float threshold, uint32_t kernelSize, float sigma)
     {
-        return Bloom::UniquePtr(new Bloom(threshold, kernelSize, sigma));
+        return SharedPtr(new Bloom(threshold, kernelSize, sigma));
     }
 
     Bloom::Bloom(float threshold, uint32_t kernelSize, float sigma)

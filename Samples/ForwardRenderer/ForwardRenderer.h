@@ -117,13 +117,13 @@ private:
 
 
     ToneMapping::SharedPtr mpToneMapper;
-    Bloom::UniquePtr mpBloom;
-    GodRays::UniquePtr mpGodRays;
-    DepthOfField::UniquePtr mpDepthOfField;
-    MotionBlur::UniquePtr mpMotionBlur;
-    FilmGrain::UniquePtr mpFilmGrain;
-    SubsurfaceScattering::UniquePtr mpSubsurface;
-    BlendPass::UniquePtr mpBlendPass;
+    Bloom::SharedPtr mpBloom;
+    GodRays::SharedPtr mpGodRays;
+    DepthOfField::SharedPtr mpDepthOfField;
+    MotionBlur::SharedPtr mpMotionBlur;
+    FilmGrain::SharedPtr mpFilmGrain;
+    SubsurfaceScattering::SharedPtr mpSubsurface;
+    BlendPass::SharedPtr mpBlendPass;
 
     Fbo::SharedPtr mpTempToneMappingFbo;
 

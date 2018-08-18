@@ -35,12 +35,17 @@
 namespace Falcor
 {
     const uint32_t kMaxKernelSize = 15;
+    static const char* kColor = "color";
+    static const char* kMotionVecs = "motionVecs";
+    static const char* kDstName = "dst";
 
-    MotionBlur::UniquePtr MotionBlur::create(int32_t numSamples)
+    MotionBlur::SharedPtr MotionBlur::create(int32_t numSamples, float intensity)
     {
-        return MotionBlur::UniquePtr(new MotionBlur(numSamples));
+        return SharedPtr(new MotionBlur(numSamples, intensity));
     }
-    MotionBlur::MotionBlur(int32_t numSamples)
+
+    MotionBlur::MotionBlur(int32_t numSamples, float intensity)
+        : RenderPass("MotionBlur"), mNumSamples(numSamples), mIntensity(intensity)
     {
         BlendState::Desc desc;
         desc.setRtBlend(0, true);
@@ -72,6 +77,32 @@ namespace Falcor
         mpVars["SrcRectCB"]["gOffset"] = vec2(0.0f);
         mpVars["SrcRectCB"]["gScale"] = vec2(1.0f);
         mpVars->setSampler("gSampler", mpSampler);
+    }
+
+    void MotionBlur::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInput(kColor);
+        reflector.addInput(kMotionVecs);
+        reflector.addOutput(kDstName);
+    }
+
+    MotionBlur::SharedPtr MotionBlur::deserialize(const RenderPassSerializer& serializer)
+    {
+        return create(serializer.getValue("motionBlur.numSamples").u32, static_cast<float>(serializer.getValue("motionBlur.intensity").d64));
+    }
+
+    void MotionBlur::serialize(RenderPassSerializer& renderPassSerializer)
+    {
+        renderPassSerializer.addVariable("motionBlur.numSamples", mNumSamples);
+        renderPassSerializer.addVariable("motionBlur.intensity", mNumSamples);
+    }
+
+    void MotionBlur::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        if (!mpTargetFbo) mpTargetFbo = Fbo::create();
+        mpTargetFbo->attachColorTarget(pData->getTexture(kDstName), 0);
+
+        execute(pRenderContext, pData->getTexture(kMotionVecs), mpTargetFbo);
     }
 
     void MotionBlur::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pVelocityTex, Fbo::SharedPtr pFbo)

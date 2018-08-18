@@ -34,9 +34,13 @@ namespace Falcor
     class RenderPassSerializer
     {
     public:
-        const Scene::UserVariable& getValue(const std::string& key) const
+        Scene::UserVariable getValue(const std::string& key) const
         {
-            auto it = mData.find(key); assert(it != mData.end());
+            auto it = mData.find(key); 
+            if (it == mData.end())
+            {
+                return Scene::UserVariable(0);
+            }
             return it->second;
         }
 

@@ -28,6 +28,8 @@
 #pragma once
 #include <memory>
 #include <array>
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/RenderGraph/RenderPassSerializer.h"
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/Camera/Camera.h"
@@ -38,39 +40,51 @@ namespace Falcor
 {
     class RenderContext;
 
-    class MotionBlur
+    class MotionBlur : public RenderPass, public inherit_shared_from_this<RenderPass, MotionBlur>
     {
     public:
         using UniquePtr = std::unique_ptr<MotionBlur>;
+        using SharedPtr = std::shared_ptr<MotionBlur>;
 
-        static UniquePtr create(int32_t numSamples);
+        static SharedPtr create(int32_t numSamples = 20, float intensity = 1.0f);
 
         void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pVelocityTex, Fbo::SharedPtr pFbo);
 
+        /* Create a motion blur pass using data from serializer
+            \param[in] serializer Object to obtain initialization data
+        */
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+
+        /* Save out data for motion blur pass into serializer
+        */
+        void serialize(RenderPassSerializer& renderPassSerializer) override;
 
         /** Render UI controls for bloom settings.
         \param[in] pGui GUI instance to render UI elements with
         \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+        virtual void renderUI(Gui* pGui, const char* uiGroup = nullptr) override;
 
         void setNumSamples(int32_t numSamples);
         void setIntensity(float intensity);
 
-        // move this back to private
-        GraphicsVars::SharedPtr mpVars;
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
     private:
-        MotionBlur(int32_t numSamples = 20);
+        MotionBlur(int32_t numSamples, float intensity);
 
         void createShader();
 
-        int32_t mNumSamples = 20;
-        float mIntensity = 1.0f;
+        int32_t mNumSamples;
+        float mIntensity;
         bool mDirty = false;
-
+        
+        Fbo::SharedPtr mpTargetFbo;
         Texture::SharedPtr mpSrcTex = nullptr;
         FullScreenPass::UniquePtr mpBlitPass;
+        GraphicsVars::SharedPtr mpVars;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         ParameterBlockReflection::BindLocation mSrcVelocityLoc;
         BlendState::SharedPtr mpAdditiveBlend;

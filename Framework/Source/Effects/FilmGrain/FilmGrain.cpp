@@ -31,17 +31,20 @@
 #include "Graphics/Camera/Camera.h"
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
+#include "Graphics/RenderGraph/RenderPassSerializer.h"
 
 namespace Falcor
 {
+    static const char* kInputOutputName = "color";
     const uint32_t kMaxKernelSize = 15;
 
-    FilmGrain::UniquePtr FilmGrain::create(float grainSize)
+
+    FilmGrain::SharedPtr FilmGrain::create(float grainSize, float intensity)
     {
-        return FilmGrain::UniquePtr(new FilmGrain(grainSize));
+        return SharedPtr(new FilmGrain(grainSize, intensity));
     }
-    FilmGrain::FilmGrain(float grainSize)
-        : mGrainSize(grainSize)
+    FilmGrain::FilmGrain(float grainSize, float intensity)
+        : RenderPass("FilmGrain"), mGrainSize(grainSize), mIntensity(intensity)
     {
         BlendState::Desc desc;
         desc.setRtBlend(0, true);
@@ -69,6 +72,31 @@ namespace Falcor
         mpVars["SrcRectCB"]["gOffset"] = vec2(0.0f);
         mpVars["SrcRectCB"]["gScale"] = vec2(1.0f);
         mpVars->setSampler("gSampler", mpSampler);
+    }
+
+    FilmGrain::SharedPtr FilmGrain::deserialize(const RenderPassSerializer& serializer)
+    {
+        return create(static_cast<float>(serializer.getValue("filmGrain.grainSize").d64), 
+            static_cast<float>(serializer.getValue("filmGrain.intensity").d64));
+    }
+
+    void FilmGrain::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInputOutput("color");
+    }
+
+    void FilmGrain::serialize(RenderPassSerializer& renderPassSerializer)
+    {
+        renderPassSerializer.addVariable("filmGrain.grainSize", mGrainSize);
+        renderPassSerializer.addVariable("filmGrain.intensity", mIntensity);
+    }
+
+    void FilmGrain::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        if (!mpTargetFbo) mpTargetFbo = Fbo::create();
+
+        mpTargetFbo->attachColorTarget(pData->getTexture(kInputOutputName), 0);
+        execute(pRenderContext, mpTargetFbo);
     }
 
     void FilmGrain::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)

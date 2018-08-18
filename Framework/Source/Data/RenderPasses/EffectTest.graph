@@ -1,0 +1,32 @@
+SetScene C:\Users\moakes\Documents\P4_Workspace\graphics\media\Main\ParagonCharacters\Grux\Fscene.fscene
+AddRenderPass BlitPass BlitPass
+VarBool sss.color false
+VarUInt sss.kernelWidth 20
+VarFloat sss.scatteringWidth 0.000000
+AddRenderPass SubsurfaceScattering SubsurfaceScattering
+AddRenderPass SceneLightingPass SceneLightingPass
+AddRenderPass BlendPass BlendPass
+AddRenderPass ToneMappingPass ToneMappingPass
+VarUInt sampleDesc.minFilter 0
+VarUInt sampleDesc.magFilter 0
+VarUInt sampleDesc.mipFilter 0
+VarInt loadAsSrgb 0
+AddRenderPass SkyBox SkyBox
+AddRenderPass DepthPass DepthPass
+AddRenderPass CascadedShadowMaps CascadedShadowMaps
+VarFloat filmGrain.grainSize 0.000000
+VarFloat filmGrain.intensity 0.000000
+AddRenderPass FilmGrain FilmGrain
+AddEdge ToneMappingPass.dst BlitPass.src
+AddEdge SceneLightingPass.color SubsurfaceScattering.diffuse
+AddEdge SceneLightingPass.depth SubsurfaceScattering.depth
+AddEdge DepthPass.depth SceneLightingPass.depth
+AddEdge SkyBox.target SceneLightingPass.color
+AddEdge CascadedShadowMaps.visibility SceneLightingPass.visibilityBuffer
+AddEdge SceneLightingPass.color BlendPass.color
+AddEdge SubsurfaceScattering.blurred BlendPass.src
+AddEdge FilmGrain.color ToneMappingPass.src
+AddEdge DepthPass.depth SkyBox.depth
+AddEdge SkyBox.depth CascadedShadowMaps.depth
+AddEdge BlendPass.color FilmGrain.color
+AddGraphOutput BlitPass.dst

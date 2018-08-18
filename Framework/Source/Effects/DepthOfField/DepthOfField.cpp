@@ -36,14 +36,14 @@ namespace Falcor
 {
     const uint32_t kMaxKernelSize = 15;
 
-    DepthOfField::UniquePtr DepthOfField::create(const Camera::SharedConstPtr& pCamera)
+    DepthOfField::SharedPtr DepthOfField::create(const Camera::SharedConstPtr& pCamera)
     {
-        return DepthOfField::UniquePtr(new DepthOfField(pCamera));
+        return SharedPtr(new DepthOfField(pCamera));
     }
 
-    DepthOfField::UniquePtr DepthOfField::create(float mPlaneOfFocus, float mAperture, float mFocalLength, float mNearZ, float mFarZ)
+    DepthOfField::SharedPtr DepthOfField::create(float mPlaneOfFocus, float mAperture, float mFocalLength, float mNearZ, float mFarZ)
     {
-        return DepthOfField::UniquePtr(new DepthOfField(mPlaneOfFocus, mAperture, mFocalLength, mNearZ, mFarZ));
+        return SharedPtr(new DepthOfField(mPlaneOfFocus, mAperture, mFocalLength, mNearZ, mFarZ));
     }
 
     DepthOfField::DepthOfField(const Camera::SharedConstPtr& pCamera)

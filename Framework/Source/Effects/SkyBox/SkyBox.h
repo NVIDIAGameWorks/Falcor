@@ -75,7 +75,6 @@ namespace Falcor
         void render(RenderContext* pRenderCtx, Camera* pCamera, const Fbo::SharedPtr& pTarget = nullptr);
 
         /* Save out data for sky box into serializer
-            \param[in] pRenderPass SkyBoxPass to serialize data from
         */
         void serialize(RenderPassSerializer& renderPassSerializer) override;
 

@@ -59,21 +59,24 @@ namespace Falcor
         mDirty = true;
     }
 
-    SubsurfaceScattering::UniquePtr SubsurfaceScattering::create(uint32_t kernelSize, float scatteringWidth, const glm::vec3& color)
+    SubsurfaceScattering::SharedPtr SubsurfaceScattering::create(uint32_t kernelSize, float scatteringWidth, const glm::vec3& color)
     {
         SubsurfaceScattering* pBlur = new SubsurfaceScattering(kernelSize, scatteringWidth, color);
-        return SubsurfaceScattering::UniquePtr(pBlur);
+        return SharedPtr(pBlur);
     }
 
-    SubsurfaceScattering::UniquePtr SubsurfaceScattering::deserialize(const RenderPassSerializer& serializer)
+    SubsurfaceScattering::SharedPtr SubsurfaceScattering::deserialize(const RenderPassSerializer& serializer)
     {
-        return create();
+        uint32_t kernelWidth = serializer.getValue("sss.kernelWidth").u32;
+        float scatteringWidth = static_cast<float>(serializer.getValue("sss.scatteringWidth").d64);
+        return create(kernelWidth, scatteringWidth, serializer.getValue("sss.color").vec3);
     }
 
-    RenderPassSerializer SubsurfaceScattering::serialize()
+    void SubsurfaceScattering::serialize(RenderPassSerializer& renderPassSerializer)
     {
-        RenderPassSerializer renderPassSerializer;
-        return renderPassSerializer;
+        renderPassSerializer.addVariable("sss.kernelWidth", mKernelWidth);
+        renderPassSerializer.addVariable("sss.scatteringWidth", mScatteringWidth);
+        renderPassSerializer.addVariable("sss.color", mColor);
     }
 
     void SubsurfaceScattering::renderUI(Gui* pGui, const char* uiGroup)
@@ -295,6 +298,7 @@ namespace Falcor
         mpVars["SubsurfaceParams"]["dir"] = glm::vec2(1.0f, 0.0f);
         mpVars->getDefaultBlock()->setSrv(mSrcDepthTexLoc, 0, pSrcDepth->getSRV());
         mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pDiffuseSrc->getSRV());
+        if(pSrcMaskTex)
         mpVars->getDefaultBlock()->setSrv(mSrcOcclTexLoc, 0, pSrcMaskTex->getSRV());
 
         // Horizontal pass

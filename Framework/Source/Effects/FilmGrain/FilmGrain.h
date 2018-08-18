@@ -28,6 +28,7 @@
 #pragma once
 #include <memory>
 #include <array>
+#include "Graphics/RenderGraph/RenderPass.h"
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/Camera/Camera.h"
@@ -38,21 +39,29 @@ namespace Falcor
 {
     class RenderContext;
 
-    class FilmGrain
+    class FilmGrain : public RenderPass, public inherit_shared_from_this<RenderPass, FilmGrain>
     {
     public:
         using UniquePtr = std::unique_ptr<FilmGrain>;
+        using SharedPtr = std::shared_ptr<FilmGrain>;
 
-        static UniquePtr create(float grainSize);
+        static SharedPtr create(float grainSize = 1.0f, float intensity = 0.025f);
+
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
 
+        void serialize(RenderPassSerializer& renderPassSerializer) override;
 
         /** Render UI controls for bloom settings.
         \param[in] pGui GUI instance to render UI elements with
         \param[in] uiGroup Optional name. If specified, UI elements will be rendered within a named group
         */
-        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+        virtual void renderUI(Gui* pGui, const char* uiGroup = nullptr) override;
 
         void setGrainSize(float grainSize);
         void setSeed(float seed);
@@ -61,16 +70,16 @@ namespace Falcor
         GraphicsVars::SharedPtr mpVars;
 
     private:
-        FilmGrain(float grainSize = 1.0f);
+        FilmGrain(float grainSize, float intensity);
 
         void createShader();
         
-
-        float mGrainSize = 1.0f;
-        float mIntensity = 1.0f;
+        float mGrainSize;
+        float mIntensity;
         bool mDirty = false;
 
         Texture::SharedPtr mpSrcTex = nullptr;
+        Fbo::SharedPtr mpTargetFbo;
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         ParameterBlockReflection::BindLocation mSrcVelocityLoc;

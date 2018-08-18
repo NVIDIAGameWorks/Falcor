@@ -42,9 +42,10 @@ namespace Falcor
     {
     public:
         using UniquePtr = std::unique_ptr<DepthOfField>;
+        using SharedPtr = std::shared_ptr<DepthOfField>;
 
-        static UniquePtr create(const Camera::SharedConstPtr& mpCamera);
-        static UniquePtr create(float mPlaneOfFocus, float mAperture, float mFocalLength, float mNearZ, float mFarZ);
+        static SharedPtr create(const Camera::SharedConstPtr& mpCamera);
+        static SharedPtr create(float mPlaneOfFocus, float mAperture, float mFocalLength, float mNearZ, float mFarZ);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
 

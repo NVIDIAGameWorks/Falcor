@@ -40,8 +40,9 @@ namespace Falcor
     {
     public:
         using UniquePtr = std::unique_ptr<Bloom>;
+        using SharedPtr = std::shared_ptr<Bloom>;
 
-        static UniquePtr create(float threshold, uint32_t kernelSize = 9, float sigma = 1.5f);
+        static SharedPtr create(float threshold, uint32_t kernelSize = 9, float sigma = 1.5f);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
 
