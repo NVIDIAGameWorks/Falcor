@@ -32,9 +32,9 @@ __import Helpers;
 
 SamplerState gSampler;
 
-Texture2D gColor;
-Texture2D gVisibility;
-Texture2D gDepth;
+Texture2D srcColor;
+Texture2D srcVisibility;
+Texture2D srcDepth;
 
 struct Media
 {
@@ -47,7 +47,8 @@ cbuffer GodRaySettings
 {
    Media gMedia;
    float exposer;
-   uint lightIndex;
+   LightData light;       // can do structured later for multi-contribution?
+   float4x4 cameraMatrix; // uploaded from the godrays pass on update
 };
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
@@ -57,23 +58,22 @@ float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 	float2 texPosition = texC;
 	
 	float4 screenSpaceLightPosition = 
-		mul(float4(gLights[int(lightIndex)].posW, 1.0f), gCamera.viewProjMat);
+		mul(float4(light.posW, 1.0f), cameraMatrix);
 	toLightSource = texPosition - screenSpaceLightPosition.xy;
 	
 	toLightSource *= 1.0f / (float(_NUM_SAMPLES) * gMedia.density);
-	toLightSource.y *= -1.0f;
 	
 	float accumulatedDecay = 1.0f;
-	float mask = (abs(gDepth.SampleLevel(gSampler, texC, 0).x) < 1.0f ? 0.0f : 1.0f);
-	float3 currentColor = gColor.Sample( gSampler, texPosition ).xyz * mask;
-	float3 lightIntensity = gLights[int(lightIndex)].intensity;
+	float mask = (abs(srcDepth.SampleLevel(gSampler, texC, 0).x) < 1.0f ? 0.0f : 1.0f);
+	float3 currentColor = srcColor.Sample( gSampler, texPosition ).xyz * mask;
+	float3 lightIntensity = light.intensity;
 
 	for(uint i = 0; i < _NUM_SAMPLES; i++)
 	{
 		texPosition -= toLightSource;
 		
-		float visibility = gVisibility.SampleLevel(gSampler, texPosition, 0).r;
-		float3 nextColor = gColor.Sample( gSampler, texPosition ).xyz * (abs(gDepth.SampleLevel(gSampler, texPosition, 0).x) < 1.0f ? 0.0f : 1.0f);
+		float visibility = srcVisibility.SampleLevel(gSampler, texPosition, 0).r;
+		float3 nextColor = srcColor.Sample( gSampler, texPosition ).xyz * (abs(srcDepth.SampleLevel(gSampler, texPosition, 0).x) < 1.0f ? 0.0f : 1.0f);
 		nextColor *= accumulatedDecay * gMedia.weight;
 	
 		currentColor += nextColor * lightIntensity;

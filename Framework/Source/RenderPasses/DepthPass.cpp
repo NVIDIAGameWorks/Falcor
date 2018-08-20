@@ -47,6 +47,7 @@ namespace Falcor
     DepthPass::DepthPass() : RenderPass("DepthPass")
     {
         GraphicsProgram::SharedPtr pProgram = GraphicsProgram::create({});
+        pProgram->addDefine("_DEFAULT_ALPHA_TEST", "1");
         mpState = GraphicsState::create();
         mpState->setProgram(pProgram);
         mpVars = GraphicsVars::create(pProgram->getReflector());

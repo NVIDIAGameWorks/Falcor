@@ -28,7 +28,7 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
+const std::string gkDefaultScene = "EmeraldSquare/EmeraldSquare_Day.fscene";// "testScenes/tree.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 RenderGraphViewer::~RenderGraphViewer()
@@ -53,6 +53,23 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         {
             createGraph(pSample);
         }
+    }
+
+    // allows for editing of lights while viewing graph output
+    if (mpScene && pGui->beginGroup("Scene Settings"))
+    {
+        uint32_t lightCount = mpScene->getLightCount();
+        if (lightCount && pGui->beginGroup("Light Sources"))
+        {
+            for (uint32_t i = 0; i < lightCount; i++)
+            {
+                Light* pLight = mpScene->getLight(i).get();
+                pLight->renderUI(pGui, pLight->getName().c_str());
+            }
+            pGui->endGroup();
+        }
+
+        pGui->endGroup();
     }
 
     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))

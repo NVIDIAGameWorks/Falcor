@@ -305,8 +305,7 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     }
     //if (mPostProcessingControls[PostProcessID::GodRays])
     {
-        // TODO --  abstract this away
-        mpGodRays->mpVars->setConstantBuffer("InternalPerFrameCB", mLightingPass.pVars->getConstantBuffer("InternalPerFrameCB"));
+        mpGodRays->setScene(mpSceneRenderer->getScene());
         mpGodRays->execute(pContext, mpResolveFbo->getColorTexture(0), mpMainFbo->getDepthStencilTexture(), mpResolveFbo);
     }
     // everything needs to be tone mapped by this point
@@ -325,7 +324,7 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     }
     //if (mPostProcessingControls[PostProcessID::MotionBlur])
     {
-        mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
+        // mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
     }
    // if (mPostProcessingControls[PostProcessID::FilmGrain])
     {

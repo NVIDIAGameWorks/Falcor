@@ -85,6 +85,7 @@ namespace Falcor
         int32_t mNumSamples;
         int32_t mLightIndex = 0;
         bool mDirty = false;
+        size_t mLightVarOffset = 0;
 
         Scene::SharedPtr mpScene;
         PassFilter::UniquePtr mpFilter;
@@ -94,6 +95,7 @@ namespace Falcor
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         ParameterBlockReflection::BindLocation mSrcDepthLoc;
+        ParameterBlockReflection::BindLocation mSrcVisibilityLoc;
         BlendState::SharedPtr mpAdditiveBlend;
         Sampler::SharedPtr mpSampler;
     };

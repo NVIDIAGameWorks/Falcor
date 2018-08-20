@@ -326,7 +326,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         mpToneMapper->renderUI(pGui, "Tone-Mapping");
         mpBloom->renderUI(pGui, "Bloom");
-        mpGodRays->renderUI(pGui, "GodRays", mpSceneRenderer->getScene());
+        mpGodRays->renderUI(pGui, "GodRays");
         mpDepthOfField->renderUI(pGui, "DepthOfField");
         mpMotionBlur->renderUI(pGui, "MotionBlur");
         mpFilmGrain->renderUI(pGui, "Film Grain");

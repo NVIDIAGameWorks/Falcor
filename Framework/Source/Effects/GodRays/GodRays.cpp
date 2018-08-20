@@ -27,10 +27,10 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "GodRays.h"
-#include "Graphics/Program/ProgramVars.h"
+#include "Graphics/RenderGraph/RenderPassSerializer.h"
+#include "Graphics/Light.h"
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
-#include "Graphics/RenderGraph/RenderPassSerializer.h"
 
 namespace Falcor
 {
@@ -100,10 +100,20 @@ namespace Falcor
         Program::DefineList defines;
         defines.add("_NUM_SAMPLES", std::to_string(mNumSamples));
 
-        mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Effects/GodRays.ps.slang", defines);
-        mpVars = GraphicsVars::create(mpBlitPass->getProgram()->getReflector());
-        mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("gColor");
-        mSrcDepthLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("gDepth");
+        if (mpBlitPass)
+        {
+            mpBlitPass->getProgram()->addDefines(defines);
+        }
+        else
+        {
+            mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Effects/GodRays.ps.slang", defines);
+
+            mpVars = GraphicsVars::create(mpBlitPass->getProgram()->getReflector());
+            mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("srcColor");
+            mSrcDepthLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("srcDepth");
+            mSrcVisibilityLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("srcVisibility");
+        }
+
         mpVars["SrcRectCB"]["gOffset"] = vec2(0.0f);
         mpVars["SrcRectCB"]["gScale"] = vec2(1.0f);
 
@@ -113,6 +123,7 @@ namespace Falcor
         mpVars["GodRaySettings"]["exposer"] = mExposer;
         mpVars["GodRaySettings"]["lightIndex"] = static_cast<uint32_t>(mLightIndex);
         
+        mLightVarOffset = mpVars["GodRaySettings"]->getVariableOffset("light");
 
         mpVars->setSampler("gSampler", mpSampler);
     }
@@ -170,24 +181,29 @@ namespace Falcor
             createShader();
             mDirty = false;
         }
-
-        mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
-        mpVars["GodRaySettings"]["gMedia.decay"] = mMediumDecay;
-        mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
-        mpVars["GodRaySettings"]["exposer"] = mExposer;
-        mpVars["GodRaySettings"]["lightIndex"] = static_cast<uint32_t>(mLightIndex);
-
+        else
+        {
+            mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
+            mpVars["GodRaySettings"]["gMedia.decay"] = mMediumDecay;
+            mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
+            mpVars["GodRaySettings"]["exposer"] = mExposer;
+            mpScene->getLight(mLightIndex)->setIntoProgramVars(mpVars.get(), mpVars["GodRaySettings"].get(), mLightVarOffset);
+            mpVars["GodRaySettings"]["cameraMatrix"] = mpScene->getActiveCamera()->getProjMatrix();
+        }
+        
 
         // experimenting with a down sampled image for GodRays
         updateLowResTexture(pSrcTex);
         pRenderContext->blit(pSrcTex->getSRV(), mpLowResTexture->getRTV());
 
         // Run high-pass filter and attach it to an FBO for blurring
-        //Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);
-        mpFilterResultFbo->attachColorTarget(mpLowResTexture, 0);
+        Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);
+        mpFilterResultFbo->attachColorTarget(pHighPassResult, 0);
 
-        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, mpLowResTexture->getSRV());
+        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
         mpVars->getDefaultBlock()->setSrv(mSrcDepthLoc, 0, pSrcDepthTex->getSRV());
+        // mpVars->getDefaultBlock()->setSrv(mSrcVisibilityLoc, 0, pSrcVisTex->getSRV());
+
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         pState->pushFbo(pFbo);
         pRenderContext->pushGraphicsVars(mpVars);
