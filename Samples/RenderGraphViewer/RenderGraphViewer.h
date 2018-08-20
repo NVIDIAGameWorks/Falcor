@@ -59,4 +59,5 @@ private:
     bool mEditorRunning = false;
     size_t mEditorProcess = 0;
     std::string mTempFilePath;
+    std::vector<std::string> mOutputNames;
 };
