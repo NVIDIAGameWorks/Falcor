@@ -194,6 +194,7 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addRenderPass(ToneMapping::deserialize({}), "ToneMapping");
     mpGraph->addRenderPass(SSAO::deserialize({}), "SSAO");
     mpGraph->addRenderPass(FXAA::deserialize({}), "FXAA");
+    mpGraph->addRenderPass(GodRays::deserialize({}), "GodRays");
 
     // Add the skybox
     Scene::UserVariable var = mpScene->getUserVariable("sky_box");
@@ -210,7 +211,11 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addEdge("SkyBox.target", "LightingPass.color");
     mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
 
-    mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
+    mpGraph->addEdge("LightingPass.color", "GodRays.color");
+    mpGraph->addEdge("DepthPrePass.depth", "GodRays.depth");
+
+    //mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
+    mpGraph->addEdge("GodRays.dst", "ToneMapping.src");
     mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
     mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
     mpGraph->addEdge("LightingPass.depth", "SSAO.depth");
@@ -307,7 +312,6 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
 bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
-    mCaptureHdr = keyEvent.mods.isCtrlDown && (keyEvent.key == KeyboardEvent::Key::L);
     return mCamControl.onKeyEvent(keyEvent);
 }
 

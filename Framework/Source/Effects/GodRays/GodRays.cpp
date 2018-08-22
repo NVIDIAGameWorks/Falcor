@@ -134,8 +134,8 @@ namespace Falcor
         bool createFbo = mpLowResTexture == nullptr;
 
         float aspectRatio = (float)pTexture->getWidth() / (float)pTexture->getHeight();
-        uint32_t lowResHeight = max(pTexture->getHeight() / 4, 256u);
-        uint32_t lowResWidth = max(pTexture->getWidth() / 4, (uint32_t)(256.0f * aspectRatio));
+        uint32_t lowResHeight = max(pTexture->getHeight() / 2, 256u);
+        uint32_t lowResWidth = max(pTexture->getWidth() / 2, (uint32_t)(256.0f * aspectRatio));
 
         if (createFbo == false)
         {
@@ -186,6 +186,7 @@ namespace Falcor
             mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
             mpVars["GodRaySettings"]["gMedia.decay"] = mMediumDecay;
             mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
+            // mpVars
             mpVars["GodRaySettings"]["exposer"] = mExposer;
             mpScene->getLight(mLightIndex)->setIntoProgramVars(mpVars.get(), mpVars["GodRaySettings"].get(), mLightVarOffset);
             mpVars["GodRaySettings"]["cameraMatrix"] = mpScene->getActiveCamera()->getProjMatrix();
