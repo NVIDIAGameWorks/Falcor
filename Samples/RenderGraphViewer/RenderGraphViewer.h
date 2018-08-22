@@ -53,7 +53,6 @@ private:
     std::string mSceneFilename;
     bool mEnableDepthPrePass = true;
     bool mUseCameraPath = true;
-    bool mCaptureHdr = false;
     uint32_t mGraphOutputIndex = 0;
     bool mShowAllOutputs = true;
     std::string mOutputString = "BlitPass.dst";

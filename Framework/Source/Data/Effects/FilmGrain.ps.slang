@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,25 +25,34 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 __import Helpers;
 
-Texture2D gNoiseTex;
-
 SamplerState gSampler;
+
+Texture2D srcTex;
+Texture2D noiseTex;
 
 cbuffer filmGrain
 { 
     float intensity;
-    float time;
+    float lumaContribution;
+    float3 grainTint;
+    float2 lumRange;
+    float2 randOffset;
 };
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-    float4 fragColor = float4(0.0f, 0.0f, 0.0f, 1.f);
+    float4 fragColor = srcTex.SampleLevel(gSampler, texC, 0); 
+    float noiseVal = intensity * noiseTex.Sample(gSampler, (texC + randOffset)).r * 0.5f;
 
-    // jitter texC to reduce artifacts
-    fragColor.xyz += intensity * abs(sineHash3D(float3(texC, time)));
+    // apply grain only to specified luminance range
+    float luma = luminance(fragColor.xyz);
+    float3 grainColor = noiseVal * grainTint;
+#ifdef _USE_LUMINANCE_RANGE
+    grainColor *= (luma < lumRange.x || luma > lumRange.y) ? 0.0f : 1.0f;
+#endif
+    fragColor.xyz += lerp( grainColor * luma, grainColor, lumaContribution);
 
     return fragColor;
 }

@@ -60,7 +60,7 @@ namespace Falcor
             \param pSrc The source texture
             \param pDst The destination texture
         */
-        void execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Fbo::SharedPtr pDst, uint srcArrayIndex = uint32_t(-1));
+        void execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Fbo::SharedPtr pDst);
 
         /** Set the kernel width. Controls the number of texels which will be sampled when blurring each pixel.
             Values smaller than twice the sigma are ineffective.

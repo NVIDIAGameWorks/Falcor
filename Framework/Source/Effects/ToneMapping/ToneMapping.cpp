@@ -246,8 +246,8 @@ namespace Falcor
 
         execute(pRenderContext, pData->getTexture(kSrc), pFbo);
 
-
-        if (GetAsyncKeyState(VK_LCONTROL) && GetAsyncKeyState(0x4C))
+#ifdef _WIN32
+        if (GetAsyncKeyState(VK_LCONTROL) == 1 && GetAsyncKeyState(0x4C) == 1)
         {
             // find tone-mapping pass and grab input resource
             std::string captureFileString;
@@ -255,4 +255,5 @@ namespace Falcor
             pData->getTexture(kDst)->captureToFile(0, 0, captureFileString, Bitmap::FileFormat::ExrFile);
         }
     }
+#endif
 }

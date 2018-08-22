@@ -153,7 +153,7 @@ namespace Falcor
         mDirty = false;
     }
 
-    void GaussianBlur::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Fbo::SharedPtr pDst, uint srcArrayIndex)
+    void GaussianBlur::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Fbo::SharedPtr pDst)
     {
         if (!mKernelWidth) return;
 
@@ -181,7 +181,7 @@ namespace Falcor
         // Horizontal pass
         ParameterBlock* pDefaultBlock = mpVars->getDefaultBlock().get();
         pDefaultBlock->setSampler(mBindLocations.sampler, 0, mpSampler);
-        pDefaultBlock->setSrv(mBindLocations.srcTexture, 0, pSrc->getSRV(0, uint32_t(-1), srcArrayIndex != uint32_t(-1) ? srcArrayIndex : 0, srcArrayIndex != uint32_t(-1) ? 1 : uint32_t(-1)));
+        pDefaultBlock->setSrv(mBindLocations.srcTexture, 0, pSrc->getSRV());
         
         pState->pushFbo(mpTmpFbo);
         pRenderContext->pushGraphicsVars(mpVars);
