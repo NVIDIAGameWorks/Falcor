@@ -28,7 +28,7 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene = "EmeraldSquare/EmeraldSquare_Day.fscene";// "testScenes/tree.fscene";
+const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";// "testScenes/tree.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 RenderGraphViewer::~RenderGraphViewer()
@@ -67,6 +67,19 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 pLight->renderUI(pGui, pLight->getName().c_str());
             }
             pGui->endGroup();
+        }
+
+        // allow detaching the camera
+        if (mpScene->getPathCount() && pGui->addCheckBox("Use Camera Path", mUseCameraPath))
+        {
+            if (mUseCameraPath)
+            {
+                mpScene->getPath(0)->attachObject(mpScene->getActiveCamera());
+            }
+            else
+            {
+                mpScene->getPath(0)->detachObject(mpScene->getActiveCamera());
+            }
         }
 
         pGui->endGroup();
@@ -294,6 +307,7 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
 bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
+    mCaptureHdr = keyEvent.mods.isCtrlDown && (keyEvent.key == KeyboardEvent::Key::L);
     return mCamControl.onKeyEvent(keyEvent);
 }
 

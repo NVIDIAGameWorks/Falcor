@@ -155,6 +155,8 @@ namespace Falcor
 
     void GaussianBlur::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc, Fbo::SharedPtr pDst, uint srcArrayIndex)
     {
+        if (!mKernelWidth) return;
+
         createTmpFbo(pSrc.get());
         if (mDirty)
         {

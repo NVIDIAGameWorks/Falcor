@@ -33,12 +33,16 @@
 
 namespace Falcor
 {
+    static const char* kSrcName = "src";
+    static const char* kDstName = "dst";
+
     Bloom::SharedPtr Bloom::create(float threshold, uint32_t kernelSize, float sigma)
     {
         return SharedPtr(new Bloom(threshold, kernelSize, sigma));
     }
 
     Bloom::Bloom(float threshold, uint32_t kernelSize, float sigma)
+        : RenderPass("Bloom")
     {
         mpBlur = GaussianBlur::create(kernelSize, sigma);
         mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Framework/Shaders/Blit.ps.slang");
@@ -63,6 +67,30 @@ namespace Falcor
 
         mpFilter = PassFilter::create(PassFilter::Type::HighPass, threshold);
         mpFilterResultFbo = Fbo::create();
+    }
+
+    Bloom::SharedPtr Bloom::deserialize(const RenderPassSerializer& serializer)
+    {
+        // if empty serializer, use default values
+        Scene::UserVariable thresholdVar = serializer.getValue("Bloom.threshold");
+        if (thresholdVar.type == Scene::UserVariable::Type::Unknown)
+        {
+            return create();
+        }
+
+        float threshold = static_cast<float>(thresholdVar.d64);
+        uint32_t kernelSize = serializer.getValue("Bloom.kernelSize").u32;
+        float sigma = static_cast<float>(serializer.getValue("Bloom.sigma").d64);
+
+
+        return create(threshold, kernelSize, sigma);
+    }
+
+    void Bloom::serialize(RenderPassSerializer& renderPassSerializer)
+    {
+        renderPassSerializer.addVariable("Bloom.threshold", mpFilter->getThreshold());
+        renderPassSerializer.addVariable("Bloom.kernelSize", mpBlur->getKernelWidth());
+        renderPassSerializer.addVariable("Bloom.sigma", mpBlur->getSigma());
     }
 
     void Bloom::updateLowResTexture(const Texture::SharedPtr& pTexture)
@@ -94,27 +122,55 @@ namespace Falcor
         }
     }
 
-    void Bloom::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
+    void Bloom::execute(RenderContext* pRenderContext, const RenderData* pRenderData)
     {
-        updateLowResTexture(pFbo->getColorTexture(0));
+        if (!mpTargetFbo)
+        {
+            mpTargetFbo = Fbo::create();
+        }
+        Texture::SharedPtr pSrcTex = pRenderData->getTexture(kSrcName);
+        Texture::SharedPtr pDstTex = pRenderData->getTexture(kDstName);
+        pRenderContext->blit(pSrcTex->getSRV(), pDstTex->getRTV());
+        mpTargetFbo->attachColorTarget(pDstTex, 0);
 
-        pRenderContext->blit(pFbo->getColorTexture(0)->getSRV(), mpLowResTexture->getRTV());
+        execute(pRenderContext, pSrcTex, mpTargetFbo);
+    }
+
+    void Bloom::execute(RenderContext* pRenderContext, const Texture::SharedPtr pSrcTex, Fbo::SharedPtr pFbo)
+    {
+        updateLowResTexture(pSrcTex);
+
+        pRenderContext->blit(pSrcTex->getSRV(), mpLowResTexture->getRTV());
 
         // Run high-pass filter and attach it to an FBO for blurring
         Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);
+        
+        if (mOutputIndex == 1)
+        {
+            pRenderContext->blit(pHighPassResult->getSRV(), pFbo->getColorTexture(0)->getRTV());
+            return;
+        }
+
         mpFilterResultFbo->attachColorTarget(pHighPassResult, 0);
         mpBlur->execute(pRenderContext, pHighPassResult, mpFilterResultFbo);
 
         // Execute bloom
-        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
-        GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
-        pState->pushFbo(pFbo);
-        pRenderContext->pushGraphicsVars(mpVars);
+        if (!mOutputIndex)
+        {
+            mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
+            GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
+            pState->pushFbo(pFbo);
+            pRenderContext->pushGraphicsVars(mpVars);
 
-        mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
+            mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
 
-        pRenderContext->popGraphicsVars();
-        pState->popFbo();
+            pRenderContext->popGraphicsVars();
+            pState->popFbo();
+        }
+        else if (mOutputIndex == 2)
+        {
+            pRenderContext->blit(mpFilterResultFbo->getColorTexture(0)->getSRV(), pFbo->getColorTexture(0)->getRTV());
+        }
     }
 
     void Bloom::renderUI(Gui* pGui, const char* uiGroup)
@@ -139,6 +195,20 @@ namespace Falcor
                 mpBlur->setSigma(sigma);
             }
 
+            Gui::DropdownList displayOutput;
+            Gui::DropdownValue value;
+            value.label = "Final Bloom";
+            value.value = 0;
+            displayOutput.push_back(value);
+            value.label = "HighPass Output";
+            value.value = 1;
+            displayOutput.push_back(value);
+            value.label = "Blur Texture";
+            value.value = 2;
+            displayOutput.push_back(value);
+
+            pGui->addDropdown("Output texture", displayOutput, mOutputIndex);
+
             if (uiGroup) 
             {
                 pGui->endGroup();
@@ -146,4 +216,9 @@ namespace Falcor
         }
     }
 
+    void Bloom::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInput(kSrcName);
+        reflector.addOutput(kDstName);
+    }
 }

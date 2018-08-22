@@ -562,6 +562,17 @@
     <ClCompile Include="Effects\BlendPass\BlendPass.cpp">
       <Filter>Effects\BlendPass</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
+    <ClCompile Include="RenderPasses\BlitPass.cpp" />
+    <ClCompile Include="RenderPasses\DepthPass.cpp" />
+    <ClCompile Include="RenderPasses\SceneLightingPass.cpp" />
+    <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp" />
+    <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp" />
+    <ClCompile Include="Utils\RenderGraphLoader.cpp" />
+    <ClCompile Include="Utils\RenderGraphUI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1747,6 +1758,22 @@
     <ClInclude Include="Effects\BlendPass\BlendPass.h">
       <Filter>Effects\BlendPass</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h" />
+    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
+    <ClInclude Include="RenderPasses\BlitPass.h" />
+    <ClInclude Include="RenderPasses\DepthPass.h" />
+    <ClInclude Include="RenderPasses\SceneLightingPass.h" />
+    <ClInclude Include="Utils\DirectedGraph.h" />
+    <ClInclude Include="Utils\DirectedGraphTraversal.h" />
+    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h" />
+    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h" />
+    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h" />
+    <ClInclude Include="Utils\RenderGraphLoader.h" />
+    <ClInclude Include="Utils\RenderGraphUI.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -2411,5 +2438,6 @@
     <None Include="Data\Effects\PassFilter.ps.slang">
       <Filter>Data\Effects</Filter>
     </None>
+    <None Include="Data\RenderPasses\SceneLightingPass.slang" />
   </ItemGroup>
 </Project>

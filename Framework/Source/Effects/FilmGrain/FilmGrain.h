@@ -45,7 +45,9 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<FilmGrain>;
         using SharedPtr = std::shared_ptr<FilmGrain>;
 
-        static SharedPtr create(float grainSize = 1.0f, float intensity = 0.025f);
+        static SharedPtr create(float grainSize = 0.75f, float intensity = 0.5f, float luminanceContribution = 0.8f, 
+            const glm::vec3& grainColor = { 1.0f, 1.0f, 1.0f }, const glm::vec2& luminanceRange = {0.0f, 0.5f},
+            bool useLuminanceRange = true, bool useColoredNoise = true);
 
         static SharedPtr deserialize(const RenderPassSerializer& serializer);
 
@@ -63,27 +65,39 @@ namespace Falcor
         */
         virtual void renderUI(Gui* pGui, const char* uiGroup = nullptr) override;
 
-        void setGrainSize(float grainSize);
-        void setSeed(float seed);
-
         // move this back to private
         GraphicsVars::SharedPtr mpVars;
 
+        enum NoiseType
+        {
+            Simplex,
+            Perlin
+        };
+
     private:
-        FilmGrain(float grainSize, float intensity);
+        FilmGrain(float grainSize, float intensity, float luminanceContribution, 
+            const glm::vec3& grainColor, const glm::vec2& luminanceRange, bool useLuminanceRange, bool useColoredNoise);
 
         void createShader();
-        
-        float mGrainSize;
-        float mIntensity;
+        void createNoiseTexture();
+
+        NoiseType mNoiseType = NoiseType::Perlin;
+        float mGrainSize = 1.0f;
+        float mIntensity = 0.0f;
+        float mLumaContribution = 1.0f;
+        glm::vec3 mGrainColor{ 1.0f, 1.0f, 1.0f };
+        glm::vec2 mLuminanceRange{0.001f, 0.5f};
+        bool mUseColoredNoise = true;
+        bool mUseLuminanceRange = true;
+        glm::vec2 mResolution{ 512.0f, 512.0f };
         bool mDirty = false;
 
         Texture::SharedPtr mpSrcTex = nullptr;
+        Texture::SharedPtr mpNoiseTex = nullptr;
         Fbo::SharedPtr mpTargetFbo;
         FullScreenPass::UniquePtr mpBlitPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
-        ParameterBlockReflection::BindLocation mSrcVelocityLoc;
-        BlendState::SharedPtr mpAdditiveBlend;
+        ParameterBlockReflection::BindLocation mNoiseTexLoc;
         Sampler::SharedPtr mpSampler;
     };
 }

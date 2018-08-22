@@ -299,34 +299,30 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
 {
     PROFILE(postProcess);    
 
-   // if (mPostProcessingControls[PostProcessID::Bloom])
+    if (mPostProcessingControls[PostProcessID::Bloom])
     {
-        mpBloom->execute(pContext, mpResolveFbo);
+        mpBloom->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo);
     }
-    //if (mPostProcessingControls[PostProcessID::GodRays])
+    if (mPostProcessingControls[PostProcessID::GodRays])
     {
         mpGodRays->setScene(mpSceneRenderer->getScene());
         mpGodRays->execute(pContext, mpResolveFbo->getColorTexture(0), mpMainFbo->getDepthStencilTexture(), mpResolveFbo);
     }
-    // everything needs to be tone mapped by this point
-    // subsurface
-    ///mpToneMapper->execute(pContext, mpResolveFbo, mpResolveFbo);
-
     if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
     {
         mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, mpMainFbo->getColorTexture(4));
         mpBlendPass->execute(pContext, mpMainFbo->getColorTexture(3), mpResolveFbo);
        // mpToneMapper->execute(pContext, mpResolveFbo, mpResolveFbo);
     }
-    //if (mPostProcessingControls[PostProcessID::DepthOfField])
+    if (mPostProcessingControls[PostProcessID::DepthOfField])
     {
         mpDepthOfField->execute(pContext, mpResolveFbo);
     }
-    //if (mPostProcessingControls[PostProcessID::MotionBlur])
+    if (mPostProcessingControls[PostProcessID::MotionBlur])
     {
-        // mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
+        mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
     }
-   // if (mPostProcessingControls[PostProcessID::FilmGrain])
+    if (mPostProcessingControls[PostProcessID::FilmGrain])
     {
         mpFilmGrain->execute(pContext, mpResolveFbo);
     }
@@ -530,8 +526,6 @@ void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContex
         renderSkyBox(pRenderContext.get());
         lightingPass(pRenderContext.get(), pTargetFbo.get());
         resolveMSAA(pRenderContext.get());      // This will only run if we are in MSAA mode
-
-        mpFilmGrain->setSeed(pSample->getCurrentTime());
 
         Fbo::SharedPtr pPostProcessDst = mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo;
         postProcess(pRenderContext.get(), pPostProcessDst);

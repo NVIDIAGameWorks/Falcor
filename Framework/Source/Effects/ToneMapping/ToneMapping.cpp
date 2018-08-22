@@ -245,5 +245,14 @@ namespace Falcor
         pFbo->attachColorTarget(pData->getTexture(kDst), 0);
 
         execute(pRenderContext, pData->getTexture(kSrc), pFbo);
+
+
+        if (GetAsyncKeyState(VK_LCONTROL) && GetAsyncKeyState(0x4C))
+        {
+            // find tone-mapping pass and grab input resource
+            std::string captureFileString;
+            findAvailableFilename(getExecutableName(), getExecutableDirectory(), "hdr", captureFileString);
+            pData->getTexture(kDst)->captureToFile(0, 0, captureFileString, Bitmap::FileFormat::ExrFile);
+        }
     }
 }

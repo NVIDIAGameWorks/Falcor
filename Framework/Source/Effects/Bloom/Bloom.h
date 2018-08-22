@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include <memory>
+#include "Graphics/RenderGraph/RenderPass.h"
 #include "API/FBO.h"
 #include "Graphics/FullScreenPass.h"
 #include "Effects/Utils/GaussianBlur/GaussianBlur.h"
@@ -36,15 +37,21 @@ namespace Falcor
 {
     class RenderContext;
 
-    class Bloom
+    class Bloom : public RenderPass, public inherit_shared_from_this<RenderPass, Bloom>
     {
     public:
         using UniquePtr = std::unique_ptr<Bloom>;
         using SharedPtr = std::shared_ptr<Bloom>;
 
-        static SharedPtr create(float threshold, uint32_t kernelSize = 9, float sigma = 1.5f);
+        static SharedPtr create(float threshold = 1.0f, uint32_t kernelSize = 9, float sigma = 1.5f);
 
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+
+        void serialize(RenderPassSerializer& renderPassSerializer) override;
+
+        void execute(RenderContext* pRenderContext, const RenderData* pData);
+        
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr pSrcTex, Fbo::SharedPtr pFbo);
 
         /** Sets blur kernel size
         */
@@ -60,11 +67,14 @@ namespace Falcor
         */
         void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
     private:
         Bloom(float threshold, uint32_t kernelSize, float sigma);
         void updateLowResTexture(const Texture::SharedPtr& pTexture);
 
         PassFilter::UniquePtr mpFilter;
+        Fbo::SharedPtr mpTargetFbo;
         Fbo::SharedPtr mpFilterResultFbo;
         Texture::SharedPtr mpLowResTexture;
         GaussianBlur::UniquePtr mpBlur;
@@ -73,5 +83,6 @@ namespace Falcor
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         BlendState::SharedPtr mpAdditiveBlend;
         Sampler::SharedPtr mpSampler;
+        uint32_t mOutputIndex = 0;
     };
 }

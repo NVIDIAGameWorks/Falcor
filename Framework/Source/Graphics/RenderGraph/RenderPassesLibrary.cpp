@@ -67,6 +67,7 @@ namespace Falcor
         RenderPassLibrary::addRenderPassClass("SubsurfaceScattering", "Apply subsurface scattering in screen space", SubsurfaceScattering::deserialize);
         // RenderPassLibrary::addRenderPassClass("DepthOfField", "Apply depth of field using the camera", DepthOfField::deserialize);
         RenderPassLibrary::addRenderPassClass("MotionBlur", "Apply motion blur using the motion vectors", MotionBlur::deserialize);
+        RenderPassLibrary::addRenderPassClass("Bloom", "Apply bloom to hdr image", Bloom::deserialize);
         RenderPassLibrary::addRenderPassClass("GodRays", "Screen space god rays", GodRays::deserialize);
 
         RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::deserialize);

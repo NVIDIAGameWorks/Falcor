@@ -32,6 +32,7 @@
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
 #include "Graphics/RenderGraph/RenderPassSerializer.h"
+#include "Externals/GLM/glm/gtc/noise.hpp"
 
 namespace Falcor
 {
@@ -39,25 +40,21 @@ namespace Falcor
     const uint32_t kMaxKernelSize = 15;
 
 
-    FilmGrain::SharedPtr FilmGrain::create(float grainSize, float intensity)
+    FilmGrain::SharedPtr FilmGrain::create(float grainSize, float intensity, float luminanceContribution,
+        const glm::vec3& grainColor, const glm::vec2& luminanceRange, bool useLuminanceRange, bool useColoredNoise)
     {
-        return SharedPtr(new FilmGrain(grainSize, intensity));
+        return SharedPtr(new FilmGrain(grainSize, intensity, luminanceContribution, grainColor,
+            luminanceRange, useLuminanceRange, useColoredNoise));
     }
-    FilmGrain::FilmGrain(float grainSize, float intensity)
-        : RenderPass("FilmGrain"), mGrainSize(grainSize), mIntensity(intensity)
+
+    FilmGrain::FilmGrain(float grainSize, float intensity, float luminanceContribution,
+        const glm::vec3& grainColor, const glm::vec2& luminanceRange, bool useLuminanceRange, bool useColoredNoise)
+        : RenderPass("FilmGrain"), mGrainSize(grainSize), mIntensity(intensity), mLumaContribution(luminanceContribution), 
+        mGrainColor(grainColor), mLuminanceRange(luminanceRange), mUseLuminanceRange(useLuminanceRange), mUseColoredNoise(useColoredNoise)
     {
-        BlendState::Desc desc;
-        desc.setRtBlend(0, true);
-        desc.setRtParams(0,
-            BlendState::BlendOp::Add, BlendState::BlendOp::Add,
-            BlendState::BlendFunc::One, BlendState::BlendFunc::One,
-            BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha);
-
-        mpAdditiveBlend = BlendState::create(desc);
-
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+        samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
         mpSampler = Sampler::create(samplerDesc);
 
         createShader();
@@ -66,18 +63,55 @@ namespace Falcor
     void FilmGrain::createShader()
     {
         mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Effects/FilmGrain.ps.slang");
-        // attach noise texture
 
+        ProgramReflection::SharedConstPtr pReflector = mpBlitPass->getProgram()->getReflector();
+        mpVars = GraphicsVars::create(pReflector);
+        mSrcTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("srcTex");
+        mNoiseTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("noiseTex");
         mpVars = GraphicsVars::create(mpBlitPass->getProgram()->getReflector());
         mpVars["SrcRectCB"]["gOffset"] = vec2(0.0f);
         mpVars["SrcRectCB"]["gScale"] = vec2(1.0f);
         mpVars->setSampler("gSampler", mpSampler);
+
+        mpVars["filmGrain"]["lumRange"] = mLuminanceRange;
+        mpVars["filmGrain"]["intensity"] = mIntensity;
+        mpVars["filmGrain"]["lumaContribution"] = mLumaContribution;
+        
+        if (mUseColoredNoise)
+        {
+            mpVars["filmGrain"]["grainTint"] = mGrainColor;
+        }
+        else
+        {
+            mpVars["filmGrain"]["grainTint"] = glm::vec3(1.0f, 1.0f, 1.0f);
+        }
+        
+        mpVars["filmGrain"]["lumRange"] = mLuminanceRange;
+        
+        if (mUseLuminanceRange)
+        {
+            mpBlitPass->getProgram()->addDefine("_USE_LUMINANCE_RANGE");
+        }
     }
 
     FilmGrain::SharedPtr FilmGrain::deserialize(const RenderPassSerializer& serializer)
     {
-        return create(static_cast<float>(serializer.getValue("filmGrain.grainSize").d64), 
-            static_cast<float>(serializer.getValue("filmGrain.intensity").d64));
+        Scene::UserVariable grainSizeVar = serializer.getValue("filmGrain.grainSize");
+        if (grainSizeVar.type == Scene::UserVariable::Type::Unknown)
+        {
+            return create();
+        }
+
+        float grainSize = static_cast<float>(grainSizeVar.d64);
+        float intensity = static_cast<float>(serializer.getValue("filmGrain.intensity").d64);
+        float lumaContribution = static_cast<float>(serializer.getValue("filmGrain.lumaContribution").d64);
+        glm::vec3 grainColor = serializer.getValue("filmGrain.grainColor").vec3;
+        glm::vec2 luminanceRange = serializer.getValue("filmGrain.luminanceRange").vec2;
+        bool useColoredNoise = serializer.getValue("filmGrain.useColoredNoise").b;
+        bool useLuminanceRange = serializer.getValue("filmGrain.useLuminanceRange").b;
+
+        return create(grainSize, intensity, lumaContribution, grainColor, luminanceRange,
+            useColoredNoise, useLuminanceRange);
     }
 
     void FilmGrain::reflect(RenderPassReflection& reflector) const
@@ -89,6 +123,7 @@ namespace Falcor
     {
         renderPassSerializer.addVariable("filmGrain.grainSize", mGrainSize);
         renderPassSerializer.addVariable("filmGrain.intensity", mIntensity);
+        renderPassSerializer.addVariable("filmGrain.grainColor", mGrainColor);
     }
 
     void FilmGrain::execute(RenderContext* pRenderContext, const RenderData* pData)
@@ -99,11 +134,31 @@ namespace Falcor
         execute(pRenderContext, mpTargetFbo);
     }
 
+    void FilmGrain::createNoiseTexture()
+    {
+        const uint32_t noiseTexHeight = 512;
+        const uint32_t noiseTexWidth = static_cast<uint32_t>(512.0f * (mResolution.x / mResolution.y));
+        std::vector<float> data;
+        data.resize(noiseTexHeight * noiseTexWidth);
+        const float denomY = glm::max(0.001f, mGrainSize * mResolution.y / (512.0f));
+        const float denomX = glm::max(0.001f, mGrainSize * mResolution.x / (static_cast<float>(noiseTexWidth)));
+
+        for (uint32_t i = 0; i < noiseTexHeight; ++i)
+        {
+            for (uint32_t j = 0; j < noiseTexWidth; ++j)
+            {
+                float2 noiseInput{ static_cast<float>(j) / denomX, static_cast<float>(i) / denomY };
+                data[i * noiseTexWidth + j] = (mNoiseType == NoiseType::Perlin) ? glm::perlin(noiseInput) : glm::simplex(noiseInput);
+            }
+        }
+        
+        mpNoiseTex = Texture::create2D(
+            noiseTexWidth, noiseTexHeight, ResourceFormat::R32Float, 1, 1, (void*)data.data(), Resource::BindFlags::ShaderResource);
+    }
+
     void FilmGrain::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
     {
         Texture::SharedPtr pSrcColorTexture = pFbo->getColorTexture(0);
-
-        mpVars["filmGrain"]["intensity"] = mIntensity;
 
         if (mDirty)
         {
@@ -111,34 +166,102 @@ namespace Falcor
             mDirty = false;
         }
 
+        if (!mpNoiseTex || mResolution.x != pFbo->getWidth() || mResolution.y != pFbo->getHeight())
+        {
+            mResolution.x = static_cast<float>(pFbo->getWidth());
+            mResolution.y = static_cast<float>(pFbo->getHeight());
+            createNoiseTexture();
+        }
+
+        mpVars["filmGrain"]["intensity"] = mIntensity;
+        mpVars["filmGrain"]["randOffset"] = glm::vec2(std::rand() % 2000 / 2000.0f, std::rand() % 2000 / 2000.0f);
+        
+        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pFbo->getColorTexture(0)->getSRV());
+        mpVars->getDefaultBlock()->setSrv(mNoiseTexLoc, 0, mpNoiseTex->getSRV());
+
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         pState->pushFbo(pFbo);
         pRenderContext->pushGraphicsVars(mpVars);
-        mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
+        mpBlitPass->execute(pRenderContext, nullptr);
         pRenderContext->popGraphicsVars();
         pState->popFbo();
-    }
-
-    void FilmGrain::setGrainSize(float grainSize)
-    {
-        mGrainSize = grainSize;
-        mDirty = true;
-    }
-
-    void FilmGrain::setSeed(float seed)
-    {
-        mpVars["filmGrain"]["time"] = seed;
     }
 
     void FilmGrain::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
+            Gui::DropdownList list;
+            Gui::DropdownValue value;
+            value.label = "Simplex";
+            value.value = Simplex;
+            list.push_back(value);
+            value.label = "Perlin";
+            value.value = Perlin;
+            list.push_back(value);
+            
+            uint32_t dropdownSelection = static_cast<uint32_t>(mNoiseType);
+            if (pGui->addDropdown("Noise Type", list, dropdownSelection))
+            {
+                mNoiseType = static_cast<NoiseType>(dropdownSelection);
+                createNoiseTexture();
+            }
+
             if (pGui->addFloatVar("Grain Size", mGrainSize, 0.0f))
             {
-                setGrainSize(mGrainSize);
+                createNoiseTexture();
             }
-            pGui->addFloatVar("Intensity", mIntensity, 0.0f);
+
+            if (pGui->addFloatVar("Intensity", mIntensity, 0.0f))
+            {
+                mpVars["filmGrain"]["intensity"] = mIntensity;
+            }
+
+            if (pGui->addFloatVar("Luminance Contribution", mLumaContribution, 0.0f, 1.0f))
+            {
+                mpVars["filmGrain"]["lumaContribution"] = mLumaContribution;
+            }
+
+            if (pGui->addCheckBox("Use Luminance Range", mUseLuminanceRange))
+            {
+                if (mUseLuminanceRange)
+                {
+                    mpBlitPass->getProgram()->addDefine("_USE_LUMINANCE_RANGE");
+                }
+                else
+                {
+                    mpBlitPass->getProgram()->removeDefine("_USE_LUMINANCE_RANGE");
+                }
+                
+            }
+
+            if (pGui->addCheckBox("Use Colored Noise", mUseColoredNoise))
+            {
+                if (!mUseColoredNoise)
+                {
+                    mpVars["filmGrain"]["grainTint"] = glm::vec3( 1.0f, 1.0f, 1.0f );
+                }
+                else
+                {
+                    mpVars["filmGrain"]["grainTint"] = mGrainColor;
+                }
+            }
+
+            if (mUseColoredNoise)
+            {
+                if (pGui->addRgbColor("Grain Color", mGrainColor))
+                {
+                    mpVars["filmGrain"]["grainTint"] = mGrainColor;
+                }
+            }
+
+            if (mUseLuminanceRange)
+            {
+                if (pGui->addFloat2Var("Luminance Range", mLuminanceRange, 0.0f))
+                {
+                    mpVars["filmGrain"]["lumRange"] = mLuminanceRange;
+                }
+            }
 
             pGui->endGroup();
         }

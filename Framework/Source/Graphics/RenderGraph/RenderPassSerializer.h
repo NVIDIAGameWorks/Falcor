@@ -39,7 +39,8 @@ namespace Falcor
             auto it = mData.find(key); 
             if (it == mData.end())
             {
-                return Scene::UserVariable(0);
+                // if on click and drag, w/ empty serializer, can use default values
+                return Scene::UserVariable();
             }
             return it->second;
         }

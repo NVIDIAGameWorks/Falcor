@@ -25,31 +25,40 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "HostDeviceSharedCode.h"
+#pragma once
+#include "Falcor.h"
+#include "SampleTest.h"
+using namespace Falcor;
 
-Texture2D gSrcTex;
-SamplerState gSampler;
-
-cbuffer ParamCB : register(b0)
+class FilmGrainSample : public Renderer
 {
-    float gThreshold;
+public:
+    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+
+private:
+    static const char* kDefaultImageName;
+
+    Model::SharedPtr mpTeapot;
+    Texture::SharedPtr mpImage;
+    Sampler::SharedPtr mpGlobalSampler;
+    GraphicsProgram::SharedPtr mpMainProg = nullptr;
+    GraphicsVars::SharedPtr mpProgramVars = nullptr;
+    GraphicsState::SharedPtr mpGraphicsState = nullptr;
+    bool mEnableFilmGrain = true;
+    uint32_t mOutputIndex = 0;
+
+    Fbo::SharedPtr mpFbo;
+    FilmGrain::SharedPtr mpFilmGrainPass;
+    SceneRenderer::SharedPtr mpSceneRenderer;
+
+    void loadImage(const std::string& name = kDefaultImageName);
+
+    //testing
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
 };
-
-struct PSIn
-{
-    float2 texC : TEXCOORD;
-    float4 pos : SV_POSITION;
-};
-
-float4 main(PSIn pIn) : SV_TARGET0
-{
-    float4 color = gSrcTex.SampleLevel(gSampler, pIn.texC, 0);
-    float lum = luminance(color.rgb);
-
-#ifdef HIGH_PASS
-    return lum >= gThreshold ? color : 0;
-#endif
-#ifdef LOW_PASS
-    return lum <= gThreshold ? color : 0;
-#endif
-}
