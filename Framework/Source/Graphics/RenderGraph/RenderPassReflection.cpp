@@ -72,11 +72,11 @@ namespace Falcor
         return addField(name, Field::Type::Input | Field::Type::Output);
     }
 
-    const RenderPassReflection::Field& RenderPassReflection::getField(const std::string& name)
+    const RenderPassReflection::Field& RenderPassReflection::getField(const std::string& name, Field::Type type) const
     {
         for (const auto& field : mFields)
         {
-            if (field.getName() == name)
+            if (field.getName() == name && (is_set(field.getType(), type) || type == Field::Type::None))
             {
                 return field;
             }

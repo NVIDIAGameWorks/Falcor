@@ -26,6 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "Graphics/RenderGraph/RenderPassReflection.h"
+#include "API/Texture.h"
 
 namespace Falcor
 {
@@ -38,12 +40,49 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ResourceCache>;
         static SharedPtr create();
 
-        void addResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
-        void removeResource(const std::string& name);
+        struct DefaultProperties
+        {
+            uint32_t width = 0;
+            uint32_t height = 0;
+            ResourceFormat colorFormat = ResourceFormat::Unknown;
+            ResourceFormat depthFormat = ResourceFormat::Unknown;
+        };
+
+        // Add/Remove reference to a resource not owned by the cache
+        void registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
+        void removeExternalResource(const std::string& name);
+        const std::shared_ptr<Resource>& getExternalResource(const std::string& name) const;
+
+        /**  Register a field that requires resources to be allocated.
+            \param[in] name String in the format of PassName.FieldName
+            \param[in] field Reflection data for the field
+            \param[in] alias Optional. Another field name described in the same way as 'name'.
+                If specified, and the field exists in the cache, the resource will be aliased with 'name' and field properties will be merged.
+        */
+        void registerField(const std::string& name, const RenderPassReflection::Field& field, const std::string& alias = "");
+
         const std::shared_ptr<Resource>& getResource(const std::string& name) const;
+
+        void allocateResources(const DefaultProperties& params);
+        void reset();
+
     private:
         ResourceCache() = default;
-        std::unordered_map<std::string, std::shared_ptr<Resource>> mResources;
+
+        Texture::SharedPtr createTextureForPass(const DefaultProperties& params, const RenderPassReflection::Field& field);
+        
+        struct ResourceData
+        {
+            RenderPassReflection::Field field;
+            std::shared_ptr<Resource> pResource;
+        };
+        
+        // Resources and properties to be allocated for fields within a render graph
+        std::unordered_map<std::string, uint32_t> mFieldMap;
+        std::vector<ResourceData> mResourceData;
+
+        // References to output resources not to be allocated by the render graph
+        std::unordered_map<std::string, std::shared_ptr<Resource>> mExternalResources;
     };
 
 }

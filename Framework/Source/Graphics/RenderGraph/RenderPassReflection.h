@@ -107,7 +107,7 @@ namespace Falcor
 
         size_t getFieldCount() const { return mFields.size(); }
         const Field& getField(size_t f) const { return mFields[f]; }
-        const Field& getField(const std::string& name);
+        const Field& getField(const std::string& name, Field::Type type = Field::Type::None) const;
         Flags getFlags() const { return mFlags; }
     private:
         Field& addField(const std::string& name, Field::Type type);
