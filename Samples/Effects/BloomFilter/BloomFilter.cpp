@@ -74,7 +74,7 @@ void BloomFilter::onFrameRender(SampleCallbacks* pSample, const RenderContext::S
     pRenderContext->setGraphicsState(mpGraphicsState);
     if (mEnableCheckbox)
     {
-        mpBloomPass->execute(pRenderContext.get(), pTargetFbo);
+        mpBloomPass->execute(pRenderContext.get(), pTargetFbo->getColorTexture(0), pTargetFbo);
     }
     mpGraphicsState->popFbo();
 }

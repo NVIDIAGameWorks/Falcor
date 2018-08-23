@@ -28,7 +28,7 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";// "testScenes/tree.fscene";
+const std::string gkDefaultScene =  "testScenes/tree.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 RenderGraphViewer::~RenderGraphViewer()
@@ -239,6 +239,7 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 
     mpScene = Scene::loadFromFile(filename);
     mSceneFilename = filename;
+    if(mpGraph) mpGraph->setScene(mpScene);
     mCamControl.attachCamera(mpScene->getCamera(0));
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
 }

@@ -36,14 +36,14 @@ namespace Falcor
 {
     static const char* kInputName = "color";
     static const char* kInputDepthName = "depth";
-    static const char* kDstName = "dst";
+    static const char* kDstColorName = "dst";
 
-    GodRays::UniquePtr GodRays::create(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples)
+    GodRays::UniquePtr GodRays::create(float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples)
     {
-        return GodRays::UniquePtr(new GodRays(threshold, mediumDensity, mediumDecay, mediumWeight, exposer, numSamples));
+        return GodRays::UniquePtr(new GodRays(mediumDensity, mediumDecay, mediumWeight, exposer, numSamples));
     }
 
-    GodRays::GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples)
+    GodRays::GodRays(float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples)
         : RenderPass("GodRays"), mMediumDensity(mediumDensity), mMediumDecay(mediumDecay), mMediumWeight(mediumWeight), mNumSamples(numSamples), mExposer(exposer)
     {
         BlendState::Desc desc;
@@ -60,34 +60,36 @@ namespace Falcor
         samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         mpSampler = Sampler::create(samplerDesc);
 
-        mpFilter = PassFilter::create(PassFilter::Type::HighPass, threshold);
-        mpFilterResultFbo = Fbo::create();
-
-        createShader();
+        mpLightPassFbo = Fbo::create();
     }
 
     void GodRays::reflect(RenderPassReflection& reflector) const
     {
         reflector.addInput(kInputName);
         reflector.addInput(kInputDepthName);
-        reflector.addOutput(kDstName);
+        reflector.addOutput(kDstColorName);
     }
 
     GodRays::UniquePtr GodRays::deserialize(const RenderPassSerializer& serializer)
     { 
-        float threshold = static_cast<float>(serializer.getValue("godRays.threshold").d64);
+        Scene::UserVariable thresholdVar = serializer.getValue("godRays.threshold");
+        if (thresholdVar.type == Scene::UserVariable::Type::Unknown)
+        {
+            return create();
+        }
+
+        float threshold = static_cast<float>(thresholdVar.d64);
         float mediumDensity = static_cast<float>(serializer.getValue("godRays.mediumDensity").d64);
         float mediumDecay = static_cast<float>(serializer.getValue("godRays.mediumDecay").d64);
         float mediumWeight = static_cast<float>(serializer.getValue("godRays.mediumWeight").d64);
         float exposer = static_cast<float>(serializer.getValue("godRays.exposer").d64);
         int32_t numSamples = serializer.getValue("godRays.numSamples").i32;
 
-        return create(threshold, mediumDensity, mediumDecay, mediumWeight, exposer, numSamples); 
+        return create(mediumDensity, mediumDecay, mediumWeight, exposer, numSamples); 
     }
 
     void GodRays::serialize(RenderPassSerializer& renderPassSerializer)
     {
-        renderPassSerializer.addVariable("godRays.threshold", mThreshold);
         renderPassSerializer.addVariable("godRays.mediumDensity", mMediumDensity);
         renderPassSerializer.addVariable("godRays.mediumDecay", mMediumDecay);
         renderPassSerializer.addVariable("godRays.mediumWeight", mMediumWeight);
@@ -110,22 +112,20 @@ namespace Falcor
 
             mpVars = GraphicsVars::create(mpBlitPass->getProgram()->getReflector());
             mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("srcColor");
-            mSrcDepthLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("srcDepth");
-            mSrcVisibilityLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("srcVisibility");
+        }
+
+        if (!mpLightPass)
+        {
+            mpLightPass = FullScreenPass::create("Effects/GodRaysLightPass.ps.slang");
+
+            mpLightPassVars = GraphicsVars::create(mpLightPass->getProgram()->getReflector());
+            mSrcDepthLoc = mpLightPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("srcDepth");
         }
 
         mpVars["SrcRectCB"]["gOffset"] = vec2(0.0f);
         mpVars["SrcRectCB"]["gScale"] = vec2(1.0f);
 
-        mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
-        mpVars["GodRaySettings"]["gMedia.decay"] = mMediumDecay;
-        mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
-        mpVars["GodRaySettings"]["exposer"] = mExposer;
-        mpVars["GodRaySettings"]["lightIndex"] = static_cast<uint32_t>(mLightIndex);
-        
-        mLightVarOffset = mpVars["GodRaySettings"]->getVariableOffset("light");
-
-        mpVars->setSampler("gSampler", mpSampler);
+        mLightVarOffset = mpLightPassVars["GodRaySettings"]->getVariableOffset("light");
     }
 
     void GodRays::updateLowResTexture(const Texture::SharedPtr& pTexture)
@@ -161,8 +161,8 @@ namespace Falcor
     {
         if (!mpTargetFbo) mpTargetFbo = Fbo::create();
 
-        pRenderContext->blit(pRenderData->getTexture(kInputName)->getSRV(), pRenderData->getTexture(kDstName)->getRTV());
-        mpTargetFbo->attachColorTarget(pRenderData->getTexture(kDstName), 0);
+        pRenderContext->blit(pRenderData->getTexture(kInputName)->getSRV(), pRenderData->getTexture(kDstColorName)->getRTV());
+        mpTargetFbo->attachColorTarget(pRenderData->getTexture(kDstColorName), 0);
 
         execute(pRenderContext, pRenderData->getTexture(kInputName), pRenderData->getTexture(kInputDepthName), mpTargetFbo);
     }
@@ -181,36 +181,84 @@ namespace Falcor
             createShader();
             mDirty = false;
         }
+        
+        Camera::SharedPtr pActiveCamera =  mpScene->getActiveCamera();
+
+        mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
+        mpVars["GodRaySettings"]["gMedia.decay"] = mMediumDecay;
+        mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
+        mpVars["GodRaySettings"]["cameraRatio"] = pActiveCamera->getAspectRatio();
+        mpVars["GodRaySettings"]["exposer"] = mExposer;
+
+        mpLightPassVars["GodRaySettings"]["exposer"] = mExposer;
+        mpLightPassVars["GodRaySettings"]["cameraRatio"] = pActiveCamera->getAspectRatio();
+        mpLightPassVars["GodRaySettings"]["viewportHeight"] = static_cast<float>(pFbo->getColorTexture(0)->getHeight());
+
+        updateLowResTexture(pSrcTex);
+        
+        glm::vec3 screenSpaceLightPosition;
+        Light::SharedPtr pLight = mpScene->getLight(mLightIndex);
+
+        pLight->setIntoProgramVars(mpVars.get(), mpVars["GodRaySettings"].get(), mLightVarOffset);
+        pLight->setIntoProgramVars(mpLightPassVars.get(), mpLightPassVars["GodRaySettings"].get(), mLightVarOffset);
+
+        // project directional lights
+        if (mpScene->getLight(mLightIndex)->getType() == 1)
+        {
+            glm::vec3 lightPoint = pActiveCamera->getPosition() - pLight->getData().dirW;
+            glm::vec4 lightDirViewSpace = pActiveCamera->getViewProjMatrix() * glm::vec4(lightPoint, 1.0f);
+            screenSpaceLightPosition = lightDirViewSpace / lightDirViewSpace.w;
+            screenSpaceLightPosition.z = 1.0f;
+
+            // avoid rays coming from the other side of the projected sphere
+            if (glm::dot(-pLight->getData().dirW, glm::float3(pActiveCamera->getViewProjMatrix()[2])) < 0.0f)
+            {
+                // dont draw highlight
+                mpLightPassVars["GodRaySettings"]["exposer"] = 0.0f;
+            }
+        }
         else
         {
-            mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
-            mpVars["GodRaySettings"]["gMedia.decay"] = mMediumDecay;
-            mpVars["GodRaySettings"]["gMedia.weight"] = mMediumWeight;
-            // mpVars
-            mpVars["GodRaySettings"]["exposer"] = mExposer;
-            mpScene->getLight(mLightIndex)->setIntoProgramVars(mpVars.get(), mpVars["GodRaySettings"].get(), mLightVarOffset);
-            mpVars["GodRaySettings"]["cameraMatrix"] = mpScene->getActiveCamera()->getProjMatrix();
+            glm::vec4 ssLightPosition = pActiveCamera->getViewProjMatrix() * glm::vec4(pLight->getData().posW, 1.0f);
+            screenSpaceLightPosition = ssLightPosition / ssLightPosition.w;
         }
+
+        screenSpaceLightPosition.x = 0.5f * (screenSpaceLightPosition.x + 0.5f);
+#ifdef FALCOR_VK
+        screenSpaceLightPosition.y *= -1.0f;
+#endif
         
+        screenSpaceLightPosition.y = 0.5f * (-screenSpaceLightPosition.y + 0.5f);
+        mpVars["GodRaySettings"]["screenSpaceLightPosition"] = screenSpaceLightPosition;
+        mpLightPassVars["GodRaySettings"]["screenSpaceLightPosition"] = screenSpaceLightPosition;
 
-        // experimenting with a down sampled image for GodRays
-        updateLowResTexture(pSrcTex);
-        pRenderContext->blit(pSrcTex->getSRV(), mpLowResTexture->getRTV());
-
-        // Run high-pass filter and attach it to an FBO for blurring
-        Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);
-        mpFilterResultFbo->attachColorTarget(pHighPassResult, 0);
-
-        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
-        mpVars->getDefaultBlock()->setSrv(mSrcDepthLoc, 0, pSrcDepthTex->getSRV());
-        // mpVars->getDefaultBlock()->setSrv(mSrcVisibilityLoc, 0, pSrcVisTex->getSRV());
-
+        mpLightPassVars->getDefaultBlock()->setSrv(mSrcDepthLoc, 0, pSrcDepthTex->getSRV());
+        mpLightPassVars->setSampler("gSampler", mpSampler);
+        
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
-        pState->pushFbo(pFbo);
-        pRenderContext->pushGraphicsVars(mpVars);
-        mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
+        
+        // generate light texture
+        pState->pushFbo(mpLightPassFbo);
+        pRenderContext->pushGraphicsVars(mpLightPassVars);
+        mpLightPassFbo->attachColorTarget(mpLowResTexture, 0);
+        mpLightPass->execute(pRenderContext);
         pRenderContext->popGraphicsVars();
         pState->popFbo();
+
+        if (mOutputIndex == 1)
+        {
+            pRenderContext->blit(mpLowResTexture->getSRV(), pFbo->getColorTexture(0)->getRTV());
+        }
+        else
+        {
+            mpVars->setSampler("gSampler", mpSampler);
+            pState->pushFbo(pFbo);
+            pRenderContext->pushGraphicsVars(mpVars);
+            mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
+            mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, mpLowResTexture->getSRV());
+            pRenderContext->popGraphicsVars();
+            pState->popFbo();
+        }
     }
 
     void GodRays::setNumSamples(int32_t numSamples)
@@ -223,10 +271,6 @@ namespace Falcor
     {
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
-            if (pGui->addFloatVar("Medium Threshold", mThreshold))
-            {
-                mpFilter->setThreshold(mThreshold);
-            }
             if (pGui->addFloatVar("Medium Density", mMediumDensity))
             {
                 mpVars["GodRaySettings"]["gMedia.density"] = mMediumDensity;
@@ -271,7 +315,19 @@ namespace Falcor
             {
                 mpVars["GodRaySettings"]["exposer"] = mExposer;
             }
-            pGui->endGroup();
+
+            Gui::DropdownList lightList;
+            Gui::DropdownValue value;
+            value.label = "Final GodRays";
+            value.value = 0;
+            lightList.push_back(value);
+            value.label = "Light Texture";
+            value.value = 1;
+            lightList.push_back(value);
+
+            pGui->addDropdown("output", lightList, mOutputIndex);
+
+            if(uiGroup) pGui->endGroup();
         }
     }
 }

@@ -30,40 +30,28 @@ __import Lights;
 
 SamplerState gSampler;
 
-Texture2D srcColor;
-
-struct Media
-{
-    float density;
-    float decay;
-    float weight;
-};
+Texture2D srcDepth;
 
 cbuffer GodRaySettings
 {
    float exposer;
    LightData light;
-   Media gMedia;
+   float cameraRatio;
+   float viewportHeight;
    float3 screenSpaceLightPosition;
 };
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
-	float2 texPosition = texC;
-	float3 currentColor = srcColor.Sample( gSampler, texPosition ).xyz;
-	float2 toLightSource = texPosition - screenSpaceLightPosition.xy;
-	float accumulatedDecay = 1.0f;
+	float3 finalColor = float3(0, 0, 0);
+	float3 lightIntensity = light.intensity;
+	float pixelDepth = srcDepth.SampleLevel(gSampler, texC, 0.0f).x;
+	float2 toLightSource = (texC - screenSpaceLightPosition.xy);
+	toLightSource.x *= cameraRatio;
 	
-	toLightSource *= 1.0f / (float(_NUM_SAMPLES) * gMedia.density);
+	float mask  = ((pixelDepth < screenSpaceLightPosition.z) ? 0.0f : 1.0f);
+	float dstToLightSqrd = max(0.001f, dot(toLightSource, toLightSource));
 	
-	for(uint i = 0; i < _NUM_SAMPLES; i++)
-	{
-		texPosition -= toLightSource;
-		float3 nextColor = srcColor.Sample( gSampler, texPosition ).xyz;
-		nextColor *= accumulatedDecay * gMedia.weight;
-		currentColor += nextColor;
-		accumulatedDecay *= gMedia.decay;
-	}
-	
-    return float4(currentColor * exposer, 1.0f);
+	finalColor += mask * lightIntensity * exposer / (dstToLightSqrd * viewportHeight);
+    return float4(finalColor, 1.0f);
 }

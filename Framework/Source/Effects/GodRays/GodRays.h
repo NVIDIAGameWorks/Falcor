@@ -43,7 +43,7 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<GodRays>;
         using SharedPtr = std::shared_ptr<GodRays>;
 
-        static UniquePtr create(float threshold = 1.0f, float mediumDensity = 1000.0f, float mediumDecay = 0.964f, float mediumWeight = 0.196f, float exposer = 0.259f, int32_t numSamples = 250);
+        static UniquePtr create(float mediumDensity = 1.0f, float mediumDecay = 0.9f, float mediumWeight = 1.0f, float exposer = 0.6f, int32_t numSamples = 200);
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
         void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Texture::SharedPtr& pSrcDepthTex, Fbo::SharedPtr pFbo);
@@ -69,33 +69,31 @@ namespace Falcor
 
         virtual void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
 
-        // TODO --- move this back to private
-        GraphicsVars::SharedPtr mpVars;
-
     private:
-        GodRays(float threshold, float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples);
+        GodRays(float mediumDensity, float mediumDecay, float mediumWeight, float exposer, int32_t numSamples);
         void updateLowResTexture(const Texture::SharedPtr& pTexture);
         void createShader();
 
         float mMediumDensity;
         float mMediumDecay;
         float mMediumWeight;
-        float mThreshold = 1.0f;
         float mExposer = 1.0f;
         int32_t mNumSamples;
         int32_t mLightIndex = 0;
-        bool mDirty = false;
+        bool mDirty = true;
         size_t mLightVarOffset = 0;
+        uint32_t mOutputIndex = 0;
 
+        GraphicsVars::SharedPtr mpVars;
+        GraphicsVars::SharedPtr mpLightPassVars;
+        Fbo::SharedPtr mpLightPassFbo;
         Scene::SharedPtr mpScene;
-        PassFilter::UniquePtr mpFilter;
         Fbo::SharedPtr mpTargetFbo;
-        Fbo::SharedPtr mpFilterResultFbo;
         Texture::SharedPtr mpLowResTexture;
         FullScreenPass::UniquePtr mpBlitPass;
+        FullScreenPass::UniquePtr mpLightPass;
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         ParameterBlockReflection::BindLocation mSrcDepthLoc;
-        ParameterBlockReflection::BindLocation mSrcVisibilityLoc;
         BlendState::SharedPtr mpAdditiveBlend;
         Sampler::SharedPtr mpSampler;
     };
