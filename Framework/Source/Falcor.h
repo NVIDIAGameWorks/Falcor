@@ -153,6 +153,7 @@
 #include "Effects/GodRays/GodRays.h"
 #include "Effects/DepthOfField/DepthOfField.h"
 #include "Effects/MotionBlur/MotionBlur.h"
+#include "Effects/EyeAdaptation/EyeAdaptation.h"
 #include "Effects/FilmGrain/FilmGrain.h"
 #include "Effects/SubsurfaceScattering/SubsurfaceScattering.h"
 #include "Effects/SkyBox/SkyBox.h"

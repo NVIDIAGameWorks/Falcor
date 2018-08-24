@@ -39,20 +39,17 @@ namespace Falcor
 {
     class RenderContext;
 
-    class FilmGrain : public RenderPass, public inherit_shared_from_this<RenderPass, FilmGrain>
+    class EyeAdaptation : public RenderPass, public inherit_shared_from_this<RenderPass, EyeAdaptation>
     {
     public:
-        using UniquePtr = std::unique_ptr<FilmGrain>;
-        using SharedPtr = std::shared_ptr<FilmGrain>;
+        using UniquePtr = std::unique_ptr<EyeAdaptation>;
+        using SharedPtr = std::shared_ptr<EyeAdaptation>;
 
-        static SharedPtr create(float grainSize = 0.75f, float intensity = 0.5f, float luminanceContribution = 0.8f, 
-            const glm::vec3& grainColor = { 1.0f, 1.0f, 1.0f }, const glm::vec2& luminanceRange = {0.0f, 0.5f},
-            bool useLuminanceRange = true, bool useColoredNoise = true);
+        static SharedPtr create();
 
         static SharedPtr deserialize(const RenderPassSerializer& serializer);
 
         virtual void reflect(RenderPassReflection& reflector) const override;
-
 
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
@@ -66,34 +63,20 @@ namespace Falcor
         */
         virtual void renderUI(Gui* pGui, const char* uiGroup = nullptr) override;
 
-        // move this back to private
-        GraphicsVars::SharedPtr mpVars;
-
-        enum NoiseType
-        {
-            Simplex,
-            Perlin
-        };
+        virtual void setScene(const Scene::SharedPtr& pScene) override { mpScene = pScene; }
 
     private:
-        FilmGrain(float grainSize, float intensity, float luminanceContribution, 
-            const glm::vec3& grainColor, const glm::vec2& luminanceRange, bool useLuminanceRange, bool useColoredNoise);
+        EyeAdaptation();
 
         void createShader();
-        void createNoiseTexture();
 
-        NoiseType mNoiseType = NoiseType::Perlin;
-        float mGrainSize = 1.0f;
-        float mIntensity = 0.0f;
-        float mLumaContribution = 1.0f;
-        float mScalar = 1.0f;
-        glm::vec3 mGrainColor{ 1.0f, 1.0f, 1.0f };
-        glm::vec2 mLuminanceRange{0.001f, 0.5f};
-        bool mUseColoredNoise = true;
-        bool mUseLuminanceRange = true;
-        glm::vec2 mResolution{ 512.0f, 512.0f };
+        void updateValuesFromCamera();
+
+        GraphicsVars::SharedPtr mpVars;
+        glm::vec2 mLumaRange;
+        
         bool mDirty = false;
-        bool mPaused = false;
+        Scene::SharedPtr mpScene;
 
         Texture::SharedPtr mpSrcTex = nullptr;
         Texture::SharedPtr mpNoiseTex = nullptr;

@@ -329,7 +329,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mpGodRays->renderUI(pGui, "GodRays");
         mpDepthOfField->renderUI(pGui, "DepthOfField");
         mpMotionBlur->renderUI(pGui, "MotionBlur");
-        mpFilmGrain->renderUI(pGui, "Film Grain");
+        mpEyeAdaptation->renderUI(pGui, "Film Grain");
 
         
         if (pGui->beginGroup("Subsurface Scattering"))

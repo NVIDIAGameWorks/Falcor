@@ -134,6 +134,16 @@ namespace Falcor
         execute(pRenderContext, mpTargetFbo);
     }
 
+    float getCoefficient(float sigma, float x)
+    {
+        float sigmaSquared = sigma * sigma;
+        float p = -(x*x) / (2 * sigmaSquared);
+        float e = exp(p);
+
+        float a = std::sqrt(2 * (float)M_PI) * sigmaSquared;
+        return e / a;
+    }
+
     void FilmGrain::createNoiseTexture()
     {
         const uint32_t noiseTexHeight = 512;
@@ -142,13 +152,13 @@ namespace Falcor
         data.resize(noiseTexHeight * noiseTexWidth);
         const float denomY = glm::max(0.001f, mGrainSize * mResolution.y / (512.0f));
         const float denomX = glm::max(0.001f, mGrainSize * mResolution.x / (static_cast<float>(noiseTexWidth)));
-
+        
         for (uint32_t i = 0; i < noiseTexHeight; ++i)
         {
             for (uint32_t j = 0; j < noiseTexWidth; ++j)
             {
-                float2 noiseInput{ static_cast<float>(j) / denomX, static_cast<float>(i) / denomY };
-                data[i * noiseTexWidth + j] = (mNoiseType == NoiseType::Perlin) ? glm::perlin(noiseInput) : glm::simplex(noiseInput);
+                float2 noiseInput{ static_cast<float>(rand() % noiseTexWidth + j) / denomX, static_cast<float>(rand() % noiseTexHeight + i) / denomY };
+                data[i * noiseTexWidth + j] = getCoefficient(mGrainSize, float(j) ); (mNoiseType == NoiseType::Perlin) ? glm::perlin(noiseInput) : glm::simplex(noiseInput);
             }
         }
         
@@ -174,7 +184,11 @@ namespace Falcor
         }
 
         mpVars["filmGrain"]["intensity"] = mIntensity;
-        mpVars["filmGrain"]["randOffset"] = glm::vec2(std::rand() % 2000 / 2000.0f, std::rand() % 2000 / 2000.0f);
+        if (!mPaused)
+        {
+            mpVars["filmGrain"]["randOffset"] = glm::vec2(std::rand() % 2000 / 2000.0f, std::rand() % 2000 / 2000.0f);
+        }
+        
         
         mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pFbo->getColorTexture(0)->getSRV());
         mpVars->getDefaultBlock()->setSrv(mNoiseTexLoc, 0, mpNoiseTex->getSRV());
@@ -247,6 +261,11 @@ namespace Falcor
                 }
             }
 
+            if (pGui->addFloatVar("Scalar", mScalar, 0.0f))
+            {
+                createNoiseTexture();
+            }
+
             if (mUseColoredNoise)
             {
                 if (pGui->addRgbColor("Grain Color", mGrainColor))
@@ -254,6 +273,8 @@ namespace Falcor
                     mpVars["filmGrain"]["grainTint"] = mGrainColor;
                 }
             }
+
+            pGui->addCheckBox("Pause", mPaused);
 
             if (mUseLuminanceRange)
             {

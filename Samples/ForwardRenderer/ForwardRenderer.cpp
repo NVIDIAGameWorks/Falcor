@@ -247,7 +247,7 @@ void ForwardRenderer::initPostProcess()
     mpGodRays = GodRays::create(0.5f);
     mpMotionBlur = MotionBlur::create(20);
     mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
-    mpFilmGrain = FilmGrain::create(1.0f);
+    mpEyeAdaptation = EyeAdaptation::create(1.0f);
     mpSubsurface = SubsurfaceScattering::create();
     mpBlendPass = BlendPass::create();
 
@@ -322,9 +322,9 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     {
         mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
     }
-    if (mPostProcessingControls[PostProcessID::FilmGrain])
+    if (mPostProcessingControls[PostProcessID::EyeAdaptation])
     {
-        mpFilmGrain->execute(pContext, mpResolveFbo);
+        mpEyeAdaptation->execute(pContext, mpResolveFbo);
     }
 
     mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo);

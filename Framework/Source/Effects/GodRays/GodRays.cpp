@@ -56,7 +56,7 @@ namespace Falcor
         mpAdditiveBlend = BlendState::create(desc);
 
         Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
         samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
         mpSampler = Sampler::create(samplerDesc);
 
@@ -254,7 +254,7 @@ namespace Falcor
             mpVars->setSampler("gSampler", mpSampler);
             pState->pushFbo(pFbo);
             pRenderContext->pushGraphicsVars(mpVars);
-            mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
+            mpBlitPass->execute(pRenderContext, nullptr, (mOutputIndex == 2) ? nullptr : mpAdditiveBlend);
             mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, mpLowResTexture->getSRV());
             pRenderContext->popGraphicsVars();
             pState->popFbo();
@@ -323,6 +323,9 @@ namespace Falcor
             lightList.push_back(value);
             value.label = "Light Texture";
             value.value = 1;
+            lightList.push_back(value);
+            value.label = "Blurred Light Texture";
+            value.value = 2;
             lightList.push_back(value);
 
             pGui->addDropdown("output", lightList, mOutputIndex);

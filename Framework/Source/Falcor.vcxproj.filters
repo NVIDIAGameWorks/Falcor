@@ -573,6 +573,9 @@
     <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp" />
     <ClCompile Include="Utils\RenderGraphLoader.cpp" />
     <ClCompile Include="Utils\RenderGraphUI.cpp" />
+    <ClCompile Include="Effects\EyeAdaptation\EyeAdaptation.cpp">
+      <Filter>Effects\EyeAdaptation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1774,6 +1777,9 @@
     <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h" />
     <ClInclude Include="Utils\RenderGraphLoader.h" />
     <ClInclude Include="Utils\RenderGraphUI.h" />
+    <ClInclude Include="Effects\EyeAdaptation\EyeAdaptation.h">
+      <Filter>Effects\EyeAdaptation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1988,6 +1994,9 @@
     </Filter>
     <Filter Include="Effects\BlendPass">
       <UniqueIdentifier>{30552aa6-f692-4e97-8617-e71fb46c76e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Effects\EyeAdaptation">
+      <UniqueIdentifier>{697d9919-de5a-40e2-95ab-00776fb33d89}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
