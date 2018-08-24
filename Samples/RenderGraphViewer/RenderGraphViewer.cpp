@@ -30,7 +30,6 @@
 
 const std::string gkDefaultScene = "EmeraldSquare/EmeraldSquare_day.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
-const glm::vec2 kImagePreviewSize = { 500, 500 };
 
 RenderGraphViewer::~RenderGraphViewer()
 {
@@ -156,12 +155,26 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         
         mpGraph->renderUI(pGui, "Render Graph");
 
+        if (renderGraphOutputs.size())
+        {
+            pGui->addDropdown("##Render Graph Outputs", renderGraphOutputs, mNextOutputIndex);
+            if (pGui->addButton("Open Output Window", true))
+            {
+                mOutputNames.push_back(renderGraphOutputs[mNextOutputIndex].label);
+            }
+        }
+        
         for (auto& name : mOutputNames)
         {
-            pGui->pushWindow((std::string("mpGraphName : ") + name).c_str(), 512, 512);
+            Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(mpGraph->getOutput(name));
+            glm::vec2 imagePreviewSize{ pPreviewTex->getWidth(), pPreviewTex->getHeight() };
+            imagePreviewSize /= 8;
 
-            pGui->addImage(name.c_str(), mpGraph->getOutput(name), kImagePreviewSize);
-
+            pGui->pushWindow((std::string("mpGraphName : ") + name).c_str(), 512, 256);
+        
+            
+            pGui->addImage(name.c_str(), pPreviewTex, imagePreviewSize);
+        
             pGui->popWindow();
         }
     }

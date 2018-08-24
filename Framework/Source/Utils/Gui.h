@@ -98,7 +98,7 @@ namespace Falcor
             \param[in] size. Size in pixels of the image to draw
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
         */
-        void addImage(const char label[], const Resource::SharedPtr& pTexSrv, const glm::vec2& size = {128.0f, 128.0f}, bool sameLine = false);
+        void addImage(const char label[], const Texture::SharedPtr& pTexSrv, const glm::vec2& size = {128.0f, 128.0f}, bool sameLine = false);
 
         /** Display rectangle with specified color
             \param[in] size size in pixels of rectangle
@@ -397,6 +397,7 @@ namespace Falcor
         uint32_t mGroupStackSize = 0;
         float mFontScale = 1;
 
-        std::vector<Resource::SharedPtr> mpImages;
+        std::vector<Texture::SharedPtr> mpImages;
+        ParameterBlockReflection::BindLocation mGuiImageLoc;
     };
 }

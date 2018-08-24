@@ -27,11 +27,13 @@
 ***************************************************************************/
 SamplerState gSampler;
 Texture2D gFont;
+Texture2D guiImage;
 
 cbuffer PerFrameCB : register(b0)
 {
     float2 scale;
     float2 offset;
+    bool useGuiImage;
 };
 
 struct VsIn
@@ -60,8 +62,7 @@ VsOut vs(VsIn vIn)
 
 float4 ps(VsOut vOut) : SV_TARGET
 {
-    float4 c = vOut.color;
     float fontMask = gFont.Sample(gSampler, vOut.texC).r;
-    c *= fontMask;
+    float4 c = (useGuiImage ? float4(guiImage.Sample(gSampler, vOut.texC), 1.0f) : vOut.color * fontMask);
     return c;
 }

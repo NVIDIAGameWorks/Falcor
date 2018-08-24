@@ -52,7 +52,7 @@ private:
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;
     bool mEnableDepthPrePass = true;
-    uint32_t mGraphOutputIndex = 0;
+    uint32_t mGraphOutputIndex = 0, mNextOutputIndex = 0;
     bool mShowAllOutputs = true;
     std::string mOutputString = "BlitPass.dst";
     std::vector<std::string> mOriginalOutputs;

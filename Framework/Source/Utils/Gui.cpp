@@ -113,6 +113,8 @@ namespace Falcor
         pBufLayout->addElement("COLOR", offsetof(ImDrawVert, col), ResourceFormat::RGBA8Unorm, 1, 2);
         mpLayout = VertexLayout::create();
         mpLayout->addBufferLayout(0, pBufLayout);
+
+        mGuiImageLoc = mpProgram->getReflector()->getDefaultParameterBlock()->getResourceBinding("guiImage");
     }
 
     Gui::~Gui()
@@ -250,7 +252,12 @@ namespace Falcor
                 GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
                 if (pCmd->TextureId) 
                 {
-                    mpProgramVars->set;
+                    mpProgramVars->getDefaultBlock()->setSrv(mGuiImageLoc, 0, (mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
+                    mpProgramVars["PerFrameCB"]["useGuiImage"] = true;
+                }
+                else
+                {
+                    mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
                 }
                 mpPipelineState->setScissors(0, scissor);
                 pContext->drawIndexed(pCmd->ElemCount, idxOffset, vtxOffset);
@@ -264,6 +271,8 @@ namespace Falcor
         io.DeltaTime = elapsedTime;
         mGroupStackSize = 0;
         pContext->popGraphicsState();
+
+        mpImages.clear();
     }
 
     glm::vec4 Gui::pickUniqueColor(const std::string& key)
@@ -657,15 +666,12 @@ namespace Falcor
         }
     }
 
-    void Gui::addImage(const char label[], const Resource::SharedPtr& pTexSrv, const glm::vec2& size, bool sameLine)
+    void Gui::addImage(const char label[], const Texture::SharedPtr& pTexSrv, const glm::vec2& size, bool sameLine)
     {
         ImGui::PushID(label);
-        
         if (sameLine) ImGui::SameLine();
-        ImGui::Dummy({size.x, size.y});
         mpImages.push_back(pTexSrv);
         ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, size.y });
-        
         ImGui::PopID();
     }
 
