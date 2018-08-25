@@ -55,6 +55,7 @@ namespace Falcor
         mpPointSampler = Sampler::create(samplerDesc);
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
         mpLinearSampler = Sampler::create(samplerDesc);
+        mPrevTime = std::chrono::system_clock::now();
     }
 
     ToneMapping::SharedPtr ToneMapping::create(Operator op)
@@ -89,6 +90,42 @@ namespace Falcor
         }
     }
 
+    ToneMapping::SharedPtr ToneMapping::deserialize(const RenderPassSerializer& serializer) 
+    {
+        Scene::UserVariable opVariable = serializer.getValue("toneMapping.operator");
+        if (opVariable.type == Scene::UserVariable::Type::Unknown)
+        {
+            return create(Operator::Aces);
+        }
+
+        ToneMapping::SharedPtr pPass = create(static_cast<Operator>(opVariable.u32));
+        pPass->mConstBufferData.exposureKey = static_cast<float>(serializer.getValue("toneMapping.exposureKey").d64);
+        pPass->mConstBufferData.whiteMaxLuminance = static_cast<float>(serializer.getValue("toneMapping.whiteMaxLuminance").d64);
+        pPass->mConstBufferData.whiteMaxLuminance = static_cast<float>(serializer.getValue("toneMapping.luminanceLOD").d64);
+        pPass->mConstBufferData.whiteMaxLuminance = static_cast<float>(serializer.getValue("toneMapping.whiteScale").d64);
+        pPass->mEnableEyeAdaptation = serializer.getValue("toneMapping.mEnableEyeAdaptation").b;
+        pPass->mEyeAdaptationSettings.camEV100 = static_cast<float>(serializer.getValue("toneMapping.camEV100").d64);
+        pPass->mEyeAdaptationSettings.camIso = static_cast<float>(serializer.getValue("toneMapping.camIso").d64);
+        pPass->mEyeAdaptationSettings.speedDown = static_cast<float>(serializer.getValue("toneMapping.speedDown").d64);
+        pPass->mEyeAdaptationSettings.speedUp = static_cast<float>(serializer.getValue("toneMapping.speedUp").d64);
+
+        return pPass;
+    }
+
+    void ToneMapping::serialize(RenderPassSerializer& renderPassSerializer)
+    {
+        renderPassSerializer.addVariable("toneMapping.operator", static_cast<uint32_t>(mOperator));
+        renderPassSerializer.addVariable("toneMapping.exposureKey", mConstBufferData.exposureKey);
+        renderPassSerializer.addVariable("toneMapping.whiteMaxLuminance", mConstBufferData.whiteMaxLuminance);
+        renderPassSerializer.addVariable("toneMapping.luminanceLOD", mConstBufferData.luminanceLod);
+        renderPassSerializer.addVariable("toneMapping.whiteScale", mConstBufferData.whiteScale);
+        renderPassSerializer.addVariable("toneMapping.mEnableEyeAdaptation", mEnableEyeAdaptation);
+        renderPassSerializer.addVariable("toneMapping.camEV100", mEyeAdaptationSettings.camEV100);
+        renderPassSerializer.addVariable("toneMapping.camIso", mEyeAdaptationSettings.camIso);
+        renderPassSerializer.addVariable("toneMapping.speedDown", mEyeAdaptationSettings.speedDown);
+        renderPassSerializer.addVariable("toneMapping.speedUp", mEyeAdaptationSettings.speedUp);
+    }
+
     void ToneMapping::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
     {
         return execute(pRenderContext, pSrc->getColorTexture(0), pDst);
@@ -99,6 +136,21 @@ namespace Falcor
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         createLuminanceFbo(pSrc);
 
+        auto time = std::chrono::system_clock::now();
+        float deltaTime = std::chrono::duration<float>(time - mPrevTime).count();
+        mPrevTime = time;
+
+        if (mEnableEyeAdaptation)
+        {
+            mpToneMapVars["PerImageCB"]["deltaTime"] = deltaTime;
+            mpToneMapVars["PerImageCB"]["camEV100"] = calculateEV100();
+            mpToneMapPass->getProgram()->addDefine("_ENABLE_EYE_ADAPTATION");
+        }
+        else
+        {
+            mpToneMapPass->getProgram()->removeDefine("_ENABLE_EYE_ADAPTATION");
+        }
+        
         //Set shared vars
         mpToneMapVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
         mpLuminanceVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
@@ -125,12 +177,29 @@ namespace Falcor
         mpToneMapPass->execute(pRenderContext);
     }
 
+    float ToneMapping::calculateEV100()
+    {
+        Camera::SharedPtr pCamera = mpScene->getActiveCamera();
+
+        if (!pCamera)
+        {
+            logWarning("No camera set in render pass. Unable to execute eye adaption.");
+        }
+
+        float shutterSpeed = 1.0f / pCamera->getFocalLength();
+        float apertureRadius = pCamera->getApertureRadius();
+        if (apertureRadius <= 0.001f) apertureRadius = 77.0f; // good default value if camera set at 0
+        float ev100 = std::log2(std::max(apertureRadius, 0.001f) * shutterSpeed * 100.0f / mEyeAdaptationSettings.camIso);
+        mEyeAdaptationSettings.camEV100 = ev100;
+        return ev100;
+    }
+    
     void ToneMapping::createToneMapPass(ToneMapping::Operator op)
     {
         mpToneMapPass = FullScreenPass::create(kShaderFilename);
 
         mOperator = op;
-        switch(op)
+        switch (op)
         {
         case Operator::Clamp:
             mpToneMapPass->getProgram()->addDefine("_CLAMP");
@@ -162,9 +231,15 @@ namespace Falcor
         mpToneMapCBuffer = mpToneMapVars["PerImageCB"];
         const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
         mBindLocations.luminanceSampler = pDefaultBlock->getResourceBinding("gLuminanceTexSampler");
-        mBindLocations.colorSampler     = pDefaultBlock->getResourceBinding("gColorSampler");
-        mBindLocations.colorTex         = pDefaultBlock->getResourceBinding("gColorTex");
-        mBindLocations.luminanceTex     = pDefaultBlock->getResourceBinding("gLuminanceTex");
+        mBindLocations.colorSampler = pDefaultBlock->getResourceBinding("gColorSampler");
+        mBindLocations.colorTex = pDefaultBlock->getResourceBinding("gColorTex");
+        mBindLocations.luminanceTex = pDefaultBlock->getResourceBinding("gLuminanceTex");
+
+        mpToneMapCBuffer["speedUp"] = mEyeAdaptationSettings.speedUp;
+        mpToneMapCBuffer["speedDown"] = mEyeAdaptationSettings.speedDown;
+        mpToneMapCBuffer["camEV100"] = mEyeAdaptationSettings.camIso;
+
+        mpToneMapVars->setRawBuffer("prevFramInfo", Buffer::create(sizeof(float) * 4, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None));
     }
 
     void ToneMapping::createLuminancePass()
@@ -198,6 +273,21 @@ namespace Falcor
                 pGui->addFloatVar("Linear White", mConstBufferData.whiteScale, 0, 100, 0.01f);
             }
 
+            pGui->addCheckBox("Enable Eye Adaptation", mEnableEyeAdaptation);
+
+            if (mEnableEyeAdaptation)
+            {
+                if (pGui->addFloatVar("Speed Up", mEyeAdaptationSettings.speedUp, 0.0f))
+                {
+                    mpToneMapCBuffer["speedUp"] = mEyeAdaptationSettings.speedUp;
+                }
+
+                if (pGui->addFloatVar("Speed Down", mEyeAdaptationSettings.speedDown, 0.0f))
+                {
+                    mpToneMapCBuffer["speedDown"] = mEyeAdaptationSettings.speedDown;
+                }
+            }
+            
             if (uiGroup) pGui->endGroup();
         }
     }

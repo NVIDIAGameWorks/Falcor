@@ -62,7 +62,9 @@ namespace Falcor
         /** Create a new object
         */
         static SharedPtr create(Operator op);       
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(Operator::Aces); }
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+
+        void serialize(RenderPassSerializer& renderPassSerializer) override;
 
         /** Render UI elements
             \param[in] pGui GUI instance to render UI with
@@ -118,9 +120,15 @@ namespace Falcor
         /** Executes the pass.
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
+
+        virtual void setScene(const Scene::SharedPtr& pScene) override { mpScene = pScene;  }
     private:
         ToneMapping(Operator op);
         void createLuminanceFbo(const Texture::SharedPtr& pSrc);
+        
+        /** Physically based lens exposer value
+        */
+        float calculateEV100();
 
         Operator mOperator;
         FullScreenPass::UniquePtr mpToneMapPass;
@@ -131,7 +139,17 @@ namespace Falcor
         ConstantBuffer::SharedPtr mpToneMapCBuffer;
         Sampler::SharedPtr mpPointSampler;
         Sampler::SharedPtr mpLinearSampler;
+        Scene::SharedPtr mpScene;
+        bool mEnableEyeAdaptation = false;
 
+        struct
+        {
+            float camIso = 18.0f;
+            float camEV100 = 1.0f;
+            float speedUp = 1.0f;
+            float speedDown = 1.0f;
+        } mEyeAdaptationSettings;
+        
         struct PassBindLocations
         {
             ParameterBlockReflection::BindLocation luminanceSampler;
@@ -147,6 +165,8 @@ namespace Falcor
             float luminanceLod = 16; // Max possible LOD, will result in global operation
             float whiteScale = 11.2f;
         } mConstBufferData;
+
+        std::chrono::system_clock::time_point mPrevTime;
 
         void createToneMapPass(Operator op);
         void createLuminancePass();

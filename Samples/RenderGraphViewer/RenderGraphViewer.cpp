@@ -28,7 +28,7 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene =  "testScenes/tree.fscene";
+const std::string gkDefaultScene =  "sunTemple/sunTemple.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 RenderGraphViewer::~RenderGraphViewer()
@@ -211,11 +211,7 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addEdge("SkyBox.target", "LightingPass.color");
     mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
 
-    mpGraph->addEdge("LightingPass.color", "GodRays.color");
-    mpGraph->addEdge("DepthPrePass.depth", "GodRays.depth");
-
-    //mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
-    mpGraph->addEdge("GodRays.dst", "ToneMapping.src");
+    mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
     mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
     mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
     mpGraph->addEdge("LightingPass.depth", "SSAO.depth");
