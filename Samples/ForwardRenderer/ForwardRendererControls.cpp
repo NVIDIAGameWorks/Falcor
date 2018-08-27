@@ -130,7 +130,7 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
     else
     {
         mpSceneRenderer->getScene()->getActiveCamera()->setPatternGenerator(nullptr);
-        //mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
+        mLightingPass.pProgram->removeDefine("_OUTPUT_MOTION_VECTORS");
         applyLightingProgramControl(SuperSampling);
         fboDesc.setSampleCount(mAAMode == AAMode::MSAA ? mMSAASampleCount : 1);
 
