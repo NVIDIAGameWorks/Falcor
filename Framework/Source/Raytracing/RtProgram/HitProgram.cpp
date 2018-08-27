@@ -60,7 +60,7 @@ namespace Falcor
 
     // #DXR_FIX add the filename
 #define create_shader(_type, _pshader)                          \
-    if (shaderBlob[uint32_t(_type)].data.size())                \
+    if (shaderBlob[uint32_t(_type)])                            \
     {                                                           \
         _pshader = createRtShaderFromBlob(                      \
         mDesc.getShaderLibrary(_type)->getFilename(),            \

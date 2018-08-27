@@ -456,7 +456,6 @@ namespace Falcor
         preprocessorDefine = "FALCOR_D3D";
         // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
         if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_")) slangTarget = SLANG_DXBC;
-        else if (mDesc.mShaderModel == "6_3")                                           slangTarget = SLANG_HLSL;   // TODO This is actually a hack for DXR, we need to fix it
         else                                                                            slangTarget = SLANG_DXIL;
 #else
 #error unknown shader compilation target
@@ -547,21 +546,9 @@ namespace Falcor
                 continue;
 
             int entryPointIndex = entryPointCounter++;
+            int targetIndex = 0; // We always compile for a single target
 
-            if (slangTarget == SLANG_GLSL || slangTarget == SLANG_GLSL_VULKAN || slangTarget == SLANG_HLSL)
-            {
-                shaderBlob[i].type = Shader::Blob::Type::String;
-                const char* data = spGetEntryPointSource(slangRequest, entryPointIndex);
-                shaderBlob[i].data.assign(data, data + strlen(data));
-            }
-            else
-            {
-                shaderBlob[i].type = Shader::Blob::Type::Bytecode;
-                size_t size = 0;
-                const uint8_t* data = (uint8_t*)spGetEntryPointCode(slangRequest, entryPointIndex, &size);
-                shaderBlob[i].data.assign(data, data + size);
-            }
-            shaderBlob[i].shaderModel = mDesc.mShaderModel;
+            spGetEntryPointCodeBlob(slangRequest, entryPointIndex, targetIndex, shaderBlob[i].writeRef());
         }
 
         VersionData programVersion;
@@ -594,7 +581,7 @@ namespace Falcor
         Shader::SharedPtr shaders[kShaderCount] = {};
         for (uint32_t i = 0; i < kShaderCount; i++)
         {
-            if (shaderBlob[i].data.size())
+            if (shaderBlob[i])
             { 
                 shaders[i] = createShaderFromBlob(shaderBlob[i], ShaderType(i), mDesc.mEntryPoints[i].name, mDesc.getCompilerFlags(), log);
                 if (!shaders[i]) return nullptr;

@@ -47,7 +47,6 @@ namespace Falcor
     private:
         RtShader(ShaderType type, const std::string& entryPointName);
         std::string mEntryPoint;
-        ID3DBlobPtr compile(const Blob& blob, const std::string&  entryPointName, Shader::CompilerFlags flags, std::string& errorLog) override;
     };
 
     RtShader::SharedPtr createRtShaderFromBlob(
