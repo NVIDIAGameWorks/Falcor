@@ -47,15 +47,26 @@ private:
     FirstPersonCameraController mCamControl;
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
     void createGraph(SampleCallbacks* pSample);
+    void resetGraphOutputs();
     void fileWriteCallback(const std::string& fileName);
+
+    struct DebugWindowInfo
+    {
+        std::string mOutputName;
+        bool mRenderOutput = false;
+        uint32_t mNextOutputIndex = 0;
+    };
 
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;
     bool mEnableDepthPrePass = true;
-    uint32_t mGraphOutputIndex = 0, mNextOutputIndex = 0;
+    uint32_t mGraphOutputIndex = 0;
     bool mShowAllOutputs = true;
     std::string mOutputString = "BlitPass.dst";
-    std::vector<std::string> mOriginalOutputs;
+    std::vector< std::pair<std::string, bool> > mOriginalOutputs;
+    std::unordered_set<std::string> mOriginalOutputNames;
+
+    std::unordered_map<std::string, DebugWindowInfo> mDebugWindowInfos;
     bool mEditorRunning = false;
     size_t mEditorProcess = 0;
     std::string mTempFilePath;

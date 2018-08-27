@@ -134,7 +134,7 @@ namespace Falcor
 
         /** Get all output names for the render graph
         */
-        std::vector<std::string> getAllOutputs() const;
+        std::vector<std::pair <std::string, bool> > getAvailableOutputs() const;
 
         friend class RenderGraphUI;
         friend class RenderGraphLoader;
@@ -157,7 +157,7 @@ namespace Falcor
         bool compile(std::string& log);
         bool resolveExecutionOrder();
         bool allocateResources();
-
+        
         struct EdgeData
         {
             enum class Flags
@@ -198,6 +198,7 @@ namespace Falcor
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
+        bool isGraphOutput(const GraphOut& graphOut) const;
         std::shared_ptr<Texture> createTextureForPass(const RenderPassReflection::Field& field);
 
         struct  

@@ -53,8 +53,8 @@ RenderGraphEditor::~RenderGraphEditor()
 // some of this will need to be moved to render graph ui
 void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    uint32_t screenHeight = pSample->getWindow()->getClientAreaHeight();
-    uint32_t screenWidth = pSample->getWindow()->getClientAreaWidth();
+    uint32_t screenHeight = mWindowSize.y;
+    uint32_t screenWidth = mWindowSize.x;
 
     if (pGui->beginMainMenuBar())
     {
@@ -374,6 +374,7 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+    mWindowSize = {width, height};
 }
 
 #ifdef _WIN32

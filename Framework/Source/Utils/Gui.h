@@ -354,6 +354,10 @@ namespace Falcor
         */
         void popWindow();
 
+        /** Get the size of the window drawing region in pixels of the current window.
+        */
+        glm::vec2 getWindowSize();
+
         /** Start a new frame. Must be called at the start of each frame
         */
         void beginFrame();

@@ -54,7 +54,7 @@ private:
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
     size_t mCurrentGraphIndex;
-    
+    glm::uvec2 mWindowSize;
     std::string mCurrentLog;
 
     std::string mNextGraphString;

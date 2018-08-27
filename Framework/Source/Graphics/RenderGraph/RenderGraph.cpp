@@ -325,21 +325,34 @@ namespace Falcor
         return true;
     }
 
-    std::vector<std::string> RenderGraph::getAllOutputs() const 
+    bool RenderGraph::isGraphOutput(const GraphOut& graphOut) const
     {
-        std::vector<std::string> outputs;
-        for (const auto& node : mNodeData)
+        for (const GraphOut& currentOut : mOutputs)
         {
-            RenderPassReflection reflector;
-            node.second.pPass->reflect(reflector);
-
-            for (size_t i = 0; i < reflector.getFieldCount(); ++i)
+            if (graphOut.nodeId == currentOut.nodeId)
             {
-                const RenderPassReflection::Field& field = reflector.getField(i);
-                if (static_cast<bool>(field.getType() & RenderPassReflection::Field::Type::Output))
+                if (graphOut.field == currentOut.field)
                 {
-                    outputs.push_back(node.second.nodeName + "." + field.getName());
+                    return true;
                 }
+            }
+        }
+        
+        return false;
+    }
+
+    std::vector<std::pair<std::string, bool>> RenderGraph::getAvailableOutputs() const
+    {
+        std::vector<std::pair<std::string, bool>> outputs;
+        for (const auto& node : mNodeData)
+        {   
+            const DirectedGraph::Node* pNode = mpGraph->getNode(node.first);
+            for (uint32_t i = 0; i < pNode->getOutgoingEdgeCount(); ++i)
+            {
+                const RenderGraph::EdgeData& edgeData = mEdgeData.find(pNode->getOutgoingEdge(i))->second;
+                GraphOut thisOutput{ node.first, edgeData.srcField };
+                bool isOuput = isGraphOutput(thisOutput);
+                outputs.push_back(std::make_pair(node.second.nodeName + "." + thisOutput.field, isOuput));
             }
         }
 
@@ -521,8 +534,11 @@ namespace Falcor
         static const Resource::SharedPtr pNull;
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
+        uint32_t passIndex = getPassIndex(strPair.first);
+        GraphOut thisOutput = { passIndex, strPair.second };
+        bool isOuput = isGraphOutput(thisOutput);
 
-        return pPass ? mpResourcesCache->getResource(name) : pNull;
+        return (pPass && isOuput) ? mpResourcesCache->getResource(name) : pNull;
     }
 
     std::string RenderGraph::getGraphOutputName(size_t index) const

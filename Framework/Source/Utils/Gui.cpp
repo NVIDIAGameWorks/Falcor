@@ -734,6 +734,12 @@ namespace Falcor
         ImGui::End();
     }
 
+    glm::vec2 Gui::getWindowSize()
+    {
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        return {windowSize.x, windowSize.y};
+    }
+
     void Gui::addSeparator()
     {
         ImGui::Separator();

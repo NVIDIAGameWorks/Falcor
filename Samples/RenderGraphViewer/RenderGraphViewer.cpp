@@ -28,8 +28,10 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene = "EmeraldSquare/EmeraldSquare_day.fscene";
+const std::string gkDefaultScene = "Arcade/Arcade.fscene";// ;"EmeraldSquare/EmeraldSquare_day.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
+const char* kSaveFileFilter = "PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
+   \0JPG(.jpg)\0*.jpg;\0HDR(.hdr)\0*.hdr;\0TGA(.tga)\0*.tga;\0";
 
 RenderGraphViewer::~RenderGraphViewer()
 {
@@ -41,6 +43,22 @@ RenderGraphViewer::~RenderGraphViewer()
         mEditorProcess = 0;
     }
 }
+
+void RenderGraphViewer::resetGraphOutputs()
+{
+    // reset outputs to original state
+    mpGraph->unmarkGraphOutput(mOutputString);
+    for (const auto& windowInfo : mDebugWindowInfos)
+    {
+        mpGraph->unmarkGraphOutput(windowInfo.second.mOutputName);
+    }
+
+    for (const auto& output : mOriginalOutputs)
+    {
+        mpGraph->markGraphOutput(output.first);
+    }
+}
+
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
@@ -57,12 +75,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
     {
-        // reset outputs to original state
-        mpGraph->unmarkGraphOutput(mOutputString);
-        for (const std::string& output : mOriginalOutputs)
-        {
-            mpGraph->markGraphOutput(output);
-        }
+        resetGraphOutputs();
 
         std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraph);
         if (!renderGraphScript.size())
@@ -107,21 +120,20 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         Gui::DropdownList renderGraphOutputs;
         if (mShowAllOutputs)
         {
-            std::vector<std::string> outputs = mpGraph->getAllOutputs();
+            std::vector< std::pair<std::string, bool> > outputs = mpGraph->getAvailableOutputs();
             int32_t i = 0;
 
-            for (const std::string& outputName : outputs)
+            for (const auto& outputName : outputs)
             {
                 Gui::DropdownValue graphOutput;
-                graphOutput.label = outputName;
-                if (outputName == mOutputString)
+                graphOutput.label = outputName.first;
+                if (outputName.first == mOutputString)
                 {
                     mGraphOutputIndex = i;
                 }
                 graphOutput.value = i++;
                 renderGraphOutputs.push_back(graphOutput);
             }
-
         }
         else
         {
@@ -132,11 +144,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 graphOutput.value = i;
                 renderGraphOutputs.push_back(graphOutput);
             }
-        }
-        
-        if (pGui->addButton("New Output Window"))
-        {
-            
         }
 
         // with switching between all outputs and only graph outputs
@@ -157,25 +164,97 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (renderGraphOutputs.size())
         {
-            pGui->addDropdown("##Render Graph Outputs", renderGraphOutputs, mNextOutputIndex);
-            if (pGui->addButton("Open Output Window", true))
+            if (pGui->addButton("Open Output Window"))
             {
-                mOutputNames.push_back(renderGraphOutputs[mNextOutputIndex].label);
+                size_t size =  mDebugWindowInfos.size();
+                mDebugWindowInfos.insert(std::make_pair(std::string("Debug Window ") + std::to_string(size), DebugWindowInfo()));
+                // mOutputNames.push_back(renderGraphOutputs[mNextOutputIndex].label);
             }
         }
         
-        for (auto& name : mOutputNames)
-        {
-            Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(mpGraph->getOutput(name));
-            glm::vec2 imagePreviewSize{ pPreviewTex->getWidth(), pPreviewTex->getHeight() };
-            imagePreviewSize /= 8;
+        std::vector<std::string> windowsToRemove;
 
-            pGui->pushWindow((std::string("mpGraphName : ") + name).c_str(), 512, 256);
+        for (auto& nameWindow : mDebugWindowInfos)
+        {
+            DebugWindowInfo& debugWindowInfo = nameWindow.second;
+
+            pGui->pushWindow((std::string("mpGraphName : ") + nameWindow.first).c_str(), 330, 268);
         
-            
-            pGui->addImage(name.c_str(), pPreviewTex, imagePreviewSize);
-        
+            if (pGui->addDropdown("##Render Graph Outputs", renderGraphOutputs, debugWindowInfo.mNextOutputIndex))
+            {
+                debugWindowInfo.mOutputName = renderGraphOutputs[debugWindowInfo.mNextOutputIndex].label;
+                debugWindowInfo.mRenderOutput = true;
+            }
+
+            if (pGui->addButton("Close"))
+            {
+                // mark to close after window updates
+                windowsToRemove.push_back(nameWindow.first);
+                debugWindowInfo.mRenderOutput = false;
+
+                // unmark graph output checking the original graph state.
+                if (mOriginalOutputNames.find(debugWindowInfo.mOutputName) == mOriginalOutputNames.end())
+                {
+                    mpGraph->unmarkGraphOutput(debugWindowInfo.mOutputName);
+                }
+            }
+
+            if (debugWindowInfo.mRenderOutput)
+            {
+                // mark as graph output
+                mpGraph->markGraphOutput(debugWindowInfo.mOutputName);
+                Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(mpGraph->getOutput(debugWindowInfo.mOutputName));
+
+                if (pGui->addButton("Save to File", true))
+                {
+                    std::string filePath;
+
+                    if (saveFileDialog(kSaveFileFilter, filePath))
+                    {
+                        size_t extensionPos = filePath.find_last_of('.', 0);
+                        Bitmap::FileFormat fileFormat = Bitmap::FileFormat::PngFile;
+
+                        if (extensionPos != std::string::npos)
+                        {
+                            std::string extensionString = filePath.substr(extensionPos, filePath.size() - extensionPos);
+
+                            if (extensionString == "bmp")
+                            {
+                                fileFormat = Bitmap::FileFormat::BmpFile;
+                            }
+                            else if (extensionString == "hdr")
+                            {
+                                fileFormat = Bitmap::FileFormat::ExrFile;
+                            }
+                            else if (extensionString == "tga")
+                            {
+                                fileFormat = Bitmap::FileFormat::TgaFile;
+                            }
+                            else if (extensionString == "jpg" || extensionString == "jpeg")
+                            {
+                                fileFormat = Bitmap::FileFormat::JpegFile;
+                            }
+                        }
+
+                        pPreviewTex->captureToFile(0, 0, filePath, fileFormat);
+                    }
+                }
+
+                glm::vec2 imagePreviewSize = pGui->getWindowSize();
+                float imageAspectRatio = static_cast<float>(pPreviewTex->getHeight()) / static_cast<float>(pPreviewTex->getWidth());
+                // get size of window to scale image correctly
+                imagePreviewSize.y = imagePreviewSize.x * imageAspectRatio;
+
+                pGui->addImage(nameWindow.first.c_str(), pPreviewTex, imagePreviewSize);
+            }
+
             pGui->popWindow();
+        }
+
+
+        for (const std::string& windowName : windowsToRemove)
+        {
+            mDebugWindowInfos.erase(windowName);
         }
     }
 }
@@ -241,6 +320,13 @@ void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
     std::ifstream inputStream(fileName);
     std::string script = std::string((std::istreambuf_iterator<char>(inputStream)), std::istreambuf_iterator<char>());
     RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *mpGraph);
+
+    // check valid
+
+
+    // rebuild data
+
+
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -286,7 +372,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
     for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
     {
-        mOriginalOutputs.push_back(mpGraph->getGraphOutputName(i));
+        mOriginalOutputNames.insert(mpGraph->getGraphOutputName(i));
     }
 }
 
