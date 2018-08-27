@@ -34,7 +34,6 @@
 #include "Effects/BlendPass/BlendPass.h"
 #include "Effects/SubsurfaceScattering/SubsurfaceScattering.h"
 #include "Effects/Bloom/Bloom.h"
-#include "Effects/GodRays/GodRays.h"
 #include "Effects/MotionBlur/MotionBlur.h"
 #include "Effects/DepthOfField/DepthOfField.h"
 #include "Effects/SkyBox/SkyBox.h"
@@ -68,7 +67,6 @@ namespace Falcor
         // RenderPassLibrary::addRenderPassClass("DepthOfField", "Apply depth of field using the camera", DepthOfField::deserialize);
         RenderPassLibrary::addRenderPassClass("MotionBlur", "Apply motion blur using the motion vectors", MotionBlur::deserialize);
         RenderPassLibrary::addRenderPassClass("Bloom", "Apply bloom to hdr image", Bloom::deserialize);
-        RenderPassLibrary::addRenderPassClass("GodRays", "Screen space god rays", GodRays::deserialize);
 
         RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::deserialize);
         RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", SSAO::deserialize);

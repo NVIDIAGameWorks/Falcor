@@ -243,11 +243,10 @@ void ForwardRenderer::initAA(SampleCallbacks* pSample)
 void ForwardRenderer::initPostProcess()
 {
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
+    mpToneMapper->setScene(mpSceneRenderer->getScene());
     mpBloom = Bloom::create(1.0f);
-    mpGodRays = GodRays::create(0.5f);
     mpMotionBlur = MotionBlur::create(20);
     mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
-    mpEyeAdaptation = EyeAdaptation::create(1.0f);
     mpSubsurface = SubsurfaceScattering::create();
     mpBlendPass = BlendPass::create();
 
@@ -303,11 +302,6 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     {
         mpBloom->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo);
     }
-    if (mPostProcessingControls[PostProcessID::GodRays])
-    {
-        mpGodRays->setScene(mpSceneRenderer->getScene());
-        mpGodRays->execute(pContext, mpResolveFbo->getColorTexture(0), mpMainFbo->getDepthStencilTexture(), mpResolveFbo);
-    }
     if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
     {
         mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, mpMainFbo->getColorTexture(4));
@@ -321,10 +315,6 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     if (mPostProcessingControls[PostProcessID::MotionBlur])
     {
         mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
-    }
-    if (mPostProcessingControls[PostProcessID::EyeAdaptation])
-    {
-        mpEyeAdaptation->execute(pContext, mpResolveFbo);
     }
 
     mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo);

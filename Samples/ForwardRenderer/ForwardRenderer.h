@@ -118,7 +118,6 @@ private:
 
     ToneMapping::SharedPtr mpToneMapper;
     Bloom::SharedPtr mpBloom;
-    GodRays::SharedPtr mpGodRays;
     DepthOfField::SharedPtr mpDepthOfField;
     MotionBlur::SharedPtr mpMotionBlur;
     FilmGrain::SharedPtr mpFilmGrain;

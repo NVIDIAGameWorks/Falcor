@@ -385,7 +385,6 @@
     <ClCompile Include="Effects\DepthOfField\DepthOfField.cpp" />
     <ClCompile Include="Effects\FilmGrain\FilmGrain.cpp" />
     <ClCompile Include="Effects\FXAA\FXAA.cpp" />
-    <ClCompile Include="Effects\GodRays\GodRays.cpp" />
     <ClCompile Include="Effects\MotionBlur\MotionBlur.cpp" />
     <ClCompile Include="Effects\NormalMap\LeanMap.cpp" />
     <ClCompile Include="Effects\ParticleSystem\ParticleSystem.cpp" />
@@ -957,7 +956,6 @@
     <ClInclude Include="Effects\DepthOfField\DepthOfField.h" />
     <ClInclude Include="Effects\FilmGrain\FilmGrain.h" />
     <ClInclude Include="Effects\FXAA\FXAA.h" />
-    <ClInclude Include="Effects\GodRays\GodRays.h" />
     <ClInclude Include="Effects\MotionBlur\MotionBlur.h" />
     <ClInclude Include="Effects\NormalMap\LeanMap.h" />
     <ClInclude Include="Effects\ParticleSystem\ParticleSystem.h" />

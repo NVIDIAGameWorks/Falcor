@@ -140,7 +140,7 @@ namespace Falcor
         Sampler::SharedPtr mpPointSampler;
         Sampler::SharedPtr mpLinearSampler;
         Scene::SharedPtr mpScene;
-        bool mEnableEyeAdaptation = false;
+        bool mEnableEyeAdaptation = true;
 
         struct
         {

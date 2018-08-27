@@ -150,7 +150,6 @@
 #include "Effects/Utils/GaussianBlur/GaussianBlur.h"
 #include "Effects/Utils/PassFilter/PassFilter.h"
 #include "Effects/Bloom/Bloom.h"
-#include "Effects/GodRays/GodRays.h"
 #include "Effects/DepthOfField/DepthOfField.h"
 #include "Effects/MotionBlur/MotionBlur.h"
 #include "Effects/FilmGrain/FilmGrain.h"
