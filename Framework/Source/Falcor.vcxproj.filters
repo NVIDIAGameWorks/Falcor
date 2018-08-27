@@ -544,20 +544,8 @@
     <ClCompile Include="Effects\Bloom\Bloom.cpp">
       <Filter>Effects\Bloom</Filter>
     </ClCompile>
-    <ClCompile Include="Effects\DepthOfField\DepthOfField.cpp">
-      <Filter>Effects\DepthOfField</Filter>
-    </ClCompile>
-    <ClCompile Include="Effects\MotionBlur\MotionBlur.cpp">
-      <Filter>Effects\MotionBlur</Filter>
-    </ClCompile>
     <ClCompile Include="Effects\FilmGrain\FilmGrain.cpp">
       <Filter>Effects\FilmGrain</Filter>
-    </ClCompile>
-    <ClCompile Include="Effects\SubsurfaceScattering\SubsurfaceScattering.cpp">
-      <Filter>Effects\SubsurfaceScattering</Filter>
-    </ClCompile>
-    <ClCompile Include="Effects\BlendPass\BlendPass.cpp">
-      <Filter>Effects\BlendPass</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
@@ -1737,20 +1725,8 @@
     <ClInclude Include="Effects\Bloom\Bloom.h">
       <Filter>Effects\Bloom</Filter>
     </ClInclude>
-    <ClInclude Include="Effects\DepthOfField\DepthOfField.h">
-      <Filter>Effects\DepthOfField</Filter>
-    </ClInclude>
-    <ClInclude Include="Effects\MotionBlur\MotionBlur.h">
-      <Filter>Effects\MotionBlur</Filter>
-    </ClInclude>
     <ClInclude Include="Effects\FilmGrain\FilmGrain.h">
       <Filter>Effects\FilmGrain</Filter>
-    </ClInclude>
-    <ClInclude Include="Effects\SubsurfaceScattering\SubsurfaceScattering.h">
-      <Filter>Effects\SubsurfaceScattering</Filter>
-    </ClInclude>
-    <ClInclude Include="Effects\BlendPass\BlendPass.h">
-      <Filter>Effects\BlendPass</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
@@ -1965,20 +1941,8 @@
     <Filter Include="Effects\Bloom">
       <UniqueIdentifier>{37f8e667-6994-4e6c-89a6-d51e8360feea}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Effects\DepthOfField">
-      <UniqueIdentifier>{b01006f8-f182-40d4-a4b8-d01b0526411c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Effects\MotionBlur">
-      <UniqueIdentifier>{77f52c8b-bf1e-483a-8f05-a800e8b3a7a0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Effects\FilmGrain">
       <UniqueIdentifier>{c43a43bc-1062-4b46-97b2-7499fab68dd3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Effects\SubsurfaceScattering">
-      <UniqueIdentifier>{0ded2ef7-fdc4-46f0-8b17-cc11304a61db}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Effects\BlendPass">
-      <UniqueIdentifier>{30552aa6-f692-4e97-8617-e71fb46c76e7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

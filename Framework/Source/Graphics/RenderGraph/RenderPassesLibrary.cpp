@@ -31,11 +31,7 @@
 #include "RenderPasses/DepthPass.h"
 #include "RenderPasses/SceneLightingPass.h"
 #include "Effects/FilmGrain/FilmGrain.h"
-#include "Effects/BlendPass/BlendPass.h"
-#include "Effects/SubsurfaceScattering/SubsurfaceScattering.h"
 #include "Effects/Bloom/Bloom.h"
-#include "Effects/MotionBlur/MotionBlur.h"
-#include "Effects/DepthOfField/DepthOfField.h"
 #include "Effects/SkyBox/SkyBox.h"
 #include "Effects/Shadows/CSM.h"
 #include "Effects/ToneMapping/ToneMapping.h"
@@ -62,10 +58,6 @@ namespace Falcor
         RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", ToneMapping::deserialize);
 
         RenderPassLibrary::addRenderPassClass("FilmGrain", "Adds film grain to image", FilmGrain::deserialize);
-        RenderPassLibrary::addRenderPassClass("BlendPass", "Blends an input image with a src image", BlendPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("SubsurfaceScattering", "Apply subsurface scattering in screen space", SubsurfaceScattering::deserialize);
-        // RenderPassLibrary::addRenderPassClass("DepthOfField", "Apply depth of field using the camera", DepthOfField::deserialize);
-        RenderPassLibrary::addRenderPassClass("MotionBlur", "Apply motion blur using the motion vectors", MotionBlur::deserialize);
         RenderPassLibrary::addRenderPassClass("Bloom", "Apply bloom to hdr image", Bloom::deserialize);
 
         RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::deserialize);

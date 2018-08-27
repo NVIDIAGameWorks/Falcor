@@ -326,44 +326,6 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         mpToneMapper->renderUI(pGui, "Tone-Mapping");
         mpBloom->renderUI(pGui, "Bloom");
-        mpDepthOfField->renderUI(pGui, "DepthOfField");
-        mpMotionBlur->renderUI(pGui, "MotionBlur");
-
-        
-        if (pGui->beginGroup("Subsurface Scattering"))
-        {
-            int32_t isSet = mPostProcessingControls[PostProcessID::SubsurfaceScattering];
-            if (pGui->addCheckBox("Enable sss", isSet))
-            {
-                mPostProcessingControls[PostProcessID::SubsurfaceScattering] = isSet;
-            }
-            mpSubsurface->renderUI(pGui);
-            pGui->endGroup();
-        }
-        
-        // set lighting pass to split the specular and diffuse outputs
-        if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
-        {
-            mLightingPass.pProgram->addDefine("_SEPERATE_DIFFUSE_AND_SPECULAR");
-            if (!mpMainFbo->getColorTexture(3))
-            {
-                Texture::SharedPtr pSpecColorTex = Texture::create2D(mpMainFbo->getWidth(), mpMainFbo->getHeight(), 
-                    mpMainFbo->getColorTexture(0)->getFormat(), 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
-                mpMainFbo->attachColorTarget(pSpecColorTex, 3);
-            }
-            mLightingPass.pProgram->addDefine("_OUTPUT_SUBSURFACE");
-            if (!mpMainFbo->getColorTexture(4))
-            {
-                Texture::SharedPtr pSubsurfaceTex = Texture::create2D(mpMainFbo->getWidth(), mpMainFbo->getHeight(),
-                    ResourceFormat::R32Float, 1, 1, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
-                mpMainFbo->attachColorTarget(pSubsurfaceTex, 4);
-            }
-        }
-        else
-        {
-            mLightingPass.pProgram->removeDefine("_SEPERATE_DIFFUSE_AND_SPECULAR");
-            mLightingPass.pProgram->removeDefine("_OUTPUT_SUBSURFACE");
-        }
 
         if (pGui->beginGroup("Shadows"))
         {

@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "ForwardRenderer.h"
 
-const std::string ForwardRenderer::skDefaultScene = "ParagonCharacters/Grux/FScene.fscene"; // "SunTemple/SunTemple.fscene"; // "Arcade/Arcade.fscene";
+const std::string ForwardRenderer::skDefaultScene = "Arcade/Arcade.fscene";
 
 void ForwardRenderer::initDepthPass()
 {
@@ -245,11 +245,6 @@ void ForwardRenderer::initPostProcess()
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
     mpToneMapper->setScene(mpSceneRenderer->getScene());
     mpBloom = Bloom::create(1.0f);
-    mpMotionBlur = MotionBlur::create(20);
-    mpDepthOfField = DepthOfField::create(mpSceneRenderer->getScene()->getActiveCamera());
-    mpSubsurface = SubsurfaceScattering::create();
-    mpBlendPass = BlendPass::create();
-
     mpTempToneMappingFbo = Fbo::create();
 }
 
@@ -301,20 +296,6 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
     if (mPostProcessingControls[PostProcessID::Bloom])
     {
         mpBloom->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo);
-    }
-    if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
-    {
-        mpSubsurface->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo->getDepthStencilTexture(), mpResolveFbo, mpMainFbo->getColorTexture(4));
-        mpBlendPass->execute(pContext, mpMainFbo->getColorTexture(3), mpResolveFbo);
-       // mpToneMapper->execute(pContext, mpResolveFbo, mpResolveFbo);
-    }
-    if (mPostProcessingControls[PostProcessID::DepthOfField])
-    {
-        mpDepthOfField->execute(pContext, mpResolveFbo);
-    }
-    if (mPostProcessingControls[PostProcessID::MotionBlur])
-    {
-        mpMotionBlur->execute(pContext, mpMainFbo->getColorTexture(2), mpResolveFbo);
     }
 
     mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo);
