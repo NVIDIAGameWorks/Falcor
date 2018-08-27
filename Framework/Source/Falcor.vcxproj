@@ -383,7 +383,6 @@
     <ClCompile Include="Effects\BlendPass\BlendPass.cpp" />
     <ClCompile Include="Effects\Bloom\Bloom.cpp" />
     <ClCompile Include="Effects\DepthOfField\DepthOfField.cpp" />
-    <ClCompile Include="Effects\EyeAdaptation\EyeAdaptation.cpp" />
     <ClCompile Include="Effects\FilmGrain\FilmGrain.cpp" />
     <ClCompile Include="Effects\FXAA\FXAA.cpp" />
     <ClCompile Include="Effects\GodRays\GodRays.cpp" />
@@ -956,7 +955,6 @@
     <ClInclude Include="Effects\BlendPass\BlendPass.h" />
     <ClInclude Include="Effects\Bloom\Bloom.h" />
     <ClInclude Include="Effects\DepthOfField\DepthOfField.h" />
-    <ClInclude Include="Effects\EyeAdaptation\EyeAdaptation.h" />
     <ClInclude Include="Effects\FilmGrain\FilmGrain.h" />
     <ClInclude Include="Effects\FXAA\FXAA.h" />
     <ClInclude Include="Effects\GodRays\GodRays.h" />

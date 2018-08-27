@@ -194,7 +194,8 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addRenderPass(ToneMapping::deserialize({}), "ToneMapping");
     mpGraph->addRenderPass(SSAO::deserialize({}), "SSAO");
     mpGraph->addRenderPass(FXAA::deserialize({}), "FXAA");
-    mpGraph->addRenderPass(GodRays::deserialize({}), "GodRays");
+    mpGraph->addRenderPass(Bloom::deserialize({}), "Bloom");
+    mpGraph->addRenderPass(FilmGrain::deserialize({}), "FilmGrain");
 
     // Add the skybox
     Scene::UserVariable var = mpScene->getUserVariable("sky_box");
@@ -211,7 +212,9 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addEdge("SkyBox.target", "LightingPass.color");
     mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
 
-    mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
+    mpGraph->addEdge("LightingPass.color", "Bloom.src");
+    mpGraph->addEdge("Bloom.dst", "FilmGrain.color");
+    mpGraph->addEdge("FilmGrain.color", "ToneMapping.src");
     mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
     mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
     mpGraph->addEdge("LightingPass.depth", "SSAO.depth");

@@ -29,7 +29,7 @@
 
 using namespace Falcor;
 
-const char* FilmGrainSample::kDefaultImageName = "../RenderGraphViewer.exe.1.png";
+const char* FilmGrainSample::kDefaultImageName = "SunTemple/SunTemple_Reflection.hdr";
 
 void FilmGrainSample::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {

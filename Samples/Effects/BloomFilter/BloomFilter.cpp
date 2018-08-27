@@ -29,7 +29,7 @@
 
 using namespace Falcor;
 
-const char* BloomFilter::kDefaultImageName = "../RenderGraphViewer.exe.1.png";
+const char* BloomFilter::kDefaultImageName = "SunTemple/SunTemple_Reflection.hdr";
 
 void BloomFilter::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
@@ -41,7 +41,6 @@ void BloomFilter::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPt
 
 void BloomFilter::loadImage(const std::string& name)
 {
-    //mpImage = createTextureFromFile(name, false, false, Resource::BindFlags::ShaderResource);
     mpImage = createTextureFromFile(name, false, true, Resource::BindFlags::ShaderResource);
 }
 
@@ -81,7 +80,6 @@ void BloomFilter::onFrameRender(SampleCallbacks* pSample, const RenderContext::S
 
 void BloomFilter::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    //recreate hdr fbo
     ResourceFormat format = ResourceFormat::RGBA32Float;
     Fbo::Desc desc;
     desc.setDepthStencilTarget(ResourceFormat::D16Unorm);

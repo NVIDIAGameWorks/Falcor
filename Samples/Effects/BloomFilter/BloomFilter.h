@@ -43,7 +43,6 @@ public:
 private:
     static const char* kDefaultImageName;
 
-    Model::SharedPtr mpTeapot;
     Texture::SharedPtr mpImage;
     Sampler::SharedPtr mpGlobalSampler;
     GraphicsProgram::SharedPtr mpMainProg = nullptr;
