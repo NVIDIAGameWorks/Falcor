@@ -119,8 +119,6 @@ namespace Falcor
             uint32_t d = (cachedField.getDepth() == 0 && field.getDepth() != 0) ? field.getDepth() : cachedField.getDepth();
             cachedField.setDimensions(w, h, d);
 
-            // TODO: Handle MSAA
-
             if (cachedField.getFormat() == ResourceFormat::Unknown && field.getFormat() != ResourceFormat::Unknown)
             {
                 cachedField.setFormat(field.getFormat());

@@ -364,13 +364,10 @@ namespace Falcor
                 // Skip the field if it's not an output field
                 if (field.isValid() == false || is_set(field.getType(), RenderPassReflection::Field::Type::Output) == false) continue;
 
-                // Register src/output field reflection data
-                std::string srcResourceName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
-                mpResourcesCache->registerField(srcResourceName, field);
-
                 // Merge dst/input field into same resource data
-                const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
+                std::string srcResourceName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
                 std::string dstResourceName = mNodeData[pEdge->getDestNode()].nodeName + '.' + edgeData.dstField;
+                const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
                 RenderPassReflection::Field dstField = mPassReflectionMap[pDstPass.get()].getField(edgeData.dstField);
                 mpResourcesCache->registerField(dstResourceName, dstField, srcResourceName);
             }
