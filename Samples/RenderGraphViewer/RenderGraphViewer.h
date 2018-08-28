@@ -45,6 +45,7 @@ public:
 private:
     RenderGraph::SharedPtr mpGraph;
     FirstPersonCameraController mCamControl;
+    void copyGraph(const RenderGraph::SharedPtr& pSrc, RenderGraph::SharedPtr pDst);
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
     void createGraph(SampleCallbacks* pSample);
     void resetGraphOutputs();
@@ -53,7 +54,7 @@ private:
     struct DebugWindowInfo
     {
         std::string mOutputName;
-        bool mRenderOutput = false;
+        bool mRenderOutput = true;
         uint32_t mNextOutputIndex = 0;
     };
 

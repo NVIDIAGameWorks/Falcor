@@ -47,18 +47,26 @@ RenderGraphViewer::~RenderGraphViewer()
 void RenderGraphViewer::resetGraphOutputs()
 {
     // reset outputs to original state
-    mpGraph->unmarkGraphOutput(mOutputString);
-    for (const auto& windowInfo : mDebugWindowInfos)
+    std::vector< std::pair<std::string, bool> > outputs = mpGraph->getAvailableOutputs();
+    
+    for (const auto& output : outputs)
     {
-        mpGraph->unmarkGraphOutput(windowInfo.second.mOutputName);
-    }
-
-    for (const auto& output : mOriginalOutputs)
-    {
-        mpGraph->markGraphOutput(output.first);
+        auto outputIt = mOriginalOutputNames.find(output.first);
+        if (output.second && outputIt == mOriginalOutputNames.end())
+        {
+            mpGraph->unmarkGraphOutput(output.first);
+        }
+        else if (!output.second && outputIt != mOriginalOutputNames.end())
+        {
+            mpGraph->markGraphOutput(output.first);
+        }
     }
 }
 
+void RenderGraphViewer::copyGraph(const RenderGraph::SharedPtr& pSrc, RenderGraph::SharedPtr pDst)
+{
+    // TODO copy graph state over before attempting to compile changes from scripts or editor
+}
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
@@ -168,7 +176,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             {
                 size_t size =  mDebugWindowInfos.size();
                 mDebugWindowInfos.insert(std::make_pair(std::string("Debug Window ") + std::to_string(size), DebugWindowInfo()));
-                // mOutputNames.push_back(renderGraphOutputs[mNextOutputIndex].label);
             }
         }
         
