@@ -258,6 +258,53 @@ namespace Falcor
 
     bool RenderGraph::isValid(std::string& log) const
     {
+        std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
+        std::vector<const NodeData*> nodeVec;
+        
+        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
+        {
+            if (mpGraph->doesNodeExist(i))
+            {
+                const auto& nodeIt = mNodeData.find(i);
+                nodeVec.push_back(&nodeIt->second);
+                nodeIt->second.pPass->reflect(passReflectionMap[mNodeData.at(i).pPass.get()]);
+            }
+        }
+        
+        // For all nodes, starting at end, iterate until index 1 of vector
+        for (const NodeData* pNodeData : nodeVec)
+        {
+            RenderPassReflection passReflection = passReflectionMap[pNodeData->pPass.get()];
+
+            if (is_set(passReflection.getFlags(), RenderPassReflection::Flags::ForceExecution)) continue;
+
+            uint_t numRequiredInputs = 0;
+            bool hasGraphOutput = false;
+            const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex.at(pNodeData->nodeName));
+            
+            // get input count
+            for (uint32_t i = 0; i < passReflection.getFieldCount(); ++i)
+            {
+                const RenderPassReflection::Field& field = passReflection.getField(i);
+
+                if (is_set(field.getType(), RenderPassReflection::Field::Type::Input))
+                {
+                    if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) numRequiredInputs++;
+                }
+                GraphOut graphOut;
+                graphOut.field = field.getName();
+                graphOut.nodeId = getPassIndex(pNodeData->nodeName);
+                hasGraphOutput |= isGraphOutput(graphOut);
+            }
+
+            // check if node has no inputs, and has connected outgoing edges
+            bool hasOutputs = (pNode->getOutgoingEdgeCount() || hasGraphOutput);
+            if (numRequiredInputs && !pNode->getIncomingEdgeCount() && hasOutputs)
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -344,6 +391,7 @@ namespace Falcor
     std::vector<std::pair<std::string, bool>> RenderGraph::getAvailableOutputs() const
     {
         std::vector<std::pair<std::string, bool>> outputs;
+        std::unordered_set<std::string> visitedOutputs;
         for (const auto& node : mNodeData)
         {   
             const DirectedGraph::Node* pNode = mpGraph->getNode(node.first);
@@ -351,8 +399,13 @@ namespace Falcor
             {
                 const RenderGraph::EdgeData& edgeData = mEdgeData.find(pNode->getOutgoingEdge(i))->second;
                 GraphOut thisOutput{ node.first, edgeData.srcField };
-                bool isOuput = isGraphOutput(thisOutput);
-                outputs.push_back(std::make_pair(node.second.nodeName + "." + thisOutput.field, isOuput));
+                bool isOutput = isGraphOutput(thisOutput);
+                std::string fieldName = node.second.nodeName + "." + thisOutput.field;
+                if (visitedOutputs.find(fieldName) == visitedOutputs.end())
+                {
+                    visitedOutputs.insert(fieldName);
+                    outputs.push_back(std::make_pair(fieldName, isOutput));
+                }
             }
         }
 
@@ -622,16 +675,16 @@ namespace Falcor
         }
     }
 
-    void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList)
+    void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList) const
     {
         assert(mNameToIndex.count(pNodeData->nodeName) > 0);
 
         // Get names of connected input edges
         std::vector<std::string> satisfiedFields;
-        const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex[pNodeData->nodeName]);
+        const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex.at( pNodeData->nodeName));
         for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); i++)
         {
-            const auto& edgeData = mEdgeData[pNode->getIncomingEdge(i)];
+            const auto& edgeData = mEdgeData.at(pNode->getIncomingEdge(i));
             satisfiedFields.push_back(edgeData.dstField);
         }
 

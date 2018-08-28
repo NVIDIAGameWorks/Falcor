@@ -78,20 +78,23 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
             if (pGui->addMenuItem("Save Graph"))
             {
-                std::string renderGraphFileName;
-                if (saveFileDialog("", renderGraphFileName))
+                bool bSaveGraph = true;
+                std::string log;
+
+                if (!mpGraphs[mCurrentGraphIndex]->isValid(log))
                 {
-                    std::string log;
-                    bool bSaveGraph = true;
+                    MsgBoxButton msgBoxButton = msgBox("Attempting to save invalid graph.\nGraph may not execute correctly when loaded\nAre you sure you want to save the graph?"
+                        , MsgBoxType::OkCancel);
+                    bSaveGraph = !(msgBoxButton == MsgBoxButton::Cancel);
+                }
 
-                    if (!mpGraphs[mCurrentGraphIndex]->isValid(log))
+                if (bSaveGraph)
+                {
+                    std::string renderGraphFileName;
+                    if (saveFileDialog("", renderGraphFileName))
                     {
-                        MsgBoxButton msgBoxButton = msgBox("Attempting to save invalid graph.\nGraph may not execute correctly when loaded\nAre you sure you want to save the graph?"
-                            , MsgBoxType::OkCancel);
-                        bSaveGraph = !(msgBoxButton == MsgBoxButton::Cancel);
+                        serializeRenderGraph(renderGraphFileName);
                     }
-
-                    serializeRenderGraph(renderGraphFileName);
                 }
             }
 

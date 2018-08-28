@@ -279,12 +279,13 @@ namespace Falcor
         if (mRenderGraphRef.isValid(sLogString))
         {
             sLogString += commandString + " successful\n";
-            mCommandStrings.push_back(commandString);
-            return true;
         }
         else
         {
+            sLogString += "Graph is currently invalid\n";
         }
+
+        mCommandStrings.push_back(commandString);
 
         return false;
     }

@@ -47,9 +47,9 @@ RenderGraphViewer::~RenderGraphViewer()
 void RenderGraphViewer::resetGraphOutputs()
 {
     // reset outputs to original state
-    std::vector< std::pair<std::string, bool> > outputs = mpGraph->getAvailableOutputs();
+    mCurrentOutputs = mpGraph->getAvailableOutputs();
     
-    for (const auto& output : outputs)
+    for (const auto& output : mCurrentOutputs)
     {
         auto outputIt = mOriginalOutputNames.find(output.first);
         if (output.second && outputIt == mOriginalOutputNames.end())
@@ -66,6 +66,8 @@ void RenderGraphViewer::resetGraphOutputs()
 void RenderGraphViewer::copyGraph(const RenderGraph::SharedPtr& pSrc, RenderGraph::SharedPtr pDst)
 {
     // TODO copy graph state over before attempting to compile changes from scripts or editor
+
+
 }
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
@@ -128,14 +130,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         Gui::DropdownList renderGraphOutputs;
         if (mShowAllOutputs)
         {
-            std::vector< std::pair<std::string, bool> > outputs = mpGraph->getAvailableOutputs();
             int32_t i = 0;
 
-            for (const auto& outputName : outputs)
+            for (const auto& outputPair : mCurrentOutputs)
             {
                 Gui::DropdownValue graphOutput;
-                graphOutput.label = outputName.first;
-                if (outputName.first == mOutputString)
+                graphOutput.label = outputPair.first;
+                if (outputPair.first == mOutputString)
                 {
                     mGraphOutputIndex = i;
                 }
@@ -175,7 +176,9 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             if (pGui->addButton("Open Output Window"))
             {
                 size_t size =  mDebugWindowInfos.size();
-                mDebugWindowInfos.insert(std::make_pair(std::string("Debug Window ") + std::to_string(size), DebugWindowInfo()));
+                DebugWindowInfo debugWindowInfo;
+                debugWindowInfo.mOutputName = renderGraphOutputs[0].label;
+                mDebugWindowInfos.insert(std::make_pair(std::string("Debug Window ") + std::to_string(size), debugWindowInfo));
             }
         }
         
@@ -332,8 +335,7 @@ void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
 
 
     // rebuild data
-
-
+    mCurrentOutputs = mpGraph->getAvailableOutputs();
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -381,6 +383,8 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     {
         mOriginalOutputNames.insert(mpGraph->getGraphOutputName(i));
     }
+
+    mCurrentOutputs = mpGraph->getAvailableOutputs();
 }
 
 void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)

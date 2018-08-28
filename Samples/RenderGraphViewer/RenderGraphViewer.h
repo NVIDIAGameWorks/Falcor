@@ -65,6 +65,7 @@ private:
     bool mShowAllOutputs = true;
     std::string mOutputString = "BlitPass.dst";
     std::vector< std::pair<std::string, bool> > mOriginalOutputs;
+    std::vector< std::pair<std::string, bool> > mCurrentOutputs;
     std::unordered_set<std::string> mOriginalOutputNames;
 
     std::unordered_map<std::string, DebugWindowInfo> mDebugWindowInfos;
