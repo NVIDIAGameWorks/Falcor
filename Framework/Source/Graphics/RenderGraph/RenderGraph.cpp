@@ -358,7 +358,6 @@ namespace Falcor
                 const auto& pEdge = mpGraph->getEdge(edgeIndex);
                 const auto& edgeData = mEdgeData[edgeIndex];
 
-                // Add all the pass outputs
                 const auto& field = passReflection.getField(edgeData.srcField, RenderPassReflection::Field::Type::Output);
 
                 // Skip the field if it's not an output field
@@ -404,7 +403,7 @@ namespace Falcor
         std::string log;
         if (!compile(log))
         {
-            logWarning("Failed to compile RenderGraph\n" + log + "Ignoreing RenderGraph::execute() call");
+            logWarning("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::execute() call");
             return;
         }
 
@@ -487,7 +486,7 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
 
-        return pPass ? mpResourcesCache->getExternalResource(name) : pNull;
+        return pPass ? mpResourcesCache->getResource(name) : pNull;
     }
 
     std::string RenderGraph::getGraphOutputName(size_t index) const

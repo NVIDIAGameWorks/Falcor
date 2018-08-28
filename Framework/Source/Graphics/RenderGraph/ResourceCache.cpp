@@ -37,7 +37,7 @@ namespace Falcor
 
     void ResourceCache::reset()
     {
-        mFieldMap.clear();
+        mNameToIndex.clear();
         mResourceData.clear();
         mExternalResources.clear();
     }
@@ -45,8 +45,10 @@ namespace Falcor
     const std::shared_ptr<Resource>& ResourceCache::getResource(const std::string& name) const
     {
         static const std::shared_ptr<Resource> pNull;
-        const auto& it = mFieldMap.find(name);
-        if (it == mFieldMap.end())
+        const auto& it = mNameToIndex.find(name);
+        
+        // Search external resources if not found in render graph resources
+        if (it == mNameToIndex.end())
         {
             auto extIt = mExternalResources.find(name);
             if (extIt == mExternalResources.end())
@@ -61,19 +63,6 @@ namespace Falcor
         return mResourceData[it->second].pResource;
     }
 
-    const std::shared_ptr<Falcor::Resource>& ResourceCache::getExternalResource(const std::string& name) const
-    {
-        static const std::shared_ptr<Resource> pNull;
-        const auto& it = mExternalResources.find(name);
-        if (it == mExternalResources.end())
-        {
-            logWarning("Can't find an external resource named `" + name + "` registered in the resource cache");
-            return pNull;
-        }
-
-        return it->second;
-    }
-
     void ResourceCache::registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
         mExternalResources[name] = pResource;
@@ -86,30 +75,31 @@ namespace Falcor
 
     void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, const std::string& alias)
     {
-        if (mFieldMap.count(name) > 0)
+        if (mNameToIndex.count(name) > 0)
         {
             logWarning("ResourceCache::registerField: Field named " + name + " already exists. Ignoring operation.");
             return;
         }
 
         bool addAlias = alias.empty() == false;
-        if (addAlias && mFieldMap.count(alias) == 0)
+        if (addAlias && mNameToIndex.count(alias) == 0)
         {
-            // Should invalid alias name fail with an error/warning or just add a new one?
+            logWarning("ResourceCache::registerField: Field named " + alias + " not found. Cannot add " + name + "as an alias. Creating new entry.");
             addAlias = false;
         }
 
         // Add a new field
         if (addAlias == false)
         {
-            assert(mFieldMap.count(name) == 0);
-            mFieldMap[name] = (uint32_t)mResourceData.size();
-            mResourceData.push_back({ field, nullptr });
+            assert(mNameToIndex.count(name) == 0);
+            mNameToIndex[name] = (uint32_t)mResourceData.size();
+            mResourceData.push_back({ field, true, nullptr });
         }
         else
         {
-            uint32_t index = mFieldMap[alias];
-            mFieldMap[name] = index;
+            // Add alias
+            uint32_t index = mNameToIndex[alias];
+            mNameToIndex[name] = index;
 
             // Merge fields, and overwrite previously unknown/unspecified fields with specified ones
             RenderPassReflection::Field& cachedField = mResourceData[index].field;
@@ -124,31 +114,21 @@ namespace Falcor
                 cachedField.setFormat(field.getFormat());
             }
 
-            // TODO: Output error if fields cannot be merged: Trying to alias incompatible formats, etc. Some of these errors should be caught by RenderGraph::addEdge
+            // TODO: Output error if fields cannot be merged? Trying to alias incompatible formats, etc.?
 
+            mResourceData[index].dirty = true;
         }
     }
 
-    void ResourceCache::allocateResources(const DefaultProperties& params)
-    {
-        for (auto& data : mResourceData)
-        {
-            if (data.pResource == nullptr)
-            {
-                data.pResource = createTextureForPass(params, data.field);
-            }
-        }
-    }
-
-    Texture::SharedPtr ResourceCache::createTextureForPass(const DefaultProperties& params, const RenderPassReflection::Field& field)
+    Texture::SharedPtr createTextureForPass(const ResourceCache::DefaultProperties& params, const RenderPassReflection::Field& field)
     {
         uint32_t width = field.getWidth() ? field.getWidth() : params.width;
         uint32_t height = field.getHeight() ? field.getHeight() : params.height;
         uint32_t depth = field.getDepth() ? field.getDepth() : 1;
         uint32_t sampleCount = field.getSampleCount() ? field.getSampleCount() : 1;
         ResourceFormat format = field.getFormat() == ResourceFormat::Unknown ? params.colorFormat : field.getFormat();
-        Texture::SharedPtr pTexture;
 
+        Texture::SharedPtr pTexture;
         if (depth > 1)
         {
             assert(sampleCount == 1);
@@ -173,4 +153,15 @@ namespace Falcor
         return pTexture;
     }
 
+    void ResourceCache::allocateResources(const DefaultProperties& params)
+    {
+        for (auto& data : mResourceData)
+        {
+            if (data.pResource == nullptr || data.dirty)
+            {
+                data.pResource = createTextureForPass(params, data.field);
+                data.dirty = false;
+            }
+        }
+    }
 }

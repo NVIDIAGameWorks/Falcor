@@ -48,7 +48,6 @@ namespace Falcor
         void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:
         BlitPass();
-        void initRenderPassData();
         Sampler::Filter mFilter = Sampler::Filter::Linear;
     };
 }
