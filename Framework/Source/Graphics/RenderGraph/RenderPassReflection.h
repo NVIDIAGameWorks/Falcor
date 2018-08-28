@@ -62,7 +62,7 @@ namespace Falcor
 
             Field(const std::string& name, Type type);
 
-            bool isValid();
+            bool isValid() const;
 
             Field& setResourceType(const ReflectionResourceType::SharedConstPtr& pType) { mpType = pType; return *this; }
             Field& setDimensions(uint32_t w, uint32_t h, uint32_t d) { mWidth = w; mHeight = h; mDepth = d; return *this; }

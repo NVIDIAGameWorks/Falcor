@@ -359,29 +359,21 @@ namespace Falcor
                 const auto& edgeData = mEdgeData[edgeIndex];
 
                 // Add all the pass outputs
-                for (size_t i = 0; i < passReflection.getFieldCount(); i++)
-                {
-                    const auto& field = passReflection.getField(edgeData.srcField, RenderPassReflection::Field::Type::Output);
+                const auto& field = passReflection.getField(edgeData.srcField, RenderPassReflection::Field::Type::Output);
 
-                    // Skip the field if it's not an output field
-                    if (is_set(field.getType(), RenderPassReflection::Field::Type::Output) == false) continue;
+                // Skip the field if it's not an output field
+                if (field.isValid() == false || is_set(field.getType(), RenderPassReflection::Field::Type::Output) == false) continue;
 
-                    if (field.getName() == edgeData.srcField)
-                    {
-                        // Register src/output field reflection data
-                        std::string srcResourceName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
-                        mpResourcesCache->registerField(srcResourceName, field);
+                // Register src/output field reflection data
+                std::string srcResourceName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
+                mpResourcesCache->registerField(srcResourceName, field);
 
-                        // Merge dst/input field into same resource data
-                        const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
-                        std::string dstResourceName = mNodeData[pEdge->getDestNode()].nodeName + '.' + edgeData.dstField;
-                        RenderPassReflection::Field dstField = mPassReflectionMap[pDstPass.get()].getField(edgeData.dstField);
-                        mpResourcesCache->registerField(dstResourceName, dstField, srcResourceName);
-                        break;
-                    }
-                }
+                // Merge dst/input field into same resource data
+                const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
+                std::string dstResourceName = mNodeData[pEdge->getDestNode()].nodeName + '.' + edgeData.dstField;
+                RenderPassReflection::Field dstField = mPassReflectionMap[pDstPass.get()].getField(edgeData.dstField);
+                mpResourcesCache->registerField(dstResourceName, dstField, srcResourceName);
             }
-
         }
 
         return true;

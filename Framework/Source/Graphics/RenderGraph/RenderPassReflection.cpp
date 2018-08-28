@@ -46,7 +46,7 @@ namespace Falcor
     {
     }
 
-    bool RenderPassReflection::Field::isValid()
+    bool RenderPassReflection::Field::isValid() const
     {
         return (mType != Type::None) && (mName.empty() == false);
     }
