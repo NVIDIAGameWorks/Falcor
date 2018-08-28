@@ -52,7 +52,6 @@ namespace Falcor
 
         virtual void reflect(RenderPassReflection& reflector) const override;
 
-
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
         void execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo);
