@@ -98,6 +98,9 @@ namespace Falcor
         // Update the indices
         mNameToIndex.erase(name);
 
+        // remove pass data
+        mNodeData.erase(index);
+
         // Remove all the edges associated with this pass
         const auto& removedEdges = mpGraph->removeNode(index);
         for (const auto& e : removedEdges) mEdgeData.erase(e);
@@ -261,13 +264,16 @@ namespace Falcor
         std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
         std::vector<const NodeData*> nodeVec;
         
+        // If there are no marked graph outputs, is not valid
+        if (!mOutputs.size()) return false;
+
         for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
         {
             if (mpGraph->doesNodeExist(i))
             {
                 const auto& nodeIt = mNodeData.find(i);
                 nodeVec.push_back(&nodeIt->second);
-                nodeIt->second.pPass->reflect(passReflectionMap[mNodeData.at(i).pPass.get()]);
+                nodeIt->second.pPass->reflect(passReflectionMap[nodeIt->second.pPass.get()]);
             }
         }
         

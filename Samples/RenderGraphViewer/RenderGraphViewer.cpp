@@ -329,13 +329,20 @@ void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
 {
     std::ifstream inputStream(fileName);
     std::string script = std::string((std::istreambuf_iterator<char>(inputStream)), std::istreambuf_iterator<char>());
-    RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *mpGraph);
+    RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *mpGraphCpy);
+    // Build backlog of changes until we can apply it resulting in a valid graph
+    mScriptBacklog.push_back(script);
 
     // check valid
-
-
-    // rebuild data
-    mCurrentOutputs = mpGraph->getAvailableOutputs();
+    std::string log;
+    if (mpGraphCpy->isValid(log))
+    {
+        mApplyGraphChanges = true;
+    }
+    else
+    {
+        // TODO - display log in console in viewer.
+    }
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -352,12 +359,15 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         if (filePath.size())
         {
             mpGraph = RenderGraph::create();
+            mpGraphCpy = RenderGraph::create();
             RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
+            RenderGraphLoader::LoadAndRunScript(filePath, *mpGraphCpy);
             mpScene = mpGraph->getScene();
             if (!mpScene)
             {
                 loadScene(gkDefaultScene, false, pSample);
                 mpGraph->setScene(mpScene);
+                mpGraphCpy->setScene(mpScene);
             }
             else
             {
@@ -365,6 +375,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
                 mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
             }
             mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+            mpGraphCpy->onResizeSwapChain(pSample->getCurrentFbo().get());
 
             openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
         }
@@ -376,6 +387,8 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     else
     {
         loadScene(gkDefaultScene, false, pSample);
+        createGraph(pSample);
+        mpGraphCpy = mpGraph;
         createGraph(pSample);
     }
 
@@ -392,8 +405,20 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
+    
     if (mpGraph)
     {
+        if (mApplyGraphChanges)
+        {
+            for (const std::string& script : mScriptBacklog)
+            {
+                RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *mpGraph);
+            }
+            mScriptBacklog.clear();
+            mCurrentOutputs = mpGraph->getAvailableOutputs();
+            mApplyGraphChanges = true;
+        }
+
         mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
         mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
         mpGraph->execute(pRenderContext.get());
@@ -412,10 +437,8 @@ bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 
 void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    if(mpGraph)
-    {
-        mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-    }
+    if(mpGraph) mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+    if (mpGraphCpy) mpGraphCpy->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

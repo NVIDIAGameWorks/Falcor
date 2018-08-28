@@ -44,6 +44,7 @@ public:
 
 private:
     RenderGraph::SharedPtr mpGraph;
+    RenderGraph::SharedPtr mpGraphCpy;
     FirstPersonCameraController mCamControl;
     void copyGraph(const RenderGraph::SharedPtr& pSrc, RenderGraph::SharedPtr pDst);
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
@@ -67,9 +68,11 @@ private:
     std::vector< std::pair<std::string, bool> > mOriginalOutputs;
     std::vector< std::pair<std::string, bool> > mCurrentOutputs;
     std::unordered_set<std::string> mOriginalOutputNames;
+    std::vector<std::string> mScriptBacklog;
 
     std::unordered_map<std::string, DebugWindowInfo> mDebugWindowInfos;
     bool mEditorRunning = false;
+    bool mApplyGraphChanges = false;
     size_t mEditorProcess = 0;
     std::string mTempFilePath;
     std::vector<std::string> mOutputNames;
