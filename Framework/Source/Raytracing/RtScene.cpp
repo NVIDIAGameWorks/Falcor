@@ -170,6 +170,8 @@ namespace Falcor
                         idesc.InstanceMask = 0xff;
                         const auto& pMaterial = pModel->getMeshInstance(blasData.meshBaseIndex, meshInstance)->getObject()->getMaterial();
                         idesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+
+                        // TODO: This code is incorrect since a BLAS can have multiple meshes with different materials and hence different doubleSided flags.
                         if (pMaterial->getDoubleSided())
                         {
                             idesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
@@ -179,7 +181,7 @@ namespace Falcor
                         mat4 transform = pModelInstance->getTransformMatrix();
                         if (blasData.isStatic)
                         {
-                            transform = transform * pModel->getMeshInstance(blasData.meshBaseIndex, meshInstance)->getTransformMatrix();    // PETRIK: If there are multiple meshes in a BLAS, they all have the same transform so this is OK.
+                            transform = transform * pModel->getMeshInstance(blasData.meshBaseIndex, meshInstance)->getTransformMatrix();    // If there are multiple meshes in a BLAS, they all have the same transform
                         }
                         transform = transpose(transform);
                         memcpy(idesc.Transform, &transform, sizeof(idesc.Transform));
@@ -214,10 +216,23 @@ namespace Falcor
         return instanceDesc;
     }
 
+    // TODO: Cache TLAS per hitProgCount, as some render pipelines need multiple TLAS:es with different #hit progs in same frame, currently that trigger rebuild every frame. See issue #365.
     void RtScene::createTlas(uint32_t hitProgCount)
     {
         if (mTlasHitProgCount == hitProgCount) return;
         mTlasHitProgCount = hitProgCount;
+
+        // Early out if hit program count is zero or if scene is empty.
+        if (hitProgCount == 0 || getModelCount() == 0)
+        {
+            mModelInstanceData.clear();
+            mpTopLevelAS = nullptr;
+            mTlasSrv = nullptr;
+            mGeometryCount = 0;
+            mInstanceCount = 0;
+            mRefit = false;
+            return;
+        }
 
         // todo: move this somewhere fair.
         mRtFlags |= RtBuildFlags::AllowUpdate;
@@ -285,6 +300,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
         DescriptorSet::SharedPtr pSet = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(pSet);
         gpDevice->getApiHandle()->CreateShaderResourceView(nullptr, &srvDesc, pSet->getCpuHandle(0));
 
         ResourceWeakPtr pWeak = mpTopLevelAS;

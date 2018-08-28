@@ -99,7 +99,7 @@ namespace Falcor
         // Update material
         if (light.type == LightArea)
         {
-//            for (int i = 0; i < MatMaxLayers; ++i)
+            //            for (int i = 0; i < MatMaxLayers; ++i)
             {
                 /*TODO(tfoley) HACK:SPIRE
                 if (light.material.desc.layers[i].type == MatEmissive)
@@ -147,7 +147,7 @@ namespace Falcor
 
     void Light::renderUI(Gui* pGui, const char* group)
     {
-        if(!group || pGui->beginGroup(group))
+        if (!group || pGui->beginGroup(group))
         {
             glm::vec3 color = getColorForUI();
             if (pGui->addRgbColor("Color", color))
@@ -182,7 +182,7 @@ namespace Falcor
 
     void DirectionalLight::renderUI(Gui* pGui, const char* group)
     {
-        if(!group || pGui->beginGroup(group))
+        if (!group || pGui->beginGroup(group))
         {
             if (pGui->addDirectionWidget("Direction", mData.dirW))
             {
@@ -240,7 +240,7 @@ namespace Falcor
 
     void PointLight::renderUI(Gui* pGui, const char* group)
     {
-        if(!group || pGui->beginGroup(group))
+        if (!group || pGui->beginGroup(group))
         {
             pGui->addFloat3Var("World Position", mData.posW, -FLT_MAX, FLT_MAX);
             pGui->addDirectionWidget("Direction", mData.dirW);
@@ -330,10 +330,11 @@ namespace Falcor
 
     void AreaLight::renderUI(Gui* pGui, const char* group)
     {
-        if(!group || pGui->beginGroup(group))
+        if (!group || pGui->beginGroup(group))
         {
             if (mpMeshInstance)
             {
+                // TODO: Premultiply by mpModelInstance->getTransformMatrix() or do it in the shader
                 vec3 posW = mpMeshInstance->getTransformMatrix()[3];
                 if (pGui->addFloat3Var("World Position", posW, -FLT_MAX, FLT_MAX))
                 {
@@ -364,11 +365,12 @@ namespace Falcor
             mpMeshInstance = pMeshInstance;
 
             // Fetch the mesh instance transformation
+            // TODO: Premultiply by mpModelInstance->getTransformMatrix() or do it in the shader
             mAreaLightData.transMat = mpMeshInstance->getTransformMatrix();
 
             const auto& vao = pMesh->getVao();
             setIndexBuffer(vao->getIndexBuffer());
-            mAreaLightData.numIndices = uint32_t(mpIndexBuffer->getSize() / sizeof(glm::ivec3));
+            mAreaLightData.numTriangles = uint32_t(mpIndexBuffer->getSize() / sizeof(glm::ivec3));
 
             int32_t posIdx = vao->getElementIndexByLocation(VERTEX_POSITION_LOC).vbIndex;
             assert(posIdx != Vao::ElementDesc::kInvalidIndex);
@@ -517,8 +519,9 @@ namespace Falcor
                 const Material::SharedPtr& pMaterial = pMesh->getMaterial();
                 if (pMaterial)
                 {
-                    if(EXTRACT_EMISSIVE_TYPE(pMaterial->getFlags()) != ChannelTypeUnused)
+                    if (EXTRACT_EMISSIVE_TYPE(pMaterial->getFlags()) != ChannelTypeUnused)
                     {
+                        // TODO: Create one area light per model instance, pass it the model instance transform
                         areaLights.push_back(createAreaLight(pModel->getMeshInstance(meshId, instanceId)));
                     }
                 }
@@ -527,4 +530,88 @@ namespace Falcor
         return areaLights;
     }
 
+    // Code for analytic area lights.
+    AnalyticAreaLight::SharedPtr AnalyticAreaLight::create()
+    {
+        AnalyticAreaLight* pLight = new AnalyticAreaLight;
+        return SharedPtr(pLight);
+    }
+
+    AnalyticAreaLight::AnalyticAreaLight()
+    {
+        mData.type = LightAreaRect;
+        mData.tangent = float3(1, 0, 0);
+        mData.bitangent = float3(0, 1, 0);
+        mData.surfaceArea = 4.0f;
+
+        mScaling = vec3(1, 1, 1);
+        update();
+    }
+
+    AnalyticAreaLight::~AnalyticAreaLight() = default;
+
+    float AnalyticAreaLight::getPower() const
+    {
+        return luminance(mData.intensity) * (float)M_PI * mData.surfaceArea;
+    }
+
+    void AnalyticAreaLight::renderUI(Gui* pGui, const char* group)
+    {
+        if (!group || pGui->beginGroup(group))
+        {
+            Light::renderUI(pGui);
+
+            if (group)
+            {
+                pGui->endGroup();
+            }
+        }
+    }
+
+    void AnalyticAreaLight::update()
+    {
+        // Update matrix
+        mData.transMat = mTransformMatrix * glm::scale(glm::mat4(), mScaling);
+        mData.transMatIT = glm::inverse(glm::transpose(mData.transMat));
+
+        switch (mData.type)
+        {
+
+        case LightAreaRect:
+        {
+            float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
+            mData.surfaceArea = 4.0f * rx * ry;
+        }
+        break;
+
+        case LightAreaSphere:
+        {
+            float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
+            float rz = glm::length(mData.transMat * vec4(0.0f, 0.0f, 1.0f, 0.0f));
+
+            mData.surfaceArea = 4.0f * (float)M_PI * pow(pow(rx * ry, 1.6f) + pow(ry * rz, 1.6f) + pow(rx * rz, 1.6f) / 3.0f, 1.0f / 1.6f);
+        }
+        break;
+
+        case LightAreaDisc:
+        {
+            float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
+            float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
+
+            mData.surfaceArea = (float)M_PI * rx * ry;
+        }
+        break;
+
+        default:
+            break;
+        }
+    }
+
+    void AnalyticAreaLight::move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up)
+    {
+        mTransformMatrix = glm::inverse(glm::lookAt(position, 2.0f*position - target, up));   // Some math gymnastics to compensate for lookat returning the inverse matrix (suitable for camera), while we want to point the light source
+        update();
+    }
 }

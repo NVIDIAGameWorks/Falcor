@@ -1,7 +1,15 @@
-v3.0.8
+v3.1.0
 ------
+- Addes support for analytic area lights
 - Added support for StructuredBuffers with VariableBuffer::renderUI
-
+- Added a ProgramBase base class for better Program/RtProgram abstraction
+- Use a priority_queue to help optimize descriptor-heap allocations
+- Added debug checks when binding compute/graphics vars
+- Added debug checks in resourceBarrier() to make sure the resource has the correct flags 
+- Added the option to pass CompilerFlags to many objects
+- Added Logger::Level::Fatal
+- Better abstraction of the alpha-test
+- Fixed VideoCapture UI
 
 v3.0.7
 ------

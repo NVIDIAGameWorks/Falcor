@@ -116,10 +116,11 @@ namespace Falcor
         // Need a new chunk
         uint32_t chunkCount = (descCount + kDescPerChunk - 1) / kDescPerChunk;
 
-        // TODO: Optimize it for the case that chunkCount > 1 - mFreeChunks can be sorted by offset to find contiguous chunks
-        if (chunkCount == 1 && (mFreeChunks.empty() == false))
+        // Take chunk from top of sorted free list if chunk is large enough.
+        // TODO: Sort by offset to find larger contiguous chunks if it fails.
+        if (!mFreeChunks.empty() && (chunkCount <= mFreeChunks.top()->chunkCount))
         {
-            mpCurrentChunk = mFreeChunks.front();
+            mpCurrentChunk = mFreeChunks.top();
             mFreeChunks.pop();
             mpCurrentChunk->reset();
             return true;

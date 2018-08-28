@@ -102,19 +102,19 @@ namespace Falcor
         }
     }
 
-    FullScreenPass::UniquePtr FullScreenPass::create(const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS)
+    FullScreenPass::UniquePtr FullScreenPass::create(const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags)
     {
-        return create("", psFile, programDefines, disableDepth, disableStencil, viewportMask, enableSPS);
+        return create("", psFile, programDefines, disableDepth, disableStencil, viewportMask, enableSPS, compilerFlags);
     }
 
-    FullScreenPass::UniquePtr FullScreenPass::create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS)
+    FullScreenPass::UniquePtr FullScreenPass::create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags)
     {
         UniquePtr pPass = UniquePtr(new FullScreenPass());
-        pPass->init(vsFile, psFile, programDefines, disableDepth, disableStencil, viewportMask, enableSPS);
+        pPass->init(vsFile, psFile, programDefines, disableDepth, disableStencil, viewportMask, enableSPS, compilerFlags);
         return pPass;
     }
 
-    void FullScreenPass::init(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS)
+    void FullScreenPass::init(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags)
     {
         mpPipelineState = GraphicsState::create();
         mpPipelineState->toggleSinglePassStereo(enableSPS);
@@ -146,6 +146,7 @@ namespace Falcor
         }
 
         GraphicsProgram::Desc d;
+        d.setCompilerFlags(compilerFlags);
         d.addShaderLibrary(vsFile.empty() ? "Framework/Shaders/FullScreenPass.vs.slang" : vsFile).vsEntry("main").addShaderLibrary(psFile).psEntry("main");
         if (gs.size()) d.addShaderLibrary(gs).gsEntry("main");
         mpProgram = GraphicsProgram::create(d, defs);

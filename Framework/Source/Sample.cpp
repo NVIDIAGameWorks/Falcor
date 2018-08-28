@@ -440,6 +440,13 @@ namespace Falcor
             //Takes testing screenshots if desired (leaves out gui and fps text)
             endTestFrame();
 
+            // Capture video frame before UI is rendered
+            bool captureVideoUI = mVideoCapture.pUI && mVideoCapture.pUI->captureUI();  // Check capture mode here once only, as its value may change after renderGUI()
+            if (!captureVideoUI)
+            {
+                captureVideoFrame();
+            }
+
             //Swaps back to backbuffer to render fps text and gui directly onto it
             mpDefaultPipelineState->setFbo(mpBackBufferFBO);
             mpRenderContext->setGraphicsState(mpDefaultPipelineState);
@@ -458,7 +465,12 @@ namespace Falcor
             }
 
             printProfileData();
-            captureVideoFrame();
+
+            // Capture video frame after UI is rendered
+            if (captureVideoUI)
+            {
+                captureVideoFrame();
+            }
 
             if (mCaptureScreen)
             {

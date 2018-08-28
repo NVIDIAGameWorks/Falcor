@@ -57,7 +57,7 @@ namespace Falcor
             \param[in] viewportMask Optional. Value to initialize viewport mask with. Useful for multi-projection passes
             \param[in] enableSPS Optional. If true, use Single-Pass Stereo when executing this pass.
         */
-        static UniquePtr create(const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false);
+        static UniquePtr create(const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None);
         
         /** Create a new object
             \param[in] vsFile Vertex shader filename. Can also be an absolute path or a relative path from a data directory.
@@ -68,7 +68,7 @@ namespace Falcor
             \param[in] viewportMask Optional. Value to initialize viewport mask with. Useful for multi-projection passes
             \param[in] enableSPS Optional. If true, use Single-Pass Stereo when executing this pass.
         */
-        static UniquePtr create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false);
+        static UniquePtr create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None);
 
         /** Execute the pass.
             \param[in] pRenderContext The render context.
@@ -83,7 +83,7 @@ namespace Falcor
 
     protected:
         FullScreenPass() { sObjectCount++; }
-        void init(const std::string& vsFile, const std::string & psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS = false);
+        void init(const std::string& vsFile, const std::string & psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags);
 
     private:
         GraphicsProgram::SharedPtr mpProgram;

@@ -37,10 +37,62 @@ namespace Falcor
     class RenderContext;
     class ShaderLibrary;
 
+    /** Common interface for modifying the macro definitions of programs.
+        This is a workaround for the fact that RtProgram is currently unrelated to Program.
+    */
+    class ProgramBase
+    {
+    public:
+        using DefineList = Shader::DefineList;
+
+        /** Adds a macro definition to the program. If the macro already exists, it will be replaced.
+            \param[in] name The name of define.
+            \param[in] value Optional. The value of the define string.
+            \return True if any macro definitions were modified.
+        */
+        virtual bool addDefine(const std::string& name, const std::string& value = "") = 0;
+
+        /** Add a list of macro definitions to the program. If a macro already exists, it will be replaced.
+            \param[in] dl List of macro definitions to add.
+            \return True if any macro definitions were modified.
+        */
+        virtual bool addDefines(const DefineList& dl) = 0;
+
+        /** Remove a macro definition from the program. If the definition doesn't exist, the function call will be silently ignored.
+            \param[in] name The name of define.
+            \return True if any macro definitions were modified.
+        */
+        virtual bool removeDefine(const std::string& name) = 0;
+
+        /** Removes a list of macro definitions from the program. If a macro doesn't exist, it is silently ignored.
+            \param[in] dl List of macro definitions to remove.
+            \return True if any macro definitions were modified.
+        */
+        virtual bool removeDefines(const DefineList& dl) = 0;
+
+        /** Removes all macro definitions that matches string comparison from the program.
+            \param[in] pos Position of the first character in macro name. If this is greater than the string length, the macro will be silently kept.
+            \param[in] len Length of compared macro name (if the string is shorter, as many characters as possible). A value of string::npos indicates all characters.
+            \param[in] str The comparing string that is matched against macro names.
+            \return True if any macro definitions were modified.
+        */
+        virtual bool removeDefines(size_t pos, size_t len, const std::string& str) = 0;
+
+        /** Set the macro definition list of the active program version. This replaces all previous macro definitions.
+            \param[in] dl List of macro definitions.
+            \return True if any macro definition was changed, false otherwise.
+        */
+        virtual bool setDefines(const DefineList& dl) = 0;
+
+        /** Get the macro definition list of the active program version.
+        */
+        virtual const DefineList& getDefines() const = 0;
+    };
+
     /** High-level abstraction of a program class.
         This class manages different versions of the same program. Different versions means same shader files, different macro definitions. This allows simple usage in case different macros are required - for example static vs. animated models.
     */
-    class Program : public std::enable_shared_from_this<Program>
+    class Program : public ProgramBase, public std::enable_shared_from_this<Program>
     {
     protected:
         static const uint32_t kShaderCount = (uint32_t)ShaderType::Count;
@@ -116,12 +168,16 @@ namespace Falcor
             /** Get the compiler flags
             */
             Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
+
+            /** Set the compiler flags. Replaces any previously set flags.
+            */
+            Desc& setCompilerFlags(Shader::CompilerFlags flags) { mShaderFlags = flags; return *this; }
         private:
             friend class Program;
             friend class GraphicsProgram;
 
             Desc& addDefaultVertexShaderIfNeeded();
-            
+
             struct Source
             {
                 enum class Type
@@ -168,25 +224,25 @@ namespace Falcor
             \param[in] value Optional. The value of the define string.
             \return True if any macro definitions were modified.
         */
-        bool addDefine(const std::string& name, const std::string& value = "");
+        virtual bool addDefine(const std::string& name, const std::string& value = "") override;
 
         /** Add a list of macro definitions to the program. If a macro already exists, it will be replaced.
             \param[in] dl List of macro definitions to add.
             \return True if any macro definitions were modified.
         */
-        bool addDefines(const DefineList& dl);
+        virtual bool addDefines(const DefineList& dl) override;
 
         /** Remove a macro definition from the program. If the definition doesn't exist, the function call will be silently ignored.
             \param[in] name The name of define.
             \return True if any macro definitions were modified.
         */
-        bool removeDefine(const std::string& name);
+        virtual bool removeDefine(const std::string& name) override;
 
         /** Removes a list of macro definitions from the program. If a macro doesn't exist, it is silently ignored.
             \param[in] dl List of macro definitions to remove.
             \return True if any macro definitions were modified.
         */
-        bool removeDefines(const DefineList& dl);
+        virtual bool removeDefines(const DefineList& dl) override;
 
         /** Removes all macro definitions that matches string comparison from the program.
             \param[in] pos Position of the first character in macro name. If this is greater than the string length, the macro will be silently kept.
@@ -194,25 +250,30 @@ namespace Falcor
             \param[in] str The comparing string that is matched against macro names.
             \return True if any macro definitions were modified.
         */
-        bool removeDefines(size_t pos, size_t len, const std::string& str);
+        virtual bool removeDefines(size_t pos, size_t len, const std::string& str) override;
 
-        /** Clear the macro definition list
-            \return True if any macro definitions were modified.
+        /** Sets the macro definition list of the active program version.
+            \param[in] dl List of macro definitions.
+            \return True if any macro definition was changed, false otherwise.
         */
-        bool clearDefines();
-    
-        /** Update define list
-            \return True if any macro definitions were modified.
-        */
-        bool replaceAllDefines(const DefineList& dl);
+        virtual bool setDefines(const DefineList& dl) override;
 
-        /** Get the macro definition string of the active program version
+        /** Get the macro definition list of the active program version.
         */
-        const DefineList& getActiveDefinesList() const { return mDefineList; }
+        virtual const DefineList& getDefines() const override { return mDefineList; }
 
         /** Reload and relink all programs.
         */
         static void reloadAllPrograms();
+
+        FALCOR_DEPRECATED("This function will be removed in Falcor 3.1. Use setDefines({}) instead")
+        bool clearDefines();
+
+        FALCOR_DEPRECATED("This function will be removed in Falcor 3.1. Use setDefines() instead")
+        bool replaceAllDefines(const DefineList& dl);
+
+        FALCOR_DEPRECATED("This function will be removed in Falcor 3.1. Use getDefines() instead")
+        const DefineList& getActiveDefinesList() const { return mDefineList; }
 
         const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pReflector; }
         const ProgramReflection::SharedConstPtr getLocalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pLocalReflector; }

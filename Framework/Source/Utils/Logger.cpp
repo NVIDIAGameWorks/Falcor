@@ -139,5 +139,7 @@ namespace Falcor
         {
             msgBox(msg);
         }
+
+        if (L >= Level::Fatal) assert(false);   // PETRIK: Assert on errors even without debugger attached
     }
 }
