@@ -209,6 +209,23 @@ namespace Falcor
         barrier.Transition.StateBefore = getD3D12ResourceState(pResource->getGlobalState());
         barrier.Transition.StateAfter = getD3D12ResourceState(newState);
         barrier.Transition.Subresource = subresourceIndex;
+
+        // Check that resource has required bind flags for before/after state to be supported
+        if (barrier.Transition.StateBefore == D3D12_RESOURCE_STATE_RENDER_TARGET || barrier.Transition.StateAfter == D3D12_RESOURCE_STATE_RENDER_TARGET)
+        {
+            assert(is_set(pResource->getBindFlags(), Resource::BindFlags::RenderTarget));
+        }
+
+        if (barrier.Transition.StateBefore == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE || barrier.Transition.StateAfter == D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE)
+        {
+            assert(is_set(pResource->getBindFlags(), Resource::BindFlags::ShaderResource));
+        }
+
+        if (barrier.Transition.StateBefore == D3D12_RESOURCE_STATE_UNORDERED_ACCESS || barrier.Transition.StateAfter == D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+        {
+            assert(is_set(pResource->getBindFlags(), Resource::BindFlags::UnorderedAccess));
+        }
+
         pCmdList->ResourceBarrier(1, &barrier);
     }
 
@@ -253,6 +270,15 @@ namespace Falcor
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.UAV.pResource = pResource->getApiHandle();
+
+		// Check that resource has required bind flags for UAV barrier to be supported
+        static const Resource::BindFlags reqFlags = Resource::BindFlags::UnorderedAccess |
+#ifdef FALCOR_DXR
+            Resource::BindFlags::AccelerationStructure;
+#else
+            Resource::BindFlags::None;
+#endif
+        assert(is_set(pResource->getBindFlags(), reqFlags));
         mpLowLevelData->getCommandList()->ResourceBarrier(1, &barrier);
         mCommandsPending = true;
     }

@@ -55,7 +55,8 @@ namespace Falcor
 
         raytraceDesc.HitGroupTable.StartAddress = startAddress + pVars->getFirstHitRecordIndex() * recordSize;
         raytraceDesc.HitGroupTable.StrideInBytes = recordSize;
-        raytraceDesc.HitGroupTable.SizeInBytes = pVars->getShaderTable()->getSize() - (pVars->getFirstHitRecordIndex() * recordSize);
+        raytraceDesc.HitGroupTable.SizeInBytes = recordSize * pVars->getHitRecordsCount();
+        assert(pVars->getShaderTable()->getSize() >= (pVars->getFirstHitRecordIndex() * recordSize) + raytraceDesc.HitGroupTable.SizeInBytes);  // Check that the buffer is sufficiently large to hold the shader table
 
         // Currently, we need to set an empty root-signature. Some wizardry is required to make sure we restore the state
         const auto& pComputeVars = getComputeVars();

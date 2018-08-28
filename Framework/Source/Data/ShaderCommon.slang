@@ -78,13 +78,6 @@ float3x3 getBlendedInvTransposeBoneMat(float4 weights, uint4 ids)
 #endif
 
 ParameterBlock<MaterialData> gMaterial;
-cbuffer InternalPerMaterialCB
-{
-    MaterialData gTemporalMaterial;
-    float gTemporalLODThreshold;
-    bool gEnableTemporalNormalMaps;
-    bool gDebugTemporalMaterial;
-};
 
 float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim)
 {

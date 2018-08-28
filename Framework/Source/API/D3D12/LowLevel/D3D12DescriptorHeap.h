@@ -106,9 +106,18 @@ namespace Falcor
             uint32_t currentDesc = 0;
         };
 
+        // Helper to compare Chunk::SharedPtr types
+        struct ChunkComparator
+        {
+            bool operator()(Chunk::SharedPtr lhs, Chunk::SharedPtr rhs)
+            {
+                return lhs->chunkCount < rhs->chunkCount;
+            }
+        };
+
         Chunk::SharedPtr mpCurrentChunk;
         bool setupCurrentChunk(uint32_t descCount);
         void releaseChunk(Chunk::SharedPtr pChunk);
-        std::queue<Chunk::SharedPtr> mFreeChunks;
+        std::priority_queue<Chunk::SharedPtr, std::vector<Chunk::SharedPtr>, ChunkComparator> mFreeChunks;  // Priority queue that keeps free list sorted by chunk count (largest first)
     };
 }

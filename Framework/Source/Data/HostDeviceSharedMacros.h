@@ -33,7 +33,7 @@
 *******************************************************************/
 
 #define MAX_INSTANCES 64    ///< Max supported instances per draw call
-#define MAX_BONES 128       ///< Max supported bones per model
+#define MAX_BONES 256       ///< Max supported bones per model
 
 /*******************************************************************
                     Glue code for CPU/GPU compilation
@@ -145,6 +145,9 @@
 #define LightPoint                  0    ///< Point light source, can be a spot light if its opening angle is < 2pi
 #define LightDirectional            1    ///< Directional light source
 #define LightArea                   2    ///< Area light source, potentially with arbitrary geometry
+#define LightAreaRect               3    ///< Quad shaped area light source
+#define LightAreaSphere             4    ///< Spherical area light source
+#define LightAreaDisc               5    ///< Disc shaped area light source
 
 #define MAX_LIGHT_SOURCES 16
 

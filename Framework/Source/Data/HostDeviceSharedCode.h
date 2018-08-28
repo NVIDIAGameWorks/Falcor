@@ -180,7 +180,7 @@ struct AreaLightData
     float3      posW            DEFAULTS(float3());         ///< World-space position the light source
     float       surfaceArea     DEFAULTS(0.f);              ///< Surface area of the geometry mesh
     float3      dirW            DEFAULTS(float3());         ///< World-space orientation of the light source
-    uint32_t    numIndices      DEFAULTS(0);                ///< Number of triangle indices in a polygonal area light
+    uint32_t    numTriangles    DEFAULTS(0);                ///< Number of triangles in a polygonal area light
     float3      intensity       DEFAULTS(float3(1.0f));     ///< Emitted radiance of the light source
     float       pad0;
     float3      tangent         DEFAULTS(float3());         ///< Tangent vector of the geometry mesh
@@ -206,6 +206,14 @@ struct LightData
     float    cosOpeningAngle    DEFAULTS(-1.f);             ///< For point (spot) light: cos(openingAngle), -1 by default because openingAngle is pi by default
     float3   pad;
     float    penumbraAngle      DEFAULTS(0.f);              ///< For point (spot) light: Opening angle of penumbra region in radians, usually does not exceed openingAngle. 0.f by default, meaning a spot light with hard cut-off
+
+    // Extra parameters for analytic area lights
+    float3   tangent			DEFAULTS(float3());         ///< Tangent vector of the light shape
+    float    surfaceArea		DEFAULTS(0.f);              ///< Surface area of the light shape
+    float3   bitangent			DEFAULTS(float3());         ///< Bitangent vector of the light shape
+    float    pad1;
+    float4x4 transMat			DEFAULTS(float4x4());       ///< Transformation matrix of the light shape
+    float4x4 transMatIT			DEFAULTS(float4x4());       ///< Inverse-transpose of transformation matrix of the light shape
 };
 
 /*******************************************************************
@@ -243,7 +251,7 @@ Other helpful shared routines
 
 
 /** Returns a relative luminance of an input linear RGB color in the ITU-R BT.709 color space
-\param RGBColor linear HDR RGB color in the ITU-R BT.709 color space
+    \param RGBColor linear HDR RGB color in the ITU-R BT.709 color space
 */
 inline float luminance(float3 rgb)
 {
@@ -251,7 +259,7 @@ inline float luminance(float3 rgb)
 }
 
 /** Converts color from RGB to YCgCo space
-\param RGBColor linear HDR RGB color
+    \param RGBColor linear HDR RGB color
 */
 inline float3 RGBToYCgCo(float3 rgb)
 {
@@ -262,7 +270,7 @@ inline float3 RGBToYCgCo(float3 rgb)
 }
 
 /** Converts color from YCgCo to RGB space
-\param YCgCoColor linear HDR YCgCo color
+    \param YCgCoColor linear HDR YCgCo color
 */
 inline float3 YCgCoToRGB(float3 YCgCo)
 {
@@ -274,7 +282,7 @@ inline float3 YCgCoToRGB(float3 YCgCo)
 }
 
 /** Returns a YUV version of an input linear RGB color in the ITU-R BT.709 color space
-\param RGBColor linear HDR RGB color in the ITU-R BT.709 color space
+    \param RGBColor linear HDR RGB color in the ITU-R BT.709 color space
 */
 inline float3 RGBToYUV(float3 rgb)
 {
@@ -286,7 +294,7 @@ inline float3 RGBToYUV(float3 rgb)
 }
 
 /** Returns a RGB version of an input linear YUV color in the ITU-R BT.709 color space
-\param YUVColor linear HDR YUV color in the ITU-R BT.709 color space
+    \param YUVColor linear HDR YUV color in the ITU-R BT.709 color space
 */
 inline float3 YUVToRGB(float3 yuv)
 {
@@ -298,7 +306,7 @@ inline float3 YUVToRGB(float3 yuv)
 }
 
 /** Returns a linear-space RGB version of an input RGB channel value in the ITU-R BT.709 color space
-\param sRGBColor sRGB input channel value
+    \param sRGBColor sRGB input channel value
 */
 inline float sRGBToLinear(float srgb)
 {
@@ -313,7 +321,7 @@ inline float sRGBToLinear(float srgb)
 }
 
 /** Returns a linear-space RGB version of an input RGB color in the ITU-R BT.709 color space
-\param sRGBColor sRGB input color
+    \param sRGBColor sRGB input color
 */
 inline float3 sRGBToLinear(float3 srgb)
 {
@@ -324,7 +332,7 @@ inline float3 sRGBToLinear(float3 srgb)
 }
 
 /** Returns a sRGB version of an input linear RGB channel value in the ITU-R BT.709 color space
-\param LinearColor linear input channel value
+    \param LinearColor linear input channel value
 */
 inline float linearToSRGB(float lin)
 {
@@ -339,7 +347,7 @@ inline float linearToSRGB(float lin)
 }
 
 /** Returns a sRGB version of an input linear RGB color in the ITU-R BT.709 color space
-\param LinearColor linear input color
+    \param LinearColor linear input color
 */
 inline float3 linearToSRGB(float3 lin)
 {
@@ -351,8 +359,8 @@ inline float3 linearToSRGB(float3 lin)
 
 
 /** Returns Michelson contrast given minimum and maximum intensities of an image region
-\param iMin minimum intensity of an image region
-\param iMax maximum intensity of an image region
+    \param iMin minimum intensity of an image region
+    \param iMax maximum intensity of an image region
 */
 inline float computeMichelsonContrast(float iMin, float iMax)
 {

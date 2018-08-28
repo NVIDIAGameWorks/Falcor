@@ -112,6 +112,7 @@ namespace Falcor
         // Create the shader-table buffer
         uint32_t hitEntries = recordCountPerHit * mHitProgCount;
         uint32_t numEntries = mMissProgCount + hitEntries + 1; // 1 is for the ray-gen
+        mHitRecordCount = hitEntries;
 
         // Calculate the record size
         mRecordSize = mProgramIdentifierSize + maxRootSigSize;
@@ -178,7 +179,10 @@ namespace Falcor
     {
         // We always have a ray-gen program, apply it first
         uint8_t* pRayGenRecord = getRayGenRecordPtr();
-        applyRtProgramVars(pRayGenRecord, mpProgram->getRayGenProgram()->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getRayGenVars().get(), mpRtVarsHelper.get());
+        if (!applyRtProgramVars(pRayGenRecord, mpProgram->getRayGenProgram()->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getRayGenVars().get(), mpRtVarsHelper.get()))
+        {
+            return false;
+        }
 
         // Loop over the rays
         uint32_t hitCount = mpProgram->getHitProgramCount();
@@ -209,7 +213,10 @@ namespace Falcor
             }
         }
 
-        mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true);
+        if (!mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true))
+        {
+            return false;
+        }
 
         pCtx->updateBuffer(mpShaderTable.get(), mShaderTableData.data());
         return true;
