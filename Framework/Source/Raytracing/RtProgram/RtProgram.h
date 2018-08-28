@@ -33,7 +33,7 @@ namespace Falcor
 {
     class ShaderLibrary;
 
-    class RtProgram : public std::enable_shared_from_this<RtProgram>
+    class RtProgram : public ProgramBase, public std::enable_shared_from_this<RtProgram>
     {
     public:
         using SharedPtr = std::shared_ptr<RtProgram>;
@@ -53,6 +53,14 @@ namespace Falcor
             Desc& addMiss(uint32_t missIndex, const std::string& miss);
             Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "");
             Desc& addDefine(const std::string& define, const std::string& value);
+
+            /** Get the compiler flags
+            */
+            Shader::CompilerFlags getCompilerFlags() const { return shaderFlags; }
+
+            /** Set the compiler flags. Replaces any previously set flags.
+            */
+            Desc& setCompilerFlags(Shader::CompilerFlags flags) { shaderFlags = flags; return *this; }
         private:
             friend class RtProgram;
             std::vector<std::shared_ptr<ShaderLibrary>> mShaderLibraries;
@@ -76,6 +84,7 @@ namespace Falcor
             };
             std::vector<HitProgramEntry> mHit;
             uint32_t mActiveLibraryIndex = -1;
+            Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
         };
 
         static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
@@ -91,8 +100,13 @@ namespace Falcor
         uint32_t getMissProgramCount() const { return (uint32_t)mMissProgs.size(); }
         MissProgram::SharedPtr getMissProgram(uint32_t rayIndex) const { return mMissProgs[rayIndex]; }
 
-        void addDefine(const std::string& name, const std::string& value = "");
-        void removeDefine(const std::string& name);
+        virtual bool addDefine(const std::string& name, const std::string& value = "") override;
+        virtual bool addDefines(const DefineList& dl) override;
+        virtual bool removeDefine(const std::string& name) override;
+        virtual bool removeDefines(const DefineList& dl) override { assert(false); return false; /* not implemented */ }
+        virtual bool removeDefines(size_t pos, size_t len, const std::string& str) override;
+        virtual bool setDefines(const DefineList& dl) override;
+        virtual const DefineList& getDefines() const override { assert(false); static DefineList dummy; return dummy; /* not well defined if the ray programs have mismatching set of defines */ }
 
         const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { updateReflection(); return mpGlobalRootSignature; }
         const std::shared_ptr<ProgramReflection>& getGlobalReflector() const { updateReflection(); return mpGlobalReflector; }

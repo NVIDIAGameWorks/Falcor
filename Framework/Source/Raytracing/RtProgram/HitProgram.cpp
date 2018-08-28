@@ -33,12 +33,12 @@
 
 namespace Falcor
 {
-    HitProgram::SharedPtr HitProgram::createFromFile(const std::string& filename, const std::string& closestHitEntry, const std::string& anyHitEntry, const std::string& intersectionEntry, const DefineList& programDefines, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    HitProgram::SharedPtr HitProgram::createFromFile(const std::string& filename, const std::string& closestHitEntry, const std::string& anyHitEntry, const std::string& intersectionEntry, const DefineList& programDefines, uint32_t maxPayloadSize, uint32_t maxAttributeSize, Shader::CompilerFlags flags)
     {
-        return createCommon(filename, closestHitEntry, anyHitEntry, intersectionEntry, programDefines, true, maxPayloadSize, maxAttributeSize);
+        return createCommon(filename, closestHitEntry, anyHitEntry, intersectionEntry, programDefines, true, maxPayloadSize, maxAttributeSize, flags);
     }
     
-    HitProgram::SharedPtr HitProgram::createCommon(const std::string& filename, const std::string& closestHitEntry, const std::string& anyHitEntry, const std::string& intersectionEntry, const DefineList& programDefines, bool fromFile, uint32_t maxPayloadSize, uint32_t maxAttributeSize)
+    HitProgram::SharedPtr HitProgram::createCommon(const std::string& filename, const std::string& closestHitEntry, const std::string& anyHitEntry, const std::string& intersectionEntry, const DefineList& programDefines, bool fromFile, uint32_t maxPayloadSize, uint32_t maxAttributeSize, Shader::CompilerFlags flags)
     {
         SharedPtr pProg = SharedPtr(new HitProgram(maxPayloadSize, maxAttributeSize));
 
@@ -49,6 +49,7 @@ namespace Falcor
         }
         
         Program::Desc desc;
+        desc.setCompilerFlags(flags);
         desc.addShaderLibrary(filename);
         if (closestHitEntry.size())     desc.entryPoint(ShaderType::ClosestHit,   closestHitEntry);
         if (anyHitEntry.size())         desc.entryPoint(ShaderType::AnyHit,       anyHitEntry);
@@ -63,7 +64,7 @@ namespace Falcor
     if (shaderBlob[uint32_t(_type)].data.size())                \
     {                                                           \
         _pshader = createRtShaderFromBlob(                      \
-        mDesc.getShaderLibrary(_type)->getFilename(),            \
+        mDesc.getShaderLibrary(_type)->getFilename(),           \
         mDesc.getShaderEntryPoint(_type),                       \
             shaderBlob[uint32_t(_type)],                        \
             flags,                                              \

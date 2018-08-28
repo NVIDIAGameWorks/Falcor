@@ -158,136 +158,183 @@ namespace Falcor
         pGui->addTooltip(toolTipString.c_str(), true);
     }
 
-    void VariablesBufferUI::renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag)
+    void VariablesBufferUI::renderUIVarInternal(Gui* pGui, const ReflectionVar::SharedConstPtr& pMember, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag)
     {
-        for (auto pMember : *pStruct)
+        size_t numMembers = 1;
+        size_t memberSize = 0;
+        ReflectionBasicType::Type memberType = ReflectionBasicType::Type::Unknown;
+        std::string memberName = (pMember)->getName();
+        const ReflectionBasicType* pBasicType = (pMember)->getType()->asBasicType();
+        const ReflectionArrayType* pArrayType = nullptr;
+        bool baseTypeIsStruct = false;
+        size_t currentOffset = startOffset + (pMember)->getOffset();
+
+        // First test is not basic type
+        if (!pBasicType)
         {
-            size_t numMembers = 1;
-            size_t memberSize = 0;
-            ReflectionBasicType::Type memberType = ReflectionBasicType::Type::Unknown;
-            std::string memberName = (pMember)->getName();
-            const ReflectionBasicType* pBasicType = (pMember)->getType()->asBasicType();
-            const ReflectionArrayType* pArrayType = nullptr;
-            bool baseTypeIsStruct = false;
-            size_t currentOffset = startOffset + (pMember)->getOffset();
-
-            // First test is not basic type
-            if (!pBasicType)
+            // recurse through struct if possible
+            const ReflectionStructType* pStructType = (pMember)->getType()->asStructType();
+            if (pStructType)
             {
-                // recurse through struct if possible
-                const ReflectionStructType* pStructType = (pMember)->getType()->asStructType();
-                if (pStructType)
+                // Iterate through the internal struct
+                if (pGui->beginGroup(memberName))
                 {
-                    // Iterate through the internal struct
-                    if (pGui->beginGroup(memberName))
-                    {
-                        pGui->addSeparator();
+                    pGui->addSeparator();
 
-                        memberName.push_back('.');
-                        renderUIInternal(pGui, pStructType, memberName, currentOffset, dirtyFlag);
-                        memberName.pop_back();
+                    memberName.push_back('.');
+                    renderUIInternal(pGui, pStructType, memberName, currentOffset, dirtyFlag);
+                    memberName.pop_back();
 
-                        pGui->endGroup();
-                        pGui->addSeparator();
-                    }
-                    
-                    // skip to next member
-                    continue;
+                    pGui->endGroup();
+                    pGui->addSeparator();
                 }
 
-                // if array type gather info for iterating through elements
-                pArrayType = (pMember)->getType()->asArrayType();
+                // skip to next member
+                return;
+            }
 
-                if (pArrayType)
-                {
-                    const ReflectionBasicType* elementBasicType = pArrayType->getType()->asBasicType();
-                    numMembers = pArrayType->getArraySize();
-                    memberSize = pArrayType->getArrayStride();
-                    
-                    // only iterate through array if it is displaying
-                    if (!pGui->beginGroup(memberName + "[" + std::to_string(numMembers) + "]"))
-                    {
-                        continue;
-                    }
+            // if array type gather info for iterating through elements
+            pArrayType = (pMember)->getType()->asArrayType();
 
-                    if (elementBasicType)
-                    {
-                        memberType = elementBasicType->getType();
-                    }
-                    else
-                    {
-                        // for special case of array of structures
-                        baseTypeIsStruct = true;
-                    }
-                }
-                else if (!pStructType)
+            if (pArrayType)
+            {
+                const ReflectionBasicType* elementBasicType = pArrayType->getType()->asBasicType();
+                numMembers = pArrayType->getArraySize();
+                memberSize = pArrayType->getArrayStride();
+
+                // only iterate through array if it is displaying
+                if (!pGui->beginGroup(memberName + "[" + std::to_string(numMembers) + "]"))
                 {
-                    // Other types could be presented here
                     return;
                 }
-            }
-            else
-            {
-                // information if only basic type
-                memberType = pBasicType->getType();
-                memberSize = pBasicType->getSize();
-            }
 
-
-            // Display member of the array
-            std::string displayName = memberName;
-            int32_t& memberIndex = mGuiArrayIndices[displayName];
-            std::string indexLabelString;
-
-            if (numMembers > 1)
-            {
-                // display information for specific index of array
-                indexLabelString = (std::string("Index (Size : ") + std::to_string(numMembers) + ") ");
-                pGui->addIntVar(("Array Index" + std::string("##") + indexLabelString).c_str(), memberIndex, 0, static_cast<int32_t>(numMembers - 1));
-
-                currentOffset += (memberSize * memberIndex);
-                displayName.append("[" + std::to_string(memberIndex) + ":" + std::to_string(numMembers) + "]");
-            }
-
-
-            if (baseTypeIsStruct)
-            {
-                // For arrays of structs, display dropdown for struct before recursing through struct members
-                if (pGui->beginGroup(displayName))
+                if (elementBasicType)
                 {
-                    displayName.push_back('.');
-                    renderUIInternal(pGui, pArrayType->getType()->asStructType(), displayName, currentOffset, dirtyFlag);
+                    memberType = elementBasicType->getType();
+                }
+                else
+                {
+                    // for special case of array of structures
+                    baseTypeIsStruct = true;
+                }
+            }
+            else if (!pStructType)
+            {
+                // Other types could be presented here
+                return;
+            }
+        }
+        else
+        {
+            // information if only basic type
+            memberType = pBasicType->getType();
+            memberSize = pBasicType->getSize();
+        }
+
+
+        // Display member of the array
+        std::string displayName = memberName;
+        int32_t& memberIndex = mGuiArrayIndices[displayName];
+        
+        if (numMembers > 1)
+        {
+            // display information for specific index of array
+            std::string indexLabelString = (displayName + std::to_string(numMembers));
+            pGui->addIntVar(("Array Index" + std::string("##") + indexLabelString).c_str(), memberIndex, 0, static_cast<int32_t>(numMembers - 1));
+
+            currentOffset += (memberSize * memberIndex);
+            displayName.append("[" + std::to_string(memberIndex) + ":" + std::to_string(numMembers) + "]");
+        }
+
+
+        if (baseTypeIsStruct)
+        {
+            // For arrays of structs, display dropdown for struct before recursing through struct members
+            if (pGui->beginGroup(displayName))
+            {
+                displayName.push_back('.');
+                renderUIInternal(pGui, pArrayType->getType()->asStructType(), displayName, currentOffset, dirtyFlag);
+                pGui->endGroup();
+            }
+        }
+        else
+        {
+            // for basic types
+            renderUIMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType, numMembers);
+        }
+
+        if (numMembers > 1)
+        {
+            pGui->endGroup();
+        }
+    }
+
+    void VariablesBufferUI::renderUIInternal(Gui* pGui, const ReflectionType* pType, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag)
+    {
+        const ReflectionStructType* pStruct = pType->asStructType();
+        if (pStruct)
+        {
+            for (auto pMember : *pStruct)
+            {
+                // test if a struct member is a structured buffer
+                const ReflectionResourceType* pResourceType = pMember->getType()->asResourceType();
+                if (pResourceType && pResourceType->getStructuredBufferType() != ReflectionResourceType::StructuredType::Invalid)
+                {
+                    renderUIInternal(pGui, pMember->getType().get(), currentStructName + pMember->getName(), startOffset, dirtyFlag);
+                }
+                else
+                {
+                    renderUIVarInternal(pGui, pMember, currentStructName, startOffset, dirtyFlag);
+                }
+            }
+        }
+        else
+        {
+            // for structured buffers
+            if (pType->asResourceType()->getStructuredBufferType() != ReflectionResourceType::StructuredType::Invalid)
+            {
+                std::string displayName = currentStructName; // find a way to get the name of the structured buffer
+                int32_t& memberIndex = mGuiArrayIndices[displayName];
+                int32_t oldMemberIndex = memberIndex;
+                size_t structSize = pType->getSize();
+
+                if (pGui->addIntVar(("Structured Buffer Index" + std::string("##") + displayName).c_str(), memberIndex, 0))
+                {
+                    // since we can't get the actual number of structs by default, we test the validity of the offset
+                    size_t offset = (structSize * memberIndex);
+                    if (mVariablesBufferRef.mData.size() <= offset)
+                    {
+                        memberIndex = oldMemberIndex;
+                    }
+                }
+
+                startOffset += (structSize * memberIndex);
+                displayName.append("[" + std::to_string(memberIndex) + "]");
+
+                if (pGui->beginGroup(displayName.c_str()))
+                {
+                    renderUIInternal(pGui, pType->asResourceType()->getStructType().get(), displayName, startOffset, dirtyFlag);
                     pGui->endGroup();
                 }
             }
             else
             {
-                // for basic types
-                renderUIMemberInternal(pGui, displayName, currentOffset, memberSize, to_string(memberType), memberType, numMembers);
+                renderUIInternal(pGui, pType->asResourceType()->getStructType().get(), currentStructName, startOffset, dirtyFlag);
             }
-
-            if (numMembers > 1)
-            {
-                pGui->endGroup();
-            }
-
-            currentOffset += memberSize;
         }
     }
 
     void VariablesBufferUI::renderUI(Gui* pGui, const char* uiGroup)
     {
-        const ReflectionStructType* pStruct = mVariablesBufferRef.mpReflector->asResourceType()->getStructType()->asStructType();
-
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
             // begin recursion on first struct
-            renderUIInternal(pGui, pStruct, "", 0, mVariablesBufferRef.mDirty);
+            renderUIInternal(pGui, mVariablesBufferRef.mpReflector.get(), "", 0, mVariablesBufferRef.mDirty);
 
             // dirty flag for uploading will be set by GUI
             mVariablesBufferRef.uploadToGPU();
 
-            if(uiGroup) pGui->endGroup();
+            if(uiGroup != nullptr) pGui->endGroup();
         }
     }
 }

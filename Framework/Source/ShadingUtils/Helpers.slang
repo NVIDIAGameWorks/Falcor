@@ -121,22 +121,19 @@ float getMetallic(float diffuse, float spec)
 /*******************************************************************
                     Alpha test
 *******************************************************************/
-void basicAlphaTest(float alpha, float threshold)
+// Evaluate alpha test and return true if point should be discarded
+bool evalBasicAlphaTest(float alpha, float threshold)
 {
-#ifndef _MS_DISABLE_ALPHA_TEST
-    if(alpha < threshold) discard;
-#endif
+    return alpha < threshold;
 }
-
 /*******************************************************************
                     Hashed Alpha Test
 *******************************************************************/
-void hashedAlphaTest(float alpha, float materialThreshold, float hashedThreshold)
+// Evaluate alpha test and return true if point should be discarded
+bool evalHashedAlphaTest(float alpha, float materialThreshold, float hashedThreshold)
 {
     float compareTo = hashedThreshold <= 0 ? materialThreshold : saturate(hashedThreshold);
-#ifndef _MS_DISABLE_ALPHA_TEST
-    if(alpha < compareTo) discard;
-#endif
+    return alpha < compareTo;
 }
 
 float sineHash(float2 p)
@@ -218,9 +215,13 @@ float calculateHashedAlpha(float3 hashInputCoord, float hashScale, bool useAniso
 /*******************************************************************
     Alpha test
 *******************************************************************/    
-void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
+
+/** Evaluates alpha test, returning true if pixel should be discarded.
+    \todo calculateHashedAlpha requires ddx/ddy, so cannot be used in RT mode.
+*/
+bool evalAlphaTest(uint matFlags, float alpha, float threshold, float3 posW)
 {
-    if(EXTRACT_ALPHA_MODE(matFlags) != AlphaModeMask) return;
+    if (EXTRACT_ALPHA_MODE(matFlags) != AlphaModeMask) return false;
 
     float hashedAlphaScale = 1.0f;
 #ifdef _HASHED_ALPHA_SCALE
@@ -229,14 +230,21 @@ void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
 
     /* Evaluate alpha test material modifier */
 #ifdef _DEFAULT_ALPHA_TEST
-    basicAlphaTest(alpha, threshold);
+    return evalBasicAlphaTest(alpha, threshold);
 #elif defined(_HASHED_ALPHA_TEST_ANISOTROPIC)
     float hashedThreshold = calculateHashedAlpha(posW, hashedAlphaScale, true);
-    hashedAlphaTest(alpha, threshold, hashedThreshold);
+    return evalHashedAlphaTest(alpha, threshold, hashedThreshold);
 #else
     // Default to isotropic hashed alpha test
     float hashedThreshold = calculateHashedAlpha(posW, hashedAlphaScale, false);
-    hashedAlphaTest(alpha, threshold, hashedThreshold);
+    return evalHashedAlphaTest(alpha, threshold, hashedThreshold);
+#endif
+}
+
+void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
+{
+#ifndef _MS_DISABLE_ALPHA_TEST
+    if (evalAlphaTest(matFlags, alpha, threshold, posW)) discard;
 #endif
 }
 

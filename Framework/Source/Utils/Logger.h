@@ -45,7 +45,7 @@ namespace Falcor
             Info = 0,       ///< Informative messages
             Warning = 1,    ///< Warning messages
             Error = 2,      ///< Error messages. Application might be able to continue running, but incorrectly.
-
+            Fatal = 3,      ///< Unrecoverable error. Will assert in debug builds
             Disabled = -1
         };
 

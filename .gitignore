@@ -14,7 +14,6 @@ FalcorTest.VC.db
 Framework/BuildScripts/PatchFalcorProps/PatchFalcorPropertySheet/PatchFalcorPropertySheet.VC.db
 FalcorTest/TestResults/*
 Falcor.VC.VC.opendb
-Framework/Externals/NVAPI/
 .vs/*
 *.pyc
 *.o
@@ -30,5 +29,5 @@ Framework/Externals/slang/source/**/*.natvis
 !Framework/Externals/slang/source/**/*.cpp
 !Framework/Externals/slang/source/**/*.cpp
 !Framework/Externals/slang/source/**/*.h
-Framework/Externals/
+Framework/Externals/*
 Media

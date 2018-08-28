@@ -455,6 +455,103 @@ namespace Falcor
         return true;
     }
 
+    // Support for analytic area lights
+    bool SceneImporter::createAnalyticAreaLight(const rapidjson::Value& jsonLight)
+    {
+        auto pAreaLight = AnalyticAreaLight::create();
+
+        glm::vec3 scaling(1, 1, 1);
+        glm::vec3 translation(0, 0, 0);
+        glm::vec3 rotation(0, 0, 0);
+
+        for (auto it = jsonLight.MemberBegin(); it != jsonLight.MemberEnd(); it++)
+        {
+            std::string key(it->name.GetString());
+            const auto& value = it->value;
+            if (key == SceneKeys::kName)
+            {
+                if (value.IsString() == false)
+                {
+                    return error("Area light name should be a string");
+                }
+                std::string name = value.GetString();
+                if (name.find(' ') != std::string::npos)
+                {
+                    return error("Area light name can't have spaces");
+                }
+                pAreaLight->setName(name);
+            }
+            else if (key == SceneKeys::kType)
+            {
+                if (value.IsString() == false)
+                {
+                    return error("Area light type should be a string");
+                }
+                
+                std::string type = value.GetString();
+                if (type == SceneKeys::kAreaLightRect)          pAreaLight->setType(LightAreaRect);
+                else if (type == SceneKeys::kAreaLightSphere)   pAreaLight->setType(LightAreaSphere);
+                else if (type == SceneKeys::kAreaLightDisc)     pAreaLight->setType(LightAreaDisc);
+                else return error("Invalid area light type");
+            }            
+            else if (key == SceneKeys::kLightIntensity)
+            {
+                glm::vec3 intensity;
+                if (getFloatVec<3>(value, "Area light intensity", &intensity[0]) == false)
+                {
+                    return false;
+                }
+                pAreaLight->setIntensity(intensity);
+            }
+            else if (key == SceneKeys::kTranslationVec)
+            {
+                if (getFloatVec<3>(value, "Area light translation vector", &translation[0]) == false)
+                {
+                    return false;
+                }
+            }
+            else if (key == SceneKeys::kScalingVec)
+            {
+                if (getFloatVec<3>(value, "Area light scale vector", &scaling[0]) == false)
+                {
+                    return false;
+                }
+            }
+            else if (key == SceneKeys::kRotationVec)
+            {
+                if (getFloatVec<3>(value, "Area light rotation vector", &rotation[0]) == false)
+                {
+                    return false;
+                }
+
+                rotation = glm::radians(rotation);
+            }
+            else
+            {
+                return error("Invalid key found in area light object. Key == " + key + ".");
+            }
+        }
+
+        // Set transform matrix for the light source
+        pAreaLight->setScaling(scaling);
+        glm::mat4 translationMtx = glm::translate(glm::mat4(), translation);
+        glm::mat4 rotationMtx = glm::yawPitchRoll(rotation[0], rotation[1], rotation[2]);
+        //glm::mat4 scalingMtx = glm::scale(glm::mat4(), scaling);
+        glm::mat4 composite = translationMtx * rotationMtx;
+        pAreaLight->setTransformMatrix(composite);
+
+        if (isNameDuplicate(pAreaLight->getName(), mLightMap, "lights"))
+        {
+            return false;
+        }
+        else
+        {
+            mLightMap[pAreaLight->getName()] = pAreaLight;
+            mScene.addLight(pAreaLight);
+        }
+        return true;
+    }
+
     bool SceneImporter::parseLights(const rapidjson::Value& jsonVal)
     {
         if(jsonVal.IsArray() == false)
@@ -486,6 +583,10 @@ namespace Falcor
             else if(lightType == SceneKeys::kPointLight)
             {
                 b = createPointLight(light);
+            }
+            else if (lightType == SceneKeys::kAreaLightRect || lightType == SceneKeys::kAreaLightSphere || lightType == SceneKeys::kAreaLightDisc)
+            {
+                b = createAnalyticAreaLight(light);
             }
             else
             {

@@ -291,7 +291,7 @@ namespace Falcor
         }
         return dirty;
     }
-
+    
     bool Program::clearDefines()
     {
         if (!mDefineList.empty())
@@ -307,6 +307,17 @@ namespace Falcor
     {
         // TODO: re-link only if new macros differ from existing
         if (!mDefineList.empty() || !dl.empty())
+        {
+            mLinkRequired = true;
+            mDefineList = dl;
+            return true;
+        }
+        return false;
+    }
+    
+    bool Program::setDefines(const DefineList& dl)
+    {
+        if (dl != mDefineList)
         {
             mLinkRequired = true;
             mDefineList = dl;

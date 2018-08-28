@@ -51,7 +51,6 @@ namespace Falcor
     size_t SceneRenderer::sLightCountOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sLightArrayOffset = ConstantBuffer::kInvalidOffset;
 
-    const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";

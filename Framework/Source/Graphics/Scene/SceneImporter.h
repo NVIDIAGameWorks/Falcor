@@ -68,6 +68,7 @@ namespace Falcor
         bool createModelInstances(const rapidjson::Value& jsonVal, const Model::SharedPtr& pModel);
         bool createPointLight(const rapidjson::Value& jsonLight);
         bool createDirLight(const rapidjson::Value& jsonLight);
+        bool createAnalyticAreaLight(const rapidjson::Value& jsonLight);
         ObjectPath::SharedPtr createPath(const rapidjson::Value& jsonPath);
         bool createPathFrames(ObjectPath* pPath, const rapidjson::Value& jsonFramesArray);
         bool createCamera(const rapidjson::Value& jsonCamera);

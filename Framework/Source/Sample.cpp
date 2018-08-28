@@ -451,10 +451,18 @@ namespace Falcor
 
         if (gpDevice)
         {
-            //blits the temp fbo given to user's renderer onto the backbuffer
-            mpRenderContext->blit(mpTargetFBO->getColorTexture(0)->getSRV(), mpBackBufferFBO->getColorTexture(0)->getRTV());
+            // Copy the render-target
+            mpRenderContext->copyResource(mpBackBufferFBO->getColorTexture(0).get(), mpTargetFBO->getColorTexture(0).get());
+
             //Takes testing screenshots if desired (leaves out gui and fps text)
             endTestFrame();
+
+            // Capture video frame before UI is rendered
+            bool captureVideoUI = mVideoCapture.pUI && mVideoCapture.pUI->captureUI();  // Check capture mode here once only, as its value may change after renderGUI()
+            if (!captureVideoUI)
+            {
+                captureVideoFrame();
+            }
 
             //Swaps back to backbuffer to render fps text and gui directly onto it
             mpDefaultPipelineState->setFbo(mpBackBufferFBO);
@@ -473,7 +481,11 @@ namespace Falcor
 #if _PROFILING_ENABLED
             Profiler::endFrame();
 #endif
-            captureVideoFrame();
+            // Capture video frame after UI is rendered
+            if (captureVideoUI)
+            {
+                captureVideoFrame();
+            }
 
             if (mCaptureScreen)
             {

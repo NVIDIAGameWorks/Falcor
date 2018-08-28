@@ -117,7 +117,6 @@ namespace Falcor
         SceneRenderer(const Scene::SharedPtr& pScene);
         Scene::SharedPtr mpScene;
 
-        static const char* kPerMaterialCbName;
         static const char* kPerFrameCbName;
         static const char* kPerMeshCbName;
         static const char* kBoneCbName;
