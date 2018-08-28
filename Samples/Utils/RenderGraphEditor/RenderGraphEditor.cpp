@@ -186,17 +186,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].sRebuildDisplayData = true;
     }
 
-    // Load scene for graph
-    if (pGui->addButton("SetScene"))
-    {
-        std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename))
-        {
-            RenderGraphLoader::ExecuteStatement(std::string("SetScene ") + filename, *mpGraphs[mCurrentGraphIndex]);
-        }
-        mCanPreview = true;
-    }
-
     // update the display if the render graph loader has set a new output
     if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
     {

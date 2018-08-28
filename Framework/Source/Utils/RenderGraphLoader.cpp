@@ -86,18 +86,6 @@ namespace Falcor
         std::string scriptString;
         std::unordered_map<uint16_t, std::string> linkIDToSrcPassName;
         std::string currentCommand;
-        if (renderGraph.getScene())
-        {
-            std::string sceneFilename = mActiveVariables["gSceneFilename"].get<std::string>() = renderGraph.getScene()->mFileName;
-            Scene::UserVariable var = renderGraph.getScene()->getUserVariable("sky_box");
-            assert(var.type == Scene::UserVariable::Type::String);
-            mActiveVariables["gSkyBoxFilename"] = ScriptParameter(var.str);
-
-            // first set the name of the scene for the passes that dependent on it during their initialization
-            currentCommand = "SetScene ";
-            currentCommand += sceneFilename + '\n';
-            scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
-        }
 
         // do a pre-pass to map all of the outgoing connections to the names of the passes
         for (const auto& nameToIndex : renderGraph.mNameToIndex)
@@ -113,7 +101,6 @@ namespace Falcor
             {
                 const auto& variableRef = renderPassSerializerRef.getValue(i);
                 const std::string& varName =  renderPassSerializerRef.getVariableName(i);
-                if (varName[0] == 'g') continue;
 
                 switch (variableRef.type)
                 {

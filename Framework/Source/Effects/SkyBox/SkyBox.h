@@ -54,6 +54,10 @@ namespace Falcor
         */
         static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         
+        /** create a sky box to be set by the loaded scene
+        */
+        static UniquePtr create(bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo);
+
         /* Create a sky box using data from serializer
             \param[in] serializer Object to obtain initialization data
         */
@@ -103,7 +107,7 @@ namespace Falcor
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
-        virtual void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
+        virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
     private:
         SkyBox();
         bool createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo);
@@ -120,6 +124,9 @@ namespace Falcor
         GraphicsState::SharedPtr mpState;
         Fbo::SharedPtr mpFbo;
         std::shared_ptr<Scene> mpScene;
+        Sampler::SharedPtr mpSampler;
+        bool mLoadSrgb = true;
+        bool mRenderStereo = true;
 
         struct
         {

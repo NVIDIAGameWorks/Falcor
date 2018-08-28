@@ -367,13 +367,13 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
             {
                 loadScene(gkDefaultScene, false, pSample);
                 mpGraph->setScene(mpScene);
-                mpGraphCpy->setScene(mpScene);
             }
             else
             {
                 mCamControl.attachCamera(mpScene->getCamera(0));
                 mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
             }
+            mpGraphCpy->setScene(mpScene);
             mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
             mpGraphCpy->onResizeSwapChain(pSample->getCurrentFbo().get());
 
@@ -405,7 +405,6 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
-    
     if (mpGraph)
     {
         if (mApplyGraphChanges)

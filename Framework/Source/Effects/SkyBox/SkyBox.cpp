@@ -47,32 +47,57 @@ namespace Falcor
         return pSkyBox;
     }
 
+    SkyBox::UniquePtr SkyBox::create(bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
+    {
+        UniquePtr pSkyBox = UniquePtr(new SkyBox());
+        pSkyBox->mRenderStereo = renderStereo;
+        pSkyBox->mLoadSrgb = loadAsSrgb;
+        pSkyBox->mpSampler = pSampler;
+        return pSkyBox;
+    }
+
     SkyBox::UniquePtr SkyBox::deserialize(const RenderPassSerializer& serializer)
     {
-        std::string sceneFileName = serializer.getValue("gSceneFilename").str;
         std::string skyBoxName = serializer.getValue("gSkyBoxFilename").str;
-        if (!sceneFileName.size() || !skyBoxName.size())
+        bool loadAsSrgb = serializer.getValue("skybox.loadAsSrgb").b;
+        bool renderStereo = serializer.getValue("skybox.renderStereo").b;
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(static_cast<Falcor::Sampler::Filter>(serializer.getValue("skybox.sampleDesc.minFilter").i32),
+            static_cast<Falcor::Sampler::Filter>(serializer.getValue("skybox.sampleDesc.magFilter").i32),
+            static_cast<Falcor::Sampler::Filter>(serializer.getValue("skybox.sampleDesc.mipFilter").i32));
+
+        if (!skyBoxName.size())
         {
-            msgBox("No scene or skybox file specified.");
-            return nullptr;
+            return create(loadAsSrgb, Sampler::create(samplerDesc), renderStereo);
         }
 
         std::string skyBox = getDirectoryFromFile(serializer.getValue("gSceneFilename").str) + '/' + skyBoxName;
-        Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.minFilter").i32),
-            static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.magFilter").i32),
-            static_cast<Falcor::Sampler::Filter>(serializer.getValue("sampleDesc.mipFilter").i32));
-        return createFromTexture(skyBox, serializer.getValue("loadAsSrgb").b, Sampler::create(samplerDesc));
+        return createFromTexture(skyBox, loadAsSrgb, Sampler::create(samplerDesc));
     }
 
     RenderPassSerializer SkyBox::serialize()
     {
         RenderPassSerializer renderPassSerializer;
-        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-        renderPassSerializer.addVariable<bool>("loadAsSrgb", true);
+        Sampler::SharedPtr pSampler = mpVars->getDefaultBlock()->getSampler(mBindLocations.sampler, 0);
+        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.minFilter", static_cast<uint32_t>(pSampler->getMinFilter()));
+        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.magFilter", static_cast<uint32_t>(pSampler->getMagFilter()));
+        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.mipFilter", static_cast<uint32_t>(pSampler->getMipFilter()));
+        renderPassSerializer.addVariable<bool>("skybox.loadAsSrgb", mLoadSrgb);
+        renderPassSerializer.addVariable<bool>("skybox.renderStreo", mRenderStereo);
         return renderPassSerializer;
+    }
+
+    void SkyBox::setScene(const std::shared_ptr<Scene>& pScene)
+    {
+        mpScene = pScene;
+
+        if (!mpTexture && pScene)
+        {
+            Scene::UserVariable var = pScene->getUserVariable("sky_box");
+            std::string textureName = getDirectoryFromFile(pScene->mFileName) + '/' + var.str;
+            Texture::SharedPtr pTexture = createTextureFromFile(textureName, false, mLoadSrgb);
+            createResources(pTexture, mpSampler, mRenderStereo);
+        }
     }
 
     bool SkyBox::createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo)
@@ -83,7 +108,10 @@ namespace Falcor
             return false;
         }
 
+        mpSampler = pSampler; 
         mpTexture = pTexture;
+        mLoadSrgb = isSrgbFormat(pTexture->getFormat());
+        mRenderStereo = renderStereo;
 
         mpCubeModel = Model::createFromFile("Effects/cube.obj");
         if(mpCubeModel == nullptr)
@@ -111,7 +139,7 @@ namespace Falcor
         const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getReflector()->getDefaultParameterBlock().get();
         mBindLocations.perFrameCB = pDefaultBlockReflection->getResourceBinding("PerFrameCB");
         mBindLocations.texture = pDefaultBlockReflection->getResourceBinding("gTexture");
-        mBindLocations.sampler= pDefaultBlockReflection->getResourceBinding("gSampler");
+        mBindLocations.sampler = pDefaultBlockReflection->getResourceBinding("gSampler");
 
         ParameterBlock* pDefaultBlock = mpVars->getDefaultBlock().get();
         ConstantBuffer* pCB = pDefaultBlock->getConstantBuffer(mBindLocations.perFrameCB, 0).get();
@@ -196,6 +224,8 @@ namespace Falcor
 
     void SkyBox::execute(RenderContext* pRenderContext, const RenderData* pData)
     {
+        assert(mpTexture);
+
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthFunc(DepthStencilState::Func::Always);
         auto pDS = DepthStencilState::create(dsDesc);
