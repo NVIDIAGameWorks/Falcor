@@ -36,8 +36,7 @@ namespace Falcor
     static std::string kShaderFilename("Effects/PassFilter.ps.slang");
 
     PassFilter::PassFilter(Type filterType, float threshold)
-        : mFilterType(filterType)
-        , mThreshold(threshold)
+        : mFilterType(filterType), mThreshold(threshold)
     {
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);

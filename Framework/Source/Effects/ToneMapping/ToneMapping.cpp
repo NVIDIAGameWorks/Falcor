@@ -291,12 +291,12 @@ namespace Falcor
             {
                 if (pGui->addFloatVar("Speed Up", mEyeAdaptationSettings.speedUp, 0.0f))
                 {
-                    mpToneMapCBuffer["speedUp"] = 100.0f / mEyeAdaptationSettings.speedUp;
+                    mpToneMapCBuffer["speedUp"] = 1.0f / mEyeAdaptationSettings.speedUp;
                 }
 
                 if (pGui->addFloatVar("Speed Down", mEyeAdaptationSettings.speedDown, 0.0f))
                 {
-                    mpToneMapCBuffer["speedDown"] = 100.0f / mEyeAdaptationSettings.speedDown;
+                    mpToneMapCBuffer["speedDown"] = 1.0f / mEyeAdaptationSettings.speedDown;
                 }
             }
             

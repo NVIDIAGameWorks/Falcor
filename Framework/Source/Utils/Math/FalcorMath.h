@@ -97,6 +97,16 @@ namespace Falcor
         return glm::normalize(glm::inverse(viewMat) * ray);
     }
 
+    /** Returns a value within a poisson distribution.
+        \param[in] frequency Expected rate for distribution
+        \param[in] random Random value between zero and one
+        \return poisson number
+    */
+    inline float poisson(float frequency, float random)
+    {
+        return -std::logf(1.0f - random) / frequency;
+    }
+
     /** Creates a rotation matrix from individual basis vectors.
         \param[in] forward Forward vector.
         \param[in] up Up vector.

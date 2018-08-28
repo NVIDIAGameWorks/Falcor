@@ -127,11 +127,6 @@ namespace Falcor
         execute(pRenderContext, mpTargetFbo);
     }
 
-    float poisson(float intensity, float random)
-    {
-        return -std::logf(1.0f - random) / intensity;
-    }
-
     void FilmGrain::createNoiseTexture()
     {
         const uint32_t noiseTexHeight = 512;
