@@ -100,6 +100,8 @@ namespace Falcor
 
         void toggleStaticMaterialCompilation(bool on) { mCompileMaterialWithProgram = on; }
 
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
+        
     protected:
 
         struct CurrentWorkingData
@@ -157,6 +159,7 @@ namespace Falcor
 
         CameraControllerType mCamControllerType = CameraControllerType::SixDof;
         CameraController::SharedPtr mpCameraController;
+        bool mUseCameraPath = true;
 
         uint32_t mMaxInstanceCount = 64;
         const Material* mpLastMaterial = nullptr;

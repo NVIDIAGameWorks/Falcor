@@ -197,11 +197,7 @@ private:
     {
         ToneMapping,
         Bloom,
-        GodRays,
-        DepthOfField,
-        MotionBlur,
         FilmGrain,
-        SubsurfaceScattering,
         PostProcessCount
     };
 

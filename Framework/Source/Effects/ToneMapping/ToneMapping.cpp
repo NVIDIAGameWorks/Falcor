@@ -33,6 +33,9 @@
 namespace Falcor
 {
     static const char* kShaderFilename = "Effects/ToneMapping.ps.slang";
+    static const std::string kSrc = "src";
+    static const std::string kDst = "dst";
+
     const Gui::DropdownList kOperatorList = { 
     { (uint32_t)ToneMapping::Operator::Clamp, "Clamp to LDR" },
     { (uint32_t)ToneMapping::Operator::Linear, "Linear" }, 
@@ -66,7 +69,7 @@ namespace Falcor
 
     void ToneMapping::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     {
-        bool createFbo = mpLuminanceFbo == nullptr;
+        bool createFbo = (mpLuminanceFbo == nullptr);
         ResourceFormat srcFormat = pSrc->getFormat();
         uint32_t bytesPerChannel = getFormatBytesPerBlock(srcFormat) / getFormatChannelCount(srcFormat);
         
@@ -126,12 +129,20 @@ namespace Falcor
         renderPassSerializer.addVariable("toneMapping.speedUp", mEyeAdaptationSettings.speedUp);
     }
 
-    void ToneMapping::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
+    void ToneMapping::execute(RenderContext* pRenderContext, const RenderData* pData)
     {
-        return execute(pRenderContext, pSrc->getColorTexture(0), pDst);
+        Fbo::SharedPtr pFbo = Fbo::create();
+        pFbo->attachColorTarget(pData->getTexture(kDst), 0);
+
+        execute(pRenderContext, pData->getTexture(kSrc), pFbo, mpCamera);
     }
 
-    void ToneMapping::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
+    void ToneMapping::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
+    {
+        return execute(pRenderContext, pSrc->getColorTexture(0), pDst, mpCamera);
+    }
+
+    void ToneMapping::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst, const Camera::SharedPtr& pCamera)
     {
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         createLuminanceFbo(pSrc);
@@ -139,6 +150,8 @@ namespace Falcor
         auto time = std::chrono::system_clock::now();
         float deltaTime = std::chrono::duration<float>(time - mPrevTime).count();
         mPrevTime = time;
+
+        if (pCamera) mpCamera = pCamera;
 
         if (mEnableEyeAdaptation)
         {
@@ -152,10 +165,10 @@ namespace Falcor
         }
         
         //Set shared vars
-        mpToneMapVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
-        mpLuminanceVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
-        mpToneMapVars->getDefaultBlock()->setSampler(mBindLocations.colorSampler, 0, mpPointSampler);
-        mpLuminanceVars->getDefaultBlock()->setSampler(mBindLocations.colorSampler, 0, mpLinearSampler);
+        mpToneMapVars->getDefaultBlock()->setTexture("gColorTex", pSrc);
+        mpLuminanceVars->getDefaultBlock()->setTexture("gColorTex", pSrc);
+        mpToneMapVars->getDefaultBlock()->setSampler("gColorSampler", mpPointSampler);
+        mpToneMapVars->getDefaultBlock()->setSampler("gColorSampler", mpLinearSampler);
 
         //Calculate luminance
         pRenderContext->setGraphicsVars(mpLuminanceVars);
@@ -167,8 +180,8 @@ namespace Falcor
         if (mOperator != Operator::Clamp)
         {
             mpToneMapCBuffer->setBlob(&mConstBufferData, 0u, sizeof(mConstBufferData));
-            mpToneMapVars->getDefaultBlock()->setSampler(mBindLocations.luminanceSampler, 0, mpLinearSampler);
-            mpToneMapVars->getDefaultBlock()->setSrv(mBindLocations.luminanceTex, 0, mpLuminanceFbo->getColorTexture(0)->getSRV());
+            mpToneMapVars->getDefaultBlock()->setSampler("gLuminanceTexSampler", mpLinearSampler);
+            mpToneMapVars->getDefaultBlock()->setTexture("gLuminanceTex", mpLuminanceFbo->getColorTexture(0));
         }
 
         //Tone map
@@ -179,15 +192,19 @@ namespace Falcor
 
     float ToneMapping::calculateEV100()
     {
-        Camera::SharedPtr pCamera = mpScene->getActiveCamera();
-
-        if (!pCamera)
+        float shutterSpeed = 1.0f;
+        float apertureRadius = 0.0f;
+        
+        if (!mpCamera)
         {
             logWarning("No camera set in render pass. Unable to execute eye adaption.");
         }
+        else
+        {
+            shutterSpeed = 1.0f / mpCamera->getFocalLength();
+            apertureRadius = mpCamera->getApertureRadius();
+        }
 
-        float shutterSpeed = 1.0f / pCamera->getFocalLength();
-        float apertureRadius = pCamera->getApertureRadius();
         if (apertureRadius <= 0.001f) apertureRadius = 77.0f; // good default value if camera set at 0
         float ev100 = std::log2(std::max(apertureRadius, 0.001f) * shutterSpeed * 100.0f / mEyeAdaptationSettings.camIso);
         mEyeAdaptationSettings.camEV100 = ev100;
@@ -229,17 +246,12 @@ namespace Falcor
         const auto& pReflector = mpToneMapPass->getProgram()->getReflector();
         mpToneMapVars = GraphicsVars::create(pReflector);
         mpToneMapCBuffer = mpToneMapVars["PerImageCB"];
-        const auto& pDefaultBlock = pReflector->getDefaultParameterBlock();
-        mBindLocations.luminanceSampler = pDefaultBlock->getResourceBinding("gLuminanceTexSampler");
-        mBindLocations.colorSampler = pDefaultBlock->getResourceBinding("gColorSampler");
-        mBindLocations.colorTex = pDefaultBlock->getResourceBinding("gColorTex");
-        mBindLocations.luminanceTex = pDefaultBlock->getResourceBinding("gLuminanceTex");
 
-        mpToneMapCBuffer["speedUp"] = mEyeAdaptationSettings.speedUp;
-        mpToneMapCBuffer["speedDown"] = mEyeAdaptationSettings.speedDown;
+        mpToneMapCBuffer["speedUp"]   = 1.0f / mEyeAdaptationSettings.speedUp;
+        mpToneMapCBuffer["speedDown"] = 1.0f / mEyeAdaptationSettings.speedDown;
         mpToneMapCBuffer["camEV100"] = mEyeAdaptationSettings.camIso;
 
-        mpToneMapVars->setRawBuffer("prevFramInfo", Buffer::create(sizeof(float) * 4, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None));
+        mpToneMapVars->setRawBuffer("prevFrameInfo", Buffer::create(sizeof(float) * 4, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None));
     }
 
     void ToneMapping::createLuminancePass()
@@ -279,12 +291,12 @@ namespace Falcor
             {
                 if (pGui->addFloatVar("Speed Up", mEyeAdaptationSettings.speedUp, 0.0f))
                 {
-                    mpToneMapCBuffer["speedUp"] = mEyeAdaptationSettings.speedUp;
+                    mpToneMapCBuffer["speedUp"] = 100.0f / mEyeAdaptationSettings.speedUp;
                 }
 
                 if (pGui->addFloatVar("Speed Down", mEyeAdaptationSettings.speedDown, 0.0f))
                 {
-                    mpToneMapCBuffer["speedDown"] = mEyeAdaptationSettings.speedDown;
+                    mpToneMapCBuffer["speedDown"] = 100.0f / mEyeAdaptationSettings.speedDown;
                 }
             }
             
@@ -320,20 +332,9 @@ namespace Falcor
         mConstBufferData.whiteScale = max(0.001f, whiteScale);
     }
 
-    static const std::string kSrc = "src";
-    static const std::string kDst = "dst";
-
     void ToneMapping::reflect(RenderPassReflection& reflector) const
     {
         reflector.addInput(kSrc);
         reflector.addOutput(kDst);
-    }
-
-    void ToneMapping::execute(RenderContext* pRenderContext, const RenderData* pData)
-    {
-        Fbo::SharedPtr pFbo = Fbo::create();
-        pFbo->attachColorTarget(pData->getTexture(kDst), 0);
-
-        execute(pRenderContext, pData->getTexture(kSrc), pFbo);
     }
 }

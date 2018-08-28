@@ -40,7 +40,6 @@ namespace Falcor
     class Bloom : public RenderPass, public inherit_shared_from_this<RenderPass, Bloom>
     {
     public:
-        using UniquePtr = std::unique_ptr<Bloom>;
         using SharedPtr = std::shared_ptr<Bloom>;
 
         static SharedPtr create(float threshold = 1.0f, uint32_t kernelSize = 9, float sigma = 1.5f);
@@ -51,7 +50,7 @@ namespace Falcor
 
         void execute(RenderContext* pRenderContext, const RenderData* pData);
         
-        void execute(RenderContext* pRenderContext, const Texture::SharedPtr pSrcTex, Fbo::SharedPtr pFbo);
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Fbo::SharedPtr& pFbo);
 
         /** Sets blur kernel size
         */
@@ -73,7 +72,14 @@ namespace Falcor
         Bloom(float threshold, uint32_t kernelSize, float sigma);
         void updateLowResTexture(const Texture::SharedPtr& pTexture);
 
-        PassFilter::UniquePtr mpFilter;
+        enum OutputMode
+        {
+            FinalBloom,
+            HighPassOutput,
+            BlurTexture
+        } mOutputMode;
+
+        PassFilter::SharedPtr mpFilter;
         Fbo::SharedPtr mpTargetFbo;
         Fbo::SharedPtr mpFilterResultFbo;
         Texture::SharedPtr mpLowResTexture;
@@ -83,6 +89,5 @@ namespace Falcor
         ParameterBlockReflection::BindLocation mSrcTexLoc;
         BlendState::SharedPtr mpAdditiveBlend;
         Sampler::SharedPtr mpSampler;
-        uint32_t mOutputIndex = 0;
     };
 }

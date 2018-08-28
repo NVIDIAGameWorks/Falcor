@@ -133,12 +133,6 @@ void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScen
         pProbe->setSampler(mpSceneSampler);
     }
 
-    PointLight::SharedPtr pPointLight = PointLight::create();
-    pPointLight->setIntensity(vec3(1, 1, 0.985f) * 10.0f);
-    pPointLight->setWorldPosition({ -0.015f, 1.679f, 0.495f });
-    pPointLight->setName("PointLight");
-    pScene->addLight(pPointLight);
-
     mpSceneRenderer = ForwardRendererSceneRenderer::create(pScene);
     mpSceneRenderer->setCameraControllerType(SceneRenderer::CameraControllerType::FirstPerson);
     mpSceneRenderer->toggleStaticMaterialCompilation(mPerMaterialShader);
@@ -340,12 +334,6 @@ void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
     }
 
     pContext->clearRtv(mpMainFbo->getColorTexture(2)->getRTV().get(), vec4(0.0, 0.0, 0.0, 0.0));
-
-    if (mPostProcessingControls[PostProcessID::SubsurfaceScattering])
-    {
-        pContext->clearRtv(mpMainFbo->getColorTexture(3)->getRTV().get(), vec4(0.0, 0.0, 0.0, 0.0));
-        pContext->clearRtv(mpMainFbo->getColorTexture(4)->getRTV().get(), vec4(0.0, 0.0, 0.0, 0.0));
-    }
 
     pCB["gRenderTargetDim"] = glm::vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
 

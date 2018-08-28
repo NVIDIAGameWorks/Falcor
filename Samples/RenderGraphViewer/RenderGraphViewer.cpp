@@ -28,7 +28,7 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene =  "sunTemple/sunTemple.fscene";
+const std::string gkDefaultScene =  "SunTemple/SunTemple.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 RenderGraphViewer::~RenderGraphViewer()
@@ -55,34 +55,10 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
     }
 
-    // allows for editing of lights while viewing graph output
-    if (mpScene && pGui->beginGroup("Scene Settings"))
+    if (mpScene)
     {
-        uint32_t lightCount = mpScene->getLightCount();
-        if (lightCount && pGui->beginGroup("Light Sources"))
-        {
-            for (uint32_t i = 0; i < lightCount; i++)
-            {
-                Light* pLight = mpScene->getLight(i).get();
-                pLight->renderUI(pGui, pLight->getName().c_str());
-            }
-            pGui->endGroup();
-        }
+        // need to get access to scene render pass
 
-        // allow detaching the camera
-        if (mpScene->getPathCount() && pGui->addCheckBox("Use Camera Path", mUseCameraPath))
-        {
-            if (mUseCameraPath)
-            {
-                mpScene->getPath(0)->attachObject(mpScene->getActiveCamera());
-            }
-            else
-            {
-                mpScene->getPath(0)->detachObject(mpScene->getActiveCamera());
-            }
-        }
-
-        pGui->endGroup();
     }
 
     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))

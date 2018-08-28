@@ -41,10 +41,10 @@ cbuffer PerImageCB : register(b0)
     float camEV100;
     float speedUp;
     float speedDown;
-	float deltaTime;
+    float deltaTime;
 };
 
-RWBuffer<float> prevFramInfo : register(u2);
+RWBuffer<float> prevFrameInfo : register(u2);
 
 float calcLuminance(float3 color)
 {
@@ -59,13 +59,13 @@ float3 calcExposedColor(float3 color, float2 texC)
     
 #ifdef _ENABLE_EYE_ADAPTATION
     // lerp exposer value from previous frame luminance value
-    float lastFrameLuminance = prevFramInfo[0];
+    float lastFrameLuminance = prevFrameInfo[0];
     float lumiDiff = (avgLuminance - lastFrameLuminance);
     float speed = (lumiDiff > 0.0f) ? speedUp : speedDown; 
     float newLuminance = lastFrameLuminance + lumiDiff * (1.0f - exp2(-speed * deltaTime)) ;
     float exposureKey = 1.0f / (1.2f * pow(2.0f, camEV100));
-	
-	prevFramInfo[0] = newLuminance;
+    
+    prevFrameInfo[0] = newLuminance;
     float exposedLuminance = (exposureKey / newLuminance);
 #else
     float exposedLuminance = (gExposureKey / avgLuminance);
@@ -157,7 +157,7 @@ float4 calcColor(float2 texC)
 #ifdef FALCOR_VK
     luminance = min(luminance, 10000);
 #endif
-	
+
     return float4(luminance, 0, 0, 1);
 #elif defined _CLAMP
     return color;

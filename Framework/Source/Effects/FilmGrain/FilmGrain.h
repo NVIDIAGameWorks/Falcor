@@ -42,7 +42,6 @@ namespace Falcor
     class FilmGrain : public RenderPass, public inherit_shared_from_this<RenderPass, FilmGrain>
     {
     public:
-        using UniquePtr = std::unique_ptr<FilmGrain>;
         using SharedPtr = std::shared_ptr<FilmGrain>;
 
         static SharedPtr create(float grainSize = 0.75f, float intensity = 0.5f, 
@@ -73,7 +72,7 @@ namespace Falcor
         FilmGrain(float grainSize, float intensity, const glm::vec3& grainColor, 
             const glm::vec2& luminanceRange, bool useLuminanceRange, bool useColoredNoise);
 
-        void createShader();
+        void createProgram();
         void createNoiseTexture();
 
         float mGrainSize = 1.0f;

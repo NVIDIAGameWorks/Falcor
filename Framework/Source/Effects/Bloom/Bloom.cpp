@@ -35,6 +35,7 @@ namespace Falcor
 {
     static const char* kSrcName = "src";
     static const char* kDstName = "dst";
+    static Gui::DropdownList sDisplayOutput;
 
     Bloom::SharedPtr Bloom::create(float threshold, uint32_t kernelSize, float sigma)
     {
@@ -67,6 +68,17 @@ namespace Falcor
 
         mpFilter = PassFilter::create(PassFilter::Type::HighPass, threshold);
         mpFilterResultFbo = Fbo::create();
+
+        Gui::DropdownValue value;
+        value.label = "Final Bloom";
+        value.value = 0;
+        sDisplayOutput.push_back(value);
+        value.label = "HighPass Output";
+        value.value = 1;
+        sDisplayOutput.push_back(value);
+        value.label = "Blur Texture";
+        value.value = 2;
+        sDisplayOutput.push_back(value);
     }
 
     Bloom::SharedPtr Bloom::deserialize(const RenderPassSerializer& serializer)
@@ -96,20 +108,20 @@ namespace Falcor
     void Bloom::updateLowResTexture(const Texture::SharedPtr& pTexture)
     {
         // Create FBO if not created already, or properties have changed since last use
-        bool createFbo = mpLowResTexture == nullptr;
+        bool createLowResTex = (mpLowResTexture == nullptr);
 
         float aspectRatio = (float)pTexture->getWidth() / (float)pTexture->getHeight();
         uint32_t lowResHeight = max(pTexture->getHeight() / 4, 256u);
         uint32_t lowResWidth = max(pTexture->getWidth() / 4, (uint32_t)(256.0f * aspectRatio));
 
-        if (createFbo == false)
+        if (createLowResTex == false)
         {
-            createFbo = (lowResWidth != mpLowResTexture->getWidth()) ||
+            createLowResTex = (lowResWidth != mpLowResTexture->getWidth()) ||
                 (lowResHeight != mpLowResTexture->getHeight()) ||
                 (pTexture->getFormat() != mpLowResTexture->getFormat());
         }
 
-        if (createFbo)
+        if (createLowResTex)
         {
             mpLowResTexture = Texture::create2D(
                 lowResWidth,
@@ -136,26 +148,26 @@ namespace Falcor
         execute(pRenderContext, pSrcTex, mpTargetFbo);
     }
 
-    void Bloom::execute(RenderContext* pRenderContext, const Texture::SharedPtr pSrcTex, Fbo::SharedPtr pFbo)
+    void Bloom::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Fbo::SharedPtr& pFbo)
     {
         updateLowResTexture(pSrcTex);
 
         pRenderContext->blit(pSrcTex->getSRV(), mpLowResTexture->getRTV());
 
-        // Run high-pass filter and attach it to an FBO for blurring
-        Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);
-        
-        if (mOutputIndex == 1)
+        if (mOutputMode == OutputMode::HighPassOutput)
         {
-            pRenderContext->blit(pHighPassResult->getSRV(), pFbo->getColorTexture(0)->getRTV());
+            mpFilter->execute(pRenderContext, mpLowResTexture, pFbo);
             return;
         }
+        
+        // Run high-pass filter and attach it to an FBO for blurring
+        Texture::SharedPtr pHighPassResult = mpFilter->execute(pRenderContext, mpLowResTexture);
 
         mpFilterResultFbo->attachColorTarget(pHighPassResult, 0);
         mpBlur->execute(pRenderContext, pHighPassResult, mpFilterResultFbo);
 
         // Execute bloom
-        if (!mOutputIndex)
+        if (mOutputMode == OutputMode::FinalBloom)
         {
             mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
             GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
@@ -167,7 +179,7 @@ namespace Falcor
             pRenderContext->popGraphicsVars();
             pState->popFbo();
         }
-        else if (mOutputIndex == 2)
+        else if (mOutputMode == OutputMode::BlurTexture)
         {
             pRenderContext->blit(mpFilterResultFbo->getColorTexture(0)->getSRV(), pFbo->getColorTexture(0)->getRTV());
         }
@@ -178,10 +190,7 @@ namespace Falcor
         if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
         {
             float threshold = mpFilter->getThreshold();
-            if (pGui->addFloatVar("Threshold", threshold, 0.0f))
-            {
-                mpFilter->setThreshold(threshold);
-            }
+            if (pGui->addFloatVar("Threshold", threshold, 0.0f)) mpFilter->setThreshold(threshold);
 
             int32_t kernelWidth = mpBlur->getKernelWidth();
             if (pGui->addIntVar("Kernel Width", (int&)kernelWidth, 1, 15, 2))
@@ -195,24 +204,13 @@ namespace Falcor
                 mpBlur->setSigma(sigma);
             }
 
-            Gui::DropdownList displayOutput;
-            Gui::DropdownValue value;
-            value.label = "Final Bloom";
-            value.value = 0;
-            displayOutput.push_back(value);
-            value.label = "HighPass Output";
-            value.value = 1;
-            displayOutput.push_back(value);
-            value.label = "Blur Texture";
-            value.value = 2;
-            displayOutput.push_back(value);
-
-            pGui->addDropdown("Output texture", displayOutput, mOutputIndex);
-
-            if (uiGroup) 
+            uint32_t outputMode = static_cast<uint32_t>(mOutputMode);
+            if (pGui->addDropdown("Output texture", sDisplayOutput, outputMode))
             {
-                pGui->endGroup();
+                mOutputMode = static_cast<OutputMode>(outputMode);
             }
+
+            if (uiGroup) pGui->endGroup();
         }
     }
 

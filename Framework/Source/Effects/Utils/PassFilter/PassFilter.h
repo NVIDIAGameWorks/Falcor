@@ -39,7 +39,7 @@ namespace Falcor
     class PassFilter
     {
     public:
-        using UniquePtr = std::unique_ptr<PassFilter>;
+        using SharedPtr = std::shared_ptr<PassFilter>;
 
         enum class Type
         {
@@ -50,14 +50,22 @@ namespace Falcor
         /** Create a new object
             \param[in] threshold Brightness threshold to pass through the filter
         */
-        static UniquePtr create(Type filterType, float threshold);
+        static SharedPtr create(Type filterType, float threshold);
 
         /** Apply the filter to a texture
             \param pRenderContext Render context to use
             \param pSrc The source texture
             \return A texture containing filter results
         */
-        Texture::SharedPtr execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc);
+        Texture::SharedPtr execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc);
+
+        /** Apply the filter to a texture
+            \param pRenderContext Render context to use
+            \param pSrc The source texture
+            \param pDst Fbo to write results to
+            \return A texture containing filter results
+        */
+        Texture::SharedPtr execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
 
         /** Set the threshold value for the filter.
         */

@@ -107,10 +107,7 @@ namespace Falcor
             }
             else
             {
-                if (diff < 0)
-                {
-                    diff += mDuration;
-                }
+                if (diff < 0) diff += mDuration;
 
                 float ratio = (ticks - curKey.time) / diff;
                 curValue = interpolate(curKey.value, nextKey.value, ratio);

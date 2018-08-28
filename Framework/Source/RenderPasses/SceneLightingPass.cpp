@@ -163,6 +163,8 @@ namespace Falcor
 
         if(!uiGroup || pGui->beginGroup(uiGroup))
         {
+            mpSceneRenderer->renderUI(pGui, uiGroup);
+
             if (pGui->addDropdown("Sample Count", kSampleCountList, mSampleCount))              setSampleCount(mSampleCount);
             if (mSampleCount > 1 && pGui->addCheckBox("Super Sampling", mEnableSuperSampling))  setSuperSampling(mEnableSuperSampling);
 

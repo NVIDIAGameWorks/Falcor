@@ -46,10 +46,10 @@ namespace Falcor
         initProgram();
     }
 
-    PassFilter::UniquePtr PassFilter::create(Type filterType, float threshold)
+    PassFilter::SharedPtr PassFilter::create(Type filterType, float threshold)
     {
         PassFilter* pBlur = new PassFilter(filterType, threshold);
-        return PassFilter::UniquePtr(pBlur);
+        return PassFilter::SharedPtr(pBlur);
     }
 
     void PassFilter::updateResultFbo(const Texture* pSrc)
@@ -95,34 +95,33 @@ namespace Falcor
         mBindLocations.srcTexture = pReflector->getDefaultParameterBlock()->getResourceBinding("gSrcTex");
     }
 
-    Texture::SharedPtr PassFilter::execute(RenderContext* pRenderContext, Texture::SharedPtr pSrc)
+    Texture::SharedPtr PassFilter::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc)
     {
         updateResultFbo(pSrc.get());
+        return execute(pRenderContext, pSrc, mpResultFbo);
+    }
 
-        if(mDirty)
+    Texture::SharedPtr PassFilter::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
+    {
+        if (mDirty)
         {
-            mpParamCB->setBlob(&mThreshold, 0, sizeof(float));
+            mpParamCB["gThreshold"] = mThreshold;
             mDirty = false;
         }
 
-        GraphicsState::Viewport vp;
-        vp.width = (float)mpResultFbo->getWidth();
-        vp.height = (float)mpResultFbo->getHeight();
-
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
-        pState->pushViewport(0, vp);
 
         // Horizontal pass
         ParameterBlock* pDefaultBlock = mpVars->getDefaultBlock().get();
         pDefaultBlock->setSampler(mBindLocations.sampler, 0, mpSampler);
         pDefaultBlock->setSrv(mBindLocations.srcTexture, 0, pSrc->getSRV());
-        
-        pState->pushFbo(mpResultFbo);
+
+        pState->pushFbo(pDst);
         pRenderContext->pushGraphicsVars(mpVars);
         mpFilterPass->execute(pRenderContext);
         pRenderContext->popGraphicsVars();
         pState->popFbo();
 
-        return mpResultFbo->getColorTexture(0);
+        return pDst->getColorTexture(0);
     }
 }

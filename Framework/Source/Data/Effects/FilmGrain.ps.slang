@@ -33,24 +33,23 @@ Texture2D srcTex;
 Texture2D noiseTex;
 
 cbuffer filmGrain
-{ 
+{
     float intensity;
     float grainSize;
     float3 grainTint;
-    float2 lumRange;
     float2 randOffset;
 };
 
 float4 main(float2 texC : TEXCOORD) : SV_TARGET0
 {
     float4 fragColor = srcTex.SampleLevel(gSampler, texC, 0); 
-    float noiseVal = intensity * noiseTex.Sample(gSampler, (texC + randOffset) / grainSize).r;
+    float noiseVal = intensity * noiseTex.Sample(gSampler, (texC + randOffset) * grainSize).r;
 
     // apply grain only to specified luminance range
     float luma = luminance(fragColor.xyz);
     float3 grainColor = noiseVal * (grainTint * 2.0f);
 #ifdef _USE_LUMINANCE_RANGE
-    grainColor *= (luma < lumRange.x || luma > lumRange.y) ? 0.0f : 1.0f;
+    grainColor *= (luma < _LUMINANCE_RANGE_MIN || luma > _LUMINANCE_RANGE_MAX) ? 0.0f : 1.0f;
 #endif
     fragColor.xyz += grainColor * luma;
 

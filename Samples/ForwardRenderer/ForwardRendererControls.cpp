@@ -114,7 +114,6 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
     // Release the TAA FBOs
     mTAA.resetFbos();
 
-    mLightingPass.pProgram->addDefine("_OUTPUT_MOTION_VECTORS");
     fboDesc.setColorTarget(2, ResourceFormat::RG16Float);
     if (mAAMode == AAMode::TAA)
     {

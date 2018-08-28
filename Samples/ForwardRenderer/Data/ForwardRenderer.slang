@@ -69,12 +69,6 @@ struct PsOut
 #ifdef _OUTPUT_MOTION_VECTORS
     float2 motion : SV_TARGET2;
 #endif
-#ifdef _SEPERATE_DIFFUSE_AND_SPECULAR
-    float4 specular : SV_TARGET3;
-#endif
-#ifdef _OUTPUT_SUBSURFACE
-    float subsurface : SV_TARGET4;
-#endif
 };
 
 PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
@@ -84,9 +78,6 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     ShadingData sd = prepareShadingData(vOut.vsData, gMaterial, gCamera.posW);
 
     float4 finalColor = float4(0, 0, 0, 1);
-#ifdef _SEPERATE_DIFFUSE_AND_SPECULAR
-    float4 finalSpecular = float4(0, 0, 0, 1);
-#endif
 
     [unroll]
     for (uint l = 0; l < _LIGHT_COUNT; l++)
@@ -101,12 +92,7 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 #endif
         ShadingResult shadingResult = evalMaterial(sd, gLights[l], shadowFactor);
 
-#ifdef _SEPERATE_DIFFUSE_AND_SPECULAR
-        finalSpecular.rgb += shadingResult.specular.rgb * shadowFactor;
-        finalColor.rgb += shadingResult.diffuse.rgb * shadowFactor;
-#else
         finalColor.rgb += shadingResult.color.rgb;
-#endif
     }
 
     // Add the emissive component
@@ -118,12 +104,7 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
 
 #ifdef _ENABLE_REFLECTIONS
     ShadingResult lightProbeResult = evalMaterial(sd, gLightProbe);
-#ifdef _SEPERATE_DIFFUSE_AND_SPECULAR
-    finalSpecular.rgb += lightProbeResult.specular.rgb;
-    finalColor.rgb += lightProbeResult.diffuse.rgb;
-#else
     finalColor.rgb += lightProbeResult.color.rgb;
-#endif
 #endif
 
     // Add light-map
@@ -141,9 +122,6 @@ PsOut ps(MainVsOut vOut, float4 pixelCrd : SV_POSITION)
     psOut.color.rgb *= cascadeColor;
 #endif
 
-#ifdef _SEPERATE_DIFFUSE_AND_SPECULAR
-    psOut.specular = finalSpecular;
-#endif
 #ifdef _OUTPUT_SUBSURFACE
     psOut.subsurface = 1.0f;
 #endif

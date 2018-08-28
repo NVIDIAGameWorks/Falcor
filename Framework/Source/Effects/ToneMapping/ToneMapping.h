@@ -85,7 +85,7 @@ namespace Falcor
             \param pSrc The source texture
             \param pDst The destination FBO
         */
-        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst, const Camera::SharedPtr& pCamera);
 
         /** Set a new operator. Triggers shader recompilation if operator has not been set on this instance before.
         */
@@ -121,7 +121,7 @@ namespace Falcor
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
-        virtual void setScene(const Scene::SharedPtr& pScene) override { mpScene = pScene;  }
+        virtual void setScene(const Scene::SharedPtr& pScene) override { if (pScene && pScene->getActiveCamera()) mpCamera = pScene->getActiveCamera(); }
     private:
         ToneMapping(Operator op);
         void createLuminanceFbo(const Texture::SharedPtr& pSrc);
@@ -139,7 +139,7 @@ namespace Falcor
         ConstantBuffer::SharedPtr mpToneMapCBuffer;
         Sampler::SharedPtr mpPointSampler;
         Sampler::SharedPtr mpLinearSampler;
-        Scene::SharedPtr mpScene;
+        Camera::SharedPtr mpCamera = nullptr;
         bool mEnableEyeAdaptation = true;
 
         struct
@@ -150,14 +150,6 @@ namespace Falcor
             float speedDown = 1.0f;
         } mEyeAdaptationSettings;
         
-        struct PassBindLocations
-        {
-            ParameterBlockReflection::BindLocation luminanceSampler;
-            ParameterBlockReflection::BindLocation colorSampler;
-            ParameterBlockReflection::BindLocation colorTex;
-            ParameterBlockReflection::BindLocation luminanceTex;
-        } mBindLocations;
-
         struct
         {
             float exposureKey = 0.042f;

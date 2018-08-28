@@ -426,4 +426,36 @@ namespace Falcor
     {
         return mpCameraController->onKeyEvent(keyEvent);
     }
+
+    void SceneRenderer::renderUI(Gui* pGui, const char* uiGroup)
+    {
+        if ((uiGroup == nullptr) || pGui->beginGroup(uiGroup))
+        {
+            uint32_t lightCount = mpScene->getLightCount();
+            if (lightCount && pGui->beginGroup("Light Sources"))
+            {
+                for (uint32_t i = 0; i < lightCount; i++)
+                {
+                    Light* pLight = mpScene->getLight(i).get();
+                    pLight->renderUI(pGui, pLight->getName().c_str());
+                }
+                pGui->endGroup();
+            }
+
+            // allow detaching the camera
+            if (mpScene->getPathCount() && pGui->addCheckBox("Use Camera Path", mUseCameraPath))
+            {
+                if (mUseCameraPath)
+                {
+                    mpScene->getPath(0)->attachObject(mpScene->getActiveCamera());
+                }
+                else
+                {
+                    mpScene->getPath(0)->detachObject(mpScene->getActiveCamera());
+                }
+            }
+
+            if (uiGroup) pGui->endGroup();
+        }
+    }
 }
