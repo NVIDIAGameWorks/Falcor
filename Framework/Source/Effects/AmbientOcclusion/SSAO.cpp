@@ -240,10 +240,10 @@ namespace Falcor
 
     void SSAO::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addInput(kColorIn);
-        reflector.addOutput(kColorOut);
-        reflector.addInput(kDepth);
-        reflector.addInput(kNormals).setFlags(RenderPassReflection::Field::Flags::Optional);
+        reflector.addInput(kColorIn).setSampleCount(1);
+        reflector.addOutput(kColorOut).setSampleCount(1);
+        reflector.addInput(kDepth).setSampleCount(1);
+        reflector.addInput(kNormals).setSampleCount(1).setFlags(RenderPassReflection::Field::Flags::Optional);
     }
 
     void SSAO::execute(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pColorIn, const Texture::SharedPtr& pColorOut, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
@@ -270,7 +270,7 @@ namespace Falcor
     {
         // Run the AO pass
         auto& pDepth = pData->getTexture(kDepth);
-        auto& pNormals = pData->getTexture(kNormals);        
+        auto& pNormals = pData->getTexture(kNormals);
         auto& pColorOut = pData->getTexture(kColorOut);
         auto& pColorIn = pData->getTexture(kColorIn);
         execute(pRenderContext, mpScene->getActiveCamera().get(), pColorIn, pColorOut, pDepth, pNormals);

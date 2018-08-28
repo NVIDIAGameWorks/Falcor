@@ -235,8 +235,8 @@ namespace Falcor
 
     void ToneMapping::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addInput(kSrc);
-        reflector.addOutput(kDst);
+        reflector.addInput(kSrc).setSampleCount(1);
+        reflector.addOutput(kDst).setSampleCount(1);
     }
 
     void ToneMapping::execute(RenderContext* pRenderContext, const RenderData* pData)

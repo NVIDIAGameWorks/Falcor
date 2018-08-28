@@ -1002,7 +1002,11 @@ namespace Falcor
 
     void CascadedShadowMaps::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addOutput(kVisibility).setFormat(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades)).setDimensions(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, 1);
+        reflector.addOutput(kVisibility)
+            .setFormat(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades))
+            .setDimensions(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, 1)
+            .setSampleCount(1);
+
         reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional);
     }
 

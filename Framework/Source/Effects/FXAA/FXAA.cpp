@@ -73,8 +73,8 @@ namespace Falcor
 
     void FXAA::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addInput(kSrc);
-        reflector.addOutput(kDst);
+        reflector.addInput(kSrc).setSampleCount(1);
+        reflector.addOutput(kDst).setSampleCount(1);
     }
 
     void FXAA::execute(RenderContext* pContext, const RenderData* pData)
