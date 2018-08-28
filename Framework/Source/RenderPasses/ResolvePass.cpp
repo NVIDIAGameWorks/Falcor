@@ -25,29 +25,56 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Graphics/RenderGraph/RenderPass.h"
-#include "API/Texture.h"
+#include "Framework.h"
+#include "ResolvePass.h"
+#include "API/RenderContext.h"
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
-    class BlitPass : public RenderPass, inherit_shared_from_this<RenderPass, BlitPass>
+    static const std::string kDst = "dst";
+    static const std::string kSrc = "src";
+
+    void ResolvePass::reflect(RenderPassReflection& reflector) const
     {
-    public:
-        using SharedPtr = std::shared_ptr<BlitPass>;
+        reflector.addInput(kSrc);
+        reflector.addOutput(kDst).setSampleCount(1);
+    }
 
-        /** Create a new object
-        */
-        static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
+    ResolvePass::SharedPtr ResolvePass::create()
+    {
+        try
+        {
+            return SharedPtr(new ResolvePass);
+        }
+        catch (const std::exception&)
+        {
+            return nullptr;
+        }
+    }
 
-        virtual void reflect(RenderPassReflection& reflector) const override;
-        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
-        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+    ResolvePass::SharedPtr ResolvePass::deserialize(const RenderPassSerializer& serializer)
+    {
+        return create();
+    }
 
-        void setFilter(Sampler::Filter filter) { mFilter = filter; }
-    private:
-        BlitPass();
-        Sampler::Filter mFilter = Sampler::Filter::Linear;
-    };
+    ResolvePass::ResolvePass()
+        : RenderPass("ResolvePass")
+    {
+    }
+
+    void ResolvePass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    {
+        const auto& pSrcTex = pRenderData->getTexture(kSrc);
+        const auto& pDstTex = pRenderData->getTexture(kDst);
+
+        if (pSrcTex && pDstTex)
+        {
+            pContext->resolveResource(pSrcTex.get(), pDstTex.get());
+        }
+        else
+        {
+            logWarning("ResolvePass::execute() - missing an input or output resource");
+        }
+    }
 }
