@@ -115,6 +115,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     // sub window for listing available window passes
     pGui->pushWindow("Render Passes", screenWidth / 2, screenHeight / 4 - 20, screenWidth / 4, screenHeight * 3 / 4 + 20, true);
+    if (mResetGuiWindows)
+    {
+        pGui->setCurrentWindowSize(screenWidth / 2, screenHeight / 4 - 20);
+        pGui->setCurrentWindowPos(screenWidth / 4, screenHeight * 3 / 4 + 20);
+    }
 
     size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
     pGui->beginColumns(5);
@@ -133,6 +138,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     // push a sub GUI window for the node editor
     pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 20, false);
+    if (mResetGuiWindows)
+    {
+        pGui->setCurrentWindowSize(screenWidth, screenHeight * 3 / 4);
+        pGui->setCurrentWindowPos(0, 20);
+    }
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
@@ -140,6 +150,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     RenderGraphUI::sLogString.clear();
 
     pGui->pushWindow("Graph Editor Settings", screenWidth / 4, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true);
+    if (mResetGuiWindows)
+    {
+        pGui->setCurrentWindowSize(screenWidth / 4, screenHeight / 4 - 20);
+        pGui->setCurrentWindowPos(0, screenHeight * 3 / 4 + 20);
+    }
 
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
@@ -230,6 +245,11 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     pGui->popWindow();
 
     pGui->pushWindow("output", screenWidth / 4, screenHeight / 4 - 20, screenWidth * 3 / 4, screenHeight * 3 / 4 + 20, true);
+    if (mResetGuiWindows)
+    {
+        pGui->setCurrentWindowSize(screenWidth / 4, screenHeight / 4 - 20);
+        pGui->setCurrentWindowPos(screenWidth * 3 / 4, screenHeight * 3 / 4 + 20);
+    }
     renderLogWindow(pGui);
     pGui->popWindow();
 
@@ -258,6 +278,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         pGui->popWindow();
     }
+
+    mResetGuiWindows = false;
 }
 
 void RenderGraphEditor::renderLogWindow(Gui* pGui)
@@ -361,6 +383,7 @@ void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
 {
     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
     mWindowSize = {width, height};
+    mResetGuiWindows = true;
 }
 
 #ifdef _WIN32

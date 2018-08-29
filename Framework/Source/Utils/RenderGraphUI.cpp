@@ -41,9 +41,7 @@ namespace Falcor
 {
     const float kUpdateTimeInterval = 2.0f;
     const float kPinRadius = 6.0f;
-
-    static std::unordered_map<uint32_t, ImGui::Node*> spIDToNode;
-    static RenderGraphUI* spCurrentGraphUI = nullptr;
+    RenderGraphUI* spCurrentGraphUI = nullptr;
 
     class NodeGraphEditorGui : public ImGui::NodeGraphEditor
     {
@@ -66,12 +64,15 @@ namespace Falcor
         }
     };
 
-    static NodeGraphEditorGui sNodeGraphEditor;
+    using IdToPNodeMap = std::unordered_map<uint32_t, ImGui::Node*>;
+    static std::unordered_map<RenderGraphUI*, IdToPNodeMap> spGraphIDsToNode;
+    static std::unordered_map<RenderGraphUI*, NodeGraphEditorGui> sNodeGraphEditors;
+    static NodeGraphEditorGui* spCurrentNodeEditor = nullptr;
 
     class RenderGraphNode : public ImGui::Node
     {
     public:
-        // Data for callback initialization from gui graph library
+        // Data for callback initialization from GUI graph library
         class NodeInitData
         {
         public:
@@ -141,7 +142,7 @@ namespace Falcor
         // render Gui within the nodes
         static bool renderUI(ImGui::FieldInfo& field)
         {
-            if (sNodeGraphEditor.isInited())
+            if (spCurrentNodeEditor->isInited())
             {
                 return false;
             }
@@ -160,8 +161,8 @@ namespace Falcor
             int32_t paddingSpace = glm::max(pCurrentNode->OutputsCount, pCurrentNode->InputsCount) / 2 + 1;
             
             ImVec2 oldScreenPos = ImGui::GetCursorScreenPos();
-            ImVec2 currentScreenPos{ sNodeGraphEditor.offset.x  + pCurrentNode->Pos.x * ImGui::GetCurrentWindow()->FontWindowScale, 
-                sNodeGraphEditor.offset.y + pCurrentNode->Pos.y * ImGui::GetCurrentWindow()->FontWindowScale };
+            ImVec2 currentScreenPos{ spCurrentNodeEditor->offset.x  + pCurrentNode->Pos.x * ImGui::GetCurrentWindow()->FontWindowScale,
+                spCurrentNodeEditor->offset.y + pCurrentNode->Pos.y * ImGui::GetCurrentWindow()->FontWindowScale };
             ImVec2 pinRectBoundsOffsetx{ -kPinRadius * 2.0f, kPinRadius * 4.0f };
 
             // TODO the pin colors need to be taken from the global style
@@ -413,14 +414,14 @@ namespace Falcor
     RenderGraphUI::RenderGraphUI(RenderGraph& renderGraphRef)
         : mRenderGraphRef(renderGraphRef), mNewNodeStartPosition(-40.0f, 100.0f)
     {
-        sNodeGraphEditor.clear();
+        spCurrentNodeEditor->clear();
         mNextPassName.resize(255, 0);
     }
 
     RenderGraphUI::~RenderGraphUI()
     {
-        sNodeGraphEditor.setNodeCallback(nullptr);
-        sNodeGraphEditor.setLinkCallback(nullptr);
+        spCurrentNodeEditor->setNodeCallback(nullptr);
+        spCurrentNodeEditor->setLinkCallback(nullptr);
     }
 
     static void setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor)
@@ -448,7 +449,7 @@ namespace Falcor
             RenderGraphNode* inputNode = static_cast<RenderGraphNode*>(link.InputNode), 
                            * outputNode = static_cast<RenderGraphNode*>(link.OutputNode);
 
-            if (outputNode == sNodeGraphEditor.pGraphOutputNode)
+            if (outputNode == spCurrentNodeEditor->pGraphOutputNode)
             {
                 if (!RenderGraphNode::sAddedFromGraphData)
                 {
@@ -595,7 +596,7 @@ namespace Falcor
             if (checkInWindow && !ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
             {
                 RenderGraphNode::spNodeToRenderPin = nullptr;
-                sNodeGraphEditor.selectedLink = -1;
+                spCurrentNodeEditor->selectedLink = -1;
                 ImGui::EndPopup();
                 ImGui::PopStyleVar();
                 return;
@@ -609,12 +610,12 @@ namespace Falcor
 
             }
 
-            if (sNodeGraphEditor.selectedLink != -1)
+            if (spCurrentNodeEditor->selectedLink != -1)
             {
                 ImGui::Text("Edge:");
 
-                ImGui::NodeLink& selectedLink = sNodeGraphEditor.getLink(sNodeGraphEditor.selectedLink);
-                auto edgeIt = mRenderGraphRef.mEdgeData.find(sNodeGraphEditor.selectedLink);
+                ImGui::NodeLink& selectedLink = spCurrentNodeEditor->getLink(spCurrentNodeEditor->selectedLink);
+                auto edgeIt = mRenderGraphRef.mEdgeData.find(spCurrentNodeEditor->selectedLink);
                 
                 // link exists, but is not an edge (such as graph output edge)
                 if (edgeIt != mRenderGraphRef.mEdgeData.end())
@@ -633,7 +634,7 @@ namespace Falcor
 
                     if (pGui->addCheckBox("Auto-Resolve", autoResolve))
                     {
-                        mRenderGraphRef.mEdgeData[sNodeGraphEditor.selectedLink].flags = static_cast<RenderGraph::EdgeData::Flags>(autoResolve);
+                        mRenderGraphRef.mEdgeData[spCurrentNodeEditor->selectedLink].flags = static_cast<RenderGraph::EdgeData::Flags>(autoResolve);
                         selectedLink.LinkColor = autoResolve ? mAutoResolveEdgesColor : mEdgesColor;
                     }
                 }
@@ -650,34 +651,40 @@ namespace Falcor
         RenderGraphNode::spGui = pGui;
         ImGui::GetIO().FontAllowUserScaling = true;
 
-        sNodeGraphEditor.show_top_pane = false;
-        sNodeGraphEditor.show_node_copy_paste_buttons = false;
-        sNodeGraphEditor.show_connection_names = false;
-        sNodeGraphEditor.show_left_pane = false;
+        spCurrentNodeEditor = &sNodeGraphEditors[this];
 
-        sNodeGraphEditor.setLinkCallback(setLink);
-        sNodeGraphEditor.setNodeCallback(setNode);
+        spCurrentNodeEditor->show_top_pane = false;
+        spCurrentNodeEditor->show_node_copy_paste_buttons = false;
+        spCurrentNodeEditor->show_connection_names = false;
+        spCurrentNodeEditor->show_left_pane = false;
+
+        spCurrentNodeEditor->setLinkCallback(setLink);
+        spCurrentNodeEditor->setNodeCallback(setNode);
         
         const ImVec2& mousePos = ImGui::GetMousePos();
         bool bFromDragAndDrop = true;
 
-        // update the deleted links from the GUI since the library doesn't call its own callback
+        ImGui::NodeGraphEditor::Style& style = ImGui::NodeGraphEditor::GetStyle(); 
         
+        style.color_node_frame_selected = ImGui::ColorConvertFloat4ToU32({ 226.0f / 255.0f, 190.0f / 255.0f, 42.0f / 255.0f, 0.8f });
+        style.color_node_frame_active = style.color_node_frame_selected;
+        
+        // update the deleted links from the GUI since the library doesn't call its own callback
         if (sRebuildDisplayData)
         {
             sRebuildDisplayData = false;
-            sNodeGraphEditor.setNodeCallback(nullptr);
-            sNodeGraphEditor.reset();
+            spCurrentNodeEditor->setNodeCallback(nullptr);
+            spCurrentNodeEditor->reset();
         }
         else
         {
             updatePins(false);
         }
 
-        if (!sNodeGraphEditor.isInited())
+        if (!spCurrentNodeEditor->isInited())
         {
-            sNodeGraphEditor.render();
-            if (RenderGraphNode::spNodeToRenderPin || (sNodeGraphEditor.selectedLink != -1))
+            spCurrentNodeEditor->render();
+            if (RenderGraphNode::spNodeToRenderPin || (spCurrentNodeEditor->selectedLink != -1))
             {
                 renderPopupMenu(pGui);
             }
@@ -693,7 +700,7 @@ namespace Falcor
             if (pGui->dragDropDest("RenderPassType", statement))
             {
                 dragAndDropText = statement;
-                mNewNodeStartPosition = { -sNodeGraphEditor.offset.x + mousePos.x, -sNodeGraphEditor.offset.y + mousePos.y };
+                mNewNodeStartPosition = { -spCurrentNodeEditor->offset.x + mousePos.x, -spCurrentNodeEditor->offset.y + mousePos.y };
                 mNextPassName = statement;
                 mDisplayDragAndDroptPopup = true;
             }
@@ -740,8 +747,8 @@ namespace Falcor
         // reset internal data of node if all nodes deleted
         if (!mRenderPassUI.size())
         {
-            sNodeGraphEditor.clear();
-            sNodeGraphEditor.render();
+            spCurrentNodeEditor->clear();
+            spCurrentNodeEditor->render();
             return;
         }
         
@@ -752,20 +759,23 @@ namespace Falcor
             mAllNodeTypes.push_back(nodeTypeString.c_str());
         }
         
-        sNodeGraphEditor.registerNodeTypes(mAllNodeTypes.data(), static_cast<uint32_t>(mAllNodeTypes.size()), createNode, 0, -1, 0, 0);
+        spCurrentNodeEditor->registerNodeTypes(mAllNodeTypes.data(), static_cast<uint32_t>(mAllNodeTypes.size()), createNode, 0, -1, 0, 0);
         
         spCurrentGraphUI = this;
         
         // create graph output node first
-        if (!sNodeGraphEditor.pGraphOutputNode)
+        if (!spCurrentNodeEditor->pGraphOutputNode)
         {
             RenderGraphNode::setInitData("GraphOutput", "", "inputs", 0, nullptr);
-            sNodeGraphEditor.pGraphOutputNode = sNodeGraphEditor.addNode(0, { mMaxNodePositionX + 384.0f, mNewNodeStartPosition.y });
+            spCurrentNodeEditor->pGraphOutputNode = spCurrentNodeEditor->addNode(0, { mMaxNodePositionX + 384.0f, mNewNodeStartPosition.y });
         }
         else
         {
-            RenderGraphNode* pGraphOutputNode = static_cast<RenderGraphNode*>(sNodeGraphEditor.pGraphOutputNode);
-            pGraphOutputNode->setPos({ mMaxNodePositionX + 384.0f, pGraphOutputNode->getPos().y});
+            RenderGraphNode* pGraphOutputNode = static_cast<RenderGraphNode*>(spCurrentNodeEditor->pGraphOutputNode);
+            if (pGraphOutputNode->getPos().x <= mMaxNodePositionX)
+            {
+                pGraphOutputNode->setPos({ mMaxNodePositionX + 384.0f, pGraphOutputNode->getPos().y });
+            }
         }
         
         for (auto& currentPass : mRenderPassUI)
@@ -793,12 +803,12 @@ namespace Falcor
             RenderPass* pNodeRenderPass = mRenderGraphRef.getRenderPass(currentPass.first).get();
             nameString = currentPass.first;
         
-            if (!sNodeGraphEditor.getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))
+            if (!spCurrentNodeEditor->getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))
             {
                 glm::vec2 nextPosition = getNextNodePosition(mRenderGraphRef.getPassIndex(nameString));
         
                 RenderGraphNode::setInitData(nameString, outputsString, inputsString, guiNodeID, pNodeRenderPass);
-                spIDToNode[guiNodeID] = sNodeGraphEditor.addNode(guiNodeID, ImVec2(nextPosition.x, nextPosition.y));
+                spGraphIDsToNode[this][guiNodeID] = spCurrentNodeEditor->addNode(guiNodeID, ImVec2(nextPosition.x, nextPosition.y));
                 if (bFromDragAndDrop) addRenderPass(nameString, pNodeRenderPass->getName()); 
                 bFromDragAndDrop = false;
             }
@@ -806,13 +816,14 @@ namespace Falcor
         
         updatePins();
         
-        sNodeGraphEditor.render();
+        spCurrentNodeEditor->render();
     }
 
     void RenderGraphUI::reset()
     {
-        sNodeGraphEditor.reset();
-        sNodeGraphEditor.clear();
+        spCurrentNodeEditor->pGraphOutputNode = nullptr;
+        spCurrentNodeEditor->reset();
+        spCurrentNodeEditor->clear();
         sRebuildDisplayData = true;
     }
 
@@ -821,9 +832,9 @@ namespace Falcor
         std::vector<uint32_t> executionOrder;
         std::map<float, uint32_t> posToIndex;
 
-        for ( uint32_t i = 0; i < static_cast<uint32_t>(sNodeGraphEditor.getNumNodes()); ++i)
+        for ( uint32_t i = 0; i < static_cast<uint32_t>(spCurrentNodeEditor->getNumNodes()); ++i)
         {
-            RenderGraphNode* pCurrentGraphNode = static_cast<RenderGraphNode*>(sNodeGraphEditor.getNode(i));
+            RenderGraphNode* pCurrentGraphNode = static_cast<RenderGraphNode*>(spCurrentNodeEditor->getNode(i));
             std::string currentNodeName = pCurrentGraphNode->getName();
             if (currentNodeName == "GraphOutput") continue;
             float position = pCurrentGraphNode->getPos().x;
@@ -840,6 +851,8 @@ namespace Falcor
 
     void RenderGraphUI::updatePins(bool addLinks)
     {
+        std::unordered_map<uint32_t, ImGui::Node*>& pIDToNode = spGraphIDsToNode[this];
+        
         //  Draw pin connections. All the nodes have to be added to the GUI before the connections can be drawn
         for (auto& currentPass : mRenderPassUI)
         {
@@ -856,23 +869,23 @@ namespace Falcor
                     {
                         for (const auto& connectedPin : (inputPins->second))
                         {
-                            if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                spIDToNode[connectedPin.second], connectedPin.first))
+                            if (!spCurrentNodeEditor->isLinkPresent(pIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                pIDToNode[connectedPin.second], connectedPin.first))
                             {
                                 RenderGraphNode::sAddedFromGraphData = true;
                                 
                                 // get edge data from the referenced graph
-                                uint32_t edgeId = mInputPinStringToLinkID[currentPass.first + "." + spIDToNode[connectedPin.second]->getName()];
+                                uint32_t edgeId = mInputPinStringToLinkID[currentPass.first + "." + pIDToNode[connectedPin.second]->getName()];
 
                                 // set color if autogenerated
                                 uint32_t currentEdgeColor = mEdgesColor;
                                 if (mRenderGraphRef.mEdgeData[edgeId].autoGenerated) currentEdgeColor = mAutoGenEdgesColor;
 
-                                sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                    spIDToNode[connectedPin.second], connectedPin.first, false, currentEdgeColor);
+                                spCurrentNodeEditor->addLink(pIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                    pIDToNode[connectedPin.second], connectedPin.first, false, currentEdgeColor);
 
-                                static_cast<RenderGraphNode*>(spIDToNode[connectedPin.second])->mInputPinConnected[connectedPin.first] = true;
-                                static_cast<RenderGraphNode*>(spIDToNode[currentPassUI.mGuiNodeID])->mOutputPinConnected[currentPinUI.mGuiPinID] = true;
+                                static_cast<RenderGraphNode*>(pIDToNode[connectedPin.second])->mInputPinConnected[connectedPin.first] = true;
+                                static_cast<RenderGraphNode*>(pIDToNode[currentPassUI.mGuiNodeID])->mOutputPinConnected[currentPinUI.mGuiPinID] = true;
                             }
                         }
                     }
@@ -880,13 +893,13 @@ namespace Falcor
                     // mark graph outputs to graph output node
                     if (currentPinUI.mIsGraphOutput)
                     {
-                        if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                            sNodeGraphEditor.pGraphOutputNode, 0))
+                        if (!spCurrentNodeEditor->isLinkPresent(pIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                            spCurrentNodeEditor->pGraphOutputNode, 0))
                         {
                             RenderGraphNode::sAddedFromGraphData = true;
                             ImU32 linkColor = ImGui::GetColorU32({ mGraphOutputsColor.x, mGraphOutputsColor.y, mGraphOutputsColor.z, mGraphOutputsColor.w });
-                            sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                sNodeGraphEditor.pGraphOutputNode, 0, false, linkColor);
+                            spCurrentNodeEditor->addLink(pIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                spCurrentNodeEditor->pGraphOutputNode, 0, false, linkColor);
                         }
                     }
                 }
@@ -895,12 +908,12 @@ namespace Falcor
                     // remove graph output links
                     if (currentPinUI.mIsGraphOutput)
                     {
-                        if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                            sNodeGraphEditor.pGraphOutputNode, 0))
+                        if (!spCurrentNodeEditor->isLinkPresent(pIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                            spCurrentNodeEditor->pGraphOutputNode, 0))
                         {
                             removeOutput(currentPass.first, currentPinUI.mPinName);
-                            sNodeGraphEditor.removeLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                sNodeGraphEditor.pGraphOutputNode, 0);
+                            spCurrentNodeEditor->removeLink(pIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
+                                spCurrentNodeEditor->pGraphOutputNode, 0);
                         }
                     }
                 }
@@ -921,20 +934,20 @@ namespace Falcor
                     const auto& connectedNodeUI = mRenderPassUI[currentPinUI.mConnectedNodeName];
                     uint32_t inputPinID = connectedNodeUI.mNameToIndexOutput.find(currentPinUI.mConnectedPinName)->second;
 
-                    if (!sNodeGraphEditor.isLinkPresent(spIDToNode[connectedNodeUI.mGuiNodeID], inputPinID,
-                        spIDToNode[inputIDs.second],inputIDs.first ))
+                    if (!spCurrentNodeEditor->isLinkPresent(pIDToNode[connectedNodeUI.mGuiNodeID], inputPinID,
+                        pIDToNode[inputIDs.second],inputIDs.first ))
                     {
                         auto edgeIt = mInputPinStringToLinkID.find(currentPass.first + "." + currentPinName);
                         assert(edgeIt != mInputPinStringToLinkID.end()); 
                         uint32_t edgeID = edgeIt->second;
                         
-                        removeEdge(spIDToNode[connectedNodeUI.mGuiNodeID]->getName(), spIDToNode[inputIDs.second]->getName(), mRenderGraphRef.mEdgeData[edgeID].srcField, mRenderGraphRef.mEdgeData[edgeID].dstField);
+                        removeEdge(pIDToNode[connectedNodeUI.mGuiNodeID]->getName(), pIDToNode[inputIDs.second]->getName(), mRenderGraphRef.mEdgeData[edgeID].srcField, mRenderGraphRef.mEdgeData[edgeID].dstField);
                         mRenderGraphRef.removeEdge(edgeID);
 
                         currentPinUI.mConnectedNodeName = "";
 
-                        static_cast<RenderGraphNode*>(spIDToNode[inputIDs.second])->mInputPinConnected[inputIDs.first] = false;
-                        static_cast<RenderGraphNode*>(spIDToNode[connectedNodeUI.mGuiNodeID])->mOutputPinConnected[inputPinID] = false;
+                        static_cast<RenderGraphNode*>(pIDToNode[inputIDs.second])->mInputPinConnected[inputIDs.first] = false;
+                        static_cast<RenderGraphNode*>(pIDToNode[connectedNodeUI.mGuiNodeID])->mOutputPinConnected[inputPinID] = false;
 
                         continue;
                     }
@@ -976,7 +989,7 @@ namespace Falcor
             }
         }
 
-        RenderGraphNode* pGraphOutputNode = static_cast<RenderGraphNode*>(sNodeGraphEditor.pGraphOutputNode);
+        RenderGraphNode* pGraphOutputNode = static_cast<RenderGraphNode*>(spCurrentNodeEditor->pGraphOutputNode);
         glm::vec2 graphOutputNodePos = pGraphOutputNode->getPos();
         if (graphOutputNodePos.x <= newNodePosition.x)
         {

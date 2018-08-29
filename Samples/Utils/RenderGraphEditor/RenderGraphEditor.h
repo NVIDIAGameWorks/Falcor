@@ -67,4 +67,5 @@ private:
     bool mViewerRunning = false;
     size_t mViewerProcess = 0;
     bool mCanPreview = false;
+    bool mResetGuiWindows = false;
 };

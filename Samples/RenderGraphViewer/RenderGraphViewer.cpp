@@ -250,7 +250,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                     }
                 }
 
-                glm::vec2 imagePreviewSize = pGui->getWindowSize();
+                glm::vec2 imagePreviewSize = pGui->getCurrentWindowSize();
                 float imageAspectRatio = static_cast<float>(pPreviewTex->getHeight()) / static_cast<float>(pPreviewTex->getWidth());
                 // get size of window to scale image correctly
                 imagePreviewSize.y = imagePreviewSize.x * imageAspectRatio;
@@ -323,6 +323,7 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     mSceneFilename = filename;
     mCamControl.attachCamera(mpScene->getCamera(0));
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
+    if (mpGraph) mpGraph->setScene(mpScene);
 }
 
 void RenderGraphViewer::fileWriteCallback(const std::string& fileName)

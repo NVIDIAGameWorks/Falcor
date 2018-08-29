@@ -71,6 +71,8 @@ namespace Falcor
         style.Colors[ImGuiCol_FrameBg].z *= 0.1f;
         style.ScrollbarSize *= 0.7f;
 
+        style.Colors[ImGuiCol_MenuBarBg] = style.Colors[ImGuiCol_WindowBg];
+
         // Create the pipeline state cache
         mpPipelineState = GraphicsState::create();
 
@@ -602,6 +604,7 @@ namespace Falcor
 
     bool Gui::dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString)
     {
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) ImGui::SetWindowFocus();
         if (!(ImGui::IsWindowFocused())) return false;
         bool b = ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID);
         if (b)
@@ -735,7 +738,23 @@ namespace Falcor
         ImGui::End();
     }
 
-    glm::vec2 Gui::getWindowSize()
+    void Gui::setCurrentWindowPos(uint32_t x, uint32_t y)
+    {
+        ImGui::SetWindowPos({ static_cast<float>(x), static_cast<float>(y) });
+    }
+
+    glm::vec2 Gui::getCurrentWindowPos()
+    {
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        return { windowPos.x, windowPos.y };
+    }
+
+    void Gui::setCurrentWindowSize(uint32_t width, uint32_t height)
+    {
+        ImGui::SetWindowSize({ static_cast<float>(width), static_cast<float>(height) });
+    }
+
+    glm::vec2 Gui::getCurrentWindowSize()
     {
         ImVec2 windowSize = ImGui::GetWindowSize();
         return {windowSize.x, windowSize.y};

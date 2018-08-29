@@ -1,4 +1,3 @@
-SetScene SunTemple/SunTemple.fscene
 AddRenderPass CascadedShadowMaps CascadedShadowMaps
 AddRenderPass BlitPass BlitPass
 AddRenderPass SSAO SSAO
