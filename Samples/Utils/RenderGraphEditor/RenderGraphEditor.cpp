@@ -178,7 +178,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (pGui->addButton("Auto-Generate Edges"))
     {
-        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getExecutionOrder();
+        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getPassOrder();
         mpGraphs[mCurrentGraphIndex]->autoGenerateEdges(executionOrder);
         mRenderGraphUIs[mCurrentGraphIndex].sRebuildDisplayData = true;
     }
@@ -349,7 +349,7 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     }
 
     pSample->toggleText(false);
-    pSample->toggleGlobalUI(false);
+    pSample->setUiMode(Sample::UIMode::HideGlobal);
     
     if (mFilePath.size())
     {

@@ -114,7 +114,7 @@ namespace Falcor
 
         /** Get an execution order for graph based on the visual layout of the graph
         */
-        std::vector<uint32_t> getExecutionOrder();
+        std::vector<uint32_t> getPassOrder();
 
         /** Flag to re-traverse the graph and build on of the intermediate data again.
          */

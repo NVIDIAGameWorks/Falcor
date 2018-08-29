@@ -90,7 +90,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
     }
     
-    if (mEditorProcess && mEditorRunning)
+    if (mEditorProcess)
     {
         if (!isProcessRunning(mEditorProcess))
         {

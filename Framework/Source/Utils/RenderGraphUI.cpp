@@ -520,16 +520,16 @@ namespace Falcor
 
         pGui->addText("ResourceFlags : ");
 
-        if (static_cast<bool>(type & RenderPassReflection::Field::Type::Input) &&
-            static_cast<bool>(type & RenderPassReflection::Field::Type::Output))
+        if (is_set(type, RenderPassReflection::Field::Type::Input) &&
+            is_set(type, RenderPassReflection::Field::Type::Output))
         {
             pGui->addText("InputOutput", true);
         }
-        else if (static_cast<bool>(type & RenderPassReflection::Field::Type::Input))
+        else if (is_set(type, RenderPassReflection::Field::Type::Input))
         {
             pGui->addText("Input", true);
         }
-        else if (static_cast<bool>(type & RenderPassReflection::Field::Type::Output))
+        else if (is_set(type, RenderPassReflection::Field::Type::Output))
         {
             pGui->addText("Output", true);
         }
@@ -787,9 +787,9 @@ namespace Falcor
         sRebuildDisplayData = true;
     }
 
-    std::vector<uint32_t> RenderGraphUI::getExecutionOrder()
+    std::vector<uint32_t> RenderGraphUI::getPassOrder()
     {
-        std::vector<uint32_t> executionOrder;
+        std::vector<uint32_t> passOrder;
         std::map<float, uint32_t> posToIndex;
 
         for ( uint32_t i = 0; i < static_cast<uint32_t>(sNodeGraphEditor.getNumNodes()); ++i)
@@ -803,10 +803,10 @@ namespace Falcor
 
         for (const auto& posIndexPair : posToIndex)
         {
-            executionOrder.push_back(posIndexPair.second);
+            passOrder.push_back(posIndexPair.second);
         }
 
-        return executionOrder;
+        return passOrder;
     }
 
     void RenderGraphUI::updatePins(bool addLinks)

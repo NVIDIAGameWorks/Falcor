@@ -107,7 +107,8 @@ namespace Falcor
             std::string renderPassClassName = pCurrentRenderPass->getName();
             
             // need to deserialize the serialization data. stored in the RenderPassLibrary
-            RenderPassSerializer renderPassSerializerRef = pCurrentRenderPass->serialize();
+            RenderPassSerializer renderPassSerializerRef;
+            pCurrentRenderPass->serialize(renderPassSerializerRef);
 
             for (size_t i = 0; i < renderPassSerializerRef.getVariableCount(); ++i )
             {

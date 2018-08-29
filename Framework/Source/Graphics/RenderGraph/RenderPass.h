@@ -75,7 +75,7 @@ namespace Falcor
 
         /** Serialize pass into serialization object
         */
-        virtual RenderPassSerializer serialize() { return {}; }
+        virtual void serialize(RenderPassSerializer& renderPassSerializer) { }
 
         /** Render the pass's UI
         */
