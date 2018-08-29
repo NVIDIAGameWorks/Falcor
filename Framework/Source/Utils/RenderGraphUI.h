@@ -172,5 +172,7 @@ namespace Falcor
 
         // to avoid attempting to write changes every frame.
         float mTimeSinceLastUpdate = 0.0f;
+        bool mDisplayDragAndDroptPopup = false;
+        std::string  mNextPassName = "";
     };
 }

@@ -114,22 +114,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes", screenWidth / 2, screenHeight / 4 - 20, screenWidth / 4, screenHeight * 3 / 4 + 20, true, false);
+    pGui->pushWindow("Render Passes", screenWidth / 2, screenHeight / 4 - 20, screenWidth / 4, screenHeight * 3 / 4 + 20, true);
 
     size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
     pGui->beginColumns(5);
     for (size_t i = 0; i < numRenderPasses; ++i)
     {
         std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
-        std::string renderPassName = renderPassClassName;
-        while (mpGraphs[mCurrentGraphIndex]->renderPassExist(renderPassName))
-        {
-            renderPassName.push_back('_');
-        }
-        std::string command = std::string("AddRenderPass ") + renderPassName + " " + renderPassClassName;
         pGui->addRect({ 148.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
         pGui->addDummyItem((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 44.0f });
-        pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassScript", command);
+        pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassType", renderPassClassName);
         pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
         pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), false);
         pGui->nextColumn();
@@ -138,14 +132,14 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     pGui->popWindow();
 
     // push a sub GUI window for the node editor
-    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 20, false, false);
+    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 20, false);
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
     mCurrentLog += RenderGraphUI::sLogString;
     RenderGraphUI::sLogString.clear();
 
-    pGui->pushWindow("Graph Editor Settings", screenWidth / 4, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true, false);
+    pGui->pushWindow("Graph Editor Settings", screenWidth / 4, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true);
 
     uint32_t selection = static_cast<uint32_t>(mCurrentGraphIndex);
     if (mOpenGraphNames.size() && pGui->addDropdown("Open Graph", mOpenGraphNames, selection))
@@ -235,7 +229,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     pGui->popWindow();
 
-    pGui->pushWindow("output", screenWidth / 4, screenHeight / 4 - 20, screenWidth * 3 / 4, screenHeight * 3 / 4 + 20, true, false);
+    pGui->pushWindow("output", screenWidth / 4, screenHeight / 4 - 20, screenWidth * 3 / 4, screenHeight * 3 / 4 + 20, true);
     renderLogWindow(pGui);
     pGui->popWindow();
 

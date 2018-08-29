@@ -414,6 +414,7 @@ namespace Falcor
         : mRenderGraphRef(renderGraphRef), mNewNodeStartPosition(-40.0f, 100.0f)
     {
         sNodeGraphEditor.clear();
+        mNextPassName.resize(255, 0);
     }
 
     RenderGraphUI::~RenderGraphUI()
@@ -645,6 +646,7 @@ namespace Falcor
 
     void RenderGraphUI::renderUI(Gui* pGui)
     {
+        static std::string dragAndDropText;
         RenderGraphNode::spGui = pGui;
         ImGui::GetIO().FontAllowUserScaling = true;
 
@@ -688,14 +690,40 @@ namespace Falcor
             }
 
             std::string statement;
-            if (pGui->dragDropDest("RenderPassScript", statement))
+            if (pGui->dragDropDest("RenderPassType", statement))
             {
-                RenderGraphLoader::ExecuteStatement(statement, mRenderGraphRef);
+                dragAndDropText = statement;
                 mNewNodeStartPosition = { -sNodeGraphEditor.offset.x + mousePos.x, -sNodeGraphEditor.offset.y + mousePos.y };
-                mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
-                bFromDragAndDrop = true;
-                sRebuildDisplayData = true;
-                if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
+                mNextPassName = statement;
+                mDisplayDragAndDroptPopup = true;
+            }
+
+            if (mDisplayDragAndDroptPopup)
+            {
+                pGui->pushWindow("CreateNewGraph", 256, 128, 
+                    static_cast<uint32_t>(mNewNodeStartPosition.x), static_cast<uint32_t>(mNewNodeStartPosition.y));
+
+                pGui->addTextBox("Pass Name", mNextPassName);
+                if (pGui->addButton("create##renderpass")) // multiple buttons have create
+                {
+                    while (mRenderGraphRef.renderPassExist(mNextPassName))
+                    {
+                        mNextPassName.push_back('_');
+                    }
+
+                    RenderGraphLoader::ExecuteStatement("AddRenderPass " + mNextPassName + " " + dragAndDropText, mRenderGraphRef);
+                    bFromDragAndDrop = true;
+                    sRebuildDisplayData = true;
+                    mDisplayDragAndDroptPopup = false;
+                    mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
+                    if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
+                }
+                if (pGui->addButton("cancel##renderPass"))
+                {
+                    mDisplayDragAndDroptPopup = false;
+                }
+
+                pGui->popWindow();
             }
             else
             {
@@ -724,7 +752,7 @@ namespace Falcor
             mAllNodeTypes.push_back(nodeTypeString.c_str());
         }
         
-        sNodeGraphEditor.registerNodeTypes(mAllNodeTypes.data(), static_cast<uint32_t>(mAllNodeTypes.size()), createNode, 0, -1, 0, 1);
+        sNodeGraphEditor.registerNodeTypes(mAllNodeTypes.data(), static_cast<uint32_t>(mAllNodeTypes.size()), createNode, 0, -1, 0, 0);
         
         spCurrentGraphUI = this;
         
@@ -887,10 +915,7 @@ namespace Falcor
 
                     // draw label for input pin
                 
-                    if (!currentPinUI.mConnectedNodeName.size())
-                    {
-                        continue;
-                    }
+                    if (!currentPinUI.mConnectedNodeName.size()) continue;
 
                     std::pair<uint32_t, uint32_t> inputIDs{ currentPinUI.mGuiPinID, currentPassUI.mGuiNodeID };
                     const auto& connectedNodeUI = mRenderPassUI[currentPinUI.mConnectedNodeName];

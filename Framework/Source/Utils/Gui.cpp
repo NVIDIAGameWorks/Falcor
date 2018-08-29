@@ -602,6 +602,7 @@ namespace Falcor
 
     bool Gui::dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString)
     {
+        if (!(ImGui::IsWindowFocused())) return false;
         bool b = ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID);
         if (b)
         {
