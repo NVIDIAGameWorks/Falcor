@@ -35,7 +35,11 @@ namespace Falcor
 {
     static const char* kSrcName = "src";
     static const char* kDstName = "dst";
-    static Gui::DropdownList sDisplayOutput;
+    const Gui::DropdownList kDisplayOutput = {
+        { (uint32_t)Bloom::OutputMode::FinalBloom, "Final Bloom"},
+        { (uint32_t)Bloom::OutputMode::HighPassOutput, "High Pass Output" },
+        { (uint32_t)Bloom::OutputMode::BlurTexture, "Blur Texture" }
+    };
 
     Bloom::SharedPtr Bloom::create(float threshold, uint32_t kernelSize, float sigma)
     {
@@ -68,17 +72,6 @@ namespace Falcor
 
         mpFilter = PassFilter::create(PassFilter::Type::HighPass, threshold);
         mpFilterResultFbo = Fbo::create();
-
-        Gui::DropdownValue value;
-        value.label = "Final Bloom";
-        value.value = 0;
-        sDisplayOutput.push_back(value);
-        value.label = "HighPass Output";
-        value.value = 1;
-        sDisplayOutput.push_back(value);
-        value.label = "Blur Texture";
-        value.value = 2;
-        sDisplayOutput.push_back(value);
     }
 
     Bloom::SharedPtr Bloom::deserialize(const RenderPassSerializer& serializer)
@@ -154,9 +147,13 @@ namespace Falcor
 
         pRenderContext->blit(pSrcTex->getSRV(), mpLowResTexture->getRTV());
 
-        if (mOutputMode == OutputMode::HighPassOutput)
+        if (mOutputMode != OutputMode::FinalBloom)
         {
             mpFilter->execute(pRenderContext, mpLowResTexture, pFbo);
+            if (mOutputMode == OutputMode::BlurTexture)
+            {
+                mpBlur->execute(pRenderContext, pFbo->getColorTexture(0), pFbo);
+            }
             return;
         }
         
@@ -167,22 +164,15 @@ namespace Falcor
         mpBlur->execute(pRenderContext, pHighPassResult, mpFilterResultFbo);
 
         // Execute bloom
-        if (mOutputMode == OutputMode::FinalBloom)
-        {
-            mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
-            GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
-            pState->pushFbo(pFbo);
-            pRenderContext->pushGraphicsVars(mpVars);
+        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
+        GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
+        pState->pushFbo(pFbo);
+        pRenderContext->pushGraphicsVars(mpVars);
 
-            mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
+        mpBlitPass->execute(pRenderContext, nullptr, mpAdditiveBlend);
 
-            pRenderContext->popGraphicsVars();
-            pState->popFbo();
-        }
-        else if (mOutputMode == OutputMode::BlurTexture)
-        {
-            pRenderContext->blit(mpFilterResultFbo->getColorTexture(0)->getSRV(), pFbo->getColorTexture(0)->getRTV());
-        }
+        pRenderContext->popGraphicsVars();
+        pState->popFbo();
     }
 
     void Bloom::renderUI(Gui* pGui, const char* uiGroup)
@@ -199,13 +189,10 @@ namespace Falcor
             }
 
             float sigma = mpBlur->getSigma();
-            if (pGui->addFloatVar("Sigma", sigma, 0.001f))
-            {
-                mpBlur->setSigma(sigma);
-            }
+            if (pGui->addFloatVar("Sigma", sigma, 0.001f))  mpBlur->setSigma(sigma);
 
             uint32_t outputMode = static_cast<uint32_t>(mOutputMode);
-            if (pGui->addDropdown("Output texture", sDisplayOutput, outputMode))
+            if (pGui->addDropdown("Output texture", kDisplayOutput, outputMode))
             {
                 mOutputMode = static_cast<OutputMode>(outputMode);
             }

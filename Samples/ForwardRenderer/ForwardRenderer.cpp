@@ -291,7 +291,7 @@ void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTarge
         mpBloom->execute(pContext, mpResolveFbo->getColorTexture(0), mpResolveFbo);
     }
 
-    mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo, mpSceneRenderer->getScene());
+    mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo, mpSceneRenderer->getScene()->getActiveCamera());
     pContext->blit(mpResolveFbo->getColorTexture(0)->getSRV(), pTargetFbo->getColorTexture(0)->getRTV());
 }
 

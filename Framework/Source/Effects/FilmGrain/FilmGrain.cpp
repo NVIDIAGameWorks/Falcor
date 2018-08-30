@@ -39,7 +39,6 @@ namespace Falcor
     static const char* kInputOutputName = "color";
     const uint32_t kMaxKernelSize = 15;
 
-
     FilmGrain::SharedPtr FilmGrain::create(float grainSize, float intensity,
         const glm::vec3& grainColor, const glm::vec2& luminanceRange, bool useLuminanceRange, bool useColoredNoise)
     {
@@ -74,9 +73,7 @@ namespace Falcor
         mpVars = GraphicsVars::create(pReflector);
         mpVars->setSampler("gSampler", mpSampler);
 
-        mpVars["filmGrain"]["lumRange"] = mLuminanceRange;
-        mpVars["filmGrain"]["intensity"] = mIntensity;
-        mpVars["filmGrain"]["grainSize"] = 1.0f / mGrainSize;
+        mpVars["filmGrain"]["grainInfo"] = glm::vec4(mIntensity, 1.0f / mGrainSize, mLuminanceRange.x, mLuminanceRange.y);
         mpVars["filmGrain"]["grainTint"] = mUseColoredNoise ? mGrainColor : glm::vec3(1.0f, 1.0f, 1.0f);
         
         if (mUseLuminanceRange)
@@ -148,6 +145,8 @@ namespace Falcor
         
         mpNoiseTex = Texture::create2D(
             noiseTexWidth, noiseTexHeight, ResourceFormat::R32Float, 1, 1, (void*)data.data(), Resource::BindFlags::ShaderResource);
+
+        mpVars["filmGrain"]["grainInfo"] = glm::vec4(mIntensity, 1.0f / mGrainSize, mLuminanceRange.x, mLuminanceRange.y);
     }
 
     void FilmGrain::execute(RenderContext* pRenderContext, Fbo::SharedPtr pFbo)
@@ -167,7 +166,6 @@ namespace Falcor
             createNoiseTexture();
         }
 
-        mpVars["filmGrain"]["intensity"] = mIntensity;
         if (!mPaused)
         {
             mpVars["filmGrain"]["randOffset"] = glm::vec2(std::rand() % 2000 / 2000.0f, std::rand() % 2000 / 2000.0f);
@@ -190,15 +188,10 @@ namespace Falcor
         {
             if (pGui->addFloatVar("Grain Size", mGrainSize, 0.001f))
             {
-                mpVars["filmGrain"]["grainSize"] = 1.0f / mGrainSize;
                 createNoiseTexture();
             }
-
-            if (pGui->addFloatVar("Intensity", mIntensity, 0.001f, 1.0f))
-            {
-                mpVars["filmGrain"]["intensity"] = mIntensity;
-            }
-
+            bool updateGrainInfo = pGui->addFloatVar("Intensity", mIntensity, 0.001f, 1.0f);
+            
             if (pGui->addCheckBox("Use Luminance Range", mUseLuminanceRange))
             {
                 if (mUseLuminanceRange)
@@ -216,19 +209,15 @@ namespace Falcor
                 mpVars["filmGrain"]["grainTint"] = mUseColoredNoise ? mGrainColor : glm::vec3(1.0f, 1.0f, 1.0f);
             }
 
-            if (mUseColoredNoise)
+            if (mUseColoredNoise && pGui->addRgbColor("Grain Color", mGrainColor))
             {
-                if (pGui->addRgbColor("Grain Color", mGrainColor))
-                {
-                    mpVars["filmGrain"]["grainTint"] = mGrainColor;
-                }
+                mpVars["filmGrain"]["grainTint"] = mGrainColor;
             }
-
             pGui->addCheckBox("Pause", mPaused);
 
-            if (mUseLuminanceRange)
+            if (updateGrainInfo || (mUseLuminanceRange && pGui->addFloat2Var("Luminance Range", mLuminanceRange, 0.0f)))
             {
-                mDirty |= pGui->addFloat2Var("Luminance Range", mLuminanceRange, 0.0f);
+                mpVars["filmGrain"]["grainInfo"] = glm::vec4(mIntensity, 1.0f / mGrainSize, mLuminanceRange.x, mLuminanceRange.y);
             }
 
             pGui->endGroup();

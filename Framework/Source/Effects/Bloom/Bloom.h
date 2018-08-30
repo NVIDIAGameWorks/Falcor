@@ -41,6 +41,13 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<Bloom>;
+        
+        enum class OutputMode
+        {
+            FinalBloom,
+            HighPassOutput,
+            BlurTexture
+        } mOutputMode;
 
         static SharedPtr create(float threshold = 1.0f, uint32_t kernelSize = 7, float sigma = 2.5f);
 
@@ -71,13 +78,6 @@ namespace Falcor
     private:
         Bloom(float threshold, uint32_t kernelSize, float sigma);
         void updateLowResTexture(const Texture::SharedPtr& pTexture);
-
-        enum OutputMode
-        {
-            FinalBloom,
-            HighPassOutput,
-            BlurTexture
-        } mOutputMode;
 
         PassFilter::SharedPtr mpFilter;
         Fbo::SharedPtr mpTargetFbo;
