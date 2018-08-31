@@ -47,7 +47,7 @@ namespace Falcor
             FinalBloom,
             HighPassOutput,
             BlurTexture
-        } mOutputMode;
+        };
 
         static SharedPtr create(float threshold = 1.0f, uint32_t kernelSize = 7, float sigma = 2.5f);
 
@@ -79,6 +79,7 @@ namespace Falcor
         Bloom(float threshold, uint32_t kernelSize, float sigma);
         void updateLowResTexture(const Texture::SharedPtr& pTexture);
 
+        OutputMode mOutputMode = OutputMode::FinalBloom;
         PassFilter::SharedPtr mpFilter;
         Fbo::SharedPtr mpTargetFbo;
         Fbo::SharedPtr mpFilterResultFbo;

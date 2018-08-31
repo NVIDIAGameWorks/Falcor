@@ -32,7 +32,6 @@
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
 #include "Graphics/RenderGraph/RenderPassSerializer.h"
-#include "Externals/GLM/glm/gtc/noise.hpp"
 
 namespace Falcor
 {
@@ -68,8 +67,6 @@ namespace Falcor
 
         ProgramReflection::SharedConstPtr pReflector = mpBlitPass->getProgram()->getReflector();
         mpVars = GraphicsVars::create(pReflector);
-        mSrcTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("srcTex");
-        mNoiseTexLoc = pReflector->getDefaultParameterBlock()->getResourceBinding("noiseTex");
         mpVars = GraphicsVars::create(pReflector);
         mpVars->setSampler("gSampler", mpSampler);
 
@@ -128,23 +125,11 @@ namespace Falcor
     {
         const uint32_t noiseTexHeight = 512;
         const uint32_t noiseTexWidth = static_cast<uint32_t>(512.0f * (mResolution.x / mResolution.y));
-        std::vector<float> data;
-        data.resize(noiseTexHeight * noiseTexWidth);
         const float denomY = glm::max(0.001f, mGrainSize * mResolution.y / (512.0f));
         const float denomX = glm::max(0.001f, mGrainSize * mResolution.x / (static_cast<float>(noiseTexWidth)));
-        
-        for (uint32_t i = 0; i < noiseTexHeight; ++i)
-        {
-            for (uint32_t j = 0; j < noiseTexWidth; ++j)
-            {
-                float2 noiseInput{ static_cast<float>(j) / denomX, static_cast<float>(i) / denomY };
-                float2 noiseInput1{ static_cast<float>(noiseTexWidth - j - 1) / denomX, static_cast<float>(noiseTexHeight - i - 1) / denomY };
-                data[i * noiseTexWidth + j] = poisson(mIntensity * 2.0f, glm::simplex(noiseInput1) * glm::simplex(noiseInput));
-            }
-        }
-        
+        std::vector<uint8_t> data = createNoise(noiseTexWidth, noiseTexHeight, {denomY, denomX}, mIntensity * 2.0f);
         mpNoiseTex = Texture::create2D(
-            noiseTexWidth, noiseTexHeight, ResourceFormat::R32Float, 1, 1, (void*)data.data(), Resource::BindFlags::ShaderResource);
+            noiseTexWidth, noiseTexHeight, ResourceFormat::R8Snorm, 1, 1, (void*)data.data(), Resource::BindFlags::ShaderResource);
 
         mpVars["filmGrain"]["grainInfo"] = glm::vec4(mIntensity, 1.0f / mGrainSize, mLuminanceRange.x, mLuminanceRange.y);
     }
@@ -171,8 +156,8 @@ namespace Falcor
             mpVars["filmGrain"]["randOffset"] = glm::vec2(std::rand() % 2000 / 2000.0f, std::rand() % 2000 / 2000.0f);
         }
         
-        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pFbo->getColorTexture(0)->getSRV());
-        mpVars->getDefaultBlock()->setSrv(mNoiseTexLoc, 0, mpNoiseTex->getSRV());
+        mpVars->getDefaultBlock()->setTexture("srcTex", pFbo->getColorTexture(0));
+        mpVars->getDefaultBlock()->setTexture("noiseTex", mpNoiseTex);
 
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         pState->pushFbo(pFbo);
@@ -215,12 +200,12 @@ namespace Falcor
             }
             pGui->addCheckBox("Pause", mPaused);
 
-            if (updateGrainInfo || (mUseLuminanceRange && pGui->addFloat2Var("Luminance Range", mLuminanceRange, 0.0f)))
+            if ((mUseLuminanceRange && pGui->addFloat2Var("Luminance Range", mLuminanceRange, 0.0f)) || updateGrainInfo)
             {
                 mpVars["filmGrain"]["grainInfo"] = glm::vec4(mIntensity, 1.0f / mGrainSize, mLuminanceRange.x, mLuminanceRange.y);
             }
 
-            pGui->endGroup();
+            if(uiGroup) pGui->endGroup();
         }
     }
 

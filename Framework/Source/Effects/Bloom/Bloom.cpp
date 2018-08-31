@@ -51,7 +51,7 @@ namespace Falcor
     {
         mpBlur = GaussianBlur::create(kernelSize, sigma);
         mpBlitPass = FullScreenPass::create("Framework/Shaders/Blit.vs.slang", "Framework/Shaders/Blit.ps.slang");
-        mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("gTex");
+        mSrcTexLoc = mpBlitPass->getProgram()->getReflector()->getDefaultParameterBlock()->getResourceBinding("");
         mpVars = GraphicsVars::create(mpBlitPass->getProgram()->getReflector());
         mpVars["SrcRectCB"]["gOffset"] = vec2(0.0f);
         mpVars["SrcRectCB"]["gScale"] = vec2(1.0f);
@@ -164,7 +164,7 @@ namespace Falcor
         mpBlur->execute(pRenderContext, pHighPassResult, mpFilterResultFbo);
 
         // Execute bloom
-        mpVars->getDefaultBlock()->setSrv(mSrcTexLoc, 0, pHighPassResult->getSRV());
+        mpVars->getDefaultBlock()->setTexture("gTex", pHighPassResult);
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         pState->pushFbo(pFbo);
         pRenderContext->pushGraphicsVars(mpVars);

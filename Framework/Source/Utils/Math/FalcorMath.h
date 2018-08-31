@@ -30,6 +30,7 @@
 #include "glm/geometric.hpp"
 #include "glm/mat4x4.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/noise.hpp"
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -105,6 +106,32 @@ namespace Falcor
     inline float poisson(float frequency, float random)
     {
         return -std::logf(1.0f - random) / frequency;
+    }
+
+    /** Returns a vector of noise values to be used for textures
+        \param[in] width Width of noise region
+        \param[in] height Height of noise region
+        \param[in] noiseResolution Input value for scaling noise. 
+            Higher values result in closer zoom.
+        \param[in] intensity Intensity 
+    */
+    inline std::vector<uint8_t> createNoise(uint32_t width, uint32_t height, const glm::vec2& noiseResolution, float frequency)
+    {
+        std::vector<uint8_t> noise;
+        noise.resize(width * height);
+
+        for (uint32_t i = 0; i < height; ++i)
+        {
+            for (uint32_t j = 0; j < width; ++j)
+            {
+                glm::vec2 noiseInput{ static_cast<float>(j) / noiseResolution.x, static_cast<float>(i) / noiseResolution.y };
+                glm::vec2 noiseInput1{ static_cast<float>(width - j - 1) / noiseResolution.x, static_cast<float>(height - i - 1) / noiseResolution.y };
+                float noiseVal = poisson(frequency, glm::simplex(noiseInput1) * glm::simplex(noiseInput));
+                noise[i * width + j] = static_cast<uint8_t>(glm::round(glm::clamp(noiseVal, 0.0f, 1.0f) * 255.0f));
+            }
+        }
+
+        return noise;
     }
 
     /** Creates a rotation matrix from individual basis vectors.

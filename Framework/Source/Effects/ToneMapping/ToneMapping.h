@@ -125,29 +125,32 @@ namespace Falcor
     private:
         ToneMapping(Operator op);
         void createLuminanceFbo(const Texture::SharedPtr& pSrc);
-        
-        /** Physically based lens exposer value
-        */
-        float calculateEV100();
 
         Operator mOperator;
         FullScreenPass::UniquePtr mpToneMapPass;
         FullScreenPass::UniquePtr mpLuminancePass;
+        FullScreenPass::UniquePtr mpAdaptionPass;
         Fbo::SharedPtr mpLuminanceFbo;
+        Fbo::SharedPtr mpAdaptationFbo;
+        Texture::SharedPtr mpAdaptationTextures[2];
+        uint32_t mAdaptionTexIndex = 1;
         GraphicsVars::SharedPtr mpToneMapVars;
         GraphicsVars::SharedPtr mpLuminanceVars;
+        GraphicsVars::SharedPtr mpAdaptationVars;
+        ConstantBuffer::SharedPtr mpAdaptationCBuffer;
         ConstantBuffer::SharedPtr mpToneMapCBuffer;
         Sampler::SharedPtr mpPointSampler;
         Sampler::SharedPtr mpLinearSampler;
         Camera::SharedPtr mpCamera = nullptr;
         bool mEnableEyeAdaptation = true;
-
+        std::chrono::system_clock::time_point mPrevTime;
+        
         struct
         {
-            float camIso = 18.0f;
-            float camEV100 = 1.0f;
-            float speedUp = 1.0f;
-            float speedDown = 1.0f;
+            float timeToBright = 1.0f;
+            float timeToDark = 1.0f;
+            float maxLuminance = 80.0f;
+            float minLuminance = 0.0f;
         } mEyeAdaptationSettings;
         
         struct
@@ -158,9 +161,8 @@ namespace Falcor
             float whiteScale = 11.2f;
         } mConstBufferData;
 
-        std::chrono::system_clock::time_point mPrevTime;
-
         void createToneMapPass(Operator op);
         void createLuminancePass();
+        void createAdaptionPass();
     };
 }

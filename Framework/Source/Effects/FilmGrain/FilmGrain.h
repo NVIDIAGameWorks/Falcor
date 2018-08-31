@@ -88,8 +88,6 @@ namespace Falcor
         Texture::SharedPtr mpNoiseTex = nullptr;
         Fbo::SharedPtr mpTargetFbo;
         FullScreenPass::UniquePtr mpBlitPass;
-        ParameterBlockReflection::BindLocation mSrcTexLoc;
-        ParameterBlockReflection::BindLocation mNoiseTexLoc;
         Sampler::SharedPtr mpSampler;
     };
 }

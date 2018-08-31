@@ -30,6 +30,9 @@ SamplerState gColorSampler : register(s1);
 
 Texture2D gColorTex;
 Texture2D gLuminanceTex;
+#ifdef _EYE_ADAPTATION
+Texture2D gPreviousFrameTex;
+#endif
 
 cbuffer PerImageCB : register(b0)
 {
@@ -37,19 +40,36 @@ cbuffer PerImageCB : register(b0)
     float gMaxWhiteLuminance;
     float gLuminanceLod;
     float gWhiteScale;
-    float camIso;
-    float camEV100;
     float speedUp;
     float speedDown;
+    float minLuminance;
+    float maxLuminance;
     float deltaTime;
 };
-
-RWBuffer<float> prevFrameInfo : register(u2);
 
 float calcLuminance(float3 color)
 {
     return dot(color.xyz, float3(0.299f, 0.587f, 0.114f));
 }
+
+#ifdef _EYE_ADAPTATION
+float eyeAdaptation(float2 texC)
+{
+    // lerp exposer value from previous frame luminance value
+    float avgLuminance = gLuminanceTex.SampleLevel(gLuminanceTexSampler, texC, 1.0f).r;
+    avgLuminance = exp2(avgLuminance);
+    // to avoid fully adapting, clamp between min and max luminance
+    avgLuminance = clamp(avgLuminance, minLuminance, maxLuminance);
+    float lastFrameLuminance = gPreviousFrameTex.SampleLevel(gLuminanceTexSampler, texC, 1.0f).r;
+    lastFrameLuminance = exp2(lastFrameLuminance);
+    
+    float lumiDiff = (avgLuminance - lastFrameLuminance);
+    float sensitivity = 0.04f / (0.04f + avgLuminance);
+    float speed = sensitivity * speedDown + (1.0 - sensitivity) * speedUp;
+    float newLuminance = lastFrameLuminance + lumiDiff * (1.0f - exp2(-deltaTime/ speed));
+    return newLuminance;
+}
+#endif
 
 float3 calcExposedColor(float3 color, float2 texC)
 {
@@ -57,20 +77,7 @@ float3 calcExposedColor(float3 color, float2 texC)
     float avgLuminance = gLuminanceTex.SampleLevel(gLuminanceTexSampler, texC, gLuminanceLod).r;
     avgLuminance = exp2(avgLuminance);
     
-#ifdef _ENABLE_EYE_ADAPTATION
-    // lerp exposer value from previous frame luminance value
-    float lastFrameLuminance = prevFrameInfo[0];
-    float lumiDiff = (avgLuminance - lastFrameLuminance);
-    float speed = (lumiDiff > 0.0f) ? speedUp : speedDown; 
-    float newLuminance = lastFrameLuminance + lumiDiff * (1.0f - exp2(-speed * deltaTime)) ;
-    float exposureKey = 1.0f / (1.2f * pow(2.0f, camEV100));
-    
-    prevFrameInfo[0] = newLuminance;
-    float exposedLuminance = (exposureKey / newLuminance);
-#else
     float exposedLuminance = (gExposureKey / avgLuminance);
-#endif
-
     return exposedLuminance * color;
 }
 
@@ -146,9 +153,20 @@ float3 AcesToneMap(float3 color)
 
 float4 calcColor(float2 texC)
 {
+#ifdef _EYE_ADAPTATION
+     float luminance = eyeAdaptation(texC);
+     luminance = log2(max(0.0001f, luminance));
+
+#ifdef FALCOR_VK
+    luminance = min(luminance, 10000);
+#endif
+
+    return float4(luminance, 0, 0, 1);
+#endif
+
     float4 color = gColorTex.Sample(gColorSampler, texC);
     float3 exposedColor = calcExposedColor(color.rgb, texC);
-    
+
 #ifdef _LUMINANCE
     float luminance = calcLuminance(color.xyz);
     luminance = log2(max(0.0001, luminance));
