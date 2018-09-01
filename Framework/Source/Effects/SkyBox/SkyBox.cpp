@@ -58,9 +58,14 @@ namespace Falcor
 
     SkyBox::UniquePtr SkyBox::deserialize(const RenderPassSerializer& serializer)
     {
+        Scene::UserVariable renderStereoVar = serializer.getValue("skybox.renderStereo");
+        if (renderStereoVar.type == Scene::UserVariable::Type::Unknown)
+        {
+            return create();
+        }
         std::string skyBoxName = serializer.getValue("gSkyBoxFilename").str;
         bool loadAsSrgb = serializer.getValue("skybox.loadAsSrgb").b;
-        bool renderStereo = serializer.getValue("skybox.renderStereo").b;
+        bool renderStereo = renderStereoVar.b;
         Sampler::Desc samplerDesc;
         samplerDesc.setFilterMode(static_cast<Falcor::Sampler::Filter>(serializer.getValue("skybox.sampleDesc.minFilter").i32),
             static_cast<Falcor::Sampler::Filter>(serializer.getValue("skybox.sampleDesc.magFilter").i32),
@@ -78,12 +83,16 @@ namespace Falcor
     RenderPassSerializer SkyBox::serialize()
     {
         RenderPassSerializer renderPassSerializer;
-        Sampler::SharedPtr pSampler = mpVars->getDefaultBlock()->getSampler(mBindLocations.sampler, 0);
-        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.minFilter", static_cast<uint32_t>(pSampler->getMinFilter()));
-        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.magFilter", static_cast<uint32_t>(pSampler->getMagFilter()));
-        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.mipFilter", static_cast<uint32_t>(pSampler->getMipFilter()));
+        if (mpVars)
+        {
+            Sampler::SharedPtr pSampler = mpVars->getDefaultBlock()->getSampler(mBindLocations.sampler, 0);
+            renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.minFilter", static_cast<uint32_t>(pSampler->getMinFilter()));
+            renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.magFilter", static_cast<uint32_t>(pSampler->getMagFilter()));
+            renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.mipFilter", static_cast<uint32_t>(pSampler->getMipFilter()));
+        }
+
         renderPassSerializer.addVariable<bool>("skybox.loadAsSrgb", mLoadSrgb);
-        renderPassSerializer.addVariable<bool>("skybox.renderStreo", mRenderStereo);
+        renderPassSerializer.addVariable<bool>("skybox.renderStereo", mRenderStereo);
         return renderPassSerializer;
     }
 

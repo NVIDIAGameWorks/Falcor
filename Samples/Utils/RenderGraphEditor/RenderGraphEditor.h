@@ -53,6 +53,7 @@ private:
 
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
+    std::unordered_set<std::string> mRenderGraphNames;
     size_t mCurrentGraphIndex;
     glm::uvec2 mWindowSize;
     std::string mCurrentLog;

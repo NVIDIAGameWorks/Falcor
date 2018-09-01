@@ -43,37 +43,55 @@ public:
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
 
 private:
-    RenderGraph::SharedPtr mpGraph;
-    RenderGraph::SharedPtr mpGraphCpy;
     FirstPersonCameraController mCamControl;
     void copyGraph(const RenderGraph::SharedPtr& pSrc, RenderGraph::SharedPtr pDst);
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
-    void createGraph(SampleCallbacks* pSample);
+    RenderGraph::SharedPtr createGraph(SampleCallbacks* pSample);
     void resetGraphOutputs();
     void fileWriteCallback(const std::string& fileName);
+    void loadGraph(SampleCallbacks* pSample, const std::string& filePath);
+    void createDefaultGraph(SampleCallbacks* pSample);
+    void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy);
+    void updateOutputDropdown(const std::string& passName);
 
+    Scene::SharedPtr mpScene;
+    std::string mSceneFilename;
+    
     struct DebugWindowInfo
     {
+        std::string mGraphName;
         std::string mOutputName;
         bool mRenderOutput = true;
         uint32_t mNextOutputIndex = 0;
     };
 
-    Scene::SharedPtr mpScene;
-    std::string mSceneFilename;
-    bool mEnableDepthPrePass = true;
-    uint32_t mGraphOutputIndex = 0;
-    bool mShowAllOutputs = true;
-    std::string mOutputString = "BlitPass.dst";
-    std::vector< std::pair<std::string, bool> > mOriginalOutputs;
-    std::vector< std::pair<std::string, bool> > mCurrentOutputs;
-    std::unordered_set<std::string> mOriginalOutputNames;
-    std::vector<std::string> mScriptBacklog;
-
     std::unordered_map<std::string, DebugWindowInfo> mDebugWindowInfos;
+    bool mShowAllOutputs = true;
+
     bool mEditorRunning = false;
     bool mApplyGraphChanges = false;
     size_t mEditorProcess = 0;
     std::string mTempFilePath;
-    std::vector<std::string> mOutputNames;
+    std::string mFocusedRenderGraphName;
+    std::string mEditingRenderGraphName;
+
+    struct PerGraphInfo
+    {
+        RenderGraph::SharedPtr mpGraph;
+        RenderGraph::SharedPtr mpGraphCpy;
+        std::string mOutputString = "BlitPass.dst";
+        uint32_t mGraphOutputIndex = 0;
+        bool mEnableDepthPrePass = true;
+        std::vector< std::pair<std::string, bool> > mOriginalOutputs;
+        std::vector< std::pair<std::string, bool> > mCurrentOutputs;
+        std::unordered_set<std::string> mOriginalOutputNames;
+        std::vector<std::string> mOutputNames;
+        std::vector<std::string> mScriptBacklog;
+        Gui::DropdownList mOutputDropdown;
+    };
+
+    Gui::DropdownList mRenderGraphsList;
+    uint32_t mActiveGraphIndex;
+    std::unordered_map<std::string, PerGraphInfo> mpRenderGraphs;
+    std::unordered_set<std::string> mActiveGraphNames; // all graphs that have previewing graph outputs
 };

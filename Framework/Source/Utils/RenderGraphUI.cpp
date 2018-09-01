@@ -65,8 +65,8 @@ namespace Falcor
     };
 
     using IdToPNodeMap = std::unordered_map<uint32_t, ImGui::Node*>;
-    static std::unordered_map<RenderGraphUI*, IdToPNodeMap> spGraphIDsToNode;
-    static std::unordered_map<RenderGraphUI*, NodeGraphEditorGui> sNodeGraphEditors;
+    static std::unordered_map<std::string, IdToPNodeMap> spGraphIDsToNode;
+    static std::unordered_map<std::string, NodeGraphEditorGui> sNodeGraphEditors;
     static NodeGraphEditorGui* spCurrentNodeEditor = nullptr;
 
     class RenderGraphNode : public ImGui::Node
@@ -127,7 +127,7 @@ namespace Falcor
             return fields;
         }
 
-        // Allow the rendergraphui to set the position of each node
+        // Allow the renderGraphUI to set the position of each node
         void setPos(const glm::vec2& pos)
         {
             Pos.x = pos.x;
@@ -411,17 +411,19 @@ namespace Falcor
         std::experimental::filesystem::last_write_time(filePath, std::chrono::system_clock::now());
     }
 
-    RenderGraphUI::RenderGraphUI(RenderGraph& renderGraphRef)
-        : mRenderGraphRef(renderGraphRef), mNewNodeStartPosition(-40.0f, 100.0f)
+    RenderGraphUI::RenderGraphUI(RenderGraph& renderGraphRef, const std::string& renderGraphName)
+        : mRenderGraphRef(renderGraphRef), mNewNodeStartPosition(-40.0f, 100.0f), mRenderGraphName(renderGraphName)
     {
-        spCurrentNodeEditor->clear();
         mNextPassName.resize(255, 0);
     }
 
     RenderGraphUI::~RenderGraphUI()
     {
-        spCurrentNodeEditor->setNodeCallback(nullptr);
-        spCurrentNodeEditor->setLinkCallback(nullptr);
+        if (spCurrentNodeEditor)
+        {
+            spCurrentNodeEditor->setNodeCallback(nullptr);
+            spCurrentNodeEditor->setLinkCallback(nullptr);
+        }
     }
 
     static void setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor)
@@ -651,7 +653,7 @@ namespace Falcor
         RenderGraphNode::spGui = pGui;
         ImGui::GetIO().FontAllowUserScaling = true;
 
-        spCurrentNodeEditor = &sNodeGraphEditors[this];
+        spCurrentNodeEditor = &sNodeGraphEditors[mRenderGraphName];
 
         spCurrentNodeEditor->show_top_pane = false;
         spCurrentNodeEditor->show_node_copy_paste_buttons = false;
@@ -808,7 +810,7 @@ namespace Falcor
                 glm::vec2 nextPosition = getNextNodePosition(mRenderGraphRef.getPassIndex(nameString));
         
                 RenderGraphNode::setInitData(nameString, outputsString, inputsString, guiNodeID, pNodeRenderPass);
-                spGraphIDsToNode[this][guiNodeID] = spCurrentNodeEditor->addNode(guiNodeID, ImVec2(nextPosition.x, nextPosition.y));
+                spGraphIDsToNode[mRenderGraphName][guiNodeID] = spCurrentNodeEditor->addNode(guiNodeID, ImVec2(nextPosition.x, nextPosition.y));
                 if (bFromDragAndDrop) addRenderPass(nameString, pNodeRenderPass->getName()); 
                 bFromDragAndDrop = false;
             }
@@ -851,7 +853,7 @@ namespace Falcor
 
     void RenderGraphUI::updatePins(bool addLinks)
     {
-        std::unordered_map<uint32_t, ImGui::Node*>& pIDToNode = spGraphIDsToNode[this];
+        std::unordered_map<uint32_t, ImGui::Node*>& pIDToNode = spGraphIDsToNode[mRenderGraphName];
         
         //  Draw pin connections. All the nodes have to be added to the GUI before the connections can be drawn
         for (auto& currentPass : mRenderPassUI)

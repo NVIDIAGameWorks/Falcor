@@ -779,6 +779,8 @@ namespace Falcor
                     pGui->endGroup();
                 }
             }
+
+            if (uiGroup) pGui->endGroup();
         }
     }
 }

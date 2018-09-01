@@ -56,7 +56,7 @@ namespace Falcor
         
         /** create a sky box to be set by the loaded scene
         */
-        static UniquePtr create(bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo);
+        static UniquePtr create(bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
 
         /* Create a sky box using data from serializer
             \param[in] serializer Object to obtain initialization data
@@ -126,7 +126,7 @@ namespace Falcor
         std::shared_ptr<Scene> mpScene;
         Sampler::SharedPtr mpSampler;
         bool mLoadSrgb = true;
-        bool mRenderStereo = true;
+        bool mRenderStereo = false;
 
         struct
         {

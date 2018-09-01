@@ -69,7 +69,7 @@ namespace Falcor
     {
     public:
 
-        RenderGraphUI(RenderGraph& renderGraphRef);
+        RenderGraphUI(RenderGraph& renderGraphRef, const std::string& renderGraphName);
 
         ~RenderGraphUI();
 
@@ -174,5 +174,6 @@ namespace Falcor
         float mTimeSinceLastUpdate = 0.0f;
         bool mDisplayDragAndDroptPopup = false;
         std::string  mNextPassName = "";
+        std::string mRenderGraphName;
     };
 }

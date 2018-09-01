@@ -161,7 +161,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         // Display graph
         mCurrentGraphIndex = selection;
-        mRenderGraphUIs[mCurrentGraphIndex].reset();
     }
 
     if (mFilePath.size())
@@ -220,26 +219,36 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (!mViewerRunning && pGui->addButton("Open Graph Viewer"))
     {
-        std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
-        if (!renderGraphScript.size())
+        std::string log;
+        MsgBoxButton msg = MsgBoxButton::Ok;
+        if (!mpGraphs[mCurrentGraphIndex]->isValid(log))
         {
-            logError("No graph data to display in editor.");
+            MsgBoxButton msg = msgBox("Graph is invalid :\n " + log + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel);
         }
 
-        char* result = nullptr;
-        mFilePath = std::tmpnam(result);
-        std::ofstream updatesFileOut(mFilePath);
-        assert(updatesFileOut.is_open());
+        if (msg == MsgBoxButton::Ok)
+        {
+            std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
+            if (!renderGraphScript.size())
+            {
+                logError("No graph data to display in editor.");
+            }
 
-        updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-        updatesFileOut.close();
+            char* result = nullptr;
+            mFilePath = std::tmpnam(result);
+            std::ofstream updatesFileOut(mFilePath);
+            assert(updatesFileOut.is_open());
 
-        // load application for the editor given it the name of the mapped file
-        std::string commandLine = std::string("-tempFile ") + mFilePath;
-        mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+            updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+            updatesFileOut.close();
 
-        assert(mViewerProcess);
-        mViewerRunning = true;
+            // load application for the editor given it the name of the mapped file
+            std::string commandLine = std::string("-tempFile ") + mFilePath;
+            mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+
+            assert(mViewerProcess);
+            mViewerRunning = true;
+        }
     }
 
     pGui->popWindow();
@@ -302,9 +311,16 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 
 void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphFileName)
 {
+    std::string graphName = renderGraphName;
+    while (mRenderGraphNames.find(graphName) != mRenderGraphNames.end())
+    {
+        graphName.push_back('_');
+    }
+    mRenderGraphNames.insert(graphName);
+
     Gui::DropdownValue nextGraphID;
     nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
-    nextGraphID.label = renderGraphName;
+    nextGraphID.label = graphName;
     mOpenGraphNames.push_back(nextGraphID);
     
     RenderGraph::SharedPtr newGraph;
@@ -315,7 +331,7 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
 
-    RenderGraphUI graphUI(*newGraph);
+    RenderGraphUI graphUI(*newGraph, graphName);
     mRenderGraphUIs.emplace_back(std::move(graphUI));
 
     if (renderGraphFileName.size())
