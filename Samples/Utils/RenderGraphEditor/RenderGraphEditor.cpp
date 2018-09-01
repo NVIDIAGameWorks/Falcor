@@ -183,7 +183,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Validate Graph"))
     {
         std::string currentLog;
-        mpGraphs[mCurrentGraphIndex]->isValid(currentLog);
+        bool valid = mpGraphs[mCurrentGraphIndex]->isValid(currentLog);
+        mCurrentLog += (valid ? "Graph is Valid\n" : "Graph is currently invalid.\n");
         mCurrentLog += currentLog;
     }
 
@@ -220,13 +221,13 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (!mViewerRunning && pGui->addButton("Open Graph Viewer"))
     {
         std::string log;
-        MsgBoxButton msg = MsgBoxButton::Ok;
+        bool openViewer = true;
         if (!mpGraphs[mCurrentGraphIndex]->isValid(log))
         {
-            MsgBoxButton msg = msgBox("Graph is invalid :\n " + log + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel);
+            openViewer = msgBox("Graph is invalid :\n " + log + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel) == MsgBoxButton::Ok;
         }
 
-        if (msg == MsgBoxButton::Ok)
+        if (openViewer)
         {
             std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
             if (!renderGraphScript.size())
