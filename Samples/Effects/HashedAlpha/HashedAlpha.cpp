@@ -95,7 +95,7 @@ void HashedAlpha::updateProgram()
 {
     if (mDirty)
     {
-        mpProgram->clearDefines();
+        mpProgram->setDefines({});
 
         switch (mAlphaTestMode)
         {

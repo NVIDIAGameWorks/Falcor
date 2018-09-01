@@ -47,20 +47,30 @@ namespace Falcor
         VariablesBuffer& mVariablesBufferRef;
         static std::unordered_map<std::string, int32_t> mGuiArrayIndices;
 
-        /** Recursive function for traversing reflection data and display ui
-        \param[in] pGui Pointer to the gui structure for rendering
-        \param[in] pStruct Pointer to structure to iterate and display for the gui
-        \param[in] currentStructName Current struct name to append for full reflection name
-        \param[in] startOffset Starting offset in memory for nested structures
+        /** Recursive function for displaying shader reflection member
+            \param[in] pGui Pointer to the gui structure for rendering
+            \param[in] pStruct Pointer to structure to iterate and display for the gui
+            \param[in] currentStructName Current struct name to append for full reflection name
+            \param[in] startOffset Starting offset in memory for nested structures
+            \param[in] dirtyFlag If set then send data to gpu
         */
-        void renderUIInternal(Gui* pGui, const ReflectionStructType* pStruct, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag);
+        void renderUIVarInternal(Gui* pGui, const ReflectionVar::SharedConstPtr& pMember, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag);
+
+        /** Recursive function for traversing reflection data and display ui
+            \param[in] pGui Pointer to the gui structure for rendering
+            \param[in] pStruct Pointer to either structure or structured buffer to iterate through
+            \param[in] currentStructName Current struct name to append for full reflection name
+            \param[in] startOffset Starting offset in memory for nested structures
+            \param[in] dirtyFlag If set then send data to gpu
+        */
+        void renderUIInternal(Gui* pGui, const ReflectionType* pType, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag);
 
         /** Render gui widget for reflected data
-        \param[in] pGui Pointer to the gui structure for rendering
-        \param[in] memberName string containing the name of the data member to render
-        \param[in] memberOffset offset into the data array
-        \param[in] memberSize size of the data in the member
-        \param[in] memberType reflection type enum for the basic type
+            \param[in] pGui Pointer to the gui structure for rendering
+            \param[in] memberName string containing the name of the data member to render
+            \param[in] memberOffset offset into the data array
+            \param[in] memberSize size of the data in the member
+            \param[in] memberType reflection type enum for the basic type
         */
         void renderUIMemberInternal(Gui* pGui, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, size_t arraySize = 0);
     };

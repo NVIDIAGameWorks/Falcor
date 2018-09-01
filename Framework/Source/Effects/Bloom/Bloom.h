@@ -49,7 +49,7 @@ namespace Falcor
             BlurTexture
         };
 
-        static SharedPtr create(float threshold = 1.0f, uint32_t kernelSize = 7, float sigma = 2.5f);
+        static SharedPtr create(float threshold = 1.0f, uint32_t kernelSize = 7, float sigma = 1.5f);
 
         static SharedPtr deserialize(const RenderPassSerializer& serializer);
 

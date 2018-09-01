@@ -61,6 +61,7 @@ namespace Falcor
         uint32_t getFirstHitRecordIndex() const { return mFirstHitVarEntry; }
         uint32_t getHitProgramsCount() const { return mHitProgCount; }
         uint32_t getMissProgramsCount() const { return mMissProgCount; }
+        uint32_t getHitRecordsCount() const { return mHitRecordCount; }
 
         
     private:
@@ -68,6 +69,7 @@ namespace Falcor
         static const uint32_t kFirstMissRecordIndex = 1;
         uint32_t mMissProgCount = 0;
         uint32_t mHitProgCount = 0;
+        uint32_t mHitRecordCount = 0;       ///< Total number of hit records in shader table
         uint32_t mFirstHitVarEntry = 0;
 
         RtProgramVars(RtProgram::SharedPtr pProgram, RtScene::SharedPtr pScene);

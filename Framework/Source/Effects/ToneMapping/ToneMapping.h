@@ -120,7 +120,27 @@ namespace Falcor
         /** Executes the pass.
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
-
+        /** Get the tonemapping operator type.
+		*/
+        Operator getOperator() const { return mOperator; }
+        
+        /** Get tonemapper exposure key value.
+		*/
+        float getExposureKey() const { return mConstBufferData.exposureKey; }
+        
+        /** Gets the maximal luminance to be consider as pure white. 
+		*/
+        float getWhiteMaxLuminance() const { return mConstBufferData.whiteMaxLuminance; }
+        
+        /** Gets the luminance texture LOD to use when fetching average luminance values. 
+		*/
+        float getLuminanceLod() const { return mConstBufferData.luminanceLod; }
+        
+        /** Gets the white-scale used in Uncharted 2 tone mapping. 
+		*/
+        float getWhiteScale() const { return mConstBufferData.whiteScale; }
+		
+		
         virtual void setScene(const Scene::SharedPtr& pScene) override { if (pScene && pScene->getActiveCamera()) mpCamera = pScene->getActiveCamera(); }
     private:
         ToneMapping(Operator op);

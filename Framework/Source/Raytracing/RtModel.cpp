@@ -38,6 +38,7 @@ namespace Falcor
     {
     }
 
+    // TODO: Static meshes with materials that differ with respect to the doubleSided flag should not be grouped.
     void RtModel::createBottomLevelData()
     {
         // The logic works as follows:
@@ -189,13 +190,15 @@ namespace Falcor
         for (auto& blasData : mBottomLevelData)
         {
             std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDesc(blasData.meshCount);
-            for (size_t meshIndex = blasData.meshBaseIndex; meshIndex < blasData.meshBaseIndex + blasData.meshCount; meshIndex++)   // PETRIK: Fixed loop to loop over range [meshIndex...meshIndex + meshCount)
+            for (size_t meshIndex = blasData.meshBaseIndex; meshIndex < blasData.meshBaseIndex + blasData.meshCount; meshIndex++)
             {
                 assert(meshIndex < mMeshes.size());
                 const Mesh* pMesh = getMesh((uint32_t)meshIndex).get();
 
                 D3D12_RAYTRACING_GEOMETRY_DESC& desc = geomDesc[meshIndex - blasData.meshBaseIndex];
                 desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+                desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+                desc.Triangles.Transform = 0;
 
                 // Get the position VB
                 const Vao* pVao = getMeshVao(pMesh).get();

@@ -29,8 +29,7 @@ The HelloDXR sample demonstrates how to use Falcor’s DXR abstraction layer.
     - Windows 10 RS4 (version 1803)
     - Windows 10 Developer Mode enabled (Windows Settings -> Update & Security -> For developers -> Developer mode)
     - You do not need to download the DXR SDK yourself, it is packaged with Falcor.
-    - A GPU which supports DirectX Raytracing, such as the NVIDIA Titan V
-    - NVIDIA driver version 397.31 or later
+    - A GPU which supports DirectX Raytracing, such as the NVIDIA Titan V or GeForce RTX (make sure you have the latest driver).
 
 Currently, Falcor doesn’t support the DXR fallback layer. We will add support for it in the near future.  
 Please note that the DXR abstraction layer is considererd an experimental feature, just like DXR itself. The interfaces and features might change in future releases.

@@ -127,6 +127,9 @@
     <ClCompile Include="Effects\Shadows\CSM.cpp">
       <Filter>Effects\Shadows</Filter>
     </ClCompile>
+    <ClCompile Include="Effects\Utils\GaussianBlur.cpp">
+      <Filter>Effects\Utils</Filter>
+    </ClCompile>
     <ClCompile Include="Effects\SkyBox\SkyBox.cpp">
       <Filter>Effects\SkyBox</Filter>
     </ClCompile>
@@ -532,32 +535,42 @@
     <ClCompile Include="Effects\FXAA\FXAA.cpp">
       <Filter>Effects\FXAA</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPasses\BlitPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPasses\DepthPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Effects\Utils\GaussianBlur\GaussianBlur.cpp">
-      <Filter>Effects\Utils\GaussianBlur</Filter>
+    <ClCompile Include="RenderPasses\SceneLightingPass.cpp">
+      <Filter>RenderPasses</Filter>
     </ClCompile>
-    <ClCompile Include="Effects\Utils\PassFilter\PassFilter.cpp">
-      <Filter>Effects\Utils\PassFilter</Filter>
+    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Effects\Bloom\Bloom.cpp">
-      <Filter>Effects\Bloom</Filter>
+    <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp">
+      <Filter>Utils\PatternGenerators</Filter>
     </ClCompile>
-    <ClCompile Include="Effects\FilmGrain\FilmGrain.cpp">
-      <Filter>Effects\FilmGrain</Filter>
+    <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp">
+      <Filter>Utils\PatternGenerators</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
-    <ClCompile Include="RenderPasses\BlitPass.cpp" />
-    <ClCompile Include="RenderPasses\DepthPass.cpp" />
-    <ClCompile Include="RenderPasses\SceneLightingPass.cpp" />
-    <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp" />
-    <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp" />
-    <ClCompile Include="Utils\RenderGraphLoader.cpp" />
-    <ClCompile Include="Utils\RenderGraphUI.cpp" />
+    <ClCompile Include="Utils\RenderGraphUI.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\RenderGraphLoader.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -727,6 +740,9 @@
     </ClInclude>
     <ClInclude Include="Effects\Shadows\CSM.h">
       <Filter>Effects\Shadows</Filter>
+    </ClInclude>
+    <ClInclude Include="Effects\Utils\GaussianBlur.h">
+      <Filter>Effects\Utils</Filter>
     </ClInclude>
     <ClInclude Include="Effects\SkyBox\SkyBox.h">
       <Filter>Effects\SkyBox</Filter>
@@ -1713,37 +1729,57 @@
     <ClInclude Include="Effects\FXAA\FXAA.h">
       <Filter>Effects\FXAA</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraph.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderPass.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\BlitPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\DirectedGraph.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
     <ClInclude Include="Utils\VariablesBufferUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Effects\Utils\GaussianBlur\GaussianBlur.h">
-      <Filter>Effects\Utils\GaussianBlur</Filter>
+    <ClInclude Include="RenderPasses\DepthPass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="Effects\Utils\PassFilter\PassFilter.h">
-      <Filter>Effects\Utils\PassFilter</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Effects\Bloom\Bloom.h">
-      <Filter>Effects\Bloom</Filter>
+    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Effects\FilmGrain\FilmGrain.h">
-      <Filter>Effects\FilmGrain</Filter>
+    <ClInclude Include="RenderPasses\SceneLightingPass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h" />
-    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
-    <ClInclude Include="RenderPasses\BlitPass.h" />
-    <ClInclude Include="RenderPasses\DepthPass.h" />
-    <ClInclude Include="RenderPasses\SceneLightingPass.h" />
-    <ClInclude Include="Utils\DirectedGraph.h" />
-    <ClInclude Include="Utils\DirectedGraphTraversal.h" />
-    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h" />
-    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h" />
-    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h" />
-    <ClInclude Include="Utils\RenderGraphLoader.h" />
-    <ClInclude Include="Utils\RenderGraphUI.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h">
+      <Filter>Utils\PatternGenerators</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\RenderGraphUI.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\RenderGraphLoader.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\DirectedGraphTraversal.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1932,17 +1968,17 @@
     <Filter Include="Effects\FXAA">
       <UniqueIdentifier>{51b693f1-34da-4d5e-a6d5-925944c92c79}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Effects\Utils\GaussianBlur">
-      <UniqueIdentifier>{2fb7a0c8-86bf-424d-808b-fc18423602ba}</UniqueIdentifier>
+    <Filter Include="Graphics\RenderGraph">
+      <UniqueIdentifier>{60443751-4f7a-4361-adb2-d3e6edabecf8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Effects\Utils\PassFilter">
-      <UniqueIdentifier>{35a26288-bb69-4054-98c8-4e35dd57f161}</UniqueIdentifier>
+    <Filter Include="RenderPasses">
+      <UniqueIdentifier>{c211a7c2-a22a-4745-9a23-42e98dbff40c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Effects\Bloom">
-      <UniqueIdentifier>{37f8e667-6994-4e6c-89a6-d51e8360feea}</UniqueIdentifier>
+    <Filter Include="Data\RenderPasses">
+      <UniqueIdentifier>{6fb02568-1f63-46b7-baee-85e961051a76}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Effects\FilmGrain">
-      <UniqueIdentifier>{c43a43bc-1062-4b46-97b2-7499fab68dd3}</UniqueIdentifier>
+    <Filter Include="Utils\PatternGenerators">
+      <UniqueIdentifier>{cc98beaa-c9ed-4457-98c6-89955706cd91}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2390,9 +2426,8 @@
     <None Include="Data\Effects\FXAA.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\Effects\PassFilter.ps.slang">
-      <Filter>Data\Effects</Filter>
+    <None Include="Data\RenderPasses\SceneLightingPass.slang">
+      <Filter>Data\RenderPasses</Filter>
     </None>
-    <None Include="Data\RenderPasses\SceneLightingPass.slang" />
   </ItemGroup>
 </Project>

@@ -186,7 +186,7 @@ namespace Falcor
             \param[in] group Optional. If specified, creates a UI group to display elements within
         */
         void renderUI(Gui* pGui, const char* group = nullptr) override;
-        
+
         /** Get total light power (needed for light picking)
         */
         float getPower() const override;
@@ -256,7 +256,7 @@ namespace Falcor
 
         AreaLight();
         ~AreaLight();
-        
+
         /** Get total light power (needed for light picking)
         */
         float getPower() const override;
@@ -267,12 +267,12 @@ namespace Falcor
             \param[in] pBuffer The constant buffer to set the parameters into.
             \param[in] varName The name of the declared variable in the program. "gAreaLights" by default.
         */
-        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName);
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, const std::string& varName) override;
 
         /** Do not use this overload for area lights. Area light data contains resources that cannot be bound using an offset when
             there is an array of light data. Calling this function will do nothing except log a warning.
         */
-        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset);
+        virtual void setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset) override;
 
         /** Render UI elements for this light.
             \param[in] pGui The GUI to create the elements with
@@ -364,4 +364,67 @@ namespace Falcor
 
     AreaLight::SharedPtr createAreaLight(const Model::MeshInstance::SharedPtr& pMeshInstance);
     std::vector<AreaLight::SharedPtr> createAreaLightsForModel(const Model* pModel);
+
+    /**
+        Analytic area light source.
+    */
+    class AnalyticAreaLight : public Light, public std::enable_shared_from_this<AnalyticAreaLight>
+    {
+    public:
+        using SharedPtr = std::shared_ptr<AnalyticAreaLight>;
+        using SharedConstPtr = std::shared_ptr<const AnalyticAreaLight>;
+
+        static SharedPtr create();
+
+        AnalyticAreaLight();
+        ~AnalyticAreaLight();
+
+        /** Set light source scaling
+            \param[in] scale x,y,z scaling factors
+        */
+        void setScaling(vec3 scale) { mScaling = scale; update(); }
+
+        /** Set light source scale
+          */
+        vec3 getScaling() const { return mScaling; }
+
+        /** Set type of area light (rectangular, spherical etc)
+         */
+        void setType(uint32_t type) { mData.type = type; update(); }
+
+        /** Get total light power (needed for light picking)
+        */
+        float getPower() const override;
+
+        /** Set transform matrix
+            \param[in] mtx object to world space transform matrix
+        */
+        void setTransformMatrix(const glm::mat4 &mtx) { mTransformMatrix = mtx; update(); }
+
+        /** Get transform matrix
+        */
+        glm::mat4 getTransformMatrix() const { return mTransformMatrix; }
+
+        /** Set the light intensity.
+            \param[in] intensity Vec3 corresponding to RGB intensity
+        */
+        void setIntensity(const glm::vec3& intensity) { mData.intensity = intensity; update(); }
+
+        /** Render UI elements for this light.
+            \param[in] pGui The GUI to create the elements with
+            \param[in] group Optional. If specified, creates a UI group to display elements within
+        */
+        void renderUI(Gui* pGui, const char* group = nullptr) override;
+
+        /** IMovableObject interface
+        */
+        void move(const glm::vec3& position, const glm::vec3& target, const glm::vec3& up) override;
+
+    private:
+        void update();
+
+        bool mDirty = true;
+        glm::vec3 mScaling;              ///< Scaling, controls the size of the light
+        glm::mat4 mTransformMatrix;      ///< Transform matrix minus scaling component
+    };
 }

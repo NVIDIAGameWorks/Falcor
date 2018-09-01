@@ -1,3 +1,23 @@
+v3.1.0
+------
+- Addes support for analytic area lights
+- Added support for StructuredBuffers with VariableBuffer::renderUI
+- Added a ProgramBase base class for better Program/RtProgram abstraction
+- Use a priority_queue to help optimize descriptor-heap allocations
+- Added debug checks when binding compute/graphics vars
+- Added debug checks in resourceBarrier() to make sure the resource has the correct flags 
+- Added the option to pass CompilerFlags to many objects
+- Added Logger::Level::Fatal
+- Better abstraction of the alpha-test
+- Fixed VideoCapture UI
+
+v3.0.7
+------
+- Updated Slang to 0.10.31
+
+Bug Fixes:
+- Fixed a crash when rendering a VariablesBuffer/ConstantBuffer UI without specifying a group name
+
 v3.0.6
 ------
 - Changed max bones to 256
@@ -6,12 +26,6 @@ Bug Fixes:
 - Updated Slang to 0.10.30. Fixes SceneEditor shaders in Vulkan configs
 - Apply scaling transforms in animations
 - Fixed interpolation issues at the end of animations
-v3.whatever-render-graph-is
----------------------------
-- Added a PatternGenerator interface to help sample pattern. DxSamplePattern and HaltonSamplePattern implement the interface
-- A Camera object can accept a PatternGenerator object. It will be used to jitter the camera on every beginFrame() call
-- Changed the GUI font to a monospace font (consolas bold)
-- The profiler results are not displayed in a GUI window
 
 v3.0.5
 ------
