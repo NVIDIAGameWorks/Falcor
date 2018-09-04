@@ -70,6 +70,7 @@ namespace Falcor
     GraphicsStateObject::SharedPtr GraphicsState::getGSO(const GraphicsVars* pVars)
     {
         assert(mpVao);
+		EnterCriticalSection(&ghMutex);
         if (mpProgram && mpVao->getVertexLayout() != nullptr)
         {
             mpVao->getVertexLayout()->addVertexAttribDclToProg(mpProgram.get());
@@ -126,6 +127,7 @@ namespace Falcor
                 mpGsoGraph->setCurrentNodeData(pGso);
             }
         }
+		LeaveCriticalSection(&ghMutex);
         return pGso;
     }
 
