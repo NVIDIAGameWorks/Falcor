@@ -101,6 +101,12 @@ bool FilmGrainSample::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& m
 
 void FilmGrainSample::onInitializeTesting(SampleCallbacks* pSample)
 {
+    auto argList = pSample->getArgList();
+    std::vector<ArgList::Arg> filenames = argList.getValues("loadimage");
+    if (filenames.size())
+    {
+        loadImage(filenames.front().asString());
+    }
 }
 
 void FilmGrainSample::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)

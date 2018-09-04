@@ -101,6 +101,14 @@ bool BloomFilter::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouse
 
 void BloomFilter::onInitializeTesting(SampleCallbacks* pSample)
 {
+    auto argList = pSample->getArgList();
+    std::vector<ArgList::Arg> filenames = argList.getValues("loadimage");
+    if (filenames.size())
+    {
+        loadImage(filenames.front().asString());
+    }
+
+
 }
 
 void BloomFilter::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)

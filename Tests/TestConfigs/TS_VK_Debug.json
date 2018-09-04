@@ -89,6 +89,24 @@
                 "-test -changeView 100 200 300 400 500 -ssframes 50 150 250 350 450 550 -shutdown 600"
             ]
 
+        },
+		
+		"BloomFilterTest": {
+            "Enabled" : true,
+            "Project Name" : "BloomFilter",
+            "Project Tests Args" :
+            [
+                "-test -ssframes 50 -shutdown 300 -loadimage SunTemple/SunTemple_Reflection.hdr"
+            ]
+        },
+		
+		"FilmGrainTest": {
+            "Enabled" : true,
+            "Project Name" : "FilmGrain",
+            "Project Tests Args" :
+            [
+                "-test -ssframes 50 -shutdown 300 -loadimage SunTemple/SunTemple_Reflection.hdr"
+            ]
         }
     }
 }
