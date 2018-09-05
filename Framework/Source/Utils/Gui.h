@@ -354,13 +354,19 @@ namespace Falcor
         */
         void popWindow();
 
+        /** Set the current window position in pixels
+        */
         void setCurrentWindowPos(uint32_t x, uint32_t y);
 
+        /** Get the position of the current window.
+        */
         glm::vec2 getCurrentWindowPos();
 
+        /**  Set the size of the current window in pixels
+        */
         void setCurrentWindowSize(uint32_t width, uint32_t height);
 
-        /** Get the size of the window drawing region in pixels of the current window.
+        /** Get the size of the current window in pixels.
         */
         glm::vec2 getCurrentWindowSize();
 

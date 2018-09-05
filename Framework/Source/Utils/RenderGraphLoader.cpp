@@ -81,54 +81,90 @@ namespace Falcor
         }
     }
 
+    std::string RenderGraphLoader::serializePassAsScript(const RenderPass::SharedPtr& pRenderPass)
+    {
+        std::string scriptString;
+
+        RenderPassSerializer renderPassSerializerRef = pRenderPass->serialize();
+
+        for (size_t i = 0; i < renderPassSerializerRef.getVariableCount(); ++i)
+        {
+            const auto& variableRef = renderPassSerializerRef.getValue(i);
+            const std::string& varName = renderPassSerializerRef.getVariableName(i);
+            std::string currentCommand;
+
+            switch (variableRef.type)
+            {
+            case Scene::UserVariable::Type::Bool:
+                currentCommand = "VarBool ";
+                currentCommand += varName + " " + (renderPassSerializerRef.getValue(i).b ? "true" : "false") + '\n';
+                break;
+            case Scene::UserVariable::Type::Double:
+                currentCommand = "VarFloat ";
+                currentCommand += varName + " " + std::to_string(static_cast<float>(renderPassSerializerRef.getValue(i).d64)) + '\n';
+                break;
+            case Scene::UserVariable::Type::String:
+                currentCommand = "VarString ";
+                currentCommand += varName + " " + renderPassSerializerRef.getValue(i).str + '\n';
+                break;
+            case Scene::UserVariable::Type::Uint:
+                currentCommand = "VarUInt ";
+                currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).u32) + '\n';
+                break;
+            case Scene::UserVariable::Type::Int:
+                currentCommand = "VarInt ";
+                currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).i32) + '\n';
+                break;
+            default:
+                should_not_get_here();
+            };
+
+            scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
+        }
+
+        return scriptString;
+    }
+
+    std::string RenderGraphLoader::saveRenderGraphAsUpdateScript(const RenderGraph& renderGraph)
+    {
+        std::string scriptString;
+
+        for (const auto& nameToIndex : renderGraph.mNameToIndex)
+        {
+            auto pCurrentNode = renderGraph.mpGraph->getNode(nameToIndex.second);
+            auto pCurrentRenderPass = renderGraph.mNodeData.find(nameToIndex.second)->second.pPass;
+            std::string renderPassClassName = pCurrentRenderPass->getName();
+            std::string serializeCommands = serializePassAsScript(pCurrentRenderPass);
+
+            if (serializeCommands.size())
+            {
+                scriptString.insert(scriptString.end(), serializeCommands.begin(), serializeCommands.end());
+            }
+
+            // add all of the add render pass commands here
+            scriptString += std::string("Update ") + nameToIndex.first + '\n';
+        }
+
+        return scriptString;
+    }
+
     std::string RenderGraphLoader::saveRenderGraphAsScriptBuffer(const RenderGraph& renderGraph)
     {
         std::string scriptString;
         std::unordered_map<uint16_t, std::string> linkIDToSrcPassName;
         std::string currentCommand;
 
-        // do a pre-pass to map all of the outgoing connections to the names of the passes
+        // do a Pre-pass to map all of the outgoing connections to the names of the passes
         for (const auto& nameToIndex : renderGraph.mNameToIndex)
         {
             auto pCurrentNode = renderGraph.mpGraph->getNode(nameToIndex.second);
             auto pCurrentRenderPass = renderGraph.mNodeData.find(nameToIndex.second)->second.pPass;
             std::string renderPassClassName = pCurrentRenderPass->getName();
+            std::string serializeCommands = serializePassAsScript(pCurrentRenderPass);
             
-            // need to deserialize the serialization data. stored in the RenderPassLibrary
-            RenderPassSerializer renderPassSerializerRef = pCurrentRenderPass->serialize();
-
-            for (size_t i = 0; i < renderPassSerializerRef.getVariableCount(); ++i )
+            if (serializeCommands.size())
             {
-                const auto& variableRef = renderPassSerializerRef.getValue(i);
-                const std::string& varName =  renderPassSerializerRef.getVariableName(i);
-
-                switch (variableRef.type)
-                {
-                case Scene::UserVariable::Type::Bool:
-                    currentCommand = "VarBool ";
-                    currentCommand += varName + " " + (renderPassSerializerRef.getValue(i).b ? "true" : "false") + '\n';
-                    break;
-                case Scene::UserVariable::Type::Double:
-                    currentCommand = "VarFloat ";
-                    currentCommand += varName + " " + std::to_string(static_cast<float>(renderPassSerializerRef.getValue(i).d64)) + '\n';
-                    break;
-                case Scene::UserVariable::Type::String:
-                    currentCommand = "VarString ";
-                    currentCommand += varName + " " + renderPassSerializerRef.getValue(i).str + '\n';
-                    break;
-                case Scene::UserVariable::Type::Uint:
-                    currentCommand = "VarUInt ";
-                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).u32) + '\n';
-                    break;
-                case Scene::UserVariable::Type::Int:
-                    currentCommand = "VarInt ";
-                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).i32) + '\n';
-                    break;
-                default:
-                    should_not_get_here();
-                };
-                
-                scriptString.insert(scriptString.end(), currentCommand.begin(), currentCommand.end());
+                scriptString.insert(scriptString.end(), serializeCommands.begin(), serializeCommands.end());
             }
 
             // add all of the add render pass commands here
@@ -138,7 +174,6 @@ namespace Falcor
             for (uint32_t i = 0; i < pCurrentNode->getOutgoingEdgeCount(); ++i)
             {
                 uint32_t edgeID = pCurrentNode->getOutgoingEdge(i);
-
                 linkIDToSrcPassName[edgeID] = nameToIndex.first;
             }
         }
@@ -329,6 +364,15 @@ namespace Falcor
             }
             renderGraph.addRenderPass(pRenderPass, scriptBinding.mParameters[0].get<std::string>());
         }, {}, {});
+
+        RegisterStatement<std::string>("Update", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
+                RenderPassSerializer renderPassSerializer;
+                for (const auto& nameVarPair : mActiveVariables)
+                {
+                    renderPassSerializer.addVariable(nameVarPair.first, nameVarPair.second);
+                }
+                renderGraph.getRenderPass(scriptBinding.mParameters[0].get<std::string>())->deserialize(renderPassSerializer);
+            }, {});
 
         RegisterStatement<std::string, std::string>("RemoveEdge", [](ScriptBinding& scriptBinding, RenderGraph& renderGraph) {
             renderGraph.removeEdge(scriptBinding.mParameters[0].get<std::string>(), scriptBinding.mParameters[1].get<std::string>());

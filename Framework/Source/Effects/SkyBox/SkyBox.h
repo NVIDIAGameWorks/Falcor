@@ -45,23 +45,24 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<SkyBox>;
-        using UniquePtr = std::unique_ptr<SkyBox>;
 
         /** Create a sky box using an existing texture
             \param[in] pTexture Sky box texture
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         
         /** create a sky box to be set by the loaded scene
         */
-        static UniquePtr create(bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+
+        static SharedPtr createPass() { return create(); }
 
         /* Create a sky box using data from serializer
             \param[in] serializer Object to obtain initialization data
         */
-        static UniquePtr deserialize(const RenderPassSerializer& serializer);
+        void deserialize(const RenderPassSerializer& serializer) override;
         
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
@@ -69,7 +70,7 @@ namespace Falcor
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
 
         /** Render the sky box.
             \param[in] pRenderCtx Render context

@@ -107,7 +107,6 @@ namespace Falcor
         */
         void removeOutput(const std::string& outputPass, const std::string& outputField);
 
-        
         /** function used to add a new node for a render pass referenced graph and update ui data
         */
         void addRenderPass(const std::string& name, const std::string& nodeTypeName);
@@ -145,6 +144,10 @@ namespace Falcor
         /** Renders specialized pop up menu.
         */
         void renderPopupMenu(Gui* pGui);
+
+        /** Renders pass renderUI in popup menu
+        */
+        void renderPassUIPopup(Gui* pGui, RenderPass* pRenderPass);
 
         // start with reference of render graph
         RenderGraph& mRenderGraphRef;

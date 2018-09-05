@@ -42,6 +42,7 @@ namespace Falcor
         /** Create a new object
         */
         static SharedPtr create();
+        static SharedPtr createPass() { return create();  }
         static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
 
         virtual void reflect(RenderPassReflection& reflector) const override;

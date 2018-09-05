@@ -284,12 +284,12 @@ RenderGraph::SharedPtr RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 
     auto pLightingPass = RenderPassLibrary::createRenderPass("SceneLightingPass");
     pGraph->addRenderPass(pLightingPass, "LightingPass");
-    pGraph->addRenderPass(ToneMapping::deserialize({}), "ToneMapping");
-    pGraph->addRenderPass(DepthPass::deserialize({}), "DepthPrePass");
-    pGraph->addRenderPass(CascadedShadowMaps::deserialize({}), "ShadowPass");
-    pGraph->addRenderPass(BlitPass::deserialize({}), "BlitPass");
-    pGraph->addRenderPass(SSAO::deserialize({}), "SSAO");
-    pGraph->addRenderPass(FXAA::deserialize({}), "FXAA");
+    pGraph->addRenderPass(ToneMapping::createPass(), "ToneMapping");
+    pGraph->addRenderPass(DepthPass::createPass(), "DepthPrePass");
+    pGraph->addRenderPass(CascadedShadowMaps::createPass(), "ShadowPass");
+    pGraph->addRenderPass(BlitPass::createPass(), "BlitPass");
+    pGraph->addRenderPass(SSAO::createPass(), "SSAO");
+    pGraph->addRenderPass(FXAA::createPass(), "FXAA");
 
     // Add the skybox
     Scene::UserVariable var = mpScene->getUserVariable("sky_box");
@@ -310,7 +310,7 @@ RenderGraph::SharedPtr RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     pGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
     pGraph->addEdge("LightingPass.normals", "SSAO.normals");
     pGraph->addEdge("LightingPass.depth", "SSAO.depth");
-
+    
     pGraph->addEdge("SSAO.colorOut", "FXAA.src");
     pGraph->addEdge("FXAA.dst", "BlitPass.src");
 

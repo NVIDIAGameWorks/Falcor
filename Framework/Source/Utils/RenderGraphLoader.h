@@ -97,12 +97,16 @@ namespace Falcor
         */
         static std::string saveRenderGraphAsScriptBuffer(const RenderGraph& renderGraph);
 
+        static std::string saveRenderGraphAsUpdateScript(const RenderGraph& renderGraph);
+
         static void ExecuteStatement(const std::string& statement, RenderGraph& renderGraph);
 
         static std::string sGraphOutputString;
 
     private:
-        
+        // helper function to generate script for render pass serialization
+        static std::string serializePassAsScript(const RenderPass::SharedPtr& pRenderPass);
+
         template<typename ... U>
         void RegisterStatement(const std::string& keyword, const ScriptBinding::ScriptFunc& function, U ... defaultValues)
         {

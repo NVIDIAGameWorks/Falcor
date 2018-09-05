@@ -49,15 +49,15 @@ namespace Falcor
 
     static bool addBuiltinPasses()
     {
-        RenderPassLibrary::addRenderPassClass("BlitPass", "Blit one texture into another", BlitPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", CascadedShadowMaps::deserialize);
-        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", ToneMapping::deserialize);
-        RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", SSAO::deserialize);
-        RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize);
+        RenderPassLibrary::addRenderPassClass("BlitPass", "Blit one texture into another", BlitPass::createPass);
+        RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::createPass);
+        RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::createPass);
+        RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", CascadedShadowMaps::createPass);
+        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", ToneMapping::createPass);
+        RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::createPass);
+        RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", SSAO::createPass);
+        RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::createPass);
+        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::createPass);
 
         return true;
     };
@@ -85,7 +85,9 @@ namespace Falcor
         }
 
         auto& renderPass = gRenderPassList[className];
-        return renderPass.create(serializer);
+        auto pRenderPass = renderPass.create();
+        pRenderPass->deserialize(serializer);
+        return pRenderPass;
     }
 
     size_t RenderPassLibrary::getRenderPassCount()

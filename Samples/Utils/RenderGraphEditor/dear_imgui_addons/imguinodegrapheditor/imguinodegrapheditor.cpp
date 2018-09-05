@@ -1473,11 +1473,11 @@ void NodeGraphEditor::render()
             if (node_hovered_in_list) menuNode = node_hovered_in_list;
             if (node_hovered_in_scene) menuNode = node_hovered_in_scene;
         }*/
-                ImGuiContext& g = *GImGui; while (g.OpenPopupStack.size() > 0) g.OpenPopupStack.pop_back();   // Close all existing context-menus
-                ImGui::PushID(menuNode);
-                if (open_delete_only_context_menu) ImGui::OpenPopup("delete_only_context_menu");
-                else if (open_context_menu) ImGui::OpenPopup("context_menu");
-                ImGui::PopID();
+                // ImGuiContext& g = *GImGui; while (g.OpenPopupStack.size() > 0) g.OpenPopupStack.pop_back();   // Close all existing context-menus
+                // ImGui::PushID(menuNode);
+                // if (open_delete_only_context_menu) ImGui::OpenPopup("delete_only_context_menu");
+                // else if (open_context_menu) ImGui::OpenPopup("context_menu");
+                // ImGui::PopID();
             }
             else if (mouseRectangularSelectionForNodesStarted || (!node_hovered_in_scene && !node_hovered_in_list && !isMouseDraggingForScrolling && !dragNode.isValid() && !isSomeNodeMoving && !io.KeyShift && !ImGui::IsAnyItemActive() && !ImGui::IsAnyItemHovered())) {
                 // Test mouse rect selection for nodes

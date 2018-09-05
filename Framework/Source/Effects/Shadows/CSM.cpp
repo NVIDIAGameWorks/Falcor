@@ -234,6 +234,10 @@ namespace Falcor
         mpGaussianBlur->setKernelWidth(5);
     }
 
+    void CascadedShadowMaps::deserialize(const RenderPassSerializer& serializer)
+    {
+    }
+
     void CascadedShadowMaps::setLight(const Light::SharedConstPtr& pLight)
     {
         mpLight = pLight;
@@ -261,11 +265,6 @@ namespace Falcor
         auto pUnique = create(shadowMapWidth, shadowMapHeight, visibilityBufferWidth, visibilityBufferHeight, pLight, pScene, cascadeCount, visMapBitsPerChannel);
         SharedPtr pShared = std::move(pUnique);
         return pShared;
-    }
-
-    CascadedShadowMaps::SharedPtr CascadedShadowMaps::deserialize(const RenderPassSerializer& serializer)
-    {
-        return SharedPtr(new CascadedShadowMaps());
     }
 
     void CascadedShadowMaps::setSdsmReadbackLatency(uint32_t latency)
@@ -389,7 +388,7 @@ namespace Falcor
 
     void CascadedShadowMaps::setCascadeCount(uint32_t cascadeCount)
     {
-        if(mpLight->getType() != LightDirectional)
+        if(mpLight && mpLight->getType() != LightDirectional)
         {
             if (cascadeCount != 1) logWarning("CascadedShadowMaps::setCascadeCount() - cascadeCount for directional light must be 1");
             assert(mCsmData.cascadeCount == 1);
@@ -407,7 +406,7 @@ namespace Falcor
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
-            if (mpLight->getType() == LightDirectional)
+            if (mpLight && mpLight->getType() == LightDirectional)
             {
                 if (pGui->addIntVar("Cascade Count", (int32_t&)mCsmData.cascadeCount, 1, 8))
                 {

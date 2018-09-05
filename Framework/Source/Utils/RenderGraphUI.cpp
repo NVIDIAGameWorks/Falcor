@@ -67,6 +67,7 @@ namespace Falcor
     using IdToPNodeMap = std::unordered_map<uint32_t, ImGui::Node*>;
     static std::unordered_map<std::string, IdToPNodeMap> spGraphIDsToNode;
     static std::unordered_map<std::string, NodeGraphEditorGui> sNodeGraphEditors;
+    static std::string sOpenPassUIPopup;
     static NodeGraphEditorGui* spCurrentNodeEditor = nullptr;
 
     class RenderGraphNode : public ImGui::Node
@@ -172,6 +173,30 @@ namespace Falcor
             float pinOffsetx = kPinRadius * 2.0f;
             uint32_t pinCount = static_cast<uint32_t>(pCurrentNode->InputsCount);
             bool isInputs = true;
+
+            // 
+            if (pRenderPass && ImGui::IsMouseClicked(1))
+            {
+                std::string idString = std::string("Render UI##") + pCurrentNode->getName();
+                
+                // get hover rect of node 
+
+                if (ImGui::IsMouseHoveringRect(currentScreenPos, ImVec2(currentScreenPos.x + pCurrentNode->Size.x, currentScreenPos.y + pCurrentNode->Size.y)))
+                {
+                    sOpenPassUIPopup = pCurrentNode->getName();
+                }
+                else
+                {
+                    uint32_t id = ImGui::GetCurrentWindow()->GetID(idString.c_str());
+                    if (ImGui::IsPopupOpen(id))
+                    {
+                        ImGui::OpenPopup(idString.c_str());
+                        ImGui::ClosePopup(id);
+                        sOpenPassUIPopup.clear();
+                    }
+                    
+                }
+            }
 
             for (int32_t i = 0; i < paddingSpace; ++i)
             {
@@ -286,7 +311,23 @@ namespace Falcor
             sLogString += "Graph is currently invalid\n";
         }
 
-        mCommandStrings.push_back(commandString);
+        // break apart multi-line command strings
+        size_t offset = commandString.find_first_of('\n', 0);
+        size_t lastOffset = 0;
+        for (;;)
+        {
+            offset = commandString.find_first_of('\n', lastOffset);
+            if (offset == std::string::npos)
+            {
+                if (offset < commandString.size())
+                {
+                    mCommandStrings.push_back(commandString.substr(lastOffset, commandString.size() - lastOffset));
+                }
+                break;
+            }
+            mCommandStrings.push_back(commandString.substr(lastOffset, offset - lastOffset));
+            lastOffset = offset + 1;
+        }
 
         return false;
     }
@@ -664,7 +705,7 @@ namespace Falcor
         spCurrentNodeEditor->setNodeCallback(setNode);
         
         const ImVec2& mousePos = ImGui::GetMousePos();
-        bool bFromDragAndDrop = true;
+        bool bFromDragAndDrop = false;
 
         ImGui::NodeGraphEditor::Style& style = ImGui::NodeGraphEditor::GetStyle(); 
         
@@ -683,6 +724,33 @@ namespace Falcor
             updatePins(false);
         }
 
+        // push update commands for the open popup
+        // TODO - get a callback working for only when data has changed
+        if (sOpenPassUIPopup.size())
+        {
+            std::string idString = std::string("Render UI##") + sOpenPassUIPopup;
+            if (!ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID(idString.c_str())))
+            {
+                ImGui::OpenPopup(idString.c_str());
+            }
+            if (ImGui::BeginPopup(idString.c_str()))
+            {
+                if (!ImGui::IsWindowHovered() && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)))
+                {
+                    sOpenPassUIPopup.clear();
+                }
+                else
+                {
+                    mRenderGraphRef.getRenderPass(sOpenPassUIPopup)->renderUI(pGui, nullptr);
+                }
+                
+                // push serialized data as update command for live preview
+                pushUpdateCommand(RenderGraphLoader::saveRenderGraphAsUpdateScript(mRenderGraphRef));
+
+                ImGui::EndPopup();
+            }
+        }
+        
         if (!spCurrentNodeEditor->isInited())
         {
             spCurrentNodeEditor->render();
@@ -704,10 +772,10 @@ namespace Falcor
                 dragAndDropText = statement;
                 mNewNodeStartPosition = { -spCurrentNodeEditor->offset.x + mousePos.x, -spCurrentNodeEditor->offset.y + mousePos.y };
                 mNextPassName = statement;
-                mDisplayDragAndDroptPopup = true;
+                mDisplayDragAndDropPopup = true;
             }
 
-            if (mDisplayDragAndDroptPopup)
+            if (mDisplayDragAndDropPopup)
             {
                 pGui->pushWindow("CreateNewGraph", 256, 128, 
                     static_cast<uint32_t>(mNewNodeStartPosition.x), static_cast<uint32_t>(mNewNodeStartPosition.y));
@@ -723,13 +791,13 @@ namespace Falcor
                     RenderGraphLoader::ExecuteStatement("AddRenderPass " + mNextPassName + " " + dragAndDropText, mRenderGraphRef);
                     bFromDragAndDrop = true;
                     sRebuildDisplayData = true;
-                    mDisplayDragAndDroptPopup = false;
+                    mDisplayDragAndDropPopup = false;
                     mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
                     if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
                 }
                 if (pGui->addButton("cancel##renderPass"))
                 {
-                    mDisplayDragAndDroptPopup = false;
+                    mDisplayDragAndDropPopup = false;
                 }
 
                 pGui->popWindow();
