@@ -173,6 +173,7 @@ namespace Falcor
 
         VRSystem::cleanup();
 
+        Scripting::shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
         mpBackBufferFBO.reset();
@@ -263,6 +264,8 @@ namespace Falcor
         {
             mArgList.parseCommandLine(concatCommandLine(argc, argv));
         }
+
+        Scripting::start();
 
         // Load and run
         mpRenderer->onLoad(this, mpRenderContext);

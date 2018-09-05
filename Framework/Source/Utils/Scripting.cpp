@@ -31,29 +31,43 @@
 #include "Externals/pybind11-2.2.3/include/pybind11/embed.h"
 #include "StringUtils.h"
 
+#include "Graphics/RenderGraph/RenderGraph.h"
+#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+
 using namespace pybind11;
 
 namespace Falcor
 {
     bool Scripting::sRunning = false;
 
+    PYBIND11_EMBEDDED_MODULE(falcor, m)
+    {
+        m.def("createRenderGraph", &RenderGraph::create);
+        m.def("createRenderPass", &RenderPassLibrary::createRenderPass);
+        pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
+        pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
+    }
+
     bool Scripting::start()
     {
         if (!sRunning)
         {
             sRunning = true;
-            static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python37-32");
+            static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python37");
             Py_SetPythonHome(pythonHome.c_str());
 
             try
             {
                 initialize_interpreter();
+                exec("from falcor import *");
             }
             catch (const std::exception& e)
             {
                 logError("Can't start the python interpreter. Exception says " + std::string(e.what()));
                 return false;
             }
+
+            
         }
 
         return true;
