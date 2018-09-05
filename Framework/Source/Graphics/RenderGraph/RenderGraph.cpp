@@ -504,14 +504,12 @@ namespace Falcor
         assert(pColor && pDepth);
 
         // If the back-buffer values changed, recompile
-        mRecompile = mRecompile || (mSwapChainData.colorFormat != pColor->getFormat());
-        mRecompile = mRecompile || (mSwapChainData.depthFormat != pDepth->getFormat());
+        mRecompile = mRecompile || (mSwapChainData.format != pColor->getFormat());
         mRecompile = mRecompile || (mSwapChainData.width != pTargetFbo->getWidth());
         mRecompile = mRecompile || (mSwapChainData.height != pTargetFbo->getHeight());
 
         // Store the values
-        mSwapChainData.colorFormat = pColor->getFormat();
-        mSwapChainData.depthFormat = pDepth->getFormat();
+        mSwapChainData.format = pColor->getFormat();
         mSwapChainData.width = pTargetFbo->getWidth();
         mSwapChainData.height = pTargetFbo->getHeight();
 

@@ -40,13 +40,13 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ResourceCache>;
         static SharedPtr create();
 
-        // Properties to use during resource creation when its property has not been fully specified.
+        /** Properties to use during resource creation when its property has not been fully specified. 
+        */
         struct DefaultProperties
         {
-            uint32_t width = 0;
-            uint32_t height = 0;
-            ResourceFormat colorFormat = ResourceFormat::Unknown;
-            ResourceFormat depthFormat = ResourceFormat::Unknown;
+            uint32_t width = 0;                                 ///< Width to create textures as
+            uint32_t height = 0;                                ///< Height to create textures as
+            ResourceFormat format = ResourceFormat::Unknown;    ///< Format to use for texture creation
         };
 
         // Add/Remove reference to a resource not owned by the cache

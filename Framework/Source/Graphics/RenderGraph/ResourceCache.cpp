@@ -126,7 +126,7 @@ namespace Falcor
         uint32_t height = field.getHeight() ? field.getHeight() : params.height;
         uint32_t depth = field.getDepth() ? field.getDepth() : 1;
         uint32_t sampleCount = field.getSampleCount() ? field.getSampleCount() : 1;
-        ResourceFormat format = field.getFormat() == ResourceFormat::Unknown ? params.colorFormat : field.getFormat();
+        ResourceFormat format = field.getFormat() == ResourceFormat::Unknown ? params.format : field.getFormat();
 
         Texture::SharedPtr pTexture;
         if (depth > 1)
