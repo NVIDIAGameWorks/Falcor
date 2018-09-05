@@ -86,9 +86,9 @@ namespace Falcor
 
     void TemporalAA::reflect(RenderPassReflection& reflection) const
     {
-        reflection.addInput(kMotionVec).setSampleCount(1);
-        reflection.addInput(kColorIn).setSampleCount(1);
-        reflection.addOutput(kColorOut).setSampleCount(1);
+        reflection.addInput(kMotionVec);
+        reflection.addInput(kColorIn);
+        reflection.addOutput(kColorOut);
     }
 
     void TemporalAA::allocatePrevColor(const Texture* pColorOut)

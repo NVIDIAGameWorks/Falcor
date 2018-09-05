@@ -91,7 +91,7 @@ namespace Falcor
             uint32_t mWidth = 0;                           ///< For texture, the width. For buffers, the size in bytes. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mHeight = 0;                          ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mDepth = 0;                           ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
-            uint32_t mSampleCount = 0;                     ///< 0 means don't care (which means 1 for output resources)
+            uint32_t mSampleCount = 1;                     ///< 0 means don't care - the pass will use whatever is bound
             uint32_t mMipLevels = 1;                       ///< The required mip-level count. Only valid for textures
             uint32_t mArraySize = 1;                       ///< The required array-size. Only valid for textures
             ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
