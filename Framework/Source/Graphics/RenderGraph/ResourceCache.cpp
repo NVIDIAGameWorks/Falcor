@@ -70,7 +70,52 @@ namespace Falcor
 
     void ResourceCache::removeExternalResource(const std::string& name)
     {
-        mExternalResources.erase(name);
+        auto it = mExternalResources.find(name);
+        if (it == mExternalResources.end())
+        {
+            logWarning("ResourceCache::removeExternalResource: " + name + " does not exist.");
+            return;
+        }
+
+        mExternalResources.erase(it);
+    }
+
+    /** Overwrite previously unknown/unspecified fields with specified ones.
+
+        If a field property is specified both in the existing cache, as well as the input properties, 
+        a warning will be logged and the cached properties will not be changed.
+    */
+    bool mergeFields(RenderPassReflection::Field& base, const RenderPassReflection::Field& newField, const std::string& newFieldName)
+    {
+        std::string warningMsg;
+
+        // If newField property is not 0, retrieve value from newField
+        // If both newField and base property is specified, generate warning.
+#define get_dim(var, dim) \
+    if (newField.get##dim() != 0) { \
+        if (base.get##dim() == 0) var = base.get##dim(); \
+        else warningMsg += std::string(#dim) + " already specified."; }
+
+        uint32_t w = 0, h = 0, d = 0;
+        get_dim(w, Width);
+        get_dim(h, Height);
+        get_dim(d, Depth);
+        base.setDimensions(w, h, d);
+#undef get_dim
+
+        if (newField.getFormat() != ResourceFormat::Unknown)
+        {
+            if (base.getFormat() == ResourceFormat::Unknown) base.setFormat(newField.getFormat());
+            else warningMsg += " Format already specified.";
+        }
+
+        if (warningMsg.empty() == false)
+        {
+            logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
+            return false;
+        }
+
+        return true;
     }
 
     void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, const std::string& alias)
@@ -81,7 +126,7 @@ namespace Falcor
             return;
         }
 
-        bool addAlias = alias.empty() == false;
+        bool addAlias = (alias.empty() == false);
         if (addAlias && mNameToIndex.count(alias) == 0)
         {
             logWarning("ResourceCache::registerField: Field named " + alias + " not found. Cannot add " + name + "as an alias. Creating new entry.");
@@ -101,20 +146,7 @@ namespace Falcor
             uint32_t index = mNameToIndex[alias];
             mNameToIndex[name] = index;
 
-            // Merge fields, and overwrite previously unknown/unspecified fields with specified ones
-            RenderPassReflection::Field& cachedField = mResourceData[index].field;
-
-            uint32_t w = (cachedField.getWidth() == 0 && field.getWidth() != 0) ? field.getWidth() : cachedField.getWidth();
-            uint32_t h = (cachedField.getHeight() == 0 && field.getHeight() != 0) ? field.getHeight() : cachedField.getHeight();
-            uint32_t d = (cachedField.getDepth() == 0 && field.getDepth() != 0) ? field.getDepth() : cachedField.getDepth();
-            cachedField.setDimensions(w, h, d);
-
-            if (cachedField.getFormat() == ResourceFormat::Unknown && field.getFormat() != ResourceFormat::Unknown)
-            {
-                cachedField.setFormat(field.getFormat());
-            }
-
-            // TODO: Output error if fields cannot be merged? Trying to alias incompatible formats, etc.?
+            mergeFields(mResourceData[index].field, field, name);
 
             mResourceData[index].dirty = true;
         }
