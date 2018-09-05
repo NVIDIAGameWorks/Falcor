@@ -571,6 +571,9 @@
     <ClCompile Include="Utils\RenderGraphLoader.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\Scripting.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1778,6 +1781,9 @@
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Scripting.h">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
