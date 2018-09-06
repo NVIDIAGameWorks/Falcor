@@ -40,15 +40,27 @@ namespace Falcor
 {
     bool Scripting::sRunning = false;
 
+    void addRenderGraphBindings(module& m)
+    {
+        // RenderGraph
+        void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
+        auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
+        graphClass.def("addPass", &RenderGraph::addRenderPass).def("removePass", &RenderGraph::removeRenderPass);
+        graphClass.def("addEdge", &RenderGraph::addEdge).def("removeEdge", renderGraphRemoveEdge);
+        graphClass.def("markOutput", &RenderGraph::markGraphOutput).def("unmarkOutput", &RenderGraph::unmarkGraphOutput);
+        
+        // RenderPass
+        pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
+
+        // RenderPassLibrary
+    }
+
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
         m.def("createRenderGraph", &RenderGraph::create);
         m.def("createRenderPass", &RenderPassLibrary::createRenderPass);
 
-        void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
-        pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph").def("addRenderPass", &RenderGraph::addRenderPass).def("addEdge", &RenderGraph::addEdge).def("removeRenderPass", &RenderGraph::removeRenderPass).def("removeEdge", renderGraphRemoveEdge);
-
-        pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
+        addRenderGraphBindings(m);
     }
 
     bool Scripting::start()
