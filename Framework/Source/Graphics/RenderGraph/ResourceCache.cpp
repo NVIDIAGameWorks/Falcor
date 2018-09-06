@@ -118,11 +118,14 @@ namespace Falcor
         return true;
     }
 
-    void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, const std::string& alias)
+    void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias)
     {
+        // If name exists, update time range
         if (mNameToIndex.count(name) > 0)
         {
-            logWarning("ResourceCache::registerField: Field named " + name + " already exists. Ignoring operation.");
+            uint32_t index = mNameToIndex[alias];
+            mResourceData[index].firstUsed = min(mResourceData[index].firstUsed, timePoint);
+            mResourceData[index].lastUsed = max(mResourceData[index].lastUsed, timePoint);
             return;
         }
 
@@ -138,15 +141,18 @@ namespace Falcor
         {
             assert(mNameToIndex.count(name) == 0);
             mNameToIndex[name] = (uint32_t)mResourceData.size();
-            mResourceData.push_back({ field, true, nullptr });
+            mResourceData.push_back({ field, true, timePoint, timePoint, nullptr });
         }
+        // Add alias
         else
         {
-            // Add alias
             uint32_t index = mNameToIndex[alias];
             mNameToIndex[name] = index;
 
             mergeFields(mResourceData[index].field, field, name);
+
+            mResourceData[index].firstUsed = min(mResourceData[index].firstUsed, timePoint);
+            mResourceData[index].lastUsed = max(mResourceData[index].lastUsed, timePoint);
 
             mResourceData[index].dirty = true;
         }

@@ -56,10 +56,11 @@ namespace Falcor
         /** Register a field that requires resources to be allocated.
             \param[in] name String in the format of PassName.FieldName
             \param[in] field Reflection data for the field
+            \param[in] timePoint The point in time for when this field is used. Normally this is an index into the execution order.
             \param[in] alias Optional. Another field name described in the same way as 'name'.
                 If specified, and the field exists in the cache, the resource will be aliased with 'name' and field properties will be merged.
         */
-        void registerField(const std::string& name, const RenderPassReflection::Field& field, const std::string& alias = "");
+        void registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias = "");
 
         /** Get a resource by name. Includes external resources known by the cache.
         */
@@ -80,8 +81,12 @@ namespace Falcor
         struct ResourceData
         {
             RenderPassReflection::Field field; // Holds merged properties for aliased resources
-
             bool dirty; // Whether field data has been changed since last resource creation
+
+            // Time range where this resource is being used
+            uint32_t firstUsed;
+            uint32_t lastUsed;
+
             std::shared_ptr<Resource> pResource;
         };
         

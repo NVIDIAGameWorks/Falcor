@@ -319,8 +319,16 @@ namespace Falcor
 
     bool RenderGraph::resolveResourceTypes()
     {
-        for (const uint32_t& nodeIndex : mExecutionList)
+        // Build list to look up execution order index from the pass
+        std::unordered_map<RenderPass*, uint32_t> passToIndex;
+        for (size_t i = 0; i < mExecutionList.size(); i++)
         {
+            passToIndex.emplace(mNodeData[mExecutionList[i]].pPass.get(), uint32_t(i));
+        }
+
+        for (size_t i = 0; i < mExecutionList.size(); i++)
+        {
+            uint32_t nodeIndex = mExecutionList[i];
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
             assert(pNode);
             RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
@@ -336,9 +344,9 @@ namespace Falcor
             };
 
             // Set all the pass' outputs to either null or allocate a resource if it is required
-            for (size_t i = 0; i < passReflection.getFieldCount(); i++)
+            for (size_t f = 0; f < passReflection.getFieldCount(); f++)
             {
-                const auto& field = passReflection.getField(i);
+                const auto& field = passReflection.getField(f);
                 if (is_set(field.getType(), RenderPassReflection::Field::Type::Output))
                 {
                     // If is not a graph output, and is required for the pass, we need to allocate it,
@@ -346,7 +354,7 @@ namespace Falcor
                     if (isGraphOutput(nodeIndex, field.getName()) == false &&
                         is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false)
                     {
-                        mpResourcesCache->registerField(mNodeData[nodeIndex].nodeName + '.' + field.getName(), field);
+                        mpResourcesCache->registerField(mNodeData[nodeIndex].nodeName + '.' + field.getName(), field, uint32_t(i));
                     }
                 }
             }
@@ -366,9 +374,12 @@ namespace Falcor
                 // Merge dst/input field into same resource data
                 std::string srcResourceName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
                 std::string dstResourceName = mNodeData[pEdge->getDestNode()].nodeName + '.' + edgeData.dstField;
+
                 const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
                 RenderPassReflection::Field dstField = mPassReflectionMap[pDstPass.get()].getField(edgeData.dstField);
-                mpResourcesCache->registerField(dstResourceName, dstField, srcResourceName);
+
+                assert(passToIndex.count(pDstPass.get()) > 0);
+                mpResourcesCache->registerField(dstResourceName, dstField, passToIndex[pDstPass.get()],srcResourceName);
             }
         }
 
