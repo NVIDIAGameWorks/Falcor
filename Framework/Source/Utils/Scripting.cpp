@@ -34,15 +34,15 @@
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPassesLibrary.h"
 
-using namespace pybind11;
-
 namespace Falcor
 {
     bool Scripting::sRunning = false;
 
-    void addRenderGraphBindings(module& m)
+    void addRenderGraphBindings(pybind11::module& m)
     {
         // RenderGraph
+        m.def("createRenderGraph", &RenderGraph::create);
+
         void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
         auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
         graphClass.def("addPass", &RenderGraph::addRenderPass).def("removePass", &RenderGraph::removeRenderPass);
@@ -53,13 +53,16 @@ namespace Falcor
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
 
         // RenderPassLibrary
+        const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d)->RenderPass::SharedPtr
+        {
+            std::unordered_map<std::string, void*> params;
+            return RenderPassLibrary::createRenderPass(passName.c_str());
+        };
+        m.def("createRenderPass", createRenderPass);
     }
 
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
-        m.def("createRenderGraph", &RenderGraph::create);
-        m.def("createRenderPass", &RenderPassLibrary::createRenderPass);
-
         addRenderGraphBindings(m);
     }
 
@@ -73,8 +76,8 @@ namespace Falcor
 
             try
             {
-                initialize_interpreter();
-                exec("from falcor import *");
+                pybind11::initialize_interpreter();
+                pybind11::exec("from falcor import *");
             }
             catch (const std::exception& e)
             {
@@ -93,7 +96,7 @@ namespace Falcor
         if (sRunning)
         {
             sRunning = false;
-            finalize_interpreter();
+            pybind11::finalize_interpreter();
         }
     }
 
@@ -101,7 +104,7 @@ namespace Falcor
     {
         try
         {
-            exec(script.c_str());
+            pybind11::exec(script.c_str());
         }
         catch (const std::runtime_error& e)
         {
