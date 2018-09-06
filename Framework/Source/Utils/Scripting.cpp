@@ -44,7 +44,10 @@ namespace Falcor
     {
         m.def("createRenderGraph", &RenderGraph::create);
         m.def("createRenderPass", &RenderPassLibrary::createRenderPass);
-        pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
+
+        void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
+        pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph").def("addRenderPass", &RenderGraph::addRenderPass).def("addEdge", &RenderGraph::addEdge).def("removeRenderPass", &RenderGraph::removeRenderPass).def("removeEdge", renderGraphRemoveEdge);
+
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
     }
 
