@@ -29,6 +29,7 @@
 #include "Scripting.h"
 #include "Externals/pybind11-2.2.3/include/pybind11/pybind11.h"
 #include "Externals/pybind11-2.2.3/include/pybind11/embed.h"
+#include "Externals/pybind11-2.2.3/include/pybind11/stl.h"
 #include "StringUtils.h"
 
 #include "Graphics/RenderGraph/RenderGraph.h"
@@ -37,6 +38,65 @@
 namespace Falcor
 {
     bool Scripting::sRunning = false;
+
+    template<typename CppType>
+    static bool insertNewValue(const std::pair<pybind11::handle, pybind11::handle>& pyVar, Dictionary& falcorDict)
+    {
+        try
+        {
+            CppType cppVal = pyVar.second.cast<CppType>();
+            std::string name = pyVar.first.cast<std::string>();
+            falcorDict[name] = cppVal;
+        }
+        catch (const std::runtime_error&)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    static bool insertNewFloatVec(const std::pair<pybind11::handle, pybind11::handle>& pyVar, Dictionary& falcorDict)
+    {
+        try
+        {
+            std::vector<float> floatVec = pyVar.second.cast<std::vector<float>>();
+            std::string name = pyVar.first.cast<std::string>();
+
+            switch (floatVec.size())
+            {
+            case 1:
+                falcorDict[name] = floatVec[0]; break;
+            case 2:
+                falcorDict[name] = vec2(floatVec[0], floatVec[1]); break;
+            case 3:
+                falcorDict[name] = vec3(floatVec[0], floatVec[1], floatVec[2]); break;
+            case 4:
+                falcorDict[name] = vec4(floatVec[0], floatVec[1], floatVec[2], floatVec[3]); break;
+            default:
+                falcorDict[name] = floatVec;
+            }
+        }
+        catch (const std::runtime_error&)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    static Dictionary convertPythonDict(const pybind11::dict& pyDict)
+    {
+        Dictionary falcorDict;
+        for (const auto& d : pyDict)
+        {
+            // The order matters here, since pybind11 does implicit conversion if it can
+            if (insertNewValue<float>(d, falcorDict)) continue;
+            if (insertNewValue<std::string>(d, falcorDict)) continue;
+            if (insertNewFloatVec(d, falcorDict)) continue;
+            should_not_get_here();
+        }
+
+        return {};
+    }
 
     void addRenderGraphBindings(pybind11::module& m)
     {
@@ -84,8 +144,6 @@ namespace Falcor
                 logError("Can't start the python interpreter. Exception says " + std::string(e.what()));
                 return false;
             }
-
-            
         }
 
         return true;
