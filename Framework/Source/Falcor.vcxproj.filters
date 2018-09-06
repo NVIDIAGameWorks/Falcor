@@ -1786,6 +1786,9 @@
     <ClInclude Include="Utils\Scripting.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\Dictionary.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

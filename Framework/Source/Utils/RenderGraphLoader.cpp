@@ -40,45 +40,45 @@ namespace Falcor
     const std::string kAddRenderPassCommand = std::string("AddRenderPass");
     const std::string kAddEdgeCommand = std::string("AddEdge");
 
-#define script_parameter_get(type_, member_, typeNameEnum_)  template <> type_& RenderGraphLoader::ScriptParameter::get<type_>() \
-        { \
-            type = Type::typeNameEnum_; \
-            return member_; \
-        }
-
-    script_parameter_get(int32_t, i32, Int)
-    script_parameter_get(uint32_t, u32, Uint);
-    script_parameter_get(bool,   b, Bool);
-    script_parameter_get(double, d64, Double);
-    script_parameter_get(std::string, str, String);
-
-#undef  script_parameter_get
+// #define script_parameter_get(type_, member_, typeNameEnum_)  template <> type_& RenderGraphLoader::ScriptParameter::get<type_>() \
+//         { \
+//             type = Type::typeNameEnum_; \
+//             return member_; \
+//         }
+// 
+//     script_parameter_get(int32_t, i32, Int)
+//     script_parameter_get(uint32_t, u32, Uint);
+//     script_parameter_get(bool,   b, Bool);
+//     script_parameter_get(double, d64, Double);
+//     script_parameter_get(std::string, str, String);
+// 
+// #undef  script_parameter_get
 
     static RenderGraphLoader sRenderGraphLoaderInstance;
 
     void RenderGraphLoader::ScriptParameter::operator=(const std::string& val)
     {
-        switch (type)
-        {
-        case Type::Double:
-            get<double>() = static_cast<double>(std::atof(val.c_str()));
-            break;
-        case Type::Uint:
-            get<uint32_t>() = static_cast<uint32_t>(std::atoi(val.c_str()));
-            break;
-        case Type::Int:
-            get<int32_t>() = std::atoi(val.c_str());
-            break;
-        case Type::Bool:
-            if (val == "true") get<bool>() = true;
-            if (val == "false") get<bool>() = false;
-            break;
-        case Type::String:
-            get<std::string>() = val;
-            break;
-        default:
-            should_not_get_here();
-        }
+//         switch (type)
+//         {
+//         case Type::Double:
+//             get<double>() = static_cast<double>(std::atof(val.c_str()));
+//             break;
+//         case Type::Uint:
+//             get<uint32_t>() = static_cast<uint32_t>(std::atoi(val.c_str()));
+//             break;
+//         case Type::Int:
+//             get<int32_t>() = std::atoi(val.c_str());
+//             break;
+//         case Type::Bool:
+//             if (val == "true") get<bool>() = true;
+//             if (val == "false") get<bool>() = false;
+//             break;
+//         case Type::String:
+//             get<std::string>() = val;
+//             break;
+//         default:
+//             should_not_get_here();
+//         }
     }
 
     std::string RenderGraphLoader::saveRenderGraphAsScriptBuffer(const RenderGraph& renderGraph)
@@ -90,8 +90,8 @@ namespace Falcor
         {
             std::string sceneFilename = mActiveVariables["gSceneFilename"].get<std::string>() = renderGraph.getScene()->mFileName;
             Scene::UserVariable var = renderGraph.getScene()->getUserVariable("sky_box");
-            assert(var.type == Scene::UserVariable::Type::String);
-            mActiveVariables["gSkyBoxFilename"] = ScriptParameter(var.str);
+            assert(var.getType() == Scene::UserVariable::Type::String);
+            mActiveVariables["gSkyBoxFilename"] = ScriptParameter(var.asString());
 
             // first set the name of the scene for the passes that dependent on it during their initialization
             currentCommand = "SetScene ";
@@ -115,27 +115,27 @@ namespace Falcor
                 const std::string& varName =  renderPassSerializerRef.getVariableName(i);
                 if (varName[0] == 'g') continue;
 
-                switch (variableRef.type)
+                switch (variableRef.getType())
                 {
                 case Scene::UserVariable::Type::Bool:
                     currentCommand = "VarBool ";
-                    currentCommand += varName + " " + (renderPassSerializerRef.getValue(i).b ? "true" : "false") + '\n';
+                    currentCommand += varName + " " + (renderPassSerializerRef.getValue(i).asBool() ? "true" : "false") + '\n';
                     break;
                 case Scene::UserVariable::Type::Double:
                     currentCommand = "VarFloat ";
-                    currentCommand += varName + " " + std::to_string(static_cast<float>(renderPassSerializerRef.getValue(i).d64)) + '\n';
+                    currentCommand += varName + " " + std::to_string(static_cast<float>(renderPassSerializerRef.getValue(i).asDouble())) + '\n';
                     break;
                 case Scene::UserVariable::Type::String:
                     currentCommand = "VarString ";
-                    currentCommand += varName + " " + renderPassSerializerRef.getValue(i).str + '\n';
+                    currentCommand += varName + " " + renderPassSerializerRef.getValue(i).asString() + '\n';
                     break;
                 case Scene::UserVariable::Type::Uint:
                     currentCommand = "VarUInt ";
-                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).u32) + '\n';
+                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).asUint()) + '\n';
                     break;
                 case Scene::UserVariable::Type::Int:
                     currentCommand = "VarInt ";
-                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).i32) + '\n';
+                    currentCommand += varName + " " + std::to_string(renderPassSerializerRef.getValue(i).asInt()) + '\n';
                     break;
                 default:
                     should_not_get_here();
@@ -373,9 +373,9 @@ namespace Falcor
             mActiveVariables["gSceneFilename"] = ScriptParameter( sceneFilename );
 
             Scene::UserVariable var = pScene->getUserVariable("sky_box");
-            assert(var.type == Scene::UserVariable::Type::String);
+            assert(var.getType() == Scene::UserVariable::Type::String);
 
-            mActiveVariables["gSkyBoxFilename"] = ScriptParameter( var.str );
+            mActiveVariables["gSkyBoxFilename"] = ScriptParameter( var.asString() );
         }, {});
 
 #define register_var_statement(_type, _statement) \

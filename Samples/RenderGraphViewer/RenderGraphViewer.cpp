@@ -167,8 +167,8 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 
     // Add the skybox
     Scene::UserVariable var = mpScene->getUserVariable("sky_box");
-    assert(var.type == Scene::UserVariable::Type::String);
-    std::string skyBox = getDirectoryFromFile(mSceneFilename) + '/' + var.str;
+    assert(var.getType() == Scene::UserVariable::Type::String);
+    std::string skyBox = getDirectoryFromFile(mSceneFilename) + '/' + var.asString();
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");

@@ -56,13 +56,13 @@ namespace Falcor
 
             void operator=(const ScriptParameter& param) 
             {
-                type = param.type;
-                d64 = param.d64;
-                str = param.str;
-                vec2 = param.vec2;
-                vec3 = param.vec3;
-                vec4 = param.vec4;
-                vector = param.vector; 
+//                 type = param.type;
+//                 d64 = param.d64;
+//                 str = param.str;
+//                 vec2 = param.vec2;
+//                 vec3 = param.vec3;
+//                 vec4 = param.vec4;
+//                 vector = param.vector; 
             }
         };
 

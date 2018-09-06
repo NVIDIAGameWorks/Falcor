@@ -89,10 +89,10 @@ void ForwardRenderer::applyCustomSceneVars(const Scene* pScene, const std::strin
     std::string folder = getDirectoryFromFile(filename);
 
     Scene::UserVariable var = pScene->getUserVariable("sky_box");
-    if (var.type == Scene::UserVariable::Type::String) initSkyBox(folder + '/' + var.str);
+    if (var.getType() == Scene::UserVariable::Type::String) initSkyBox(folder + '/' + var.asString());
 
     var = pScene->getUserVariable("opacity_scale");
-    if (var.type == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.d64;
+    if (var.getType() == Scene::UserVariable::Type::Double) mOpacityScale = (float)var.asDouble();
 }
 
 void ForwardRenderer::initScene(SampleCallbacks* pSample, Scene::SharedPtr pScene)
