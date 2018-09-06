@@ -80,14 +80,10 @@ namespace Falcor
     RenderPassSerializer SkyBox::serialize()
     {
         RenderPassSerializer renderPassSerializer;
-        if (mpVars)
-        {
-            Sampler::SharedPtr pSampler = mpVars->getDefaultBlock()->getSampler(mBindLocations.sampler, 0);
-            renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.minFilter", static_cast<uint32_t>(pSampler->getMinFilter()));
-            renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.magFilter", static_cast<uint32_t>(pSampler->getMagFilter()));
-            renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.mipFilter", static_cast<uint32_t>(pSampler->getMipFilter()));
-        }
-
+        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.minFilter", static_cast<uint32_t>(mpSampler->getMinFilter()));
+        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.magFilter", static_cast<uint32_t>(mpSampler->getMagFilter()));
+        renderPassSerializer.addVariable<std::uint32_t>("skybox.sampleDesc.mipFilter", static_cast<uint32_t>(mpSampler->getMipFilter()));
+        
         renderPassSerializer.addVariable<bool>("skybox.loadAsSrgb", mLoadSrgb);
         renderPassSerializer.addVariable<bool>("skybox.renderStereo", mRenderStereo);
         return renderPassSerializer;

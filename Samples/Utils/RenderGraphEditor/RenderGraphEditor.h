@@ -45,8 +45,6 @@ public:
 
 private:
     void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
-    void createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName);
-    void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
     void renderLogWindow(Gui* pGui);

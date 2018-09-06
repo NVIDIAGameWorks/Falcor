@@ -175,8 +175,11 @@ namespace Falcor
 
         // to avoid attempting to write changes every frame.
         float mTimeSinceLastUpdate = 0.0f;
-        bool mDisplayDragAndDroptPopup = false;
+        bool mDisplayDragAndDropPopup = false;
         std::string  mNextPassName = "";
         std::string mRenderGraphName;
+
+        // used for pop warning menu for edges
+        bool mShowWarningPopup = false;
     };
 }

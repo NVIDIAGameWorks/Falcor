@@ -78,9 +78,6 @@ namespace Falcor
 
         RenderPassSerializer()
         {
-            // set globals
-            addVariable("gSkyBoxFilename", { std::string() });
-            addVariable("gSceneFilename", { std::string() });
         }
 
         size_t getVariableCount() const

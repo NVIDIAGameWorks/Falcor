@@ -1379,7 +1379,7 @@ void NodeGraphEditor::render()
                     cp2 = p2-link_cp;
 
                     const float distanceSquared = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
-                    if (ImGui::IsMouseClicked(0) && ImGui::GetIO().KeyCtrl)
+                    if (ImGui::IsMouseClicked(1))
                     {
                         if (distanceSquared < 5.0f) selectedLink = link_idx;
                     }

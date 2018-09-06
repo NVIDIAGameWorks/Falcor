@@ -1,9 +1,9 @@
 AddRenderPass CascadedShadowMaps CascadedShadowMaps
 AddRenderPass BlitPass BlitPass
 AddRenderPass SSAO SSAO
-VarUInt sampleDesc.magFilter 1
-VarUInt sampleDesc.minFilter 1
-VarUInt sampleDesc.mipFilter 1
+VarInt skybox.sampleDesc.minFilter 0
+VarInt skybox.sampleDesc.magFilter 0
+VarInt skybox.sampleDesc.mipFilter 0
 VarInt loadAsSrgb 1
 AddRenderPass SkyBox SkyBox
 AddRenderPass DepthPrePass DepthPass

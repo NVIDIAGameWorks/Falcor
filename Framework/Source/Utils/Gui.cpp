@@ -670,11 +670,11 @@ namespace Falcor
         }
     }
 
-    void Gui::addImage(const char label[], const Texture::SharedPtr& pTexSrv, const glm::vec2& size, bool sameLine)
+    void Gui::addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size, bool sameLine)
     {
         ImGui::PushID(label);
         if (sameLine) ImGui::SameLine();
-        mpImages.push_back(pTexSrv);
+        mpImages.push_back(pTex);
         ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, size.y });
         ImGui::PopID();
     }

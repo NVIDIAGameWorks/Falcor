@@ -1,0 +1,25 @@
+AddRenderPass LightingPass SceneLightingPass
+AddRenderPass ShadowPass CascadedShadowMaps
+AddRenderPass ToneMapping ToneMappingPass
+AddRenderPass DepthPrePass DepthPass
+AddRenderPass BlitPass BlitPass
+AddRenderPass SSAO SSAO
+VarInt skybox.loadAsSrgb 1
+VarInt skybox.renderStereo 0
+VarInt skybox.sampleDesc.minFilter 0
+VarInt skybox.sampleDesc.magFilter 0
+VarInt skybox.sampleDesc.mipFilter 0
+AddRenderPass SkyBox SkyBox
+AddRenderPass FXAA FXAA
+AddEdge DepthPrePass.depth LightingPass.depth
+AddEdge SkyBox.target LightingPass.color
+AddEdge ShadowPass.visibility LightingPass.visibilityBuffer
+AddEdge DepthPrePass.depth ShadowPass.depth
+AddEdge LightingPass.color ToneMapping.src
+AddEdge FXAA.dst BlitPass.src
+AddEdge ToneMapping.dst SSAO.colorIn
+AddEdge LightingPass.normals SSAO.normals
+AddEdge LightingPass.depth SSAO.depth
+AddEdge DepthPrePass.depth SkyBox.depth
+AddEdge SSAO.colorOut FXAA.src
+AddGraphOutput BlitPass.dst

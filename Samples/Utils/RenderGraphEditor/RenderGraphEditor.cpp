@@ -349,21 +349,6 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     RenderGraphUI::sRebuildDisplayData = true;
 }
 
-void RenderGraphEditor::createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField)
-{
-    // add information for GUI to avoid costly drawing in renderUI function for graph
-    if (mpGraphs[mCurrentGraphIndex]->addEdge(srcRenderPass + std::string(".") + srcField, dstRenderPass + std::string(".") + dstField) == RenderGraph::kInvalidIndex)
-    {
-        logWarning(std::string("Failed to create edge between nodes: ").append(srcRenderPass)
-            .append(" and ").append(dstRenderPass).append( " connecting fields ").append(srcField).append(" to ").append(dstField).append(".\n"));
-    }
-}
-
-void RenderGraphEditor::createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName)
-{
-    mpGraphs[mCurrentGraphIndex]->addRenderPass(RenderPassLibrary::createRenderPass(renderPassType.c_str()), renderPassName);
-}
-
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");

@@ -79,6 +79,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         // {
         //     createGraph(pSample);
         // }
+
     }
 
     if (pGui->addButton("Load Graph", true))
@@ -183,7 +184,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
-            pGui->addText("\n");
             pGraph->renderUI(pGui, nullptr);
         }
 

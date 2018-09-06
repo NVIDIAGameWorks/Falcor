@@ -86,7 +86,7 @@ namespace Falcor
 
         auto& renderPass = gRenderPassList[className];
         auto pRenderPass = renderPass.create();
-        pRenderPass->deserialize(serializer);
+        if (serializer.getVariableCount()) pRenderPass->deserialize(serializer);
         return pRenderPass;
     }
 

@@ -1,0 +1,8 @@
+AddRenderPass BlitPass BlitPass
+VarInt skybox.loadAsSrgb 1
+VarInt skybox.renderStereo 0
+AddRenderPass SkyBox SkyBox
+AddRenderPass DepthPass DepthPass
+AddEdge SkyBox.target BlitPass.src
+AddEdge DepthPass.depth SkyBox.depth
+AddGraphOutput BlitPass.dst

@@ -44,7 +44,6 @@ public:
 
 private:
     FirstPersonCameraController mCamControl;
-    void copyGraph(const RenderGraph::SharedPtr& pSrc, RenderGraph::SharedPtr pDst);
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
     RenderGraph::SharedPtr createGraph(SampleCallbacks* pSample);
     void resetGraphOutputs();
