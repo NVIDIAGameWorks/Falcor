@@ -31,23 +31,20 @@
 
 namespace Falcor
 {
-    class BlitPass : public RenderPass, inherit_shared_from_this<RenderPass, BlitPass>
+    class ResolvePass : public RenderPass, inherit_shared_from_this<RenderPass, ResolvePass>
     {
     public:
-        using SharedPtr = std::shared_ptr<BlitPass>;
+        using SharedPtr = std::shared_ptr<ResolvePass>;
 
         /** Create a new object
         */
         static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
+        static SharedPtr deserialize(const RenderPassSerializer& serializer);
 
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
-        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
 
-        void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:
-        BlitPass();
-        Sampler::Filter mFilter = Sampler::Filter::Linear;
+        ResolvePass();
     };
 }

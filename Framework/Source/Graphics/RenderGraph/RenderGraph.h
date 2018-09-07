@@ -151,11 +151,13 @@ namespace Falcor
         /** Enable/disable pass profiling
         */
         void profileGraph(bool enabled) { mProfileGraph = enabled; }
+
     private:
         RenderGraph();
         uint32_t getPassIndex(const std::string& name) const;
         bool compile(std::string& log);
         bool resolveExecutionOrder();
+        bool resolveResourceTypes();
         bool allocateResources();
 
         struct EdgeData
@@ -198,17 +200,10 @@ namespace Falcor
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
-        std::shared_ptr<Texture> createTextureForPass(const RenderPassReflection::Field& field);
-
-        struct  
-        {
-            uint32_t width = 0;
-            uint32_t height = 0;
-            ResourceFormat colorFormat = ResourceFormat::Unknown;
-            ResourceFormat depthFormat = ResourceFormat::Unknown;
-        } mSwapChainData;
+        ResourceCache::DefaultProperties mSwapChainData;
 
         std::vector<uint32_t> mExecutionList;
+        std::unordered_map<RenderPass*, RenderPassReflection> mPassReflectionMap;
         ResourceCache::SharedPtr mpResourcesCache;
         bool mProfileGraph = true;
     };

@@ -270,7 +270,7 @@ namespace Falcor
     {
         // Run the AO pass
         auto& pDepth = pData->getTexture(kDepth);
-        auto& pNormals = pData->getTexture(kNormals);        
+        auto& pNormals = pData->getTexture(kNormals);
         auto& pColorOut = pData->getTexture(kColorOut);
         auto& pColorIn = pData->getTexture(kColorIn);
         execute(pRenderContext, mpScene->getActiveCamera().get(), pColorIn, pColorOut, pDepth, pNormals);
