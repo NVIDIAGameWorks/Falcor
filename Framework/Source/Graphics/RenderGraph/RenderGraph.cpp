@@ -53,7 +53,7 @@ namespace Falcor
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
     {
-        auto& it = mNameToIndex.find(name);
+        auto it = mNameToIndex.find(name);
         return (it == mNameToIndex.end()) ? kInvalidIndex : it->second;
     }
 
@@ -153,7 +153,7 @@ namespace Falcor
     template<bool input>
     static RenderPass* getRenderPassAndNamePair(const RenderGraph* pGraph, const std::string& fullname, const std::string& errorPrefix, str_pair& nameAndField)
     {
-        if (parseFieldName(fullname, nameAndField) == false) return false;
+        if (parseFieldName(fullname, nameAndField) == false) return nullptr;
 
         RenderPass* pPass = pGraph->getRenderPass(nameAndField.first).get();
         if (!pPass)

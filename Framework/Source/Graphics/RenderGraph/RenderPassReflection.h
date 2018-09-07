@@ -94,7 +94,7 @@ namespace Falcor
         Field& addInput(const std::string& name);
         Field& addOutput(const std::string& name);
         Field& addInputOutput(const std::string& name);
-        RenderPassReflection& setFlags(RenderPassReflection::Flags flags) { mFlags = flags; }
+        void setFlags(RenderPassReflection::Flags flags) { mFlags = flags; }
 
         size_t getFieldCount() const { return mFields.size(); }
         const Field& getField(size_t f) const { return mFields[f]; }

@@ -47,7 +47,7 @@ namespace Falcor
         }
 
     protected:
-        virtual ~DirectedGraphTraversal() = 0 {}
+        virtual ~DirectedGraphTraversal() {}
 
         typename DirectedGraph::SharedPtr mpGraph;
         Flags mFlags;

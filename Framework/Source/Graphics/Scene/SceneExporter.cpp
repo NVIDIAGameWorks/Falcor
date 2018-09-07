@@ -409,6 +409,11 @@ namespace Falcor
         rapidjson::Value jsonUserValues(rapidjson::kObjectType);
         auto& allocator = mJDoc.GetAllocator();
 
+        // TODO -- use these. unused scenekeys to avoid linux warning
+        (void)SceneKeys::kAreaLightRect;
+        (void)SceneKeys::kAreaLightSphere;
+        (void)SceneKeys::kAreaLightDisc;
+
         for (uint32_t varID = 0; varID < mpScene->getUserVariableCount(); varID++)
         {
             std::string name;

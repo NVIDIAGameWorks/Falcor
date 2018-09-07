@@ -249,11 +249,11 @@ namespace Falcor
     void SSAO::execute(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pColorIn, const Texture::SharedPtr& pColorOut, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
     {
         assert(pColorOut != pColorIn);
-        auto& pAoMap = generateAOMap(pContext, mpScene->getActiveCamera().get(), pDepthTexture, pNormalTexture);
+        auto pAoMap = generateAOMap(pContext, mpScene->getActiveCamera().get(), pDepthTexture, pNormalTexture);
 
         mComposeData.pVars->setTexture("gColor", pColorIn);
         mComposeData.pVars->setTexture("gAOMap", pAoMap);
-        auto& pFbo = mComposeData.pState->getFbo();
+        auto pFbo = mComposeData.pState->getFbo();
         pFbo->attachColorTarget(pColorOut, 0);
         mComposeData.pState->setFbo(pFbo);
 
@@ -269,10 +269,10 @@ namespace Falcor
     void SSAO::execute(RenderContext* pRenderContext, const RenderData* pData)
     {
         // Run the AO pass
-        auto& pDepth = pData->getTexture(kDepth);
-        auto& pNormals = pData->getTexture(kNormals);        
-        auto& pColorOut = pData->getTexture(kColorOut);
-        auto& pColorIn = pData->getTexture(kColorIn);
+        auto pDepth = pData->getTexture(kDepth);
+        auto pNormals = pData->getTexture(kNormals);        
+        auto pColorOut = pData->getTexture(kColorOut);
+        auto pColorIn = pData->getTexture(kColorIn);
         execute(pRenderContext, mpScene->getActiveCamera().get(), pColorIn, pColorOut, pDepth, pNormals);
     }
 }

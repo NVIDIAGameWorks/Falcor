@@ -144,7 +144,7 @@ namespace Falcor
             oldOffset = offset + 1;
         }
 
-        if (execv(linuxAppName.c_str(), argv.data()))
+        if (execv(linuxAppName.c_str(), (char* const*)argv.data()))
         {
             msgBox("Failed to launch process");
         }
@@ -180,7 +180,7 @@ namespace Falcor
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
     
-    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback = {})
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
     {
         (void)filePath; (void)callback;
         should_not_get_here();

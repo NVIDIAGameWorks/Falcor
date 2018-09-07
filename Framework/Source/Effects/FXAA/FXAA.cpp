@@ -79,8 +79,8 @@ namespace Falcor
 
     void FXAA::execute(RenderContext* pContext, const RenderData* pData)
     {
-        auto& pSrc = pData->getTexture(kSrc);
-        auto& pDst = pData->getTexture(kDst);
+        auto pSrc = pData->getTexture(kSrc);
+        auto pDst = pData->getTexture(kDst);
 
         Fbo::SharedPtr pFbo = Fbo::create();
         pFbo->attachColorTarget(pDst, 0);

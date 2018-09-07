@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <functional>
 #include "API/Window.h"
 
 namespace Falcor

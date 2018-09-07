@@ -882,8 +882,6 @@ namespace Falcor
                 for (auto& currentPinUI : currentPassUI.mInputPins)
                 {
                     const std::string& currentPinName = currentPinUI.mPinName;
-                    bool isInput = currentPinUI.mIsInput;
-
                     // draw label for input pin
                 
                     if (!currentPinUI.mConnectedNodeName.size())
