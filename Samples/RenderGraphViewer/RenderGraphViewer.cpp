@@ -47,7 +47,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Load Graph"))
     {
         std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename)) fileWriteCallback(pSample, filename);
+        if (openFileDialog("", filename)) fileWriteCallback(pSample, filename);
 
         if (pGui->addCheckBox("Depth Pass", mEnableDepthPrePass))
         {

@@ -495,7 +495,6 @@ namespace Falcor
                 captureScreen();
             }
 
-
             {
                 PROFILE(present);
                 gpDevice->present();

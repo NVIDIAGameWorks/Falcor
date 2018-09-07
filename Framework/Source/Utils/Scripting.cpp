@@ -34,6 +34,8 @@
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPassesLibrary.h"
 
+using namespace pybind11::literals;
+
 namespace Falcor
 {
     bool Scripting::sRunning = false;
@@ -142,12 +144,12 @@ namespace Falcor
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
 
         // RenderPassLibrary
-        const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d)->RenderPass::SharedPtr
+        const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d = {})->RenderPass::SharedPtr
         {
             std::unordered_map<std::string, void*> params;
             return RenderPassLibrary::createRenderPass(passName.c_str());
         };
-        m.def("createRenderPass", createRenderPass);
+        m.def("createRenderPass", createRenderPass, "passName"_a, "dict"_a=pybind11::dict());
     }
 
     PYBIND11_EMBEDDED_MODULE(falcor, m)

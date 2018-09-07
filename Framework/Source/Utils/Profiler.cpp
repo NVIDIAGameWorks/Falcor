@@ -151,7 +151,7 @@ namespace Falcor
             if(pData->showInMsg == false) continue;
 
             double gpuTime = getGpuTime(pData);
-            assert(pData->callStack.empty());
+            assert(pData->callStack.empty() || (pData->name == "renderGUI" && pData->callStack.size() == 1)); // renderGUI is an exception, since this function is called during `RenderGUI`
 
             char event[1000];
             uint32_t nameIndent = pData->level * 2 + 1;

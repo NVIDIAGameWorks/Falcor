@@ -56,7 +56,7 @@ namespace Falcor
         RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::create);
         RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::create);
         RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", (PassFunc<CascadedShadowMaps>)CascadedShadowMaps::create);
-        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", (PassFunc<ToneMapping>)ToneMapping::create);
+        RenderPassLibrary::addRenderPassClass("ToneMapping", "Tone-Mapping", (PassFunc<ToneMapping>)ToneMapping::create);
         RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::create);
         RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", (PassFunc<SSAO>)SSAO::create);
         RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::create);
