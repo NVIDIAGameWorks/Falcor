@@ -33,30 +33,54 @@ namespace Falcor
     class Scripting
     {
         public:
+            class Context
+            {
+            public:
+                template<typename T>
+                struct ObjectDesc
+                {
+                    ObjectDesc(const std::string& name_, const T& obj_) : name(name_), obj(obj_) {}
+                    std::string name;
+                    T obj;
+                };
+
+                template<typename T>
+                std::vector<ObjectDesc<typename T>> getObjects()
+                {
+                    std::vector<ObjectDesc<typename T>> v;
+                    for (const auto& l : mLocals)
+                    {
+                        try
+                        {
+                            v.push_back(ObjectDesc<typename T>(l.first.cast<std::string>(), l.second.cast<T>()));
+                        }
+                        catch (std::exception*) {}
+                    }
+                    return v;
+                }
+
+                template<typename T>
+                void setObject(const std::string& name, T obj)
+                {
+                    mLocals[name.c_str()] = obj;
+                }
+
+                template<typename T>
+                T getObject(const std::string& name) const
+                {
+                    return mLocals[name.c_str()].cast<T>();
+                }
+            private:
+                friend class Scripting;
+                pybind11::dict mLocals;
+            };
+
             static bool start();
             static void shutdown();
-            static bool runScript(const std::string& script, std::string& errorLog, bool runInGlobalScope = false);
-
-            template<typename T>
-            static std::vector<T> getLastRunLocalObjects()
-            {
-                std::vector<T> v;
-                for (const auto& l : sLocals)
-                {
-                    try
-                    {
-                        v.push_back(l.second.cast<T>());
-
-                    }
-                    catch (std::exception*)
-                    {
-                    }
-                }
-                return v;
-            }
-
+            static bool runScript(const std::string& script, std::string& errorLog);
+            static bool runScript(const std::string& script, std::string& errorLog, Context& context);
+            Context getGlobalContext() const;
     private:
         static bool sRunning;
-        static pybind11::dict sLocals;
     };
 }

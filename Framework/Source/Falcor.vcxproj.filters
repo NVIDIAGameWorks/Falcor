@@ -568,10 +568,10 @@
     <ClCompile Include="Utils\RenderGraphUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\RenderGraphLoader.cpp">
+    <ClCompile Include="Utils\Scripting.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\Scripting.cpp">
+    <ClCompile Include="Utils\RenderGraphScriptContext.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1774,9 +1774,6 @@
     <ClInclude Include="Utils\RenderGraphUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\RenderGraphLoader.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -1784,6 +1781,9 @@
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Dictionary.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\RenderGraphScriptContext.h">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>

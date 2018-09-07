@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderGraphLoader.h"
+#include "RenderGraphScriptContext.h"
 #include "Framework.h"
 #include "Scripting.h"
 #include <fstream>
@@ -33,27 +33,72 @@
 
 namespace Falcor
 {
-    std::vector<RenderGraph::SharedPtr> RenderGraphLoader::loadFromFile(const std::string& filename)
+    RenderGraphScriptContext::SharedPtr RenderGraphScriptContext::create()
     {
+        return SharedPtr(new RenderGraphScriptContext());
+    }
+
+    RenderGraphScriptContext::SharedPtr RenderGraphScriptContext::create(const std::string& filename)
+    {
+        SharedPtr pThis = create();
+
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
             logError("Error when importing render-graphs. Can't find the file `" + filename + "`");
-            return {};
+            return nullptr;
         }
-        
-        return loadFromScript(readFile(fullpath));
+
+        pThis->runScript(readFile(fullpath));
+        return pThis;
     }
 
-    std::vector<RenderGraph::SharedPtr> RenderGraphLoader::loadFromScript(const std::string& script)
+    RenderGraphScriptContext::GraphVec RenderGraphScriptContext::importGraphsFromFile(const std::string& filename)
+    {
+        SharedPtr pThis = create(filename);
+        return pThis ? pThis->getGraphs() : GraphVec();
+    }
+
+    RenderGraphScriptContext::GraphVec RenderGraphScriptContext::importGraphsFromScript(const std::string& script)
+    {
+        SharedPtr pThis = create();
+        return pThis->runScript(script) ? pThis->getGraphs() : GraphVec();
+    }
+
+    bool RenderGraphScriptContext::runScript(const std::string& script)
     {
         std::string log;
-        if (Scripting::runScript(script, log) == false)
+        if (Scripting::runScript(script, log, mContext) == false)
         {
-            logError("Can't import render-graphs.\n" + log);
-            return {};
+            logError("Can't run render-graphs script.\n" + log);
+            return false;
         }
 
-        return Scripting::getLastRunLocalObjects<RenderGraph::SharedPtr>();
+        mGraphVec = mContext.getObjects<RenderGraph::SharedPtr>();
+        return true;
+    }
+
+    void RenderGraphScriptContext::addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph)
+    {
+        try
+        {
+            mContext.getObject<RenderGraph::SharedPtr>(name);
+            logWarning("RenderGraph `" + name + "` already exists. Replacing the current object");
+        }
+        catch (std::exception) {}
+        mContext.setObject(name, pGraph);
+    }
+
+    RenderGraph::SharedPtr RenderGraphScriptContext::getGraph(const std::string& name) const
+    {
+        try
+        {
+            return mContext.getObject<RenderGraph::SharedPtr>(name);
+        }
+        catch (std::exception) 
+        {
+            logWarning("Can't find RenderGraph `" + name + "` in RenderGraphScriptContext");
+            return nullptr;
+        }
     }
 }

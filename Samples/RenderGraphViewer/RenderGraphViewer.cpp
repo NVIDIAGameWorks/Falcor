@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphViewer.h"
-#include "Utils/RenderGraphLoader.h"
+#include "Utils/RenderGraphScriptContext.h"
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
@@ -210,7 +210,8 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphViewer::fileWriteCallback(SampleCallbacks* pSample, const std::string& filename)
 {
-    mpGraph = RenderGraphLoader::loadFromFile(filename)[0]; // TODO Matt
+    RenderGraphScriptContext::SharedPtr pScript = RenderGraphScriptContext::create(filename);
+    mpGraph = pScript->getGraph("g");
     mpGraph->setScene(mpScene);
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
@@ -229,7 +230,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         if (filePath.size())
         {
             mpGraph = RenderGraph::create();
-            mpGraph = RenderGraphLoader::loadFromFile(filePath)[0];
+            mpGraph = RenderGraphScriptContext::importGraphsFromFile(filePath)[0].obj;
             mpScene = mpGraph->getScene();
             if (!mpScene)
             {

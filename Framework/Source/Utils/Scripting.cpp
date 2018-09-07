@@ -37,7 +37,6 @@
 namespace Falcor
 {
     bool Scripting::sRunning = false;
-    pybind11::dict Scripting::sLocals;
 
     template<typename CppType>
     static bool insertNewValue(const std::pair<pybind11::handle, pybind11::handle>& pyVar, Dictionary& falcorDict)
@@ -188,12 +187,11 @@ namespace Falcor
         }
     }
 
-    bool Scripting::runScript(const std::string& script, std::string& errorLog, bool runInGlobalScope)
+    static bool runScript(const std::string& script, std::string& errorLog, pybind11::dict& locals)
     {
         try
         {
-            sLocals.clear();
-            pybind11::exec(script.c_str(), pybind11::globals(), runInGlobalScope ? pybind11::globals() : sLocals);
+            pybind11::exec(script.c_str(), pybind11::globals(), locals);
         }
         catch (const std::runtime_error& e)
         {
@@ -202,5 +200,22 @@ namespace Falcor
         }
 
         return true;
+    }
+
+    bool Scripting::runScript(const std::string& script, std::string& errorLog)
+    {
+        return Falcor::runScript(script, errorLog, pybind11::globals());
+    }
+
+    bool Scripting::runScript(const std::string& script, std::string& errorLog, Context& context)
+    {
+        return Falcor::runScript(script, errorLog, context.mLocals);
+    }
+
+    Scripting::Context Scripting::getGlobalContext() const
+    {
+        Context c;
+        c.mLocals = pybind11::globals();
+        return c;
     }
 }
