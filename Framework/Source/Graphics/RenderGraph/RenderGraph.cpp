@@ -434,7 +434,9 @@ namespace Falcor
 
     void RenderGraph::execute(RenderContext* pContext)
     {
-        if (mProfileGraph) Profiler::startEvent("RenderGraph::execute()");
+        bool profile = mProfileGraph && gProfileEnabled;
+
+        if (profile) Profiler::startEvent("RenderGraph::execute()");
 
         std::string log;
         if (!compile(log))
@@ -445,13 +447,13 @@ namespace Falcor
 
         for (const auto& node : mExecutionList)
         {
-            if (mProfileGraph) Profiler::startEvent(mNodeData[node].nodeName);
+            if (profile) Profiler::startEvent(mNodeData[node].nodeName);
             RenderData renderData(mNodeData[node].nodeName, nullptr, mpResourcesCache);
             mNodeData[node].pPass->execute(pContext, &renderData);
-            if (mProfileGraph) Profiler::endEvent(mNodeData[node].nodeName);
+            if (profile) Profiler::endEvent(mNodeData[node].nodeName);
         }
 
-        if (mProfileGraph) Profiler::endEvent("RenderGraph::execute()");
+        if (profile) Profiler::endEvent("RenderGraph::execute()");
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
