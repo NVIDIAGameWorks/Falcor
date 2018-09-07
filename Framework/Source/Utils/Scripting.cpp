@@ -27,7 +27,6 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Scripting.h"
-#include "Externals/pybind11-2.2.3/include/pybind11/pybind11.h"
 #include "Externals/pybind11-2.2.3/include/pybind11/embed.h"
 #include "Externals/pybind11-2.2.3/include/pybind11/stl.h"
 #include "StringUtils.h"
@@ -38,6 +37,7 @@
 namespace Falcor
 {
     bool Scripting::sRunning = false;
+    pybind11::dict Scripting::sLocals;
 
     template<typename CppType>
     static bool insertNewValue(const std::pair<pybind11::handle, pybind11::handle>& pyVar, Dictionary& falcorDict)
@@ -188,11 +188,12 @@ namespace Falcor
         }
     }
 
-    bool Scripting::runScript(const std::string& script, std::string& errorLog)
+    bool Scripting::runScript(const std::string& script, std::string& errorLog, bool runInGlobalScope)
     {
         try
         {
-            pybind11::exec(script.c_str());
+            sLocals.clear();
+            pybind11::exec(script.c_str(), pybind11::globals(), runInGlobalScope ? pybind11::globals() : sLocals);
         }
         catch (const std::runtime_error& e)
         {

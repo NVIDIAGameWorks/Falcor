@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "Externals/pybind11-2.2.3/include/pybind11/pybind11.h"
 
 namespace Falcor
 {
@@ -34,9 +35,28 @@ namespace Falcor
         public:
             static bool start();
             static void shutdown();
-            static bool runScript(const std::string& script, std::string& errorLog);
+            static bool runScript(const std::string& script, std::string& errorLog, bool runInGlobalScope = false);
+
+            template<typename T>
+            static std::vector<T> getLastRunLocalObjects()
+            {
+                std::vector<T> v;
+                for (const auto& l : sLocals)
+                {
+                    try
+                    {
+                        v.push_back(l.second.cast<T>());
+
+                    }
+                    catch (std::exception*)
+                    {
+                    }
+                }
+                return v;
+            }
 
     private:
         static bool sRunning;
+        static pybind11::dict sLocals;
     };
 }
