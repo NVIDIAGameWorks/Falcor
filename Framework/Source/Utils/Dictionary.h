@@ -119,6 +119,11 @@ namespace Falcor
         ConstIterator end() const { return mMap.end(); }
 
         size_t size() const { return mMap.size(); }
+
+        bool keyExists(const std::string& key) const 
+        {
+            return mMap.count(key) != 0;
+        }
     private:
 
         Container mMap;

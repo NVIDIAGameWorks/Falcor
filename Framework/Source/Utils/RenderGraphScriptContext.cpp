@@ -71,7 +71,7 @@ namespace Falcor
         if (Scripting::runScript(script, log, mContext) == false)
         {
             logError("Can't run render-graphs script.\n" + log);
-            return false;
+            return false; 
         }
 
         mGraphVec = mContext.getObjects<RenderGraph::SharedPtr>();

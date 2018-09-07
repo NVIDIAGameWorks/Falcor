@@ -35,34 +35,50 @@
 
 namespace Falcor
 {
+    // Dictionary keys
+    static const std::string& kSkyboxFile = "file";
+
     SkyBox::SkyBox() : RenderPass("SkyBox") {}
 
-    SkyBox::UniquePtr SkyBox::create(Texture::SharedPtr& pSkyTexture, Sampler::SharedPtr pSampler, bool renderStereo)
+    SkyBox::SharedPtr SkyBox::create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo)
     {
-        UniquePtr pSkyBox = UniquePtr(new SkyBox());
-        if(pSkyBox->createResources(pSkyTexture, pSampler, renderStereo) == false)
+        SharedPtr pSkyBox = SharedPtr(new SkyBox());
+        if(pSkyBox->createResources(pTexture, pSampler, renderStereo) == false)
         {
             return nullptr;
         }
         return pSkyBox;
     }
 
-    SkyBox::SharedPtr SkyBox::create(const Dictionary& dict)
+    SkyBox::UniquePtr SkyBox::createFromTexture(const std::string& textureName, bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
     {
-        std::string sceneFileName = dict["gSceneFilename"].asString();
-        std::string skyBoxName = dict["gSkyBoxFilename"].asString();
-        if (!sceneFileName.size() || !skyBoxName.size())
+        Texture::SharedPtr pTexture;
+        if(textureName.size())
         {
-            msgBox("No scene or skybox file specified.");
-            return nullptr;
+            pTexture = createTextureFromFile(textureName, false, loadAsSrgb);
+            if (pTexture == nullptr)
+            {
+                return nullptr;
+            }
         }
 
-        std::string skyBox = getDirectoryFromFile(dict["gSceneFilename"].asString()) + '/' + skyBoxName;
-        Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(static_cast<Falcor::Sampler::Filter>(dict["sampleDesc.minFilter"].asInt()),
-            static_cast<Falcor::Sampler::Filter>(dict["sampleDesc.magFilter"].asInt()),
-            static_cast<Falcor::Sampler::Filter>(dict["sampleDesc.mipFilter"].asInt()));
-        return createFromTexture(skyBox, dict["loadAsSrgb"].asBool(), Sampler::create(samplerDesc));
+        UniquePtr pSkyBox = UniquePtr(new SkyBox());
+        if (pSkyBox->createResources(pTexture, pSampler, renderStereo) == false) return nullptr;
+        return pSkyBox;
+    }
+
+    SkyBox::SharedPtr SkyBox::create(const std::string& textureName, bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
+    {
+#pragma warning (suppress : 4996)
+        return createFromTexture(textureName, loadAsSrgb, pSampler, renderStereo);
+    }
+
+    SkyBox::SharedPtr SkyBox::create(const Dictionary& dict)
+    {
+        std::string filename;
+        if (dict.keyExists(kSkyboxFile)) filename = dict[kSkyboxFile].asString();
+
+        return create(filename);
     }
 
     Dictionary SkyBox::getScriptingDictionary() const
@@ -76,16 +92,19 @@ namespace Falcor
         return {};
     }
 
+    void SkyBox::setTexture(const Texture::SharedPtr& pTexture)
+    {
+        mpTexture = pTexture;
+        if (mpTexture)
+        {
+            assert(mpTexture->getType() == Texture::Type::TextureCube || mpTexture->getType() == Texture::Type::Texture2D);
+            (mpTexture->getType() == Texture::Type::Texture2D) ? mpProgram->addDefine("_SPHERICAL_MAP") : mpProgram->removeDefine("_SPHERICAL_MAP");
+        }
+        mpVars->setTexture("gTexture", mpTexture);
+    }
+
     bool SkyBox::createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo)
     {
-        if(pTexture == nullptr)
-        {
-            logError("Trying to create a skybox with null texture");
-            return false;
-        }
-
-        mpTexture = pTexture;
-
         mpCubeModel = Model::createFromFile("Effects/cube.obj");
         if(mpCubeModel == nullptr)
         {
@@ -100,12 +119,6 @@ namespace Falcor
             defines.add("_SINGLE_PASS_STEREO");
         }
 
-        assert(mpTexture->getType() == Texture::Type::TextureCube || mpTexture->getType() == Texture::Type::Texture2D);
-        if (mpTexture->getType() == Texture::Type::Texture2D)
-        {
-            defines.add("_SPHERICAL_MAP");
-        }
-
         mpProgram = GraphicsProgram::createFromFile("Effects/SkyBox.slang", "vs", "ps", defines);
         mpVars = GraphicsVars::create(mpProgram->getReflector());
 
@@ -118,9 +131,6 @@ namespace Falcor
         ConstantBuffer* pCB = pDefaultBlock->getConstantBuffer(mBindLocations.perFrameCB, 0).get();
         mScaleOffset = pCB->getVariableOffset("gScale");
         mMatOffset = pCB->getVariableOffset("gWorld");
-
-        pDefaultBlock->setSrv(mBindLocations.texture, 0, mpTexture->getSRV());
-        pDefaultBlock->setSampler(mBindLocations.sampler, 0, pSampler);
 
         // Create state
         mpState = GraphicsState::create();
@@ -141,6 +151,10 @@ namespace Falcor
         dsDesc.setDepthWriteMask(false).setDepthFunc(DepthStencilState::Func::LessEqual).setDepthTest(true);
         mpState->setDepthStencilState(DepthStencilState::create(dsDesc));
         mpState->setProgram(mpProgram);
+
+        setTexture(pTexture);
+        setSampler(pSampler);
+
         return true;
     }
 
@@ -157,16 +171,6 @@ namespace Falcor
     void SkyBox::setSampler(Sampler::SharedPtr pSampler)
     {
         mpVars->getDefaultBlock()->setSampler(mBindLocations.sampler, 0, pSampler);
-    }
-
-    SkyBox::UniquePtr SkyBox::createFromTexture(const std::string& textureName, bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
-    {
-        Texture::SharedPtr pTexture = createTextureFromFile(textureName, false, loadAsSrgb);
-        if(pTexture == nullptr)
-        {
-            return nullptr;
-        }
-        return create(pTexture, pSampler, renderStereo);
     }
 
     void SkyBox::render(RenderContext* pRenderCtx, Camera* pCamera, const Fbo::SharedPtr& pTarget)
@@ -207,5 +211,11 @@ namespace Falcor
 
         pRenderContext->clearRtv(mpFbo->getRenderTargetView(0).get(), vec4(0));
         render(pRenderContext, mpScene->getActiveCamera().get(), mpFbo);
+    }
+
+    void SkyBox::setScene(const std::shared_ptr<Scene>& pScene)
+    {
+        mpScene = pScene;
+        if (mpScene && mpScene->getEnvironmentMap()) setTexture(mpScene->getEnvironmentMap());
     }
 }

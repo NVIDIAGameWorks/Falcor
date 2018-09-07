@@ -173,6 +173,14 @@ namespace Falcor
         */
         void attachSkinningCacheToModels(SkinningCache::SharedPtr pSkinningCache);
 
+        /** Set an environment-map texture
+        */
+        void setEnvironmentMap(const Texture::SharedPtr& pMap) { mpEnvMap = pMap; }
+
+        /** Get the env-map texture
+        */
+        const Texture::SharedPtr& getEnvironmentMap() const { return mpEnvMap; }
+
         std::string mFileName;
     protected:
 
@@ -192,6 +200,7 @@ namespace Falcor
         std::vector<ObjectPath::SharedPtr> mpPaths;
         std::vector<LightProbe::SharedPtr> mpLightProbes;
         std::vector<AreaLight::SharedPtr> mpAreaLights;
+        Texture::SharedPtr mpEnvMap;
 
         uint32_t mActiveCameraID = 0;
         float mCameraSpeed = 1;

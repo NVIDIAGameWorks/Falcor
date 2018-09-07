@@ -1100,6 +1100,32 @@ namespace Falcor
         return true;
     }
 
+    bool SceneImporter::parseEnvMap(const rapidjson::Value& jsonVal)
+    {
+        if (mScene.getEnvironmentMap())
+        {
+            return error("Scene can't have more then one environment map");
+        }
+        
+        if (jsonVal.IsString() == false)
+        {
+            return error(std::string(SceneKeys::kEnvMap) + " should be a string");
+        }
+
+        std::string filename = mDirectory + '/' + jsonVal.GetString();
+        if (doesFileExist(filename) == false)
+        {
+            if (findFileInDataDirectories(jsonVal.GetString(), filename) == false)
+            {
+                return error("Can't find environment map file " + std::string(jsonVal.GetString()));
+            }
+        }
+
+        auto pTex = createTextureFromFile(filename, false, true);
+        mScene.setEnvironmentMap(pTex);
+        return true;
+    }
+
     bool SceneImporter::parseUserDefinedSection(const rapidjson::Value& jsonVal)
     {
         if(jsonVal.IsObject() == false)
@@ -1285,6 +1311,7 @@ namespace Falcor
     {
         // The order matters here.
         {SceneKeys::kVersion, &SceneImporter::parseVersion},
+        {SceneKeys::kEnvMap, &SceneImporter::parseEnvMap},
         {SceneKeys::kAmbientIntensity, &SceneImporter::parseAmbientIntensity},
         {SceneKeys::kLightingScale, &SceneImporter::parseLightingScale},
         {SceneKeys::kCameraSpeed, &SceneImporter::parseCameraSpeed},

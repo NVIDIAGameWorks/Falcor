@@ -78,15 +78,6 @@ using namespace glm;
 #define concat_strings_(a, b) a##b
 #define concat_strings(a, b) concat_strings_(a, b)
 
-#if defined(_MSC_VER)
-#define FALCOR_DEPRECATED(MESSAGE) __declspec(deprecated(MESSAGE))
-#define forceinline __forceinline
-#else
-// TODO: add cases for clang/gcc when/if needed
-#define FALCOR_DEPRECATED(MESSAGE) /* emtpy */
-#define forceinline __attribute__((always_inline))
-#endif
-
 namespace Falcor
 {
 #define enum_class_operators(e_) inline e_ operator& (e_ a, e_ b){return static_cast<e_>(static_cast<int>(a)& static_cast<int>(b));}  \
@@ -253,7 +244,13 @@ namespace Falcor
 #include "Utils/Platform/OS.h"
 #include "Utils/Profiler.h"
 
+#if defined(_MSC_VER)
 #define deprecate(_ver_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_))
+#define deprecate_repl(_ver_, _new_func_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". Use " ## _new_func_ ## " instead"))
+#define forceinline __forceinline
+#else
+#define forceinline __attribute__((always_inline))
+#endif
 
 #if (_ENABLE_NVAPI == true)
 #include "nvapi.h"

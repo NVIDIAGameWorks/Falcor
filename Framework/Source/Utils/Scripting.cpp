@@ -126,7 +126,7 @@ namespace Falcor
             should_not_get_here();
         }
 
-        return {};
+        return falcorDict;
     }
 
     void addRenderGraphBindings(pybind11::module& m)
@@ -146,8 +146,7 @@ namespace Falcor
         // RenderPassLibrary
         const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d = {})->RenderPass::SharedPtr
         {
-            std::unordered_map<std::string, void*> params;
-            return RenderPassLibrary::createRenderPass(passName.c_str());
+            return RenderPassLibrary::createRenderPass(passName.c_str(), convertPythonDict(d));
         };
         m.def("createRenderPass", createRenderPass, "passName"_a, "dict"_a=pybind11::dict());
     }

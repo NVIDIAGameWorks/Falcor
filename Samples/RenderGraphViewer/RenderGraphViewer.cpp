@@ -166,12 +166,9 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addRenderPass(FXAA::create(), "FXAA");
 
     // Add the skybox
-    Scene::UserVariable var = mpScene->getUserVariable("sky_box");
-    assert(var.getType() == Scene::UserVariable::Type::String);
-    std::string skyBox = getDirectoryFromFile(mSceneFilename) + '/' + var.asString();
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    mpGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");
+    mpGraph->addRenderPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
 
     mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
     mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
