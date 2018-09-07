@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphViewer.h"
-#include "Utils/RenderGraphScripting.h"
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
@@ -213,10 +212,10 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename)
 {
-    const auto graphs = RenderGraphScriptContext::importGraphsFromFile(filename);
-    if(graphs.size())
+    const auto pGraph = RenderGraphImporter::import(filename);
+    if(pGraph)
     {
-        mpGraph = graphs[0].obj;
+        mpGraph = pGraph;
         mpGraph->setScene(mpScene);
         mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
     }
@@ -231,7 +230,9 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     // if editor opened from running render graph, get the name of the file to read
     std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
     std::string filePath;
-    
+
+    loadScene(gkDefaultScene, false, pSample);
+
     if (commandArgs.size())
     {
         filePath = commandArgs.front().asString();
@@ -239,22 +240,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
         if (filePath.size())
         {
-            mpGraph = RenderGraph::create();
-            mpGraph = RenderGraphScriptContext::importGraphsFromFile(filePath)[0].obj;
-            mpScene = mpGraph->getScene();
-            if (!mpScene)
-            {
-                loadScene(gkDefaultScene, false, pSample);
-                mpGraph->setScene(mpScene);
-            }
-            else
-            {
-                mCamControl.attachCamera(mpScene->getCamera(0));
-                mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
-            }
-            mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-
-//            openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+            loadGraphFromFile(pSample, filePath);
         }
         else
         {
@@ -263,7 +249,6 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     }
     else
     {
-        loadScene(gkDefaultScene, false, pSample);
         createGraph(pSample);
     }
 

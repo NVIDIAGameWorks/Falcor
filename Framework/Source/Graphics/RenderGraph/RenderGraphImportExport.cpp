@@ -25,67 +25,46 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderGraphScripting.h"
 #include "Framework.h"
-#include "Scripting.h"
-#include <fstream>
-#include <sstream>
+#include "RenderGraphImportExport.h"
+#include "Utils/RenderGraphScripting.h"
 
 namespace Falcor
 {
-    RenderGraphScripting::SharedPtr RenderGraphScripting::create()
+    RenderGraph::SharedPtr RenderGraphImporter::import(const std::string& filename, const std::string& graphName)
     {
-        return SharedPtr(new RenderGraphScripting());
-    }
-
-    RenderGraphScripting::SharedPtr RenderGraphScripting::create(const std::string& filename)
-    {
-        SharedPtr pThis = create();
-
-        if (findFileInDataDirectories(filename, pThis->mFilename) == false)
+        auto graphs = importAllGraphs(filename);
+        if (graphs.size() == 0)
         {
-            logError("Error when opengine render graphs script file. Can't find the file `" + filename + "`");
+            logError("The file " + filename + " doesn't contain graphs");
             return nullptr;
         }
 
-        pThis->runScript(readFile(pThis->mFilename));
-        return pThis;
+        if (graphName.empty()) return graphs[0].pGraph;
+
+        for (const auto& g : graphs)
+        {
+            if (g.name == graphName) return g.pGraph;
+        }
+
+        logError("Can't find a graph named " + graphName + "in file " + filename);
+        return nullptr;
     }
 
-    bool RenderGraphScripting::runScript(const std::string& script)
+    std::vector<RenderGraphImporter::GraphData> RenderGraphImporter::importAllGraphs(const std::string& filename)
     {
-        std::string log;
-        if (Scripting::runScript(script, log, mContext) == false)
+        RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(filename);
+        if (!pScripting) return {};
+
+        const auto& scriptVec = pScripting->getGraphs();
+        std::vector<RenderGraphImporter::GraphData> res;
+        res.reserve(scriptVec.size());
+
+        for (const auto& s : scriptVec)
         {
-            logError("Can't run render-graphs script.\n" + log);
-            return false; 
+            res.push_back({ s.name, s.obj });
         }
 
-        mGraphVec = mContext.getObjects<RenderGraph::SharedPtr>();
-        return true;
-    }
-
-    void RenderGraphScripting::addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph)
-    {
-        try
-        {
-            mContext.getObject<RenderGraph::SharedPtr>(name);
-            logWarning("RenderGraph `" + name + "` already exists. Replacing the current object");
-        }
-        catch (std::exception) {}
-        mContext.setObject(name, pGraph);
-    }
-
-    RenderGraph::SharedPtr RenderGraphScripting::getGraph(const std::string& name) const
-    {
-        try
-        {
-            return mContext.getObject<RenderGraph::SharedPtr>(name);
-        }
-        catch (std::exception) 
-        {
-            logWarning("Can't find RenderGraph `" + name + "` in RenderGraphScriptContext");
-            return nullptr;
-        }
+        return res;
     }
 }

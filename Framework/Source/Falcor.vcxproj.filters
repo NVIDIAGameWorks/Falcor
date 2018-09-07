@@ -571,9 +571,10 @@
     <ClCompile Include="Utils\Scripting.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\RenderGraphScriptContext.cpp">
+    <ClCompile Include="Utils\RenderGraphScripting.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1783,9 +1784,10 @@
     <ClInclude Include="Utils\Dictionary.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\RenderGraphScriptContext.h">
+    <ClInclude Include="Utils\RenderGraphScripting.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
