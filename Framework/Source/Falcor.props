@@ -13,7 +13,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>

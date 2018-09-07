@@ -28,7 +28,7 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
+const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 RenderGraphViewer::~RenderGraphViewer()
@@ -44,10 +44,10 @@ RenderGraphViewer::~RenderGraphViewer()
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (pGui->addButton("Load Scene"))
+    if (pGui->addButton("Load Graph"))
     {
         std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
+        if (openFileDialog(Scene::kFileFormatString, filename)) fileWriteCallback(pSample, filename);
 
         if (pGui->addCheckBox("Depth Pass", mEnableDepthPrePass))
         {
@@ -55,40 +55,40 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
     }
 
-    if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
-    {
-        // reset outputs to original state
-        mpGraph->unmarkGraphOutput(mOutputString);
-        for (const std::string& output : mOriginalOutputs)
-        {
-            mpGraph->markGraphOutput(output);
-        }
-
-        std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraph);
-        if (!renderGraphScript.size())
-        {
-            logError("No graph data to display in editor.");
-        }
-        
-        char* result = nullptr;
-        mTempFilePath = std::tmpnam(result);
-        std::ofstream updatesFileOut(mTempFilePath);
-        assert(updatesFileOut.is_open());
-
-        updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-        updatesFileOut.close();
-
-        openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
-
-        // load application for the editor given it the name of the mapped file
-        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
-        mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
-
-        assert(mEditorProcess);
-        mEditorRunning = true;
-
-        mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
-    }
+//     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
+//     {
+//         // reset outputs to original state
+//         mpGraph->unmarkGraphOutput(mOutputString);
+//         for (const std::string& output : mOriginalOutputs)
+//         {
+//             mpGraph->markGraphOutput(output);
+//         }
+// 
+//         std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraph);
+//         if (!renderGraphScript.size())
+//         {
+//             logError("No graph data to display in editor.");
+//         }
+//         
+//         char* result = nullptr;
+//         mTempFilePath = std::tmpnam(result);
+//         std::ofstream updatesFileOut(mTempFilePath);
+//         assert(updatesFileOut.is_open());
+// 
+//         updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+//         updatesFileOut.close();
+// 
+//         openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+// 
+//         // load application for the editor given it the name of the mapped file
+//         std::string commandLine = std::string("-tempFile ") + mTempFilePath;
+//         mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
+// 
+//         assert(mEditorProcess);
+//         mEditorRunning = true;
+// 
+//         mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
+//     }
     
     if (mEditorProcess && mEditorRunning)
     {
@@ -158,12 +158,12 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     auto pLightingPass = RenderPassLibrary::createRenderPass("SceneLightingPass");
     mpGraph->addRenderPass(pLightingPass, "LightingPass");
 
-    mpGraph->addRenderPass(DepthPass::deserialize({}), "DepthPrePass");
-    mpGraph->addRenderPass(CascadedShadowMaps::deserialize({}), "ShadowPass");
-    mpGraph->addRenderPass(BlitPass::deserialize({}), "BlitPass");
-    mpGraph->addRenderPass(ToneMapping::deserialize({}), "ToneMapping");
-    mpGraph->addRenderPass(SSAO::deserialize({}), "SSAO");
-    mpGraph->addRenderPass(FXAA::deserialize({}), "FXAA");
+    mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
+    mpGraph->addRenderPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
+    mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
+    mpGraph->addRenderPass(ToneMapping::create(Dictionary()), "ToneMapping");
+    mpGraph->addRenderPass(SSAO::create(Dictionary()), "SSAO");
+    mpGraph->addRenderPass(FXAA::create(), "FXAA");
 
     // Add the skybox
     Scene::UserVariable var = mpScene->getUserVariable("sky_box");
@@ -208,11 +208,11 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
 }
 
-void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
+void RenderGraphViewer::fileWriteCallback(SampleCallbacks* pSample, const std::string& filename)
 {
-    std::ifstream inputStream(fileName);
-    std::string script = std::string((std::istreambuf_iterator<char>(inputStream)), std::istreambuf_iterator<char>());
-    RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *mpGraph);
+    mpGraph = RenderGraphLoader::loadFromFile(filename)[0]; // TODO Matt
+    mpGraph->setScene(mpScene);
+    mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -229,7 +229,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         if (filePath.size())
         {
             mpGraph = RenderGraph::create();
-            RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
+            mpGraph = RenderGraphLoader::loadFromFile(filePath)[0];
             mpScene = mpGraph->getScene();
             if (!mpScene)
             {
@@ -243,7 +243,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
             }
             mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 
-            openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+//            openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
         }
         else
         {

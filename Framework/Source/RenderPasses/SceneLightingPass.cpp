@@ -117,6 +117,7 @@ namespace Falcor
             if(pRtv) pContext->clearRtv(pRtv, vec4(0));
         }
 
+        // TODO Matt (not really matt, just need to fix that since if depth is not bound the pass crashes
         if (mUsePreGenDepth == false) pContext->clearDsv(pRenderData->getTexture(kDepth)->getDSV().get(), 1, 0);
     }
 

@@ -33,6 +33,7 @@ namespace Falcor
     class RenderGraphLoader
     {
     public:
-
+        static std::vector<RenderGraph::SharedPtr> loadFromFile(const std::string& filename);
+        static std::vector<RenderGraph::SharedPtr> loadFromScript(const std::string& script);
     };
 }

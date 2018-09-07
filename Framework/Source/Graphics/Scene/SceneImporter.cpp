@@ -1002,10 +1002,7 @@ namespace Falcor
         if(findFileInDataDirectories(filename, fullpath))
         {
             // Load the file
-            std::ifstream fileStream(fullpath);
-            std::stringstream strStream;
-            strStream << fileStream.rdbuf();
-            std::string jsonData = strStream.str();
+            std::string jsonData = readFile(fullpath);
             rapidjson::StringStream JStream(jsonData.c_str());
 
             // Get the file directory

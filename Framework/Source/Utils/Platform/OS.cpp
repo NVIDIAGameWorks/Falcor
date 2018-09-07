@@ -198,4 +198,15 @@ namespace Falcor
     {
         return fs::path(filename).filename().string();
     }
+
+    std::string readFile(const std::string& filename)
+    {
+        std::ifstream filestream(filename);
+        std::string str;
+        filestream.seekg(0, std::ios::end);
+        str.reserve(filestream.tellg());
+        filestream.seekg(0, std::ios::beg);
+        str.assign(std::istreambuf_iterator<char>(filestream), std::istreambuf_iterator<char>());
+        return str;
+    }
 }

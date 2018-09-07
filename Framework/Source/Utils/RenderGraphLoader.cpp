@@ -27,11 +27,33 @@
 ***************************************************************************/
 #include "RenderGraphLoader.h"
 #include "Framework.h"
-#include "Falcor.h"
+#include "Scripting.h"
 #include <fstream>
 #include <sstream>
 
 namespace Falcor
 {
+    std::vector<RenderGraph::SharedPtr> RenderGraphLoader::loadFromFile(const std::string& filename)
+    {
+        std::string fullpath;
+        if (findFileInDataDirectories(filename, fullpath) == false)
+        {
+            logError("Error when importing render-graphs. Can't find the file `" + filename + "`");
+            return {};
+        }
+        
+        return loadFromScript(readFile(fullpath));
+    }
 
+    std::vector<RenderGraph::SharedPtr> RenderGraphLoader::loadFromScript(const std::string& script)
+    {
+        std::string log;
+        if (Scripting::runScript(script, log) == false)
+        {
+            logError("Can't import render-graphs.\n" + log);
+            return {};
+        }
+
+        return Scripting::getLastRunLocalObjects<RenderGraph::SharedPtr>();
+    }
 }
