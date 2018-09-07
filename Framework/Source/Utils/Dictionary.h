@@ -57,7 +57,7 @@ namespace Falcor
             Value(const uint64_t&     v) : u64(v), mType(Type::Uint64) { }
             Value(const int32_t&      v) : i32(v), mType(Type::Int) { }
             Value(const int64_t&      v) : i64(v), mType(Type::Int64) { }
-            Value(const float&        v) : d64(v), mType(Type::Float) { }
+            Value(const float&        v) : f(v), mType(Type::Float) { }
             Value(const double&        v) : d64(v), mType(Type::Double) { }
             Value(const glm::vec2&    v) : vec2(v), mType(Type::Vec2) { }
             Value(const glm::vec3&    v) : vec3(v), mType(Type::Vec3) { }

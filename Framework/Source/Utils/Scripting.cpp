@@ -83,13 +83,43 @@ namespace Falcor
         return true;
     }
 
+    static void convertDouble(const std::string& name, Dictionary& falcorDict)
+    {
+        double d = falcorDict[name].asDouble();
+
+        // Order matters
+        if (fract(d) == 0)
+        {
+            // UINT first. Double fits into uint64_t, so no need to check for anything
+            if(d >= 0)
+            {
+                if (d <= UINT32_MAX) falcorDict[name] = uint32_t(d);
+                else falcorDict[name] = uint64_t(d);
+            }
+            // INTs. Double has larger range, so make sure we can fit
+            else if(d >= INT64_MIN)
+            {
+                if (d >= INT32_MIN) falcorDict[name] = int32_t(d);
+                else falcorDict[name] = int64_t(d);
+            }
+        }
+        else if (d <= FLT_MAX && d >= -FLT_MAX)
+        {
+            falcorDict[name] = float(d);
+        }
+    }
+
     static Dictionary convertPythonDict(const pybind11::dict& pyDict)
     {
         Dictionary falcorDict;
         for (const auto& d : pyDict)
         {
             // The order matters here, since pybind11 does implicit conversion if it can
-            if (insertNewValue<float>(d, falcorDict)) continue;
+            if (insertNewValue<double>(d, falcorDict))
+            {
+                convertDouble(d.first.cast<std::string>(), falcorDict);
+                continue;
+            }
             if (insertNewValue<std::string>(d, falcorDict)) continue;
             if (insertNewFloatVec(d, falcorDict)) continue;
             should_not_get_here();
