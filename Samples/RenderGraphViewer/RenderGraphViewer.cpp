@@ -44,15 +44,21 @@ RenderGraphViewer::~RenderGraphViewer()
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
+    if (pGui->addButton("Load Scene"))
+    {
+        std::string filename;
+        if (openFileDialog("", filename)) loadScene(filename, true, pSample);
+    }
+
     if (pGui->addButton("Load Graph"))
     {
         std::string filename;
-        if (openFileDialog("", filename)) fileWriteCallback(pSample, filename);
+        if (openFileDialog("*.graph", filename)) loadGraphFromFile(pSample, filename);
+    }
 
-        if (pGui->addCheckBox("Depth Pass", mEnableDepthPrePass))
-        {
-            createGraph(pSample);
-        }
+    if (pGui->addCheckBox("Depth Pass", mEnableDepthPrePass))
+    {
+        createGraph(pSample);
     }
 
 //     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
@@ -205,12 +211,19 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
 }
 
-void RenderGraphViewer::fileWriteCallback(SampleCallbacks* pSample, const std::string& filename)
+void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename)
 {
-    RenderGraphScriptContext::SharedPtr pScript = RenderGraphScriptContext::create(filename);
-    mpGraph = pScript->getGraph("g");
-    mpGraph->setScene(mpScene);
-    mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+    const auto graphs = RenderGraphScriptContext::importGraphsFromFile(filename);
+    if(graphs.size())
+    {
+        mpGraph = graphs[0].obj;
+        mpGraph->setScene(mpScene);
+        mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+    }
+    else
+    {
+        logError("Can't find a graph in " + filename);
+    }
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

@@ -42,13 +42,13 @@ namespace Falcor
     {
         SharedPtr pThis = create();
 
-        if (findFileInDataDirectories(pThis->mFilename, fullpath) == false)
+        if (findFileInDataDirectories(filename, pThis->mFilename) == false)
         {
             logError("Error when importing render-graphs. Can't find the file `" + filename + "`");
             return nullptr;
         }
 
-        pThis->runScript(readFile(mFilename));
+        pThis->runScript(readFile(pThis->mFilename));
         return pThis;
     }
 

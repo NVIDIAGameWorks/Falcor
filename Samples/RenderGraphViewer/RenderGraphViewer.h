@@ -47,7 +47,8 @@ private:
     FirstPersonCameraController mCamControl;
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
     void createGraph(SampleCallbacks* pSample);
-    void fileWriteCallback(SampleCallbacks* pSample, const std::string& filename);
+    void fileWriteCallback(const std::string& filename);
+    void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
 
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;

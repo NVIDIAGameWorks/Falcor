@@ -50,10 +50,11 @@ namespace Falcor
                     std::vector<ObjectDesc<typename T>> v;
                     for (const auto& l : mLocals)
                     {
-                        if(pybind11::isinstance<T>(l.second))
+                        try
                         {
                             v.push_back(ObjectDesc<typename T>(l.first.cast<std::string>(), l.second.cast<T>()));
                         }
+                        catch (std::exception&) {}
                     }
                     return v;
                 }
