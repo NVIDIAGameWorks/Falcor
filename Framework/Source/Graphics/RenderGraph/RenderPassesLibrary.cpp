@@ -47,17 +47,20 @@ namespace Falcor
 
     static std::unordered_map<std::string, RenderPassDesc> gRenderPassList;
 
+    template<typename Pass>
+    using PassFunc = typename Pass::SharedPtr(*)(const Dictionary&);
+
     static bool addBuiltinPasses()
     {
-        RenderPassLibrary::addRenderPassClass("BlitPass", "Blit one texture into another", BlitPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", CascadedShadowMaps::deserialize);
-        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", ToneMapping::deserialize);
-        RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", SSAO::deserialize);
-        RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize);
+        RenderPassLibrary::addRenderPassClass("BlitPass", "Blit one texture into another", (RenderPassLibrary::CreateFunc)BlitPass::create);
+        RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::create);
+        RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::create);
+        RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", (PassFunc<CascadedShadowMaps>)CascadedShadowMaps::create);
+        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", (PassFunc<ToneMapping>)ToneMapping::create);
+        RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::create);
+        RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", (PassFunc<SSAO>)SSAO::create);
+        RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::create);
+        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", (PassFunc<SkyBox>)SkyBox::create);
 
         return true;
     };
@@ -76,7 +79,7 @@ namespace Falcor
         }
     }
 
-    std::shared_ptr<RenderPass> RenderPassLibrary::createRenderPass(const char* className, const RenderPassSerializer& serializer)
+    std::shared_ptr<RenderPass> RenderPassLibrary::createRenderPass(const char* className, const Dictionary& dict)
     {
         if (gRenderPassList.find(className) == gRenderPassList.end())
         {
@@ -85,7 +88,7 @@ namespace Falcor
         }
 
         auto& renderPass = gRenderPassList[className];
-        return renderPass.create(serializer);
+        return renderPass.create(dict);
     }
 
     size_t RenderPassLibrary::getRenderPassCount()

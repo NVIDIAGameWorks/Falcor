@@ -34,6 +34,7 @@ namespace Falcor
 {
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
+    static const std::string kFilter = "filter";
 
     void BlitPass::reflect(RenderPassReflection& reflector) const
     {
@@ -41,16 +42,37 @@ namespace Falcor
         reflector.addInput(kSrc);
     }
 
-    BlitPass::SharedPtr BlitPass::create()
+    BlitPass::SharedPtr BlitPass::create(const Dictionary& dict)
     {
+        SharedPtr pPass = SharedPtr(new BlitPass);
+
         try
         {
-            return SharedPtr(new BlitPass);
+            for (const auto& val : dict)
+            {
+                if (val.first == kFilter) pPass->setFilter((Sampler::Filter)val.second.asUint());
+                else
+                {
+                    logError("BlitPass::create() failed. Unknown field (`" + val.first + "`) found in the dictionary");
+                    return nullptr;
+                }
+            }
         }
-        catch (const std::exception&)
+        catch (const std::exception& e)
         {
+            logError(std::string("BlitPass::create() failed. ") + e.what());
             return nullptr;
         }
+
+        return pPass;
+    }
+
+    Dictionary BlitPass::getScriptingDictionary() const
+    {
+        Dictionary dict;
+        BlitPass default;
+        if (default.mFilter != mFilter) dict[kFilter] = (uint32_t)mFilter;
+        return dict;
     }
 
     BlitPass::BlitPass() : RenderPass("BlitPass")

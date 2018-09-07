@@ -112,11 +112,13 @@ namespace Falcor
 
         const Value& operator[](const std::string& name) const { return mMap.at(name); }
 
-        Iterator& begin() { return mMap.begin(); }
-        Iterator& end() { return mMap.end(); }
+        Iterator begin() { return mMap.begin(); }
+        Iterator end() { return mMap.end(); }
 
-        ConstIterator& begin() const { return mMap.begin(); }
-        ConstIterator& end() const { return mMap.end(); }
+        ConstIterator begin() const { return mMap.begin(); }
+        ConstIterator end() const { return mMap.end(); }
+
+        size_t size() const { return mMap.size(); }
     private:
 
         Container mMap;

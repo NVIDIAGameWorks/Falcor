@@ -263,7 +263,7 @@ namespace Falcor
         return pShared;
     }
 
-    CascadedShadowMaps::SharedPtr CascadedShadowMaps::deserialize(const RenderPassSerializer& serializer)
+    CascadedShadowMaps::SharedPtr CascadedShadowMaps::create(const Dictionary& dict)
     {
         return SharedPtr(new CascadedShadowMaps());
     }

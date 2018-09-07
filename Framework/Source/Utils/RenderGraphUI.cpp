@@ -689,12 +689,13 @@ namespace Falcor
             std::string statement;
             if (pGui->dragDropDest("RenderPassScript", statement))
             {
-                RenderGraphLoader::ExecuteStatement(statement, mRenderGraphRef);
-                mNewNodeStartPosition = { -sNodeGraphEditor.offset.x + mousePos.x, -sNodeGraphEditor.offset.y + mousePos.y };
-                mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
-                bFromDragAndDrop = true;
-                sRebuildDisplayData = true;
-                if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
+                // TODO Matt
+//                 RenderGraphLoader::ExecuteStatement(statement, mRenderGraphRef);
+//                 mNewNodeStartPosition = { -sNodeGraphEditor.offset.x + mousePos.x, -sNodeGraphEditor.offset.y + mousePos.y };
+//                 mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
+//                 bFromDragAndDrop = true;
+//                 sRebuildDisplayData = true;
+//                 if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
             }
             else
             {

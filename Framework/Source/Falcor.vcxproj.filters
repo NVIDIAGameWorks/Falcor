@@ -1777,9 +1777,6 @@
     <ClInclude Include="Utils\RenderGraphLoader.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h">
       <Filter>Utils</Filter>
     </ClInclude>

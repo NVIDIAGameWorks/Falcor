@@ -57,7 +57,7 @@ namespace Falcor
         /* Create a sky box using data from serializer
             \param[in] serializer Object to obtain initialization data
         */
-        static UniquePtr deserialize(const RenderPassSerializer& serializer);
+        static SharedPtr create(const Dictionary& dict);
         
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
@@ -77,7 +77,7 @@ namespace Falcor
         /* Save out data for sky box into serializer
             \param[in] pRenderPass SkyBoxPass to serialize data from
         */
-        RenderPassSerializer serialize() override;
+        virtual Dictionary getScriptingDictionary() const override;
 
         /** Set the sampler used to render the sky box.
         */

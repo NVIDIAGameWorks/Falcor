@@ -19,7 +19,7 @@ namespace Falcor
         createProgram();
     }
 
-    TemporalAA::SharedPtr TemporalAA::create()
+    TemporalAA::SharedPtr TemporalAA::create(const Dictionary& dict)
     {
         TemporalAA* pTaa = new TemporalAA();
         return TemporalAA::SharedPtr(pTaa);

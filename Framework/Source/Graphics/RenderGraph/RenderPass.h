@@ -27,8 +27,9 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
-#include "RenderPassSerializer.h"
 #include "ResourceCache.h"
+#include "Utils/Dictionary.h"
+#include "API/Texture.h"
 
 namespace Falcor
 {
@@ -73,9 +74,9 @@ namespace Falcor
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) = 0;
 
-        /** Serialize pass into serialization object
+        /** Get a dictionary that can be used to reconstruct the object
         */
-        virtual RenderPassSerializer serialize() { return {}; }
+        virtual Dictionary getScriptingDictionary() const { return {}; }
 
         /** Render the pass's UI
         */

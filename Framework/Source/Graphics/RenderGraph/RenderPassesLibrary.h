@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
-#include "RenderPassSerializer.h"
+#include "Utils/Dictionary.h"
 
 namespace Falcor
 {
@@ -36,10 +36,9 @@ namespace Falcor
     class RenderPassLibrary
     {
     public:
-        using CreateFunc = std::function<std::shared_ptr<RenderPass>(const RenderPassSerializer&)>;
-        using SaveFunc = std::function<RenderPassSerializer(const std::shared_ptr<RenderPass>&)>;
+        using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
         static void addRenderPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const RenderPassSerializer& serializer = {});
+        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const Dictionary& dict = {});
         static size_t getRenderPassCount();
         static const std::string& getRenderPassDesc(size_t pass);
         static const std::string& getRenderPassClassName(size_t pass);

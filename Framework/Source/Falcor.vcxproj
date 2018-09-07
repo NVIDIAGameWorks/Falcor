@@ -994,7 +994,6 @@
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h" />
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>

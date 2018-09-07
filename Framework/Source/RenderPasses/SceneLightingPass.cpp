@@ -36,21 +36,9 @@ namespace Falcor
     static std::string kNormals = "normals";
     static std::string kVisBuffer = "visibilityBuffer";
 
-    SceneLightingPass::SharedPtr SceneLightingPass::create()
+    SceneLightingPass::SharedPtr SceneLightingPass::create(const Dictionary& dict)
     {
-        try
-        {
-            return SharedPtr(new SceneLightingPass());
-        }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
-    }
-
-    SceneLightingPass::SharedPtr SceneLightingPass::deserialize(const RenderPassSerializer& serializer)
-    {
-        auto pThis = create();
+        auto pThis = SharedPtr(new SceneLightingPass());
         pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
         return pThis;
     }
