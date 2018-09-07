@@ -42,14 +42,13 @@ namespace Falcor
     {
         SharedPtr pThis = create();
 
-        std::string fullpath;
-        if (findFileInDataDirectories(filename, fullpath) == false)
+        if (findFileInDataDirectories(pThis->mFilename, fullpath) == false)
         {
             logError("Error when importing render-graphs. Can't find the file `" + filename + "`");
             return nullptr;
         }
 
-        pThis->runScript(readFile(fullpath));
+        pThis->runScript(readFile(mFilename));
         return pThis;
     }
 
@@ -57,12 +56,6 @@ namespace Falcor
     {
         SharedPtr pThis = create(filename);
         return pThis ? pThis->getGraphs() : GraphVec();
-    }
-
-    RenderGraphScriptContext::GraphVec RenderGraphScriptContext::importGraphsFromScript(const std::string& script)
-    {
-        SharedPtr pThis = create();
-        return pThis->runScript(script) ? pThis->getGraphs() : GraphVec();
     }
 
     bool RenderGraphScriptContext::runScript(const std::string& script)

@@ -41,16 +41,16 @@ namespace Falcor
         static SharedPtr create();
         static SharedPtr create(const std::string& filename);
         static GraphVec importGraphsFromFile(const std::string& filename);
-        static GraphVec importGraphsFromScript(const std::string& script);
 
         bool runScript(const std::string& script);
         const GraphVec& getGraphs() const { return mGraphVec; }
         void addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph);
         RenderGraph::SharedPtr getGraph(const std::string& name) const;
 
-    public:
+    private:
         RenderGraphScriptContext() = default;
         Scripting::Context mContext;
         GraphVec mGraphVec;
+        std::string mFilename;
     };
 }
