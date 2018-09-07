@@ -33,12 +33,12 @@
 
 namespace Falcor
 {
-    RenderGraphScriptContext::SharedPtr RenderGraphScriptContext::create()
+    RenderGraphScripting::SharedPtr RenderGraphScripting::create()
     {
-        return SharedPtr(new RenderGraphScriptContext());
+        return SharedPtr(new RenderGraphScripting());
     }
 
-    RenderGraphScriptContext::SharedPtr RenderGraphScriptContext::create(const std::string& filename)
+    RenderGraphScripting::SharedPtr RenderGraphScripting::create(const std::string& filename)
     {
         SharedPtr pThis = create();
 
@@ -52,13 +52,13 @@ namespace Falcor
         return pThis;
     }
 
-    RenderGraphScriptContext::GraphVec RenderGraphScriptContext::importGraphsFromFile(const std::string& filename)
+    RenderGraphScripting::GraphVec RenderGraphScripting::importGraphsFromFile(const std::string& filename)
     {
         SharedPtr pThis = create(filename);
         return pThis ? pThis->getGraphs() : GraphVec();
     }
 
-    bool RenderGraphScriptContext::runScript(const std::string& script)
+    bool RenderGraphScripting::runScript(const std::string& script)
     {
         std::string log;
         if (Scripting::runScript(script, log, mContext) == false)
@@ -71,7 +71,7 @@ namespace Falcor
         return true;
     }
 
-    void RenderGraphScriptContext::addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph)
+    void RenderGraphScripting::addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph)
     {
         try
         {
@@ -82,7 +82,7 @@ namespace Falcor
         mContext.setObject(name, pGraph);
     }
 
-    RenderGraph::SharedPtr RenderGraphScriptContext::getGraph(const std::string& name) const
+    RenderGraph::SharedPtr RenderGraphScripting::getGraph(const std::string& name) const
     {
         try
         {

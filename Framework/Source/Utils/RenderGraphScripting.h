@@ -30,17 +30,16 @@
 
 namespace Falcor
 {
-    class RenderGraphScriptContext
+    class RenderGraphScripting
     {
     public:
-        using SharedPtr = std::shared_ptr<RenderGraphScriptContext>;
+        using SharedPtr = std::shared_ptr<RenderGraphScripting>;
         using GraphDesc = Scripting::Context::ObjectDesc<RenderGraph::SharedPtr>;
 
         using GraphVec = std::vector<GraphDesc>;
 
         static SharedPtr create();
         static SharedPtr create(const std::string& filename);
-        static GraphVec importGraphsFromFile(const std::string& filename);
 
         bool runScript(const std::string& script);
         const GraphVec& getGraphs() const { return mGraphVec; }
@@ -48,7 +47,7 @@ namespace Falcor
         RenderGraph::SharedPtr getGraph(const std::string& name) const;
 
     private:
-        RenderGraphScriptContext() = default;
+        RenderGraphScripting() = default;
         Scripting::Context mContext;
         GraphVec mGraphVec;
         std::string mFilename;
