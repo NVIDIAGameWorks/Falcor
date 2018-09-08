@@ -53,7 +53,6 @@ namespace Falcor
             auto extIt = mExternalResources.find(name);
             if (extIt == mExternalResources.end())
             {
-                logWarning("Can't find a resource named `" + name + "` in the resource cache");
                 return pNull;
             }
 
