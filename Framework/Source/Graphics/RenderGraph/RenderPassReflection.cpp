@@ -32,11 +32,23 @@ namespace Falcor
 {
     const ReflectionResourceType::SharedPtr RenderPassReflection::Field::kpTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
 
+    const RenderPassReflection::Field RenderPassReflection::Field::kEmptyField;
+
     RenderPassReflection::Field::Field(const std::string& name, Type type) : mName(name), mType(type)
     {
         mBindFlags = Resource::BindFlags::None;
         if (is_set(type, Type::Input)) mBindFlags |= Resource::BindFlags::ShaderResource;
         if (is_set(type, Type::Output)) mBindFlags |= Resource::BindFlags::RenderTarget;
+    }
+
+    RenderPassReflection::Field::Field()
+        : Field("", Type::None)
+    {
+    }
+
+    bool RenderPassReflection::Field::isValid() const
+    {
+        return (mType != Type::None) && (mName.empty() == false);
     }
 
     RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, Field::Type type)
@@ -59,4 +71,17 @@ namespace Falcor
     {
         return addField(name, Field::Type::Input | Field::Type::Output);
     }
+
+    const RenderPassReflection::Field& RenderPassReflection::getField(const std::string& name, Field::Type type) const
+    {
+        for (const auto& field : mFields)
+        {
+            if (field.getName() == name && (is_set(field.getType(), type) || type == Field::Type::None))
+            {
+                return field;
+            }
+        }
+        return Field::kEmptyField;
+    }
+
 }

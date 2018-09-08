@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "BlitPass.h"
+#include "ResolvePass.h"
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
 
@@ -35,17 +35,17 @@ namespace Falcor
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
 
-    void BlitPass::reflect(RenderPassReflection& reflector) const
+    void ResolvePass::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addOutput(kDst);
         reflector.addInput(kSrc);
+        reflector.addOutput(kDst).setSampleCount(1);
     }
 
-    BlitPass::SharedPtr BlitPass::create()
+    ResolvePass::SharedPtr ResolvePass::create()
     {
         try
         {
-            return SharedPtr(new BlitPass);
+            return SharedPtr(new ResolvePass);
         }
         catch (const std::exception&)
         {
@@ -53,39 +53,28 @@ namespace Falcor
         }
     }
 
-    BlitPass::BlitPass() : RenderPass("BlitPass")
+    ResolvePass::SharedPtr ResolvePass::deserialize(const RenderPassSerializer& serializer)
+    {
+        return create();
+    }
+
+    ResolvePass::ResolvePass()
+        : RenderPass("ResolvePass")
     {
     }
 
-    void BlitPass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    void ResolvePass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
         const auto& pSrcTex = pRenderData->getTexture(kSrc);
         const auto& pDstTex = pRenderData->getTexture(kDst);
 
-        if(pSrcTex && pDstTex)
+        if (pSrcTex && pDstTex)
         {
-            pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), uvec4(-1), uvec4(-1), mFilter);
+            pContext->resolveResource(pSrcTex.get(), pDstTex.get());
         }
         else
         {
-            logWarning("BlitPass::execute() - missing an input or output resource");
-        }
-    }
-
-    void BlitPass::renderUI(Gui* pGui, const char* uiGroup)
-    {
-        if (!uiGroup || pGui->beginGroup(uiGroup))
-        {
-            static const Gui::DropdownList kFilterList = 
-            {
-                { (uint32_t)Sampler::Filter::Linear, "Linear" },
-                { (uint32_t)Sampler::Filter::Point, "Point" },
-            };
-
-            uint32_t f = (uint32_t)mFilter;
-            if (pGui->addDropdown("Filter", kFilterList, f)) setFilter((Sampler::Filter)f);
-
-            if (uiGroup) pGui->endGroup();
+            logWarning("ResolvePass::execute() - missing an input or output resource");
         }
     }
 }

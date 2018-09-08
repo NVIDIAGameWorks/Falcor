@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -48,7 +48,6 @@ namespace Falcor
         void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:
         BlitPass();
-        void initRenderPassData();
         Sampler::Filter mFilter = Sampler::Filter::Linear;
     };
 }

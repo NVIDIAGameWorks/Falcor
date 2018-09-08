@@ -127,7 +127,7 @@ namespace Falcor
         for(uint32_t i = 1 ; i < 3 ; i++)
         {
             const auto& pRtv = mpFbo->getRenderTargetView(i).get();
-            if(pRtv) pContext->clearRtv(pRtv, vec4(0));
+            if(pRtv->getResource() != nullptr) pContext->clearRtv(pRtv, vec4(0));
         }
 
         if (mUsePreGenDepth == false) pContext->clearDsv(pRenderData->getTexture(kDepth)->getDSV().get(), 1, 0);
