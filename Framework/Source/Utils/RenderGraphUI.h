@@ -68,8 +68,12 @@ namespace Falcor
     class RenderGraphUI
     {
     public:
+        RenderGraphUI();
 
-        RenderGraphUI(RenderGraph& renderGraphRef, const std::string& renderGraphName);
+        RenderGraphUI(const RenderGraph::SharedPtr& renderGraphRef, const std::string& renderGraphName);
+
+        // move constructor for emplace construction
+        RenderGraphUI(RenderGraphUI&& rref);
 
         ~RenderGraphUI();
 
@@ -77,7 +81,13 @@ namespace Falcor
         */
         void renderUI(Gui *pGui);
 
+        /** Clear graph ui for rebuiding node graph
+        */
         void reset();
+
+        /** Set ui to rebuild all display data before next render ui
+        */
+        void setToRebuild() { mRebuildDisplayData = true; }
 
         /** Writes out all the changes made to the graph 
         */
@@ -115,15 +125,18 @@ namespace Falcor
         */
         std::vector<uint32_t> getExecutionOrder();
 
-        /** Flag to re-traverse the graph and build on of the intermediate data again.
-         */
-        static bool sRebuildDisplayData;
-
-        /** String containing the most recent log results from and isValid render graph call
+        /** Returns the current log from the events in the editor
         */
-        static std::string sLogString;
+        std::string getCurrentLog() const { return mLogString; }
+
+        /** Clears the current log
+        */
+        void clearCurrentLog() { mLogString.clear();  }
 
     private:
+        // foward declaration. private to avoid initialization outside of implementation file
+        class NodeGraphEditorGui;
+        class RenderGraphNode;
 
         /** Updates structure for drawing the GUI graph
         */
@@ -145,12 +158,12 @@ namespace Falcor
         */
         void renderPopupMenu(Gui* pGui);
 
-        /** Renders pass renderUI in popup menu
+        /** String containing the most recent log results from and isValid render graph call
         */
-        void renderPassUIPopup(Gui* pGui, RenderPass* pRenderPass);
+        std::string mLogString;
 
         // start with reference of render graph
-        RenderGraph& mRenderGraphRef;
+        RenderGraph::SharedPtr mpRenderGraph;
 
         uint32_t mEdgesColor = 0xFFFFFFFF;
         uint32_t mAutoGenEdgesColor = 0xFFFF0400;
@@ -181,5 +194,11 @@ namespace Falcor
 
         // used for pop warning menu for edges
         bool mShowWarningPopup = false;
+
+        // internal node gui structure
+        NodeGraphEditorGui* mpNodeGraphEditor;
+
+        // Flag to re-traverse the graph and build on of the intermediate data again.
+        bool mRebuildDisplayData = false;
     };
 }

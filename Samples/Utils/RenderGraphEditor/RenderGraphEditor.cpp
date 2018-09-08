@@ -146,9 +146,12 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
     pGui->popWindow();
 
-    mCurrentLog += RenderGraphUI::sLogString;
-    RenderGraphUI::sLogString.clear();
-
+    for (auto& renderGraphUI : mRenderGraphUIs)
+    {
+        mCurrentLog += renderGraphUI.getCurrentLog();
+        renderGraphUI.clearCurrentLog();
+    }
+    
     pGui->pushWindow("Graph Editor Settings", screenWidth / 4, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true);
     if (mResetGuiWindows)
     {
@@ -192,7 +195,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getExecutionOrder();
         mpGraphs[mCurrentGraphIndex]->autoGenerateEdges(executionOrder);
-        mRenderGraphUIs[mCurrentGraphIndex].sRebuildDisplayData = true;
+        mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
     }
 
     // update the display if the render graph loader has set a new output
@@ -307,7 +310,10 @@ void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 {
     RenderGraphLoader::LoadAndRunScript(fileName, *mpGraphs[mCurrentGraphIndex]);
-    RenderGraphUI::sRebuildDisplayData = true;
+    if (mRenderGraphUIs.size() < mCurrentGraphIndex)
+    {
+        mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
+    }
 }
 
 void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphFileName)
@@ -332,7 +338,7 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
 
-    RenderGraphUI graphUI(*newGraph, graphName);
+    RenderGraphUI graphUI(newGraph, graphName);
     mRenderGraphUIs.emplace_back(std::move(graphUI));
 
     if (renderGraphFileName.size())
@@ -346,7 +352,7 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
         mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
     }
 
-    RenderGraphUI::sRebuildDisplayData = true;
+    mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
 }
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

@@ -27,6 +27,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui_demo.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui_draw.cpp" />
@@ -615,6 +616,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
+    <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imgui_user.h" />
     <ClInclude Include="..\Externals\dear_imgui\imconfig.h" />
     <ClInclude Include="..\Externals\dear_imgui\imgui.h" />
     <ClInclude Include="..\Externals\dear_imgui\imgui_internal.h" />
@@ -1204,6 +1207,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imgui_user.inl" />
     <None Include="..\Externals\dear_imgui\LICENSE" />
     <None Include="..\Externals\dear_imgui\README.md" />
     <None Include="..\Externals\GLM\glm\detail\func_common.inl" />

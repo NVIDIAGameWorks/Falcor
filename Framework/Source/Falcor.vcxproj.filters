@@ -571,6 +571,9 @@
     <ClCompile Include="Utils\RenderGraphLoader.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
+      <Filter>Externals\dear_imgui_extensions\imgui_node_editor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1780,6 +1783,12 @@
     <ClInclude Include="Utils\DirectedGraphTraversal.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imgui_user.h">
+      <Filter>Externals\dear_imgui_extensions</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h">
+      <Filter>Externals\dear_imgui_extensions\imgui_node_editor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -1979,6 +1988,12 @@
     </Filter>
     <Filter Include="Utils\PatternGenerators">
       <UniqueIdentifier>{cc98beaa-c9ed-4457-98c6-89955706cd91}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\dear_imgui_extensions">
+      <UniqueIdentifier>{4a6e77ad-fe2e-4666-a6e3-52e17b07b8d9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\dear_imgui_extensions\imgui_node_editor">
+      <UniqueIdentifier>{7a815e18-4b97-462a-bdd8-7077292c0b29}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2428,6 +2443,9 @@
     </None>
     <None Include="Data\RenderPasses\SceneLightingPass.slang">
       <Filter>Data\RenderPasses</Filter>
+    </None>
+    <None Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imgui_user.inl">
+      <Filter>Externals\dear_imgui_extensions</Filter>
     </None>
   </ItemGroup>
 </Project>
