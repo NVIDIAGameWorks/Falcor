@@ -30,9 +30,39 @@
 #include "Scripting.h"
 #include <fstream>
 #include <sstream>
+#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+
+using namespace pybind11::literals;
 
 namespace Falcor
 {
+    Dictionary convertPythonDict(const pybind11::dict& pyDict);
+
+    void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
+    {
+        // RenderGraph
+        m.def("createRenderGraph", &RenderGraph::create);
+
+        void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
+        auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
+        graphClass.def("addPass", &RenderGraph::addRenderPass).def("removePass", &RenderGraph::removeRenderPass);
+        graphClass.def("addEdge", &RenderGraph::addEdge).def("removeEdge", renderGraphRemoveEdge);
+        graphClass.def("markOutput", &RenderGraph::markGraphOutput).def("unmarkOutput", &RenderGraph::unmarkGraphOutput);
+
+        // RenderPass
+        pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
+
+        // RenderPassLibrary
+        const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d = {})->RenderPass::SharedPtr
+        {
+            return RenderPassLibrary::createRenderPass(passName.c_str(), convertPythonDict(d));
+        };
+        m.def("createRenderPass", createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
+    }
+
+
+
+
     RenderGraphScripting::SharedPtr RenderGraphScripting::create()
     {
         return SharedPtr(new RenderGraphScripting());

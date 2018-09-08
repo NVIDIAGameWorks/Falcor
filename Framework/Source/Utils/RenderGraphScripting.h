@@ -27,6 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/RenderGraph/RenderGraph.h"
+#include "Externals/pybind11-2.2.3/include/pybind11/pybind11.h"
 
 namespace Falcor
 {
@@ -41,11 +42,14 @@ namespace Falcor
         static SharedPtr create();
         static SharedPtr create(const std::string& filename);
 
+        // Python to C++
+        static void registerScriptingObjects(pybind11::module& m);
         bool runScript(const std::string& script);
         const GraphVec& getGraphs() const { return mGraphVec; }
-        void addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph);
         RenderGraph::SharedPtr getGraph(const std::string& name) const;
 
+        // C++ to python
+        void addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph);
     private:
         RenderGraphScripting() = default;
         Scripting::Context mContext;
