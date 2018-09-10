@@ -130,10 +130,10 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
         else
         {
-            for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+            for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getOutputCount()); ++i)
             {
                 Gui::DropdownValue graphOutput;
-                graphOutput.label = mpGraph->getGraphOutputName(i);
+                graphOutput.label = mpGraph->getOutputName(i);
                 graphOutput.value = i;
                 renderGraphOutputs.push_back(graphOutput);
             }
@@ -148,7 +148,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (renderGraphOutputs.size() && pGui->addDropdown("Render Graph Output", renderGraphOutputs, mGraphOutputIndex))
         {
             mpGraph->setOutput(mOutputString, nullptr);
-            mpGraph->unmarkGraphOutput(mOutputString);
+            mpGraph->unmarkOutput(mOutputString);
             mOutputString = renderGraphOutputs[mGraphOutputIndex].label;
             mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
         }
@@ -160,20 +160,20 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
     mpGraph = RenderGraph::create();
-    auto pLightingPass = RenderPassLibrary::createRenderPass("SceneLightingPass");
-    mpGraph->addRenderPass(pLightingPass, "LightingPass");
+    auto pLightingPass = RenderPassLibrary::createPass("SceneLightingPass");
+    mpGraph->addPass(pLightingPass, "LightingPass");
 
-    mpGraph->addRenderPass(DepthPass::create(), "DepthPrePass");
-    mpGraph->addRenderPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
-    mpGraph->addRenderPass(BlitPass::create(), "BlitPass");
-    mpGraph->addRenderPass(ToneMapping::create(Dictionary()), "ToneMapping");
-    mpGraph->addRenderPass(SSAO::create(Dictionary()), "SSAO");
-    mpGraph->addRenderPass(FXAA::create(), "FXAA");
+    mpGraph->addPass(DepthPass::create(), "DepthPrePass");
+    mpGraph->addPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
+    mpGraph->addPass(BlitPass::create(), "BlitPass");
+    mpGraph->addPass(ToneMapping::create(Dictionary()), "ToneMapping");
+    mpGraph->addPass(SSAO::create(Dictionary()), "SSAO");
+    mpGraph->addPass(FXAA::create(), "FXAA");
 
     // Add the skybox
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    mpGraph->addRenderPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
+    mpGraph->addPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
 
     mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
     mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
@@ -192,7 +192,7 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 
     mpGraph->setScene(mpScene);
 
-    mpGraph->markGraphOutput("BlitPass.dst");
+    mpGraph->markOutput("BlitPass.dst");
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
@@ -252,9 +252,9 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         createGraph(pSample);
     }
 
-    for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+    for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getOutputCount()); ++i)
     {
-        mOriginalOutputs.push_back(mpGraph->getGraphOutputName(i));
+        mOriginalOutputs.push_back(mpGraph->getOutputName(i));
     }
 }
 

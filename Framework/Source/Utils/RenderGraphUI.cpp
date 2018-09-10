@@ -315,7 +315,7 @@ namespace Falcor
         }
         passUI.mOutputPins[outputIt->second].mIsGraphOutput = true;
 
-        mRenderGraphRef.markGraphOutput(outputParam);
+        mRenderGraphRef.markOutput(outputParam);
         pushUpdateCommand(std::string("AddGraphOutput ") + outputParam);
         sRebuildDisplayData = true;
     }
@@ -323,7 +323,7 @@ namespace Falcor
     void RenderGraphUI::addOutput(const std::string& outputPass, const std::string& outputField)
     {
         std::string outputParam = outputPass + "." + outputField;
-        mRenderGraphRef.markGraphOutput(outputParam);
+        mRenderGraphRef.markOutput(outputParam);
         pushUpdateCommand(std::string("AddGraphOutput ") + outputParam);
         auto& passUI = mRenderPassUI[outputPass];
         passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = true;
@@ -334,7 +334,7 @@ namespace Falcor
     void RenderGraphUI::removeOutput(const std::string& outputPass, const std::string& outputField)
     {
         std::string outputParam = outputPass + "." + outputField;
-        mRenderGraphRef.unmarkGraphOutput(outputParam);
+        mRenderGraphRef.unmarkOutput(outputParam);
         pushUpdateCommand("RemoveGraphOutput " + outputParam);
         auto& passUI = mRenderPassUI[outputPass];
         passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = false;
@@ -378,7 +378,7 @@ namespace Falcor
     void RenderGraphUI::removeRenderPass(const std::string& name)
     {
         spCurrentGraphUI->sRebuildDisplayData = true;
-        spCurrentGraphUI->mRenderGraphRef.removeRenderPass(name);
+        spCurrentGraphUI->mRenderGraphRef.removePass(name);
         pushUpdateCommand(std::string("RemoveRenderPass ") + name);
     }
 
@@ -762,7 +762,7 @@ namespace Falcor
             }
         
             uint32_t guiNodeID = currentPassUI.mGuiNodeID;
-            RenderPass* pNodeRenderPass = mRenderGraphRef.getRenderPass(currentPass.first).get();
+            RenderPass* pNodeRenderPass = mRenderGraphRef.getPass(currentPass.first).get();
             nameString = currentPass.first;
         
             if (!sNodeGraphEditor.getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))

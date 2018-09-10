@@ -66,7 +66,7 @@ namespace Falcor
         }
     }
 
-    uint32_t RenderGraph::addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
+    uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
     {
         assert(pPass);
         if (getPassIndex(passName) != kInvalidIndex)
@@ -86,7 +86,7 @@ namespace Falcor
         return true;
     }
 
-    void RenderGraph::removeRenderPass(const std::string& name)
+    void RenderGraph::removePass(const std::string& name)
     {
         uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
@@ -105,7 +105,7 @@ namespace Falcor
         mRecompile = true;
     }
 
-    const RenderPass::SharedPtr& RenderGraph::getRenderPass(const std::string& name) const
+    const RenderPass::SharedPtr& RenderGraph::getPass(const std::string& name) const
     {
         uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
@@ -155,7 +155,7 @@ namespace Falcor
     {
         if (parseFieldName(fullname, nameAndField) == false) return false;
 
-        RenderPass* pPass = pGraph->getRenderPass(nameAndField.first).get();
+        RenderPass* pPass = pGraph->getPass(nameAndField.first).get();
         if (!pPass)
         {
             logError(errorPrefix + " - can't find render-pass named '" + nameAndField.first + "'");
@@ -471,12 +471,12 @@ namespace Falcor
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
         if (pPass == nullptr) return false;
         mpResourcesCache->addResource(name, pResource);
-        markGraphOutput(name);
+        markOutput(name);
         if (!pResource) mRecompile = true;
         return true;
     }
 
-    void RenderGraph::markGraphOutput(const std::string& name)
+    void RenderGraph::markOutput(const std::string& name)
     {
         str_pair strPair;
         const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::markGraphOutput()", strPair);
@@ -496,7 +496,7 @@ namespace Falcor
         mRecompile = true;
     }
 
-    void RenderGraph::unmarkGraphOutput(const std::string& name)
+    void RenderGraph::unmarkOutput(const std::string& name)
     {
         str_pair strPair;
         const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::unmarkGraphOutput()", strPair);
@@ -527,7 +527,7 @@ namespace Falcor
         return pPass ? mpResourcesCache->getResource(name) : pNull;
     }
 
-    std::string RenderGraph::getGraphOutputName(size_t index) const
+    std::string RenderGraph::getOutputName(size_t index) const
     {
         assert(index < mOutputs.size());
         const GraphOut& graphOut = mOutputs[index];

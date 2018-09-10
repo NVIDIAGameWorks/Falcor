@@ -47,9 +47,9 @@ namespace Falcor
 
         void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
         auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
-        graphClass.def("addPass", &RenderGraph::addRenderPass).def("removePass", &RenderGraph::removeRenderPass);
+        graphClass.def("addPass", &RenderGraph::addPass).def("removePass", &RenderGraph::removePass);
         graphClass.def("addEdge", &RenderGraph::addEdge).def("removeEdge", renderGraphRemoveEdge);
-        graphClass.def("markOutput", &RenderGraph::markGraphOutput).def("unmarkOutput", &RenderGraph::unmarkGraphOutput);
+        graphClass.def("markOutput", &RenderGraph::markOutput).def("unmarkOutput", &RenderGraph::unmarkOutput);
 
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
@@ -57,13 +57,10 @@ namespace Falcor
         // RenderPassLibrary
         const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d = {})->RenderPass::SharedPtr
         {
-            return RenderPassLibrary::createRenderPass(passName.c_str(), convertPythonDict(d));
+            return RenderPassLibrary::createPass(passName.c_str(), convertPythonDict(d));
         };
         m.def("createRenderPass", createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
     }
-
-
-
 
     RenderGraphScripting::SharedPtr RenderGraphScripting::create()
     {

@@ -37,10 +37,10 @@ namespace Falcor
     {
     public:
         using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
-        static void addRenderPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const Dictionary& dict = {});
-        static size_t getRenderPassCount();
-        static const std::string& getRenderPassDesc(size_t pass);
-        static const std::string& getRenderPassClassName(size_t pass);
+        static void addPassClass(const char* className, const char* desc, CreateFunc func);
+        static std::shared_ptr<RenderPass> createPass(const char* className, const Dictionary& dict = {});
+        static size_t getClassCount();
+        static const std::string& getPassDesc(size_t pass);
+        static const std::string& getClassName(size_t pass);
     };
 }
