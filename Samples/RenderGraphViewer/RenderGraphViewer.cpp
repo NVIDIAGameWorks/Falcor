@@ -26,9 +26,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphViewer.h"
+#include "Utils/RenderGraphScripting.h"
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
+
+std::string ir;
 
 RenderGraphViewer::~RenderGraphViewer()
 {
@@ -159,36 +162,41 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
-    mpGraph = RenderGraph::create();
-    auto pLightingPass = RenderPassLibrary::createPass("SceneLightingPass");
-    mpGraph->addPass(pLightingPass, "LightingPass");
+//     mpGraph = RenderGraph::create();
+//     auto pLightingPass = RenderPassLibrary::createPass("SceneLightingPass");
+//     mpGraph->addPass(pLightingPass, "LightingPass");
+// 
+//     mpGraph->addPass(DepthPass::create(), "DepthPrePass");
+//     mpGraph->addPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
+//     mpGraph->addPass(BlitPass::create(), "BlitPass");
+//     mpGraph->addPass(ToneMapping::create(Dictionary()), "ToneMapping");
+//     mpGraph->addPass(SSAO::create(Dictionary()), "SSAO");
+//     mpGraph->addPass(FXAA::create(), "FXAA");
+// 
+//     // Add the skybox
+//     Sampler::Desc samplerDesc;
+//     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+//     mpGraph->addPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
+// 
+//     mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
+//     mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
+//     mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
+// 
+//     mpGraph->addEdge("SkyBox.target", "LightingPass.color");
+//     mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
+// 
+//     mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
+//     mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
+//     mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
+//     mpGraph->addEdge("LightingPass.depth", "SSAO.depth");
+// 
+//     mpGraph->addEdge("SSAO.colorOut", "FXAA.src");
+//     mpGraph->addEdge("FXAA.dst", "BlitPass.src");
 
-    mpGraph->addPass(DepthPass::create(), "DepthPrePass");
-    mpGraph->addPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
-    mpGraph->addPass(BlitPass::create(), "BlitPass");
-    mpGraph->addPass(ToneMapping::create(Dictionary()), "ToneMapping");
-    mpGraph->addPass(SSAO::create(Dictionary()), "SSAO");
-    mpGraph->addPass(FXAA::create(), "FXAA");
 
-    // Add the skybox
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    mpGraph->addPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
-
-    mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
-    mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
-    mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
-
-    mpGraph->addEdge("SkyBox.target", "LightingPass.color");
-    mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
-
-    mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
-    mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
-    mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
-    mpGraph->addEdge("LightingPass.depth", "SSAO.depth");
-
-    mpGraph->addEdge("SSAO.colorOut", "FXAA.src");
-    mpGraph->addEdge("FXAA.dst", "BlitPass.src");
+    auto pScripter = RenderGraphScripting::create();
+    pScripter->runScript(ir);
+    mpGraph = pScripter->getGraph("forward_renderer");
 
     mpGraph->setScene(mpScene);
 
@@ -291,6 +299,34 @@ void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
+    Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
+
+    pIr->addPass("DepthPass", "DepthPrePass");
+    pIr->addPass("SceneLightingPass", "LightingPass");
+    pIr->addPass("CascadedShadowMaps", "ShadowPass");
+    pIr->addPass("BlitPass", "BlitPass");
+    pIr->addPass("ToneMapping", "ToneMapping");
+    pIr->addPass("SSAO", "SSAO");
+    pIr->addPass("FXAA", "FXAA");
+    pIr->addPass("SkyBox", "SkyBox");
+
+    pIr->addEdge("DepthPrePass.depth", "SkyBox.depth");
+    pIr->addEdge("SkyBox.target", "LightingPass.color");
+    pIr->addEdge("DepthPrePass.depth", "ShadowPass.depth");
+    pIr->addEdge("DepthPrePass.depth", "LightingPass.depth");
+    pIr->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
+    pIr->addEdge("LightingPass.color", "ToneMapping.src");
+    pIr->addEdge("ToneMapping.dst", "SSAO.colorIn");
+    pIr->addEdge("LightingPass.normals", "SSAO.normals");
+    pIr->addEdge("LightingPass.depth", "SSAO.depth");
+    pIr->addEdge("SSAO.colorOut", "FXAA.src");
+    pIr->addEdge("FXAA.dst", "BlitPass.src");
+
+    pIr->markOutput("BlitPass.dst");
+
+    ir = pIr->getIR();
+    ir += "forward_renderer = render_graph_forward_renderer()";
+
     RenderGraphViewer::UniquePtr pRenderer = std::make_unique<RenderGraphViewer>();
     SampleConfig config;
     config.windowDesc.title = "Render Graph Viewer";

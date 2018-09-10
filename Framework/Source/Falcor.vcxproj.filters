@@ -575,6 +575,7 @@
       <Filter>Utils</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1788,6 +1789,7 @@
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

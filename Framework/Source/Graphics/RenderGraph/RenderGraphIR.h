@@ -26,44 +26,33 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/RenderGraph/RenderGraph.h"
-// TODO Matt
-#include "Externals/pybind11-2.2.3/include/pybind11/pybind11.h"
 
 namespace Falcor
 {
-    class RenderGraphScripting
+    class RenderGraph;
+
+    class RenderGraphIR
     {
     public:
-        using SharedPtr = std::shared_ptr<RenderGraphScripting>;
-        using GraphDesc = Scripting::Context::ObjectDesc<RenderGraph::SharedPtr>;
+        using SharedPtr = std::shared_ptr<RenderGraphIR>;
 
-        using GraphVec = std::vector<GraphDesc>;
+        static SharedPtr create(const std::string& name, bool newGraph = true);
 
-        static SharedPtr create();
-        static SharedPtr create(const std::string& filename);
+        void addPass(const std::string& passClass, const std::string& passName);
+        void removePass(const std::string& passName);
+        void addEdge(const std::string& src, const std::string& dst);
+        void removeEdge(const std::string& src, const std::string& dst);
+        void markOutput(const std::string& name);
+        void unmarkOutput(const std::string& name);
+        void autoGenEdges();
 
-        // Python to C++
-        static void registerScriptingObjects(pybind11::module& m);
-        bool runScript(const std::string& script);
-        const GraphVec& getGraphs() const { return mGraphVec; }
-        RenderGraph::SharedPtr getGraph(const std::string& name) const;
-        void addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph);
-
-        static const char* kAddPass;
-        static const char* kRemovePass;
-        static const char* kAddEdge;
-        static const char* kRemoveEdge;
-        static const char* kMarkOutput;
-        static const char* kUnmarkOutput;
-        static const char* kAutoGenEdges;
-        static const char* kCreatePass;
-        static const char* kCreateGraph;
+        std::string getIR() { return mIR + mIndentation + "return " + mName + '\n'; }
 
     private:
-        RenderGraphScripting() = default;
-        Scripting::Context mContext;
-        GraphVec mGraphVec;
-        std::string mFilename;
+        RenderGraphIR(const std::string& name, bool newGraph);
+        std::string mName;
+        std::string mIR;
+        std::string mIndentation;
+        std::string mGraphPrefix;
     };
 }

@@ -37,19 +37,30 @@ using namespace pybind11::literals;
 
 namespace Falcor
 {
+    const char* RenderGraphScripting::kAddPass = "addPass";
+    const char* RenderGraphScripting::kRemovePass = "removePass";
+    const char* RenderGraphScripting::kAddEdge = "addEdge";
+    const char* RenderGraphScripting::kRemoveEdge = "removeEdge";
+    const char* RenderGraphScripting::kMarkOutput = "markOutput";
+    const char* RenderGraphScripting::kUnmarkOutput = "unmarkOutput";
+    const char* RenderGraphScripting::kAutoGenEdges = "autoGenEdges";
+    const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
+    const char* RenderGraphScripting::kCreatePass = "createRenderPass";
+
     // TODO Matt
     Dictionary convertPythonDict(const pybind11::dict& pyDict);
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {
         // RenderGraph
-        m.def("createRenderGraph", &RenderGraph::create);
+        m.def(kCreateGraph, &RenderGraph::create);
 
         void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
         auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
-        graphClass.def("addPass", &RenderGraph::addPass).def("removePass", &RenderGraph::removePass);
-        graphClass.def("addEdge", &RenderGraph::addEdge).def("removeEdge", renderGraphRemoveEdge);
-        graphClass.def("markOutput", &RenderGraph::markOutput).def("unmarkOutput", &RenderGraph::unmarkOutput);
+        graphClass.def(kAddPass, &RenderGraph::addPass).def(kRemovePass, &RenderGraph::removePass);
+        graphClass.def(kAddEdge, &RenderGraph::addEdge).def(kRemoveEdge, renderGraphRemoveEdge);
+        graphClass.def(kMarkOutput, &RenderGraph::markOutput).def(kUnmarkOutput, &RenderGraph::unmarkOutput);
+        graphClass.def(kAutoGenEdges, &RenderGraph::autoGenEdges);
 
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
@@ -59,7 +70,7 @@ namespace Falcor
         {
             return RenderPassLibrary::createPass(passName.c_str(), convertPythonDict(d));
         };
-        m.def("createRenderPass", createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
+        m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
     }
 
     RenderGraphScripting::SharedPtr RenderGraphScripting::create()

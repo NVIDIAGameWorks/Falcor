@@ -141,7 +141,7 @@ namespace Falcor
         /** Attempts to auto generate edges for render passes.
             \param[in] executionOrder Optional. Ordered list of node ID's as an override of pass search order to use when generating edges.
         */
-        void autoGenerateEdges(const std::vector<uint32_t>& executionOrder = std::vector<uint32_t>());
+        void autoGenEdges(const std::vector<uint32_t>& executionOrder = std::vector<uint32_t>());
 
         /** Render the UI
         */
