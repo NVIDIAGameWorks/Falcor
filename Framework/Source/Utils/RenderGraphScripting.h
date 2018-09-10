@@ -26,21 +26,30 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "RenderPassReflection.h"
-#include "Utils/Dictionary.h"
+#include "Graphics/RenderGraph/RenderGraph.h"
 
 namespace Falcor
 {
-    class RenderPass;
-    
-    class RenderPassLibrary
+    class RenderGraphScripting
     {
     public:
-        using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
-        static void addRenderPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const Dictionary& dict = {});
-        static size_t getRenderPassCount();
-        static const std::string& getRenderPassDesc(size_t pass);
-        static const std::string& getRenderPassClassName(size_t pass);
+        using SharedPtr = std::shared_ptr<RenderGraphScripting>;
+        using GraphDesc = Scripting::Context::ObjectDesc<RenderGraph::SharedPtr>;
+
+        using GraphVec = std::vector<GraphDesc>;
+
+        static SharedPtr create();
+        static SharedPtr create(const std::string& filename);
+
+        bool runScript(const std::string& script);
+        const GraphVec& getGraphs() const { return mGraphVec; }
+        void addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph);
+        RenderGraph::SharedPtr getGraph(const std::string& name) const;
+
+    private:
+        RenderGraphScripting() = default;
+        Scripting::Context mContext;
+        GraphVec mGraphVec;
+        std::string mFilename;
     };
 }

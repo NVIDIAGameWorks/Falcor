@@ -44,6 +44,7 @@ namespace Falcor
     class SkyBox : public RenderPass, inherit_shared_from_this<RenderPass, SkyBox>
     {
     public:
+        using UniquePtr = std::shared_ptr<SkyBox>;
         using SharedPtr = std::shared_ptr<SkyBox>;
 
         /** Create a sky box using an existing texture
@@ -53,24 +54,16 @@ namespace Falcor
         */
         static SharedPtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         
-        /** create a sky box to be set by the loaded scene
-        */
-        static SharedPtr create(bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
-
-        static SharedPtr createPass() { return create(); }
-
-        /* Create a sky box using data from serializer
-            \param[in] serializer Object to obtain initialization data
-        */
-        void deserialize(const RenderPassSerializer& serializer) override;
-        
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
             \param[in] loadAsSrgb Whether to load the texture into an sRGB format
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        static SharedPtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        deprecate("3.2")
+        static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(const std::string& textureFile, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(const Dictionary& dict);
 
         /** Render the sky box.
             \param[in] pRenderCtx Render context
@@ -82,7 +75,7 @@ namespace Falcor
         /* Save out data for sky box into serializer
             \param[in] pRenderPass SkyBoxPass to serialize data from
         */
-        RenderPassSerializer serialize() override;
+        virtual Dictionary getScriptingDictionary() const override;
 
         /** Set the sampler used to render the sky box.
         */
@@ -91,6 +84,10 @@ namespace Falcor
         /** Get the sky box texture.
         */
         Texture::SharedPtr getTexture() const;
+
+        /** Set a new texture
+        */
+        void setTexture(const Texture::SharedPtr& pTexture);
 
         /** Get the sampler used to render the sky box.
         */

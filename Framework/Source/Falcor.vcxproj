@@ -421,6 +421,7 @@
     <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
     <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
@@ -559,8 +560,9 @@
     <ClCompile Include="Utils\Psychophysics\Experiment.cpp" />
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
-    <ClCompile Include="Utils\RenderGraphLoader.cpp" />
+    <ClCompile Include="Utils\RenderGraphScripting.cpp" />
     <ClCompile Include="Utils\RenderGraphUI.cpp" />
+    <ClCompile Include="Utils\Scripting.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
     <ClCompile Include="Utils\VariablesBufferUI.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
@@ -840,6 +842,30 @@
     <ClInclude Include="..\Externals\GLM\glm\gtx\vector_angle.hpp" />
     <ClInclude Include="..\Externals\GLM\glm\gtx\vector_query.hpp" />
     <ClInclude Include="..\Externals\GLM\glm\gtx\wrap.hpp" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\attr.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\buffer_info.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\cast.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\chrono.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\common.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\complex.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\class.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\common.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\descr.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\init.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\internals.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\typeid.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\eigen.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\embed.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\eval.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\functional.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\iostream.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\numpy.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\operators.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\options.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\pybind11.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\pytypes.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\stl.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\stl_bind.h" />
     <ClInclude Include="API\BlendState.h" />
     <ClInclude Include="API\Buffer.h" />
     <ClInclude Include="API\ComputeContext.h" />
@@ -993,10 +1019,10 @@
     <ClInclude Include="Graphics\Program\ProgramVersion.h" />
     <ClInclude Include="Graphics\Program\ShaderLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h" />
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
@@ -1121,6 +1147,7 @@
     <ClInclude Include="Utils\BinaryFileStream.h" />
     <ClInclude Include="Utils\Bitmap.h" />
     <ClInclude Include="Utils\CpuTimer.h" />
+    <ClInclude Include="Utils\Dictionary.h" />
     <ClInclude Include="Utils\DirectedGraph.h" />
     <ClInclude Include="Utils\DDSHeader.h" />
     <ClInclude Include="Utils\DebugDrawer.h" />
@@ -1147,8 +1174,9 @@
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
     <ClInclude Include="Utils\PythonEmbedding.h" />
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
-    <ClInclude Include="Utils\RenderGraphLoader.h" />
+    <ClInclude Include="Utils\RenderGraphScripting.h" />
     <ClInclude Include="Utils\RenderGraphUI.h" />
+    <ClInclude Include="Utils\Scripting.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
@@ -1466,7 +1494,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1499,7 +1527,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_DXR;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1532,7 +1560,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1569,7 +1597,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -1606,7 +1634,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_DXR;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -1643,7 +1671,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(FALCOR_PYBIND11_PATH)\include;$(FALCOR_PYTHON_PATH)\include;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\include;$(ProjectDir)\..\Externals\pybind11-2.2.3;$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>

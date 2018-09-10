@@ -173,6 +173,7 @@ namespace Falcor
 
         VRSystem::cleanup();
 
+        Scripting::shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
         mpBackBufferFBO.reset();
@@ -263,6 +264,8 @@ namespace Falcor
         {
             mArgList.parseCommandLine(concatCommandLine(argc, argv));
         }
+
+        Scripting::start();
 
         // Load and run
         mpRenderer->onLoad(this, mpRenderContext);
@@ -384,7 +387,10 @@ namespace Falcor
             if (gProfileEnabled)
             {
                 mpGui->pushWindow("Profiler", 650, 200, 10, 300);
+                // Stop the timer
+                Profiler::endEvent("renderGUI");
                 mpGui->addText(Profiler::getEventsString().c_str());
+                Profiler::startEvent("renderGUI");
                 mpGui->popWindow();
             }
 
@@ -491,7 +497,6 @@ namespace Falcor
             {
                 captureScreen();
             }
-
 
             {
                 PROFILE(present);

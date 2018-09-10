@@ -25,22 +25,46 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "RenderPassReflection.h"
-#include "Utils/Dictionary.h"
+#include "Framework.h"
+#include "RenderGraphImportExport.h"
+#include "Utils/RenderGraphScripting.h"
 
 namespace Falcor
 {
-    class RenderPass;
-    
-    class RenderPassLibrary
+    RenderGraph::SharedPtr RenderGraphImporter::import(const std::string& filename, const std::string& graphName)
     {
-    public:
-        using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
-        static void addRenderPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createRenderPass(const char* className, const Dictionary& dict = {});
-        static size_t getRenderPassCount();
-        static const std::string& getRenderPassDesc(size_t pass);
-        static const std::string& getRenderPassClassName(size_t pass);
-    };
+        auto graphs = importAllGraphs(filename);
+        if (graphs.size() == 0)
+        {
+            logError("The file " + filename + " doesn't contain graphs");
+            return nullptr;
+        }
+
+        if (graphName.empty()) return graphs[0].pGraph;
+
+        for (const auto& g : graphs)
+        {
+            if (g.name == graphName) return g.pGraph;
+        }
+
+        logError("Can't find a graph named " + graphName + "in file " + filename);
+        return nullptr;
+    }
+
+    std::vector<RenderGraphImporter::GraphData> RenderGraphImporter::importAllGraphs(const std::string& filename)
+    {
+        RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(filename);
+        if (!pScripting) return {};
+
+        const auto& scriptVec = pScripting->getGraphs();
+        std::vector<RenderGraphImporter::GraphData> res;
+        res.reserve(scriptVec.size());
+
+        for (const auto& s : scriptVec)
+        {
+            res.push_back({ s.name, s.obj });
+        }
+
+        return res;
+    }
 }

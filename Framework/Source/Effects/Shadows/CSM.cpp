@@ -267,6 +267,11 @@ namespace Falcor
         return pShared;
     }
 
+    CascadedShadowMaps::SharedPtr CascadedShadowMaps::create(const Dictionary& dict)
+    {
+        return SharedPtr(new CascadedShadowMaps());
+    }
+
     void CascadedShadowMaps::setSdsmReadbackLatency(uint32_t latency)
     {
         if(mSdsmData.readbackLatency != latency)

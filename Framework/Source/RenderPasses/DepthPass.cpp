@@ -32,16 +32,9 @@ namespace Falcor
 {
     static const std::string& kDepth = "depth";
 
-    DepthPass::SharedPtr DepthPass::create()
+    DepthPass::SharedPtr DepthPass::create(const Dictionary& dict)
     {
-        try
-        {
-            return SharedPtr(new DepthPass);
-        }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
+        return SharedPtr(new DepthPass);
     }
 
     DepthPass::DepthPass() : RenderPass("DepthPass")

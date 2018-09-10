@@ -26,73 +26,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/Scene/Scene.h"
-#include <string>
 
 namespace Falcor
 {
-    class RenderPassSerializer
+    class RenderGraph;
+
+    class RenderGraphImporter
     {
     public:
-        Scene::UserVariable getValue(const std::string& key) const
+        /** Import a graph from a file. If graphName is empty, the function will return the first graph found in the script file.
+            Otherwise it will search for graphName in the script's global scope and return it if it exists. Otherwise, it will return nullptr
+        */
+        static std::shared_ptr<RenderGraph> import(const std::string& filename, const std::string& graphName = "");
+
+        struct GraphData
         {
-            auto it = mData.find(key);
-            return it != mData.end() ? it->second : Scene::UserVariable();
-        }
+            std::string name;
+            std::shared_ptr<RenderGraph> pGraph;
+        };
 
-        const Scene::UserVariable& getValue(size_t index) const
-        {
-            assert(index < getVariableCount());
-            return std::next(mData.begin(), index)->second;
-        }
-
-        void setValue(const std::string& name, const Scene::UserVariable& data)
-        {
-            if (mData.find(name) == mData.end())
-            {
-                logWarning("Unable to find serialize variable.");
-                return;
-            }
-
-            mData[name] = data;
-        }
-
-        void addVariable(const std::string& name, const Scene::UserVariable& data)
-        {
-            mData[name] = data;
-        }
-
-        template<typename T>
-        void addVariable(const std::string& name, const T& defaultValue)
-        {
-            T temp = T(defaultValue);
-            mData[name] = { temp };
-        }
-
-        template<typename T>
-        void addVariable(const std::string& name)
-        {
-            T temp;
-            mData[name] = { temp };
-        }
-
-        RenderPassSerializer()
-        {
-        }
-
-        size_t getVariableCount() const
-        {
-            return mData.size();
-        }
-
-        const std::string& getVariableName(size_t index) const
-        {
-            assert(index < getVariableCount());
-            return std::next(mData.begin(), index)->first;
-        }
-
-    private:
-        std::unordered_map<std::string, Scene::UserVariable> mData;
-
+        /** Import all the graphs found in the script's global namespace
+        */
+        static std::vector <GraphData> importAllGraphs(const std::string& filename);
     };
 }

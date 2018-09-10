@@ -137,7 +137,6 @@ namespace Falcor
         std::vector<std::pair <std::string, bool> > getAvailableOutputs() const;
 
         friend class RenderGraphUI;
-        friend class RenderGraphLoader;
 
         /** Attempts to auto generate edges for render passes.
             \param[in] executionOrder Optional. Ordered list of node ID's as an override of pass search order to use when generating edges.

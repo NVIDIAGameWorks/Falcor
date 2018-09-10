@@ -27,8 +27,6 @@
 ***************************************************************************/
 #include <fstream>
 #include "RenderGraphEditor.h"
-#include "Utils/RenderGraphLoader.h"
-#include "ArgList.h"
 
 const char* kViewerExecutableName = "RenderGraphViewer";
 
@@ -198,11 +196,13 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
     }
 
+    // TODO find way to list current update string. might not be necessary anymore
+
     // update the display if the render graph loader has set a new output
-    if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
-    {
-        mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
-    }
+    // if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
+    // {
+    //     mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
+    // }
 
     std::vector<std::string> graphOutputString{mGraphOutputEditString};
     if (pGui->addMultiTextBox("Add Output", {"GraphOutput"}, graphOutputString))
@@ -230,29 +230,31 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             openViewer = msgBox("Graph is invalid :\n " + log + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel) == MsgBoxButton::Ok;
         }
 
-        if (openViewer)
-        {
-            std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
-            if (!renderGraphScript.size())
-            {
-                logError("No graph data to display in editor.");
-            }
+        // TODO -- get render graph viewer to open with live viewer properly witht he editor
 
-            char* result = nullptr;
-            mFilePath = std::tmpnam(result);
-            std::ofstream updatesFileOut(mFilePath);
-            assert(updatesFileOut.is_open());
-
-            updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-            updatesFileOut.close();
-
-            // load application for the editor given it the name of the mapped file
-            std::string commandLine = std::string("-tempFile ") + mFilePath;
-            mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
-
-            assert(mViewerProcess);
-            mViewerRunning = true;
-        }
+        // if (openViewer)
+        // {
+        //     std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
+        //     if (!renderGraphScript.size())
+        //     {
+        //         logError("No graph data to display in editor.");
+        //     }
+        // 
+        //     char* result = nullptr;
+        //     mFilePath = std::tmpnam(result);
+        //     std::ofstream updatesFileOut(mFilePath);
+        //     assert(updatesFileOut.is_open());
+        // 
+        //     updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+        //     updatesFileOut.close();
+        // 
+        //     // load application for the editor given it the name of the mapped file
+        //     std::string commandLine = std::string("-tempFile ") + mFilePath;
+        //     mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+        // 
+        //     assert(mViewerProcess);
+        //     mViewerRunning = true;
+        // }
     }
 
     pGui->popWindow();
@@ -304,12 +306,14 @@ void RenderGraphEditor::renderLogWindow(Gui* pGui)
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
-    RenderGraphLoader::SaveRenderGraphAsScript(fileName, *mpGraphs[mCurrentGraphIndex]);
+    // TODO -- call exporter to save out graph
+    // RenderGraphLoader::SaveRenderGraphAsScript(fileName, *mpGraphs[mCurrentGraphIndex]);
 }
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 {
-    RenderGraphLoader::LoadAndRunScript(fileName, *mpGraphs[mCurrentGraphIndex]);
+    // TODO -- call import to load up graph
+    // RenderGraphLoader::LoadAndRunScript(fileName, *mpGraphs[mCurrentGraphIndex]);
     if (mRenderGraphUIs.size() < mCurrentGraphIndex)
     {
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
@@ -341,16 +345,16 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     RenderGraphUI graphUI(newGraph, graphName);
     mRenderGraphUIs.emplace_back(std::move(graphUI));
 
-    if (renderGraphFileName.size())
-    {
-        RenderGraphLoader::LoadAndRunScript(renderGraphFileName, *newGraph);
-    }
-
-    // update the display if the render graph loader has set a new output
-    if (RenderGraphLoader::sGraphOutputString[0] != '0')
-    {
-        mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
-    }
+    // if (renderGraphFileName.size())
+    // {
+    //     RenderGraphLoader::LoadAndRunScript(renderGraphFileName, *newGraph);
+    // }
+    // 
+    // // update the display if the render graph loader has set a new output
+    // if (RenderGraphLoader::sGraphOutputString[0] != '0')
+    // {
+    //     mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
+    // }
 
     mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
 }

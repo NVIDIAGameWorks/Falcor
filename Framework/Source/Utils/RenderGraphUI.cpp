@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "RenderGraphUI.h"
 #include "Utils/Gui.h"
-#include "Utils/RenderGraphLoader.h"
+#include "Utils/RenderGraphScripting.h"
 #   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
 #include "../Samples/Utils/RenderGraphEditor/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 #include "Externals/dear_imgui/imgui.h"

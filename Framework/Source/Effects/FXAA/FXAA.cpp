@@ -21,12 +21,12 @@ namespace Falcor
         mpGraphicsVars->setSampler("gSampler", mpLinearSampler);
     }
 
-    FXAA::SharedPtr FXAA::create()
+    FXAA::SharedPtr FXAA::create(const Dictionary& dict)
     {
         try
         {
-            FXAA* pTaa = new FXAA();
-            return FXAA::SharedPtr(pTaa);
+            FXAA* pFxaa = new FXAA();
+            return FXAA::SharedPtr(pFxaa);
         }
         catch (const std::exception&)
         {

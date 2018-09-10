@@ -568,12 +568,16 @@
     <ClCompile Include="Utils\RenderGraphUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\RenderGraphLoader.cpp">
+    <ClCompile Include="Utils\Scripting.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\RenderGraphScripting.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
       <Filter>Externals\dear_imgui_extensions\imgui_node_editor</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1774,13 +1778,16 @@
     <ClInclude Include="Utils\RenderGraphUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\RenderGraphLoader.h">
+    <ClInclude Include="Utils\DirectedGraphTraversal.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h">
-      <Filter>Graphics\RenderGraph</Filter>
+    <ClInclude Include="Utils\Scripting.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\DirectedGraphTraversal.h">
+    <ClInclude Include="Utils\Dictionary.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\RenderGraphScripting.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imgui_user.h">
@@ -1788,6 +1795,79 @@
     </ClInclude>
     <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h">
       <Filter>Externals\dear_imgui_extensions\imgui_node_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\attr.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\buffer_info.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\cast.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\chrono.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\common.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\complex.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\eigen.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\embed.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\eval.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\functional.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\iostream.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\numpy.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\operators.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\options.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\pybind11.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\pytypes.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\stl.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\stl_bind.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\class.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\common.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\descr.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\init.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\internals.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\typeid.h">
+      <Filter>Externals\pybind11-2.2.3\include\pybind11\detail</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1994,6 +2074,18 @@
     </Filter>
     <Filter Include="Externals\dear_imgui_extensions\imgui_node_editor">
       <UniqueIdentifier>{7a815e18-4b97-462a-bdd8-7077292c0b29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\pybind11-2.2.3">
+      <UniqueIdentifier>{f3fb12eb-f3fe-4ecc-b3e7-e7ed2ed87172}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\pybind11-2.2.3\include">
+      <UniqueIdentifier>{26f4574c-4d7c-4470-b094-ed6e72fedeee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\pybind11-2.2.3\include\pybind11">
+      <UniqueIdentifier>{44f6c905-0b71-4fee-9da9-00d5ca80ffa5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\pybind11-2.2.3\include\pybind11\detail">
+      <UniqueIdentifier>{997833bf-3a58-48b9-902f-5175a35ab1fb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
