@@ -30,9 +30,9 @@
 #include "Externals/pybind11-2.2.3/include/pybind11/embed.h"
 #include "Externals/pybind11-2.2.3/include/pybind11/stl.h"
 #include "StringUtils.h"
+#include "Utils/Dictionary.h"
 
-#include "Graphics/RenderGraph/RenderGraph.h"
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "RenderGraphScripting.h"
 
 using namespace pybind11::literals;
 
@@ -110,7 +110,7 @@ namespace Falcor
         }
     }
 
-    static Dictionary convertPythonDict(const pybind11::dict& pyDict)
+    Dictionary convertPythonDict(const pybind11::dict& pyDict)
     {
         Dictionary falcorDict;
         for (const auto& d : pyDict)
@@ -129,31 +129,9 @@ namespace Falcor
         return falcorDict;
     }
 
-    void addRenderGraphBindings(pybind11::module& m)
-    {
-        // RenderGraph
-        m.def("createRenderGraph", &RenderGraph::create);
-
-        void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
-        auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
-        graphClass.def("addPass", &RenderGraph::addRenderPass).def("removePass", &RenderGraph::removeRenderPass);
-        graphClass.def("addEdge", &RenderGraph::addEdge).def("removeEdge", renderGraphRemoveEdge);
-        graphClass.def("markOutput", &RenderGraph::markGraphOutput).def("unmarkOutput", &RenderGraph::unmarkGraphOutput);
-        
-        // RenderPass
-        pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
-
-        // RenderPassLibrary
-        const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d = {})->RenderPass::SharedPtr
-        {
-            return RenderPassLibrary::createRenderPass(passName.c_str(), convertPythonDict(d));
-        };
-        m.def("createRenderPass", createRenderPass, "passName"_a, "dict"_a=pybind11::dict());
-    }
-
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
-        addRenderGraphBindings(m);
+        RenderGraphScripting::registerScriptingObjects(m);
     }
 
     bool Scripting::start()
