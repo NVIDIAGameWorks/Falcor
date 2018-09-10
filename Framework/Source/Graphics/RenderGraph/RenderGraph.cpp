@@ -27,6 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "RenderGraph.h"
+#include "RenderPassesLibrary.h"
 #include "API/FBO.h"
 #include "Utils/DirectedGraphTraversal.h"
 #include "Utils/Gui.h"
@@ -259,6 +260,31 @@ namespace Falcor
         mRecompile = true;
     }
 
+    uint32_t RenderGraph::getEdge(const std::string& src, const std::string& dst)
+    {
+        str_pair srcPair, dstPair;
+        parseFieldName(src, srcPair);
+        parseFieldName(dst, dstPair);
+
+        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); ++i)
+        {
+            if (!mpGraph->doesEdgeExist(i)) { continue; }
+
+            const DirectedGraph::Edge* pEdge = mpGraph->getEdge(i);
+            if (dstPair.first == mNodeData[pEdge->getDestNode()].nodeName &&
+                srcPair.first == mNodeData[pEdge->getSourceNode()].nodeName)
+            {
+                if (mEdgeData[i].dstField == dstPair.second
+                    && mEdgeData[i].srcField == srcPair.second)
+                {
+                    return i;
+                }
+            }
+        }
+
+        return static_cast<uint32_t>(-1);
+    }
+
     bool RenderGraph::isValid(std::string& log) const
     {
         std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
@@ -365,9 +391,9 @@ namespace Falcor
         return false;
     }
 
-    std::vector<std::pair<std::string, bool>> RenderGraph::getAvailableOutputs() const
+    std::vector<RenderGraph::OutputInfo> RenderGraph::getAvailableOutputs() const
     {
-        std::vector<std::pair<std::string, bool>> outputs;
+        std::vector<OutputInfo> outputs;
         std::unordered_set<std::string> visitedOutputs;
         for (const auto& node : mNodeData)
         {
@@ -381,7 +407,7 @@ namespace Falcor
                 if (visitedOutputs.find(fieldName) == visitedOutputs.end())
                 {
                     visitedOutputs.insert(fieldName);
-                    outputs.push_back(std::make_pair(fieldName, isOutput));
+                    outputs.push_back(OutputInfo{ fieldName, isOutput });
                 }
             }
         }
@@ -495,6 +521,87 @@ namespace Falcor
         }
 
         if (profile) Profiler::endEvent("RenderGraph::execute()");
+    }
+
+    void RenderGraph::update(const SharedPtr& pGraph)
+    {
+        // fill in missing passes from referenced graph
+        for (const auto& nameIndexPair : pGraph->mNameToIndex)
+        {
+            // if same name and type
+            RenderPass::SharedPtr pRenderPass = pGraph->mNodeData[nameIndexPair.second].pPass;
+            std::string passTypeName = pRenderPass->getName();
+
+            if (!renderPassExist(nameIndexPair.first) && getRenderPass(nameIndexPair.first)->getName() == passTypeName)
+            { 
+                RenderPass::SharedPtr pNewPass = RenderPassLibrary::createRenderPass(
+                    passTypeName.c_str(), pRenderPass->getScriptingDictionary());
+                addRenderPass(pNewPass, nameIndexPair.first);
+            }
+        }
+
+        // remove nodes that should no longer be within the graph
+        for (const auto& nameIndexPair : mNameToIndex)
+        {
+            if (!pGraph->renderPassExist(nameIndexPair.first))
+            {
+                removeRenderPass(nameIndexPair.first);
+            }
+            
+            // only remove outputs for passes that have been removed
+            std::vector<uint32_t> outputsToRemove;
+            uint32_t index = 0;
+            for (const GraphOut& currentOut : mOutputs)
+            {
+                if (nameIndexPair.second == currentOut.nodeId)
+                {
+                    outputsToRemove.push_back(index);
+                }
+                ++index;
+            }
+            for (uint32_t i : outputsToRemove)
+            {
+                mOutputs.erase(mOutputs.begin() + i);
+            }
+        }
+
+        // move and copy all edges, preserving state of edges
+        // add missing edges
+        for (uint32_t i = 0; i < pGraph->mpGraph->getCurrentNodeId(); ++i)
+        {
+            if (!pGraph->mpGraph->doesEdgeExist(i)) { continue;}
+
+            const DirectedGraph::Edge* pEdge = pGraph->mpGraph->getEdge(i);
+            std::string dst = pGraph->mNodeData[pEdge->getDestNode()].nodeName;
+            std::string src = pGraph->mNodeData[pEdge->getSourceNode()].nodeName;
+            dst += std::string(".") + pGraph->mEdgeData[i].dstField;
+            src += std::string(".") + pGraph->mEdgeData[i].srcField;
+
+            // only add if the edge doesn't exist to preserve state
+            if ( getEdge(src, dst) == uint32_t(-1))
+            {
+                addEdge(src, dst);
+            }
+        }
+        
+        // remove extra edges from original
+        for (uint32_t i = 0; i < pGraph->mpGraph->getCurrentNodeId(); ++i)
+        {
+            if (!pGraph->mpGraph->doesEdgeExist(i)) { continue; }
+
+            const DirectedGraph::Edge* pEdge = mpGraph->getEdge(i);
+            std::string dst = mNodeData[pEdge->getDestNode()].nodeName;
+            std::string src = mNodeData[pEdge->getSourceNode()].nodeName;
+            dst += std::string(".") + mEdgeData[i].dstField;
+            src += std::string(".") + mEdgeData[i].srcField;
+
+            // only remove if new graph does not have edge
+            if (pGraph->getEdge(src, dst) == uint32_t(-1))
+            {
+                removeEdge(src, dst);
+            }
+        }
+        mRecompile = true;
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)

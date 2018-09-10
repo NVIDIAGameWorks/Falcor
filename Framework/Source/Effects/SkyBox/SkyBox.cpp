@@ -94,20 +94,6 @@ namespace Falcor
         return Dictionary();
     }
 
-    void SkyBox::setScene(const std::shared_ptr<Scene>& pScene)
-    {
-        mpScene = pScene;
-
-        if (!mpTexture && pScene)
-        {
-            // TODO
-            Scene::UserVariable var = pScene->getUserVariable("sky_box");
-            //std::string textureName = getDirectoryFromFile(pScene->mFileName) + '/' + var;
-            Texture::SharedPtr pTexture = createTextureFromFile(textureName, false, mLoadSrgb);
-            createResources(pTexture, mpSampler, mRenderStereo);
-        }
-    }
-
     void SkyBox::setTexture(const Texture::SharedPtr& pTexture)
     {
         mpTexture = pTexture;

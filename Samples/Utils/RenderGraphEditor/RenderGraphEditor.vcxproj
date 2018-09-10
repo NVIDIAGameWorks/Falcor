@@ -86,7 +86,9 @@
     <Import Project="..\..\..\Framework\Source\Falcor.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LibraryPath>C:\Program Files %28x86%29\Microsoft Visual Studio\Shared\Python36_64\libs;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -95,6 +97,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\include;$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

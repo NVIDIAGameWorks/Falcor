@@ -109,7 +109,7 @@ namespace Falcor
     private:
         SkyBox();
         bool createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo);
-
+        
         size_t mMatOffset;
         size_t mScaleOffset;
 

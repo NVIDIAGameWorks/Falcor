@@ -859,7 +859,9 @@ namespace Falcor
                 }
                 
                 // push serialized data as update command for live preview
-                pushUpdateCommand(RenderGraphLoader::saveRenderGraphAsUpdateScript(*mpRenderGraph));
+                
+                // TODO -- execute command for click and drop
+                //pushUpdateCommand(RenderGraphLoader::saveRenderGraphAsUpdateScript(*mpRenderGraph));
 
                 ImGui::EndPopup();
             }
@@ -902,7 +904,8 @@ namespace Falcor
                         mNextPassName.push_back('_');
                     }
 
-                    RenderGraphLoader::ExecuteStatement("AddRenderPass " + mNextPassName + " " + dragAndDropText, *mpRenderGraph);
+                    // TODO -- 
+                    //RenderGraphLoader::ExecuteStatement("AddRenderPass " + mNextPassName + " " + dragAndDropText, *mpRenderGraph);
                     bFromDragAndDrop = true;
                     mRebuildDisplayData = true;
                     mDisplayDragAndDropPopup = false;

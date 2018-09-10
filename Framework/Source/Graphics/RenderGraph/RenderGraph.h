@@ -85,6 +85,10 @@ namespace Falcor
         */
         void execute(RenderContext* pContext);
 
+        /** Update graph based on another graph's topology
+        */
+        void update(const SharedPtr& pGraph);
+
         /** Set an input resource. The name has the format `renderPassName.resourceName`.
             This is an alias for `getRenderPass(renderPassName)->setInput(resourceName, pResource)`
         */
@@ -132,9 +136,15 @@ namespace Falcor
         */
         size_t getGraphOutputCount() const { return mOutputs.size(); }
 
+        struct OutputInfo
+        {
+            std::string outputName;
+            bool isGraphOutput;
+        };
+
         /** Get all output names for the render graph
         */
-        std::vector<std::pair <std::string, bool> > getAvailableOutputs() const;
+        std::vector<OutputInfo> getAvailableOutputs() const;
 
         friend class RenderGraphUI;
 
@@ -179,6 +189,7 @@ namespace Falcor
             RenderPass::SharedPtr pPass;
         };
 
+        uint32_t getEdge(const std::string& src, const std::string& dst);
         void getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList) const;
         void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
 
@@ -200,7 +211,6 @@ namespace Falcor
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
         bool isGraphOutput(const GraphOut& graphOut) const;
-        std::shared_ptr<Texture> createTextureForPass(const RenderPassReflection::Field& field);
 
         ResourceCache::DefaultProperties mSwapChainData;
 

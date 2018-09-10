@@ -355,18 +355,24 @@ namespace Falcor
         void popWindow();
 
         /** Set the current window position in pixels
+            \param[in] x horizontal window position in pixels
+            \param[in] y vertical window position in pixels
         */
         void setCurrentWindowPos(uint32_t x, uint32_t y);
 
         /** Get the position of the current window.
+            \return vec2 Value of window position
         */
         glm::vec2 getCurrentWindowPos();
 
         /**  Set the size of the current window in pixels
+            \param[in] width Window width in pixels
+            \param[in] height Window height in pixels
         */
         void setCurrentWindowSize(uint32_t width, uint32_t height);
 
         /** Get the size of the current window in pixels.
+            \return vec2 Value of window size
         */
         glm::vec2 getCurrentWindowSize();
 

@@ -41,6 +41,7 @@ public:
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    void RenderGraphViewer::onDataReload(SampleCallbacks* pSample) override;
 
 private:
     FirstPersonCameraController mCamControl;
@@ -52,7 +53,6 @@ private:
     void createDefaultGraph(SampleCallbacks* pSample);
     void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy);
     void resetGraphOutputs();
-    void fileWriteCallback(const std::string& fileName);
     void updateOutputDropdown(const std::string& passName);
 
     Scene::SharedPtr mpScene;
@@ -83,8 +83,9 @@ private:
         std::string mOutputString = "BlitPass.dst";
         uint32_t mGraphOutputIndex = 0;
         bool mEnableDepthPrePass = true;
+        std::string mFileName;
         std::vector< std::pair<std::string, bool> > mOriginalOutputs;
-        std::vector< std::pair<std::string, bool> > mCurrentOutputs;
+        std::vector< RenderGraph::OutputInfo > mCurrentOutputs;
         std::unordered_set<std::string> mOriginalOutputNames;
         std::vector<std::string> mOutputNames;
         std::vector<std::string> mScriptBacklog;

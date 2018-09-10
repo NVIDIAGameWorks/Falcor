@@ -27,7 +27,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui_demo.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui_draw.cpp" />
@@ -618,8 +617,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
-    <ClInclude Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imgui_user.h" />
     <ClInclude Include="..\Externals\dear_imgui\imconfig.h" />
     <ClInclude Include="..\Externals\dear_imgui\imgui.h" />
     <ClInclude Include="..\Externals\dear_imgui\imgui_internal.h" />
@@ -842,30 +839,6 @@
     <ClInclude Include="..\Externals\GLM\glm\gtx\vector_angle.hpp" />
     <ClInclude Include="..\Externals\GLM\glm\gtx\vector_query.hpp" />
     <ClInclude Include="..\Externals\GLM\glm\gtx\wrap.hpp" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\attr.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\buffer_info.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\cast.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\chrono.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\common.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\complex.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\class.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\common.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\descr.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\init.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\internals.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\detail\typeid.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\eigen.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\embed.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\eval.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\functional.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\iostream.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\numpy.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\operators.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\options.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\pybind11.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\pytypes.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\stl.h" />
-    <ClInclude Include="..\Externals\pybind11-2.2.3\include\pybind11\stl_bind.h" />
     <ClInclude Include="API\BlendState.h" />
     <ClInclude Include="API\Buffer.h" />
     <ClInclude Include="API\ComputeContext.h" />
@@ -1235,7 +1208,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\Samples\Utils\RenderGraphEditor\dear_imgui_addons\imgui_user.inl" />
     <None Include="..\Externals\dear_imgui\LICENSE" />
     <None Include="..\Externals\dear_imgui\README.md" />
     <None Include="..\Externals\GLM\glm\detail\func_common.inl" />
@@ -1560,7 +1532,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\include;$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
@@ -1597,7 +1569,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\include;$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -1671,7 +1643,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\include;$(ProjectDir)\..\Externals\pybind11-2.2.3;$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python36_64\include;$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>

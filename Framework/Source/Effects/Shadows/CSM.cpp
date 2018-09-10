@@ -234,10 +234,6 @@ namespace Falcor
         mpGaussianBlur->setKernelWidth(5);
     }
 
-    void CascadedShadowMaps::deserialize(const RenderPassSerializer& serializer)
-    {
-    }
-
     void CascadedShadowMaps::setLight(const Light::SharedConstPtr& pLight)
     {
         mpLight = pLight;

@@ -51,14 +51,14 @@ void RenderGraphViewer::resetGraphOutputs()
     
     for (const auto& output : graphInfo.mCurrentOutputs)
     {
-        auto outputIt = graphInfo.mOriginalOutputNames.find(output.first);
-        if (output.second && outputIt == graphInfo.mOriginalOutputNames.end())
+        auto outputIt = graphInfo.mOriginalOutputNames.find(output.outputName);
+        if (output.isGraphOutput && outputIt == graphInfo.mOriginalOutputNames.end())
         {
-            graphInfo.mpGraph->unmarkGraphOutput(output.first);
+            graphInfo.mpGraph->unmarkGraphOutput(output.outputName);
         }
-        else if (!output.second && outputIt != graphInfo.mOriginalOutputNames.end())
+        else if (!output.isGraphOutput && outputIt != graphInfo.mOriginalOutputNames.end())
         {
-            graphInfo.mpGraph->markGraphOutput(output.first);
+            graphInfo.mpGraph->markGraphOutput(output.outputName);
         }
     }
 }
@@ -223,7 +223,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             {
                 // mark as graph output
                 pPreviewGraph->markGraphOutput(debugWindowInfo.mOutputName);
+                static Texture::SharedPtr pLastTex;
                 Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(pPreviewGraph->getOutput(debugWindowInfo.mOutputName));
+                if (pLastTex && pLastTex != pPreviewTex)
+                {
+                    __debugbreak();
+                }
+                pLastTex = pPreviewTex;
 
                 if (pGui->addButton("Save to File", true))
                 {
@@ -261,10 +267,14 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
 
                 glm::vec2 imagePreviewSize = pGui->getCurrentWindowSize();
-                float imageAspectRatio = static_cast<float>(pPreviewTex->getHeight()) / static_cast<float>(pPreviewTex->getWidth());
+                uint32_t texHeight = pPreviewTex->getHeight();
+                uint32_t texWidth = pPreviewTex->getWidth();
+                float imageAspectRatio = static_cast<float>(texHeight) / static_cast<float>(texWidth);
                 // get size of window to scale image correctly
                 imagePreviewSize.y = imagePreviewSize.x * imageAspectRatio;
-                pGui->addImage(nameWindow.first.c_str(), pPreviewTex, imagePreviewSize);
+                Texture::SharedPtr pTexture = Texture::create2D(texHeight, texWidth, pPreviewTex->getFormat());
+                pSample->getRenderContext()->copyResource(pTexture.get(), pPreviewTex.get());
+                pGui->addImage(nameWindow.first.c_str(), pTexture, imagePreviewSize);
             }
 
             pGui->popWindow();
@@ -290,7 +300,7 @@ RenderGraph::SharedPtr RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     pGraph->addRenderPass(BlitPass::create(), "BlitPass");
     pGraph->addRenderPass(ToneMapping::create(Dictionary()), "ToneMapping");
     pGraph->addRenderPass(SSAO::create(Dictionary()), "SSAO");
-    pGraph->addRenderPass(FXAA::create(), "FXAA");
+    pGraph->addRenderPass(FXAA::create({}), "FXAA");
 
     // Add the skybox
     Sampler::Desc samplerDesc;
@@ -424,8 +434,8 @@ void RenderGraphViewer::updateOutputDropdown(const std::string& passName)
     for (const auto& outputPair : graphInfo.mCurrentOutputs)
     {
         Gui::DropdownValue graphOutput;
-        graphOutput.label = outputPair.first;
-        if (outputPair.first == graphInfo.mOutputString)
+        graphOutput.label = outputPair.outputName;
+        if (outputPair.outputName == graphInfo.mOutputString)
         {
             graphInfo.mGraphOutputIndex = i;
         }
@@ -472,10 +482,14 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
     {
         PerGraphInfo& applyGraphInfo = mpRenderGraphs[mEditingRenderGraphName];
         // apply all change for valid graph
-        // for (const std::string& script : applyGraphInfo.mScriptBacklog)
-        // {
-        //     RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *applyGraphInfo.mpGraph);
-        // }
+        for (const std::string& script : applyGraphInfo.mScriptBacklog)
+        {
+            // TODO -- run script backlog for live update
+            // RenderGraphImporter::import();
+            // Scripting::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()) *applyGraphInfo.mpGraph);
+            
+            // RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *applyGraphInfo.mpGraph);
+        }
         applyGraphInfo.mScriptBacklog.clear();
         applyGraphInfo.mCurrentOutputs = applyGraphInfo.mpGraph->getAvailableOutputs();
         mApplyGraphChanges = true;
@@ -508,6 +522,17 @@ bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent
 bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
     return mCamControl.onMouseEvent(mouseEvent);
+}
+
+void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
+{
+    // Reload all graphs, while maintaining state
+    for (const auto& graphInfo : mpRenderGraphs)
+    {
+        RenderGraph::SharedPtr pGraph = graphInfo.second.mpGraph;
+        RenderGraph::SharedPtr pNewGraph = RenderGraphImporter::import(graphInfo.second.mFileName);
+        pGraph->update(pNewGraph);
+    }
 }
 
 void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)

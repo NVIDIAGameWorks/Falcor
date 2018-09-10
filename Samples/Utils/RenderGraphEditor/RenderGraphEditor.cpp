@@ -300,7 +300,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 void RenderGraphEditor::renderLogWindow(Gui* pGui)
 {
     // window for displaying log from render graph validation
-
     pGui->addText(mCurrentLog.c_str());
 }
 
@@ -308,12 +307,12 @@ void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
     // TODO -- call exporter to save out graph
     // RenderGraphLoader::SaveRenderGraphAsScript(fileName, *mpGraphs[mCurrentGraphIndex]);
+    
 }
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 {
-    // TODO -- call import to load up graph
-    // RenderGraphLoader::LoadAndRunScript(fileName, *mpGraphs[mCurrentGraphIndex]);
+    mpGraphs[mCurrentGraphIndex] = RenderGraphImporter::import(fileName);
     if (mRenderGraphUIs.size() < mCurrentGraphIndex)
     {
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
@@ -345,11 +344,11 @@ void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, co
     RenderGraphUI graphUI(newGraph, graphName);
     mRenderGraphUIs.emplace_back(std::move(graphUI));
 
-    // if (renderGraphFileName.size())
-    // {
-    //     RenderGraphLoader::LoadAndRunScript(renderGraphFileName, *newGraph);
-    // }
-    // 
+    if (renderGraphFileName.size())
+    {
+        newGraph = RenderGraphImporter::import(renderGraphFileName);
+    }
+    
     // // update the display if the render graph loader has set a new output
     // if (RenderGraphLoader::sGraphOutputString[0] != '0')
     // {
