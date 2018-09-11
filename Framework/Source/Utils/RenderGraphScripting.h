@@ -48,9 +48,18 @@ namespace Falcor
         bool runScript(const std::string& script);
         const GraphVec& getGraphs() const { return mGraphVec; }
         RenderGraph::SharedPtr getGraph(const std::string& name) const;
-
-        // C++ to python
         void addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph);
+
+        static const char* kAddPass;
+        static const char* kRemovePass;
+        static const char* kAddEdge;
+        static const char* kRemoveEdge;
+        static const char* kMarkOutput;
+        static const char* kUnmarkOutput;
+        static const char* kAutoGenEdges;
+        static const char* kCreatePass;
+        static const char* kCreateGraph;
+
     private:
         RenderGraphScripting() = default;
         Scripting::Context mContext;

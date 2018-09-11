@@ -1,0 +1,2 @@
+forward_renderer.removePass("FXAA")
+forward_renderer.addEdge("SSAO.colorOut", "BlitPass.src");

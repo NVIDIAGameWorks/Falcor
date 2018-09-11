@@ -29,6 +29,8 @@
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
 #include "Graphics/RenderGraph/RenderPassReflection.h"
+#include "Graphics/RenderGraph/RenderGraphIR.h"
+#include "Utils/RenderGraphScripting.h"
 #include <array>
 
 namespace Falcor
@@ -72,8 +74,9 @@ namespace Falcor
 
         RenderGraphUI(const RenderGraph::SharedPtr& renderGraphRef, const std::string& renderGraphName);
 
-        // move constructor for emplace construction
-        RenderGraphUI(RenderGraphUI&& rref);
+        // 
+        // RenderGraphUI(const RenderGraphUI& rref);
+        // 
 
         ~RenderGraphUI();
 
@@ -133,8 +136,16 @@ namespace Falcor
         */
         void clearCurrentLog() { mLogString.clear();  }
 
+        /** Update change for the graph based on script
+        */
+        void updateGraph();
+
+        /** Get name of reference graph
+        */
+        std::string getName() { return mRenderGraphName; }
+
     private:
-        // foward declaration. private to avoid initialization outside of implementation file
+        // forward declaration. private to avoid initialization outside of implementation file
         class NodeGraphEditorGui;
         class RenderGraphNode;
 
@@ -145,10 +156,6 @@ namespace Falcor
         /** Updates information about pin connections and graph output.
         */
         void updatePins(bool addLinks = true);
-
-        /** Helper function. Validates graph before pushing commands for live update
-        */
-        bool pushUpdateCommand(const std::string& commandString);
 
         /** Helper function to calculate position of the next node in execution order
         */
@@ -164,6 +171,9 @@ namespace Falcor
 
         // start with reference of render graph
         RenderGraph::SharedPtr mpRenderGraph;
+
+        RenderGraphIR::SharedPtr mpIr;
+        RenderGraphScripting::SharedPtr mpScripting;
 
         uint32_t mEdgesColor = 0xFFFFFFFF;
         uint32_t mAutoGenEdgesColor = 0xFFFF0400;
@@ -184,7 +194,7 @@ namespace Falcor
         std::unordered_map <std::string, std::vector< std::pair<uint32_t, uint32_t > > > mOutputToInputPins;
 
         // if in external editing mode, building list of commands for changes to send to the other process
-        std::vector<std::string> mCommandStrings;
+        std::string mUpdateCommands;
 
         // to avoid attempting to write changes every frame.
         float mTimeSinceLastUpdate = 0.0f;
@@ -195,10 +205,11 @@ namespace Falcor
         // used for pop warning menu for edges
         bool mShowWarningPopup = false;
 
-        // internal node gui structure
-        NodeGraphEditorGui* mpNodeGraphEditor;
+        // internal node GUi structure
+        std::shared_ptr<NodeGraphEditorGui> mpNodeGraphEditor;
 
         // Flag to re-traverse the graph and build on of the intermediate data again.
-        bool mRebuildDisplayData = false;
+        bool mRebuildDisplayData = true;
+        bool mShouldUpdate = false;
     };
 }

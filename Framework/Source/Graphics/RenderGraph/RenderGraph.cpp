@@ -67,7 +67,7 @@ namespace Falcor
         }
     }
 
-    uint32_t RenderGraph::addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
+    uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
     {
         assert(pPass);
         if (getPassIndex(passName) != kInvalidIndex)
@@ -87,7 +87,7 @@ namespace Falcor
         return true;
     }
 
-    void RenderGraph::removeRenderPass(const std::string& name)
+    void RenderGraph::removePass(const std::string& name)
     {
         uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
@@ -109,7 +109,7 @@ namespace Falcor
         mRecompile = true;
     }
 
-    const RenderPass::SharedPtr& RenderGraph::getRenderPass(const std::string& name) const
+    const RenderPass::SharedPtr& RenderGraph::getPass(const std::string& name) const
     {
         uint32_t index = getPassIndex(name);
         if (index == kInvalidIndex)
@@ -159,7 +159,7 @@ namespace Falcor
     {
         if (parseFieldName(fullname, nameAndField) == false) return false;
 
-        RenderPass* pPass = pGraph->getRenderPass(nameAndField.first).get();
+        RenderPass* pPass = pGraph->getPass(nameAndField.first).get();
         if (!pPass)
         {
             logError(errorPrefix + " - can't find render-pass named '" + nameAndField.first + "'");
@@ -532,37 +532,44 @@ namespace Falcor
             RenderPass::SharedPtr pRenderPass = pGraph->mNodeData[nameIndexPair.second].pPass;
             std::string passTypeName = pRenderPass->getName();
 
-            if (!renderPassExist(nameIndexPair.first) && getRenderPass(nameIndexPair.first)->getName() == passTypeName)
+            if (!doesPassExist(nameIndexPair.first))
             { 
-                RenderPass::SharedPtr pNewPass = RenderPassLibrary::createRenderPass(
+                RenderPass::SharedPtr pNewPass = RenderPassLibrary::createPass(
                     passTypeName.c_str(), pRenderPass->getScriptingDictionary());
-                addRenderPass(pNewPass, nameIndexPair.first);
+                addPass(pNewPass, nameIndexPair.first);
             }
         }
+
+        std::vector<uint32_t> outputsToRemove;
+        std::vector<std::string> passesToRemove;
 
         // remove nodes that should no longer be within the graph
         for (const auto& nameIndexPair : mNameToIndex)
         {
-            if (!pGraph->renderPassExist(nameIndexPair.first))
+            if (!pGraph->doesPassExist(nameIndexPair.first))
             {
-                removeRenderPass(nameIndexPair.first);
-            }
-            
-            // only remove outputs for passes that have been removed
-            std::vector<uint32_t> outputsToRemove;
-            uint32_t index = 0;
-            for (const GraphOut& currentOut : mOutputs)
-            {
-                if (nameIndexPair.second == currentOut.nodeId)
+                passesToRemove.push_back(nameIndexPair.first);
+
+                // only remove outputs for passes that have been removed
+                uint32_t index = 0;
+                for (const GraphOut& currentOut : mOutputs)
                 {
-                    outputsToRemove.push_back(index);
+                    if (nameIndexPair.second == currentOut.nodeId)
+                    {
+                        outputsToRemove.push_back(index);
+                    }
+                    ++index;
                 }
-                ++index;
             }
-            for (uint32_t i : outputsToRemove)
-            {
-                mOutputs.erase(mOutputs.begin() + i);
-            }
+        }
+        
+        for (const std::string& passName : passesToRemove)
+        {
+            removePass(passName);
+        }
+        for (uint32_t i : outputsToRemove)
+        {
+            mOutputs.erase(mOutputs.begin() + i);
         }
 
         // move and copy all edges, preserving state of edges
@@ -585,9 +592,10 @@ namespace Falcor
         }
         
         // remove extra edges from original
-        for (uint32_t i = 0; i < pGraph->mpGraph->getCurrentNodeId(); ++i)
+        std::vector<str_pair> edgesToRemove;
+        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); ++i)
         {
-            if (!pGraph->mpGraph->doesEdgeExist(i)) { continue; }
+            if (!mpGraph->doesEdgeExist(i)) { continue; }
 
             const DirectedGraph::Edge* pEdge = mpGraph->getEdge(i);
             std::string dst = mNodeData[pEdge->getDestNode()].nodeName;
@@ -598,9 +606,15 @@ namespace Falcor
             // only remove if new graph does not have edge
             if (pGraph->getEdge(src, dst) == uint32_t(-1))
             {
-                removeEdge(src, dst);
+                edgesToRemove.push_back({src, dst});
             }
         }
+
+        for (const str_pair& edge : edgesToRemove)
+        {
+            removeEdge(edge.first, edge.second);
+        }
+
         mRecompile = true;
     }
 
@@ -619,12 +633,12 @@ namespace Falcor
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
         if (pPass == nullptr) return false;
         mpResourcesCache->registerExternalResource(name, pResource);
-        markGraphOutput(name);
+        markOutput(name);
         if (!pResource) mRecompile = true;
         return true;
     }
 
-    void RenderGraph::markGraphOutput(const std::string& name)
+    void RenderGraph::markOutput(const std::string& name)
     {
         str_pair strPair;
         const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::markGraphOutput()", strPair);
@@ -644,7 +658,7 @@ namespace Falcor
         mRecompile = true;
     }
 
-    void RenderGraph::unmarkGraphOutput(const std::string& name)
+    void RenderGraph::unmarkOutput(const std::string& name)
     {
         str_pair strPair;
         const auto& pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::unmarkGraphOutput()", strPair);
@@ -678,7 +692,7 @@ namespace Falcor
         return (pPass && isOuput) ? mpResourcesCache->getResource(name) : pNull;
     }
 
-    std::string RenderGraph::getGraphOutputName(size_t index) const
+    std::string RenderGraph::getOutputName(size_t index) const
     {
         assert(index < mOutputs.size());
         const GraphOut& graphOut = mOutputs[index];
@@ -743,7 +757,7 @@ namespace Falcor
                     uint32_t dstIndex = mNameToIndex[pdstNode->nodeName];
 
                     uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
-                    mEdgeData[e] = { true, RenderGraph::EdgeData::Flags::None, srcField.getName(), dstFieldIt->getName() };
+                    mEdgeData[e] = { true, srcField.getName(), dstFieldIt->getName() };
                     mRecompile = true;
 
                     // If connection was found, continue to next unsatisfied input
@@ -783,7 +797,7 @@ namespace Falcor
         }
     }
 
-    void RenderGraph::autoGenerateEdges(const std::vector<uint32_t>& executionOrder)
+    void RenderGraph::autoGenEdges(const std::vector<uint32_t>& executionOrder)
     {
         // Remove all previously auto-generated edges
         auto it = mEdgeData.begin();

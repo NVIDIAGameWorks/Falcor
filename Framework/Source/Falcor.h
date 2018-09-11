@@ -111,6 +111,7 @@
 // RenderGraph
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/RenderGraph/RenderGraphIR.h"
 
 // Render passes
 #include "RenderPasses/SceneLightingPass.h"

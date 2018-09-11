@@ -101,7 +101,10 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string renderGraphFileName;
                 if (openFileDialog("", renderGraphFileName))
                 {
-                    deserializeRenderGraph(renderGraphFileName);
+                    RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create();
+                    pScripting->addGraph(mRenderGraphUIs[mCurrentGraphIndex].getName(), mpGraphs[mCurrentGraphIndex]);
+                    pScripting->runScript(readFile(renderGraphFileName));
+                    mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
                 }
             }
 
@@ -119,16 +122,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         pGui->setCurrentWindowPos(screenWidth / 4, screenHeight * 3 / 4 + 20);
     }
 
-    size_t numRenderPasses = RenderPassLibrary::getRenderPassCount();
+    size_t numRenderPasses = RenderPassLibrary::getClassCount();
     pGui->beginColumns(5);
     for (size_t i = 0; i < numRenderPasses; ++i)
     {
-        std::string renderPassClassName = RenderPassLibrary::getRenderPassClassName(i);
+        std::string renderPassClassName = RenderPassLibrary::getClassName(i);
         pGui->addRect({ 148.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
         pGui->addDummyItem((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 44.0f });
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassType", renderPassClassName);
-        pGui->addText(RenderPassLibrary::getRenderPassClassName(i).c_str());
-        pGui->addTooltip(RenderPassLibrary::getRenderPassDesc(i).c_str(), false);
+        pGui->addText(RenderPassLibrary::getClassName(i).c_str());
+        pGui->addTooltip(RenderPassLibrary::getPassDesc(i).c_str(), false);
         pGui->nextColumn();
     }
 
@@ -192,17 +195,9 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Auto-Generate Edges"))
     {
         std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getExecutionOrder();
-        mpGraphs[mCurrentGraphIndex]->autoGenerateEdges(executionOrder);
+        mpGraphs[mCurrentGraphIndex]->autoGenEdges(executionOrder);
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
     }
-
-    // TODO find way to list current update string. might not be necessary anymore
-
-    // update the display if the render graph loader has set a new output
-    // if (RenderGraphLoader::sGraphOutputString[0] != '0' && mCurrentGraphOutput != RenderGraphLoader::sGraphOutputString)
-    // {
-    //     mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
-    // }
 
     std::vector<std::string> graphOutputString{mGraphOutputEditString};
     if (pGui->addMultiTextBox("Add Output", {"GraphOutput"}, graphOutputString))
@@ -211,7 +206,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         {
             if (mCurrentGraphOutput.size())
             {
-                mpGraphs[mCurrentGraphIndex]->unmarkGraphOutput(mCurrentGraphOutput);
+                mpGraphs[mCurrentGraphIndex]->unmarkOutput(mCurrentGraphOutput);
             }
 
             mCurrentGraphOutput = graphOutputString[0];
@@ -230,31 +225,30 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             openViewer = msgBox("Graph is invalid :\n " + log + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel) == MsgBoxButton::Ok;
         }
 
-        // TODO -- get render graph viewer to open with live viewer properly witht he editor
-
-        // if (openViewer)
-        // {
-        //     std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
-        //     if (!renderGraphScript.size())
-        //     {
-        //         logError("No graph data to display in editor.");
-        //     }
-        // 
-        //     char* result = nullptr;
-        //     mFilePath = std::tmpnam(result);
-        //     std::ofstream updatesFileOut(mFilePath);
-        //     assert(updatesFileOut.is_open());
-        // 
-        //     updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-        //     updatesFileOut.close();
-        // 
-        //     // load application for the editor given it the name of the mapped file
-        //     std::string commandLine = std::string("-tempFile ") + mFilePath;
-        //     mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
-        // 
-        //     assert(mViewerProcess);
-        //     mViewerRunning = true;
-        // }
+        // TODO -- get render graph viewer to open with live viewer properly with the editor
+        if (openViewer)
+        {
+            // std::string renderGraphScript = ; // RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
+            // if (!renderGraphScript.size())
+            // {
+            //     logError("No graph data to display in editor.");
+            // }
+            // 
+            // char* result = nullptr;
+            // mFilePath = std::tmpnam(result);
+            // std::ofstream updatesFileOut(mFilePath);
+            // assert(updatesFileOut.is_open());
+            // 
+            // updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+            // updatesFileOut.close();
+            // 
+            // // load application for the editor given it the name of the mapped file
+            // std::string commandLine = std::string("-tempFile ") + mFilePath;
+            // mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+            // 
+            // assert(mViewerProcess);
+            // mViewerRunning = true;
+        }
     }
 
     pGui->popWindow();
@@ -322,40 +316,62 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
 void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphFileName)
 {
     std::string graphName = renderGraphName;
-    while (mRenderGraphNames.find(graphName) != mRenderGraphNames.end())
+    size_t offset = graphName.find_first_of('.');
+    RenderGraph::SharedPtr newGraph;
+
+    if (offset != std::string::npos)
     {
-        graphName.push_back('_');
+        std::string tempGraphName = graphName.substr(0, offset);
+        graphName = tempGraphName;
     }
-    mRenderGraphNames.insert(graphName);
+
+    auto nameToIndexIt = mGraphNamesToIndex.find(graphName);
+    if (renderGraphFileName.size())
+    {
+        newGraph = RenderGraphImporter::import(renderGraphFileName, graphName);
+
+        // if graph already exists, just update that one
+        if (nameToIndexIt != mGraphNamesToIndex.end())
+        {
+            // TODO display warning msgBox
+
+            // mCurrentGraphIndex = nameToIndexIt->second;
+            mCurrentGraphIndex = mpGraphs.size();
+            mpGraphs[nameToIndexIt->second]->update(newGraph);
+            mpGraphs.push_back(mpGraphs[nameToIndexIt->second]);
+            // reset the render graph ui
+            // mRenderGraphUIs[mCurrentGraphIndex] = (RenderGraphUI(pGraph, graphName));
+            mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[nameToIndexIt->second], graphName));
+
+            Gui::DropdownValue nextGraphID;
+            mGraphNamesToIndex.insert(std::make_pair(graphName, static_cast<uint32_t>(mCurrentGraphIndex)));
+            nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
+            nextGraphID.label = graphName;
+            mOpenGraphNames.push_back(nextGraphID);
+            return;
+        }
+    }
+    else
+    {
+        newGraph = RenderGraph::create();
+
+        std::string tempGraphName = graphName;
+        while (mGraphNamesToIndex.find(tempGraphName) != mGraphNamesToIndex.end())
+        {
+            tempGraphName.append("_");
+        }
+        graphName = tempGraphName;
+    }
+    
+    mCurrentGraphIndex = mpGraphs.size();
+    mpGraphs.push_back(newGraph);
+    mRenderGraphUIs.push_back(RenderGraphUI(newGraph, graphName));
 
     Gui::DropdownValue nextGraphID;
+    mGraphNamesToIndex.insert(std::make_pair(graphName, static_cast<uint32_t>(mCurrentGraphIndex) ));
     nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
     nextGraphID.label = graphName;
     mOpenGraphNames.push_back(nextGraphID);
-    
-    RenderGraph::SharedPtr newGraph;
-
-    // test that this graph shows up in the editor correctly
-    newGraph = RenderGraph::create();
-
-    mCurrentGraphIndex = mpGraphs.size();
-    mpGraphs.push_back(newGraph);
-
-    RenderGraphUI graphUI(newGraph, graphName);
-    mRenderGraphUIs.emplace_back(std::move(graphUI));
-
-    if (renderGraphFileName.size())
-    {
-        newGraph = RenderGraphImporter::import(renderGraphFileName);
-    }
-    
-    // // update the display if the render graph loader has set a new output
-    // if (RenderGraphLoader::sGraphOutputString[0] != '0')
-    // {
-    //     mCurrentGraphOutput = (mGraphOutputEditString = RenderGraphLoader::sGraphOutputString);
-    // }
-
-    mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
 }
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -379,8 +395,6 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     {
         createRenderGraph("DefaultRenderGraph", "");
     }
-
-    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
@@ -388,6 +402,7 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
     const glm::vec4 clearColor(0.25, 0.25, 0.25 , 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
     pSample->getRenderContext()->getGraphicsState()->setFbo(pTargetFbo);
+    mRenderGraphUIs[mCurrentGraphIndex].updateGraph();
 }
 
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)

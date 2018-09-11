@@ -26,44 +26,33 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
-#include "Utils/RenderGraphUI.h"
-#include <vector>
 
-using namespace Falcor;
-
-class RenderGraphEditor : public Renderer
+namespace Falcor
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    class RenderGraph;
 
-    RenderGraphEditor();
-    ~RenderGraphEditor();
+    class RenderGraphIR
+    {
+    public:
+        using SharedPtr = std::shared_ptr<RenderGraphIR>;
 
-private:
-    void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
-    void serializeRenderGraph(const std::string& fileName);
-    void deserializeRenderGraph(const std::string& fileName);
-    void renderLogWindow(Gui* pGui);
+        static SharedPtr create(const std::string& name, bool newGraph = true);
 
-    std::vector<RenderGraph::SharedPtr> mpGraphs;
-    std::vector<RenderGraphUI> mRenderGraphUIs;
-    std::unordered_map<std::string, uint32_t> mGraphNamesToIndex;
-    size_t mCurrentGraphIndex;
-    glm::uvec2 mWindowSize;
-    std::string mCurrentLog;
-    std::string mNextGraphString;
-    std::string mCurrentGraphOutput;
-    std::string mGraphOutputEditString;
-    std::string mFilePath;
+        void addPass(const std::string& passClass, const std::string& passName);
+        void removePass(const std::string& passName);
+        void addEdge(const std::string& src, const std::string& dst);
+        void removeEdge(const std::string& src, const std::string& dst);
+        void markOutput(const std::string& name);
+        void unmarkOutput(const std::string& name);
+        void autoGenEdges();
 
-    Gui::DropdownList mOpenGraphNames;
-    bool mShowCreateGraphWindow = false;
-    bool mViewerRunning = false;
-    size_t mViewerProcess = 0;
-    bool mCanPreview = false;
-    bool mResetGuiWindows = false;
-};
+        std::string getIR() { return mIR + mIndentation + (mIndentation.size() ? ("return " + mName + '\n') : "\n"); }
+
+    private:
+        RenderGraphIR(const std::string& name, bool newGraph);
+        std::string mName;
+        std::string mIR;
+        std::string mIndentation;
+        std::string mGraphPrefix;
+    };
+}

@@ -28,7 +28,6 @@
 #include "Framework.h"
 #include "RenderGraphUI.h"
 #include "Utils/Gui.h"
-#include "Utils/RenderGraphScripting.h"
 #   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
 #include "../Samples/Utils/RenderGraphEditor/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 #include "Externals/dear_imgui/imgui.h"
@@ -371,50 +370,11 @@ namespace Falcor
     {
         return RenderGraphUI::RenderGraphNode::create(pos);
     }
-
-    bool RenderGraphUI::pushUpdateCommand(const std::string& commandString)
-    {
-        // make sure the graph is compiled
-        mpRenderGraph->resolveExecutionOrder();
-
-        // only send updates that we know are valid.
-        if (mpRenderGraph->isValid(mLogString))
-        {
-            mLogString += commandString + " successful\n";
-        }
-        else
-        {
-            mLogString += "Graph is currently invalid\n";
-        }
-
-        // break apart multi-line command strings
-        size_t offset = commandString.find_first_of('\n', 0);
-        size_t lastOffset = 0;
-        if (offset == std::string::npos) mCommandStrings.push_back(commandString);
-        else
-        {
-            for (;;)
-            {
-                offset = commandString.find_first_of('\n', lastOffset);
-                if (offset == std::string::npos)
-                {
-                    if (offset < commandString.size())
-                    {
-                        mCommandStrings.push_back(commandString.substr(lastOffset, commandString.size() - lastOffset));
-                    }
-                    break;
-                }
-                mCommandStrings.push_back(commandString.substr(lastOffset, offset - lastOffset));
-                lastOffset = offset + 1;
-            }
-        }
-        
-        return false;
-    }
-
+    
     void RenderGraphUI::addRenderPass(const std::string& name, const std::string& nodeTypeName)
     {
-        pushUpdateCommand(std::string("AddRenderPass ") + name + " " + nodeTypeName);
+        mpIr->addPass(name, nodeTypeName);
+        mShouldUpdate = true;
     }
 
     void RenderGraphUI::addOutput(const std::string& outputParam)
@@ -437,92 +397,117 @@ namespace Falcor
             return;
         }
         passUI.mOutputPins[outputIt->second].mIsGraphOutput = true;
-
-        mpRenderGraph->markGraphOutput(outputParam);
-        pushUpdateCommand(std::string("AddGraphOutput ") + outputParam);
+        mpIr->markOutput(outputParam);
         mRebuildDisplayData = true;
+        mShouldUpdate = true;
     }
 
     void RenderGraphUI::addOutput(const std::string& outputPass, const std::string& outputField)
     {
         std::string outputParam = outputPass + "." + outputField;
-        mpRenderGraph->markGraphOutput(outputParam);
-        pushUpdateCommand(std::string("AddGraphOutput ") + outputParam);
-        auto& passUI = mRenderPassUI[outputPass];
-        passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = true;
-        mRebuildDisplayData = true;
+        addOutput(outputParam);
     }
-
 
     void RenderGraphUI::removeOutput(const std::string& outputPass, const std::string& outputField)
     {
         std::string outputParam = outputPass + "." + outputField;
-        mpRenderGraph->unmarkGraphOutput(outputParam);
-        pushUpdateCommand("RemoveGraphOutput " + outputParam);
+        mpIr->unmarkOutput(outputParam);
         auto& passUI = mRenderPassUI[outputPass];
         passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = false;
+        mShouldUpdate = true;
     }
 
     bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
     {
         // outputs warning if edge could not be created 
         std::string srcString = srcPass + "." + srcField, dstString = dstPass + "." + dstField;
-        bool createdEdge = (mpRenderGraph->addEdge(srcString, dstString) != ((uint32_t)-1));
-
-        pushUpdateCommand(std::string("AddEdge ") + srcString + " " + dstString);
+        bool canCreateEdge = (mpRenderGraph->getEdge(srcString, dstString) == ((uint32_t)-1));
+        if (!canCreateEdge) return canCreateEdge;
 
         // update the ui to reflect the connections. This data is used for removal
-        if (createdEdge)
+        RenderPassUI& srcRenderGraphUI = mRenderPassUI[srcPass];
+        RenderPassUI& dstRenderGraphUI = mRenderPassUI[dstPass];
+        const auto outputIt = srcRenderGraphUI.mNameToIndexOutput.find(srcField);
+        const auto inputIt = dstRenderGraphUI.mNameToIndexInput.find(dstField);
+        // check that link could exist
+        canCreateEdge &= (outputIt != srcRenderGraphUI.mNameToIndexOutput.end()) && 
+            (inputIt != dstRenderGraphUI.mNameToIndexInput.end());
+        // check that the input is not already connected
+        canCreateEdge &= (mInputPinStringToLinkID.find(dstString) == mInputPinStringToLinkID.end());
+
+        if (canCreateEdge)
         {
-            RenderPassUI& srcRenderGraphUI = mRenderPassUI[srcPass];
-            RenderPassUI& dstRenderGraphUI = mRenderPassUI[dstPass];
-
-            uint32_t srcPinIndex = srcRenderGraphUI.mNameToIndexOutput[srcField];
-            uint32_t dstPinIndex = dstRenderGraphUI.mNameToIndexInput[dstField];
-
+            uint32_t srcPinIndex = outputIt->second;
+            uint32_t dstPinIndex = inputIt->second;
             srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedPinName = dstField;
             srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedNodeName = dstPass;
             dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedPinName = srcField;
             dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedNodeName = srcPass;
-
-            mRebuildDisplayData = true;
+            
+            mpIr->addEdge(srcString, dstString);
+            mShouldUpdate = true;
+        }
+        else
+        {
+            mLogString += "Unable to create edge for graph. \n";
         }
 
-        return createdEdge;
+        return canCreateEdge;
     }
 
     void RenderGraphUI::removeEdge(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
     {
-        std::string command("RemoveEdge ");
-        command += srcPass + "." + srcField + " " + dstPass + "." + dstField;
-        pushUpdateCommand(command);
+        mpIr->removeEdge(srcPass + "." + srcField, dstPass + "." + dstField);
+        mShouldUpdate = true;
     }
 
     void RenderGraphUI::removeRenderPass(const std::string& name)
     {
         mRebuildDisplayData = true;
-        mpRenderGraph->removeRenderPass(name);
-        pushUpdateCommand(std::string("RemoveRenderPass ") + name);
+        mpRenderGraph->removePass(name);
+        mpIr->removePass(name);
+        mShouldUpdate = true;
+    }
+
+    void RenderGraphUI::updateGraph()
+    {
+        if (!mShouldUpdate) return;
+
+        // make sure the graph is compiled
+        mpRenderGraph->resolveExecutionOrder();
+
+        std::string newCommands = mpIr->getIR();
+        mpIr = RenderGraphIR::create(mRenderGraphName, false); // reset
+        mUpdateCommands += newCommands;
+
+        mpScripting->addGraph(mRenderGraphName, mpRenderGraph);
+
+        // update reference graph to check if valid before sending to next 
+        mpScripting->runScript(newCommands);
+
+        mLogString += newCommands + "\n";
+
+        // only send updates that we know are valid.
+        if (!mpRenderGraph->isValid(mLogString))
+        {
+            mLogString += "Graph is currently invalid\n";
+        }
+
+        mShouldUpdate = false;
+        mRebuildDisplayData = true;
     }
 
     void RenderGraphUI::writeUpdateScriptToFile(const std::string& filePath, float lastFrameTime)
     {
         if ((mTimeSinceLastUpdate += lastFrameTime) < kUpdateTimeInterval) return;
         mTimeSinceLastUpdate = 0.0f;
-        if (!mCommandStrings.size()) return;
+        if (!mUpdateCommands.size()) return;
         static std::ofstream ofstream(filePath, std::ios_base::out);
         size_t totalSize = 0;
         
         ofstream.write(reinterpret_cast<const char*>(&totalSize), sizeof(size_t));
-        
-        for (std::string& statement : mCommandStrings)
-        {
-            statement.push_back('\n');
-            totalSize += statement.size();
-            ofstream.write(statement.c_str(), statement.size());
-        }
-
-        mCommandStrings.clear();
+        ofstream.write(mUpdateCommands.c_str(), mUpdateCommands.size());
+        mUpdateCommands.clear();
         
         // rewind and write the size of the script changes for the viewer to execute
         ofstream.seekp(0, std::ios::beg);
@@ -538,32 +523,17 @@ namespace Falcor
         mNextPassName.resize(255, 0);
     }
 
-    RenderGraphUI::RenderGraphUI(const RenderGraph::SharedPtr& renderGraphRef, const std::string& renderGraphName)
-        : mpRenderGraph(renderGraphRef), mNewNodeStartPosition(-40.0f, 100.0f), mRenderGraphName(renderGraphName)
+    RenderGraphUI::RenderGraphUI(const RenderGraph::SharedPtr& pRenderGraph, const std::string& renderGraphName)
+        : mpRenderGraph(pRenderGraph), mNewNodeStartPosition(-40.0f, 100.0f), mRenderGraphName(renderGraphName)
     {
         mNextPassName.resize(255, 0);
-        mpNodeGraphEditor = (new RenderGraphUI::NodeGraphEditorGui(this) );
-    }
-
-    RenderGraphUI::RenderGraphUI(RenderGraphUI&& rref)
-        : mpRenderGraph(rref.mpRenderGraph), mEdgesColor(rref.mEdgesColor),
-        mAutoGenEdgesColor(rref.mAutoGenEdgesColor), mAutoResolveEdgesColor(rref.mAutoResolveEdgesColor),
-        mGraphOutputsColor(rref.mGraphOutputsColor), mNewNodeStartPosition(rref.mNewNodeStartPosition),
-        mMaxNodePositionX(rref.mMaxNodePositionX), mAllNodeTypeStrings(rref.mAllNodeTypeStrings),
-        mAllNodeTypes(rref.mAllNodeTypes), mRenderPassUI(rref.mRenderPassUI),
-        mInputPinStringToLinkID(rref.mInputPinStringToLinkID), mOutputToInputPins(rref.mOutputToInputPins),
-        mCommandStrings(rref.mCommandStrings), mTimeSinceLastUpdate(rref.mTimeSinceLastUpdate),
-        mDisplayDragAndDropPopup(rref.mDisplayDragAndDropPopup),
-        mNextPassName(rref.mNextPassName), mRenderGraphName(rref.mRenderGraphName),
-        mShowWarningPopup(rref.mShowWarningPopup), mpNodeGraphEditor(rref.mpNodeGraphEditor)
-    {
-        rref.mpNodeGraphEditor = nullptr;
+        mpNodeGraphEditor = std::make_shared<NodeGraphEditorGui>(this);
+        mpIr = RenderGraphIR::create(renderGraphName, false);
+        mpScripting = RenderGraphScripting::create();
     }
 
     RenderGraphUI::~RenderGraphUI()
     {
-        if (mpNodeGraphEditor) delete mpNodeGraphEditor;
-        mpNodeGraphEditor = nullptr;
     }
     
     void RenderGraphUI::NodeGraphEditorGui::setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor)
@@ -742,7 +712,8 @@ namespace Falcor
                 if (edgeIt != mpRenderGraph->mEdgeData.end())
                 {
                     RenderGraph::EdgeData& edgeData = edgeIt->second;
-                    int32_t autoResolve = static_cast<int32_t>(edgeData.flags);
+                    // TODO -- get can autoresolve state from graph function
+                    int32_t autoResolve = true;
 
                     pGui->addText("Src Field : ");
                     pGui->addText(edgeData.srcField.c_str(), true);
@@ -761,7 +732,7 @@ namespace Falcor
                     bool setAutoResolve = false;
 
                     if (mShowWarningPopup)
-                    {
+                    { // TODO -- move this to begin 
                         if (ImGui::BeginPopup("Auto-Resolve Warning"))
                         {
                             pGui->addText("Auto-Resolve warning");
@@ -770,7 +741,6 @@ namespace Falcor
                             {
                                 setAutoResolve = true;
                                 mShowWarningPopup = false;
-                                edgeData.flags = static_cast<RenderGraph::EdgeData::Flags>(true);
                             }
 
                             if (pGui->addButton("cancel"))
@@ -792,7 +762,6 @@ namespace Falcor
                         }
                         else
                         {
-                            edgeData.flags = static_cast<RenderGraph::EdgeData::Flags>(autoResolve);
                             selectedLink.LinkColor = autoResolve ? mAutoResolveEdgesColor : mEdgesColor;
                         }
                     }
@@ -839,7 +808,6 @@ namespace Falcor
         }
 
         // push update commands for the open pop-up
-        // TODO - get a callback working for only when data has changed
         if (mpNodeGraphEditor->getRenderUINodeName().size())
         {
             std::string idString = std::string("Render UI##") + mpNodeGraphEditor->getRenderUINodeName();
@@ -855,13 +823,14 @@ namespace Falcor
                 }
                 else
                 {
-                    mpRenderGraph->getRenderPass(mpNodeGraphEditor->getRenderUINodeName())->renderUI(pGui, nullptr);
+                    mpRenderGraph->getPass(mpNodeGraphEditor->getRenderUINodeName())->renderUI(pGui, nullptr);
                 }
                 
                 // push serialized data as update command for live preview
                 
                 // TODO -- execute command for click and drop
-                //pushUpdateCommand(RenderGraphLoader::saveRenderGraphAsUpdateScript(*mpRenderGraph));
+                // pushUpdateCommand(RenderGraphLoader::saveRenderGraphAsUpdateScript(*mpRenderGraph));
+
 
                 ImGui::EndPopup();
             }
@@ -899,16 +868,15 @@ namespace Falcor
                 pGui->addTextBox("Pass Name", mNextPassName);
                 if (pGui->addButton("create##renderpass")) // multiple buttons have create
                 {
-                    while (mpRenderGraph->renderPassExist(mNextPassName))
+                    while (mpRenderGraph->doesPassExist(mNextPassName))
                     {
                         mNextPassName.push_back('_');
                     }
 
-                    // TODO -- 
-                    //RenderGraphLoader::ExecuteStatement("AddRenderPass " + mNextPassName + " " + dragAndDropText, *mpRenderGraph);
+                    mpIr->addPass(dragAndDropText, mNextPassName);
                     bFromDragAndDrop = true;
-                    mRebuildDisplayData = true;
                     mDisplayDragAndDropPopup = false;
+                    mShouldUpdate = true;
                     mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
                     if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
                 }
@@ -986,7 +954,7 @@ namespace Falcor
             }
         
             uint32_t guiNodeID = currentPassUI.mGuiNodeID;
-            RenderPass* pNodeRenderPass = mpRenderGraph->getRenderPass(currentPass.first).get();
+            RenderPass* pNodeRenderPass = mpRenderGraph->getPass(currentPass.first).get();
             nameString = currentPass.first;
         
             if (!mpNodeGraphEditor->getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))
