@@ -159,7 +159,6 @@ namespace Falcor
         bool compile(std::string& log);
         bool resolveExecutionOrder();
         bool resolveResourceTypes();
-        bool allocateResources();
 
         struct EdgeData
         {

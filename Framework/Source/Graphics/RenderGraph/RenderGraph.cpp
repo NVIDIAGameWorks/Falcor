@@ -387,11 +387,6 @@ namespace Falcor
             }
         }
 
-        return true;
-    }
-
-    bool RenderGraph::allocateResources()
-    {
         mpResourcesCache->allocateResources(mSwapChainData);
         return true;
     }
@@ -404,7 +399,6 @@ namespace Falcor
 
             if (resolveExecutionOrder() == false) return false;
             if (resolveResourceTypes() == false) return false;
-            if (allocateResources() == false) return false;
             if (isValid(log) == false) return false;
         }
         mRecompile = false;
