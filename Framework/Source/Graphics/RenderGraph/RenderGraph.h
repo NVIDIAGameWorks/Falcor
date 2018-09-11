@@ -137,8 +137,6 @@ namespace Falcor
         */
         std::vector<std::string> getAllOutputs() const;
 
-        friend class RenderGraphUI;
-
         /** Attempts to auto generate edges for render passes.
             \param[in] executionOrder Optional. Ordered list of node ID's as an override of pass search order to use when generating edges.
         */
@@ -153,6 +151,7 @@ namespace Falcor
         void profileGraph(bool enabled) { mProfileGraph = enabled; }
 
     private:
+        friend class RenderGraphUI;
         friend class RenderGraphExporter;
 
         RenderGraph();
@@ -184,6 +183,7 @@ namespace Falcor
 
         void getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList);
         void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
+        bool canAutoResolve(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst);
 
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;

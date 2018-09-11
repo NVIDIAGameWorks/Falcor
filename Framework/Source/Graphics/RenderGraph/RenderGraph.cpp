@@ -585,6 +585,11 @@ namespace Falcor
         }
     }
 
+    bool RenderGraph::canAutoResolve(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst)
+    {
+        return src.getSampleCount() > 1 && dst.getSampleCount() == 1;
+    }
+
     void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList)
     {
         assert(mNameToIndex.count(pNodeData->nodeName) > 0);
