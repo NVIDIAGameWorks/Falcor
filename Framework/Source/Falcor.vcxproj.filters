@@ -571,6 +571,9 @@
     <ClCompile Include="Utils\RenderGraphLoader.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPasses\ResolvePass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1779,6 +1782,9 @@
     </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\ResolvePass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

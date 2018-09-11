@@ -70,6 +70,12 @@ namespace Falcor
 
         if (pSrcTex && pDstTex)
         {
+            if (pSrcTex->getSampleCount() == 1)
+            {
+                logWarning("ResolvePass::execute() - Cannot resolve from a non-multisampled texture.");
+                return;
+            }
+
             pContext->resolveResource(pSrcTex.get(), pDstTex.get());
         }
         else
