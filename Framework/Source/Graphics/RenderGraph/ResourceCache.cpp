@@ -87,11 +87,13 @@ namespace Falcor
     {
         std::string warningMsg;
 
+        // Default to base dimension
         // If newField property is not 0, retrieve value from newField
         // If both newField and base property is specified, generate warning.
 #define get_dim(var, dim) \
+    var = base.get##dim(); \
     if (newField.get##dim() != 0) { \
-        if (base.get##dim() == 0) var = base.get##dim(); \
+        if (base.get##dim() == 0) var = newField.get##dim(); \
         else warningMsg += std::string(#dim) + " already specified."; }
 
         uint32_t w = 0, h = 0, d = 0;
