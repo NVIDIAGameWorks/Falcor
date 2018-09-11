@@ -34,10 +34,13 @@ namespace Falcor
     class RenderGraphImporter
     {
     public:
-        /** Import a graph from a file. If graphName is empty, the function will return the first graph found in the script file.
-            Otherwise it will search for graphName in the script's global scope and return it if it exists. Otherwise, it will return nullptr
+        /** Import a graph from a file.
+            \param[in] graphName The name of the graph to import
+            \param[in] filename  The graphs filename. If the string is empty, the function will search for a file called `<graphName>.graph`
+            \param[in] funcName  The function name inside the graph script. If the string is empty, will try invoking a function called `render_graph_<graphName>()`
+            \return A new render-graph object or nullptr if something went horribly wrong
         */
-        static std::shared_ptr<RenderGraph> import(const std::string& filename, const std::string& graphName = "");
+        static std::shared_ptr<RenderGraph> import(const std::string& graphName, const std::string& filename = {}, const std::string& funcName = {});
 
         struct GraphData
         {

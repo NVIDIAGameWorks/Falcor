@@ -194,13 +194,13 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 //     mpGraph->addEdge("FXAA.dst", "BlitPass.src");
 
 
-    auto pScripter = RenderGraphScripting::create();
-    pScripter->runScript(ir);
-    mpGraph = pScripter->getGraph("forward_renderer");
+//     auto pScripter = RenderGraphScripting::create();
+//     pScripter->runScript(ir);
+//     mpGraph = pScripter->getGraph("forward_renderer");
 
+    mpGraph = RenderGraphImporter::import("forward_renderer");
     mpGraph->setScene(mpScene);
 
-    mpGraph->markOutput("BlitPass.dst");
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
@@ -220,17 +220,17 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename)
 {
-    const auto pGraph = RenderGraphImporter::import(filename);
-    if(pGraph)
-    {
-        mpGraph = pGraph;
-        mpGraph->setScene(mpScene);
-        mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-    }
-    else
-    {
-        logError("Can't find a graph in " + filename);
-    }
+//     const auto pGraph = RenderGraphImporter::import(filename);
+//     if(pGraph)
+//     {
+//         mpGraph = pGraph;
+//         mpGraph->setScene(mpScene);
+//         mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+//     }
+//     else
+//     {
+//         logError("Can't find a graph in " + filename);
+//     }
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

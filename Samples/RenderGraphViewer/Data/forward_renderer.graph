@@ -26,5 +26,3 @@ def render_graph_forward_renderer():
 
     forward_renderer.markOutput("BlitPass.dst")
     return forward_renderer
-
-forward_renderer = render_graph_forward_renderer()

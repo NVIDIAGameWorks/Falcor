@@ -31,24 +31,23 @@
 
 namespace Falcor
 {
-    RenderGraph::SharedPtr RenderGraphImporter::import(const std::string& filename, const std::string& graphName)
+    RenderGraph::SharedPtr RenderGraphImporter::import(const std::string& graphName, const std::string& filename, const std::string& funcName)
     {
-        auto graphs = importAllGraphs(filename);
-        if (graphs.size() == 0)
+        std::string file = filename.empty() ? graphName + ".graph" : filename;
+        std::string func = funcName.empty() ? "render_graph_" + graphName : funcName;
+
+        std::string fullpath;
+        if (findFileInDataDirectories(file, fullpath) == false)
         {
-            logError("The file " + filename + " doesn't contain graphs");
+            logError("Error when loading graph. Can't find the file `" + file + "`");
             return nullptr;
         }
 
-        if (graphName.empty()) return graphs[0].pGraph;
 
-        for (const auto& g : graphs)
-        {
-            if (g.name == graphName) return g.pGraph;
-        }
+        RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(fullpath);
+        if (pScripting->runScript(graphName + '=' + func + "()") == false) return nullptr;
 
-        logError("Can't find a graph named " + graphName + "in file " + filename);
-        return nullptr;
+        return pScripting->getGraph(graphName);
     }
 
     std::vector<RenderGraphImporter::GraphData> RenderGraphImporter::importAllGraphs(const std::string& filename)
