@@ -35,6 +35,7 @@ namespace Falcor
     class Scene;
     class Texture;
     class Fbo;
+    class RenderGraphExporter;
 
     class RenderGraph
     {
@@ -150,7 +151,10 @@ namespace Falcor
         /** Enable/disable pass profiling
         */
         void profileGraph(bool enabled) { mProfileGraph = enabled; }
+
     private:
+        friend class RenderGraphExporter;
+
         RenderGraph();
         uint32_t getPassIndex(const std::string& name) const;
         bool compile(std::string& log);

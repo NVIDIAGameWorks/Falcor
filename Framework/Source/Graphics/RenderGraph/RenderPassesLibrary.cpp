@@ -52,6 +52,8 @@ namespace Falcor
 
     static bool addBuiltinPasses()
     {
+        // TODO Matt the name of the passes should come from the pass itself
+
         RenderPassLibrary::addPassClass("BlitPass", "Blit one texture into another", (RenderPassLibrary::CreateFunc)BlitPass::create);
         RenderPassLibrary::addPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::create);
         RenderPassLibrary::addPassClass("DepthPass", "Depth pass", DepthPass::create);
