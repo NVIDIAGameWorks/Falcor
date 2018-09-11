@@ -124,6 +124,10 @@ namespace Falcor
             logWarning("ResourceCache: Cannot merge field " + newFieldName + ", usage contained both RenderTarget and DepthStencil bind flags.");
             return false;
         }
+        else
+        {
+            base.setBindFlags(baseFlags | newFlags);
+        }
 
         return true;
     }
