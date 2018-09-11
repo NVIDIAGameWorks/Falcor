@@ -52,12 +52,12 @@ namespace Falcor
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
-        
+        static SharedPtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+
         /* Create a sky box using data from serializer
             \param[in] serializer Object to obtain initialization data
         */
-        static UniquePtr deserialize(const RenderPassSerializer& serializer);
+        static SharedPtr create(const Dictionary& dict);
         
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
@@ -65,7 +65,9 @@ namespace Falcor
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
+        deprecate("3.2")
         static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(const std::string& textureFile, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
 
         /** Render the sky box.
             \param[in] pRenderCtx Render context
@@ -77,7 +79,7 @@ namespace Falcor
         /* Save out data for sky box into serializer
             \param[in] pRenderPass SkyBoxPass to serialize data from
         */
-        RenderPassSerializer serialize() override;
+        virtual Dictionary getScriptingDictionary() const override;
 
         /** Set the sampler used to render the sky box.
         */
@@ -86,6 +88,10 @@ namespace Falcor
         /** Get the sky box texture.
         */
         Texture::SharedPtr getTexture() const;
+
+        /** Set a new texture
+        */
+        void setTexture(const Texture::SharedPtr& pTexture);
 
         /** Get the sampler used to render the sky box.
         */
@@ -103,7 +109,7 @@ namespace Falcor
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
-        virtual void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
+        virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
     private:
         SkyBox();
         bool createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo);

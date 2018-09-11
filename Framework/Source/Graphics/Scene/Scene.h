@@ -37,6 +37,7 @@
 #include "Graphics/Paths/ObjectPath.h"
 #include "Graphics/Model/ObjectInstance.h"
 #include "Graphics/Model/SkinningCache.h"
+#include "Utils/Dictionary.h"
 
 namespace Falcor
 {
@@ -47,51 +48,9 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const Scene>;
         static const char* kFileFormatString;
 
-        struct UserVariable
-        {
-            enum class Type
-            {
-                Unknown,    // Indicates an invalid/uninitialized variable
-                Int,
-                Uint,
-                Int64,
-                Uint64,
-                Double,
-                String,
-                Vec2,
-                Vec3,
-                Vec4,
-                Bool,
-                Vector,
-            };
-
-            Type type = Type::Unknown;
-            union
-            {
-                int32_t  i32;
-                uint32_t u32;
-                int64_t  i64;
-                uint64_t u64;
-                double   d64;
-                bool     b;
-            };
-            std::string str;
-            glm::vec2 vec2;
-            glm::vec3 vec3;
-            glm::vec4 vec4;
-            std::vector<float> vector;
-
-            UserVariable() { }
-            UserVariable(const uint32_t&     v) : u32(v),           type(Type::Uint)      { }
-            UserVariable(const int32_t&     v) : i32(v),            type(Type::Int)       { }
-            UserVariable(const float&       v) : d64((double)v),    type(Type::Double)    { }
-            UserVariable(const glm::vec2&   v) : vec2(v),           type(Type::Vec2)      { }
-            UserVariable(const glm::vec3&   v) : vec3(v),           type(Type::Vec3)      { }
-            UserVariable(const std::string& s) : str(s),            type(Type::String)    { }
-        };
-
         using ModelInstance = ObjectInstance<Model>;
         using ModelInstanceList = std::vector<ModelInstance::SharedPtr>;
+        using UserVariable = Dictionary::Value;
 
         /**
             Enum to generate light source(s)
@@ -214,6 +173,14 @@ namespace Falcor
         */
         void attachSkinningCacheToModels(SkinningCache::SharedPtr pSkinningCache);
 
+        /** Set an environment-map texture
+        */
+        void setEnvironmentMap(const Texture::SharedPtr& pMap) { mpEnvMap = pMap; }
+
+        /** Get the env-map texture
+        */
+        const Texture::SharedPtr& getEnvironmentMap() const { return mpEnvMap; }
+
         std::string mFileName;
     protected:
 
@@ -233,6 +200,7 @@ namespace Falcor
         std::vector<ObjectPath::SharedPtr> mpPaths;
         std::vector<LightProbe::SharedPtr> mpLightProbes;
         std::vector<AreaLight::SharedPtr> mpAreaLights;
+        Texture::SharedPtr mpEnvMap;
 
         uint32_t mActiveCameraID = 0;
         float mCameraSpeed = 1;

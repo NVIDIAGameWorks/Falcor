@@ -38,12 +38,12 @@ namespace Falcor
 
         /** Create a new object
         */
-        static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
+        static SharedPtr create(const Dictionary& dict = {});
 
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+        virtual Dictionary getScriptingDictionary() const override;
 
         void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:

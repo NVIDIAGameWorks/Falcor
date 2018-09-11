@@ -111,12 +111,14 @@
 // RenderGraph
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/RenderGraph/RenderGraphIR.h"
 
 // Render passes
 #include "RenderPasses/SceneLightingPass.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
 #include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderGraphImportExport.h"
 
 // Utils
 #include "Utils/Bitmap.h"

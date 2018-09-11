@@ -26,10 +26,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphViewer.h"
-#include "Utils/RenderGraphLoader.h"
+#include "Utils/RenderGraphScripting.h"
 
-const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
+const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
+
+std::string ir;
 
 RenderGraphViewer::~RenderGraphViewer()
 {
@@ -47,48 +49,54 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Load Scene"))
     {
         std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
-
-        if (pGui->addCheckBox("Depth Pass", mEnableDepthPrePass))
-        {
-            createGraph(pSample);
-        }
+        if (openFileDialog("", filename)) loadScene(filename, true, pSample);
     }
 
-    if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
+    if (pGui->addButton("Load Graph"))
     {
-        // reset outputs to original state
-        mpGraph->unmarkGraphOutput(mOutputString);
-        for (const std::string& output : mOriginalOutputs)
-        {
-            mpGraph->markGraphOutput(output);
-        }
-
-        std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraph);
-        if (!renderGraphScript.size())
-        {
-            logError("No graph data to display in editor.");
-        }
-        
-        char* result = nullptr;
-        mTempFilePath = std::tmpnam(result);
-        std::ofstream updatesFileOut(mTempFilePath);
-        assert(updatesFileOut.is_open());
-
-        updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-        updatesFileOut.close();
-
-        openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
-
-        // load application for the editor given it the name of the mapped file
-        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
-        mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
-
-        assert(mEditorProcess);
-        mEditorRunning = true;
-
-        mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
+        std::string filename;
+        if (openFileDialog("*.graph", filename)) loadGraphFromFile(pSample, filename);
     }
+
+    if (pGui->addCheckBox("Depth Pass", mEnableDepthPrePass))
+    {
+        createGraph(pSample);
+    }
+
+//     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
+//     {
+//         // reset outputs to original state
+//         mpGraph->unmarkGraphOutput(mOutputString);
+//         for (const std::string& output : mOriginalOutputs)
+//         {
+//             mpGraph->markGraphOutput(output);
+//         }
+// 
+//         std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraph);
+//         if (!renderGraphScript.size())
+//         {
+//             logError("No graph data to display in editor.");
+//         }
+//         
+//         char* result = nullptr;
+//         mTempFilePath = std::tmpnam(result);
+//         std::ofstream updatesFileOut(mTempFilePath);
+//         assert(updatesFileOut.is_open());
+// 
+//         updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
+//         updatesFileOut.close();
+// 
+//         openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+// 
+//         // load application for the editor given it the name of the mapped file
+//         std::string commandLine = std::string("-tempFile ") + mTempFilePath;
+//         mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
+// 
+//         assert(mEditorProcess);
+//         mEditorRunning = true;
+// 
+//         mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
+//     }
     
     if (mEditorProcess && mEditorRunning)
     {
@@ -125,10 +133,10 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
         else
         {
-            for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+            for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getOutputCount()); ++i)
             {
                 Gui::DropdownValue graphOutput;
-                graphOutput.label = mpGraph->getGraphOutputName(i);
+                graphOutput.label = mpGraph->getOutputName(i);
                 graphOutput.value = i;
                 renderGraphOutputs.push_back(graphOutput);
             }
@@ -143,7 +151,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (renderGraphOutputs.size() && pGui->addDropdown("Render Graph Output", renderGraphOutputs, mGraphOutputIndex))
         {
             mpGraph->setOutput(mOutputString, nullptr);
-            mpGraph->unmarkGraphOutput(mOutputString);
+            mpGraph->unmarkOutput(mOutputString);
             mOutputString = renderGraphOutputs[mGraphOutputIndex].label;
             mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
         }
@@ -154,43 +162,45 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
-    mpGraph = RenderGraph::create();
-    auto pLightingPass = RenderPassLibrary::createRenderPass("SceneLightingPass");
-    mpGraph->addRenderPass(pLightingPass, "LightingPass");
+//     mpGraph = RenderGraph::create();
+//     auto pLightingPass = RenderPassLibrary::createPass("SceneLightingPass");
+//     mpGraph->addPass(pLightingPass, "LightingPass");
+// 
+//     mpGraph->addPass(DepthPass::create(), "DepthPrePass");
+//     mpGraph->addPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
+//     mpGraph->addPass(BlitPass::create(), "BlitPass");
+//     mpGraph->addPass(ToneMapping::create(Dictionary()), "ToneMapping");
+//     mpGraph->addPass(SSAO::create(Dictionary()), "SSAO");
+//     mpGraph->addPass(FXAA::create(), "FXAA");
+// 
+//     // Add the skybox
+//     Sampler::Desc samplerDesc;
+//     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+//     mpGraph->addPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
+// 
+//     mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
+//     mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
+//     mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
+// 
+//     mpGraph->addEdge("SkyBox.target", "LightingPass.color");
+//     mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
+// 
+//     mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
+//     mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
+//     mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
+//     mpGraph->addEdge("LightingPass.depth", "SSAO.depth");
+// 
+//     mpGraph->addEdge("SSAO.colorOut", "FXAA.src");
+//     mpGraph->addEdge("FXAA.dst", "BlitPass.src");
 
-    mpGraph->addRenderPass(DepthPass::deserialize({}), "DepthPrePass");
-    mpGraph->addRenderPass(CascadedShadowMaps::deserialize({}), "ShadowPass");
-    mpGraph->addRenderPass(BlitPass::deserialize({}), "BlitPass");
-    mpGraph->addRenderPass(ToneMapping::deserialize({}), "ToneMapping");
-    mpGraph->addRenderPass(SSAO::deserialize({}), "SSAO");
-    mpGraph->addRenderPass(FXAA::deserialize({}), "FXAA");
 
-    // Add the skybox
-    Scene::UserVariable var = mpScene->getUserVariable("sky_box");
-    assert(var.type == Scene::UserVariable::Type::String);
-    std::string skyBox = getDirectoryFromFile(mSceneFilename) + '/' + var.str;
-    Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-    mpGraph->addRenderPass(SkyBox::createFromTexture(skyBox, true, Sampler::create(samplerDesc)), "SkyBox");
+//     auto pScripter = RenderGraphScripting::create();
+//     pScripter->runScript(ir);
+//     mpGraph = pScripter->getGraph("forward_renderer");
 
-    mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
-    mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
-    mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
-
-    mpGraph->addEdge("SkyBox.target", "LightingPass.color");
-    mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
-
-    mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
-    mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
-    mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
-    mpGraph->addEdge("LightingPass.depth", "SSAO.depth");
-
-    mpGraph->addEdge("SSAO.colorOut", "FXAA.src");
-    mpGraph->addEdge("FXAA.dst", "BlitPass.src");
-
+    mpGraph = RenderGraphImporter::import("forward_renderer");
     mpGraph->setScene(mpScene);
 
-    mpGraph->markGraphOutput("BlitPass.dst");
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
@@ -208,11 +218,19 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
 }
 
-void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
+void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename)
 {
-    std::ifstream inputStream(fileName);
-    std::string script = std::string((std::istreambuf_iterator<char>(inputStream)), std::istreambuf_iterator<char>());
-    RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *mpGraph);
+//     const auto pGraph = RenderGraphImporter::import(filename);
+//     if(pGraph)
+//     {
+//         mpGraph = pGraph;
+//         mpGraph->setScene(mpScene);
+//         mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+//     }
+//     else
+//     {
+//         logError("Can't find a graph in " + filename);
+//     }
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -220,7 +238,9 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     // if editor opened from running render graph, get the name of the file to read
     std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
     std::string filePath;
-    
+
+    loadScene(gkDefaultScene, false, pSample);
+
     if (commandArgs.size())
     {
         filePath = commandArgs.front().asString();
@@ -228,22 +248,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
         if (filePath.size())
         {
-            mpGraph = RenderGraph::create();
-            RenderGraphLoader::LoadAndRunScript(filePath, *mpGraph);
-            mpScene = mpGraph->getScene();
-            if (!mpScene)
-            {
-                loadScene(gkDefaultScene, false, pSample);
-                mpGraph->setScene(mpScene);
-            }
-            else
-            {
-                mCamControl.attachCamera(mpScene->getCamera(0));
-                mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
-            }
-            mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-
-            openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+            loadGraphFromFile(pSample, filePath);
         }
         else
         {
@@ -252,13 +257,12 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     }
     else
     {
-        loadScene(gkDefaultScene, false, pSample);
         createGraph(pSample);
     }
 
-    for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getGraphOutputCount()); ++i)
+    for (int32_t i = 0; i < static_cast<int32_t>(mpGraph->getOutputCount()); ++i)
     {
-        mOriginalOutputs.push_back(mpGraph->getGraphOutputName(i));
+        mOriginalOutputs.push_back(mpGraph->getOutputName(i));
     }
 }
 
@@ -295,6 +299,34 @@ void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
+    Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
+
+    pIr->addPass("DepthPass", "DepthPrePass");
+    pIr->addPass("SceneLightingPass", "LightingPass");
+    pIr->addPass("CascadedShadowMaps", "ShadowPass");
+    pIr->addPass("BlitPass", "BlitPass");
+    pIr->addPass("ToneMapping", "ToneMapping");
+    pIr->addPass("SSAO", "SSAO");
+    pIr->addPass("FXAA", "FXAA");
+    pIr->addPass("SkyBox", "SkyBox");
+
+    pIr->addEdge("DepthPrePass.depth", "SkyBox.depth");
+    pIr->addEdge("SkyBox.target", "LightingPass.color");
+    pIr->addEdge("DepthPrePass.depth", "ShadowPass.depth");
+    pIr->addEdge("DepthPrePass.depth", "LightingPass.depth");
+    pIr->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
+    pIr->addEdge("LightingPass.color", "ToneMapping.src");
+    pIr->addEdge("ToneMapping.dst", "SSAO.colorIn");
+    pIr->addEdge("LightingPass.normals", "SSAO.normals");
+    pIr->addEdge("LightingPass.depth", "SSAO.depth");
+    pIr->addEdge("SSAO.colorOut", "FXAA.src");
+    pIr->addEdge("FXAA.dst", "BlitPass.src");
+
+    pIr->markOutput("BlitPass.dst");
+
+    ir = pIr->getIR();
+    ir += "forward_renderer = render_graph_forward_renderer()";
+
     RenderGraphViewer::UniquePtr pRenderer = std::make_unique<RenderGraphViewer>();
     SampleConfig config;
     config.windowDesc.title = "Render Graph Viewer";

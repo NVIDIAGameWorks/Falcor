@@ -62,7 +62,7 @@ namespace Falcor
         /** Create a new object
         */
         static SharedPtr create(Operator op);       
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(Operator::Aces); }
+        static SharedPtr create(const Dictionary& dict) { return create(Operator::Aces); }
 
         /** Render UI elements
             \param[in] pGui GUI instance to render UI with

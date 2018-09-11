@@ -414,37 +414,40 @@ namespace Falcor
             std::string name;
             const auto& var = mpScene->getUserVariable(varID, name);
 
-            switch (var.type)
+            switch (var.getType())
             {
             case Scene::UserVariable::Type::Int:
-                addLiteral(jsonUserValues, allocator, name, var.i32);
+                addLiteral(jsonUserValues, allocator, name, var.asInt());
                 break;
             case Scene::UserVariable::Type::Uint:
-                addLiteral(jsonUserValues, allocator, name, var.u32);
+                addLiteral(jsonUserValues, allocator, name, var.asUint());
                 break;
             case Scene::UserVariable::Type::Int64:
-                addLiteral(jsonUserValues, allocator, name, var.i64);
+                addLiteral(jsonUserValues, allocator, name, var.asInt64());
                 break;
             case Scene::UserVariable::Type::Uint64:
-                addLiteral(jsonUserValues, allocator, name, var.u64);
+                addLiteral(jsonUserValues, allocator, name, var.asUint64());
                 break;
             case Scene::UserVariable::Type::Double:
-                addLiteral(jsonUserValues, allocator, name, var.d64);
+                addLiteral(jsonUserValues, allocator, name, var.asDouble());
+                break;
+            case Scene::UserVariable::Type::Float:
+                addLiteral(jsonUserValues, allocator, name, var.asFloat());
                 break;
             case Scene::UserVariable::Type::String:
-                addString(jsonUserValues, allocator, name, var.str);
+                addString(jsonUserValues, allocator, name, var.asString());
                 break;
             case Scene::UserVariable::Type::Vec2:
-                addVector(jsonUserValues, allocator, name, var.vec2);
+                addVector(jsonUserValues, allocator, name, var.asVec2());
                 break;
             case Scene::UserVariable::Type::Vec3:
-                addVector(jsonUserValues, allocator, name, var.vec3);
+                addVector(jsonUserValues, allocator, name, var.asVec3());
                 break;
             case Scene::UserVariable::Type::Vec4:
-                addVector(jsonUserValues, allocator, name, var.vec4);
+                addVector(jsonUserValues, allocator, name, var.asVec4());
                 break;
             case Scene::UserVariable::Type::Bool:
-                addBool(jsonUserValues, allocator, name, var.b);
+                addBool(jsonUserValues, allocator, name, var.asBool());
                 break;
             default:
                 should_not_get_here();

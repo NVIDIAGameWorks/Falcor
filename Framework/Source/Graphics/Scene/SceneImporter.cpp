@@ -56,8 +56,8 @@ namespace Falcor
         return false;
     }
 
-    template<uint32_t VecSize>
-    bool SceneImporter::getFloatVec(const rapidjson::Value& jsonVal, const std::string& desc, float vec[VecSize])
+    template<typename vecType>
+    bool SceneImporter::getFloatVec(const rapidjson::Value& jsonVal, const std::string& desc, vecType& vec)
     {
         if(jsonVal.IsArray() == false)
         {
@@ -65,9 +65,9 @@ namespace Falcor
             return false;
         }
 
-        if(jsonVal.Size() != VecSize)
+        if(jsonVal.Size() != vec.length())
         {
-            return error("Trying to load a vector for " + desc + ", but vector size mismatches. Required size is " + std::to_string(VecSize) + ", array size is " + std::to_string(jsonVal.Size()));
+            return error("Trying to load a vector for " + desc + ", but vector size mismatches. Required size is " + std::to_string(vec.length()) + ", array size is " + std::to_string(jsonVal.Size()));
         }
 
         for(uint32_t i = 0; i < jsonVal.Size(); i++)
@@ -79,6 +79,7 @@ namespace Falcor
 
             vec[i] = (float)(jsonVal[i].GetDouble());
         }
+
         return true;
     }
 
@@ -99,6 +100,7 @@ namespace Falcor
 
             vec[i] = (float)(jsonVal[i].GetDouble());
         }
+
         return true;
     }
 
@@ -136,21 +138,21 @@ namespace Falcor
                 }
                 else if(key == SceneKeys::kTranslationVec)
                 {
-                    if(getFloatVec<3>(m->value, "Model instance translation vector", &translation[0]) == false)
+                    if(getFloatVec(m->value, "Model instance translation vector", translation) == false)
                     {
                         return false;
                     }
                 }
                 else if(key == SceneKeys::kScalingVec)
                 {
-                    if(getFloatVec<3>(m->value, "Model instance scale vector", &scaling[0]) == false)
+                    if(getFloatVec(m->value, "Model instance scale vector", scaling) == false)
                     {
                         return false;
                     }
                 }
                 else if(key == SceneKeys::kRotationVec)
                 {
-                    if(getFloatVec<3>(m->value, "Model instance rotation vector", &rotation[0]) == false)
+                    if(getFloatVec(m->value, "Model instance rotation vector", rotation) == false)
                     {
                         return false;
                     }
@@ -338,7 +340,7 @@ namespace Falcor
             else if(key == SceneKeys::kLightIntensity)
             {
                 glm::vec3 intensity;
-                if(getFloatVec<3>(value, "Directional light intensity", &intensity[0]) == false)
+                if(getFloatVec(value, "Directional light intensity", intensity) == false)
                 {
                     return false;
                 }
@@ -347,7 +349,7 @@ namespace Falcor
             else if(key == SceneKeys::kLightDirection)
             {
                 glm::vec3 direction;
-                if(getFloatVec<3>(value, "Directional light intensity", &direction[0]) == false)
+                if(getFloatVec(value, "Directional light intensity", direction) == false)
                 {
                     return false;
                 }
@@ -412,7 +414,7 @@ namespace Falcor
             else if(key == SceneKeys::kLightIntensity)
             {
                 glm::vec3 intensity;
-                if(getFloatVec<3>(value, "Point light intensity", &intensity[0]) == false)
+                if(getFloatVec(value, "Point light intensity", intensity) == false)
                 {
                     return false;
                 }
@@ -421,7 +423,7 @@ namespace Falcor
             else if(key == SceneKeys::kLightPos)
             {
                 glm::vec3 position;
-                if(getFloatVec<3>(value, "Point light position", &position[0]) == false)
+                if(getFloatVec(value, "Point light position", position) == false)
                 {
                     return false;
                 }
@@ -430,7 +432,7 @@ namespace Falcor
             else if(key == SceneKeys::kLightDirection)
             {
                 glm::vec3 dir;
-                if(getFloatVec<3>(value, "Point light direction", &dir[0]) == false)
+                if(getFloatVec(value, "Point light direction", dir) == false)
                 {
                     return false;
                 }
@@ -497,7 +499,7 @@ namespace Falcor
             else if (key == SceneKeys::kLightIntensity)
             {
                 glm::vec3 intensity;
-                if (getFloatVec<3>(value, "Area light intensity", &intensity[0]) == false)
+                if (getFloatVec(value, "Area light intensity", intensity) == false)
                 {
                     return false;
                 }
@@ -505,21 +507,21 @@ namespace Falcor
             }
             else if (key == SceneKeys::kTranslationVec)
             {
-                if (getFloatVec<3>(value, "Area light translation vector", &translation[0]) == false)
+                if (getFloatVec(value, "Area light translation vector", translation) == false)
                 {
                     return false;
                 }
             }
             else if (key == SceneKeys::kScalingVec)
             {
-                if (getFloatVec<3>(value, "Area light scale vector", &scaling[0]) == false)
+                if (getFloatVec(value, "Area light scale vector", scaling) == false)
                 {
                     return false;
                 }
             }
             else if (key == SceneKeys::kRotationVec)
             {
-                if (getFloatVec<3>(value, "Area light rotation vector", &rotation[0]) == false)
+                if (getFloatVec(value, "Area light rotation vector", rotation) == false)
                 {
                     return false;
                 }
@@ -638,14 +640,14 @@ namespace Falcor
                 const auto& value = m->value;
                 if (key == SceneKeys::kLightIntensity)
                 {
-                    if (getFloatVec<3>(value, "Light probe intensity", &intensity[0]) == false)
+                    if (getFloatVec(value, "Light probe intensity", intensity) == false)
                     {
                         return false;
                     }
                 }
                 else if (key == SceneKeys::kLightPos)
                 {
-                    if (getFloatVec<3>(value, "Light probe world position", &position[0]) == false)
+                    if (getFloatVec(value, "Light probe world position", position) == false)
                     {
                         return false;
                     }
@@ -717,15 +719,15 @@ namespace Falcor
                 }
                 else if(key == SceneKeys::kCamPosition)
                 {
-                    b = getFloatVec<3>(value, "Camera path position", &pos[0]);
+                    b = getFloatVec(value, "Camera path position", pos);
                 }
                 else if(key == SceneKeys::kCamTarget)
                 {
-                    b = getFloatVec<3>(value, "Camera path target", &target[0]);
+                    b = getFloatVec(value, "Camera path target", target);
                 }
                 else if(key == SceneKeys::kCamUp)
                 {
-                    b = getFloatVec<3>(value, "Camera path up vector", &up[0]);
+                    b = getFloatVec(value, "Camera path up vector", up);
                 }
 
                 if(b == false)
@@ -873,7 +875,7 @@ namespace Falcor
             else if(key == SceneKeys::kCamPosition)
             {
                 glm::vec3 pos;
-                if(getFloatVec<3>(value, "Camera's position", &pos[0]) == false)
+                if(getFloatVec(value, "Camera's position", pos) == false)
                 {
                     return false;
                 }
@@ -882,7 +884,7 @@ namespace Falcor
             else if(key == SceneKeys::kCamTarget)
             {
                 glm::vec3 target;
-                if(getFloatVec<3>(value, "Camera's target", &target[0]) == false)
+                if(getFloatVec(value, "Camera's target", target) == false)
                 {
                     return false;
                 }
@@ -891,7 +893,7 @@ namespace Falcor
             else if(key == SceneKeys::kCamUp)
             {
                 glm::vec3 up;
-                if(getFloatVec<3>(value, "Camera's up vector", &up[0]) == false)
+                if(getFloatVec(value, "Camera's up vector", up) == false)
                 {
                     return false;
                 }
@@ -929,8 +931,8 @@ namespace Falcor
             }
             else if(key == SceneKeys::kCamDepthRange)
             {
-                float depthRange[2];
-                if(getFloatVec<2>(value, "Camera's depth-range", depthRange) == false)
+                vec2 depthRange;
+                if(getFloatVec(value, "Camera's depth-range", depthRange) == false)
                 {
                     return false;
                 }
@@ -1000,10 +1002,7 @@ namespace Falcor
         if(findFileInDataDirectories(filename, fullpath))
         {
             // Load the file
-            std::ifstream fileStream(fullpath);
-            std::stringstream strStream;
-            strStream << fileStream.rdbuf();
-            std::string jsonData = strStream.str();
+            std::string jsonData = readFile(fullpath);
             rapidjson::StringStream JStream(jsonData.c_str());
 
             // Get the file directory
@@ -1101,6 +1100,32 @@ namespace Falcor
         return true;
     }
 
+    bool SceneImporter::parseEnvMap(const rapidjson::Value& jsonVal)
+    {
+        if (mScene.getEnvironmentMap())
+        {
+            return error("Scene can't have more then one environment map");
+        }
+        
+        if (jsonVal.IsString() == false)
+        {
+            return error(std::string(SceneKeys::kEnvMap) + " should be a string");
+        }
+
+        std::string filename = mDirectory + '/' + jsonVal.GetString();
+        if (doesFileExist(filename) == false)
+        {
+            if (findFileInDataDirectories(jsonVal.GetString(), filename) == false)
+            {
+                return error("Can't find environment map file " + std::string(jsonVal.GetString()));
+            }
+        }
+
+        auto pTex = createTextureFromFile(filename, false, true);
+        mScene.setEnvironmentMap(pTex);
+        return true;
+    }
+
     bool SceneImporter::parseUserDefinedSection(const rapidjson::Value& jsonVal)
     {
         if(jsonVal.IsObject() == false)
@@ -1128,20 +1153,32 @@ namespace Falcor
                 switch(value.Size())
                 {
                 case 2:
-                    userVar.type = Scene::UserVariable::Type::Vec2;
-                    b = getFloatVec<2>(value, "custom-field vec2", &userVar.vec2[0]);
+                {
+                    vec2 v2;
+                    b = getFloatVec(value, "custom-field vec2", v2);
+                    userVar = v2;
+                }
                     break;
                 case 3:
-                    userVar.type = Scene::UserVariable::Type::Vec3;
-                    b = getFloatVec<3>(value, "custom-field vec3", &userVar.vec3[0]);
+                {
+                    vec3 v3;
+                    b = getFloatVec(value, "custom-field vec3", v3);
+                    userVar = v3;
+                }
                     break;
                 case 4:
-                    userVar.type = Scene::UserVariable::Type::Vec4;
-                    b = getFloatVec<4>(value, "custom-field vec4", &userVar.vec4[0]);
+                {
+                    vec4 v4;
+                    b = getFloatVec<vec4>(value, "custom-field vec4", v4);
+                    userVar = v4;
+                }
                     break;
                 default:
-                    userVar.type = Scene::UserVariable::Type::Vector;
-                    b = getFloatVecAnySize(value, "vector of floats", userVar.vector);
+                {
+                    std::vector<float> vec;
+                    b = getFloatVecAnySize(value, "vector of floats", vec);
+                    userVar = vec;
+                }
                     break;
                 }
                 if(b == false)
@@ -1155,38 +1192,31 @@ namespace Falcor
                 // The way rapidjson works, a uint is also an int, and a 32-bit number is also a 64-bit number, so the order in which we check the Type matters
                 if(value.IsUint())
                 {
-                    userVar.type = Scene::UserVariable::Type::Uint;
-                    userVar.u32 = value.GetUint();
+                    userVar = value.GetUint();
                 }
                 else if(value.IsInt())
                 {
-                    userVar.type = Scene::UserVariable::Type::Int;
-                    userVar.i32 = value.GetInt();
+                    userVar = value.GetInt();
                 }
                 else if(value.IsUint64())
                 {
-                    userVar.type = Scene::UserVariable::Type::Uint64;
-                    userVar.u64 = value.GetUint64();
+                    userVar = value.GetUint64();
                 }
                 else if(value.IsInt64())
                 {
-                    userVar.type = Scene::UserVariable::Type::Int64;
-                    userVar.i64 = value.GetInt64();
+                    userVar = value.GetInt64();
                 }
                 else if(value.IsDouble())
                 {
-                    userVar.type = Scene::UserVariable::Type::Double;
-                    userVar.d64 = value.GetDouble();
+                    userVar = value.GetDouble();
                 }
                 else if(value.IsString())
                 {
-                    userVar.type = Scene::UserVariable::Type::String;
-                    userVar.str = value.GetString();
+                    userVar = value.GetString();
                 }
                 else if(value.IsBool())
                 {
-                    userVar.type = Scene::UserVariable::Type::Bool;
-                    userVar.b = value.GetBool();
+                    userVar = value.GetBool();
                 }
                 else
                 {
@@ -1281,6 +1311,7 @@ namespace Falcor
     {
         // The order matters here.
         {SceneKeys::kVersion, &SceneImporter::parseVersion},
+        {SceneKeys::kEnvMap, &SceneImporter::parseEnvMap},
         {SceneKeys::kAmbientIntensity, &SceneImporter::parseAmbientIntensity},
         {SceneKeys::kLightingScale, &SceneImporter::parseLightingScale},
         {SceneKeys::kCameraSpeed, &SceneImporter::parseCameraSpeed},

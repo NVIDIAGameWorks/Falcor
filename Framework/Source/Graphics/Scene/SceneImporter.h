@@ -47,6 +47,7 @@ namespace Falcor
         bool load(const std::string& filename, Model::LoadFlags modelLoadFlags, Scene::LoadFlags sceneLoadFlags);
 
         bool parseVersion(const rapidjson::Value& jsonVal);
+        bool parseEnvMap(const rapidjson::Value& jsonVal);
         bool parseModels(const rapidjson::Value& jsonVal);
         bool parseLights(const rapidjson::Value& jsonVal);
         bool parseLightProbes(const rapidjson::Value& jsonVal);
@@ -75,8 +76,8 @@ namespace Falcor
 
         bool error(const std::string& msg);
 
-        template<uint32_t VecSize>
-        bool getFloatVec(const rapidjson::Value& jsonVal, const std::string& desc, float vec[VecSize]);
+        template<typename vecType>
+        bool getFloatVec(const rapidjson::Value& jsonVal, const std::string& desc, vecType& vec);
         bool getFloatVecAnySize(const rapidjson::Value& jsonVal, const std::string& desc, std::vector<float>& vec);
         rapidjson::Document mJDoc;
         Scene& mScene;

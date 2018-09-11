@@ -10,6 +10,7 @@ v3.1.0
 - Added Logger::Level::Fatal
 - Better abstraction of the alpha-test
 - Fixed VideoCapture UI
+- Added `env_map` attribute and environment texture to the scene
 
 v3.0.7
 ------

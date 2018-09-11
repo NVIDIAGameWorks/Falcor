@@ -568,9 +568,14 @@
     <ClCompile Include="Utils\RenderGraphUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\RenderGraphLoader.cpp">
+    <ClCompile Include="Utils\Scripting.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\RenderGraphScripting.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
     <ClCompile Include="RenderPasses\ResolvePass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
@@ -1774,15 +1779,20 @@
     <ClInclude Include="Utils\RenderGraphUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\RenderGraphLoader.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\Scripting.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Dictionary.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\RenderGraphScripting.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h" />
     <ClInclude Include="RenderPasses\ResolvePass.h">
       <Filter>RenderPasses</Filter>
     </ClInclude>
