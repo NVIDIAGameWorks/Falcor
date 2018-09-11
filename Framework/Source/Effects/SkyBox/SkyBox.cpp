@@ -191,7 +191,7 @@ namespace Falcor
     void SkyBox::reflect(RenderPassReflection& reflector) const
     {
         reflector.addOutput(kTarget).setFormat(ResourceFormat::RGBA32Float);
-        reflector.addInputOutput(kDepth);
+        reflector.addInputOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil);
     }
 
     void SkyBox::execute(RenderContext* pRenderContext, const RenderData* pData)

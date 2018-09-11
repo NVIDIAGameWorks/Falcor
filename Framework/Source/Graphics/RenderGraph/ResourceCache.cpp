@@ -39,27 +39,26 @@ namespace Falcor
     {
         mNameToIndex.clear();
         mResourceData.clear();
-        mExternalResources.clear();
     }
 
     const std::shared_ptr<Resource>& ResourceCache::getResource(const std::string& name) const
     {
         static const std::shared_ptr<Resource> pNull;
-        const auto& it = mNameToIndex.find(name);
+        auto extIt = mExternalResources.find(name);
         
         // Search external resources if not found in render graph resources
-        if (it == mNameToIndex.end())
+        if (extIt == mExternalResources.end())
         {
-            auto extIt = mExternalResources.find(name);
-            if (extIt == mExternalResources.end())
+            const auto& it = mNameToIndex.find(name);
+            if (it == mNameToIndex.end())
             {
                 return pNull;
             }
 
-            return extIt->second;
+            return mResourceData[it->second].pResource;
         }
 
-        return mResourceData[it->second].pResource;
+        return extIt->second;
     }
 
     void ResourceCache::registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
@@ -111,6 +110,16 @@ namespace Falcor
         if (warningMsg.empty() == false)
         {
             logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
+            return false;
+        }
+
+        Resource::BindFlags baseFlags = base.getBindFlags();
+        Resource::BindFlags newFlags = newField.getBindFlags();
+
+        if ((is_set(baseFlags, Resource::BindFlags::RenderTarget) && is_set(newFlags, Resource::BindFlags::DepthStencil)) ||
+            (is_set(baseFlags, Resource::BindFlags::DepthStencil) && is_set(newFlags, Resource::BindFlags::RenderTarget)))
+        {
+            logWarning("ResourceCache: Cannot merge field " + newFieldName + ", usage contained both RenderTarget and DepthStencil bind flags.");
             return false;
         }
 
