@@ -29,13 +29,14 @@
 #include "RenderPassesLibrary.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
-#include "RenderPasses/SceneLightingPass.h"
+#include "RenderPasses/ForwardLightingPass.h"
 #include "Effects/SkyBox/SkyBox.h"
 #include "Effects/Shadows/CSM.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Effects/FXAA/FXAA.h"
 #include "Effects/AmbientOcclusion/SSAO.h"
 #include "Effects/TAA/TAA.h"
+#include "RenderPasses/ResolvePass.h"
 
 namespace Falcor
 {
@@ -50,19 +51,21 @@ namespace Falcor
     template<typename Pass>
     using PassFunc = typename Pass::SharedPtr(*)(const Dictionary&);
 
+#define addClass(c, desc) RenderPassLibrary::addPassClass(#c, desc, (PassFunc<c>)c::create)
+
+
     static bool addBuiltinPasses()
     {
-        // TODO Matt the name of the passes should come from the pass itself
-
-        RenderPassLibrary::addPassClass("BlitPass", "Blit one texture into another", (RenderPassLibrary::CreateFunc)BlitPass::create);
-        RenderPassLibrary::addPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::create);
-        RenderPassLibrary::addPassClass("DepthPass", "Depth pass", DepthPass::create);
-        RenderPassLibrary::addPassClass("CascadedShadowMaps", "Cascaded shadow maps", (PassFunc<CascadedShadowMaps>)CascadedShadowMaps::create);
-        RenderPassLibrary::addPassClass("ToneMapping", "Tone-Mapping", (PassFunc<ToneMapping>)ToneMapping::create);
-        RenderPassLibrary::addPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::create);
-        RenderPassLibrary::addPassClass("SSAO", "Screen Space Ambient Occlusion", (PassFunc<SSAO>)SSAO::create);
-        RenderPassLibrary::addPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::create);
-        RenderPassLibrary::addPassClass("SkyBox", "Sky Box pass", (PassFunc<SkyBox>)SkyBox::create);
+        addClass(BlitPass, "Blit one texture into another");
+        addClass(ForwardLightingPass, "Forward-rendering lighting pass");
+        addClass(DepthPass, "Depth pass");
+        addClass(CascadedShadowMaps, "Cascaded shadow maps");
+        addClass(ToneMapping, "Tone-Mapping");
+        addClass(FXAA, "Fast Approximate Anti-Aliasing");
+        addClass(SSAO, "Screen Space Ambient Occlusion");
+        addClass(TemporalAA, "Temporal Anti-Aliasing");
+        addClass(SkyBox, "Sky Box pass");
+        addClass(ResolvePass, "MSAA Resolve");
 
         return true;
     };

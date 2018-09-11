@@ -163,7 +163,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
 //     mpGraph = RenderGraph::create();
-//     auto pLightingPass = RenderPassLibrary::createPass("SceneLightingPass");
+//     auto pLightingPass = RenderPassLibrary::createPass("ForwardLightingPass");
 //     mpGraph->addPass(pLightingPass, "LightingPass");
 // 
 //     mpGraph->addPass(DepthPass::create(), "DepthPrePass");
@@ -302,7 +302,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
 
     pIr->addPass("DepthPass", "DepthPrePass");
-    pIr->addPass("SceneLightingPass", "LightingPass");
+    pIr->addPass("ForwardLightingPass", "LightingPass");
     pIr->addPass("CascadedShadowMaps", "ShadowPass");
     pIr->addPass("BlitPass", "BlitPass");
     pIr->addPass("ToneMapping", "ToneMapping");

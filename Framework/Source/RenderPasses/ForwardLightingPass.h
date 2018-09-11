@@ -34,10 +34,10 @@
 
 namespace Falcor
 {
-    class SceneLightingPass : public RenderPass, inherit_shared_from_this<RenderPass, SceneLightingPass>
+    class ForwardLightingPass : public RenderPass, inherit_shared_from_this<RenderPass, ForwardLightingPass>
     {
     public:
-        using SharedPtr = std::shared_ptr<SceneLightingPass>;
+        using SharedPtr = std::shared_ptr<ForwardLightingPass>;
 
         /** Create a new object
         */
@@ -51,34 +51,34 @@ namespace Falcor
 
         /** Set the color target format. This is always enabled
         */
-        SceneLightingPass& setColorFormat(ResourceFormat format);
+        ForwardLightingPass& setColorFormat(ResourceFormat format);
 
         /** Set the output normal map format. Setting this to ResourceFormat::Unknown will disable this output
         */
-        SceneLightingPass& setNormalMapFormat(ResourceFormat format);
+        ForwardLightingPass& setNormalMapFormat(ResourceFormat format);
 
         /** Set the motion vectors map format. Setting this to ResourceFormat::Unknown will disable this output
         */
-        SceneLightingPass& setMotionVecFormat(ResourceFormat format);
+        ForwardLightingPass& setMotionVecFormat(ResourceFormat format);
 
         /** Set the required output sample-count. 0 will use the swapchain sample count
         */
-        SceneLightingPass& setSampleCount(uint32_t samples);
+        ForwardLightingPass& setSampleCount(uint32_t samples);
         
         /** Enable super-sampling in the pixel-shader
         */
-        SceneLightingPass& setSuperSampling(bool enable);
+        ForwardLightingPass& setSuperSampling(bool enable);
 
         /** If set to true, the pass requires the user to provide a pre-rendered depth-buffer
         */
-        SceneLightingPass& usePreGeneratedDepthBuffer(bool enable);
+        ForwardLightingPass& usePreGeneratedDepthBuffer(bool enable);
 
         /** Set a sampler-state to be used during rendering. The default is tri-linear
         */
-        SceneLightingPass& setSampler(const std::shared_ptr<Sampler>& pSampler);
+        ForwardLightingPass& setSampler(const std::shared_ptr<Sampler>& pSampler);
 
     private:
-        SceneLightingPass();
+        ForwardLightingPass();
         void initDepth(const RenderData* pRenderData);
         void initFbo(RenderContext* pContext, const RenderData* pRenderData);
 
