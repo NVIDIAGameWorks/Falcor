@@ -1212,6 +1212,8 @@ namespace Falcor
                 }
                 else if(value.IsString())
                 {
+                    if (name == "sky_box") parseEnvMap(value);
+
                     userVar = value.GetString();
                 }
                 else if(value.IsBool())

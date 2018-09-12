@@ -553,9 +553,6 @@
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\SceneLightingPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
@@ -576,6 +573,12 @@
     </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
+    <ClCompile Include="RenderPasses\ResolvePass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPasses\ForwardLightingPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1758,9 +1761,6 @@
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\SceneLightingPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
@@ -1790,6 +1790,12 @@
     </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h" />
+    <ClInclude Include="RenderPasses\ResolvePass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\ForwardLightingPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -2454,7 +2460,7 @@
     <None Include="Data\Effects\FXAA.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\RenderPasses\SceneLightingPass.slang">
+    <None Include="Data\RenderPasses\ForwardLightingPass.slang">
       <Filter>Data\RenderPasses</Filter>
     </None>
   </ItemGroup>

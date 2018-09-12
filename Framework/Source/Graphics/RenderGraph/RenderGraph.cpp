@@ -435,18 +435,21 @@ namespace Falcor
                 return false;
             };
 
-            // Set all the pass' outputs to either null or allocate a resource if it is required
+            // Register all required pass resources and outputs without a corresponding external resource
             for (size_t f = 0; f < passReflection.getFieldCount(); f++)
             {
                 const auto& field = passReflection.getField(f);
+                std::string fullFieldName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
+
                 if (is_set(field.getType(), RenderPassReflection::Field::Type::Output))
                 {
-                    // If is not a graph output, and is required for the pass, we need to allocate it,
-                    // even if the output is not connected to anything else
-                    if (isGraphOutput(nodeIndex, field.getName()) == false &&
-                        is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false)
+                    // If a graph output has an external resource set, getResource will return a valid pointer
+                    bool allocate = (isGraphOutput(nodeIndex, field.getName()) && mpResourcesCache->getResource(fullFieldName) == nullptr) ||
+                        (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false);
+
+                    if (allocate)
                     {
-                        mpResourcesCache->registerField(mNodeData[nodeIndex].nodeName + '.' + field.getName(), field, uint32_t(i));
+                        mpResourcesCache->registerField(fullFieldName, field, uint32_t(i));
                     }
                 }
             }
@@ -470,8 +473,9 @@ namespace Falcor
                 const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
                 RenderPassReflection::Field dstField = mPassReflectionMap[pDstPass.get()].getField(edgeData.dstField);
 
-                assert(passToIndex.count(pDstPass.get()) > 0);
-                mpResourcesCache->registerField(dstResourceName, dstField, passToIndex[pDstPass.get()],srcResourceName);
+                // assert(passToIndex.count(pDstPass.get()) > 0);
+                mpResourcesCache->registerField(srcResourceName, field, passToIndex[pSrcPass]);
+                mpResourcesCache->registerField(dstResourceName, dstField, passToIndex[pDstPass.get()], srcResourceName);
             }
         }
 
@@ -769,6 +773,11 @@ namespace Falcor
             // If input was satisfied, remove from unsatisfied list, else increment iterator
             dstFieldIt = inputSatisfied ? unsatisfiedInputs.erase(dstFieldIt) : dstFieldIt + 1;
         }
+    }
+
+    bool RenderGraph::canAutoResolve(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst)
+    {
+        return src.getSampleCount() > 1 && dst.getSampleCount() == 1;
     }
 
     void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList) const

@@ -41,7 +41,7 @@ namespace Falcor
         reflector.addOutput(kDst).setSampleCount(1);
     }
 
-    ResolvePass::SharedPtr ResolvePass::create()
+    ResolvePass::SharedPtr ResolvePass::create(const Dictionary& dictionary)
     {
         try
         {
@@ -52,16 +52,8 @@ namespace Falcor
             return nullptr;
         }
     }
-
-    ResolvePass::SharedPtr ResolvePass::deserialize(const RenderPassSerializer& serializer)
-    {
-        return create();
-    }
-
-    ResolvePass::ResolvePass()
-        : RenderPass("ResolvePass")
-    {
-    }
+    
+    ResolvePass::ResolvePass() : RenderPass("ResolvePass") {}
 
     void ResolvePass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
@@ -70,6 +62,12 @@ namespace Falcor
 
         if (pSrcTex && pDstTex)
         {
+            if (pSrcTex->getSampleCount() == 1)
+            {
+                logWarning("ResolvePass::execute() - Cannot resolve from a non-multisampled texture.");
+                return;
+            }
+
             pContext->resolveResource(pSrcTex.get(), pDstTex.get());
         }
         else

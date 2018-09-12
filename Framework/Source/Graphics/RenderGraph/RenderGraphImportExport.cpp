@@ -28,27 +28,33 @@
 #include "Framework.h"
 #include "RenderGraphImportExport.h"
 #include "Utils/RenderGraphScripting.h"
+#include "RenderGraphIR.h"
+#include <fstream>
 
 namespace Falcor
 {
-    RenderGraph::SharedPtr RenderGraphImporter::import(const std::string& filename, const std::string& graphName)
+    static void updateGraphStrings(const std::string& graph, std::string& file, std::string& func)
     {
-        auto graphs = importAllGraphs(filename);
-        if (graphs.size() == 0)
+        file = file.empty() ? graph + ".graph" : file;
+        func = func.empty() ? "render_graph_" + graph : func;
+    }
+
+    RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName)
+    {
+        updateGraphStrings(graphName, filename, funcName);
+
+        std::string fullpath;
+        if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logError("The file " + filename + " doesn't contain graphs");
+            logError("Error when loading graph. Can't find the file `" + filename + "`");
             return nullptr;
         }
 
-        if (graphName.empty()) return graphs[0].pGraph;
 
-        for (const auto& g : graphs)
-        {
-            if (g.name == graphName) return g.pGraph;
-        }
+        RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(fullpath);
+        if (pScripting->runScript(graphName + '=' + funcName + "()") == false) return nullptr;
 
-        logError("Can't find a graph named " + graphName + "in file " + filename);
-        return nullptr;
+        return pScripting->getGraph(graphName);
     }
 
     std::vector<RenderGraphImporter::GraphData> RenderGraphImporter::importAllGraphs(const std::string& filename)
@@ -66,5 +72,41 @@ namespace Falcor
         }
 
         return res;
+    }
+
+    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename, std::string funcName)
+    {
+        updateGraphStrings(graphName, filename, funcName);
+        RenderGraphIR::SharedPtr pIR = RenderGraphIR::create(graphName);
+
+        // Add the passes
+        for (const auto& node : pGraph->mNodeData)
+        {
+            const auto& data = node.second;
+            pIR->addPass(data.pPass->getName(), data.nodeName, data.pPass->getScriptingDictionary());
+        }
+
+        // Add the edges
+        for (const auto& edge : pGraph->mEdgeData)
+        {
+            const auto& data = edge.second;
+            const auto& srcPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getSourceNode()].nodeName;
+            const auto& dstPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getDestNode()].nodeName;
+            std::string src = srcPass + '.' + data.srcField;
+            std::string dst = dstPass + '.' + data.dstField;
+            pIR->addEdge(src, dst);
+        }
+
+        // Graph outputs
+        for (const auto& out : pGraph->mOutputs)
+        {
+            std::string str = pGraph->mNodeData[out.nodeId].nodeName + '.' + out.field;
+            pIR->markOutput(str);
+        }
+
+        // Save it to file
+        std::ofstream f(filename);
+        f << pIR->getIR();
+        return true;
     }
 }

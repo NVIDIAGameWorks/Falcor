@@ -526,13 +526,14 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
 
     pIr->addPass("DepthPass", "DepthPrePass");
-    pIr->addPass("SceneLightingPass", "LightingPass");
+    pIr->addPass("ForwardLightingPass", "LightingPass");
     pIr->addPass("CascadedShadowMaps", "ShadowPass");
     pIr->addPass("BlitPass", "BlitPass");
     pIr->addPass("ToneMapping", "ToneMapping");
     pIr->addPass("SSAO", "SSAO");
     pIr->addPass("FXAA", "FXAA");
     pIr->addPass("SkyBox", "SkyBox");
+    
 
     pIr->addEdge("DepthPrePass.depth", "SkyBox.depth");
     pIr->addEdge("SkyBox.target", "LightingPass.color");

@@ -39,28 +39,26 @@ namespace Falcor
     {
         mNameToIndex.clear();
         mResourceData.clear();
-        mExternalResources.clear();
     }
 
     const std::shared_ptr<Resource>& ResourceCache::getResource(const std::string& name) const
     {
         static const std::shared_ptr<Resource> pNull;
-        const auto& it = mNameToIndex.find(name);
+        auto extIt = mExternalResources.find(name);
         
         // Search external resources if not found in render graph resources
-        if (it == mNameToIndex.end())
+        if (extIt == mExternalResources.end())
         {
-            auto extIt = mExternalResources.find(name);
-            if (extIt == mExternalResources.end())
+            const auto& it = mNameToIndex.find(name);
+            if (it == mNameToIndex.end())
             {
-                logWarning("Can't find a resource named `" + name + "` in the resource cache");
                 return pNull;
             }
 
-            return extIt->second;
+            return mResourceData[it->second].pResource;
         }
 
-        return mResourceData[it->second].pResource;
+        return extIt->second;
     }
 
     void ResourceCache::registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
@@ -89,11 +87,13 @@ namespace Falcor
     {
         std::string warningMsg;
 
+        // Default to base dimension
         // If newField property is not 0, retrieve value from newField
         // If both newField and base property is specified, generate warning.
 #define get_dim(var, dim) \
+    var = base.get##dim(); \
     if (newField.get##dim() != 0) { \
-        if (base.get##dim() == 0) var = base.get##dim(); \
+        if (base.get##dim() == 0) var = newField.get##dim(); \
         else warningMsg += std::string(#dim) + " already specified."; }
 
         uint32_t w = 0, h = 0, d = 0;
@@ -113,6 +113,20 @@ namespace Falcor
         {
             logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
             return false;
+        }
+
+        Resource::BindFlags baseFlags = base.getBindFlags();
+        Resource::BindFlags newFlags = newField.getBindFlags();
+
+        if ((is_set(baseFlags, Resource::BindFlags::RenderTarget) && is_set(newFlags, Resource::BindFlags::DepthStencil)) ||
+            (is_set(baseFlags, Resource::BindFlags::DepthStencil) && is_set(newFlags, Resource::BindFlags::RenderTarget)))
+        {
+            logWarning("ResourceCache: Cannot merge field " + newFieldName + ", usage contained both RenderTarget and DepthStencil bind flags.");
+            return false;
+        }
+        else
+        {
+            base.setBindFlags(baseFlags | newFlags);
         }
 
         return true;

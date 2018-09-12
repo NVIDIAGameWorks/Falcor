@@ -58,7 +58,7 @@ namespace Falcor
             Value(const int32_t&      v) : i32(v), mType(Type::Int) { }
             Value(const int64_t&      v) : i64(v), mType(Type::Int64) { }
             Value(const float&        v) : f(v), mType(Type::Float) { }
-            Value(const double&        v) : d64(v), mType(Type::Double) { }
+            Value(const double&        v) : d(v), mType(Type::Double) { }
             Value(const glm::vec2&    v) : vec2(v), mType(Type::Vec2) { }
             Value(const glm::vec3&    v) : vec3(v), mType(Type::Vec3) { }
             Value(const glm::vec4&    v) : vec3(v), mType(Type::Vec4) { }
@@ -73,13 +73,48 @@ namespace Falcor
             int64_t asInt64() const { checkType(Type::Int64); return i64; }
             uint64_t asUint64() const { checkType(Type::Uint64); return u64; }
             float asFloat() const { checkType(Type::Float); return f; }
-            double asDouble() const { checkType(Type::Double); return d64; }
+            double asDouble() const { checkType(Type::Double); return d; }
             bool asBool() const { checkType(Type::Bool); return b; }
             const std::string& asString() const { checkType(Type::String); return str; }
             const glm::vec2& asVec2() const { checkType(Type::Vec2); return vec2; }
             const glm::vec3& asVec3() const { checkType(Type::Vec3); return vec3; }
             const glm::vec4& asVec4() const { checkType(Type::Vec4); return vec4; }
             const std::vector<float>& asFloatVec() const { checkType(Type::Vector); return vector; }
+
+            std::string toString() const
+            {
+                switch (mType)
+                {
+                case Dictionary::Value::Type::Int:
+                    return std::to_string(i32);
+                case Dictionary::Value::Type::Uint:
+                    return std::to_string(u32);
+                case Dictionary::Value::Type::Int64:
+                    return std::to_string(i64);
+                case Dictionary::Value::Type::Uint64:
+                    return std::to_string(u64);
+                case Dictionary::Value::Type::Float:
+                    return std::to_string(f);
+                case Dictionary::Value::Type::Double:
+                    return std::to_string(d);
+                case Dictionary::Value::Type::String:
+                    return '"' + str + '"';
+                case Dictionary::Value::Type::Vec2:
+                    return vecString(&vec2[0], 2);
+                case Dictionary::Value::Type::Vec3:
+                    return vecString(&vec3[0], 3);
+                case Dictionary::Value::Type::Vec4:
+                    return vecString(&vec4[0], 4);
+                case Dictionary::Value::Type::Bool:
+                    return b ? "1" : "0";
+                case Dictionary::Value::Type::Vector:
+                    return vecString(vector.data(), vector.size());
+                default:
+                    should_not_get_here();
+                    return "";
+                }
+            }
+
         private:
             Type mType = Type::Unknown;
             union
@@ -88,7 +123,7 @@ namespace Falcor
                 uint32_t u32;
                 int64_t  i64;
                 uint64_t u64;
-                double   d64;
+                double   d;
                 bool     b;
                 float    f;
             };
@@ -101,6 +136,17 @@ namespace Falcor
             void checkType(Type t) const
             {
                 if (t != mType) throw(std::runtime_error("Dictionary::Value - type doesn't match"));
+            }
+
+            static std::string vecString(const float* f, size_t count)
+            {
+                std::string s = "{";
+                for (size_t i = 0 ; i < count ; i++)
+                {
+                    if (i != 1) s += ",";
+                    s += std::to_string(f[i]);
+                }
+                return s + '}';
             }
         };
 
@@ -124,8 +170,21 @@ namespace Falcor
         {
             return mMap.count(key) != 0;
         }
-    private:
 
+        std::string toString(char equalChar = ':') const
+        {
+            std::string s;
+            bool first = true;
+            for (const auto& a : mMap)
+            {
+                if (!first) s += ',';
+                s += '"' + a.first + '"' + equalChar + a.second.toString();
+                first = false;
+            }
+            return s;
+        }
+
+    private:
         Container mMap;
     };
 }

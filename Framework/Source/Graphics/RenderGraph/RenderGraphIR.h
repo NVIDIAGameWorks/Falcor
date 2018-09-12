@@ -26,10 +26,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "Utils/Dictionary.h"
 
 namespace Falcor
 {
     class RenderGraph;
+    class Dictionary;
 
     class RenderGraphIR
     {
@@ -38,7 +40,7 @@ namespace Falcor
 
         static SharedPtr create(const std::string& name, bool newGraph = true);
 
-        void addPass(const std::string& passClass, const std::string& passName);
+        void addPass(const std::string& passClass, const std::string& passName, const Dictionary& = Dictionary());
         void removePass(const std::string& passName);
         void addEdge(const std::string& src, const std::string& dst);
         void removeEdge(const std::string& src, const std::string& dst);

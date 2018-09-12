@@ -29,6 +29,7 @@
 #include "RenderGraphIR.h"
 #include "RenderGraph.h"
 #include "Utils/RenderGraphScripting.h"
+#include "Utils/Dictionary.h"
 
 namespace Falcor
 {
@@ -82,9 +83,18 @@ namespace Falcor
         return SharedPtr(new RenderGraphIR(name, newGraph));
     }
 
-    void RenderGraphIR::addPass(const std::string& passClass, const std::string& passName)
+    void RenderGraphIR::addPass(const std::string& passClass, const std::string& passName, const Dictionary& dictionary)
     {
-        mIR += mIndentation + passName + " = " + funcCall(RenderGraphScripting::kCreatePass, addQuotes(passClass));
+        mIR += mIndentation + passName + " = ";
+        if(dictionary.size())
+        {
+            std::string dictionaryStr = "\"{" + dictionary.toString() + "}\"";
+            mIR += funcCall(RenderGraphScripting::kCreatePass, addQuotes(passClass), dictionaryStr);
+        }
+        else
+        {
+            mIR += funcCall(RenderGraphScripting::kCreatePass, addQuotes(passClass));
+        }
         mIR += mGraphPrefix + funcCall(RenderGraphScripting::kAddPass, passName, addQuotes(passName));
     }
 

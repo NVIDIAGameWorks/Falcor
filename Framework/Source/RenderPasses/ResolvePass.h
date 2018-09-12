@@ -38,8 +38,7 @@ namespace Falcor
 
         /** Create a new object
         */
-        static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer);
+        static SharedPtr create(const Dictionary& dictionary = {});
 
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;

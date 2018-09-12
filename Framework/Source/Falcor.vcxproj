@@ -521,7 +521,8 @@
     </ClCompile>
     <ClCompile Include="RenderPasses\BlitPass.cpp" />
     <ClCompile Include="RenderPasses\DepthPass.cpp" />
-    <ClCompile Include="RenderPasses\SceneLightingPass.cpp" />
+    <ClCompile Include="RenderPasses\ResolvePass.cpp" />
+    <ClCompile Include="RenderPasses\ForwardLightingPass.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
@@ -1115,7 +1116,8 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPasses\BlitPass.h" />
     <ClInclude Include="RenderPasses\DepthPass.h" />
-    <ClInclude Include="RenderPasses\SceneLightingPass.h" />
+    <ClInclude Include="RenderPasses\ResolvePass.h" />
+    <ClInclude Include="RenderPasses\ForwardLightingPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
     <ClInclude Include="Utils\AABB.h" />
@@ -1352,7 +1354,7 @@
     <None Include="Data\Framework\Shaders\SceneEditor.slang" />
     <None Include="Data\Framework\Shaders\TextRenderer.slang" />
     <None Include="Data\HostDeviceData.slang" />
-    <None Include="Data\RenderPasses\SceneLightingPass.slang" />
+    <None Include="Data\RenderPasses\ForwardLightingPass.slang" />
     <None Include="Data\ShaderCommon.slang" />
     <None Include="ShadingUtils\BRDF.slang" />
     <None Include="ShadingUtils\Helpers.slang" />
