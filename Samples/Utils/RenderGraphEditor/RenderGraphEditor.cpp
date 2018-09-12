@@ -69,7 +69,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 if (openFileDialog("", renderGraphFilePath))
                 {
                     std::string renderGraphFileName = getFilenameFromPath(renderGraphFilePath);
-                    createRenderGraph(renderGraphFileName, renderGraphFilePath);
+                    loadGraphsFromFile(renderGraphFileName);
                     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
                 }
             }
@@ -225,29 +225,18 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             openViewer = msgBox("Graph is invalid :\n " + log + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel) == MsgBoxButton::Ok;
         }
 
-        // TODO -- get render graph viewer to open with live viewer properly with the editor
         if (openViewer)
         {
-            // std::string renderGraphScript = ; // RenderGraphLoader::saveRenderGraphAsScriptBuffer(*mpGraphs[mCurrentGraphIndex]);
-            // if (!renderGraphScript.size())
-            // {
-            //     logError("No graph data to display in editor.");
-            // }
-            // 
-            // char* result = nullptr;
-            // mFilePath = std::tmpnam(result);
-            // std::ofstream updatesFileOut(mFilePath);
-            // assert(updatesFileOut.is_open());
-            // 
-            // updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-            // updatesFileOut.close();
-            // 
-            // // load application for the editor given it the name of the mapped file
-            // std::string commandLine = std::string("-tempFile ") + mFilePath;
-            // mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
-            // 
-            // assert(mViewerProcess);
-            // mViewerRunning = true;
+            char* result = nullptr;
+            mFilePath = std::tmpnam(result);
+            RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mFilePath);
+            
+            // load application for the editor given it the name of the mapped file
+            std::string commandLine = std::string("-tempFile ") + mFilePath;
+            mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+            
+            assert(mViewerProcess);
+            mViewerRunning = true;
         }
     }
 
@@ -271,7 +260,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (pGui->addButton("Create Graph") && mNextGraphString[0])
         {
-            createRenderGraph(mNextGraphString, "");
+            createRenderGraph(mNextGraphString);
             mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
             mNextGraphString.clear();
             mNextGraphString.resize(255, '0');
@@ -299,9 +288,7 @@ void RenderGraphEditor::renderLogWindow(Gui* pGui)
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
-    // TODO -- call exporter to save out graph
-    // RenderGraphLoader::SaveRenderGraphAsScript(fileName, *mpGraphs[mCurrentGraphIndex]);
-    
+    RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), fileName);
 }
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
@@ -313,56 +300,62 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
     }
 }
 
-void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphFileName)
+void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName)
 {
-    std::string graphName = renderGraphName;
-    size_t offset = graphName.find_first_of('.');
-    RenderGraph::SharedPtr newGraph;
+    assert(fileName.size());
 
-    if (offset != std::string::npos)
+    // behavior is load each graph defined within the file as a separate editor ui
+    auto newGraphs = RenderGraphImporter::importAllGraphs(fileName);
+
+    for (const auto& graphInfo : newGraphs)
     {
-        std::string tempGraphName = graphName.substr(0, offset);
-        graphName = tempGraphName;
-    }
+        const std::string& name = graphInfo.name;
+        const RenderGraph::SharedPtr& newGraph = graphInfo.pGraph;
 
-    auto nameToIndexIt = mGraphNamesToIndex.find(graphName);
-    if (renderGraphFileName.size())
-    {
-        newGraph = RenderGraphImporter::import(renderGraphFileName, graphName);
-
-        // if graph already exists, just update that one
+        auto nameToIndexIt = mGraphNamesToIndex.find(name);
         if (nameToIndexIt != mGraphNamesToIndex.end())
         {
-            // TODO display warning msgBox
-
-            // mCurrentGraphIndex = nameToIndexIt->second;
-            mCurrentGraphIndex = mpGraphs.size();
-            mpGraphs[nameToIndexIt->second]->update(newGraph);
-            mpGraphs.push_back(mpGraphs[nameToIndexIt->second]);
-            // reset the render graph ui
-            // mRenderGraphUIs[mCurrentGraphIndex] = (RenderGraphUI(pGraph, graphName));
-            mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[nameToIndexIt->second], graphName));
-
-            Gui::DropdownValue nextGraphID;
-            mGraphNamesToIndex.insert(std::make_pair(graphName, static_cast<uint32_t>(mCurrentGraphIndex)));
-            nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
-            nextGraphID.label = graphName;
-            mOpenGraphNames.push_back(nextGraphID);
-            return;
+            // if graph already exists, just update that one
+            // TODO -- uncomment this
+             MsgBoxButton button = msgBox("Warning! Graph is already open. Update graph from file?", MsgBoxType::OkCancel);
+            
+            if (button == MsgBoxButton::Ok)
+            {
+                mCurrentGraphIndex = nameToIndexIt->second;
+                // mCurrentGraphIndex = mpGraphs.size();
+                mpGraphs[mCurrentGraphIndex]->update(newGraph);
+                //mpGraphs.push_back(mpGraphs[nameToIndexIt->second]);
+                // TODO -- why assignment delete the graph? 
+                mRenderGraphUIs[mCurrentGraphIndex].reset();
+                // mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[nameToIndexIt->second], name));
+                continue;
+            }
         }
+
+        mCurrentGraphIndex = mpGraphs.size();
+        mpGraphs.push_back(newGraph);
+        mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[mCurrentGraphIndex], name));
+
+        Gui::DropdownValue nextGraphID;
+        mGraphNamesToIndex.insert(std::make_pair(name, static_cast<uint32_t>(mCurrentGraphIndex)));
+        nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
+        nextGraphID.label = name;
+        mOpenGraphNames.push_back(nextGraphID);
     }
-    else
+}
+
+void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName)
+{
+    std::string graphName = renderGraphName;
+    auto nameToIndexIt = mGraphNamesToIndex.find(graphName);
+    RenderGraph::SharedPtr newGraph = RenderGraph::create();
+
+    std::string tempGraphName = graphName;
+    while (mGraphNamesToIndex.find(tempGraphName) != mGraphNamesToIndex.end())
     {
-        newGraph = RenderGraph::create();
-
-        std::string tempGraphName = graphName;
-        while (mGraphNamesToIndex.find(tempGraphName) != mGraphNamesToIndex.end())
-        {
-            tempGraphName.append("_");
-        }
-        graphName = tempGraphName;
+        tempGraphName.append("_");
     }
-    
+    graphName = tempGraphName;
     mCurrentGraphIndex = mpGraphs.size();
     mpGraphs.push_back(newGraph);
     mRenderGraphUIs.push_back(RenderGraphUI(newGraph, graphName));
@@ -389,11 +382,11 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     if (mFilePath.size())
     {
         // TODO -- what do we actually want to name this graph?
-        createRenderGraph("Test", mFilePath);
+        loadGraphsFromFile(mFilePath);
     }
     else
     {
-        createRenderGraph("DefaultRenderGraph", "");
+        createRenderGraph("DefaultRenderGraph");
     }
 }
 

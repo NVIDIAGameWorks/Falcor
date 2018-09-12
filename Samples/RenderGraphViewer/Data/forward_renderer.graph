@@ -3,7 +3,7 @@ def render_graph_forward_renderer():
 
     forward_renderer = createRenderGraph()
     forward_renderer.addPass(createRenderPass("DepthPass"), "DepthPrePass")
-    forward_renderer.addPass(createRenderPass("SceneLightingPass"), "LightingPass")
+    forward_renderer.addPass(createRenderPass("ForwardLightingPass"), "LightingPass")
     forward_renderer.addPass(createRenderPass("CascadedShadowMaps"), "ShadowPass")
     forward_renderer.addPass(createRenderPass("BlitPass"), "BlitPass")
     forward_renderer.addPass(createRenderPass("ToneMapping"), "ToneMapping")

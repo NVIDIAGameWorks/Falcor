@@ -129,7 +129,7 @@ namespace Falcor
         */
         const std::shared_ptr<Scene>& getScene() const { return mpScene; }
 
-        /** Get an graph output name from the graph outputs
+        /** Get an graph output name from the graph outputs 
         */
         std::string getOutputName(size_t index) const;
 

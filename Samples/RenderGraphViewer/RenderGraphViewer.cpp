@@ -95,38 +95,27 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mFocusedRenderGraphName  = std::string(mRenderGraphsList[mActiveGraphIndex].label);
     }
 
-    // TODO -- output current graph as script
+    if (!mEditorRunning && pGui->addButton("Open RenderGraph Editor"))
+    {
+        resetGraphOutputs();
+    
+        char* result = nullptr;
+        mTempFilePath = std::tmpnam(result);
 
-    // if (!mEditorRunning && pGui->addButton("Open RenderGraph Editor"))
-    // {
-    //     resetGraphOutputs();
-    // 
-    //     std::string renderGraphScript = RenderGraphLoader::saveRenderGraphAsScriptBuffer(*pGraph);
-    //     if (!renderGraphScript.size())
-    //     {
-    //         logError("No graph data to display in editor.");
-    //     }
-    //     
-    //     char* result = nullptr;
-    //     mTempFilePath = std::tmpnam(result);
-    //     std::ofstream updatesFileOut(mTempFilePath);
-    //     assert(updatesFileOut.is_open());
-    // 
-    //     updatesFileOut.write(renderGraphScript.c_str(), renderGraphScript.size());
-    //     updatesFileOut.close();
-    // 
-    //     openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
-    // 
-    //     // load application for the editor given it the name of the mapped file
-    //     std::string commandLine = std::string("-tempFile ") + mTempFilePath;
-    //     mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
-    // 
-    //     assert(mEditorProcess);
-    //     mEditorRunning = true;
-    //     mEditingRenderGraphName = mFocusedRenderGraphName;
-    // 
-    //     pGraph->setOutput(graphInfo.mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
-    // }
+        RenderGraphExporter::save(pGraph, graphInfo.mName, mTempFilePath);
+
+        openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+    
+        // load application for the editor given it the name of the mapped file
+        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
+        mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
+    
+        assert(mEditorProcess);
+        mEditorRunning = true;
+        mEditingRenderGraphName = mFocusedRenderGraphName;
+    
+        pGraph->setOutput(graphInfo.mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
+    }
     
     if (mEditorProcess && mEditorRunning)
     {
@@ -349,15 +338,17 @@ void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
 
 void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename)
 {
-    const auto pGraph = RenderGraphImporter::import(filename);
-    if (pGraph)
+    const auto pGraphs = RenderGraphImporter::importAllGraphs(filename);
+    if (pGraphs.size())
     {
         // for now create a parallel copy of the render graph
-        const auto pGraphCpy = RenderGraphImporter::import(filename);
+        const auto pGraph = pGraphs.front().pGraph;
+        const std::string graphName = pGraphs.front().name;
+        const auto pGraphCpy = RenderGraphImporter::import(graphName, filename);
         pGraph->setScene(mpScene);
         pGraphCpy->setScene(mpScene);
         pGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-        insertNewGraph(pGraph, pGraphCpy, filename);
+        insertNewGraph(pGraph, pGraphCpy, filename, graphName);
         pGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
         pGraphCpy->onResizeSwapChain(pSample->getCurrentFbo().get());
     }
@@ -371,11 +362,11 @@ void RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
 {
     RenderGraph::SharedPtr pGraph = createGraph(pSample);
     RenderGraph::SharedPtr pGraphCpy = createGraph(pSample);
-    insertNewGraph(pGraph, pGraphCpy, "");
-    loadScene(gkDefaultScene, false, pSample);
+    insertNewGraph(pGraph, pGraphCpy, "", "");
 }
 
-void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy, const std::string& fileName)
+void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy, 
+    const std::string& fileName, const std::string& graphName)
 {
     // TODO -- possibly duplicate graph with deep copy instead of requiring another graph
     size_t renderGraphIndex = mRenderGraphsList.size();
@@ -396,6 +387,7 @@ void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, con
     graphInfo.mCurrentOutputs = pGraph->getAvailableOutputs();
     graphInfo.mpGraphCpy = pGraphCpy;
     graphInfo.mFileName = fileName;
+    graphInfo.mName = graphName;
 }
 
 void RenderGraphViewer::updateOutputDropdown(const std::string& passName)
@@ -443,6 +435,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         createDefaultGraph(pSample);
     }
 
+    loadScene(gkDefaultScene, false, pSample);
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
     mCamControl.attachCamera(mpScene->getCamera(0));
 }
@@ -461,7 +454,8 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
             // TODO -- run script backlog for live update
             // RenderGraphImporter::import();
             // Scripting::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()) *applyGraphInfo.mpGraph);
-            
+            auto pScripting = RenderGraphScripting::create();
+            pScripting->addGraph(applyGraphInfo.mFileName, applyGraphInfo.mpGraph);
             // RenderGraphLoader::runScript(script.data() + sizeof(size_t), *reinterpret_cast<const size_t*>(script.data()), *applyGraphInfo.mpGraph);
         }
         applyGraphInfo.mScriptBacklog.clear();

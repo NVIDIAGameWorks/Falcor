@@ -106,7 +106,7 @@ namespace Falcor
 
         // Save it to file
         std::ofstream f(filename);
-        f << pIR->getIR();
+        f << (pIR->getIR() + '\n' + graphName + " = " + funcName + "()\n\n");
         return true;
     }
 }

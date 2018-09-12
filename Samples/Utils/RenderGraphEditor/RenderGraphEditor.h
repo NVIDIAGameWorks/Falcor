@@ -44,7 +44,8 @@ public:
     ~RenderGraphEditor();
 
 private:
-    void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
+    void createRenderGraph(const std::string& renderGraphName);
+    void loadGraphsFromFile(const std::string& fileName);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
     void renderLogWindow(Gui* pGui);

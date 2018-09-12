@@ -576,47 +576,34 @@ namespace Falcor
             mOutputs.erase(mOutputs.begin() + i);
         }
 
-        // move and copy all edges, preserving state of edges
-        // add missing edges
-        for (uint32_t i = 0; i < pGraph->mpGraph->getCurrentNodeId(); ++i)
-        {
-            if (!pGraph->mpGraph->doesEdgeExist(i)) { continue;}
-
-            const DirectedGraph::Edge* pEdge = pGraph->mpGraph->getEdge(i);
-            std::string dst = pGraph->mNodeData[pEdge->getDestNode()].nodeName;
-            std::string src = pGraph->mNodeData[pEdge->getSourceNode()].nodeName;
-            dst += std::string(".") + pGraph->mEdgeData[i].dstField;
-            src += std::string(".") + pGraph->mEdgeData[i].srcField;
-
-            // only add if the edge doesn't exist to preserve state
-            if ( getEdge(src, dst) == uint32_t(-1))
-            {
-                addEdge(src, dst);
-            }
-        }
-        
-        // remove extra edges from original
-        std::vector<str_pair> edgesToRemove;
-        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); ++i)
+        // this version does not preserve state of edges
+        // remove all edges from this graph
+        for (uint32_t i = 0; i < mpGraph->getCurrentEdgeId(); ++i)
         {
             if (!mpGraph->doesEdgeExist(i)) { continue; }
-
-            const DirectedGraph::Edge* pEdge = mpGraph->getEdge(i);
-            std::string dst = mNodeData[pEdge->getDestNode()].nodeName;
-            std::string src = mNodeData[pEdge->getSourceNode()].nodeName;
-            dst += std::string(".") + mEdgeData[i].dstField;
-            src += std::string(".") + mEdgeData[i].srcField;
-
-            // only remove if new graph does not have edge
-            if (pGraph->getEdge(src, dst) == uint32_t(-1))
-            {
-                edgesToRemove.push_back({src, dst});
-            }
+            
+            mpGraph->removeEdge(i);
         }
+        mEdgeData.clear();
 
-        for (const str_pair& edge : edgesToRemove)
+        // add all edges from the other graph
+        for (uint32_t i = 0; i < pGraph->mpGraph->getCurrentEdgeId(); ++i)
         {
-            removeEdge(edge.first, edge.second);
+            if (!pGraph->mpGraph->doesEdgeExist(i)) { continue; }
+
+            
+            const DirectedGraph::Edge* pEdge = pGraph->mpGraph->getEdge(i);
+            std::string dst = pGraph->mNodeData.find(pEdge->getDestNode())->second.nodeName;
+            std::string src = pGraph->mNodeData.find(pEdge->getSourceNode())->second.nodeName;
+
+            if (mNameToIndex.find(src) != mNameToIndex.end() && 
+                mNameToIndex.find(dst) != mNameToIndex.end())
+            {
+                dst += std::string(".") + pGraph->mEdgeData[i].dstField;
+                src += std::string(".") + pGraph->mEdgeData[i].srcField;
+
+                addEdge(src, dst);
+            }
         }
 
         mRecompile = true;

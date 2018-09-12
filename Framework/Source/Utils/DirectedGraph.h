@@ -179,6 +179,7 @@ namespace Falcor
         }
 
         uint32_t getCurrentNodeId() const { return mCurrentNodeId; }
+        uint32_t getCurrentEdgeId() const { return mCurrentEdgeId; }
      private:
         DirectedGraph() = default;
 

@@ -51,7 +51,7 @@ private:
     void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
     
     void createDefaultGraph(SampleCallbacks* pSample);
-    void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy, const std::string& fileName );
+    void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy, const std::string& fileName, const std::string& name);
     void resetGraphOutputs();
     void updateOutputDropdown(const std::string& passName);
 
@@ -84,6 +84,7 @@ private:
         uint32_t mGraphOutputIndex = 0;
         bool mEnableDepthPrePass = true;
         std::string mFileName;
+        std::string mName;
         std::vector< RenderGraph::OutputInfo > mCurrentOutputs;
         std::unordered_set<std::string> mOriginalOutputNames;
         std::vector<std::string> mOutputNames;
