@@ -362,7 +362,7 @@ void RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
 {
     RenderGraph::SharedPtr pGraph = createGraph(pSample);
     RenderGraph::SharedPtr pGraphCpy = createGraph(pSample);
-    insertNewGraph(pGraph, pGraphCpy, "", "");
+    insertNewGraph(pGraph, pGraphCpy, "", "forward_renderer");
 }
 
 void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy, 
