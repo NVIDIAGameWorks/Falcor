@@ -48,7 +48,7 @@ namespace Falcor
 
     void DepthPass::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(mDepthFormat);
+        reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(mDepthFormat).setSampleCount(0);
     }
 
     void DepthPass::setScene(const Scene::SharedPtr& pScene)
