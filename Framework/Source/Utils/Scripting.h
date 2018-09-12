@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Externals/pybind11-2.2.3/include/pybind11/pybind11.h"
+#include "Externals/pybind11/include/pybind11/pybind11.h"
 
 namespace Falcor
 {

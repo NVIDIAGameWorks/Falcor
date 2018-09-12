@@ -321,7 +321,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     SampleConfig config;
     config.windowDesc.title = "Render Graph Viewer";
     config.windowDesc.resizableWindow = true;
-    config.windowDesc.fullScreen = true;
     Sample::run(config, pRenderer);
     return 0;
 }

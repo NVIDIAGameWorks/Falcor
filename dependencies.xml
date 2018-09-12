@@ -44,4 +44,10 @@
     <dependency name="dxcompiler" linkPath="Framework/Externals/dxcompiler">
         <package name="dxcompiler" version="10.0.17134.0" />
     </dependency>
+    <dependency name="python" linkPath="Framework/Externals/Python">
+        <package name="python" version="3.7.0-windows-x64" platforms="win" />
+    </dependency>
+    <dependency name="pybind11" linkPath="Framework/Externals/pybind11">
+        <package name="pybind11" version="2.2.3" />
+    </dependency>
 </project>

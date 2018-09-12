@@ -27,8 +27,8 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Scripting.h"
-#include "Externals/pybind11-2.2.3/include/pybind11/embed.h"
-#include "Externals/pybind11-2.2.3/include/pybind11/stl.h"
+#include "Externals/pybind11/include/pybind11/embed.h"
+#include "Externals/pybind11/include/pybind11/stl.h"
 #include "StringUtils.h"
 #include "Utils/Dictionary.h"
 
@@ -139,7 +139,7 @@ namespace Falcor
         if (!sRunning)
         {
             sRunning = true;
-            static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python37");
+            static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python");
             Py_SetPythonHome(pythonHome.c_str());
 
             try
