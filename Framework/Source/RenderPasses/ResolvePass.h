@@ -40,10 +40,12 @@ namespace Falcor
         */
         static SharedPtr create(const Dictionary& dictionary = {});
 
+        void setFormat(ResourceFormat format) { mFormat = format; }
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
 
     private:
         ResolvePass();
+        ResourceFormat mFormat;
     };
 }

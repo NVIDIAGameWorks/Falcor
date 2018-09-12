@@ -45,7 +45,7 @@ namespace Falcor
     {
         static const std::shared_ptr<Resource> pNull;
         auto extIt = mExternalResources.find(name);
-        
+
         // Search external resources if not found in render graph resources
         if (extIt == mExternalResources.end())
         {
@@ -80,7 +80,7 @@ namespace Falcor
 
     /** Overwrite previously unknown/unspecified fields with specified ones.
 
-        If a field property is specified both in the existing cache, as well as the input properties, 
+        If a field property is specified both in the existing cache, as well as the input properties,
         a warning will be logged and the cached properties will not be changed.
     */
     bool mergeFields(RenderPassReflection::Field& base, const RenderPassReflection::Field& newField, const std::string& newFieldName)
@@ -94,7 +94,7 @@ namespace Falcor
     var = base.get##dim(); \
     if (newField.get##dim() != 0) { \
         if (base.get##dim() == 0) var = newField.get##dim(); \
-        else warningMsg += std::string(#dim) + " already specified."; }
+        else warningMsg += " " + std::string(#dim) + " already specified. "; }
 
         uint32_t w = 0, h = 0, d = 0;
         get_dim(w, Width);
@@ -106,13 +106,23 @@ namespace Falcor
         if (newField.getFormat() != ResourceFormat::Unknown)
         {
             if (base.getFormat() == ResourceFormat::Unknown) base.setFormat(newField.getFormat());
-            else warningMsg += " Format already specified.";
+            else warningMsg += " Format already specified. ";
         }
 
-        if (warningMsg.empty() == false)
+        // Merge sample counts
+        if (newField.getSampleCount() != 0)
         {
-            logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
-            return false;
+            // if base field doesn't have anything specified, apply new property
+            if (base.getSampleCount() == 0)
+            {
+                base.setSampleCount(newField.getSampleCount());
+            }
+            // if they differ in any other way, that is invalid
+            else if (base.getSampleCount() != newField.getSampleCount())
+            {
+                warningMsg += " Cannot merge sample count specified by " + newFieldName + ". ";
+                warningMsg += newFieldName + " has sample count " + std::to_string(newField.getSampleCount()) + ", existing merged properties has sample count " + std::to_string(base.getSampleCount());
+            }
         }
 
         Resource::BindFlags baseFlags = base.getBindFlags();
@@ -121,12 +131,18 @@ namespace Falcor
         if ((is_set(baseFlags, Resource::BindFlags::RenderTarget) && is_set(newFlags, Resource::BindFlags::DepthStencil)) ||
             (is_set(baseFlags, Resource::BindFlags::DepthStencil) && is_set(newFlags, Resource::BindFlags::RenderTarget)))
         {
-            logWarning("ResourceCache: Cannot merge field " + newFieldName + ", usage contained both RenderTarget and DepthStencil bind flags.");
+            warningMsg += " Usage contained both RenderTarget and DepthStencil bind flags.";
             return false;
         }
         else
         {
             base.setBindFlags(baseFlags | newFlags);
+        }
+
+        if (warningMsg.empty() == false)
+        {
+            logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
+            return false;
         }
 
         return true;
