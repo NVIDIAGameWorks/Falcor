@@ -40,10 +40,10 @@ namespace Falcor
 
     SkyBox::SkyBox() : RenderPass("SkyBox") {}
 
-    SkyBox::UniquePtr SkyBox::create(Texture::SharedPtr& pSkyTexture, Sampler::SharedPtr pSampler, bool renderStereo)
+    SkyBox::SharedPtr SkyBox::create(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, bool renderStereo)
     {
         SharedPtr pSkyBox = SharedPtr(new SkyBox());
-        if(pSkyBox->createResources(pSkyTexture, pSampler, renderStereo) == false)
+        if(pSkyBox->createResources(pTexture, pSampler, renderStereo) == false)
         {
             return nullptr;
         }
@@ -105,7 +105,7 @@ namespace Falcor
         mpVars->setTexture("gTexture", mpTexture);
     }
 
-    bool SkyBox::createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo)
+    bool SkyBox::createResources(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, bool renderStereo)
     {
         mpCubeModel = Model::createFromFile("Effects/cube.obj");
         if(mpCubeModel == nullptr)

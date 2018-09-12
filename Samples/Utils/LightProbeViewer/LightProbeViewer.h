@@ -72,7 +72,7 @@ private:
     Model::SharedPtr mpModel = nullptr;
     SixDoFCameraController mCameraController;
 
-    SkyBox::UniquePtr mpSkyBox;
+    SkyBox::SharedPtr mpSkyBox;
 
     Scene::SharedPtr mpScene;
     SceneRenderer::SharedPtr mpSceneRenderer;

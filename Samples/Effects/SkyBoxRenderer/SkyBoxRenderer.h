@@ -46,7 +46,7 @@ private:
     
     Camera::SharedPtr mpCamera;
     SixDoFCameraController::SharedPtr mpCameraController;
-    SkyBox::UniquePtr mpSkybox;  
+    SkyBox::SharedPtr mpSkybox;  
     Sampler::SharedPtr mpTriLinearSampler;
 
     static const std::string skDefaultSkyBoxTexture;

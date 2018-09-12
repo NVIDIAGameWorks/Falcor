@@ -51,7 +51,7 @@ void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::Share
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpTriLinearSampler = Sampler::create(samplerDesc);
 
-    mpSkybox = SkyBox::createFromTexture(skDefaultSkyBoxTexture, true, mpTriLinearSampler);
+    mpSkybox = SkyBox::create(skDefaultSkyBoxTexture, true, mpTriLinearSampler);
 }
 
 void SkyBoxRenderer::loadTexture()
@@ -59,7 +59,7 @@ void SkyBoxRenderer::loadTexture()
     std::string filename;
     if(openFileDialog("DDS files\0*.dds\0\0", filename))
     {
-        mpSkybox = SkyBox::createFromTexture(filename, true, mpTriLinearSampler);
+        mpSkybox = SkyBox::create(filename, true, mpTriLinearSampler);
     }
 }
 

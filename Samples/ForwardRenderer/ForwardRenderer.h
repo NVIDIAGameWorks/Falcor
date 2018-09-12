@@ -65,7 +65,7 @@ private:
     //  SkyBox Pass.
     struct
     {
-        SkyBox::UniquePtr pEffect;
+        SkyBox::SharedPtr pEffect;
         DepthStencilState::SharedPtr pDS;
         Sampler::SharedPtr pSampler;
     } mSkyBox;

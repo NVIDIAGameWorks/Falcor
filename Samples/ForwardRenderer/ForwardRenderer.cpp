@@ -202,7 +202,7 @@ void ForwardRenderer::initSkyBox(const std::string& name)
     Sampler::Desc samplerDesc;
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mSkyBox.pSampler = Sampler::create(samplerDesc);
-    mSkyBox.pEffect = SkyBox::createFromTexture(name, true, mSkyBox.pSampler);
+    mSkyBox.pEffect = SkyBox::create(name, true, mSkyBox.pSampler);
     DepthStencilState::Desc dsDesc;
     dsDesc.setDepthFunc(DepthStencilState::Func::Always);
     mSkyBox.pDS = DepthStencilState::create(dsDesc);

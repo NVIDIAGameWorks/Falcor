@@ -1,5 +1,7 @@
 v3.1.0
 ------
+- Added RenderGraph support
+- Added deprecation system
 - Addes support for analytic area lights
 - Added support for StructuredBuffers with VariableBuffer::renderUI
 - Added a ProgramBase base class for better Program/RtProgram abstraction
