@@ -52,7 +52,7 @@ namespace Falcor
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        static SharedPtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler = nullptr, bool renderStereo = false);
 
         /* Create a sky box using data from serializer
             \param[in] serializer Object to obtain initialization data
@@ -65,7 +65,7 @@ namespace Falcor
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        deprecate("3.2")
+        deprecate("3.2", "Use create() instead. Note that it returns a SharedPtr and not a UniquePtr.")
         static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         static SharedPtr create(const std::string& textureFile, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
 
@@ -112,7 +112,7 @@ namespace Falcor
         virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
     private:
         SkyBox();
-        bool createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo);
+        bool createResources(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, bool renderStereo);
 
         size_t mMatOffset;
         size_t mScaleOffset;

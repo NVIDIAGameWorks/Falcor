@@ -75,7 +75,7 @@ namespace Falcor
         \param pSrc The source FBO. Only color-texture 0 will be tone-mapped
         \param pDst The destination FBO
         */
-        deprecate("3.2")
+        deprecate("3.2", "Use the other execute() method, which accepts a single texture as the source")
         void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
 
         /** Run the tone-mapping program

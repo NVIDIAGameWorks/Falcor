@@ -118,7 +118,7 @@ void LightProbeViewer::updateLightProbe(LightProbe::SharedPtr pLightProbe)
 
     if (mpSkyBox == nullptr || pLightProbe->getOrigTexture()->getSourceFilename() != mpSkyBox->getTexture()->getSourceFilename())
     {
-        mpSkyBox = SkyBox::createFromTexture(pLightProbe->getOrigTexture()->getSourceFilename());
+        mpSkyBox = SkyBox::create(pLightProbe->getOrigTexture()->getSourceFilename());
     }
 }
 

@@ -245,8 +245,7 @@ namespace Falcor
 #include "Utils/Profiler.h"
 
 #if defined(_MSC_VER)
-#define deprecate(_ver_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_))
-#define deprecate_repl(_ver_, _new_func_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". Use " ## _new_func_ ## " instead"))
+#define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
 #define forceinline __forceinline
 #else
 #define forceinline __attribute__((always_inline))

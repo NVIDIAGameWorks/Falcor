@@ -162,43 +162,33 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
 void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
 {
-//     mpGraph = RenderGraph::create();
-//     auto pLightingPass = RenderPassLibrary::createPass("ForwardLightingPass");
-//     mpGraph->addPass(pLightingPass, "LightingPass");
-// 
-//     mpGraph->addPass(DepthPass::create(), "DepthPrePass");
-//     mpGraph->addPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
-//     mpGraph->addPass(BlitPass::create(), "BlitPass");
-//     mpGraph->addPass(ToneMapping::create(Dictionary()), "ToneMapping");
-//     mpGraph->addPass(SSAO::create(Dictionary()), "SSAO");
-//     mpGraph->addPass(FXAA::create(), "FXAA");
-// 
-//     // Add the skybox
-//     Sampler::Desc samplerDesc;
-//     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-//     mpGraph->addPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
-// 
-//     mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
-//     mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
-//     mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
-// 
-//     mpGraph->addEdge("SkyBox.target", "LightingPass.color");
-//     mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
-// 
-//     mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
-//     mpGraph->addEdge("ToneMapping.dst", "SSAO.colorIn");
-//     mpGraph->addEdge("LightingPass.normals", "SSAO.normals");
-//     mpGraph->addEdge("LightingPass.depth", "SSAO.depth");
-// 
-//     mpGraph->addEdge("SSAO.colorOut", "FXAA.src");
-//     mpGraph->addEdge("FXAA.dst", "BlitPass.src");
+    mpGraph = RenderGraph::create();
+    auto pLightingPass = RenderPassLibrary::createPass("ForwardLightingPass");
+    mpGraph->addPass(pLightingPass, "LightingPass");
 
+    mpGraph->addPass(DepthPass::create(), "DepthPrePass");
+    mpGraph->addPass(CascadedShadowMaps::create(Dictionary()), "ShadowPass");
+    mpGraph->addPass(BlitPass::create(), "BlitPass");
+    mpGraph->addPass(ToneMapping::create(Dictionary()), "ToneMapping");
+    mpGraph->addPass(FXAA::create(), "FXAA");
 
-//     auto pScripter = RenderGraphScripting::create();
-//     pScripter->runScript(ir);
-//     mpGraph = pScripter->getGraph("forward_renderer");
+    // Add the skybox
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+    mpGraph->addPass(SkyBox::create(Texture::SharedPtr(), Sampler::create(samplerDesc)), "SkyBox");
 
-    mpGraph = RenderGraphImporter::import("forward_renderer");
+    mpGraph->addEdge("DepthPrePass.depth", "ShadowPass.depth");
+    mpGraph->addEdge("DepthPrePass.depth", "LightingPass.depth");
+    mpGraph->addEdge("DepthPrePass.depth", "SkyBox.depth");
+
+    mpGraph->addEdge("SkyBox.target", "LightingPass.color");
+    mpGraph->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
+
+    mpGraph->addEdge("LightingPass.color", "ToneMapping.src");
+
+    mpGraph->addEdge("ToneMapping.dst", "FXAA.src");
+    mpGraph->addEdge("FXAA.dst", "BlitPass.src");
+
     mpGraph->setScene(mpScene);
 
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
@@ -331,6 +321,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     SampleConfig config;
     config.windowDesc.title = "Render Graph Viewer";
     config.windowDesc.resizableWindow = true;
+    config.windowDesc.fullScreen = true;
     Sample::run(config, pRenderer);
     return 0;
 }
