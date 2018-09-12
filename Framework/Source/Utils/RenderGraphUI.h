@@ -32,6 +32,7 @@
 #include "Graphics/RenderGraph/RenderGraphIR.h"
 #include "Utils/RenderGraphScripting.h"
 #include <array>
+#include <fstream>
 
 namespace Falcor
 {

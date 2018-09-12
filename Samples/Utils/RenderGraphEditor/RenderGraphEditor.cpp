@@ -211,7 +211,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
             mCurrentGraphOutput = graphOutputString[0];
             mRenderGraphUIs[mCurrentGraphIndex].addOutput(mCurrentGraphOutput);
-            mpGraphs[mCurrentGraphIndex]->setOutput(mCurrentGraphOutput, pSample->getCurrentFbo()->getColorTexture(0));
         }
     }
     mGraphOutputEditString = graphOutputString[0];
@@ -331,16 +330,18 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName)
                 continue;
             }
         }
+        else
+        {
+            mCurrentGraphIndex = mpGraphs.size();
+            mpGraphs.push_back(newGraph);
+            mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[mCurrentGraphIndex], name));
 
-        mCurrentGraphIndex = mpGraphs.size();
-        mpGraphs.push_back(newGraph);
-        mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[mCurrentGraphIndex], name));
-
-        Gui::DropdownValue nextGraphID;
-        mGraphNamesToIndex.insert(std::make_pair(name, static_cast<uint32_t>(mCurrentGraphIndex)));
-        nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
-        nextGraphID.label = name;
-        mOpenGraphNames.push_back(nextGraphID);
+            Gui::DropdownValue nextGraphID;
+            mGraphNamesToIndex.insert(std::make_pair(name, static_cast<uint32_t>(mCurrentGraphIndex)));
+            nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
+            nextGraphID.label = name;
+            mOpenGraphNames.push_back(nextGraphID);
+        }
     }
 }
 

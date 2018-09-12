@@ -94,12 +94,6 @@ namespace Falcor
             This is an alias for `getRenderPass(renderPassName)->setInput(resourceName, pResource)`
         */
         bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource);
-
-        /** Set an output resource. The name has the format `renderPassName.resourceName`.
-            This is an alias for `getRenderPass(renderPassName)->setOutput(resourceName, pResource)`
-            Calling this function will automatically mark the output as one of the graph's outputs (even if called with nullptr)
-        */
-        bool setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource);
         
         /** Returns true if a render pass exists by this name in the graph.
          */
@@ -112,7 +106,7 @@ namespace Falcor
 
         /** Mark a render-pass output as the graph's output. If the graph has no outputs it is invalid.
             The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs.
-            If the user didn't set the output resource using `setOutput()`, the graph will automatically allocate it
+            The graph will automatically allocate the output resource
         */
         void markOutput(const std::string& name);
 

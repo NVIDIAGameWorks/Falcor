@@ -139,8 +139,7 @@ namespace Falcor
         if (!sRunning)
         {
             sRunning = true;
-            // don't push this
-            static const std::wstring pythonHome = string_2_wstring("C:/Program Files (x86)/Microsoft Visual Studio/Shared/Python36_64/");// std::string(_PROJECT_DIR_) + "/../Externals/Python37");
+            static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python37");
             Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
 
             try

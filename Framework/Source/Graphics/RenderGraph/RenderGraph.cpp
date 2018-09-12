@@ -618,17 +618,6 @@ namespace Falcor
         return true;
     }
 
-    bool RenderGraph::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        str_pair strPair;
-        RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
-        if (pPass == nullptr) return false;
-        mpResourcesCache->registerExternalResource(name, pResource);
-        markOutput(name);
-        if (!pResource) mRecompile = true;
-        return true;
-    }
-
     void RenderGraph::markOutput(const std::string& name)
     {
         str_pair strPair;

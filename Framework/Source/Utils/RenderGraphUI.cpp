@@ -34,7 +34,6 @@
 // TODO Don't do this
 #include "Externals/dear_imgui/imgui_internal.h"
 #include <experimental/filesystem>
-#include <fstream>
 #include <functional>
 
 namespace Falcor
@@ -502,17 +501,18 @@ namespace Falcor
         if ((mTimeSinceLastUpdate += lastFrameTime) < kUpdateTimeInterval) return;
         mTimeSinceLastUpdate = 0.0f;
         if (!mUpdateCommands.size()) return;
-        static std::ofstream ofstream(filePath, std::ios_base::out);
-        size_t totalSize = 0;
-        
-        ofstream.write(reinterpret_cast<const char*>(&totalSize), sizeof(size_t));
-        ofstream.write(mUpdateCommands.c_str(), mUpdateCommands.size());
+
+        // only send delta of updates once the graph is valid
+        std::string log;
+        if (!mpRenderGraph->isValid(log)) return;
+
+        static std::ofstream outputFileStream(filePath, std::ios_base::out);
+        size_t size = mUpdateCommands.size();
+
+        outputFileStream.write((const char*)&size, sizeof(size_t));
+        outputFileStream.write(mUpdateCommands.c_str(), mUpdateCommands.size());
         mUpdateCommands.clear();
-        
-        // rewind and write the size of the script changes for the viewer to execute
-        ofstream.seekp(0, std::ios::beg);
-        ofstream.write(reinterpret_cast<const char*>(&totalSize), sizeof(size_t));
-        ofstream.seekp(0, std::ios::beg);
+        outputFileStream.seekp(0, std::ios::beg);
 
         std::experimental::filesystem::last_write_time(filePath, std::chrono::system_clock::now());
     }
@@ -826,12 +826,8 @@ namespace Falcor
                     mpRenderGraph->getPass(mpNodeGraphEditor->getRenderUINodeName())->renderUI(pGui, nullptr);
                 }
                 
-                // push serialized data as update command for live preview
+                // TODO -- push dictionary data as update command for live preview
                 
-                // TODO -- execute command for click and drop
-                // pushUpdateCommand(RenderGraphLoader::saveRenderGraphAsUpdateScript(*mpRenderGraph));
-
-
                 ImGui::EndPopup();
             }
         }

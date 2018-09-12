@@ -278,7 +278,7 @@ namespace Falcor
         assert(hFile != INVALID_HANDLE_VALUE);
 
         // overlapped struct requires unique event handle to be valid
-        OVERLAPPED overlapped;
+        OVERLAPPED overlapped{};
 
         while (true)
         {

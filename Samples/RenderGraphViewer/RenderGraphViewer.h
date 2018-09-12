@@ -51,7 +51,7 @@ private:
     void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
     
     void createDefaultGraph(SampleCallbacks* pSample);
-    void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const RenderGraph::SharedPtr& pGraphCpy, const std::string& fileName, const std::string& name);
+    void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const std::string& fileName, const std::string& name);
     void resetGraphOutputs();
     void updateOutputDropdown(const std::string& passName);
 
@@ -76,10 +76,9 @@ private:
     std::string mFocusedRenderGraphName;
     std::string mEditingRenderGraphName;
 
-    struct PerGraphInfo
+    struct GraphViewerInfo
     {
         RenderGraph::SharedPtr mpGraph;
-        RenderGraph::SharedPtr mpGraphCpy;
         std::string mOutputString = "BlitPass.dst";
         uint32_t mGraphOutputIndex = 0;
         bool mEnableDepthPrePass = true;
@@ -94,6 +93,6 @@ private:
 
     Gui::DropdownList mRenderGraphsList;
     uint32_t mActiveGraphIndex;
-    std::unordered_map<std::string, PerGraphInfo> mpRenderGraphs;
+    std::unordered_map<std::string, GraphViewerInfo> mpRenderGraphs;
     std::unordered_set<std::string> mActiveGraphNames; // all graphs that have previewing graph outputs
 };

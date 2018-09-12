@@ -189,7 +189,7 @@ namespace Falcor
         uint32_t mCurrentEdgeId = 0;
 
         template<bool removeSrc>
-        void removeEdgeByNode(std::vector<uint32_t>& edges, uint32_t nodeToRemove, std::vector<uint32_t> removedEdges)
+        void removeEdgeByNode(std::vector<uint32_t>& edges, uint32_t nodeToRemove, std::vector<uint32_t>& removedEdges)
         {
             for (size_t i = 0; i < edges.size();)
             {
