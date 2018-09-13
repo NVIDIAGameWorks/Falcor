@@ -42,36 +42,33 @@ namespace Falcor
         reflector.addInput(kSrc);
     }
 
+    static bool parseDictionary(BlitPass* pPass, const Dictionary& dict)
+    {
+        for (auto v = dict.begin(); v != dict.end(); v++)
+        {
+            if (v.key() == kFilter)
+            {
+                Sampler::Filter f = (Sampler::Filter)v.val();
+                pPass->setFilter(f);
+            }
+            else
+            {
+                logWarning("Unknown field `" + v.key() + " in a BlitPass dictionary");
+            }
+        }
+        return true;
+    }
+
     BlitPass::SharedPtr BlitPass::create(const Dictionary& dict)
     {
         SharedPtr pPass = SharedPtr(new BlitPass);
-
-//         try
-//         {
-//             for (const auto& val : dict)
-//             {
-//                 if (val.first == kFilter) pPass->setFilter((Sampler::Filter)val.second.asUint());
-//                 else
-//                 {
-//                     logError("BlitPass::create() failed. Unknown field (`" + val.first + "`) found in the dictionary");
-//                     return nullptr;
-//                 }
-//             }
-//         }
-//         catch (const std::exception& e)
-//         {
-//             logError(std::string("BlitPass::create() failed. ") + e.what());
-//             return nullptr;
-//         }
-
-        return pPass;
+        return parseDictionary(pPass.get(), dict) ? pPass : nullptr;
     }
 
     Dictionary BlitPass::getScriptingDictionary() const
     {
         Dictionary dict;
-        BlitPass default;
-        if (default.mFilter != mFilter) dict[kFilter] = (uint32_t)mFilter;
+        dict[kFilter] = mFilter;
         return dict;
     }
 

@@ -28,15 +28,39 @@
 #include "Framework.h"
 #include "EnumsScriptBindings.h"
 #include "Scripting.h"
+#include "API/Sampler.h"
 
 namespace Falcor
 {
-    void EnumsScriptBindings::registerScriptingObjects(pybind11::module& m)
+#define val(a) value(to_string(a).c_str(), a)
+
+    static void globalEnums(pybind11::module& m)
     {
+        // Resource formats
         auto& formats = pybind11::enum_<ResourceFormat>(m, "Format");
         for (uint32_t i = 0; i < (uint32_t)ResourceFormat::Count; i++)
         {
-            formats.value(to_string(ResourceFormat(i)).c_str(), ResourceFormat(i));
+            formats.val(ResourceFormat(i));
         }
+
+        // Comparison mode
+        auto& comparison = pybind11::enum_<ComparisonFunc>(m, "Comparison");
+        comparison.val(ComparisonFunc::Disabled).val(ComparisonFunc::LessEqual).val(ComparisonFunc::GreaterEqual).val(ComparisonFunc::Less).val(ComparisonFunc::Greater);
+        comparison.val(ComparisonFunc::Equal).val(ComparisonFunc::NotEqual).val(ComparisonFunc::Always).val(ComparisonFunc::Never);
+    }
+
+    static void samplerState(pybind11::module& m)
+    {
+        auto& filter = pybind11::enum_<Sampler::Filter>(m, "Filter");
+        filter.val(Sampler::Filter::Linear).val(Sampler::Filter::Point);
+
+        auto& addressing = pybind11::enum_<Sampler::AddressMode>(m, "AddressMode");
+        addressing.val(Sampler::AddressMode::Wrap).val(Sampler::AddressMode::Mirror).val(Sampler::AddressMode::Clamp).val(Sampler::AddressMode::Border).val(Sampler::AddressMode::MirrorOnce);
+    }
+
+    void EnumsScriptBindings::registerScriptingObjects(pybind11::module& m)
+    {
+        globalEnums(m);
+        samplerState(m);
     }
 }
