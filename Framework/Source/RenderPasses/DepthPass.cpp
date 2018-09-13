@@ -35,17 +35,17 @@ namespace Falcor
 
     static bool parseDictionary(DepthPass* pPass, const Dictionary& dict)
     {
-        for (const auto& v : dict)
+        for (auto v = dict.begin() ; v != dict.end() ; v++)
         {
-            if (v.first == kDepthFormat)
+            if (v.key() == kDepthFormat)
             {
-                ResourceFormat f = (ResourceFormat)(v.second.asUint());
+                ResourceFormat f = (ResourceFormat)(int)v.val();
                 pPass->setDepthBufferFormat(f);
             }
             else
             {
-                logWarning("Unknown field `" + v.first + " in a DepthPass dictionary");
-            }
+                logWarning("Unknown field `" + v.key() + " in a DepthPass dictionary");
+           }
         }
         return true;
     }
@@ -53,7 +53,7 @@ namespace Falcor
     Dictionary DepthPass::getScriptingDictionary() const
     {
         Dictionary d;
-        d[kDepthFormat] = (uint32_t)mDepthFormat;
+        d[kDepthFormat] = (int)mDepthFormat;
         return d;
     }
 

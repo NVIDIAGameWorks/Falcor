@@ -76,7 +76,8 @@ namespace Falcor
     SkyBox::SharedPtr SkyBox::create(const Dictionary& dict)
     {
         std::string filename;
-        if (dict.keyExists(kSkyboxFile)) filename = dict[kSkyboxFile].asString();
+        Dictionary::Value v = dict[kSkyboxFile];
+        if (dict.keyExists(kSkyboxFile)) filename = (std::string&)dict[kSkyboxFile];
 
         return create(filename);
     }
