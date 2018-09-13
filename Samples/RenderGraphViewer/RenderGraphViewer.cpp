@@ -182,22 +182,22 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         std::vector<std::string> windowsToRemove;
         for (auto& nameWindow : mDebugWindowInfos)
         {
-            DebugWindowInfo& debugWindowInfo = nameWindow.second;
+            const DebugWindowInfo& debugWindowInfo = nameWindow.second;
             RenderGraph::SharedPtr pPreviewGraph = mpRenderGraphs[debugWindowInfo.mGraphName].mpGraph;
 
             pGui->pushWindow((debugWindowInfo.mGraphName + " : " + nameWindow.first).c_str(), 330, 268);
         
-            if (pGui->addDropdown("##Render Graph Outputs", mpRenderGraphs[debugWindowInfo.mGraphName].mOutputDropdown, debugWindowInfo.mNextOutputIndex))
+            if (pGui->addDropdown("##Render Graph Outputs", mpRenderGraphs[debugWindowInfo.mGraphName].mOutputDropdown, nameWindow.second.mNextOutputIndex))
             {
-                debugWindowInfo.mOutputName = mpRenderGraphs[debugWindowInfo.mGraphName].mOutputDropdown[debugWindowInfo.mNextOutputIndex].label;
-                debugWindowInfo.mRenderOutput = true;
+                nameWindow.second.mOutputName = mpRenderGraphs[debugWindowInfo.mGraphName].mOutputDropdown[debugWindowInfo.mNextOutputIndex].label;
+                nameWindow.second.mRenderOutput = true;
             }
 
             if (pGui->addButton("Close"))
             {
                 // mark to close after window updates
                 windowsToRemove.push_back(nameWindow.first);
-                debugWindowInfo.mRenderOutput = false;
+                nameWindow.second.mRenderOutput = false;
 
                 // unmark graph output checking the original graph state.
                 if (graphInfo.mOriginalOutputNames.find(debugWindowInfo.mOutputName) == graphInfo.mOriginalOutputNames.end())
@@ -215,7 +215,8 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 // mark as graph output
                 pPreviewGraph->markOutput(debugWindowInfo.mOutputName);
                 Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(pPreviewGraph->getOutput(debugWindowInfo.mOutputName));
-               
+                auto format = pPreviewTex->getFormat();
+
                 if (pGui->addButton("Save to File", true))
                 {
                     std::string filePath;
@@ -257,11 +258,11 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 float imageAspectRatio = static_cast<float>(texHeight) / static_cast<float>(texWidth);
                 // get size of window to scale image correctly
                 imagePreviewSize.y = imagePreviewSize.x * imageAspectRatio;
-                Texture::SharedPtr pTexture = Texture::create2D(static_cast<uint32_t>(imagePreviewSize.x), 
-                    static_cast<uint32_t>(imagePreviewSize.y), pPreviewTex->getFormat());
-                //pSample->getRenderContext()->copyResource(pTexture.get(), pPreviewTex.get());
-                pSample->getRenderContext()->blit(pPreviewTex->getSRV(), pTexture->getRTV());
-                pGui->addImage(nameWindow.first.c_str(), pTexture, imagePreviewSize);
+                // blitting here crashes in D3D. using resource directly
+                // Texture::SharedPtr pTexture = Texture::create2D(static_cast<uint32_t>(imagePreviewSize.x), 
+                //     static_cast<uint32_t>(imagePreviewSize.y), pPreviewTex->getFormat(), 1, 1);
+                // pSample->getRenderContext()->blit(pPreviewTex->getSRV(), pTexture->getRTV());
+                pGui->addImage(nameWindow.first.c_str(), pPreviewTex, imagePreviewSize);
             }
 
             pGui->popWindow();

@@ -713,7 +713,7 @@ namespace Falcor
                 {
                     RenderGraph::EdgeData& edgeData = edgeIt->second;
                     // TODO -- get can autoresolve state from graph function
-                    int32_t autoResolve = true;
+                    bool autoResolve = true; // mpRenderGraph->canAutoResolve(edgeData.srcField, edgeData.dstField);
 
                     pGui->addText("Src Field : ");
                     pGui->addText(edgeData.srcField.c_str(), true);
@@ -732,7 +732,7 @@ namespace Falcor
                     bool setAutoResolve = false;
 
                     if (mShowWarningPopup)
-                    { // TODO -- move this to begin 
+                    { // TODO -- move this to add edge 
                         if (ImGui::BeginPopup("Auto-Resolve Warning"))
                         {
                             pGui->addText("Auto-Resolve warning");
