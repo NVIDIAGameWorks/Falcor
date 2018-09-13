@@ -25,18 +25,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "ScriptingEnums.h"
-#include "Scripting.h"
+#pragma once
+
+namespace pybind11
+{
+    class module;
+};
 
 namespace Falcor
 {
-    void ScriptingEnums::registerScriptingObjects(pybind11::module& m)
+    class EnumsScriptBindings
     {
-        auto& formats = pybind11::enum_<ResourceFormat>(m, "Format");
-        for (uint32_t i = 0; i < (uint32_t)ResourceFormat::Count; i++)
-        {
-            formats.value(to_string(ResourceFormat(i)).c_str(), ResourceFormat(i));
-        }
-    }
+    public:
+        static void registerScriptingObjects(pybind11::module& m);
+    };
 }

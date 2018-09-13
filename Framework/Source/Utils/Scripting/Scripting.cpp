@@ -33,7 +33,7 @@
 #include "Utils/Dictionary.h"
 
 #include "Graphics/RenderGraph/RenderGraphScripting.h"
-#include "ScriptingEnums.h"
+#include "EnumsScriptBindings.h"
 
 using namespace pybind11::literals;
 
@@ -86,7 +86,7 @@ namespace Falcor
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
         RenderGraphScripting::registerScriptingObjects(m);
-        ScriptingEnums::registerScriptingObjects(m);
+        EnumsScriptBindings::registerScriptingObjects(m);
     }
 
     bool Scripting::sRunning = Scripting::start();

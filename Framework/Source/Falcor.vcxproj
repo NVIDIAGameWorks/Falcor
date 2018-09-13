@@ -564,7 +564,7 @@
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
     <ClCompile Include="Utils\Scripting\Scripting.cpp" />
-    <ClCompile Include="Utils\Scripting\ScriptingEnums.cpp" />
+    <ClCompile Include="Utils\Scripting\EnumsScriptBindings.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
     <ClCompile Include="Utils\VariablesBufferUI.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
@@ -1155,7 +1155,7 @@
     <ClInclude Include="Utils\PythonEmbedding.h" />
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
     <ClInclude Include="Utils\Scripting\Scripting.h" />
-    <ClInclude Include="Utils\Scripting\ScriptingEnums.h" />
+    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />

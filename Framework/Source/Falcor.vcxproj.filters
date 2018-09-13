@@ -579,7 +579,7 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\Scripting\ScriptingEnums.cpp">
+    <ClCompile Include="Utils\Scripting\EnumsScriptBindings.cpp">
       <Filter>Utils\Scripting</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1799,7 +1799,7 @@
     <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Scripting\ScriptingEnums.h">
+    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h">
       <Filter>Utils\Scripting</Filter>
     </ClInclude>
   </ItemGroup>
