@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "Utils/RenderGraphUI.h"
+#include "Graphics/RenderGraph/RenderGraphUI.h"
 #include <vector>
 
 using namespace Falcor;

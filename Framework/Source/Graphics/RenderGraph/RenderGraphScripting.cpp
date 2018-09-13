@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "RenderGraphScripting.h"
 #include "Framework.h"
-#include "Scripting.h"
+#include "Utils/Scripting/Scripting.h"
 #include <fstream>
 #include <sstream>
 #include "Graphics/RenderGraph/RenderPassesLibrary.h"

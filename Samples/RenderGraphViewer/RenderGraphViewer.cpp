@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphViewer.h"
-#include "Utils/RenderGraphScripting.h"
+#include "Graphics/RenderGraph/RenderGraphScripting.h"
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
@@ -87,6 +87,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mFocusedRenderGraphName  = std::string(mRenderGraphsList[mActiveGraphIndex].label);
     }
 
+
     if (!mEditorRunning && pGui->addButton("Open RenderGraph Editor"))
     {
         resetGraphOutputs();
@@ -108,7 +109,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mEditingRenderGraphName = mFocusedRenderGraphName;
         pGraph->markOutput(graphInfo.mOutputString);
     }
-    
+
+    if (pGraph && pGui->addButton("Save Graph"))
+    {
+        std::string filename;
+        if (saveFileDialog("", filename)) RenderGraphExporter::save(pGraph, graphInfo.mName, filename);
+    }
+
     if (mEditorProcess && mEditorRunning)
     {
         if (!isProcessRunning(mEditorProcess))

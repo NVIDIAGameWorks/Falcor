@@ -27,8 +27,11 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/RenderGraph/RenderGraph.h"
-// TODO Matt
-#include "Externals/pybind11/include/pybind11/pybind11.h"
+
+namespace pybind11
+{
+    class module;
+};
 
 namespace Falcor
 {

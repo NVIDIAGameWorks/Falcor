@@ -30,7 +30,7 @@
 #include "Graphics/RenderGraph/RenderPass.h"
 #include "Graphics/RenderGraph/RenderPassReflection.h"
 #include "Graphics/RenderGraph/RenderGraphIR.h"
-#include "Utils/RenderGraphScripting.h"
+#include "Graphics/RenderGraph/RenderGraphScripting.h"
 #include <array>
 #include <fstream>
 
@@ -75,17 +75,13 @@ namespace Falcor
 
         RenderGraphUI(const RenderGraph::SharedPtr& renderGraphRef, const std::string& renderGraphName);
 
-        // 
-        // RenderGraphUI(const RenderGraphUI& rref);
-        // 
-
         ~RenderGraphUI();
 
         /** Display enter graph in GUI.
         */
         void renderUI(Gui *pGui);
 
-        /** Clear graph ui for rebuiding node graph
+        /** Clear graph ui for rebuilding node graph
         */
         void reset();
 

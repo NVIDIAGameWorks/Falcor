@@ -29,10 +29,10 @@
 #include "Scripting.h"
 #include "Externals/pybind11/include/pybind11/embed.h"
 #include "Externals/pybind11/include/pybind11/stl.h"
-#include "StringUtils.h"
+#include "Utils/StringUtils.h"
 #include "Utils/Dictionary.h"
 
-#include "RenderGraphScripting.h"
+#include "Graphics/RenderGraph/RenderGraphScripting.h"
 
 using namespace pybind11::literals;
 

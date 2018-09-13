@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "RenderGraphIR.h"
 #include "RenderGraph.h"
-#include "Utils/RenderGraphScripting.h"
+#include "RenderGraphScripting.h"
 #include "Utils/Dictionary.h"
 
 namespace Falcor
@@ -88,7 +88,7 @@ namespace Falcor
         mIR += mIndentation + passName + " = ";
         if(dictionary.size())
         {
-            std::string dictionaryStr = "\"{" + dictionary.toString() + "}\"";
+            std::string dictionaryStr = "{" + dictionary.toString() + "}";
             mIR += funcCall(RenderGraphScripting::kCreatePass, addQuotes(passClass), dictionaryStr);
         }
         else

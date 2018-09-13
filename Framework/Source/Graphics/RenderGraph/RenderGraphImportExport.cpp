@@ -27,7 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "RenderGraphImportExport.h"
-#include "Utils/RenderGraphScripting.h"
+#include "RenderGraphScripting.h"
 #include "RenderGraphIR.h"
 #include <fstream>
 
