@@ -433,11 +433,7 @@ namespace Falcor
 
                 if (is_set(field.getType(), RenderPassReflection::Field::Type::Output))
                 {
-                    // If a graph output has an external resource set, getResource will return a valid pointer
-                    bool allocate = (isGraphOutput(nodeIndex, field.getName()) && mpResourcesCache->getResource(fullFieldName) == nullptr) ||
-                        (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false);
-
-                    if (allocate)
+                    if (isGraphOutput(nodeIndex, field.getName()) || (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false))
                     {
                         mpResourcesCache->registerField(fullFieldName, field, uint32_t(i));
                     }

@@ -44,10 +44,10 @@ namespace Falcor
     const std::shared_ptr<Resource>& ResourceCache::getResource(const std::string& name) const
     {
         static const std::shared_ptr<Resource> pNull;
-        auto extIt = mExternalResources.find(name);
+        auto extIt = mExternalInputs.find(name);
 
         // Search external resources if not found in render graph resources
-        if (extIt == mExternalResources.end())
+        if (extIt == mExternalInputs.end())
         {
             const auto& it = mNameToIndex.find(name);
             if (it == mNameToIndex.end())
@@ -61,21 +61,21 @@ namespace Falcor
         return extIt->second;
     }
 
-    void ResourceCache::registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    void ResourceCache::registerExternalInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        mExternalResources[name] = pResource;
+        mExternalInputs[name] = pResource;
     }
 
-    void ResourceCache::removeExternalResource(const std::string& name)
+    void ResourceCache::removeExternalInput(const std::string& name)
     {
-        auto it = mExternalResources.find(name);
-        if (it == mExternalResources.end())
+        auto it = mExternalInputs.find(name);
+        if (it == mExternalInputs.end())
         {
             logWarning("ResourceCache::removeExternalResource: " + name + " does not exist.");
             return;
         }
 
-        mExternalResources.erase(it);
+        mExternalInputs.erase(it);
     }
 
     /** Overwrite previously unknown/unspecified fields with specified ones.

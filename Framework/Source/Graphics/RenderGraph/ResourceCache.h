@@ -49,9 +49,9 @@ namespace Falcor
             ResourceFormat format = ResourceFormat::Unknown;    ///< Format to use for texture creation
         };
 
-        // Add/Remove reference to a resource not owned by the cache
-        void registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
-        void removeExternalResource(const std::string& name);
+        // Add/Remove reference to a graph input resource not owned by the cache
+        void registerExternalInput(const std::string& name, const std::shared_ptr<Resource>& pResource);
+        void removeExternalInput(const std::string& name);
 
         /** Register a field that requires resources to be allocated.
             \param[in] name String in the format of PassName.FieldName
@@ -95,7 +95,7 @@ namespace Falcor
         std::vector<ResourceData> mResourceData;
 
         // References to output resources not to be allocated by the render graph
-        std::unordered_map<std::string, std::shared_ptr<Resource>> mExternalResources;
+        std::unordered_map<std::string, std::shared_ptr<Resource>> mExternalInputs;
     };
 
 }

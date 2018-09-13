@@ -129,7 +129,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 graphOutput.value = i++;
                 renderGraphOutputs.push_back(graphOutput);
             }
-
         }
         else
         {
@@ -150,10 +149,9 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (renderGraphOutputs.size() && pGui->addDropdown("Render Graph Output", renderGraphOutputs, mGraphOutputIndex))
         {
-            mpGraph->setOutput(mOutputString, nullptr);
             mpGraph->unmarkOutput(mOutputString);
             mOutputString = renderGraphOutputs[mGraphOutputIndex].label;
-            mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
+            mpGraph->markOutput(mOutputString);
         }
         
         mpGraph->renderUI(pGui, "Render Graph");
