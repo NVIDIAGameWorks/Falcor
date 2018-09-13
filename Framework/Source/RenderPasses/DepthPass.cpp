@@ -39,7 +39,7 @@ namespace Falcor
         {
             if (v.key() == kDepthFormat)
             {
-                ResourceFormat f = (ResourceFormat)(int)v.val();
+                ResourceFormat f = (ResourceFormat)v.val();
                 pPass->setDepthBufferFormat(f);
             }
             else
@@ -53,7 +53,7 @@ namespace Falcor
     Dictionary DepthPass::getScriptingDictionary() const
     {
         Dictionary d;
-        d[kDepthFormat] = (int)mDepthFormat;
+        d[kDepthFormat] = mDepthFormat;
         return d;
     }
 
