@@ -416,7 +416,7 @@ namespace Falcor
             RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
             const RenderPassReflection& passReflection = mPassReflectionMap.at(pSrcPass);
 
-            const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
+            const auto isGraphOutputFunc = [=](uint32_t nodeId, const std::string& field)
             {
                 for (const auto& out : mOutputs)
                 {
@@ -433,9 +433,13 @@ namespace Falcor
 
                 if (is_set(field.getType(), RenderPassReflection::Field::Type::Output))
                 {
-                    if (isGraphOutput(nodeIndex, field.getName()) || (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false))
+                    bool isGraphOutput = isGraphOutputFunc(nodeIndex, field.getName());
+                    if (isGraphOutput || (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false))
                     {
                         mpResourcesCache->registerField(fullFieldName, field, uint32_t(i));
+
+                        // Resource lifetime for graph outputs must extend to end of graph execution
+                        if(isGraphOutput) mpResourcesCache->registerField(fullFieldName, field, uint32_t(-1));
                     }
                 }
             }
