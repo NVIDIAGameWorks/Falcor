@@ -106,7 +106,7 @@ namespace Falcor
         if (newField.getFormat() != ResourceFormat::Unknown)
         {
             if (base.getFormat() == ResourceFormat::Unknown) base.setFormat(newField.getFormat());
-            else warningMsg += " Format already specified. ";
+            else if (base.getFormat() != newField.getFormat()) warningMsg += " Format already specified. ";
         }
 
         // Merge sample counts
