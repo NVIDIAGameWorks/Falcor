@@ -68,7 +68,6 @@ private:
 
     std::unordered_map<std::string, DebugWindowInfo> mDebugWindowInfos;
     bool mShowAllOutputs = true;
-
     bool mEditorRunning = false;
     bool mApplyGraphChanges = false;
     size_t mEditorProcess = 0;

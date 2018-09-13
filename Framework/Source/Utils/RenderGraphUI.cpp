@@ -29,7 +29,7 @@
 #include "RenderGraphUI.h"
 #include "Utils/Gui.h"
 #   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
-#include "../Samples/Utils/RenderGraphEditor/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
+#include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 #include "Externals/dear_imgui/imgui.h"
 // TODO Don't do this
 #include "Externals/dear_imgui/imgui_internal.h"
@@ -107,8 +107,8 @@ namespace Falcor
         // callback function defined in derived class definition to access data without making class public to the rest of Falcor
         static void setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor);
         // callback for ImGui setting link between to nodes in the visual interface
-        static void setLinkFromGui(const ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
-        static void setLinkFromGraph(const ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
+        static void setLinkFromGui( ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
+        static void setLinkFromGraph( ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
         static ImGui::Node* NodeGraphEditorGui::createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&);
 
         RenderGraphUI* mpRenderGraphUI;
@@ -317,7 +317,7 @@ namespace Falcor
         return newNode;
     }
 
-    void RenderGraphUI::NodeGraphEditorGui::setLinkFromGui(const ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
+    void RenderGraphUI::NodeGraphEditorGui::setLinkFromGui(ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
     {
         if (state == ImGui::NodeGraphEditor::LinkState::LS_ADDED)
         {
@@ -334,7 +334,7 @@ namespace Falcor
 
             bool addStatus = false;
             addStatus = pGraphEditorGui->getRenderGraphUI()->addLink(
-                inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot));
+                inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot), link.LinkColor);
 
             // immediately remove link if it is not a legal edge in the render graph
             if (!addStatus && !editor.isInited()) //  only call after graph is setup
@@ -347,7 +347,7 @@ namespace Falcor
     }
 
     // callback for ImGui setting link from render graph changes
-    void RenderGraphUI::NodeGraphEditorGui::setLinkFromGraph(const ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
+    void RenderGraphUI::NodeGraphEditorGui::setLinkFromGraph(ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
     {
         if (state == ImGui::NodeGraphEditor::LinkState::LS_ADDED)
         {
@@ -418,7 +418,21 @@ namespace Falcor
         mShouldUpdate = true;
     }
 
-    bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
+    bool RenderGraphUI::autoResolveWarning(const std::string& srcString, const std::string& dstString)
+    {
+        std::string warningMsg = std::string("Warning: Edge ") + srcString + " - " + dstString + " can auto-resolve.\n";
+        MsgBoxButton button = msgBox(warningMsg, MsgBoxType::OkCancel);
+
+        if (button == MsgBoxButton::Ok)
+        {
+            mLogString += warningMsg;
+            return true;
+        }
+        
+        return false;
+    }
+
+    bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField, uint32_t& color)
     {
         // outputs warning if edge could not be created 
         std::string srcString = srcPass + "." + srcField, dstString = dstPass + "." + dstField;
@@ -426,13 +440,13 @@ namespace Falcor
         if (!canCreateEdge) return canCreateEdge;
 
         // update the ui to reflect the connections. This data is used for removal
-        RenderPassUI& srcRenderGraphUI = mRenderPassUI[srcPass];
-        RenderPassUI& dstRenderGraphUI = mRenderPassUI[dstPass];
-        const auto outputIt = srcRenderGraphUI.mNameToIndexOutput.find(srcField);
-        const auto inputIt = dstRenderGraphUI.mNameToIndexInput.find(dstField);
+        RenderPassUI& srcRenderPassUI = mRenderPassUI[srcPass];
+        RenderPassUI& dstRenderPassUI = mRenderPassUI[dstPass];
+        const auto outputIt = srcRenderPassUI.mNameToIndexOutput.find(srcField);
+        const auto inputIt =  dstRenderPassUI.mNameToIndexInput.find(dstField);
         // check that link could exist
-        canCreateEdge &= (outputIt != srcRenderGraphUI.mNameToIndexOutput.end()) && 
-            (inputIt != dstRenderGraphUI.mNameToIndexInput.end());
+        canCreateEdge &= (outputIt != srcRenderPassUI.mNameToIndexOutput.end()) && 
+            (inputIt != dstRenderPassUI.mNameToIndexInput.end());
         // check that the input is not already connected
         canCreateEdge &= (mInputPinStringToLinkID.find(dstString) == mInputPinStringToLinkID.end());
 
@@ -440,13 +454,24 @@ namespace Falcor
         {
             uint32_t srcPinIndex = outputIt->second;
             uint32_t dstPinIndex = inputIt->second;
-            srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedPinName = dstField;
-            srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedNodeName = dstPass;
-            dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedPinName = srcField;
-            dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedNodeName = srcPass;
+            srcRenderPassUI.mOutputPins[srcPinIndex].mConnectedPinName = dstField;
+            srcRenderPassUI.mOutputPins[srcPinIndex].mConnectedNodeName = dstPass;
+            dstRenderPassUI.mInputPins[dstPinIndex].mConnectedPinName = srcField;
+            dstRenderPassUI.mInputPins[dstPinIndex].mConnectedNodeName = srcPass;
             
-            mpIr->addEdge(srcString, dstString);
-            mShouldUpdate = true;
+            RenderPassReflection srcReflection, dstReflection;
+            mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(srcPass)].pPass->reflect(srcReflection);
+            mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(dstPass)].pPass->reflect(dstReflection);
+
+            bool canAutoResolve = mpRenderGraph->canAutoResolve(srcReflection.getField(srcField), dstReflection.getField(dstField));
+            if (canAutoResolve && mDisplayAutoResolvePopup) canCreateEdge = autoResolveWarning(srcString, dstString);
+            color = canAutoResolve ? mAutoResolveEdgesColor : mEdgesColor;
+
+            if (canCreateEdge)
+            {
+                mpIr->addEdge(srcString, dstString);
+                mShouldUpdate = true;
+            }
         }
         else
         {
@@ -479,7 +504,7 @@ namespace Falcor
 
         std::string newCommands = mpIr->getIR();
         mpIr = RenderGraphIR::create(mRenderGraphName, false); // reset
-        mUpdateCommands += newCommands;
+        if (mRecordUpdates) mUpdateCommands += newCommands;
 
         mpScripting->addGraph(mRenderGraphName, mpRenderGraph);
 
@@ -682,7 +707,7 @@ namespace Falcor
         {
             uint32_t popupWarningID = ImGui::GetCurrentWindow()->GetID("Auto-Resolve Warning");
 
-            if (!mShowWarningPopup && checkInWindow && !ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
+            if (checkInWindow && !ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
             {
                 mpNodeGraphEditor->setPopupNode(nullptr);
                 mpNodeGraphEditor->setPopupPin(-1, false);
@@ -714,8 +739,6 @@ namespace Falcor
                 if (edgeIt != mpRenderGraph->mEdgeData.end())
                 {
                     RenderGraph::EdgeData& edgeData = edgeIt->second;
-                    // TODO -- get can autoresolve state from graph function
-                    bool autoResolve = true; // mpRenderGraph->canAutoResolve(edgeData.srcField, edgeData.dstField);
 
                     pGui->addText("Src Field : ");
                     pGui->addText(edgeData.srcField.c_str(), true);
@@ -725,48 +748,6 @@ namespace Falcor
 
                     pGui->addText("Auto-Generated : ");
                     pGui->addText(edgeData.autoGenerated ? "true" : "false", true);
-
-                    // compare the sample count of the auto-resolve edge to display warning window
-                    const RenderPassUI& srcPassUI = mRenderPassUI[srcPassName];
-                    const RenderPassUI& dstPassUI = mRenderPassUI[dstPassName];
-                    uint32_t srcSampleCount = srcPassUI.mReflection.getField(selectedLink.InputSlot).getSampleCount();
-                    uint32_t dstSampleCount = dstPassUI.mReflection.getField(selectedLink.OutputSlot).getSampleCount();
-                    bool setAutoResolve = false;
-
-                    if (mShowWarningPopup)
-                    { // TODO -- move this to add edge 
-                        if (ImGui::BeginPopup("Auto-Resolve Warning"))
-                        {
-                            pGui->addText("Auto-Resolve warning");
-
-                            if (pGui->addButton("okay"))
-                            {
-                                setAutoResolve = true;
-                                mShowWarningPopup = false;
-                            }
-
-                            if (pGui->addButton("cancel"))
-                            {
-                                setAutoResolve = false;
-                                mShowWarningPopup = false;
-                            }
-
-                            ImGui::EndPopup();
-                        }
-                    }
-
-                    if (pGui->addCheckBox("Auto-Resolve", autoResolve))
-                    {
-                        if (autoResolve && (srcSampleCount) && (srcSampleCount > dstSampleCount))
-                        {
-                            ImGui::OpenPopup("Auto-Resolve Warning");
-                            mShowWarningPopup = true;
-                        }
-                        else
-                        {
-                            selectedLink.LinkColor = autoResolve ? mAutoResolveEdgesColor : mEdgesColor;
-                        }
-                    }
                 }
             }
             
@@ -1002,6 +983,11 @@ namespace Falcor
         return executionOrder;
     }
 
+    void RenderGraphUI::setRecordUpdates(bool recordUpdates)
+    {
+        mRecordUpdates = recordUpdates;
+    }
+
     void RenderGraphUI::updatePins(bool addLinks)
     {
         //  Draw pin connections. All the nodes have to be added to the GUI before the connections can be drawn
@@ -1023,8 +1009,27 @@ namespace Falcor
                             if (!mpNodeGraphEditor->isLinkPresent(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
                                 mpNodeGraphEditor->getNodeFromID(connectedPin.second), connectedPin.first))
                             {
+                                RenderGraphNode* pNode = static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(connectedPin.second));
+                                std::string dstName = pNode->getInputName(connectedPin.first);
+                                std::string srcString = currentPass.first + "." + currentPinName;
+                                std::string dstString = std::string(pNode->getName()) + "." + dstName;
+                                const RenderPassReflection::Field& srcPin = currentPassUI.mReflection.getField(currentPinName);
+                                const RenderPassReflection::Field& dstPin = mRenderPassUI[pNode->getName()].mReflection.getField(dstName);
+
+                                uint32_t edgeColor = mEdgesColor;
+                                if (mpRenderGraph->canAutoResolve(srcPin, dstPin))
+                                {
+                                    mLogString += std::string("Warning: Edge ") + srcString + " - " + dstName + " can auto-resolve.\n";
+                                    edgeColor = mAutoResolveEdgesColor;
+                                }
+                                else
+                                {
+                                    uint32_t edgeId = mpRenderGraph->getEdge(srcString, dstString);
+                                    if (mpRenderGraph->mEdgeData[edgeId].autoGenerated) edgeColor = mAutoGenEdgesColor;
+                                }
+
                                 uint32_t id = mpNodeGraphEditor->addLinkFromGraph(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
-                                    mpNodeGraphEditor->getNodeFromID(connectedPin.second), connectedPin.first, false, mEdgesColor);
+                                   mpNodeGraphEditor->getNodeFromID(connectedPin.second), connectedPin.first, false, edgeColor);
 
                                 static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(connectedPin.second))->mInputPinConnected[connectedPin.first] = true;
                                 static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID))->mOutputPinConnected[currentPinUI.mGuiPinID] = true;

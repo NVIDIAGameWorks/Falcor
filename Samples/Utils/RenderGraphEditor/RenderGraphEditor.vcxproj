@@ -19,11 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
     <ClCompile Include="RenderGraphEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
     <ClInclude Include="RenderGraphEditor.h" />
   </ItemGroup>
   <ItemGroup>

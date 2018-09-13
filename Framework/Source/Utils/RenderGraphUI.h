@@ -99,7 +99,7 @@ namespace Falcor
 
         /** function used to add an edge for the internally referenced render graph and update ui data
          */
-        bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
+        bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField, uint32_t& color);
 
         /** function used to remove edge referenced graph and update ui data
         */
@@ -132,6 +132,10 @@ namespace Falcor
         /** Returns the current log from the events in the editor
         */
         std::string getCurrentLog() const { return mLogString; }
+
+        /** Toggle building up delta changes for live preview
+        */
+        void setRecordUpdates(bool recordUpdates);
 
         /** Clears the current log
         */
@@ -166,6 +170,10 @@ namespace Falcor
         */
         void renderPopupMenu(Gui* pGui);
 
+        /** Displays pop-up message if can auto resolve on an edge
+        */
+        bool autoResolveWarning(const std::string& srcString, const std::string& dstString);
+
         /** String containing the most recent log results from and isValid render graph call
         */
         std::string mLogString;
@@ -196,15 +204,14 @@ namespace Falcor
 
         // if in external editing mode, building list of commands for changes to send to the other process
         std::string mUpdateCommands;
+        bool mRecordUpdates = false;
 
         // to avoid attempting to write changes every frame.
         float mTimeSinceLastUpdate = 0.0f;
         bool mDisplayDragAndDropPopup = false;
         std::string  mNextPassName = "";
         std::string mRenderGraphName;
-
-        // used for pop warning menu for edges
-        bool mShowWarningPopup = false;
+        bool mDisplayAutoResolvePopup = true;
 
         // internal node GUi structure
         std::shared_ptr<NodeGraphEditorGui> mpNodeGraphEditor;

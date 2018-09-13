@@ -230,7 +230,7 @@ void ForwardRenderer::updateLightProbe(const LightProbe::SharedPtr& pLight)
 void ForwardRenderer::initAA(SampleCallbacks* pSample)
 {
     mTAA.pTAA = TemporalAA::create();
-    mpFXAA = FXAA::create();
+    mpFXAA = FXAA::create({});
     applyAaMode(pSample);
 }
 

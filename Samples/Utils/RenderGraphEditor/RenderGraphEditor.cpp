@@ -53,7 +53,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     uint32_t screenHeight = mWindowSize.y;
     uint32_t screenWidth = mWindowSize.x;
-
+    
     if (pGui->beginMainMenuBar())
     {
         if (pGui->beginDropDownMenu("File"))
@@ -215,6 +215,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
     mGraphOutputEditString = graphOutputString[0];
 
+    mRenderGraphUIs[mCurrentGraphIndex].setRecordUpdates(mViewerRunning);
     if (!mViewerRunning && pGui->addButton("Open Graph Viewer"))
     {
         std::string log;
@@ -314,19 +315,13 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName)
         auto nameToIndexIt = mGraphNamesToIndex.find(name);
         if (nameToIndexIt != mGraphNamesToIndex.end())
         {
-            // if graph already exists, just update that one
-            // TODO -- uncomment this
              MsgBoxButton button = msgBox("Warning! Graph is already open. Update graph from file?", MsgBoxType::OkCancel);
             
             if (button == MsgBoxButton::Ok)
             {
                 mCurrentGraphIndex = nameToIndexIt->second;
-                // mCurrentGraphIndex = mpGraphs.size();
                 mpGraphs[mCurrentGraphIndex]->update(newGraph);
-                //mpGraphs.push_back(mpGraphs[nameToIndexIt->second]);
-                // TODO -- why assignment delete the graph? 
                 mRenderGraphUIs[mCurrentGraphIndex].reset();
-                // mRenderGraphUIs.push_back(RenderGraphUI(mpGraphs[nameToIndexIt->second], name));
                 continue;
             }
         }
@@ -382,7 +377,7 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     
     if (mFilePath.size())
     {
-        // TODO -- what do we actually want to name this graph?
+        mViewerRunning = true;
         loadGraphsFromFile(mFilePath);
     }
     else

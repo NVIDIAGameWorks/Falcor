@@ -266,7 +266,7 @@ namespace Falcor
         parseFieldName(src, srcPair);
         parseFieldName(dst, dstPair);
 
-        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); ++i)
+        for (uint32_t i = 0; i < mpGraph->getCurrentEdgeId(); ++i)
         {
             if (!mpGraph->doesEdgeExist(i)) { continue; }
 

@@ -579,6 +579,9 @@
     <ClCompile Include="RenderPasses\ForwardLightingPass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
+    <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
+      <Filter>Externals\dear_imgui_extensions\imgui_node_editor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1795,6 +1798,9 @@
     </ClInclude>
     <ClInclude Include="RenderPasses\ForwardLightingPass.h">
       <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h">
+      <Filter>Externals\dear_imgui_extensions\imgui_node_editor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

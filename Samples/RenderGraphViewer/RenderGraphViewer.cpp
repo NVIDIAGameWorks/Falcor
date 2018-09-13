@@ -32,7 +32,6 @@ const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 const char* kSaveFileFilter = "PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
    \0JPG(.jpg)\0*.jpg;\0HDR(.hdr)\0*.hdr;\0TGA(.tga)\0*.tga;\0";
-
 std::string ir;
 
 RenderGraphViewer::~RenderGraphViewer()
@@ -75,12 +74,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         std::string filename;
         if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
-
-        // TODO -- make this work ? pop up window?
-        // if (pGui->addCheckBox("Depth Pass", graphInfo.mEnableDepthPrePass))
-        // {
-        //     createGraph(pSample);
-        // }
     }
 
     if (pGui->addButton("Load Graph", true))
@@ -113,7 +106,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         assert(mEditorProcess);
         mEditorRunning = true;
         mEditingRenderGraphName = mFocusedRenderGraphName;
-    
         pGraph->markOutput(graphInfo.mOutputString);
     }
     
@@ -127,7 +119,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
     }
 
-    // 
     if (pGraph)
     {
         bool displayGraphUI = pGui->beginGroup(mFocusedRenderGraphName.c_str());
@@ -328,13 +319,9 @@ void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::s
         // for now create a parallel copy of the render graph
         const auto pGraph = pGraphs.front().pGraph;
         const std::string graphName = pGraphs.front().name;
-        const auto pGraphCpy = RenderGraphImporter::import(graphName, filename);
-        pGraph->setScene(mpScene);
-        pGraphCpy->setScene(mpScene);
         pGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+        mEditingRenderGraphName = graphName;
         insertNewGraph(pGraph, filename, graphName);
-        pGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-        pGraphCpy->onResizeSwapChain(pSample->getCurrentFbo().get());
     }
     else
     {
@@ -353,11 +340,11 @@ void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph,
 {
     // TODO -- possibly duplicate graph with deep copy instead of requiring another graph
     size_t renderGraphIndex = mRenderGraphsList.size();
-    mFocusedRenderGraphName = "RenderGraph " + std::to_string(renderGraphIndex);
+    mFocusedRenderGraphName = graphName;
 
     Gui::DropdownValue value;
     value.value = static_cast<uint32_t>(mRenderGraphsList.size());
-    value.label = mFocusedRenderGraphName;
+    value.label = graphName;
     mRenderGraphsList.push_back(value);
 
     GraphViewerInfo& graphInfo = mpRenderGraphs[mFocusedRenderGraphName];

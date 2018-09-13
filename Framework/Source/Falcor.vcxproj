@@ -30,6 +30,7 @@
     <ClCompile Include="..\Externals\dear_imgui\imgui.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui_demo.cpp" />
     <ClCompile Include="..\Externals\dear_imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
     <ClCompile Include="..\Externals\GLM\glm\detail\dummy.cpp" />
     <ClCompile Include="..\Externals\GLM\glm\detail\glm.cpp" />
     <ClCompile Include="API\BlendState.cpp" />
@@ -625,6 +626,7 @@
     <ClInclude Include="..\Externals\dear_imgui\stb_rect_pack.h" />
     <ClInclude Include="..\Externals\dear_imgui\stb_textedit.h" />
     <ClInclude Include="..\Externals\dear_imgui\stb_truetype.h" />
+    <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
     <ClInclude Include="..\Externals\FFMpeg\include\libavcodec\avcodec.h" />
     <ClInclude Include="..\Externals\FFMpeg\include\libavcodec\avfft.h" />
     <ClInclude Include="..\Externals\FFMpeg\include\libavcodec\dv_profile.h" />
