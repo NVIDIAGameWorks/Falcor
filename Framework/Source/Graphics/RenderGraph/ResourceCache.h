@@ -77,15 +77,15 @@ namespace Falcor
 
     private:
         ResourceCache() = default;
-        
+
         struct ResourceData
         {
             RenderPassReflection::Field field; // Holds merged properties for aliased resources
-            bool dirty; // Whether field data has been changed since last resource creation
+            bool dirty = true; // Whether field data has been changed since last resource creation
 
             // Time range where this resource is being used
-            uint32_t firstUsed;
-            uint32_t lastUsed;
+            uint32_t firstUsed = 0;
+            uint32_t lastUsed = 0;
 
             std::shared_ptr<Resource> pResource;
         };

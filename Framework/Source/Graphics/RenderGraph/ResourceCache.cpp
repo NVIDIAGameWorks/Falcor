@@ -148,14 +148,38 @@ namespace Falcor
         return true;
     }
 
+    void mergeTimePoint(uint32_t& minTime, uint32_t& maxTime, uint32_t newTime)
+    {
+        minTime = min(minTime, newTime);
+        maxTime = max(maxTime, newTime);
+    }
+
     void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias)
     {
+        auto nameIt = mNameToIndex.find(name);
+        auto aliasIt = mNameToIndex.find(alias);
+        // If two fields were registered separately before, but are now aliased together, merge the fields, with alias field being the base
+        if ((nameIt != mNameToIndex.end()) && (aliasIt != mNameToIndex.end()) && (nameIt->second != aliasIt->second))
+        {
+            // Merge data
+            auto& baseResData = mResourceData[aliasIt->second];
+            auto& newResData = mResourceData[nameIt->second];
+            mergeFields(baseResData.field, newResData.field, name);
+            mergeTimePoint(baseResData.firstUsed, baseResData.lastUsed, newResData.firstUsed);
+            mergeTimePoint(baseResData.firstUsed, baseResData.lastUsed, newResData.lastUsed);
+
+            // Clear data that has been merged
+            mResourceData[nameIt->second] = ResourceData();
+
+            // Redirect 'name' to look up the alias field
+            nameIt->second = aliasIt->second;
+        }
+
         // If name exists, update time range
         if (mNameToIndex.count(name) > 0)
         {
             uint32_t index = mNameToIndex[alias];
-            mResourceData[index].firstUsed = min(mResourceData[index].firstUsed, timePoint);
-            mResourceData[index].lastUsed = max(mResourceData[index].lastUsed, timePoint);
+            mergeTimePoint(mResourceData[index].firstUsed, mResourceData[index].lastUsed, timePoint);
             return;
         }
 
@@ -180,9 +204,7 @@ namespace Falcor
             mNameToIndex[name] = index;
 
             mergeFields(mResourceData[index].field, field, name);
-
-            mResourceData[index].firstUsed = min(mResourceData[index].firstUsed, timePoint);
-            mResourceData[index].lastUsed = max(mResourceData[index].lastUsed, timePoint);
+            mergeTimePoint(mResourceData[index].firstUsed, mResourceData[index].lastUsed, timePoint);
 
             mResourceData[index].dirty = true;
         }
@@ -225,7 +247,7 @@ namespace Falcor
     {
         for (auto& data : mResourceData)
         {
-            if (data.pResource == nullptr || data.dirty)
+            if ((data.pResource == nullptr || data.dirty) && data.field.isValid())
             {
                 data.pResource = createTextureForPass(params, data.field);
                 data.dirty = false;
