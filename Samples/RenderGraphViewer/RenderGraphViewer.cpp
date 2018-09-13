@@ -62,6 +62,12 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         createGraph(pSample);
     }
 
+    if (mpGraph && pGui->addButton("Save Graph"))
+    {
+        std::string filename;
+        if (saveFileDialog("", filename)) RenderGraphExporter::save(mpGraph, "g", filename);
+    }
+
 //     if (!mEditorRunning && pGui->addButton("Edit RenderGraph"))
 //     {
 //         // reset outputs to original state
@@ -209,17 +215,17 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename)
 {
-//     const auto pGraph = RenderGraphImporter::import(filename);
-//     if(pGraph)
-//     {
-//         mpGraph = pGraph;
-//         mpGraph->setScene(mpScene);
-//         mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-//     }
-//     else
-//     {
-//         logError("Can't find a graph in " + filename);
-//     }
+    const auto pGraph = RenderGraphImporter::import("g", filename);
+    if(pGraph)
+    {
+        mpGraph = pGraph;
+        mpGraph->setScene(mpScene);
+        mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+    }
+    else
+    {
+        logError("Can't find a graph in " + filename);
+    }
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
