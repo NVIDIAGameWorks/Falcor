@@ -30,6 +30,6 @@ Framework/Externals/slang/source/**/*.natvis
 !Framework/Externals/slang/source/**/*.cpp
 !Framework/Externals/slang/source/**/*.h
 Framework/Externals/*
-!Framework/Externals/dear_imgui_addons/imguinodegrapheditor/*.cpp
-!Framework/Externals/dear_imgui_addons/imguinodegrapheditor/*.h
+!Framework/Externals/dear_imgui_addons/
+!Framework/Externals/dear_imgui_addons/imguinodegrapheditor/
 Media
