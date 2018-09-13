@@ -70,9 +70,17 @@ namespace Falcor
             std::vector<uint32_t> removedEdges;
             // Loop over the edges and erase the edges
             auto incomingEdges = mNodes[id].mIncomingEdges; // copy the vectors since their iterates will be modified
-            for (auto& edgeId : incomingEdges) removeEdgeByNode<false>(mNodes[mEdges[edgeId].mSrc].mOutgoingEdges, id, removedEdges);
+            for (auto& edgeId : incomingEdges)
+            {
+                if(std::find(removedEdges.begin(), removedEdges.end(), edgeId) == removedEdges.end())
+                    removeEdgeByNode<false>(mNodes[mEdges[edgeId].mSrc].mOutgoingEdges, id, removedEdges);
+            }
             auto outgoingEdges = mNodes[id].mOutgoingEdges;
-            for (auto& edgeId : outgoingEdges) removeEdgeByNode<true>(mNodes[mEdges[edgeId].mDst].mIncomingEdges, id, removedEdges);
+            for (auto& edgeId : outgoingEdges)
+            {
+                if (std::find(removedEdges.begin(), removedEdges.end(), edgeId) == removedEdges.end())
+                    removeEdgeByNode<true>(mNodes[mEdges[edgeId].mDst].mIncomingEdges, id, removedEdges);
+            }
 
             // Remove the index from the map
             mNodes.erase(id);
@@ -196,7 +204,6 @@ namespace Falcor
             for (size_t i = 0; i < edges.size();)
             {
                 uint32_t edgeId = edges[i];
-                // edge may have been removed
                 const auto& edge = mEdges[edgeId];
                 auto& otherNode = removeSrc ? edge.mSrc : edge.mDst;
                 if (otherNode == nodeToRemove)

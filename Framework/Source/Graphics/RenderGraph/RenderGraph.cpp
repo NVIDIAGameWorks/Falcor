@@ -591,7 +591,6 @@ namespace Falcor
         {
             if (!pGraph->mpGraph->doesEdgeExist(i)) { continue; }
 
-            
             const DirectedGraph::Edge* pEdge = pGraph->mpGraph->getEdge(i);
             std::string dst = pGraph->mNodeData.find(pEdge->getDestNode())->second.nodeName;
             std::string src = pGraph->mNodeData.find(pEdge->getSourceNode())->second.nodeName;
@@ -601,11 +600,9 @@ namespace Falcor
             {
                 dst += std::string(".") + pGraph->mEdgeData[i].dstField;
                 src += std::string(".") + pGraph->mEdgeData[i].srcField;
-
                 addEdge(src, dst);
             }
         }
-
         mRecompile = true;
     }
 
