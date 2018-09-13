@@ -81,6 +81,19 @@ namespace Falcor
             const glm::vec4& asVec4() const { checkType(Type::Vec4); return vec4; }
             const std::vector<float>& asFloatVec() const { checkType(Type::Vector); return vector; }
 
+            operator int32_t() const { return asInt(); }
+            operator uint32_t() const { return asUint(); }
+            operator int64_t() const { return asInt64(); }
+            operator uint64_t() const { return asUint64(); }
+            operator float() const { return asFloat(); }
+            operator double() const { return asDouble(); }
+            operator bool() const { return asBool(); }
+            operator std::string() const { return asString(); }
+            operator glm::vec2() const { return asVec2(); }
+            operator glm::vec3() const { return asVec3(); }
+            operator glm::vec4() const { return asVec4(); }
+            operator std::vector<float>() const { return asFloatVec(); }
+
             std::string toString() const
             {
                 switch (mType)
