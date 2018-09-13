@@ -91,7 +91,12 @@ namespace Falcor
         {
             return mMap.contains(key.c_str());
         }
-//    private:
+
+        std::string toString() const 
+        {
+            return pybind11::str(mMap);
+        }
+    private:
         Container mMap;
     };
 }
