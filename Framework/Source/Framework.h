@@ -32,7 +32,7 @@
 #include "glm/glm.hpp"
 #include <iostream>
 #include "Utils/Logger.h"
-#include "Utils/Scripting.h"
+#include "Utils/Scripting/Scripting.h"
 
 using namespace glm;
 

@@ -28,7 +28,7 @@
 #include "Framework.h"
 #include "RenderGraphIR.h"
 #include "RenderGraph.h"
-#include "Utils/RenderGraphScripting.h"
+#include "RenderGraphScripting.h"
 #include "Utils/Dictionary.h"
 
 namespace Falcor

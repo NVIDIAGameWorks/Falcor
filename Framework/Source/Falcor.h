@@ -112,6 +112,7 @@
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
 #include "Graphics/RenderGraph/RenderGraphIR.h"
+#include "Graphics/RenderGraph/RenderGraphImportExport.h"
 
 // Render passes
 #include "RenderPasses/ForwardLightingPass.h"
