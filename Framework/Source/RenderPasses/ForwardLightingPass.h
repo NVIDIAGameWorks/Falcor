@@ -48,6 +48,7 @@ namespace Falcor
 
         virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+        virtual Dictionary getScriptingDictionary() const;
 
         /** Set the color target format. This is always enabled
         */

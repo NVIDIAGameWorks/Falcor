@@ -44,7 +44,7 @@ namespace Falcor
             }
             else
             {
-                logWarning("Unknown field `" + v.key() + " in a DepthPass dictionary");
+                logWarning("Unknown field `" + v.key() + "` in a DepthPass dictionary");
            }
         }
         return true;

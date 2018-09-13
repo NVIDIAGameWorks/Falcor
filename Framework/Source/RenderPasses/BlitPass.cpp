@@ -53,7 +53,7 @@ namespace Falcor
             }
             else
             {
-                logWarning("Unknown field `" + v.key() + " in a BlitPass dictionary");
+                logWarning("Unknown field `" + v.key() + "` in a BlitPass dictionary");
             }
         }
         return true;

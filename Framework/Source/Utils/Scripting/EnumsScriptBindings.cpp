@@ -29,6 +29,7 @@
 #include "EnumsScriptBindings.h"
 #include "Scripting.h"
 #include "API/Sampler.h"
+#include "Effects/ToneMapping/ToneMapping.h"
 
 namespace Falcor
 {
@@ -58,9 +59,17 @@ namespace Falcor
         addressing.val(Sampler::AddressMode::Wrap).val(Sampler::AddressMode::Mirror).val(Sampler::AddressMode::Clamp).val(Sampler::AddressMode::Border).val(Sampler::AddressMode::MirrorOnce);
     }
 
+    static void toneMapping(pybind11::module& m)
+    {
+        auto& op = pybind11::enum_<ToneMapping::Operator>(m, "ToneMapOp");
+        op.val(ToneMapping::Operator::Clamp).val(ToneMapping::Operator::Linear).val(ToneMapping::Operator::Reinhard).val(ToneMapping::Operator::ReinhardModified).val(ToneMapping::Operator::HejiHableAlu);
+        op.val(ToneMapping::Operator::HableUc2).val(ToneMapping::Operator::Aces);
+    }
+
     void EnumsScriptBindings::registerScriptingObjects(pybind11::module& m)
     {
         globalEnums(m);
         samplerState(m);
+        toneMapping(m);
     }
 }

@@ -61,8 +61,8 @@ namespace Falcor
 
         /** Create a new object
         */
-        static SharedPtr create(Operator op);       
-        static SharedPtr create(const Dictionary& dict) { return create(Operator::Aces); }
+        static SharedPtr create(Operator op = Operator::Aces);       
+        static SharedPtr create(const Dictionary& dict);
 
         /** Render UI elements
             \param[in] pGui GUI instance to render UI with
@@ -139,6 +139,10 @@ namespace Falcor
 		*/
         float getWhiteScale() const { return mConstBufferData.whiteScale; }
 
+        /** Get the scripting dictionary
+        */
+        Dictionary getScriptingDictionary() const;
+
     private:
         ToneMapping(Operator op);
         void createLuminanceFbo(const Texture::SharedPtr& pSrc);
@@ -172,4 +176,23 @@ namespace Falcor
         void createToneMapPass(Operator op);
         void createLuminancePass();
     };
+
+#define tonemap_op(a) case ToneMapping::Operator::a: return #a
+    inline std::string to_string(ToneMapping::Operator op)
+    {
+        switch (op)
+        {
+            tonemap_op(Clamp);
+            tonemap_op(Linear);
+            tonemap_op(Reinhard);
+            tonemap_op(ReinhardModified);
+            tonemap_op(HejiHableAlu);
+            tonemap_op(HableUc2);
+            tonemap_op(Aces);
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
+#undef tonemap_op
 }
