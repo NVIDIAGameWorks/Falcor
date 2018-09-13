@@ -88,7 +88,7 @@ namespace Falcor
         mIR += mIndentation + passName + " = ";
         if(dictionary.size())
         {
-            std::string dictionaryStr = "{" + dictionary.toString() + "}";
+            std::string dictionaryStr = dictionary.toString();
             mIR += funcCall(RenderGraphScripting::kCreatePass, addQuotes(passClass), dictionaryStr);
         }
         else

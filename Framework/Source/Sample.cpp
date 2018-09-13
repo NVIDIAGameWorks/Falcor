@@ -265,8 +265,6 @@ namespace Falcor
             mArgList.parseCommandLine(concatCommandLine(argc, argv));
         }
 
-        Scripting::start();
-
         // Load and run
         mpRenderer->onLoad(this, mpRenderContext);
         initializeTesting();

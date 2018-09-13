@@ -46,23 +46,23 @@ namespace Falcor
     {
         SharedPtr pPass = SharedPtr(new BlitPass);
 
-        try
-        {
-            for (const auto& val : dict)
-            {
-                if (val.first == kFilter) pPass->setFilter((Sampler::Filter)val.second.asUint());
-                else
-                {
-                    logError("BlitPass::create() failed. Unknown field (`" + val.first + "`) found in the dictionary");
-                    return nullptr;
-                }
-            }
-        }
-        catch (const std::exception& e)
-        {
-            logError(std::string("BlitPass::create() failed. ") + e.what());
-            return nullptr;
-        }
+//         try
+//         {
+//             for (const auto& val : dict)
+//             {
+//                 if (val.first == kFilter) pPass->setFilter((Sampler::Filter)val.second.asUint());
+//                 else
+//                 {
+//                     logError("BlitPass::create() failed. Unknown field (`" + val.first + "`) found in the dictionary");
+//                     return nullptr;
+//                 }
+//             }
+//         }
+//         catch (const std::exception& e)
+//         {
+//             logError(std::string("BlitPass::create() failed. ") + e.what());
+//             return nullptr;
+//         }
 
         return pPass;
     }

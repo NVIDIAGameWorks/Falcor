@@ -87,7 +87,7 @@ namespace Falcor
                     }
                 }
             }
-            
+
             mCenter = sceneAABB.center;
             mRadius = length(sceneAABB.extent) * 0.5f;
 
