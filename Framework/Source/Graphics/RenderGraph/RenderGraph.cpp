@@ -332,39 +332,65 @@ namespace Falcor
             const RenderPassReflection& passReflection = mPassReflectionMap.at(pSrcPass);
 
             // Check for opportunities to automatically resolve MSAA
-            // - Only take explicitly specified MS output 
-            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
+            // - Only take explicitly specified MS output
+            for (uint32_t f = 0; f < passReflection.getFieldCount(); f++)
             {
-                uint32_t edgeIndex = pNode->getOutgoingEdge(e);
-                const auto& pEdge = mpGraph->getEdge(edgeIndex);
-                const auto& edgeData = mEdgeData[edgeIndex];
-                const RenderPassReflection& dstReflection = mPassReflectionMap.at(mNodeData[pEdge->getDestNode()].pPass.get());
+                // Iterate over output fields
+                auto& srcField = passReflection.getField(f);
+                if (is_set(srcField.getType(), RenderPassReflection::Field::Type::Output) == false) continue;
 
-                const auto& srcField = passReflection.getField(edgeData.srcField, RenderPassReflection::Field::Type::Output);
-                const auto& dstField = dstReflection.getField(edgeData.dstField, RenderPassReflection::Field::Type::Input);
+                const std::string& srcPassName = mNodeData[nodeIndex].nodeName;
+                // Gather src field name, and every input it is connected to
+                std::string srcFieldName = srcPassName + '.' + srcField.getName();
+                std::vector<std::string> dstFieldNames;
 
-                assert(srcField.isValid() && dstField.isValid());
-                if (canAutoResolve(srcField, dstField))
+                for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
                 {
-                    const std::string& srcPassName = mNodeData[nodeIndex].nodeName;
-                    const std::string& dstPassName = mNodeData[pEdge->getDestNode()].nodeName;
-                    std::string srcFieldName = srcPassName + '.' + srcField.getName();
-                    std::string dstFieldName = dstPassName + '.' + dstField.getName();
-                    logInfo("RenderGraph::compile - Automatically adding MSAA Resolve pass between " + srcFieldName + " and " + dstPassName);
+                    uint32_t edgeIndex = pNode->getOutgoingEdge(e);
+                    const auto& edgeData = mEdgeData[edgeIndex];
 
-                    // Insert Resolve Pass
-                    removeEdge(srcFieldName, dstFieldName);
+                    // For every output field, iterate over all edges extending from that field
+                    if (srcField.getName() == edgeData.srcField)
+                    {
+                        const auto& pEdge = mpGraph->getEdge(edgeIndex);
+                        const std::string& dstPassName = mNodeData[pEdge->getDestNode()].nodeName;
+                        const RenderPassReflection& dstReflection = mPassReflectionMap.at(mNodeData[pEdge->getDestNode()].pPass.get());
+                        const auto& dstField = dstReflection.getField(edgeData.dstField, RenderPassReflection::Field::Type::Input);
+
+                        assert(srcField.isValid() && dstField.isValid());
+                        if (canAutoResolve(srcField, dstField))
+                        {
+                            std::string dstFieldName = dstPassName + '.' + dstField.getName();
+                            dstFieldNames.push_back(dstFieldName);
+                        }
+                    }
+                }
+
+                // If there are connections to add MSAA Resolve
+                if (dstFieldNames.size() > 0)
+                {
+                    // One resolve pass is made for every output that requires it
                     auto pResolvePass = std::static_pointer_cast<ResolvePass>(RenderPassLibrary::createPass("ResolvePass"));
                     pResolvePass->setFormat(srcField.getFormat()); // Match input texture format
 
-                    std::string resolvePassName = srcFieldName + "-" + dstFieldName;
+                    // Create pass and attach src to it
+                    std::string resolvePassName = srcFieldName + "-ResolvePass";
                     addPass(pResolvePass, resolvePassName);
                     addEdge(srcFieldName, resolvePassName + ".src");
-                    addEdge(resolvePassName + ".dst", dstFieldName);
 
-                    // Log changes made to user's graph by compilation process
+                    // For every input the src field is connected to, connect the resolve pass output to the input
+                    for (const auto& dstFieldName : dstFieldNames)
+                    {
+                        // Remove original edge
+                        removeEdge(srcFieldName, dstFieldName);
+                        // Replace with edge coming from resolve output
+                        addEdge(resolvePassName + ".dst", dstFieldName);
+
+                        // Log changes made to user's graph by compilation process
+                        mCompilationChanges.removedEdges.emplace_back(srcFieldName, dstFieldName);
+                    }
+
                     mCompilationChanges.generatedPasses.push_back(resolvePassName);
-                    mCompilationChanges.removedEdges.emplace_back(srcFieldName, dstFieldName);
                     addedPasses = true;
                 }
             }
@@ -493,18 +519,7 @@ namespace Falcor
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<true>(this, name, "RenderGraph::setInput()", strPair);
         if (pPass == nullptr) return false;
-        mpResourcesCache->registerExternalResource(name, pResource);
-        return true;
-    }
-
-    bool RenderGraph::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        str_pair strPair;
-        RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
-        if (pPass == nullptr) return false;
-        mpResourcesCache->registerExternalResource(name, pResource);
-        markOutput(name);
-        if (!pResource) mRecompile = true;
+        mpResourcesCache->registerExternalInput(name, pResource);
         return true;
     }
 
@@ -543,7 +558,7 @@ namespace Falcor
             if (mOutputs[i].nodeId == removeMe.nodeId && mOutputs[i].field == removeMe.field)
             {
                 mOutputs.erase(mOutputs.begin() + i);
-                mpResourcesCache->removeExternalResource(name);
+                mpResourcesCache->removeExternalInput(name);
                 mRecompile = true;
                 return;
             }
