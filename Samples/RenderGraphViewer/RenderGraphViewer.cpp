@@ -188,7 +188,7 @@ void RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     mpGraph->addEdge("FXAA.dst", "BlitPass.src");
 
     mpGraph->setScene(mpScene);
-
+    mpGraph->markOutput(mOutputString);
     mpGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
 }
 
@@ -261,9 +261,9 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
     if (mpGraph)
     {
-        mpGraph->setOutput(mOutputString, pSample->getCurrentFbo()->getColorTexture(0));
         mpGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
         mpGraph->execute(pRenderContext.get());
+        pRenderContext->blit(mpGraph->getOutput(mOutputString)->getSRV(), pSample->getCurrentFbo()->getRenderTargetView(0));
     }
 }
 

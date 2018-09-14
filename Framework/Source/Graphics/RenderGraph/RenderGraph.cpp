@@ -354,7 +354,12 @@ namespace Falcor
                     {
                         const auto& pEdge = mpGraph->getEdge(edgeIndex);
                         const std::string& dstPassName = mNodeData[pEdge->getDestNode()].nodeName;
-                        const RenderPassReflection& dstReflection = mPassReflectionMap.at(mNodeData[pEdge->getDestNode()].pPass.get());
+
+                        // If edge is connected to something that isn't executed, ignore
+                        auto reflIt = mPassReflectionMap.find(mNodeData[pEdge->getDestNode()].pPass.get());
+                        if (reflIt == mPassReflectionMap.end()) continue;
+
+                        const RenderPassReflection& dstReflection = reflIt->second;
                         const auto& dstField = dstReflection.getField(edgeData.dstField, RenderPassReflection::Field::Type::Input);
 
                         assert(srcField.isValid() && dstField.isValid());
@@ -413,10 +418,10 @@ namespace Falcor
             uint32_t nodeIndex = mExecutionList[i];
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
             assert(pNode);
-            RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
-            const RenderPassReflection& passReflection = mPassReflectionMap.at(pSrcPass);
+            RenderPass* pCurrPass = mNodeData[nodeIndex].pPass.get();
+            const RenderPassReflection& passReflection = mPassReflectionMap.at(pCurrPass);
 
-            const auto isGraphOutputFunc = [=](uint32_t nodeId, const std::string& field)
+            const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
             {
                 for (const auto& out : mOutputs)
                 {
@@ -425,7 +430,7 @@ namespace Falcor
                 return false;
             };
 
-            // Register all required pass resources and outputs without a corresponding external resource
+            // Register all pass outputs
             for (size_t f = 0; f < passReflection.getFieldCount(); f++)
             {
                 const auto& field = passReflection.getField(f);
@@ -433,39 +438,32 @@ namespace Falcor
 
                 if (is_set(field.getType(), RenderPassReflection::Field::Type::Output))
                 {
-                    bool isGraphOutput = isGraphOutputFunc(nodeIndex, field.getName());
-                    if (isGraphOutput || (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false))
-                    {
-                        mpResourcesCache->registerField(fullFieldName, field, uint32_t(i));
-
-                        // Resource lifetime for graph outputs must extend to end of graph execution
-                        if(isGraphOutput) mpResourcesCache->registerField(fullFieldName, field, uint32_t(-1));
-                    }
+                    mpResourcesCache->registerField(fullFieldName, field, uint32_t(i));
+                    
+                    // Resource lifetime for graph outputs must extend to end of graph execution
+                    if(isGraphOutput(nodeIndex, field.getName())) mpResourcesCache->registerField(fullFieldName, field, uint32_t(-1));
                 }
             }
 
-            // Go over the edges, allocate the required resources and attach them to the input pass
-            for (uint32_t e = 0; e < pNode->getOutgoingEdgeCount(); e++)
+            // Go over the pass inputs, add them as aliases to the outputs that connect to them (which should be already registered above)
+            for (uint32_t e = 0; e < pNode->getIncomingEdgeCount(); e++)
             {
-                uint32_t edgeIndex = pNode->getOutgoingEdge(e);
+                uint32_t edgeIndex = pNode->getIncomingEdge(e);
                 const auto& pEdge = mpGraph->getEdge(edgeIndex);
                 const auto& edgeData = mEdgeData[edgeIndex];
 
-                const auto& field = passReflection.getField(edgeData.srcField, RenderPassReflection::Field::Type::Output);
-
-                // Skip the field if it's not an output field
-                if (field.isValid() == false || is_set(field.getType(), RenderPassReflection::Field::Type::Output) == false) continue;
+                const auto& dstField = passReflection.getField(edgeData.dstField, RenderPassReflection::Field::Type::Input);
+                assert(dstField.isValid());
 
                 // Merge dst/input field into same resource data
-                std::string srcFieldName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
-                std::string dstFieldName = mNodeData[pEdge->getDestNode()].nodeName + '.' + edgeData.dstField;
+                std::string srcFieldName = mNodeData[pEdge->getSourceNode()].nodeName + '.' + edgeData.srcField;
+                std::string dstFieldName = mNodeData[nodeIndex].nodeName + '.' + dstField.getName();
 
-                const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
-                const RenderPassReflection::Field& dstField = mPassReflectionMap[pDstPass.get()].getField(edgeData.dstField);
+                const auto& pSrcPass = mNodeData[pEdge->getSourceNode()].pPass;
+                const RenderPassReflection::Field& srcField = mPassReflectionMap[pSrcPass.get()].getField(edgeData.srcField);
 
-                assert(passToIndex.count(pDstPass.get()) > 0);
-                mpResourcesCache->registerField(srcFieldName, field, passToIndex[pSrcPass]);
-                mpResourcesCache->registerField(dstFieldName, dstField, passToIndex[pDstPass.get()], srcFieldName);
+                assert(passToIndex.count(pSrcPass.get()) > 0);
+                mpResourcesCache->registerField(dstFieldName, srcField, passToIndex[pSrcPass.get()], srcFieldName);
             }
         }
 
