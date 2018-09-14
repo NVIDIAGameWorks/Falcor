@@ -68,7 +68,7 @@ namespace Falcor
     ToneMapping::SharedPtr ToneMapping::create(const Dictionary& dict)
     {
         Operator op = Operator::Aces;
-        for (auto v = dict.begin(); v != dict.end(); v++)
+        for (const auto& v : dict)
         {
             if (v.key() == kOperator) op = v.val();
             else logWarning("Unknown field `" + v.key() + "` in a ToneMapping dictionary");

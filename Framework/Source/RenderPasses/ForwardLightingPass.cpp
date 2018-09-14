@@ -44,7 +44,7 @@ namespace Falcor
         auto pThis = SharedPtr(new ForwardLightingPass());
         pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
 
-        for (auto v = dict.begin(); v != dict.end(); v++)
+        for (const auto& v : dict)
         {
             if (v.key() == kSampleCount) pThis->setSampleCount(v.val());
             else if (v.key() == kSuperSampling) pThis->setSuperSampling(v.val());

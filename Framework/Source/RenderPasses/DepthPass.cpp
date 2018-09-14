@@ -35,7 +35,7 @@ namespace Falcor
 
     static bool parseDictionary(DepthPass* pPass, const Dictionary& dict)
     {
-        for (auto v = dict.begin() ; v != dict.end() ; v++)
+        for (const auto& v : dict)
         {
             if (v.key() == kDepthFormat)
             {
