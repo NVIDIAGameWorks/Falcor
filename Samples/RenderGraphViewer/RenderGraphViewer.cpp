@@ -76,10 +76,16 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (openFileDialog(Scene::kFileFormatString, filename)) loadScene(filename, true, pSample);
     }
 
-    if (pGui->addButton("Load Graph", true))
+    if (pGui->addButton("Load Graph"))
     {
         std::string filename;
         if (openFileDialog("", filename)) loadGraphFromFile(pSample, filename);
+    }
+
+    if (pGraph && pGui->addButton("Save Graph"))
+    {
+        std::string filename;
+        if (saveFileDialog("", filename)) RenderGraphExporter::save(pGraph, graphInfo.mName, filename);
     }
 
     if (pGui->addDropdown("Focused Render Graph", mRenderGraphsList, mActiveGraphIndex))
@@ -108,12 +114,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mEditorRunning = true;
         mEditingRenderGraphName = mFocusedRenderGraphName;
         pGraph->markOutput(graphInfo.mOutputString);
-    }
-
-    if (pGraph && pGui->addButton("Save Graph"))
-    {
-        std::string filename;
-        if (saveFileDialog("", filename)) RenderGraphExporter::save(pGraph, graphInfo.mName, filename);
     }
 
     if (mEditorProcess && mEditorRunning)

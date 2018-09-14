@@ -831,33 +831,27 @@ namespace Falcor
             }
 
             std::string statement;
+            bool addPass = false;
             if (pGui->dragDropDest("RenderPassType", statement))
             {
                 dragAndDropText = statement;
                 mNewNodeStartPosition = { -mpNodeGraphEditor->offset.x + mousePos.x, -mpNodeGraphEditor->offset.y + mousePos.y };
+                mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
                 mNextPassName = statement;
-                mDisplayDragAndDropPopup = true;
+                // only open pop-up if right clicked
+                mDisplayDragAndDropPopup = ImGui::GetIO().KeyCtrl;
+                addPass = !mDisplayDragAndDropPopup;
             }
 
             if (mDisplayDragAndDropPopup)
             {
                 pGui->pushWindow("CreateNewGraph", 256, 128, 
-                    static_cast<uint32_t>(mNewNodeStartPosition.x), static_cast<uint32_t>(mNewNodeStartPosition.y));
+                    static_cast<uint32_t>(mousePos.x), static_cast<uint32_t>(mousePos.y));
 
                 pGui->addTextBox("Pass Name", mNextPassName);
-                if (pGui->addButton("create##renderpass")) // multiple buttons have create
+                if (pGui->addButton("create##renderpass"))
                 {
-                    while (mpRenderGraph->doesPassExist(mNextPassName))
-                    {
-                        mNextPassName.push_back('_');
-                    }
-
-                    mpIr->addPass(dragAndDropText, mNextPassName);
-                    bFromDragAndDrop = true;
-                    mDisplayDragAndDropPopup = false;
-                    mShouldUpdate = true;
-                    mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
-                    if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
+                    addPass = true;
                 }
                 if (pGui->addButton("cancel##renderPass"))
                 {
@@ -866,9 +860,19 @@ namespace Falcor
 
                 pGui->popWindow();
             }
-            else
+
+            if (addPass)
             {
-                mNewNodeStartPosition = { -40.0f, 100.0f };
+                while (mpRenderGraph->doesPassExist(mNextPassName))
+                {
+                    mNextPassName.push_back('_');
+                }
+
+                mpIr->addPass(dragAndDropText, mNextPassName);
+                bFromDragAndDrop = true;
+                mDisplayDragAndDropPopup = false;
+                mShouldUpdate = true;
+                if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
             }
 
             return;
