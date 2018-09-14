@@ -36,11 +36,30 @@ namespace Falcor
     static std::string kNormals = "normals";
     static std::string kVisBuffer = "visibilityBuffer";
 
+    static std::string kSampleCount = "sampleCount";
+    static std::string kSuperSampling = "enableSuperSampling";
+
     ForwardLightingPass::SharedPtr ForwardLightingPass::create(const Dictionary& dict)
     {
         auto pThis = SharedPtr(new ForwardLightingPass());
         pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
+
+        for (auto v = dict.begin(); v != dict.end(); v++)
+        {
+            if (v.key() == kSampleCount) pThis->setSampleCount(v.val());
+            else if (v.key() == kSuperSampling) pThis->setSuperSampling(v.val());
+            logWarning("Unknown field `" + v.key() + "` in a ForwardLightingPass dictionary");
+        }
+
         return pThis;
+    }
+
+    Dictionary ForwardLightingPass::getScriptingDictionary() const 
+    {
+        Dictionary d;
+        d[kSampleCount] = mSampleCount;
+        d[kSuperSampling] = mEnableSuperSampling;
+        return d;
     }
 
     ForwardLightingPass::ForwardLightingPass() : RenderPass("ForwardLightingPass")

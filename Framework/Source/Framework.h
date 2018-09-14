@@ -140,6 +140,20 @@ namespace Falcor
 
     enum_class_operators(FboAttachmentType);
 
+
+    enum class ComparisonFunc
+    {
+        Disabled,       ///< Comparison is disabled
+        Never,          ///< Comparison always fails
+        Always,         ///< Comparison always succeeds
+        Less,           ///< Passes if source is less than the destination
+        Equal,          ///< Passes if source is equal to the destination
+        NotEqual,       ///< Passes if source is not equal to the destination
+        LessEqual,      ///< Passes if source is less than or equal to the destination
+        Greater,        ///< Passes if source is greater than to the destination
+        GreaterEqual,   ///< Passes if source is greater than or equal to the destination
+    };
+
     /** Clamps a value within a range.
         \param[in] val Value to clamp
         \param[in] minVal Low end to clamp to
@@ -239,6 +253,26 @@ namespace Falcor
             return "";
         }
     }
+
+
+#define compare_str(a) case ComparisonFunc::a: return #a
+    inline std::string to_string(ComparisonFunc f)
+    {
+        switch (f)
+        {
+            compare_str(Disabled);
+            compare_str(LessEqual);
+            compare_str(GreaterEqual);
+            compare_str(Less);
+            compare_str(Greater);
+            compare_str(Equal);
+            compare_str(NotEqual);
+            compare_str(Always);
+            compare_str(Never);
+        default: should_not_get_here(); return "";
+        }
+    }
+#undef compare_str
 }
 
 #include "Utils/Platform/OS.h"

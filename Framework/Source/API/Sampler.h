@@ -60,18 +60,7 @@ namespace Falcor
 
         /** Comparison mode for the sampler.
         */
-        enum class ComparisonMode
-        {
-            Disabled,           ///< No comparison. Regular filtering.
-            LessEqual,          ///< Passes if source is less than or equal to the destination
-            GreaterEqual,       ///< Passes if source is greater than or equal to the destination
-            Less,               ///< Passes if source is less than the destination
-            Greater,            ///< Passes if source is greater than to the destination
-            Equal,              ///< Passes if source is equal to the destination
-            NotEqual,           ///< Passes if source is not equal to the destination
-            Always,             ///< Comparison always passes
-            Never,              ///< Comparison always fails
-        };
+        using ComparisonMode = ComparisonFunc;
 
         /** Descriptor used to create a new Sampler object
         */
@@ -199,4 +188,31 @@ namespace Falcor
         static Sampler::SharedPtr spDefaultSampler;
         static uint32_t sObjectCount;
     };
+
+#define filter_str(a) case Sampler::Filter::a: return #a
+    inline std::string to_string(Sampler::Filter f)
+    {
+        switch (f)
+        {
+            filter_str(Point);
+            filter_str(Linear);
+        default: should_not_get_here(); return "";
+        }
+    }
+#undef filter_str
+
+#define address_str(a) case Sampler::AddressMode::a: return #a
+    inline std::string to_string(Sampler::AddressMode a)
+    {
+        switch (a)
+        {
+            address_str(Wrap);
+            address_str(Mirror);
+            address_str(Clamp);
+            address_str(Border);
+            address_str(MirrorOnce);
+        default: should_not_get_here(); return "";
+        }
+    }
+#undef address_str
 }

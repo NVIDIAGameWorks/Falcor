@@ -37,7 +37,6 @@
 #include "Graphics/Paths/ObjectPath.h"
 #include "Graphics/Model/ObjectInstance.h"
 #include "Graphics/Model/SkinningCache.h"
-#include "Utils/Dictionary.h"
 
 namespace Falcor
 {
@@ -48,17 +47,59 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const Scene>;
         static const char* kFileFormatString;
 
+        struct UserVariable
+        {
+            enum class Type
+            {
+                Unknown,    // Indicates an invalid/uninitialized variable
+                Int,
+                Uint,
+                Int64,
+                Uint64,
+                Double,
+                String,
+                Vec2,
+                Vec3,
+                Vec4,
+                Bool,
+                Vector,
+            };
+
+            Type type = Type::Unknown;
+            union
+            {
+                int32_t  i32;
+                uint32_t u32;
+                int64_t  i64;
+                uint64_t u64;
+                double   d64;
+                bool     b;
+            };
+            std::string str;
+            glm::vec2 vec2;
+            glm::vec3 vec3;
+            glm::vec4 vec4;
+            std::vector<float> vector;
+
+            UserVariable() { }
+            UserVariable(const uint32_t&     v) : u32(v), type(Type::Uint) { }
+            UserVariable(const int32_t&     v) : i32(v), type(Type::Int) { }
+            UserVariable(const float&       v) : d64((double)v), type(Type::Double) { }
+            UserVariable(const glm::vec2&   v) : vec2(v), type(Type::Vec2) { }
+            UserVariable(const glm::vec3&   v) : vec3(v), type(Type::Vec3) { }
+            UserVariable(const std::string& s) : str(s), type(Type::String) { }
+        };
+
         using ModelInstance = ObjectInstance<Model>;
         using ModelInstanceList = std::vector<ModelInstance::SharedPtr>;
-        using UserVariable = Dictionary::Value;
 
         /**
             Enum to generate light source(s)
         */
         enum class LoadFlags
         {
-            None                =   0x0,
-            GenerateAreaLights  =   0x1,    ///< Create area light(s) for meshes that have emissive material
+            None = 0x0,
+            GenerateAreaLights = 0x1,    ///< Create area light(s) for meshes that have emissive material
         };
 
         static Scene::SharedPtr loadFromFile(const std::string& filename, Model::LoadFlags modelLoadFlags = Model::LoadFlags::None, Scene::LoadFlags sceneLoadFlags = LoadFlags::None);
@@ -107,9 +148,9 @@ namespace Falcor
         // Object Paths
         uint32_t addPath(const ObjectPath::SharedPtr& pPath);
         void deletePath(uint32_t pathID);
-        
+
         const ObjectPath::SharedPtr& getPath(uint32_t pathID) const { return mpPaths[pathID]; }
-        uint32_t getPathCount() const { return (uint32_t)mpPaths.size();}
+        uint32_t getPathCount() const { return (uint32_t)mpPaths.size(); }
 
         // Camera
         uint32_t addCamera(const Camera::SharedPtr& pCamera);
@@ -131,7 +172,7 @@ namespace Falcor
         uint32_t getVersion() const { return mVersion; }
         void setVersion(uint32_t version) { mVersion = version; }
         void addUserVariable(const std::string& name, const UserVariable& var) { mUserVars[name] = var; }
-        
+
         // If the name is not found, returns an invalid var (Type == Unknown)
         const UserVariable& getUserVariable(const std::string& name) const;
         const UserVariable& getUserVariable(uint32_t varID, std::string& varName) const;
@@ -189,7 +230,7 @@ namespace Falcor
             Update changed scene extents (radius and center).
         */
         void updateExtents();
-        
+
         static uint32_t sSceneCounter;
 
         uint32_t mId;

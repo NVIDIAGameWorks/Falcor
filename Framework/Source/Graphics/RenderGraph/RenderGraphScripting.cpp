@@ -47,9 +47,6 @@ namespace Falcor
     const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
 
-    // TODO Matt
-    Dictionary convertPythonDict(const pybind11::dict& pyDict);
-
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {
         // RenderGraph
@@ -66,9 +63,9 @@ namespace Falcor
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
 
         // RenderPassLibrary
-        const auto& createRenderPass = [](const std::string& passName, const pybind11::dict& d = {})->RenderPass::SharedPtr
+        const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})->RenderPass::SharedPtr
         {
-            return RenderPassLibrary::createPass(passName.c_str(), convertPythonDict(d));
+            return RenderPassLibrary::createPass(passName.c_str(), Dictionary(d));
         };
         m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
     }

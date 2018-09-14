@@ -33,13 +33,12 @@
 #include "Utils/Dictionary.h"
 
 #include "Graphics/RenderGraph/RenderGraphScripting.h"
+#include "EnumsScriptBindings.h"
 
 using namespace pybind11::literals;
 
 namespace Falcor
 {
-    bool Scripting::sRunning = false;
-
     template<typename CppType>
     static bool insertNewValue(const std::pair<pybind11::handle, pybind11::handle>& pyVar, Dictionary& falcorDict)
     {
@@ -84,55 +83,13 @@ namespace Falcor
         return true;
     }
 
-    static void convertDouble(const std::string& name, Dictionary& falcorDict)
-    {
-        double d = falcorDict[name].asDouble();
-
-        // Order matters
-        if (fract(d) == 0)
-        {
-            // UINT first. Double fits into uint64_t, so no need to check for anything
-            if(d >= 0)
-            {
-                if (d <= UINT32_MAX) falcorDict[name] = uint32_t(d);
-                else falcorDict[name] = uint64_t(d);
-            }
-            // INTs. Double has larger range, so make sure we can fit
-            else if(d >= INT64_MIN)
-            {
-                if (d >= INT32_MIN) falcorDict[name] = int32_t(d);
-                else falcorDict[name] = int64_t(d);
-            }
-        }
-        else if (d <= FLT_MAX && d >= -FLT_MAX)
-        {
-            falcorDict[name] = float(d);
-        }
-    }
-
-    Dictionary convertPythonDict(const pybind11::dict& pyDict)
-    {
-        Dictionary falcorDict;
-        for (const auto& d : pyDict)
-        {
-            // The order matters here, since pybind11 does implicit conversion if it can
-            if (insertNewValue<double>(d, falcorDict))
-            {
-                convertDouble(d.first.cast<std::string>(), falcorDict);
-                continue;
-            }
-            if (insertNewValue<std::string>(d, falcorDict)) continue;
-            if (insertNewFloatVec(d, falcorDict)) continue;
-            should_not_get_here();
-        }
-
-        return falcorDict;
-    }
-
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
         RenderGraphScripting::registerScriptingObjects(m);
+        EnumsScriptBindings::registerScriptingObjects(m);
     }
+
+    bool Scripting::sRunning = Scripting::start();
 
     bool Scripting::start()
     {

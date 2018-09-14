@@ -579,6 +579,9 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\Scripting\EnumsScriptBindings.cpp">
+      <Filter>Utils\Scripting</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1795,6 +1798,9 @@
     </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
       <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h">
+      <Filter>Utils\Scripting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -50,7 +50,6 @@ namespace Falcor
             return nullptr;
         }
 
-
         RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(fullpath);
         if (pScripting->runScript(graphName + '=' + funcName + "()") == false) return nullptr;
 
