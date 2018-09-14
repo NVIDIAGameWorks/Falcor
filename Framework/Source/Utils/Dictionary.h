@@ -66,6 +66,7 @@ namespace Falcor
             IteratorT& operator++() { mIt++; return *this; }
             IteratorT operator++(int) { ++mIt; return *this; }
 
+            IteratorT& operator*() { return *this; }
             std::string key() const { return mIt->first.cast<std::string>(); }
             Value val() const { return Value(*mpContainer, key()); }
         private:

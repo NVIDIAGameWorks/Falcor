@@ -44,7 +44,7 @@ namespace Falcor
 
     static bool parseDictionary(BlitPass* pPass, const Dictionary& dict)
     {
-        for (auto v = dict.begin(); v != dict.end(); v++)
+        for (const auto& v : dict)
         {
             if (v.key() == kFilter)
             {
