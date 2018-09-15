@@ -26,9 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Externals/RapidJson/include/rapidjson/document.h"
-#include "Externals/RapidJson/include/rapidjson/stringbuffer.h"
-#include "Externals/RapidJson/include/rapidjson/prettywriter.h"
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/prettywriter.h"
 
 namespace Falcor
 {

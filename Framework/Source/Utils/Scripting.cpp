@@ -27,8 +27,8 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "Scripting.h"
-#include "Externals/pybind11/include/pybind11/embed.h"
-#include "Externals/pybind11/include/pybind11/stl.h"
+#include "pybind11/embed.h"
+#include "pybind11/stl.h"
 #include "StringUtils.h"
 #include "Utils/Dictionary.h"
 
