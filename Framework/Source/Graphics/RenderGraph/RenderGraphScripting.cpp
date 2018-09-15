@@ -46,6 +46,7 @@ namespace Falcor
     const char* RenderGraphScripting::kAutoGenEdges = "autoGenEdges";
     const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
+    const char* RenderGraphScripting::kUpdatePass = "updateRenderPass";
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {
@@ -68,6 +69,12 @@ namespace Falcor
             return RenderPassLibrary::createPass(passName.c_str(), Dictionary(d));
         };
         m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
+
+       const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d = {})
+       {
+           pGraph->setPassDictionary(passName, Dictionary(d));
+       };
+       m.def(kUpdatePass, updateRenderPass, "pGraph"_a, "passName"_a, "dict"_a = pybind11::dict());
     }
 
     RenderGraphScripting::SharedPtr RenderGraphScripting::create()

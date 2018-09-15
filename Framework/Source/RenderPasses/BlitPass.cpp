@@ -72,6 +72,14 @@ namespace Falcor
         return dict;
     }
 
+    void BlitPass::setScriptingDictionary(const Dictionary& dict)
+    {
+        if (static_cast<Sampler::Filter>(dict[kFilter]) != mFilter)
+        {
+            setFilter(dict[kFilter]);
+        }
+    }
+
     BlitPass::BlitPass() : RenderPass("BlitPass")
     {
     }

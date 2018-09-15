@@ -62,6 +62,7 @@ namespace Falcor
         static const char* kAutoGenEdges;
         static const char* kCreatePass;
         static const char* kCreateGraph;
+        static const char* kUpdatePass;
 
     private:
         RenderGraphScripting() = default;

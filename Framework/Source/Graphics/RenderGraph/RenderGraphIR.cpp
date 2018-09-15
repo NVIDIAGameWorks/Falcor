@@ -98,6 +98,11 @@ namespace Falcor
         mIR += mGraphPrefix + funcCall(RenderGraphScripting::kAddPass, passName, addQuotes(passName));
     }
 
+    void RenderGraphIR::updatePass(const std::string& passName, const Dictionary& dictionary)
+    {
+        mIR += mIndentation + funcCall(RenderGraphScripting::kUpdatePass, mName, addQuotes(passName), dictionary.toString());
+    }
+
     void RenderGraphIR::removePass(const std::string& passName)
     {
         mIR += mGraphPrefix + funcCall(RenderGraphScripting::kRemovePass, addQuotes(passName));

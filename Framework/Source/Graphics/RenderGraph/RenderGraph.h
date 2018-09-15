@@ -64,6 +64,10 @@ namespace Falcor
         */
         void removePass(const std::string& name);
 
+        /** Update dictionary for specified render pass.
+        */
+        void setPassDictionary(const std::string& name, const Dictionary& dict);
+
         /** Insert an edge from a render-pass' output into a different render-pass input.
             The render passes must be different, the graph must be a DAG.
             The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `setRenderPass()` and the `resourceName` is the resource-name as described by the render-pass object

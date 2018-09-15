@@ -109,6 +109,15 @@ namespace Falcor
         mRecompile = true;
     }
 
+    void RenderGraph::setPassDictionary(const std::string& name, const Dictionary& dict)
+    {
+        const auto pPass = getPass(name);
+        if (pPass)
+        {
+            pPass->setScriptingDictionary(dict);
+        }
+    }
+
     const RenderPass::SharedPtr& RenderGraph::getPass(const std::string& name) const
     {
         uint32_t index = getPassIndex(name);

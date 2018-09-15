@@ -209,15 +209,6 @@ namespace Falcor
                 {
                     pGraphEditorGui->setRenderUINodeName(pCurrentNode->getName());
                 }
-                else
-                {
-                    uint32_t id = ImGui::GetCurrentWindow()->GetID(idString.c_str());
-                    if (ImGui::IsPopupOpen(id))
-                    {
-                        ImGui::ClosePopup(id);
-                        pGraphEditorGui->setRenderUINodeName("");
-                    }
-                }
             }
 
             for (int32_t i = 0; i < paddingSpace; ++i)
@@ -498,18 +489,20 @@ namespace Falcor
     void RenderGraphUI::updateGraph()
     {
         if (!mShouldUpdate) return;
+        std::string newCommands = mpIr->getIR();
+        mpIr = RenderGraphIR::create(mRenderGraphName, false); // reset
+        if (mLastCommand == newCommands) return;
 
         // make sure the graph is compiled
         mpRenderGraph->resolveExecutionOrder();
+        mLastCommand = newCommands;
 
-        std::string newCommands = mpIr->getIR();
-        mpIr = RenderGraphIR::create(mRenderGraphName, false); // reset
         if (mRecordUpdates) mUpdateCommands += newCommands;
 
-        mpScripting->addGraph(mRenderGraphName, mpRenderGraph);
-
         // update reference graph to check if valid before sending to next 
-        mpScripting->runScript(newCommands);
+        auto pScripting = RenderGraphScripting::create();
+        pScripting->addGraph(mRenderGraphName, mpRenderGraph);
+        pScripting->runScript(newCommands);
 
         mLogString += newCommands + "\n";
 
@@ -556,7 +549,6 @@ namespace Falcor
         mNextPassName.resize(255, 0);
         mpNodeGraphEditor = std::make_shared<NodeGraphEditorGui>(this);
         mpIr = RenderGraphIR::create(renderGraphName, false);
-        mpScripting = RenderGraphScripting::create();
     }
 
     RenderGraphUI::~RenderGraphUI()
@@ -800,16 +792,19 @@ namespace Falcor
             }
             if (ImGui::BeginPopup(idString.c_str()))
             {
-                if (!ImGui::IsWindowHovered() && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)))
+                if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)))
                 {
                     mpNodeGraphEditor->setRenderUINodeName("");
                 }
                 else
                 {
-                    mpRenderGraph->getPass(mpNodeGraphEditor->getRenderUINodeName())->renderUI(pGui, nullptr);
+                    std::string renderUIName = mpNodeGraphEditor->getRenderUINodeName();
+                    auto pPass = mpRenderGraph->getPass(renderUIName);
+                    pPass->renderUI(pGui, nullptr); 
+                    // TODO -- only call this with data change
+                    mpIr->updatePass(renderUIName, pPass->getScriptingDictionary());
+                    mShouldUpdate = true;
                 }
-                
-                // TODO -- push dictionary data as update command for live preview
                 
                 ImGui::EndPopup();
             }

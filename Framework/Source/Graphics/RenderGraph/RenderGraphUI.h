@@ -178,7 +178,6 @@ namespace Falcor
         RenderGraph::SharedPtr mpRenderGraph;
 
         RenderGraphIR::SharedPtr mpIr;
-        RenderGraphScripting::SharedPtr mpScripting;
 
         uint32_t mEdgesColor = 0xFFFFFFFF;
         uint32_t mAutoGenEdgesColor = 0xFFFF0400;
@@ -200,6 +199,7 @@ namespace Falcor
 
         // if in external editing mode, building list of commands for changes to send to the other process
         std::string mUpdateCommands;
+        std::string mLastCommand;
         bool mRecordUpdates = false;
 
         // to avoid attempting to write changes every frame.
