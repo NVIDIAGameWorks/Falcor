@@ -312,7 +312,6 @@ namespace Falcor
             }
         }
         
-        // For all nodes, starting at end, iterate until index 1 of vector
         for (const NodeData* pNodeData : nodeVec)
         {
             RenderPassReflection passReflection = passReflectionMap[pNodeData->pPass.get()];
@@ -332,6 +331,7 @@ namespace Falcor
                 {
                     if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) numRequiredInputs++;
                 }
+
                 GraphOut graphOut;
                 graphOut.field = field.getName();
                 graphOut.nodeId = getPassIndex(pNodeData->nodeName);
@@ -340,7 +340,7 @@ namespace Falcor
 
             // check if node has no inputs, and has connected outgoing edges
             bool hasOutputs = (pNode->getOutgoingEdgeCount() || hasGraphOutput);
-            if (numRequiredInputs && !pNode->getIncomingEdgeCount() && hasOutputs)
+            if (hasOutputs && (numRequiredInputs > pNode->getIncomingEdgeCount()) )
             {
                 return false;
             }

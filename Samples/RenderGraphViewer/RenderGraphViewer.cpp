@@ -45,10 +45,10 @@ RenderGraphViewer::~RenderGraphViewer()
     }
 }
 
-void RenderGraphViewer::resetGraphOutputs()
+void RenderGraphViewer::resetCurrentGraphOutputs()
 {
     // reset outputs to original state
-    GraphViewerInfo& graphInfo = mpRenderGraphs[mFocusedRenderGraphName];
+    GraphViewerInfo& graphInfo = mGraphInfos[mFocusedRenderGraphName];
     graphInfo.mCurrentOutputs = graphInfo.mpGraph->getAvailableOutputs();
     
     for (const auto& output : graphInfo.mCurrentOutputs)
@@ -67,7 +67,7 @@ void RenderGraphViewer::resetGraphOutputs()
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    GraphViewerInfo& graphInfo = mpRenderGraphs[mFocusedRenderGraphName];
+    GraphViewerInfo& graphInfo = mGraphInfos[mFocusedRenderGraphName];
     RenderGraph::SharedPtr pGraph = graphInfo.mpGraph;
 
     if (pGui->addButton("Load Scene"))
@@ -79,13 +79,18 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Load Graph"))
     {
         std::string filename;
-        if (openFileDialog("", filename)) loadGraphFromFile(pSample, filename);
+        if (openFileDialog("", filename))
+        {
+            loadGraphFromFile(pSample, filename);
+            mActiveGraphIndex = static_cast<uint32_t>(mGraphInfos.size() - 1);
+            return;
+        }
     }
 
     if (pGraph && pGui->addButton("Save Graph"))
     {
         std::string filename;
-        if (saveFileDialog("", filename)) RenderGraphExporter::save(pGraph, graphInfo.mName, filename);
+        if (saveFileDialog("", filename)) RenderGraphExporter::save(pGraph, mFocusedRenderGraphName, filename);
     }
 
     if (pGui->addDropdown("Focused Render Graph", mRenderGraphsList, mActiveGraphIndex))
@@ -93,15 +98,14 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mFocusedRenderGraphName  = std::string(mRenderGraphsList[mActiveGraphIndex].label);
     }
 
-
     if (!mEditorRunning && pGui->addButton("Open RenderGraph Editor"))
     {
-        resetGraphOutputs();
+        resetCurrentGraphOutputs();
     
         char* result = nullptr;
         mTempFilePath = std::tmpnam(result);
 
-        RenderGraphExporter::save(pGraph, graphInfo.mName, mTempFilePath);
+        RenderGraphExporter::save(pGraph, mFocusedRenderGraphName, mTempFilePath);
 
         graphInfo.mFileName = mTempFilePath;
         openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
@@ -177,101 +181,104 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             pGraph->renderUI(pGui, nullptr);
         }
 
-        std::vector<std::string> windowsToRemove;
-        for (auto& nameWindow : mDebugWindowInfos)
-        {
-            const DebugWindowInfo& debugWindowInfo = nameWindow.second;
-            RenderGraph::SharedPtr pPreviewGraph = mpRenderGraphs[debugWindowInfo.mGraphName].mpGraph;
-
-            pGui->pushWindow((debugWindowInfo.mGraphName + " : " + nameWindow.first).c_str(), 330, 268);
-        
-            if (pGui->addDropdown("##Render Graph Outputs", mpRenderGraphs[debugWindowInfo.mGraphName].mOutputDropdown, nameWindow.second.mNextOutputIndex))
-            {
-                nameWindow.second.mOutputName = mpRenderGraphs[debugWindowInfo.mGraphName].mOutputDropdown[debugWindowInfo.mNextOutputIndex].label;
-                nameWindow.second.mRenderOutput = true;
-            }
-
-            if (pGui->addButton("Close"))
-            {
-                // mark to close after window updates
-                windowsToRemove.push_back(nameWindow.first);
-                nameWindow.second.mRenderOutput = false;
-
-                // unmark graph output checking the original graph state.
-                if (graphInfo.mOriginalOutputNames.find(debugWindowInfo.mOutputName) == graphInfo.mOriginalOutputNames.end())
-                {
-                    pPreviewGraph->markOutput(debugWindowInfo.mOutputName);
-                }
-            }
-            else
-            {
-                mActiveGraphNames.insert(debugWindowInfo.mGraphName);
-            }
-
-            if (debugWindowInfo.mRenderOutput)
-            {
-                // mark as graph output
-                pPreviewGraph->markOutput(debugWindowInfo.mOutputName);
-                Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(pPreviewGraph->getOutput(debugWindowInfo.mOutputName));
-                auto format = pPreviewTex->getFormat();
-
-                if (pGui->addButton("Save to File", true))
-                {
-                    std::string filePath;
-
-                    if (saveFileDialog(kSaveFileFilter, filePath))
-                    {
-                        size_t extensionPos = filePath.find_last_of('.', 0);
-                        Bitmap::FileFormat fileFormat = Bitmap::FileFormat::PngFile;
-
-                        if (extensionPos != std::string::npos)
-                        {
-                            std::string extensionString = filePath.substr(extensionPos, filePath.size() - extensionPos);
-
-                            if (extensionString == "bmp")
-                            {
-                                fileFormat = Bitmap::FileFormat::BmpFile;
-                            }
-                            else if (extensionString == "hdr")
-                            {
-                                fileFormat = Bitmap::FileFormat::ExrFile;
-                            }
-                            else if (extensionString == "tga")
-                            {
-                                fileFormat = Bitmap::FileFormat::TgaFile;
-                            }
-                            else if (extensionString == "jpg" || extensionString == "jpeg")
-                            {
-                                fileFormat = Bitmap::FileFormat::JpegFile;
-                            }
-                        }
-
-                        pPreviewTex->captureToFile(0, 0, filePath, fileFormat);
-                    }
-                }
-
-                glm::vec2 imagePreviewSize = pGui->getCurrentWindowSize();
-                uint32_t texHeight = pPreviewTex->getHeight();
-                uint32_t texWidth = pPreviewTex->getWidth();
-                float imageAspectRatio = static_cast<float>(texHeight) / static_cast<float>(texWidth);
-                // get size of window to scale image correctly
-                imagePreviewSize.y = imagePreviewSize.x * imageAspectRatio;
-                // blitting here crashes in D3D. using resource directly
-                // Texture::SharedPtr pTexture = Texture::create2D(static_cast<uint32_t>(imagePreviewSize.x), 
-                //     static_cast<uint32_t>(imagePreviewSize.y), pPreviewTex->getFormat(), 1, 1);
-                // pSample->getRenderContext()->blit(pPreviewTex->getSRV(), pTexture->getRTV());
-                pGui->addImage(nameWindow.first.c_str(), pPreviewTex, imagePreviewSize);
-            }
-
-            pGui->popWindow();
-        }
-
-        for (const std::string& windowName : windowsToRemove)
-        {
-            mDebugWindowInfos.erase(windowName);
-        }
+        renderGUIPreviewWindows(pGui);
 
         if (displayGraphUI) pGui->endGroup();
+    }
+}
+
+void RenderGraphViewer::renderGUIPreviewWindows(Gui* pGui)
+{
+    std::vector<std::string> windowsToRemove;
+    for (auto& nameWindow : mDebugWindowInfos)
+    {
+        const DebugWindowInfo& debugWindowInfo = nameWindow.second;
+        RenderGraph::SharedPtr pPreviewGraph = mGraphInfos[debugWindowInfo.mGraphName].mpGraph;
+
+        pGui->pushWindow((debugWindowInfo.mGraphName + " : " + nameWindow.first).c_str(), 330, 268);
+
+        if (pGui->addDropdown("##Render Graph Outputs", mGraphInfos[debugWindowInfo.mGraphName].mOutputDropdown, nameWindow.second.mNextOutputIndex))
+        {
+            nameWindow.second.mOutputName = mGraphInfos[debugWindowInfo.mGraphName].mOutputDropdown[debugWindowInfo.mNextOutputIndex].label;
+            nameWindow.second.mRenderOutput = true;
+        }
+
+        if (pGui->addButton("Close"))
+        {
+            // mark to close after window updates
+            windowsToRemove.push_back(nameWindow.first);
+            nameWindow.second.mRenderOutput = false;
+
+            // unmark graph output checking the original graph state.
+            const auto& graphInfo = mGraphInfos[mFocusedRenderGraphName];
+            if (graphInfo.mOriginalOutputNames.find(debugWindowInfo.mOutputName) == graphInfo.mOriginalOutputNames.end())
+            {
+                pPreviewGraph->markOutput(debugWindowInfo.mOutputName);
+            }
+        }
+        else
+        {
+            mActiveGraphNames.insert(debugWindowInfo.mGraphName);
+        }
+
+        if (debugWindowInfo.mRenderOutput)
+        {
+            // mark as graph output
+            pPreviewGraph->markOutput(debugWindowInfo.mOutputName);
+            Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(pPreviewGraph->getOutput(debugWindowInfo.mOutputName));
+            auto format = pPreviewTex->getFormat();
+
+            if (pGui->addButton("Save to File", true))
+            {
+                std::string filePath;
+
+                if (saveFileDialog(kSaveFileFilter, filePath))
+                {
+                    size_t extensionPos = filePath.find_last_of('.', 0);
+                    Bitmap::FileFormat fileFormat = Bitmap::FileFormat::PngFile;
+
+                    if (extensionPos != std::string::npos)
+                    {
+                        std::string extensionString = filePath.substr(extensionPos, filePath.size() - extensionPos);
+
+                        if (extensionString == "bmp")
+                        {
+                            fileFormat = Bitmap::FileFormat::BmpFile;
+                        }
+                        else if (extensionString == "hdr")
+                        {
+                            fileFormat = Bitmap::FileFormat::ExrFile;
+                        }
+                        else if (extensionString == "tga")
+                        {
+                            fileFormat = Bitmap::FileFormat::TgaFile;
+                        }
+                        else if (extensionString == "jpg" || extensionString == "jpeg")
+                        {
+                            fileFormat = Bitmap::FileFormat::JpegFile;
+                        }
+                    }
+
+                    pPreviewTex->captureToFile(0, 0, filePath, fileFormat);
+                }
+            }
+
+            // get size of window to scale image correctly
+            glm::vec2 imagePreviewSize = pGui->getCurrentWindowSize();
+            uint32_t texHeight = pPreviewTex->getHeight();
+            uint32_t texWidth = pPreviewTex->getWidth();
+            float imageAspectRatio = static_cast<float>(texHeight) / static_cast<float>(texWidth);
+            imagePreviewSize.y = imagePreviewSize.x * imageAspectRatio;
+
+            pGui->addImage(nameWindow.first.c_str(), pPreviewTex, imagePreviewSize);
+        }
+
+        pGui->popWindow();
+    }
+
+    for (const std::string& windowName : windowsToRemove)
+    {
+        mDebugWindowInfos.erase(windowName);
     }
 }
 
@@ -300,21 +307,21 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
 
     // set scene for all graphs
-    for (auto& graphInfoPair : mpRenderGraphs)
+    for (auto& graphInfoPair : mGraphInfos)
     {
-        if (graphInfoPair.second.mpGraph)    graphInfoPair.second.mpGraph->setScene(mpScene);
+        if (graphInfoPair.second.mpGraph) graphInfoPair.second.mpGraph->setScene(mpScene);
     }
 }
 
 void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
 {
-    GraphViewerInfo& graphInfo = mpRenderGraphs[mEditingRenderGraphName];
+    GraphViewerInfo& graphInfo = mGraphInfos[mEditingRenderGraphName];
     std::string fullScript, script;
     readFileToString(fileName, fullScript);
     if (!fullScript.size()) return;
     script.resize(*(size_t*)(fullScript.data()));
     script.insert(script.begin(), fullScript.data() + sizeof(size_t), fullScript.data() + script.size() + sizeof(size_t));
-    graphInfo.mScriptBacklog.push_back(script);
+    graphInfo.mLastScript = script;
     mApplyGraphChanges = true;
 }
 
@@ -327,8 +334,8 @@ void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::s
         const auto pGraph = pGraphs.front().pGraph;
         const std::string graphName = pGraphs.front().name;
         pGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
-        mEditingRenderGraphName = graphName;
         insertNewGraph(pGraph, filename, graphName);
+        pGraph->setScene(mpScene);
     }
     else
     {
@@ -338,6 +345,34 @@ void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::s
 
 void RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
 {
+    Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
+
+    pIr->addPass("DepthPass", "DepthPrePass");
+    pIr->addPass("ForwardLightingPass", "LightingPass");
+    pIr->addPass("CascadedShadowMaps", "ShadowPass");
+    pIr->addPass("BlitPass", "BlitPass");
+    pIr->addPass("ToneMapping", "ToneMapping");
+    pIr->addPass("SSAO", "SSAO");
+    pIr->addPass("FXAA", "FXAA");
+    pIr->addPass("SkyBox", "SkyBox");
+
+    pIr->addEdge("DepthPrePass.depth", "SkyBox.depth");
+    pIr->addEdge("SkyBox.target", "LightingPass.color");
+    pIr->addEdge("DepthPrePass.depth", "ShadowPass.depth");
+    pIr->addEdge("DepthPrePass.depth", "LightingPass.depth");
+    pIr->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
+    pIr->addEdge("LightingPass.color", "ToneMapping.src");
+    pIr->addEdge("ToneMapping.dst", "SSAO.colorIn");
+    pIr->addEdge("LightingPass.normals", "SSAO.normals");
+    pIr->addEdge("LightingPass.depth", "SSAO.depth");
+    pIr->addEdge("SSAO.colorOut", "FXAA.src");
+    pIr->addEdge("FXAA.dst", "BlitPass.src");
+
+    pIr->markOutput("BlitPass.dst");
+
+    ir = pIr->getIR();
+    ir += "forward_renderer = render_graph_forward_renderer()";
+
     RenderGraph::SharedPtr pGraph = createGraph(pSample);
     insertNewGraph(pGraph, "", "forward_renderer");
 }
@@ -345,7 +380,6 @@ void RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
 void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, 
     const std::string& fileName, const std::string& graphName)
 {
-    // TODO -- possibly duplicate graph with deep copy instead of requiring another graph
     size_t renderGraphIndex = mRenderGraphsList.size();
     mFocusedRenderGraphName = graphName;
 
@@ -354,7 +388,7 @@ void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph,
     value.label = graphName;
     mRenderGraphsList.push_back(value);
 
-    GraphViewerInfo& graphInfo = mpRenderGraphs[mFocusedRenderGraphName];
+    GraphViewerInfo& graphInfo = mGraphInfos[mFocusedRenderGraphName];
     for (int32_t i = 0; i < static_cast<int32_t>(pGraph->getOutputCount()); ++i)
     {
         graphInfo.mOriginalOutputNames.insert(pGraph->getOutputName(i));
@@ -363,12 +397,11 @@ void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph,
     graphInfo.mpGraph = pGraph;
     graphInfo.mCurrentOutputs = pGraph->getAvailableOutputs();
     graphInfo.mFileName = fileName;
-    graphInfo.mName = graphName;
 }
 
 void RenderGraphViewer::updateOutputDropdown(const std::string& passName)
 {
-    GraphViewerInfo& graphInfo = mpRenderGraphs[passName];
+    GraphViewerInfo& graphInfo = mGraphInfos[passName];
     int32_t i = 0;
 
     graphInfo.mOutputDropdown.clear();
@@ -400,6 +433,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         if (filePath.size())
         {
             openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+            mEditingRenderGraphName = mFocusedRenderGraphName;
         }
         else
         {
@@ -423,24 +457,23 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
     if (mApplyGraphChanges)
     {
-        GraphViewerInfo& applyGraphInfo = mpRenderGraphs[mEditingRenderGraphName];
+        GraphViewerInfo& applyGraphInfo = mGraphInfos[mEditingRenderGraphName];
+
         // apply all change for valid graph
-        for (const std::string& script : applyGraphInfo.mScriptBacklog)
-        {
-            auto pScripting = RenderGraphScripting::create();
-            pScripting->addGraph(applyGraphInfo.mName, applyGraphInfo.mpGraph);
-            pScripting->runScript(script);
-        }
-        applyGraphInfo.mScriptBacklog.clear();
+        auto pScripting = RenderGraphScripting::create();
+        pScripting->addGraph(mEditingRenderGraphName, applyGraphInfo.mpGraph);
+        pScripting->runScript(applyGraphInfo.mLastScript);
+
+        applyGraphInfo.mLastScript.clear();
         applyGraphInfo.mCurrentOutputs = applyGraphInfo.mpGraph->getAvailableOutputs();
-        mApplyGraphChanges = true;
+        mApplyGraphChanges = false;
     }
 
     mActiveGraphNames.insert(mFocusedRenderGraphName);
 
     for (const std::string& graphName : mActiveGraphNames)
     {
-        GraphViewerInfo& graphInfo = mpRenderGraphs[graphName];
+        GraphViewerInfo& graphInfo = mGraphInfos[graphName];
         RenderGraph::SharedPtr pGraph = graphInfo.mpGraph;
         updateOutputDropdown(graphName);
 
@@ -449,7 +482,11 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
             pGraph->execute(pRenderContext.get());
             Texture::SharedPtr pDisplayTex = std::static_pointer_cast<Texture>(pGraph->getOutput(graphInfo.mOutputString));
             pGraph->getScene()->update(pSample->getCurrentTime(), &mCamControl);
-            pRenderContext->blit(pDisplayTex->getSRV(), pTargetFbo->getColorTexture(0)->getRTV());
+            // Texture may be null for one frame on switching between graphs with different outputs
+            if (pDisplayTex && (graphName == mFocusedRenderGraphName))
+            {
+                pRenderContext->blit(pDisplayTex->getSRV(), pTargetFbo->getColorTexture(0)->getRTV());
+            }
         }
     }
 
@@ -469,7 +506,7 @@ bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
 {
     // Reload all graphs, while maintaining state
-    for (const auto& graphInfo : mpRenderGraphs)
+    for (const auto& graphInfo : mGraphInfos)
     {
         RenderGraph::SharedPtr pGraph = graphInfo.second.mpGraph;
         RenderGraph::SharedPtr pNewGraph = RenderGraphImporter::import(graphInfo.second.mFileName);
@@ -480,43 +517,79 @@ void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
 void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     // update swap chain data for all graphs
-    for (auto& graphInfoPair : mpRenderGraphs)
+    for (auto& graphInfoPair : mGraphInfos)
     {
         RenderGraph::SharedPtr pGraph = graphInfoPair.second.mpGraph;
         if (pGraph) pGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
     }
 }
 
+void RenderGraphViewer::loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar)
+{
+    Mesh::resetGlobalIdCounter();
+ 
+    ProgressBar::SharedPtr pBar;
+    if (showProgressBar)
+    {
+        pBar = ProgressBar::create("Loading Model");
+    }
+
+    Model::SharedPtr pModel = Model::createFromFile(filename.c_str());
+    if (!pModel)
+    {
+        logError(std::string("Failed to load model: \"") + filename + "\"");
+    }
+
+    mGraphInfos[mFocusedRenderGraphName].mpGraph->getScene()->addModelInstance(pModel, "instance");
+}
+
+void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pSample)
+{
+    auto args = pSample->getArgList();
+    std::vector<ArgList::Arg> model = args.getValues("loadmodel");
+    if (!model.empty())
+    {
+        loadModel(pSample, model[0].asString(), false);
+    }
+
+    std::vector<ArgList::Arg> scene = args.getValues("loadscene");
+    if (!scene.empty())
+    {
+        loadScene(scene[0].asString(), false, pSample);
+    }
+
+    std::vector<ArgList::Arg> cameraPos = args.getValues("camerapos");
+    if (!cameraPos.empty())
+    {
+        mGraphInfos[mFocusedRenderGraphName].mpGraph->getScene()->getActiveCamera()->setPosition(
+            glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
+    }
+
+    std::vector<ArgList::Arg> cameraTarget = args.getValues("cameratarget");
+    if (!cameraTarget.empty())
+    {
+        mGraphInfos[mFocusedRenderGraphName].mpGraph->getScene()->getActiveCamera()->setTarget(
+            glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
+    }
+}
+
+void RenderGraphViewer::onBeginTestFrame(SampleTest* pSampleTest)
+{
+    //  Already existing. Is this a problem?
+    auto nextTriggerType = pSampleTest->getNextTriggerType();
+    if (nextTriggerType == SampleTest::TriggerType::None)
+    {
+        SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
+        RenderPass::SharedPtr pShadowPass = mGraphInfos[mFocusedRenderGraphName].mpGraph->getPass("ShadowPass");
+        if (pShadowPass != nullptr)
+        {
+            std::static_pointer_cast<CascadedShadowMaps>(pShadowPass)->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
+        }
+    }
+}
+
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 {
-    Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
-
-    pIr->addPass("DepthPass", "DepthPrePass");
-    pIr->addPass("ForwardLightingPass", "LightingPass");
-    pIr->addPass("CascadedShadowMaps", "ShadowPass");
-    pIr->addPass("BlitPass", "BlitPass");
-    pIr->addPass("ToneMapping", "ToneMapping");
-    pIr->addPass("SSAO", "SSAO");
-    pIr->addPass("FXAA", "FXAA");
-    pIr->addPass("SkyBox", "SkyBox");
-
-    pIr->addEdge("DepthPrePass.depth", "SkyBox.depth");
-    pIr->addEdge("SkyBox.target", "LightingPass.color");
-    pIr->addEdge("DepthPrePass.depth", "ShadowPass.depth");
-    pIr->addEdge("DepthPrePass.depth", "LightingPass.depth");
-    pIr->addEdge("ShadowPass.visibility", "LightingPass.visibilityBuffer");
-    pIr->addEdge("LightingPass.color", "ToneMapping.src");
-    pIr->addEdge("ToneMapping.dst", "SSAO.colorIn");
-    pIr->addEdge("LightingPass.normals", "SSAO.normals");
-    pIr->addEdge("LightingPass.depth", "SSAO.depth");
-    pIr->addEdge("SSAO.colorOut", "FXAA.src");
-    pIr->addEdge("FXAA.dst", "BlitPass.src");
-
-    pIr->markOutput("BlitPass.dst");
-
-    ir = pIr->getIR();
-    ir += "forward_renderer = render_graph_forward_renderer()";
-
     RenderGraphViewer::UniquePtr pRenderer = std::make_unique<RenderGraphViewer>();
     SampleConfig config;
     config.windowDesc.title = "Render Graph Viewer";

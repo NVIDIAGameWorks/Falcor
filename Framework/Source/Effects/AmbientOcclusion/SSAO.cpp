@@ -92,7 +92,8 @@ namespace Falcor
         pDefaultBlock->setSampler(mBindLocations.textureSampler, 0, mpTextureSampler);
         pDefaultBlock->setSrv(mBindLocations.depthTex, 0, pDepthTexture->getSRV());
         pDefaultBlock->setSrv(mBindLocations.noiseTex, 0, mpNoiseTexture->getSRV());
-        pDefaultBlock->setSrv(mBindLocations.normalTex, 0, pNormalTexture->getSRV());
+        // normals are optional based on the reflection layout below
+        if (pNormalTexture) pDefaultBlock->setSrv(mBindLocations.normalTex, 0, pNormalTexture->getSRV());
 
         ConstantBuffer* pCB = pDefaultBlock->getConstantBuffer(mBindLocations.internalPerFrameCB, 0).get();
         if (pCB != nullptr)

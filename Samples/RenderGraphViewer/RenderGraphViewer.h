@@ -29,6 +29,7 @@
 #include "Falcor.h"
 
 using namespace Falcor;
+class Falcor::Gui;
 
 class RenderGraphViewer : public Renderer
 {
@@ -41,23 +42,36 @@ public:
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
-    void RenderGraphViewer::onDataReload(SampleCallbacks* pSample) override;
-
-private:
-    FirstPersonCameraController mCamControl;
-    void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
-    RenderGraph::SharedPtr createGraph(SampleCallbacks* pSample);
-    void fileWriteCallback(const std::string& filename);
-    void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
+    void onDataReload(SampleCallbacks* pSample) override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onBeginTestFrame(SampleTest* pSampleTest) override;
     
+private:
+    void renderGUIPreviewWindows(Gui* pGui);
+    void fileWriteCallback(const std::string& filename);
+    void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
+    void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
+    void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
+    RenderGraph::SharedPtr createGraph(SampleCallbacks* pSample);
     void createDefaultGraph(SampleCallbacks* pSample);
     void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const std::string& fileName, const std::string& name);
-    void resetGraphOutputs();
     void updateOutputDropdown(const std::string& passName);
-
+    void resetCurrentGraphOutputs();
+    
+    FirstPersonCameraController mCamControl;
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;
-    
+    bool mShowAllOutputs = true;
+    bool mEditorRunning = false;
+    bool mApplyGraphChanges = false;
+    size_t mEditorProcess = 0;
+    std::string mTempFilePath;
+    std::string mFocusedRenderGraphName;
+    std::string mEditingRenderGraphName;
+    Gui::DropdownList mRenderGraphsList;
+    uint32_t mActiveGraphIndex;
+    std::unordered_set<std::string> mActiveGraphNames;
+
     struct DebugWindowInfo
     {
         std::string mGraphName;
@@ -67,31 +81,19 @@ private:
     };
 
     std::unordered_map<std::string, DebugWindowInfo> mDebugWindowInfos;
-    bool mShowAllOutputs = true;
-    bool mEditorRunning = false;
-    bool mApplyGraphChanges = false;
-    size_t mEditorProcess = 0;
-    std::string mTempFilePath;
-    std::string mFocusedRenderGraphName;
-    std::string mEditingRenderGraphName;
 
     struct GraphViewerInfo
     {
         RenderGraph::SharedPtr mpGraph;
         std::string mOutputString = "BlitPass.dst";
         uint32_t mGraphOutputIndex = 0;
-        bool mEnableDepthPrePass = true;
         std::string mFileName;
-        std::string mName;
         std::vector< RenderGraph::OutputInfo > mCurrentOutputs;
         std::unordered_set<std::string> mOriginalOutputNames;
         std::vector<std::string> mOutputNames;
-        std::vector<std::string> mScriptBacklog;
+        std::string mLastScript;
         Gui::DropdownList mOutputDropdown;
     };
 
-    Gui::DropdownList mRenderGraphsList;
-    uint32_t mActiveGraphIndex;
-    std::unordered_map<std::string, GraphViewerInfo> mpRenderGraphs;
-    std::unordered_set<std::string> mActiveGraphNames; // all graphs that have previewing graph outputs
+    std::unordered_map<std::string, GraphViewerInfo> mGraphInfos;
 };
