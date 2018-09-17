@@ -1108,30 +1108,38 @@ namespace Falcor
         const float offsetY = 128.0f;
         glm::vec2 newNodePosition = mNewNodeStartPosition;
 
-        if (std::find(mpRenderGraph->mExecutionList.begin(), mpRenderGraph->mExecutionList.end(), nodeID) == mpRenderGraph->mExecutionList.end())
+        if (!mpRenderGraph->mExecutionList.size())
         {
-            return newNodePosition;
+            newNodePosition.x += offsetX * nodeID;
         }
-
-        for (const auto& passID : mpRenderGraph->mExecutionList)
+        else
         {
-            newNodePosition.x += offsetX;
-
-            if (passID == nodeID)
+            for (const auto& passID : mpRenderGraph->mExecutionList)
             {
-                const DirectedGraph::Node* pNode = mpRenderGraph->mpGraph->getNode(nodeID);
-                for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); ++i)
+                newNodePosition.x += offsetX;
+
+                if (passID == nodeID)
                 {
-                    uint32_t outgoingEdgeCount = mpRenderGraph->mpGraph->getNode(mpRenderGraph->mpGraph->getEdge(pNode->getIncomingEdge(i))->getSourceNode())->getOutgoingEdgeCount();
-                    if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
+                    const DirectedGraph::Node* pNode = mpRenderGraph->mpGraph->getNode(nodeID);
+                    if (!pNode->getIncomingEdgeCount())
                     {
-                        // move down by index in 
-                        newNodePosition.y += offsetY * (outgoingEdgeCount - pNode->getIncomingEdgeCount() );
+                        newNodePosition.y += offsetY * pNode->getIncomingEdgeCount() * passID;
                         break;
                     }
-                }
 
-                break;
+                    for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); ++i)
+                    {
+                        uint32_t outgoingEdgeCount = mpRenderGraph->mpGraph->getNode(mpRenderGraph->mpGraph->getEdge(pNode->getIncomingEdge(i))->getSourceNode())->getOutgoingEdgeCount();
+                        if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
+                        {
+                            // move down by index in 
+                            newNodePosition.y += offsetY * (outgoingEdgeCount - pNode->getIncomingEdgeCount());
+                            break;
+                        }
+                    }
+
+                    break;
+                }
             }
         }
 

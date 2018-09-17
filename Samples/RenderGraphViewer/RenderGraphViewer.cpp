@@ -288,7 +288,6 @@ RenderGraph::SharedPtr RenderGraphViewer::createGraph(SampleCallbacks* pSample)
     pScripter->runScript(ir);
     RenderGraph::SharedPtr pGraph = pScripter->getGraph("forward_renderer");
 
-    pGraph->markOutput("BlitPass.dst");
     pGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
     return pGraph;
 }
@@ -343,7 +342,7 @@ void RenderGraphViewer::loadGraphFromFile(SampleCallbacks* pSample, const std::s
     }
 }
 
-void RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
+RenderGraph::SharedPtr RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
 {
     Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
 
@@ -374,7 +373,7 @@ void RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
     ir += "forward_renderer = render_graph_forward_renderer()";
 
     RenderGraph::SharedPtr pGraph = createGraph(pSample);
-    insertNewGraph(pGraph, "", "forward_renderer");
+    return pGraph;
 }
 
 void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, 
@@ -442,7 +441,8 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     }
     else
     {
-        createDefaultGraph(pSample);
+        RenderGraph::SharedPtr pGraph = createDefaultGraph(pSample);
+        insertNewGraph(pGraph, "", "forward_renderer");
     }
 
     loadScene(gkDefaultScene, false, pSample);
@@ -505,11 +505,26 @@ bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 
 void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
 {
+    if (mEditorRunning)
+    {
+        logWarning("Warning: Updating graph while editor is open. Graphs may not match.");
+    }
+
     // Reload all graphs, while maintaining state
     for (const auto& graphInfo : mGraphInfos)
     {
         RenderGraph::SharedPtr pGraph = graphInfo.second.mpGraph;
-        RenderGraph::SharedPtr pNewGraph = RenderGraphImporter::import(graphInfo.second.mFileName);
+        RenderGraph::SharedPtr pNewGraph;
+        if (!graphInfo.second.mFileName.size())
+        {
+            pNewGraph = createDefaultGraph(pSample);
+        }
+        else
+        {
+
+            pNewGraph = RenderGraphImporter::import(graphInfo.first, graphInfo.second.mFileName);
+        }
+        
         pGraph->update(pNewGraph);
     }
 }

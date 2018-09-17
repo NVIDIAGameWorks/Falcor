@@ -68,8 +68,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string renderGraphFilePath;
                 if (openFileDialog("", renderGraphFilePath))
                 {
-                    std::string renderGraphFileName = getFilenameFromPath(renderGraphFilePath);
-                    loadGraphsFromFile(renderGraphFileName);
+                    loadGraphsFromFile(renderGraphFilePath);
                     mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
                 }
             }

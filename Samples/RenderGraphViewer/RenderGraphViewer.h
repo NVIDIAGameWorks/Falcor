@@ -53,7 +53,7 @@ private:
     void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
     void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
     RenderGraph::SharedPtr createGraph(SampleCallbacks* pSample);
-    void createDefaultGraph(SampleCallbacks* pSample);
+    RenderGraph::SharedPtr createDefaultGraph(SampleCallbacks* pSample);
     void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const std::string& fileName, const std::string& name);
     void updateOutputDropdown(const std::string& passName);
     void resetCurrentGraphOutputs();
