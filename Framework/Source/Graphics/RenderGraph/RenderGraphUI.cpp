@@ -481,7 +481,6 @@ namespace Falcor
     void RenderGraphUI::removeRenderPass(const std::string& name)
     {
         mRebuildDisplayData = true;
-        mpRenderGraph->removePass(name);
         mpIr->removePass(name);
         mShouldUpdate = true;
     }
@@ -504,7 +503,7 @@ namespace Falcor
         pScripting->addGraph(mRenderGraphName, mpRenderGraph);
         pScripting->runScript(newCommands);
 
-        mLogString += newCommands + "\n";
+        if(newCommands.size()) mLogString += "Running: " + newCommands;
 
         // only send updates that we know are valid.
         if (!mpRenderGraph->isValid(mLogString))
