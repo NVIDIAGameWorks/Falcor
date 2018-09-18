@@ -28,8 +28,9 @@
 #include "RenderGraphViewer.h"
 #include "Utils/RenderGraphLoader.h"
 
-const std::string gkDefaultScene = "SunTemple/SunTemple.fscene";
+const std::string gkDefaultScene = "EmeraldSquare/EmeraldSquare_day.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
+const glm::vec2 kImagePreviewSize = { 500, 500 };
 
 RenderGraphViewer::~RenderGraphViewer()
 {
@@ -134,6 +135,11 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             }
         }
         
+        if (pGui->addButton("New Output Window"))
+        {
+            
+        }
+
         // with switching between all outputs and only graph outputs
         if (mGraphOutputIndex > renderGraphOutputs.size())
         {
@@ -149,6 +155,15 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         }
         
         mpGraph->renderUI(pGui, "Render Graph");
+
+        for (auto& name : mOutputNames)
+        {
+            pGui->pushWindow((std::string("mpGraphName : ") + name).c_str(), 512, 512);
+
+            pGui->addImage(name.c_str(), mpGraph->getOutput(name), kImagePreviewSize);
+
+            pGui->popWindow();
+        }
     }
 }
 
