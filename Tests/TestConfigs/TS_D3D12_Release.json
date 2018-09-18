@@ -60,7 +60,7 @@
             ]
         },
 
-		"RenderGraphAnimationTest":
+        "RenderGraphAnimationTest":
         {
             "Enabled" : true,
             "Project Name" : "RenderGraphViewer",
