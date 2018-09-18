@@ -35,6 +35,7 @@ namespace Falcor
     class Scene;
     class Texture;
     class Fbo;
+    class RenderGraphExporter;
 
     class RenderGraph
     {
@@ -53,15 +54,15 @@ namespace Falcor
 
         /** Add a render-pass. The name has to be unique, otherwise the call will be ignored
         */
-        uint32_t addRenderPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
+        uint32_t addPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
 
         /** Get a render-pass
         */
-        const RenderPass::SharedPtr& getRenderPass(const std::string& name) const;
+        const RenderPass::SharedPtr& getPass(const std::string& name) const;
 
         /** Remove a render-pass. You need to make sure the edges are still valid after the node was removed
         */
-        void removeRenderPass(const std::string& name);
+        void removePass(const std::string& name);
 
         /** Insert an edge from a render-pass' output into a different render-pass input.
             The render passes must be different, the graph must be a DAG.
@@ -98,7 +99,7 @@ namespace Falcor
         
         /** Returns true if a render pass exists by this name in the graph.
          */
-        bool renderPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
+        bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
 
         /** Get an output resource. The name has the format `renderPassName.resourceName`.
         This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
@@ -109,12 +110,12 @@ namespace Falcor
             The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs.
             If the user didn't set the output resource using `setOutput()`, the graph will automatically allocate it
         */
-        void markGraphOutput(const std::string& name);
+        void markOutput(const std::string& name);
 
         /** Unmark a graph output
             The name has the format `renderPassName.resourceName`. You can also use `renderPassName` which will allocate all the render-pass outputs
         */
-        void unmarkGraphOutput(const std::string& name);
+        void unmarkOutput(const std::string& name);
 
         /** Call this when the swap-chain was resized
         */
@@ -126,23 +127,20 @@ namespace Falcor
 
         /** Get an graph output name from the graph outputs
         */
-        std::string getGraphOutputName(size_t index) const;
+        std::string getOutputName(size_t index) const;
 
         /** Get the num of outputs from this graph
         */
-        size_t getGraphOutputCount() const { return mOutputs.size(); }
+        size_t getOutputCount() const { return mOutputs.size(); }
 
         /** Get all output names for the render graph
         */
         std::vector<std::string> getAllOutputs() const;
 
-        friend class RenderGraphUI;
-        friend class RenderGraphLoader;
-
         /** Attempts to auto generate edges for render passes.
             \param[in] executionOrder Optional. Ordered list of node ID's as an override of pass search order to use when generating edges.
         */
-        void autoGenerateEdges(const std::vector<uint32_t>& executionOrder = std::vector<uint32_t>());
+        void autoGenEdges(const std::vector<uint32_t>& executionOrder = std::vector<uint32_t>());
 
         /** Render the UI
         */
@@ -151,11 +149,16 @@ namespace Falcor
         /** Enable/disable pass profiling
         */
         void profileGraph(bool enabled) { mProfileGraph = enabled; }
+
     private:
+        friend class RenderGraphUI;
+        friend class RenderGraphExporter;
+
         RenderGraph();
         uint32_t getPassIndex(const std::string& name) const;
         bool compile(std::string& log);
         bool resolveExecutionOrder();
+        bool resolveResourceTypes();
         bool allocateResources();
 
         struct EdgeData
@@ -180,6 +183,7 @@ namespace Falcor
 
         void getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList);
         void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
+        bool canAutoResolve(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst);
 
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;
@@ -198,17 +202,10 @@ namespace Falcor
 
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
 
-        std::shared_ptr<Texture> createTextureForPass(const RenderPassReflection::Field& field);
-
-        struct  
-        {
-            uint32_t width = 0;
-            uint32_t height = 0;
-            ResourceFormat colorFormat = ResourceFormat::Unknown;
-            ResourceFormat depthFormat = ResourceFormat::Unknown;
-        } mSwapChainData;
+        ResourceCache::DefaultProperties mSwapChainData;
 
         std::vector<uint32_t> mExecutionList;
+        std::unordered_map<RenderPass*, RenderPassReflection> mPassReflectionMap;
         ResourceCache::SharedPtr mpResourcesCache;
         bool mProfileGraph = true;
     };

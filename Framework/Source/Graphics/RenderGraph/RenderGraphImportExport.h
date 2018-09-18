@@ -26,39 +26,36 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
 
-using namespace Falcor;
-
-class RenderGraphViewer : public Renderer
+namespace Falcor
 {
-public:
-    ~RenderGraphViewer();
+    class RenderGraph;
 
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    class RenderGraphImporter
+    {
+    public:
+        /** Import a graph from a file.
+            \param[in] graphName The name of the graph to import
+            \param[in] filename  The graphs filename. If the string is empty, the function will search for a file called `<graphName>.graph`
+            \param[in] funcName  The function name inside the graph script. If the string is empty, will try invoking a function called `render_graph_<graphName>()`
+            \return A new render-graph object or nullptr if something went horribly wrong
+        */
+        static std::shared_ptr<RenderGraph> import(std::string graphName, std::string filename = {}, std::string funcName = {});
 
-private:
-    RenderGraph::SharedPtr mpGraph;
-    FirstPersonCameraController mCamControl;
-    void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
-    void createGraph(SampleCallbacks* pSample);
-    void fileWriteCallback(const std::string& filename);
-    void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
+        struct GraphData
+        {
+            std::string name;
+            std::shared_ptr<RenderGraph> pGraph;
+        };
 
-    Scene::SharedPtr mpScene;
-    std::string mSceneFilename;
-    bool mEnableDepthPrePass = true;
-    uint32_t mGraphOutputIndex = 0;
-    bool mShowAllOutputs = true;
-    std::string mOutputString = "BlitPass.dst";
-    std::vector<std::string> mOriginalOutputs;
-    bool mEditorRunning = false;
-    size_t mEditorProcess = 0;
-    std::string mTempFilePath;
-    std::vector<std::string> mOutputNames;
-};
+        /** Import all the graphs found in the script's global namespace
+        */
+        static std::vector <GraphData> importAllGraphs(const std::string& filename);
+    };
+
+    class RenderGraphExporter
+    {
+    public:
+        static bool save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename = {}, std::string funcName = {});
+    };
+}

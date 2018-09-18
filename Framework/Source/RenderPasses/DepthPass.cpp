@@ -30,18 +30,37 @@
 
 namespace Falcor
 {
-    static const std::string& kDepth = "depth";
+    static const std::string kDepth = "depth";
+    static const std::string kDepthFormat = "depthFormat";
 
-    DepthPass::SharedPtr DepthPass::create()
+    static bool parseDictionary(DepthPass* pPass, const Dictionary& dict)
     {
-        try
+        for (const auto& v : dict)
         {
-            return SharedPtr(new DepthPass);
+            if (v.key() == kDepthFormat)
+            {
+                ResourceFormat f = (ResourceFormat)v.val();
+                pPass->setDepthBufferFormat(f);
+            }
+            else
+            {
+                logWarning("Unknown field `" + v.key() + "` in a DepthPass dictionary");
+           }
         }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
+        return true;
+    }
+
+    Dictionary DepthPass::getScriptingDictionary() const
+    {
+        Dictionary d;
+        d[kDepthFormat] = mDepthFormat;
+        return d;
+    }
+
+    DepthPass::SharedPtr DepthPass::create(const Dictionary& dict)
+    {
+        DepthPass* pThis = new DepthPass;
+        return parseDictionary(pThis, dict) ? SharedPtr(pThis) : nullptr;
     }
 
     DepthPass::DepthPass() : RenderPass("DepthPass")

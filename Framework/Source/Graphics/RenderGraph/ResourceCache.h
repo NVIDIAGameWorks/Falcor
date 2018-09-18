@@ -26,6 +26,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#include "Graphics/RenderGraph/RenderPassReflection.h"
+#include "API/Texture.h"
 
 namespace Falcor
 {
@@ -38,12 +40,62 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ResourceCache>;
         static SharedPtr create();
 
-        void addResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
-        void removeResource(const std::string& name);
+        /** Properties to use during resource creation when its property has not been fully specified. 
+        */
+        struct DefaultProperties
+        {
+            uint32_t width = 0;                                 ///< Width to create textures as
+            uint32_t height = 0;                                ///< Height to create textures as
+            ResourceFormat format = ResourceFormat::Unknown;    ///< Format to use for texture creation
+        };
+
+        // Add/Remove reference to a resource not owned by the cache
+        void registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource);
+        void removeExternalResource(const std::string& name);
+
+        /** Register a field that requires resources to be allocated.
+            \param[in] name String in the format of PassName.FieldName
+            \param[in] field Reflection data for the field
+            \param[in] timePoint The point in time for when this field is used. Normally this is an index into the execution order.
+            \param[in] alias Optional. Another field name described in the same way as 'name'.
+                If specified, and the field exists in the cache, the resource will be aliased with 'name' and field properties will be merged.
+        */
+        void registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias = "");
+
+        /** Get a resource by name. Includes external resources known by the cache.
+        */
         const std::shared_ptr<Resource>& getResource(const std::string& name) const;
+
+        /** Allocate all resources that need to be created/updated. 
+            This includes new resources, resources whose properties have been updated since last allocation call.
+        */
+        void allocateResources(const DefaultProperties& params);
+
+        /** Clears all registered field/resource properties and allocated resources.
+        */
+        void reset();
+
     private:
         ResourceCache() = default;
-        std::unordered_map<std::string, std::shared_ptr<Resource>> mResources;
+        
+        struct ResourceData
+        {
+            RenderPassReflection::Field field; // Holds merged properties for aliased resources
+            bool dirty; // Whether field data has been changed since last resource creation
+
+            // Time range where this resource is being used
+            uint32_t firstUsed;
+            uint32_t lastUsed;
+
+            std::shared_ptr<Resource> pResource;
+        };
+        
+        // Resources and properties for fields within (and therefore owned by) a render graph
+        std::unordered_map<std::string, uint32_t> mNameToIndex;
+        std::vector<ResourceData> mResourceData;
+
+        // References to output resources not to be allocated by the render graph
+        std::unordered_map<std::string, std::shared_ptr<Resource>> mExternalResources;
     };
 
 }

@@ -48,8 +48,7 @@ namespace Falcor
 
         /** Create a new instance
         */
-        static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
+        static SharedPtr create(const Dictionary& dict = {});
 
         /** Render UI controls for this effect.
             \param[in] pGui GUI object to render UI elements with

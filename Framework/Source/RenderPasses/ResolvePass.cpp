@@ -25,77 +25,54 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Graphics/Scene/Scene.h"
-#include <string>
+#include "Framework.h"
+#include "ResolvePass.h"
+#include "API/RenderContext.h"
+#include "Utils/Gui.h"
 
 namespace Falcor
 {
-    class RenderPassSerializer
+    static const std::string kDst = "dst";
+    static const std::string kSrc = "src";
+
+    void ResolvePass::reflect(RenderPassReflection& reflector) const
     {
-    public:
-        const Scene::UserVariable& getValue(const std::string& key) const
-        {
-            auto it = mData.find(key); assert(it != mData.end());
-            return it->second;
-        }
+        reflector.addInput(kSrc);
+        reflector.addOutput(kDst).setSampleCount(1);
+    }
 
-        const Scene::UserVariable& getValue(size_t index) const
+    ResolvePass::SharedPtr ResolvePass::create(const Dictionary& dictionary)
+    {
+        try
         {
-            assert(index < getVariableCount());
-            return std::next(mData.begin(), index)->second;
+            return SharedPtr(new ResolvePass);
         }
-
-        void setValue(const std::string& name, const Scene::UserVariable& data)
+        catch (const std::exception&)
         {
-            if (mData.find(name) == mData.end())
+            return nullptr;
+        }
+    }
+    
+    ResolvePass::ResolvePass() : RenderPass("ResolvePass") {}
+
+    void ResolvePass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    {
+        const auto& pSrcTex = pRenderData->getTexture(kSrc);
+        const auto& pDstTex = pRenderData->getTexture(kDst);
+
+        if (pSrcTex && pDstTex)
+        {
+            if (pSrcTex->getSampleCount() == 1)
             {
-                logWarning("Unable to find serialize variable.");
+                logWarning("ResolvePass::execute() - Cannot resolve from a non-multisampled texture.");
                 return;
             }
 
-            mData[name] = data;
+            pContext->resolveResource(pSrcTex.get(), pDstTex.get());
         }
-
-        void addVariable(const std::string& name, const Scene::UserVariable& data)
+        else
         {
-            mData[name] = data;
+            logWarning("ResolvePass::execute() - missing an input or output resource");
         }
-
-        template<typename T>
-        void addVariable(const std::string& name, const T& defaultValue)
-        {
-            T temp = T(defaultValue);
-            mData[name] = { temp };
-        }
-
-        template<typename T>
-        void addVariable(const std::string& name)
-        {
-            T temp;
-            mData[name] = { temp };
-        }
-
-        RenderPassSerializer()
-        {
-            // set globals
-            addVariable("gSkyBoxFilename", { std::string() });
-            addVariable("gSceneFilename", { std::string() });
-        }
-
-        size_t getVariableCount() const
-        {
-            return mData.size();
-        }
-
-        const std::string& getVariableName(size_t index) const
-        {
-            assert(index < getVariableCount());
-            return std::next(mData.begin(), index)->first;
-        }
-
-    private:
-        std::unordered_map<std::string, Scene::UserVariable> mData;
-
-    };
+    }
 }

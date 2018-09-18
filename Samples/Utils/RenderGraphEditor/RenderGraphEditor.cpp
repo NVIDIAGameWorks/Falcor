@@ -26,9 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include <fstream>
-#include "RenderGraphEditor.h"
-#include "Utils/RenderGraphLoader.h"
-#include "ArgList.h"
 
 const char* kViewerExecutableName = "RenderGraphViewer";
 

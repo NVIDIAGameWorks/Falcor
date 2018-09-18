@@ -29,13 +29,14 @@
 #include "RenderPassesLibrary.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
-#include "RenderPasses/SceneLightingPass.h"
+#include "RenderPasses/ForwardLightingPass.h"
 #include "Effects/SkyBox/SkyBox.h"
 #include "Effects/Shadows/CSM.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Effects/FXAA/FXAA.h"
 #include "Effects/AmbientOcclusion/SSAO.h"
 #include "Effects/TAA/TAA.h"
+#include "RenderPasses/ResolvePass.h"
 
 namespace Falcor
 {
@@ -47,24 +48,31 @@ namespace Falcor
 
     static std::unordered_map<std::string, RenderPassDesc> gRenderPassList;
 
+    template<typename Pass>
+    using PassFunc = typename Pass::SharedPtr(*)(const Dictionary&);
+
+#define addClass(c, desc) RenderPassLibrary::addPassClass(#c, desc, (PassFunc<c>)c::create)
+
+
     static bool addBuiltinPasses()
     {
-        RenderPassLibrary::addRenderPassClass("BlitPass", "Blit one texture into another", BlitPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("SceneLightingPass", "Forward-rendering lighting pass", SceneLightingPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("DepthPass", "Depth pass", DepthPass::deserialize);
-        RenderPassLibrary::addRenderPassClass("CascadedShadowMaps", "Cascaded shadow maps", CascadedShadowMaps::deserialize);
-        RenderPassLibrary::addRenderPassClass("ToneMappingPass", "Tone-Mapping", ToneMapping::deserialize);
-        RenderPassLibrary::addRenderPassClass("FXAA", "Fast Approximate Anti-Aliasing", FXAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SSAO", "Screen Space Ambient Occlusion", SSAO::deserialize);
-        RenderPassLibrary::addRenderPassClass("TemporalAA", "Temporal Anti-Aliasing", TemporalAA::deserialize);
-        RenderPassLibrary::addRenderPassClass("SkyBox", "Sky Box pass", SkyBox::deserialize);
+        addClass(BlitPass, "Blit one texture into another");
+        addClass(ForwardLightingPass, "Forward-rendering lighting pass");
+        addClass(DepthPass, "Depth pass");
+        addClass(CascadedShadowMaps, "Cascaded shadow maps");
+        addClass(ToneMapping, "Tone-Mapping");
+        addClass(FXAA, "Fast Approximate Anti-Aliasing");
+        addClass(SSAO, "Screen Space Ambient Occlusion");
+        addClass(TemporalAA, "Temporal Anti-Aliasing");
+        addClass(SkyBox, "Sky Box pass");
+        addClass(ResolvePass, "MSAA Resolve");
 
         return true;
     };
 
     static const bool b = addBuiltinPasses();
 
-    void RenderPassLibrary::addRenderPassClass(const char* className, const char* desc, CreateFunc func)
+    void RenderPassLibrary::addPassClass(const char* className, const char* desc, CreateFunc func)
     {
         if (gRenderPassList.find(className) != gRenderPassList.end())
         {
@@ -76,7 +84,7 @@ namespace Falcor
         }
     }
 
-    std::shared_ptr<RenderPass> RenderPassLibrary::createRenderPass(const char* className, const RenderPassSerializer& serializer)
+    std::shared_ptr<RenderPass> RenderPassLibrary::createPass(const char* className, const Dictionary& dict)
     {
         if (gRenderPassList.find(className) == gRenderPassList.end())
         {
@@ -85,23 +93,23 @@ namespace Falcor
         }
 
         auto& renderPass = gRenderPassList[className];
-        return renderPass.create(serializer);
+        return renderPass.create(dict);
     }
 
-    size_t RenderPassLibrary::getRenderPassCount()
+    size_t RenderPassLibrary::getClassCount()
     {
         return gRenderPassList.size();
     }
 
-    const std::string& RenderPassLibrary::getRenderPassClassName(size_t pass)
+    const std::string& RenderPassLibrary::getClassName(size_t pass)
     {
-        assert(pass < getRenderPassCount());
+        assert(pass < getClassCount());
         return std::next(gRenderPassList.begin(), pass)->first;
     }
 
-    const std::string& RenderPassLibrary::getRenderPassDesc(size_t pass)
+    const std::string& RenderPassLibrary::getPassDesc(size_t pass)
     {
-        assert(pass < getRenderPassCount());
+        assert(pass < getClassCount());
         return std::next(gRenderPassList.begin(), pass)->second.passDesc;
     }
 }

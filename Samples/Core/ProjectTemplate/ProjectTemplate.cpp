@@ -35,6 +35,14 @@ void ProjectTemplate::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         msgBox("Now why would you do that?");
     }
+    
+    static std::string text;
+    if (pGui->addTextBox("console", text))
+    {
+        std::string log;
+        Scripting::runScript(text, log);
+        text = "";
+    }
 }
 
 void ProjectTemplate::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

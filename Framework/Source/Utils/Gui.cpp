@@ -248,10 +248,6 @@ namespace Falcor
             {
                 const ImDrawCmd* pCmd = &pCmdList->CmdBuffer[cmd];
                 GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
-                if (pCmd->TextureId) 
-                {
-                    mpProgramVars->set;
-                }
                 mpPipelineState->setScissors(0, scissor);
                 pContext->drawIndexed(pCmd->ElemCount, idxOffset, vtxOffset);
                 idxOffset += pCmd->ElemCount;
@@ -655,18 +651,6 @@ namespace Falcor
             io.KeySuper = false;
             return io.WantCaptureKeyboard;
         }
-    }
-
-    void Gui::addImage(const char label[], const Resource::SharedPtr& pTexSrv, const glm::vec2& size, bool sameLine)
-    {
-        ImGui::PushID(label);
-        
-        if (sameLine) ImGui::SameLine();
-        ImGui::Dummy({size.x, size.y});
-        mpImages.push_back(pTexSrv);
-        ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, size.y });
-        
-        ImGui::PopID();
     }
 
     bool Gui::onMouseEvent(const MouseEvent& event)

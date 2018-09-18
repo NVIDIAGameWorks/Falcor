@@ -1,5 +1,7 @@
 v3.1.0
 ------
+- Added RenderGraph support
+- Added deprecation system
 - Addes support for analytic area lights
 - Added support for StructuredBuffers with VariableBuffer::renderUI
 - Added a ProgramBase base class for better Program/RtProgram abstraction
@@ -10,6 +12,7 @@ v3.1.0
 - Added Logger::Level::Fatal
 - Better abstraction of the alpha-test
 - Fixed VideoCapture UI
+- Added `env_map` attribute and environment texture to the scene
 
 v3.0.7
 ------

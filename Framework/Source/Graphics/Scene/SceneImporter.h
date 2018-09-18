@@ -59,6 +59,7 @@ namespace Falcor
         bool parseUserDefinedSection(const rapidjson::Value& jsonVal);
         bool parseActivePath(const rapidjson::Value& jsonVal);
         bool parseIncludes(const rapidjson::Value& jsonVal);
+        bool parseEnvMap(const rapidjson::Value& jsonVal);
 
         bool topLevelLoop();
 

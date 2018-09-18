@@ -266,13 +266,13 @@ namespace Falcor
         */
         static void reloadAllPrograms();
 
-        FALCOR_DEPRECATED("This function will be removed in Falcor 3.1. Use setDefines({}) instead")
+        deprecate("3.2", "Use setDefines({}) instead")
         bool clearDefines();
 
-        FALCOR_DEPRECATED("This function will be removed in Falcor 3.1. Use setDefines() instead")
+        deprecate("3.2", "Use setDefines() instead")
         bool replaceAllDefines(const DefineList& dl);
 
-        FALCOR_DEPRECATED("This function will be removed in Falcor 3.1. Use getDefines() instead")
+        deprecate("3.2", "Use getDefines() instead")
         const DefineList& getActiveDefinesList() const { return mDefineList; }
 
         const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pReflector; }

@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@ namespace Falcor
 {
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
+    static const std::string kFilter = "filter";
 
     void BlitPass::reflect(RenderPassReflection& reflector) const
     {
@@ -41,16 +42,34 @@ namespace Falcor
         reflector.addInput(kSrc);
     }
 
-    BlitPass::SharedPtr BlitPass::create()
+    static bool parseDictionary(BlitPass* pPass, const Dictionary& dict)
     {
-        try
+        for (const auto& v : dict)
         {
-            return SharedPtr(new BlitPass);
+            if (v.key() == kFilter)
+            {
+                Sampler::Filter f = (Sampler::Filter)v.val();
+                pPass->setFilter(f);
+            }
+            else
+            {
+                logWarning("Unknown field `" + v.key() + "` in a BlitPass dictionary");
+            }
         }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
+        return true;
+    }
+
+    BlitPass::SharedPtr BlitPass::create(const Dictionary& dict)
+    {
+        SharedPtr pPass = SharedPtr(new BlitPass);
+        return parseDictionary(pPass.get(), dict) ? pPass : nullptr;
+    }
+
+    Dictionary BlitPass::getScriptingDictionary() const
+    {
+        Dictionary dict;
+        dict[kFilter] = mFilter;
+        return dict;
     }
 
     BlitPass::BlitPass() : RenderPass("BlitPass")

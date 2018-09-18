@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,17 +38,16 @@ namespace Falcor
 
         /** Create a new object
         */
-        static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
+        static SharedPtr create(const Dictionary& dict = {});
 
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+        virtual Dictionary getScriptingDictionary() const override;
 
         void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:
         BlitPass();
-        void initRenderPassData();
         Sampler::Filter mFilter = Sampler::Filter::Linear;
     };
 }

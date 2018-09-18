@@ -156,7 +156,7 @@ namespace Falcor
             char event[1000];
             uint32_t nameIndent = pData->level * 2 + 1;
             uint32_t cpuIndent = 38 - (nameIndent + (uint32_t)pData->name.size());
-            std::snprintf(event, 1000, "%*s%s %*.2f %30.2f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, getCpuTime(pData), gpuTime);
+            snprintf(event, 1000, "%*s%s %*.2f %30.2f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, getCpuTime(pData), gpuTime);
 #if _PROFILING_LOG == 1
             pData->cpuMs[pData->stepNr] = pData->cpuTotal;
             pData->gpuMs[pData->stepNr] = (float)gpuTime;

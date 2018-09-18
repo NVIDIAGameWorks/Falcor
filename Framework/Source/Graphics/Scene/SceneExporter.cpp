@@ -170,7 +170,7 @@ namespace Falcor
         // Export model material properties
         rapidjson::Value materialValue;
         materialValue.SetObject();
-        switch(pModel->getMesh(0)->getMaterial()->getShadingModel())
+        switch (pModel->getMesh(0)->getMaterial()->getShadingModel())
         {
         case ShadingModelMetalRough:
             addString(materialValue, allocator, SceneKeys::kShadingModel, SceneKeys::kShadingMetalRough);

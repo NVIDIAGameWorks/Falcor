@@ -44,8 +44,11 @@ namespace Falcor
         class Field
         {
         public:
+            static const Field kEmptyField;
+
             enum class Type
             {
+                None        = 0x0,
                 Input       = 0x1,
                 Output      = 0x2,
             };
@@ -58,6 +61,9 @@ namespace Falcor
             };
 
             Field(const std::string& name, Type type);
+
+            bool isValid() const;
+
             Field& setResourceType(const ReflectionResourceType::SharedConstPtr& pType) { mpType = pType; return *this; }
             Field& setDimensions(uint32_t w, uint32_t h, uint32_t d) { mWidth = w; mHeight = h; mDepth = d; return *this; }
             Field& setSampleCount(uint32_t count) { mSampleCount = count; return *this; }
@@ -75,14 +81,17 @@ namespace Falcor
             Resource::BindFlags getBindFlags() const { return mBindFlags; }
             Flags getFlags() const { return mFlags; }
             Type getType() const { return mType; }
+
         private:
             static const ReflectionResourceType::SharedPtr kpTex2DType;
+            Field();
+
             std::string mName;                             ///< The field's name
             ReflectionResourceType::SharedConstPtr mpType = kpTex2DType; ///< The resource type. The default is a 2D texture
             uint32_t mWidth = 0;                           ///< For texture, the width. For buffers, the size in bytes. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mHeight = 0;                          ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mDepth = 0;                           ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
-            uint32_t mSampleCount = 0;                     ///< 0 means don't care (which means 1 for output resources)
+            uint32_t mSampleCount = 1;                     ///< 0 means don't care - the pass will use whatever is bound
             uint32_t mMipLevels = 1;                       ///< The required mip-level count. Only valid for textures
             uint32_t mArraySize = 1;                       ///< The required array-size. Only valid for textures
             ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
@@ -98,6 +107,7 @@ namespace Falcor
 
         size_t getFieldCount() const { return mFields.size(); }
         const Field& getField(size_t f) const { return mFields[f]; }
+        const Field& getField(const std::string& name, Field::Type type = Field::Type::None) const;
         Flags getFlags() const { return mFlags; }
     private:
         Field& addField(const std::string& name, Field::Type type);

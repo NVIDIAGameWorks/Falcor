@@ -26,39 +26,17 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
 
-using namespace Falcor;
-
-class RenderGraphViewer : public Renderer
+namespace pybind11
 {
-public:
-    ~RenderGraphViewer();
-
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
-
-private:
-    RenderGraph::SharedPtr mpGraph;
-    FirstPersonCameraController mCamControl;
-    void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
-    void createGraph(SampleCallbacks* pSample);
-    void fileWriteCallback(const std::string& filename);
-    void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
-
-    Scene::SharedPtr mpScene;
-    std::string mSceneFilename;
-    bool mEnableDepthPrePass = true;
-    uint32_t mGraphOutputIndex = 0;
-    bool mShowAllOutputs = true;
-    std::string mOutputString = "BlitPass.dst";
-    std::vector<std::string> mOriginalOutputs;
-    bool mEditorRunning = false;
-    size_t mEditorProcess = 0;
-    std::string mTempFilePath;
-    std::vector<std::string> mOutputNames;
+    class module;
 };
+
+namespace Falcor
+{
+    class EnumsScriptBindings
+    {
+    public:
+        static void registerScriptingObjects(pybind11::module& m);
+    };
+}

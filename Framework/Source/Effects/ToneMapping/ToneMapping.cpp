@@ -43,9 +43,11 @@ namespace Falcor
     { (uint32_t)ToneMapping::Operator::Aces, "ACES" }
     };
 
+    static const std::string kOperator = "operator";
+
     ToneMapping::~ToneMapping() = default;
 
-    ToneMapping::ToneMapping(ToneMapping::Operator op) : RenderPass("ToneMappingPass")
+    ToneMapping::ToneMapping(ToneMapping::Operator op) : RenderPass("ToneMapping")
     {
         createLuminancePass();
         createToneMapPass(op);
@@ -61,6 +63,24 @@ namespace Falcor
     {
         ToneMapping* pTM = new ToneMapping(op);
         return ToneMapping::SharedPtr(pTM);
+    }
+
+    ToneMapping::SharedPtr ToneMapping::create(const Dictionary& dict)
+    {
+        Operator op = Operator::Aces;
+        for (const auto& v : dict)
+        {
+            if (v.key() == kOperator) op = v.val();
+            else logWarning("Unknown field `" + v.key() + "` in a ToneMapping dictionary");
+        }
+        return create(op);
+    }
+
+    Dictionary ToneMapping::getScriptingDictionary() const
+    {
+        Dictionary d;
+        d[kOperator] = mOperator;
+        return d;
     }
 
     void ToneMapping::createLuminanceFbo(const Texture::SharedPtr& pSrc)

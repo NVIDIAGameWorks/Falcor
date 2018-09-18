@@ -294,5 +294,9 @@ namespace Falcor
     */
     uint32_t popcount(uint32_t a);
 
+    /** Load the content of a file into a string
+    */
+    std::string readFile(const std::string& filename);
+
     /*! @} */
 };

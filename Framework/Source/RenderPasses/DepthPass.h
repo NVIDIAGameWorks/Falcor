@@ -41,13 +41,13 @@ namespace Falcor
 
         /** Create a new object
         */
-        static SharedPtr create();
-        static SharedPtr deserialize(const RenderPassSerializer& serializer) { return create(); }
+        static SharedPtr create(const Dictionary& dict = {});
 
         virtual void reflect(RenderPassReflection& reflector) const override;
         virtual void execute(RenderContext* pContext, const RenderData* pData) override;
         virtual void setScene(const Scene::SharedPtr& pScene);
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+        virtual Dictionary getScriptingDictionary() const;
 
         DepthPass& setDepthBufferFormat(ResourceFormat format);
         DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);

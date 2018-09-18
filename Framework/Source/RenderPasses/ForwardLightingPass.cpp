@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "SceneLightingPass.h"
+#include "ForwardLightingPass.h"
 
 namespace Falcor
 {
@@ -36,28 +36,35 @@ namespace Falcor
     static std::string kNormals = "normals";
     static std::string kVisBuffer = "visibilityBuffer";
 
-    SceneLightingPass::SharedPtr SceneLightingPass::create()
-    {
-        try
-        {
-            return SharedPtr(new SceneLightingPass());
-        }
-        catch (const std::exception&)
-        {
-            return nullptr;
-        }
-    }
+    static std::string kSampleCount = "sampleCount";
+    static std::string kSuperSampling = "enableSuperSampling";
 
-    SceneLightingPass::SharedPtr SceneLightingPass::deserialize(const RenderPassSerializer& serializer)
+    ForwardLightingPass::SharedPtr ForwardLightingPass::create(const Dictionary& dict)
     {
-        auto pThis = create();
+        auto pThis = SharedPtr(new ForwardLightingPass());
         pThis->setColorFormat(ResourceFormat::RGBA32Float).setMotionVecFormat(ResourceFormat::RG16Float).setNormalMapFormat(ResourceFormat::RGBA8Unorm).setSampleCount(1).usePreGeneratedDepthBuffer(true);
+
+        for (const auto& v : dict)
+        {
+            if (v.key() == kSampleCount) pThis->setSampleCount(v.val());
+            else if (v.key() == kSuperSampling) pThis->setSuperSampling(v.val());
+            logWarning("Unknown field `" + v.key() + "` in a ForwardLightingPass dictionary");
+        }
+
         return pThis;
     }
 
-    SceneLightingPass::SceneLightingPass() : RenderPass("SceneLightingPass")
+    Dictionary ForwardLightingPass::getScriptingDictionary() const 
     {
-        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/SceneLightingPass.slang", "", "ps");
+        Dictionary d;
+        d[kSampleCount] = mSampleCount;
+        d[kSuperSampling] = mEnableSuperSampling;
+        return d;
+    }
+
+    ForwardLightingPass::ForwardLightingPass() : RenderPass("ForwardLightingPass")
+    {
+        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("RenderPasses/ForwardLightingPass.slang", "", "ps");
         mpState = GraphicsState::create();
         mpState->setProgram(pProgram);
         mpVars = GraphicsVars::create(pProgram->getReflector());
@@ -72,7 +79,7 @@ namespace Falcor
         mpDsNoDepthWrite = DepthStencilState::create(dsDesc);        
     }
 
-    void SceneLightingPass::reflect(RenderPassReflection& reflector) const
+    void ForwardLightingPass::reflect(RenderPassReflection& reflector) const
     {
         reflector.addInput(kVisBuffer).setFlags(RenderPassReflection::Field::Flags::Optional);
         reflector.addInputOutput(kColor).setFormat(mColorFormat).setSampleCount(mSampleCount);
@@ -91,13 +98,13 @@ namespace Falcor
         }
     }
 
-    void SceneLightingPass::setScene(const Scene::SharedPtr& pScene)
+    void ForwardLightingPass::setScene(const Scene::SharedPtr& pScene)
     {
         mpSceneRenderer = nullptr;
         if (pScene) mpSceneRenderer = SceneRenderer::create(pScene);
     }
 
-    void SceneLightingPass::initDepth(const RenderData* pRenderData)
+    void ForwardLightingPass::initDepth(const RenderData* pRenderData)
     {
         const auto& pTexture = pRenderData->getTexture(kDepth);
 
@@ -117,7 +124,7 @@ namespace Falcor
         }
     }
 
-    void SceneLightingPass::initFbo(RenderContext* pContext, const RenderData* pRenderData)
+    void ForwardLightingPass::initFbo(RenderContext* pContext, const RenderData* pRenderData)
     {
         mpFbo->attachColorTarget(pRenderData->getTexture(kColor), 0);
         mpFbo->attachColorTarget(pRenderData->getTexture(kNormals), 1);
@@ -126,13 +133,14 @@ namespace Falcor
         for(uint32_t i = 1 ; i < 3 ; i++)
         {
             const auto& pRtv = mpFbo->getRenderTargetView(i).get();
-            if(pRtv) pContext->clearRtv(pRtv, vec4(0));
+            if(pRtv->getResource() != nullptr) pContext->clearRtv(pRtv, vec4(0));
         }
 
+        // TODO Matt (not really matt, just need to fix that since if depth is not bound the pass crashes
         if (mUsePreGenDepth == false) pContext->clearDsv(pRenderData->getTexture(kDepth)->getDSV().get(), 1, 0);
     }
 
-    void SceneLightingPass::execute(RenderContext* pContext, const RenderData* pRenderData)
+    void ForwardLightingPass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
         initDepth(pRenderData);
         initFbo(pContext, pRenderData);
@@ -151,7 +159,7 @@ namespace Falcor
         }
     }
 
-    void SceneLightingPass::renderUI(Gui* pGui, const char* uiGroup)
+    void ForwardLightingPass::renderUI(Gui* pGui, const char* uiGroup)
     {
         static const Gui::DropdownList kSampleCountList =
         {
@@ -170,21 +178,21 @@ namespace Falcor
         }
     }
 
-    SceneLightingPass& SceneLightingPass::setColorFormat(ResourceFormat format)
+    ForwardLightingPass& ForwardLightingPass::setColorFormat(ResourceFormat format)
     {
         mColorFormat = format;
         mPassChangedCB();
         return *this;
     }
 
-    SceneLightingPass& SceneLightingPass::setNormalMapFormat(ResourceFormat format)
+    ForwardLightingPass& ForwardLightingPass::setNormalMapFormat(ResourceFormat format)
     {
         mNormalMapFormat = format;
         mPassChangedCB();
         return *this;
     }
 
-    SceneLightingPass& SceneLightingPass::setMotionVecFormat(ResourceFormat format)
+    ForwardLightingPass& ForwardLightingPass::setMotionVecFormat(ResourceFormat format)
     {
         mMotionVecFormat = format;
         if (mMotionVecFormat != ResourceFormat::Unknown)
@@ -199,14 +207,14 @@ namespace Falcor
         return *this;
     }
 
-    SceneLightingPass& SceneLightingPass::setSampleCount(uint32_t samples)
+    ForwardLightingPass& ForwardLightingPass::setSampleCount(uint32_t samples)
     {
         mSampleCount = samples;
         mPassChangedCB();
         return *this;
     }
 
-    SceneLightingPass& SceneLightingPass::setSuperSampling(bool enable)
+    ForwardLightingPass& ForwardLightingPass::setSuperSampling(bool enable)
     {
         mEnableSuperSampling = enable;
         if (mEnableSuperSampling)
@@ -221,7 +229,7 @@ namespace Falcor
         return *this;
     }
 
-    SceneLightingPass& SceneLightingPass::usePreGeneratedDepthBuffer(bool enable)
+    ForwardLightingPass& ForwardLightingPass::usePreGeneratedDepthBuffer(bool enable)
     {
         mUsePreGenDepth = enable;
         mPassChangedCB();
@@ -230,7 +238,7 @@ namespace Falcor
         return *this;
     }
 
-    SceneLightingPass& SceneLightingPass::setSampler(const Sampler::SharedPtr& pSampler)
+    ForwardLightingPass& ForwardLightingPass::setSampler(const Sampler::SharedPtr& pSampler)
     {
         mpVars->setSampler("gSampler", pSampler);
         return *this;

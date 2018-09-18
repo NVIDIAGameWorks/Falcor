@@ -553,9 +553,6 @@
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\SceneLightingPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
@@ -565,11 +562,25 @@
     <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp">
       <Filter>Utils\PatternGenerators</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\RenderGraphUI.cpp">
-      <Filter>Utils</Filter>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
+    <ClCompile Include="RenderPasses\ResolvePass.cpp">
+      <Filter>RenderPasses</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\RenderGraphLoader.cpp">
-      <Filter>Utils</Filter>
+    <ClCompile Include="RenderPasses\ForwardLightingPass.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphScripting.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Scripting\Scripting.cpp">
+      <Filter>Utils\Scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Scripting\EnumsScriptBindings.cpp">
+      <Filter>Utils\Scripting</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1753,9 +1764,6 @@
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\SceneLightingPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
@@ -1768,17 +1776,31 @@
     <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h">
       <Filter>Utils\PatternGenerators</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\RenderGraphUI.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\RenderGraphLoader.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassSerializer.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\DirectedGraphTraversal.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Dictionary.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h" />
+    <ClInclude Include="RenderPasses\ResolvePass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPasses\ForwardLightingPass.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphScripting.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Scripting\Scripting.h">
+      <Filter>Utils\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h">
+      <Filter>Utils\Scripting</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1979,6 +2001,9 @@
     </Filter>
     <Filter Include="Utils\PatternGenerators">
       <UniqueIdentifier>{cc98beaa-c9ed-4457-98c6-89955706cd91}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\Scripting">
+      <UniqueIdentifier>{0193cc13-996d-498d-a32e-8990117f264d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2426,7 +2451,7 @@
     <None Include="Data\Effects\FXAA.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="Data\RenderPasses\SceneLightingPass.slang">
+    <None Include="Data\RenderPasses\ForwardLightingPass.slang">
       <Filter>Data\RenderPasses</Filter>
     </None>
   </ItemGroup>

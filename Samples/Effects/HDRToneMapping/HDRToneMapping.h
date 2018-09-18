@@ -55,7 +55,7 @@ private:
     GraphicsVars::SharedPtr mpProgramVars = nullptr;
     GraphicsState::SharedPtr mpGraphicsState = nullptr;
 
-    SkyBox::UniquePtr mpSkyBox;
+    SkyBox::SharedPtr mpSkyBox;
 
     enum HdrImage
     {
