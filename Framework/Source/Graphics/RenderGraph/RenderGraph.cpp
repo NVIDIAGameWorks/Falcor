@@ -72,7 +72,7 @@ namespace Falcor
         if (getPassIndex(passName) != kInvalidIndex)
         {
             logWarning("Pass named `" + passName + "' already exists. Pass names must be unique");
-            return false;
+            return kInvalidIndex;
         }
 
         auto passChangedCB = [this]() {mRecompile = true; };
@@ -83,7 +83,7 @@ namespace Falcor
         mNameToIndex[passName] = node;
         mNodeData[node] = { passName, pPass };
         mRecompile = true;
-        return true;
+        return node;
     }
 
     void RenderGraph::removePass(const std::string& name)
@@ -689,5 +689,27 @@ namespace Falcor
                 }
             }
         }
+    }
+
+    bool RenderGraph::onMouseEvent(const MouseEvent& mouseEvent)
+    {
+        bool b = false;
+        for (const auto& passId : mExecutionList)
+        {
+            const auto& pPass = mNodeData[passId].pPass;
+            b = b || pPass->onMouseEvent(mouseEvent);
+        }
+        return b;
+    }
+
+    bool RenderGraph::onKeyEvent(const KeyboardEvent& keyEvent)
+    {
+        bool b = false;
+        for (const auto& passId : mExecutionList)
+        {
+            const auto& pPass = mNodeData[passId].pPass;
+            b = b || pPass->onKeyEvent(keyEvent);
+        }
+        return b;
     }
 }

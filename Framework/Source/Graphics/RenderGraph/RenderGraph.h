@@ -101,6 +101,10 @@ namespace Falcor
          */
         bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
 
+        /** Return the index of a pass from a name, or kInvalidIndex if the pass doesn't exists
+        */
+        uint32_t getPassIndex(const std::string& name) const;
+
         /** Get an output resource. The name has the format `renderPassName.resourceName`.
         This is an alias for `getRenderPass(renderPassName)->getOutput(resourceName)`
         */
@@ -150,12 +154,21 @@ namespace Falcor
         */
         void profileGraph(bool enabled) { mProfileGraph = enabled; }
 
+        /** Mouse event handler.
+            Returns true if the event was handled by the object, false otherwise
+        */
+        bool onMouseEvent(const MouseEvent& mouseEvent);
+
+        /** Keyboard event handler
+        Returns true if the event was handled by the object, false otherwise
+        */
+        bool onKeyEvent(const KeyboardEvent& keyEvent);
+
     private:
         friend class RenderGraphUI;
         friend class RenderGraphExporter;
 
         RenderGraph();
-        uint32_t getPassIndex(const std::string& name) const;
         bool compile(std::string& log);
         bool resolveExecutionOrder();
         bool resolveResourceTypes();

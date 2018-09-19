@@ -276,11 +276,13 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
 bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
+    if (mpGraph) mpGraph->onKeyEvent(keyEvent);
     return mCamControl.onKeyEvent(keyEvent);
 }
 
 bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
+    if (mpGraph) mpGraph->onMouseEvent(mouseEvent);
     return mCamControl.onMouseEvent(mouseEvent);
 }
 
