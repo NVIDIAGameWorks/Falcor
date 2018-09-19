@@ -97,7 +97,7 @@ namespace Falcor
         {
             sRunning = true;
             static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python");
-            Py_SetPythonHome(pythonHome.c_str());
+            Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
 
             try
             {
@@ -140,7 +140,8 @@ namespace Falcor
 
     bool Scripting::runScript(const std::string& script, std::string& errorLog)
     {
-        return Falcor::runScript(script, errorLog, pybind11::globals());
+        auto ref = pybind11::globals();
+        return Falcor::runScript(script, errorLog, ref);
     }
 
     bool Scripting::runScript(const std::string& script, std::string& errorLog, Context& context)

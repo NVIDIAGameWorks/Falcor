@@ -76,7 +76,7 @@ INCLUDES = \
 -I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/RapidJson/include" \
 -I "$(VULKAN_SDK)/include" \
-$(shell pkg-config --cflags assimp gtk+-3.0 glfw3) \
+$(shell pkg-config --cflags assimp gtk+-3.0 glfw3 python3) \
 $(shell pkg-config --cflags libavcodec libavdevice libavformat libswscale libavutil)
 
 ADDITIONAL_LIB_DIRS = -L "Bin/" \
@@ -86,7 +86,7 @@ ADDITIONAL_LIB_DIRS = -L "Bin/" \
 
 LIBS = -lfalcor \
 -lfreeimage -lslang -lslang-glslang -lopenvr_api \
-$(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11) \
+$(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11 python3) \
 $(shell pkg-config --libs libavcodec libavdevice libavformat libswscale libavutil) \
 -lvulkan -lstdc++fs -lpthread -lrt -lm -ldl -lz
 
@@ -111,7 +111,7 @@ RELATIVE_DIRS:=/ \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/FXAA/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/RenderGraph/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/PatternGenerators/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ RenderPasses/ \
+Utils/ Utils/Math/ Utils/Scripting/ Utils/Picking/ Utils/PatternGenerators/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ RenderPasses/ \
 VR/ VR/OpenVR/ \
 ../Externals/dear_imgui/
 

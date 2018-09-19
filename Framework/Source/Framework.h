@@ -282,6 +282,7 @@ namespace Falcor
 #define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
 #define forceinline __forceinline
 #else
+#define deprecate(_ver_, _msg_) 
 #define forceinline __attribute__((always_inline))
 #endif
 

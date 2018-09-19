@@ -95,7 +95,7 @@ namespace Falcor
 
         std::string toString() const 
         {
-            return pybind11::str(mMap);
+            return pybind11::str(static_cast<pybind11::dict>(mMap));
         }
     private:
         Container mMap;
