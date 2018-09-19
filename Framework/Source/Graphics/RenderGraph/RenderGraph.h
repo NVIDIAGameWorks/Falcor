@@ -164,6 +164,9 @@ namespace Falcor
         */
         bool onKeyEvent(const KeyboardEvent& keyEvent);
 
+        /** Get the dictionary objects used to communicate app data to the render-passes
+        */
+        const Dictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
     private:
         friend class RenderGraphUI;
         friend class RenderGraphExporter;
@@ -221,5 +224,6 @@ namespace Falcor
         std::unordered_map<RenderPass*, RenderPassReflection> mPassReflectionMap;
         ResourceCache::SharedPtr mpResourcesCache;
         bool mProfileGraph = true;
+        Dictionary::SharedPtr mpPassDictionary;
     };
 }

@@ -49,6 +49,7 @@ namespace Falcor
     {
         mpGraph = DirectedGraph::create();
         mpResourcesCache = ResourceCache::create();
+        mpPassDictionary = Dictionary::create();
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
@@ -427,7 +428,7 @@ namespace Falcor
         for (const auto& node : mExecutionList)
         {
             if (profile) Profiler::startEvent(mNodeData[node].nodeName);
-            RenderData renderData(mNodeData[node].nodeName, nullptr, mpResourcesCache);
+            RenderData renderData(mNodeData[node].nodeName, mpResourcesCache, mpPassDictionary);
             mNodeData[node].pPass->execute(pContext, &renderData);
             if (profile) Profiler::endEvent(mNodeData[node].nodeName);
         }

@@ -37,27 +37,21 @@ namespace Falcor
     class Texture;
     class Gui;
     class RenderContext;
-    
-    class ScratchPad : public std::enable_shared_from_this<ScratchPad>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<ScratchPad>;
-    };
 
     class RenderData
     {
     public:
-        RenderData(const std::string& passName, const ScratchPad::SharedPtr pScratchPad, const ResourceCache::SharedPtr& pResourceDepositBox) : mName(passName), mpResources(pResourceDepositBox), mpScratchPad(pScratchPad) {}
+        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict) : mName(passName), mpResources(pResourceCache), mpDictionary(pDict) {}
         std::shared_ptr<Texture> getTexture(const std::string& name) const
         {
             return std::dynamic_pointer_cast<Texture>(mpResources->getResource(mName + '.' + name));
         }
 
-        ScratchPad* getScratchPad() const { return mpScratchPad.get(); }
+        const Dictionary::SharedPtr& getDictionary() const { return mpDictionary; }
     protected:
         const std::string& mName;
         ResourceCache::SharedPtr mpResources;
-        ScratchPad::SharedPtr mpScratchPad;
+        Dictionary::SharedPtr mpDictionary;
     };
 
     class RenderPass : public std::enable_shared_from_this<RenderPass>
