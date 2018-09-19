@@ -847,6 +847,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="API\D3D12\D3DShaderCommon.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseDXR|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugDXR|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="API\D3D12\D3DViews.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
