@@ -39,6 +39,14 @@ namespace Falcor
     class RenderPassUI
     {
     public:
+
+        // wrapper around inserting new pin for a given pass
+        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);        
+        void renderPinUI(Gui* pGui, uint32_t pinIndex, bool isInput = true);
+
+        friend class RenderGraphUI;
+
+    private:
         struct PinUIData
         {
             std::string mPinName;
@@ -48,15 +56,6 @@ namespace Falcor
             std::string mConnectedNodeName;
             bool mIsGraphOutput;
         };
-
-        // wrapper around inserting new pin for a given pass
-        void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);
-        
-        void renderPinUI(Gui* pGui, uint32_t pinIndex, bool isInput = true);
-
-        friend class RenderGraphUI;
-
-    private:
 
         std::vector<PinUIData> mInputPins;
         std::unordered_map<std::string, uint32_t> mNameToIndexInput;

@@ -49,8 +49,9 @@ namespace Falcor
             enum class Type
             {
                 None        = 0x0,
-                Input       = 0x1,
-                Output      = 0x2,
+                Input       = 0x1,  // Input field
+                Output      = 0x2,  // Output field
+                Internal    = 0x4,  // Internal field. You can use this value to ask the resource-cache for any required internal resource
             };
 
             enum class Flags
@@ -105,6 +106,8 @@ namespace Falcor
         Field& addInput(const std::string& name);
         Field& addOutput(const std::string& name);
         Field& addInputOutput(const std::string& name);
+        Field& addInternal(const std::string& name);
+
         RenderPassReflection& setFlags(RenderPassReflection::Flags flags) { mFlags = flags; }
 
         size_t getFieldCount() const { return mFields.size(); }

@@ -454,11 +454,11 @@ namespace Falcor
                 const auto& field = passReflection.getField(f);
                 std::string fullFieldName = mNodeData[nodeIndex].nodeName + '.' + field.getName();
 
-                if (is_set(field.getType(), RenderPassReflection::Field::Type::Output))
+                // Skip input resources, we never allocate them
+                if (is_set(field.getType(), RenderPassReflection::Field::Type::Output | RenderPassReflection::Field::Type::Internal))
                 {
-                    // If a graph output has an external resource set, getResource will return a valid pointer
-                    bool allocate = (isGraphOutput(nodeIndex, field.getName()) && mpResourcesCache->getResource(fullFieldName) == nullptr) ||
-                        (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false);
+                    bool allocate = (isGraphOutput(nodeIndex, field.getName()) && mpResourcesCache->getResource(fullFieldName) == nullptr); // If a graph output has an external resource set, getResource will return a valid pointer
+                    allocate = allocate || (is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional) == false); // Check if this is an optional field
 
                     if (allocate)
                     {
