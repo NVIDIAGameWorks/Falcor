@@ -1,9 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <FALCOR_CORE_DIRECTORY>$(SolutionDir)\.\Framework\Source\\..\</FALCOR_CORE_DIRECTORY>
-    <FALCOR_BACKEND>FALCOR_DXR</FALCOR_BACKEND>
+    <FALCOR_BACKEND>FALCOR_D3D12</FALCOR_BACKEND>
   </PropertyGroup>
   <PropertyGroup>
     <OutDir>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\</OutDir>
@@ -13,7 +13,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals\RapidJson\include;$(FALCOR_CORE_DIRECTORY)\Externals\pybind11\include;$(FALCOR_CORE_DIRECTORY)\Externals\Python\include;$(FALCOR_CORE_DIRECTORY)\Externals</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>

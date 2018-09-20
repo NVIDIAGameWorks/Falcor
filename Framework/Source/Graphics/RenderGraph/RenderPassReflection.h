@@ -61,6 +61,7 @@ namespace Falcor
                 Persistent = 0x2,   ///< The resource bound to this field must not change between execute() calls (not the pointer nor the data). It can change only during the RenderGraph recompilation.
             };
 
+            Field();
             Field(const std::string& name, Type type);
 
             bool isValid() const;
@@ -87,7 +88,6 @@ namespace Falcor
 
         private:
             static const ReflectionResourceType::SharedPtr kpTex2DType;
-            Field();
 
             std::string mName;                             ///< The field's name
             ReflectionResourceType::SharedConstPtr mpType = kpTex2DType; ///< The resource type. The default is a 2D texture
