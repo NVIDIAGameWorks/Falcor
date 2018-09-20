@@ -198,7 +198,7 @@ namespace Falcor
         mFreezeTime = config.freezeTimeOnStartup;
         mVsyncOn = config.deviceDesc.enableVsync;
 
-        // Setup the logger
+        Scripting::start();
         Logger::showBoxOnError(config.showMessageBoxOnError);
 
         // Create the window

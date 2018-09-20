@@ -31,7 +31,8 @@
 #include "Externals/pybind11/include/pybind11/stl.h"
 #include "Utils/StringUtils.h"
 #include "Utils/Dictionary.h"
-
+// TEST
+#include "API/Formats.h"
 #include "Graphics/RenderGraph/RenderGraphScripting.h"
 #include "EnumsScriptBindings.h"
 
@@ -89,18 +90,19 @@ namespace Falcor
         EnumsScriptBindings::registerScriptingObjects(m);
     }
 
-    bool Scripting::sRunning = Scripting::start();
+    bool Scripting::sRunning = false;
 
     bool Scripting::start()
     {
         if (!sRunning)
         {
             sRunning = true;
-            // static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python");
-            // TEST 
-            //static const std::wstring pythonHome = string_2_wstring(_PYTHONHOME_);
-            //Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
-
+#ifdef _WIN32
+            static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python");
+            static const std::wstring pythonHome = string_2_wstring(pythonHome);
+            Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
+#endif
+            
             try
             {
                 pybind11::initialize_interpreter();

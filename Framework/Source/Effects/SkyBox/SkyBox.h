@@ -57,7 +57,7 @@ namespace Falcor
         /* Create a sky box using data from serializer
             \param[in] serializer Object to obtain initialization data
         */
-        static SharedPtr create(const Dictionary& dict);
+        static SharedPtr create(const Dictionary& dict = {});
         
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
