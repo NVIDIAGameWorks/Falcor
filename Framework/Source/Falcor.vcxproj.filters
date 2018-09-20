@@ -1699,6 +1699,9 @@
     <ClInclude Include="Utils\VariablesBufferUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="API\D3D12\D3DShaderCommon.h">
+      <Filter>API\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

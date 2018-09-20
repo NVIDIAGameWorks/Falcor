@@ -467,7 +467,6 @@ namespace Falcor
         preprocessorDefine = "FALCOR_D3D";
         // If the profile string starts with a `4_` or a `5_`, use DXBC. Otherwise, use DXIL
         if (hasPrefix(mDesc.mShaderModel, "4_") || hasPrefix(mDesc.mShaderModel, "5_")) slangTarget = SLANG_DXBC;
-        else if (mDesc.mShaderModel == "6_3")                                           slangTarget = SLANG_HLSL;   // TODO This is actually a hack for DXR, we need to fix it
         else                                                                            slangTarget = SLANG_DXIL;
 #else
 #error unknown shader compilation target

@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include <vector>
 #include "API/Shader.h"
+#include "D3DShaderCommon.h"
 
 namespace Falcor
 {
@@ -57,55 +58,6 @@ namespace Falcor
             return "";
         }
     }
-
-    struct SlangBlob : ID3DBlob
-    {
-        std::vector<uint8_t> data;
-        size_t refCount;
-
-        SlangBlob(const void* buffer, size_t bufferSize)
-            : data((uint8_t*)buffer, ((uint8_t*)buffer) + bufferSize)
-            , refCount(1)
-        {}
-
-        // IUnknown
-
-        virtual HRESULT STDMETHODCALLTYPE QueryInterface( 
-            /* [in] */ REFIID riid,
-            /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) override
-        {
-            *ppvObject = this;
-            return S_OK;
-        }
-
-        virtual ULONG STDMETHODCALLTYPE AddRef( void) override
-        {
-            ++refCount;
-            return (ULONG) refCount;
-        }
-
-        virtual ULONG STDMETHODCALLTYPE Release( void) override
-        {
-            --refCount;
-            if(refCount == 0)
-            {
-                delete this;
-            }
-            return (ULONG) refCount;
-        }
-
-        // ID3DBlob
-
-        virtual LPVOID STDMETHODCALLTYPE GetBufferPointer() override
-        {
-            return data.data();
-        }
-
-        virtual SIZE_T STDMETHODCALLTYPE GetBufferSize() override
-        {
-            return data.size();
-        }
-    };
 
     UINT getD3dCompilerFlags(Shader::CompilerFlags flags)
     {
