@@ -70,6 +70,7 @@ namespace Falcor
             Field& setFormat(ResourceFormat format) { mFormat = format; return *this; }
             Field& setBindFlags(Resource::BindFlags flags) { mBindFlags = flags; return *this; }
             Field& setFlags(Flags flags) { mFlags = flags; return *this; }
+            Field& setArraySize(uint32_t arraySize) { mArraySize = arraySize; }
 
             const std::string& getName() const { return mName; }
             const ReflectionResourceType::SharedConstPtr& getResourceType() const { return mpType; }
@@ -77,6 +78,7 @@ namespace Falcor
             uint32_t getHeight() const { return mHeight; }
             uint32_t getDepth() const { return mDepth; }
             uint32_t getSampleCount() const { return mSampleCount; }
+            uint32_t getArraySize() const { return mArraySize; }
             ResourceFormat getFormat() const { return mFormat; }
             Resource::BindFlags getBindFlags() const { return mBindFlags; }
             Flags getFlags() const { return mFlags; }

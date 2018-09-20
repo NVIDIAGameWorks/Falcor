@@ -46,6 +46,7 @@ namespace Falcor
     const char* RenderGraphScripting::kAutoGenEdges = "autoGenEdges";
     const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
+    const char* RenderGraphScripting::kUpdatePass = "updatePass";
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {
@@ -58,6 +59,7 @@ namespace Falcor
         graphClass.def(kAddEdge, &RenderGraph::addEdge).def(kRemoveEdge, renderGraphRemoveEdge);
         graphClass.def(kMarkOutput, &RenderGraph::markOutput).def(kUnmarkOutput, &RenderGraph::unmarkOutput);
         graphClass.def(kAutoGenEdges, &RenderGraph::autoGenEdges);
+        graphClass.def(kUpdatePass, &RenderGraph::updatePass, "passName"_a, "dict"_a = pybind11::dict());
 
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
@@ -68,6 +70,11 @@ namespace Falcor
             return RenderPassLibrary::createPass(passName.c_str(), Dictionary(d));
         };
         m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
+
+       const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d = {})
+       {
+           pGraph->updatePass(passName, Dictionary(d));
+       };
     }
 
     RenderGraphScripting::SharedPtr RenderGraphScripting::create()
@@ -81,7 +88,7 @@ namespace Falcor
 
         if (findFileInDataDirectories(filename, pThis->mFilename) == false)
         {
-            logError("Error when opengine render graphs script file. Can't find the file `" + filename + "`");
+            logError("Error when opening render graphs script file. Can't find the file `" + filename + "`");
             return nullptr;
         }
 

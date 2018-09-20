@@ -34,6 +34,7 @@ namespace Falcor
     {
     public:
         using Container = pybind11::dict;
+        using SharedPtr = std::shared_ptr<Dictionary>;
 
         Dictionary() = default;
         Dictionary(const Container& c) : mMap(c) {}
@@ -73,6 +74,8 @@ namespace Falcor
             pybind11::detail::dict_iterator mIt;
             ContainerType* mpContainer;
         };
+
+        static SharedPtr create() { return SharedPtr(new Dictionary); }
 
         using Iterator = IteratorT<Container>;
         using ConstIterator = IteratorT<const Container>;

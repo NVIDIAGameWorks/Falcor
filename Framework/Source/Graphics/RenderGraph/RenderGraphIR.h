@@ -41,6 +41,7 @@ namespace Falcor
         static SharedPtr create(const std::string& name, bool newGraph = true);
 
         void addPass(const std::string& passClass, const std::string& passName, const Dictionary& = Dictionary());
+        void updatePass(const std::string& passName, const Dictionary& dictionary);
         void removePass(const std::string& passName);
         void addEdge(const std::string& src, const std::string& dst);
         void removeEdge(const std::string& src, const std::string& dst);
@@ -48,7 +49,7 @@ namespace Falcor
         void unmarkOutput(const std::string& name);
         void autoGenEdges();
 
-        std::string getIR() { return mIR + mIndentation + "return " + mName + '\n'; }
+        std::string getIR() { return mIR + mIndentation + (mIndentation.size() ? ("return " + mName + '\n') : "\n"); }
 
     private:
         RenderGraphIR(const std::string& name, bool newGraph);

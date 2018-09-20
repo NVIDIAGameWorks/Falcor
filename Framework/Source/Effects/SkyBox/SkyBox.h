@@ -44,8 +44,8 @@ namespace Falcor
     class SkyBox : public RenderPass, inherit_shared_from_this<RenderPass, SkyBox>
     {
     public:
+        using UniquePtr = std::shared_ptr<SkyBox>;
         using SharedPtr = std::shared_ptr<SkyBox>;
-        using UniquePtr = std::unique_ptr<SkyBox>;
 
         /** Create a sky box using an existing texture
             \param[in] pTexture Sky box texture
@@ -53,11 +53,7 @@ namespace Falcor
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
         static SharedPtr create(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler = nullptr, bool renderStereo = false);
-
-        /* Create a sky box using data from serializer
-            \param[in] serializer Object to obtain initialization data
-        */
-        static SharedPtr create(const Dictionary& dict = {});
+        static SharedPtr create(const Dictionary& dict);
         
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
@@ -68,6 +64,7 @@ namespace Falcor
         deprecate("3.2", "Use create() instead. Note that it returns a SharedPtr and not a UniquePtr.")
         static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         static SharedPtr create(const std::string& textureFile, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(const Dictionary& dict = {});
 
         /** Render the sky box.
             \param[in] pRenderCtx Render context
@@ -126,6 +123,9 @@ namespace Falcor
         GraphicsState::SharedPtr mpState;
         Fbo::SharedPtr mpFbo;
         std::shared_ptr<Scene> mpScene;
+        Sampler::SharedPtr mpSampler;
+        bool mLoadSrgb = true;
+        bool mRenderStereo = false;
 
         struct
         {

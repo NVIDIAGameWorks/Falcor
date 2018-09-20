@@ -28,82 +28,108 @@
 #include "Framework.h"
 #include "RenderGraphUI.h"
 #include "Utils/Gui.h"
-#include "RenderGraphScripting.h"
 #   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
-#include "../Samples/Utils/RenderGraphEditor/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
+#include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 #include "Externals/dear_imgui/imgui.h"
-// Matt Don't do this
+// Matt TODO Don't do this
 #include "Externals/dear_imgui/imgui_internal.h"
 #include <experimental/filesystem>
-#include <fstream>
+#include <functional>
 
 namespace Falcor
 {
     const float kUpdateTimeInterval = 2.0f;
-    const float kPinRadius = 6.0f;
+    const float kPinRadius = 7.0f;
 
-    static std::unordered_map<uint32_t, ImGui::Node*> spIDToNode;
-    static RenderGraphUI* spCurrentGraphUI = nullptr;
-
-    class NodeGraphEditorGui : public ImGui::NodeGraphEditor
+    class RenderGraphUI::NodeGraphEditorGui : public ImGui::NodeGraphEditor
     {
     public:
-        ImGui::Node* pGraphOutputNode = nullptr;
+        RenderGraphUI::NodeGraphEditorGui(RenderGraphUI* pRenderGraphUI) : mpRenderGraphUI(pRenderGraphUI) {}
 
-        void reset()
+        // call on beginning a new frame
+        void setCurrentGui(Gui* pGui) { mpGui = pGui; }
+
+        Gui* getCurrentGui() const { assert(mpGui); return mpGui; }
+
+        void reset() { inited = false; }
+
+        glm::vec2 getOffsetPos() const { return { offset.x, offset.y }; }
+
+        ImGui::NodeLink& getLink(int32_t index) { return links[index]; }
+        
+        void setLinkColor(uint32_t index, uint32_t col) { links[index].LinkColor = col; }
+
+        void setOutputNode(ImGui::Node* pNode) { mpGraphOutputNode = pNode; }
+
+        ImGui::Node* getOutputNode() { return mpGraphOutputNode; }
+
+        RenderGraphUI* getRenderGraphUI() { return mpRenderGraphUI; }
+
+        void setPopupNode(ImGui::Node* pFocusedNode) { mpFocusedNode = pFocusedNode;  }
+
+        ImGui::Node* getPopupNode() { return mpFocusedNode; }
+
+        void setPopupPin(uint32_t pinIndex, bool isInput) { mPinIndexToDisplay = pinIndex; }
+
+        uint32_t getPopupPinIndex() const { return mPinIndexToDisplay; }
+
+        bool isPopupPinInput() const { return mPopupPinIsInput; }
+        
+        const std::string& getRenderUINodeName() const { return mRenderUINodeName; }
+
+        void setRenderUINodeName(const std::string& renderUINodeName) { mRenderUINodeName = renderUINodeName; }
+
+        ImGui::Node*& getNodeFromID(uint32_t nodeID) { return mpIDtoNode[nodeID]; }
+
+        // wraps around creating link to avoid setting static flag
+        uint32_t addLinkFromGraph(ImGui::Node* inputNode, int input_slot, ImGui::Node* outputNode, int output_slot, bool checkIfAlreadyPresent = false, ImU32 col = GetStyle().color_link)
         {
-            inited = false;
+            // tell addLink to call a different callback func
+            auto oldCallback = linkCallback;
+            linkCallback = setLinkFromGraph;
+
+            bool insert = addLink(inputNode, input_slot, outputNode, output_slot, checkIfAlreadyPresent, col);
+            linkCallback = oldCallback;
+            return insert ? (links.size() - 1) : uint32_t(-1);
         }
 
-        glm::vec2 getOffsetPos()
+        ImGui::Node* addAndInitNode(int nodeType, const std::string& name, const std::string& outputsString, const std::string& inputsString, uint32_t guiNodeID, RenderPass* pCurrentRenderPass, const ImVec2& pos = ImVec2(0, 0));
+
+        void setNodeCallbackFunc(NodeCallback cb, void* pUserData)
         {
-            return { offset.x, offset.y };
+            mpCBUserData = pUserData;
+            setNodeCallback(cb);
         }
 
-        ImGui::NodeLink& getLink(int32_t index)
-        {
-            return links[index];
-        }
+        // callback function defined in derived class definition to access data without making class public to the rest of Falcor
+        static void setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor);
+        // callback for ImGui setting link between to nodes in the visual interface
+        static void setLinkFromGui( ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
+        static void setLinkFromGraph( ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
+        static ImGui::Node* NodeGraphEditorGui::createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&);
+
+        RenderGraphUI* mpRenderGraphUI;
+
+    private:
+        friend class RenderGraphNode;
+
+        Gui* mpGui = nullptr;
+        void* mpCBUserData = nullptr;
+        ImGui::Node* mpGraphOutputNode = nullptr;
+        ImGui::Node* mpFocusedNode = nullptr;
+        uint32_t mPinIndexToDisplay = uint32_t(-1);
+        bool mPopupPinIsInput = false;
+        std::string mRenderUINodeName;
+        std::unordered_map<uint32_t, ImGui::Node*> mpIDtoNode;
     };
 
-    static NodeGraphEditorGui sNodeGraphEditor;
-
-    class RenderGraphNode : public ImGui::Node
+    class RenderGraphUI::RenderGraphNode : public ImGui::Node
     {
     public:
-        // Data for callback initialization from gui graph library
-        class NodeInitData
-        {
-        public:
-            std::string mName;
-            std::string mOutputsString;
-            std::string mInputsString;
-            uint32_t mGuiNodeID;
-            RenderPass* mpCurrentRenderPass;
-        };
-
-        static Gui* spGui;
-        static NodeInitData sInitData;
-        // set if node is added from graph data and not the ui
-        static bool sAddedFromGraphData;
-
-        static RenderGraphNode* spNodeToRenderPin;
-        static bool sPinIsInput;
-        static uint32_t sPinIndexToDisplay;
-        
         bool mDisplayProperties;
         bool mOutputPinConnected[IMGUINODE_MAX_OUTPUT_SLOTS];
         bool mInputPinConnected[IMGUINODE_MAX_INPUT_SLOTS];
         RenderPass* mpRenderPass;
-
-        static void setInitData(const std::string& name, const std::string& outputsString, const std::string& inputsString, uint32_t guiNodeID, RenderPass* pCurrentRenderPass)
-        {
-            sInitData.mName = name;
-            sInitData.mOutputsString = outputsString;
-            sInitData.mInputsString = inputsString;
-            sInitData.mGuiNodeID = guiNodeID;
-            sInitData.mpCurrentRenderPass = pCurrentRenderPass;
-        }
 
         bool pinIsConnected(uint32_t id, bool isInput)
         {
@@ -126,7 +152,7 @@ namespace Falcor
             return fields;
         }
 
-        // Allow the rendergraphui to set the position of each node
+        // Allow the renderGraphUI to set the position of each node
         void setPos(const glm::vec2& pos)
         {
             Pos.x = pos.x;
@@ -141,40 +167,50 @@ namespace Falcor
         // render Gui within the nodes
         static bool renderUI(ImGui::FieldInfo& field)
         {
-            if (sNodeGraphEditor.isInited())
-            {
-                return false;
-            }
-
-            std::string dummyText; dummyText.resize(32, ' ');
-            spGui->addText(dummyText.c_str());
-            spGui->addText(dummyText.c_str());
-            spGui->addText(dummyText.c_str());
-
             // with this library there is no way of modifying the positioning of the labels on the node
             // manually making labels to align correctly from within the node
 
             // grab all of the fields again
             RenderGraphNode* pCurrentNode = static_cast<RenderGraphNode*>(field.userData);
+            RenderGraphUI::NodeGraphEditorGui* pGraphEditorGui = static_cast<RenderGraphUI::NodeGraphEditorGui*>(&pCurrentNode->getNodeGraphEditor());
+            if (pGraphEditorGui->isInited())  return false;
+
+            Gui* pGui = pGraphEditorGui->getCurrentGui();
             RenderPass* pRenderPass = static_cast<RenderPass*>(pCurrentNode->mpRenderPass);
             int32_t paddingSpace = glm::max(pCurrentNode->OutputsCount, pCurrentNode->InputsCount) / 2 + 1;
-            
             ImVec2 oldScreenPos = ImGui::GetCursorScreenPos();
-            ImVec2 currentScreenPos{ sNodeGraphEditor.offset.x  + pCurrentNode->Pos.x * ImGui::GetCurrentWindow()->FontWindowScale, 
-                sNodeGraphEditor.offset.y + pCurrentNode->Pos.y * ImGui::GetCurrentWindow()->FontWindowScale };
+            ImVec2 currentScreenPos{ pGraphEditorGui->offset.x  + pCurrentNode->Pos.x * ImGui::GetCurrentWindow()->FontWindowScale,
+                pGraphEditorGui->offset.y + pCurrentNode->Pos.y * ImGui::GetCurrentWindow()->FontWindowScale };
             ImVec2 pinRectBoundsOffsetx{ -kPinRadius * 2.0f, kPinRadius * 4.0f };
 
             // TODO the pin colors need to be taken from the global style
             ImU32 pinColor = 0xFFFFFFFF;
-            
             float slotNum = 1.0f;
             float pinOffsetx = kPinRadius * 2.0f;
             uint32_t pinCount = static_cast<uint32_t>(pCurrentNode->InputsCount);
             bool isInputs = true;
 
+            std::string dummyText; dummyText.resize(32, ' ');
+            pGui->addText(dummyText.c_str());
+            pGui->addText(dummyText.c_str());
+            pGui->addText(dummyText.c_str());
+            pGui->addText(dummyText.c_str());
+
+            if (pRenderPass && ImGui::IsMouseClicked(1))
+            {
+                std::string idString = std::string("Render UI##") + pCurrentNode->getName();
+                
+                // get hover rect of node 
+
+                if (ImGui::IsMouseHoveringRect(currentScreenPos, ImVec2(currentScreenPos.x + pCurrentNode->Size.x, currentScreenPos.y + pCurrentNode->Size.y)))
+                {
+                    pGraphEditorGui->setRenderUINodeName(pCurrentNode->getName());
+                }
+            }
+
             for (int32_t i = 0; i < paddingSpace; ++i)
             {
-                spGui->addText(dummyText.c_str());
+                pGui->addText(dummyText.c_str());
             }
 
             for (uint32_t j = 0; j < 2; ++j)
@@ -195,11 +231,11 @@ namespace Falcor
                     {
                         ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(inputPos.x, inputPos.y), kPinRadius, ImGui::GetColorU32(ImGui::NodeGraphEditor::GetStyle().color_node_title));
 
-                        if (pRenderPass && ImGui::GetIO().KeyCtrl && ImGui::IsMouseClicked(0))
+                        if (pRenderPass && ImGui::IsMouseClicked(1))
                         {
-                            RenderGraphNode::spNodeToRenderPin = pCurrentNode;
-                            RenderGraphNode::sPinIndexToDisplay = i;
-                            RenderGraphNode::sPinIsInput = !static_cast<bool>(j);
+                            pGraphEditorGui->setPopupNode(pCurrentNode);
+                            pGraphEditorGui->setPopupPin(i, !static_cast<bool>(j));
+
                         }
                     }
                     else
@@ -209,7 +245,7 @@ namespace Falcor
                     ImGui::SetCursorScreenPos({ inputPos.x + pinOffsetx - ((pinOffsetx < 0.0f) ? ImGui::CalcTextSize(isInputs ? pCurrentNode->InputNames[i] : pCurrentNode->OutputNames[i]).x : 0.0f), inputPos.y - kPinRadius });
 
                     slotNum++;
-                    spGui->addText(isInputs ? pCurrentNode->InputNames[i] : pCurrentNode->OutputNames[i]);
+                    pGui->addText(isInputs ? pCurrentNode->InputNames[i] : pCurrentNode->OutputNames[i]);
                 }
 
                 // reset and set up offsets for the output pins
@@ -225,12 +261,26 @@ namespace Falcor
             
             for (int32_t i = 0; i < paddingSpace; ++i)
             {
-                spGui->addText(dummyText.c_str());
+                pGui->addText(dummyText.c_str());
             }
 
-            spGui->addText(dummyText.c_str());
+            pGui->addText(dummyText.c_str());
 
             return false;
+        }
+
+        void initialize(const std::string& name, const std::string& outputsString, 
+            const std::string& inputsString, uint32_t guiNodeID, RenderPass* pRenderPass)
+        {
+            init(name.c_str(), Pos, inputsString.c_str(), outputsString.c_str(), guiNodeID);
+
+            if (pRenderPass)
+            {
+                mpRenderPass = pRenderPass;
+                const glm::vec4 nodeColor = Gui::pickUniqueColor(pRenderPass->getName());
+                overrideTitleBgColor = ImGui::GetColorU32({ nodeColor.x, nodeColor.y, nodeColor.z, nodeColor.w });
+            }
+
         }
 
         static RenderGraphNode* create(const ImVec2& pos)
@@ -238,60 +288,82 @@ namespace Falcor
             RenderGraphNode* node = (RenderGraphNode*)ImGui::MemAlloc(sizeof(RenderGraphNode));
             IM_PLACEMENT_NEW(node) RenderGraphNode();
 
-            node->init(sInitData.mName.c_str(), pos, sInitData.mInputsString.c_str(), sInitData.mOutputsString.c_str(), sInitData.mGuiNodeID);
-
-            if (sInitData.mpCurrentRenderPass)
-            {
-                node->mpRenderPass = sInitData.mpCurrentRenderPass;
-                const glm::vec4 nodeColor = Gui::pickUniqueColor(node->mpRenderPass->getName());
-                node->overrideTitleBgColor = ImGui::GetColorU32({ nodeColor.x, nodeColor.y, nodeColor.z, nodeColor.w });
-            }
-            
             node->fields.addFieldCustom(static_cast<ImGui::FieldInfo::RenderFieldDelegate>(renderUI), nullptr, node);
-            
+            node->Pos = pos;
             return node;
         }
     private:
     };
 
-    bool RenderGraphNode::sAddedFromGraphData = false;
-    RenderGraphNode::NodeInitData RenderGraphNode::sInitData;
-    Gui* RenderGraphNode::spGui = nullptr;
-
-    RenderGraphNode* RenderGraphNode::spNodeToRenderPin = nullptr;
-    bool RenderGraphNode::sPinIsInput = false;
-    uint32_t RenderGraphNode::sPinIndexToDisplay = 0;
-
-    bool RenderGraphUI::sRebuildDisplayData = true;
-    std::string RenderGraphUI::sLogString;
-
-    static ImGui::Node* createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&)
+    ImGui::Node* RenderGraphUI::NodeGraphEditorGui::addAndInitNode(int nodeType, const std::string& name,
+        const std::string& outputsString, const std::string& inputsString, uint32_t guiNodeID,
+        RenderPass* pCurrentRenderPass, const ImVec2& pos)
     {
-        return RenderGraphNode::create(pos);
+        // set init data for new node to obtain
+        RenderGraphNode* newNode = static_cast<RenderGraphNode*>(addNode(nodeType, pos, nullptr));
+        newNode->initialize(name, outputsString, inputsString, guiNodeID, pCurrentRenderPass);
+        return newNode;
     }
 
-    bool RenderGraphUI::pushUpdateCommand(const std::string& commandString)
+    void RenderGraphUI::NodeGraphEditorGui::setLinkFromGui(ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
     {
-        // make sure the graph is compiled
-        mRenderGraphRef.resolveExecutionOrder();
-
-        // only send updates that we know are valid.
-        if (mRenderGraphRef.isValid(sLogString))
+        if (state == ImGui::NodeGraphEditor::LinkState::LS_ADDED)
         {
-            sLogString += commandString + " successful\n";
-            mCommandStrings.push_back(commandString);
-            return true;
-        }
-        else
-        {
-        }
+            RenderGraphNode* inputNode = static_cast<RenderGraphNode*>(link.InputNode),
+                *outputNode = static_cast<RenderGraphNode*>(link.OutputNode);
+            RenderGraphUI::NodeGraphEditorGui* pGraphEditorGui = static_cast<RenderGraphUI::NodeGraphEditorGui*>(&editor);
 
-        return false;
+            if (outputNode == pGraphEditorGui->mpGraphOutputNode)
+            {
+                editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
+                pGraphEditorGui->getRenderGraphUI()->addOutput(inputNode->getName(), inputNode->getOutputName(link.InputSlot));
+                return;
+            }
+
+            bool addStatus = false;
+            addStatus = pGraphEditorGui->getRenderGraphUI()->addLink(
+                inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot), link.LinkColor);
+
+            // immediately remove link if it is not a legal edge in the render graph
+            if (!addStatus && !editor.isInited()) //  only call after graph is setup
+            {
+                // does not call link callback surprisingly enough
+                editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
+                return;
+            }
+        }
     }
 
+    // callback for ImGui setting link from render graph changes
+    void RenderGraphUI::NodeGraphEditorGui::setLinkFromGraph(ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
+    {
+        if (state == ImGui::NodeGraphEditor::LinkState::LS_ADDED)
+        {
+            RenderGraphNode* outputNode = static_cast<RenderGraphNode*>(link.OutputNode);
+
+            if (outputNode == static_cast<RenderGraphUI::NodeGraphEditorGui*>(&editor)->mpGraphOutputNode) return;
+
+            bool addStatus = false;
+
+            // immediately remove link if it is not a legal edge in the render graph
+            if (!addStatus && !editor.isInited()) //  only call after graph is setup
+            {
+                // does not call link callback surprisingly enough
+                editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
+                return;
+            }
+        }
+    }
+
+    ImGui::Node* RenderGraphUI::NodeGraphEditorGui::createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&)
+    {
+        return RenderGraphUI::RenderGraphNode::create(pos);
+    }
+    
     void RenderGraphUI::addRenderPass(const std::string& name, const std::string& nodeTypeName)
     {
-        pushUpdateCommand(std::string("AddRenderPass ") + name + " " + nodeTypeName);
+        mpIr->addPass(name, nodeTypeName);
+        mShouldUpdate = true;
     }
 
     void RenderGraphUI::addOutput(const std::string& outputParam)
@@ -314,165 +386,196 @@ namespace Falcor
             return;
         }
         passUI.mOutputPins[outputIt->second].mIsGraphOutput = true;
-
-        mRenderGraphRef.markOutput(outputParam);
-        pushUpdateCommand(std::string("AddGraphOutput ") + outputParam);
-        sRebuildDisplayData = true;
+        mpIr->markOutput(outputParam);
+        mRebuildDisplayData = true;
+        mShouldUpdate = true;
     }
 
     void RenderGraphUI::addOutput(const std::string& outputPass, const std::string& outputField)
     {
         std::string outputParam = outputPass + "." + outputField;
-        mRenderGraphRef.markOutput(outputParam);
-        pushUpdateCommand(std::string("AddGraphOutput ") + outputParam);
-        auto& passUI = mRenderPassUI[outputPass];
-        passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = true;
-        sRebuildDisplayData = true;
+        addOutput(outputParam);
     }
-
 
     void RenderGraphUI::removeOutput(const std::string& outputPass, const std::string& outputField)
     {
         std::string outputParam = outputPass + "." + outputField;
-        mRenderGraphRef.unmarkOutput(outputParam);
-        pushUpdateCommand("RemoveGraphOutput " + outputParam);
+        mpIr->unmarkOutput(outputParam);
         auto& passUI = mRenderPassUI[outputPass];
         passUI.mOutputPins[passUI.mNameToIndexOutput[outputField]].mIsGraphOutput = false;
+        mShouldUpdate = true;
     }
 
-    bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
+    bool RenderGraphUI::autoResolveWarning(const std::string& srcString, const std::string& dstString)
+    {
+        std::string warningMsg = std::string("Warning: Edge ") + srcString + " - " + dstString + " can auto-resolve.\n";
+        MsgBoxButton button = msgBox(warningMsg, MsgBoxType::OkCancel);
+
+        if (button == MsgBoxButton::Ok)
+        {
+            mLogString += warningMsg;
+            return true;
+        }
+        
+        return false;
+    }
+
+    bool RenderGraphUI::addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField, uint32_t& color)
     {
         // outputs warning if edge could not be created 
         std::string srcString = srcPass + "." + srcField, dstString = dstPass + "." + dstField;
-        bool createdEdge = (spCurrentGraphUI->mRenderGraphRef.addEdge(srcString, dstString) != ((uint32_t)-1));
-
-        pushUpdateCommand(std::string("AddEdge ") + srcString + " " + dstString);
+        bool canCreateEdge = (mpRenderGraph->getEdge(srcString, dstString) == ((uint32_t)-1));
+        if (!canCreateEdge) return canCreateEdge;
 
         // update the ui to reflect the connections. This data is used for removal
-        if (createdEdge)
+        RenderPassUI& srcRenderPassUI = mRenderPassUI[srcPass];
+        RenderPassUI& dstRenderPassUI = mRenderPassUI[dstPass];
+        const auto outputIt = srcRenderPassUI.mNameToIndexOutput.find(srcField);
+        const auto inputIt =  dstRenderPassUI.mNameToIndexInput.find(dstField);
+        // check that link could exist
+        canCreateEdge &= (outputIt != srcRenderPassUI.mNameToIndexOutput.end()) && 
+            (inputIt != dstRenderPassUI.mNameToIndexInput.end());
+        // check that the input is not already connected
+        canCreateEdge &= (mInputPinStringToLinkID.find(dstString) == mInputPinStringToLinkID.end());
+
+        if (canCreateEdge)
         {
-            RenderPassUI& srcRenderGraphUI = spCurrentGraphUI->mRenderPassUI[srcPass];
-            RenderPassUI& dstRenderGraphUI = spCurrentGraphUI->mRenderPassUI[dstPass];
+            uint32_t srcPinIndex = outputIt->second;
+            uint32_t dstPinIndex = inputIt->second;
+            srcRenderPassUI.mOutputPins[srcPinIndex].mConnectedPinName = dstField;
+            srcRenderPassUI.mOutputPins[srcPinIndex].mConnectedNodeName = dstPass;
+            dstRenderPassUI.mInputPins[dstPinIndex].mConnectedPinName = srcField;
+            dstRenderPassUI.mInputPins[dstPinIndex].mConnectedNodeName = srcPass;
+            
+            RenderPassReflection srcReflection, dstReflection;
+            mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(srcPass)].pPass->reflect(srcReflection);
+            mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(dstPass)].pPass->reflect(dstReflection);
 
-            uint32_t srcPinIndex = srcRenderGraphUI.mNameToIndexOutput[srcField];
-            uint32_t dstPinIndex = dstRenderGraphUI.mNameToIndexInput[dstField];
+            bool canAutoResolve = mpRenderGraph->canAutoResolve(srcReflection.getField(srcField), dstReflection.getField(dstField));
+            if (canAutoResolve && mDisplayAutoResolvePopup) canCreateEdge = autoResolveWarning(srcString, dstString);
+            color = canAutoResolve ? mAutoResolveEdgesColor : mEdgesColor;
 
-            srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedPinName = dstField;
-            srcRenderGraphUI.mOutputPins[srcPinIndex].mConnectedNodeName = dstPass;
-            dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedPinName = srcField;
-            dstRenderGraphUI.mInputPins[dstPinIndex].mConnectedNodeName = srcPass;
-
-            sRebuildDisplayData = true;
+            if (canCreateEdge)
+            {
+                mpIr->addEdge(srcString, dstString);
+                mShouldUpdate = true;
+            }
+        }
+        else
+        {
+            mLogString += "Unable to create edge for graph. \n";
         }
 
-        return createdEdge;
+        return canCreateEdge;
     }
 
     void RenderGraphUI::removeEdge(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField)
     {
-        std::string command("RemoveEdge ");
-        command += srcPass + "." + srcField + " " + dstPass + "." + dstField;
-        pushUpdateCommand(command);
+        mpIr->removeEdge(srcPass + "." + srcField, dstPass + "." + dstField);
+        mShouldUpdate = true;
     }
 
     void RenderGraphUI::removeRenderPass(const std::string& name)
     {
-        spCurrentGraphUI->sRebuildDisplayData = true;
-        spCurrentGraphUI->mRenderGraphRef.removePass(name);
-        pushUpdateCommand(std::string("RemoveRenderPass ") + name);
+        mRebuildDisplayData = true;
+        mpIr->removePass(name);
+        mShouldUpdate = true;
+    }
+
+    void RenderGraphUI::updateGraph()
+    {
+        if (!mShouldUpdate) return;
+        std::string newCommands = mpIr->getIR();
+        mpIr = RenderGraphIR::create(mRenderGraphName, false); // reset
+        if (mLastCommand == newCommands) return;
+
+        // make sure the graph is compiled
+        mpRenderGraph->resolveExecutionOrder();
+        mLastCommand = newCommands;
+
+        if (mRecordUpdates) mUpdateCommands += newCommands;
+
+        // update reference graph to check if valid before sending to next 
+        auto pScripting = RenderGraphScripting::create();
+        pScripting->addGraph(mRenderGraphName, mpRenderGraph);
+        pScripting->runScript(newCommands);
+
+        if(newCommands.size()) mLogString += "Running: " + newCommands;
+
+        // only send updates that we know are valid.
+        if (!mpRenderGraph->isValid(mLogString))
+        {
+            mLogString += "Graph is currently invalid\n";
+        }
+
+        mShouldUpdate = false;
+        mRebuildDisplayData = true;
     }
 
     void RenderGraphUI::writeUpdateScriptToFile(const std::string& filePath, float lastFrameTime)
     {
         if ((mTimeSinceLastUpdate += lastFrameTime) < kUpdateTimeInterval) return;
         mTimeSinceLastUpdate = 0.0f;
-        if (!mCommandStrings.size()) return;
-        static std::ofstream ofstream(filePath, std::ios_base::out);
-        size_t totalSize = 0;
-        
-        ofstream.write(reinterpret_cast<const char*>(&totalSize), sizeof(size_t));
-        
-        for (std::string& statement : mCommandStrings)
-        {
-            statement.push_back('\n');
-            totalSize += statement.size();
-            ofstream.write(statement.c_str(), statement.size());
-        }
+        if (!mUpdateCommands.size()) return;
 
-        mCommandStrings.clear();
-        
-        // rewind and write the size of the script changes for the viewer to execute
-        ofstream.seekp(0, std::ios::beg);
-        ofstream.write(reinterpret_cast<const char*>(&totalSize), sizeof(size_t));
-        ofstream.seekp(0, std::ios::beg);
+        // only send delta of updates once the graph is valid
+        std::string log;
+        if (!mpRenderGraph->isValid(log)) return;
+
+        static std::ofstream outputFileStream(filePath, std::ios_base::out);
+        size_t size = mUpdateCommands.size();
+
+        outputFileStream.write((const char*)&size, sizeof(size_t));
+        outputFileStream.write(mUpdateCommands.c_str(), mUpdateCommands.size());
+        mUpdateCommands.clear();
+        outputFileStream.seekp(0, std::ios::beg);
 
         std::experimental::filesystem::last_write_time(filePath, std::chrono::system_clock::now());
     }
 
-    RenderGraphUI::RenderGraphUI(RenderGraph& renderGraphRef)
-        : mRenderGraphRef(renderGraphRef), mNewNodeStartPosition(-40.0f, 100.0f)
+    RenderGraphUI::RenderGraphUI()
+        : mNewNodeStartPosition(-40.0f, 100.0f)
     {
-        sNodeGraphEditor.clear();
+        mNextPassName.resize(255, 0);
+    }
+
+    RenderGraphUI::RenderGraphUI(const RenderGraph::SharedPtr& pGraph, const std::string& graphName)
+        : mpRenderGraph(pGraph), mNewNodeStartPosition(-40.0f, 100.0f), mRenderGraphName(graphName)
+    {
+        mNextPassName.resize(255, 0);
+        mpNodeGraphEditor = std::make_shared<NodeGraphEditorGui>(this);
+        mpIr = RenderGraphIR::create(graphName, false);
     }
 
     RenderGraphUI::~RenderGraphUI()
     {
-        sNodeGraphEditor.setNodeCallback(nullptr);
-        sNodeGraphEditor.setLinkCallback(nullptr);
     }
-
-    static void setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor)
+    
+    void RenderGraphUI::NodeGraphEditorGui::setNode(ImGui::Node*& node, ImGui::NodeGraphEditor::NodeState state, ImGui::NodeGraphEditor& editor)
     {
+        RenderGraphNode* pRenderGraphNode = static_cast<RenderGraphNode*>(node);
+        RenderGraphUI::NodeGraphEditorGui* pGraphEditor = static_cast<RenderGraphUI::NodeGraphEditorGui*>(&editor);
         if (!editor.isInited())
         {
             if (state == ImGui::NodeGraphEditor::NodeState::NS_DELETED)
             {
-                static_cast<RenderGraphNode*>(node)->getFields().clear();
-                spCurrentGraphUI->removeRenderPass(node->getName());
+                pRenderGraphNode->getFields().clear();
+                if (node == pGraphEditor->mpGraphOutputNode)
+                {
+                    pGraphEditor->mpGraphOutputNode = nullptr;
+                    pGraphEditor->getRenderGraphUI()->mRebuildDisplayData = true;
+                }
+                else
+                {
+                    pGraphEditor->getRenderGraphUI()->removeRenderPass(node->getName());
+                }
             }
         }
         if (state == ImGui::NodeGraphEditor::NodeState::NS_ADDED)
         {
             // always call the callback
-            spCurrentGraphUI->addRenderPass(node->getName(), RenderGraphNode::sInitData.mpCurrentRenderPass->getName());
-        }
-    }
-
-    static void setLink(const ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor)
-    {
-        if (state == ImGui::NodeGraphEditor::LinkState::LS_ADDED)
-        {
-            
-            RenderGraphNode* inputNode = static_cast<RenderGraphNode*>(link.InputNode), 
-                           * outputNode = static_cast<RenderGraphNode*>(link.OutputNode);
-
-            if (outputNode == sNodeGraphEditor.pGraphOutputNode)
-            {
-                if (!RenderGraphNode::sAddedFromGraphData)
-                {
-                    editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
-                    spCurrentGraphUI->addOutput(inputNode->getName(), inputNode->getOutputName(link.InputSlot));
-                }
-                
-                RenderGraphNode::sAddedFromGraphData = false;
-
-                return;
-            }
-
-            bool addStatus = false;
-            if (!RenderGraphNode::sAddedFromGraphData)
-            {
-                addStatus = spCurrentGraphUI->addLink(inputNode->getName(), outputNode->getName(), inputNode->getOutputName(link.InputSlot), outputNode->getInputName(link.OutputSlot));
-            }
-            RenderGraphNode::sAddedFromGraphData = false;
-
-            // immediately remove link if it is not a legal edge in the render graph
-            if (!addStatus && !editor.isInited()) //  only call after graph is setup
-            {
-                // does not call link callback surprisingly enough
-                editor.removeLink(link.InputNode, link.InputSlot, link.OutputNode, link.OutputSlot);
-                return;
-            }
+            // PASS the initData into the callbacks
+            pGraphEditor->getRenderGraphUI()->addRenderPass(node->getName(), pRenderGraphNode->mpRenderPass->getName());
         }
     }
 
@@ -590,53 +693,52 @@ namespace Falcor
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
         if (ImGui::BeginPopup("PinMenu"))
         {
+            uint32_t popupWarningID = ImGui::GetCurrentWindow()->GetID("Auto-Resolve Warning");
+
             if (checkInWindow && !ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0))
             {
-                RenderGraphNode::spNodeToRenderPin = nullptr;
-                sNodeGraphEditor.selectedLink = -1;
+                mpNodeGraphEditor->setPopupNode(nullptr);
+                mpNodeGraphEditor->setPopupPin(-1, false);
+                mpNodeGraphEditor->selectedLink = -1;
                 ImGui::EndPopup();
                 ImGui::PopStyleVar();
                 return;
             }
 
-            if (RenderGraphNode::spNodeToRenderPin)
+            if (mpNodeGraphEditor->getPopupNode())
             {
-                RenderPassUI& renderPassUI = mRenderPassUI[RenderGraphNode::spNodeToRenderPin->getName()];
-                renderPassUI.renderPinUI(pGui, RenderGraphNode::sPinIndexToDisplay, RenderGraphNode::sPinIsInput);
+                RenderPassUI& renderPassUI = mRenderPassUI[mpNodeGraphEditor->getPopupNode()->getName()];
+                renderPassUI.renderPinUI(pGui, mpNodeGraphEditor->getPopupPinIndex(), mpNodeGraphEditor->isPopupPinInput());
                 ImGui::Separator();
-
             }
 
-            if (sNodeGraphEditor.selectedLink != -1)
+            if (mpNodeGraphEditor->selectedLink != -1)
             {
-                ImGui::Text("Edge:");
+                ImGui::NodeLink& selectedLink = mpNodeGraphEditor->getLink(mpNodeGraphEditor->selectedLink);
+                std::string srcPassName = std::string(selectedLink.InputNode->getName());
+                std::string dstPassName = std::string(selectedLink.OutputNode->getName());
+                ImGui::Text((std::string("Edge: ") + srcPassName + "-" + dstPassName).c_str());
+                std::string inputString = srcPassName + "." + 
+                    std::string(static_cast<RenderGraphNode*>(selectedLink.OutputNode)->getInputName(selectedLink.OutputSlot));
+                uint32_t linkID = mInputPinStringToLinkID[inputString];
+                auto edgeIt = mpRenderGraph->mEdgeData.find(linkID);
 
-                ImGui::NodeLink& selectedLink = sNodeGraphEditor.getLink(sNodeGraphEditor.selectedLink);
-                auto edgeIt = mRenderGraphRef.mEdgeData.find(sNodeGraphEditor.selectedLink);
-                
                 // link exists, but is not an edge (such as graph output edge)
-                if (edgeIt != mRenderGraphRef.mEdgeData.end())
+                if (edgeIt != mpRenderGraph->mEdgeData.end())
                 {
                     RenderGraph::EdgeData& edgeData = edgeIt->second;
-                    int32_t autoResolve = static_cast<int32_t>(edgeData.flags);
-
-                    pGui->addText("Dst Field : ");
-                    pGui->addText(edgeData.dstField.c_str(), true);
 
                     pGui->addText("Src Field : ");
                     pGui->addText(edgeData.srcField.c_str(), true);
 
+                    pGui->addText("Dst Field : ");
+                    pGui->addText(edgeData.dstField.c_str(), true);
+
                     pGui->addText("Auto-Generated : ");
                     pGui->addText(edgeData.autoGenerated ? "true" : "false", true);
-
-                    if (pGui->addCheckBox("Auto-Resolve", autoResolve))
-                    {
-                        mRenderGraphRef.mEdgeData[sNodeGraphEditor.selectedLink].flags = static_cast<RenderGraph::EdgeData::Flags>(autoResolve);
-                        selectedLink.LinkColor = autoResolve ? mAutoResolveEdgesColor : mEdgesColor;
-                    }
                 }
             }
-
+            
             ImGui::EndPopup();
         }
         ImGui::PopStyleVar();
@@ -644,36 +746,69 @@ namespace Falcor
 
     void RenderGraphUI::renderUI(Gui* pGui)
     {
-        RenderGraphNode::spGui = pGui;
+        static std::string dragAndDropText;
         ImGui::GetIO().FontAllowUserScaling = true;
 
-        sNodeGraphEditor.show_top_pane = false;
-        sNodeGraphEditor.show_node_copy_paste_buttons = false;
-        sNodeGraphEditor.show_connection_names = false;
-        sNodeGraphEditor.show_left_pane = false;
-
-        sNodeGraphEditor.setLinkCallback(setLink);
-        sNodeGraphEditor.setNodeCallback(setNode);
+        mpNodeGraphEditor->mpRenderGraphUI = this;
+        mpNodeGraphEditor->setCurrentGui(pGui);
+        mpNodeGraphEditor->show_top_pane = false;
+        mpNodeGraphEditor->show_node_copy_paste_buttons = false;
+        mpNodeGraphEditor->show_connection_names = false;
+        mpNodeGraphEditor->show_left_pane = false;
+        mpNodeGraphEditor->setLinkCallback(NodeGraphEditorGui::setLinkFromGui);
+        mpNodeGraphEditor->setNodeCallback(NodeGraphEditorGui::setNode);
         
-        bool bFromDragAndDrop = true;
+        bool bFromDragAndDrop = false;
+
+        ImGui::NodeGraphEditor::Style& style = ImGui::NodeGraphEditor::GetStyle(); 
+        style.color_node_frame_selected = ImGui::ColorConvertFloat4ToU32({ 226.0f / 255.0f, 190.0f / 255.0f, 42.0f / 255.0f, 0.8f });
+        style.color_node_frame_active = style.color_node_frame_selected;
+        style.node_slots_radius = kPinRadius;
 
         // update the deleted links from the GUI since the library doesn't call its own callback
-        
-        if (sRebuildDisplayData)
+        if (mRebuildDisplayData)
         {
-            sRebuildDisplayData = false;
-            sNodeGraphEditor.setNodeCallback(nullptr);
-            sNodeGraphEditor.reset();
+            mRebuildDisplayData = false;
+            mpNodeGraphEditor->setNodeCallback(nullptr);
+            mpNodeGraphEditor->reset();
         }
         else
         {
             updatePins(false);
         }
 
-        if (!sNodeGraphEditor.isInited())
+        // push update commands for the open pop-up
+        if (mpNodeGraphEditor->getRenderUINodeName().size())
         {
-            sNodeGraphEditor.render();
-            if (RenderGraphNode::spNodeToRenderPin || (sNodeGraphEditor.selectedLink != -1))
+            std::string idString = std::string("Render UI##") + mpNodeGraphEditor->getRenderUINodeName();
+            if (!ImGui::IsPopupOpen(ImGui::GetCurrentWindow()->GetID(idString.c_str())))
+            {
+                ImGui::OpenPopup(idString.c_str());
+            }
+            if (ImGui::BeginPopup(idString.c_str()))
+            {
+                if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)))
+                {
+                    mpNodeGraphEditor->setRenderUINodeName("");
+                }
+                else
+                {
+                    std::string renderUIName = mpNodeGraphEditor->getRenderUINodeName();
+                    auto pPass = mpRenderGraph->getPass(renderUIName);
+                    pPass->renderUI(pGui, nullptr); 
+                    // TODO -- only call this with data change
+                    mpIr->updatePass(renderUIName, pPass->getScriptingDictionary());
+                    mShouldUpdate = true;
+                }
+                
+                ImGui::EndPopup();
+            }
+        }
+        
+        if (!mpNodeGraphEditor->isInited())
+        {
+            mpNodeGraphEditor->render();
+            if (mpNodeGraphEditor->getPopupPinIndex() != uint32_t(-1) || (mpNodeGraphEditor->selectedLink != -1))
             {
                 renderPopupMenu(pGui);
             }
@@ -686,19 +821,48 @@ namespace Falcor
             }
 
             std::string statement;
-            if (pGui->dragDropDest("RenderPassScript", statement))
+            bool addPass = false;
+            if (pGui->dragDropDest("RenderPassType", statement))
             {
-                // TODO Matt
-//                 RenderGraphLoader::ExecuteStatement(statement, mRenderGraphRef);
-//                 mNewNodeStartPosition = { -sNodeGraphEditor.offset.x + mousePos.x, -sNodeGraphEditor.offset.y + mousePos.y };
-//                 mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
-//                 bFromDragAndDrop = true;
-//                 sRebuildDisplayData = true;
-//                 if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
+                dragAndDropText = statement;
+                mNewNodeStartPosition = { -mpNodeGraphEditor->offset.x + mousePos.x, -mpNodeGraphEditor->offset.y + mousePos.y };
+                mNewNodeStartPosition /= ImGui::GetCurrentWindow()->FontWindowScale;
+                mNextPassName = statement;
+                // only open pop-up if right clicked
+                mDisplayDragAndDropPopup = ImGui::GetIO().KeyCtrl;
+                addPass = !mDisplayDragAndDropPopup;
             }
-            else
+
+            if (mDisplayDragAndDropPopup)
             {
-                mNewNodeStartPosition = { -40.0f, 100.0f };
+                pGui->pushWindow("CreateNewGraph", 256, 128, 
+                    static_cast<uint32_t>(mousePos.x), static_cast<uint32_t>(mousePos.y));
+
+                pGui->addTextBox("Pass Name", mNextPassName);
+                if (pGui->addButton("create##renderpass"))
+                {
+                    addPass = true;
+                }
+                if (pGui->addButton("cancel##renderPass"))
+                {
+                    mDisplayDragAndDropPopup = false;
+                }
+
+                pGui->popWindow();
+            }
+
+            if (addPass)
+            {
+                while (mpRenderGraph->doesPassExist(mNextPassName))
+                {
+                    mNextPassName.push_back('_');
+                }
+
+                mpIr->addPass(dragAndDropText, mNextPassName);
+                bFromDragAndDrop = true;
+                mDisplayDragAndDropPopup = false;
+                mShouldUpdate = true;
+                if (mMaxNodePositionX < mNewNodeStartPosition.x) mMaxNodePositionX = mNewNodeStartPosition.x;
             }
 
             return;
@@ -711,32 +875,34 @@ namespace Falcor
         // reset internal data of node if all nodes deleted
         if (!mRenderPassUI.size())
         {
-            sNodeGraphEditor.clear();
-            sNodeGraphEditor.render();
+            mpNodeGraphEditor->clear();
+            mpNodeGraphEditor->render();
+            mpNodeGraphEditor->setOutputNode(nullptr);
+
             return;
         }
         
         mAllNodeTypes.push_back("GraphOutputNode");
-        
         for (auto& nodeTypeString : mAllNodeTypeStrings)
         {
             mAllNodeTypes.push_back(nodeTypeString.c_str());
         }
-        
-        sNodeGraphEditor.registerNodeTypes(mAllNodeTypes.data(), static_cast<uint32_t>(mAllNodeTypes.size()), createNode, 0, -1, 0, 1);
-        
-        spCurrentGraphUI = this;
-        
+
+        mpNodeGraphEditor->registerNodeTypes(mAllNodeTypes.data(), static_cast<uint32_t>(mAllNodeTypes.size()), NodeGraphEditorGui::createNode, 0, -1, 0, 0);
+
         // create graph output node first
-        if (!sNodeGraphEditor.pGraphOutputNode)
+        if (!mpNodeGraphEditor->getOutputNode())
         {
-            RenderGraphNode::setInitData("GraphOutput", "", "inputs", 0, nullptr);
-            sNodeGraphEditor.pGraphOutputNode = sNodeGraphEditor.addNode(0, { mMaxNodePositionX + 384.0f, mNewNodeStartPosition.y });
+            ImGui::Node* pNewNode = mpNodeGraphEditor->addAndInitNode(0, "GraphOutput", "", "inputs", 0, nullptr, { mMaxNodePositionX + 384.0f, mNewNodeStartPosition.y });
+            mpNodeGraphEditor->setOutputNode(pNewNode);
         }
         else
         {
-            RenderGraphNode* pGraphOutputNode = static_cast<RenderGraphNode*>(sNodeGraphEditor.pGraphOutputNode);
-            pGraphOutputNode->setPos({ mMaxNodePositionX + 384.0f, pGraphOutputNode->getPos().y});
+            RenderGraphNode* mpGraphOutputNode = static_cast<RenderGraphNode*>(mpNodeGraphEditor->getOutputNode());
+            if (mpGraphOutputNode->getPos().x <= mMaxNodePositionX)
+            {
+                mpGraphOutputNode->setPos({ mMaxNodePositionX + 384.0f, mpGraphOutputNode->getPos().y });
+            }
         }
         
         for (auto& currentPass : mRenderPassUI)
@@ -761,15 +927,16 @@ namespace Falcor
             }
         
             uint32_t guiNodeID = currentPassUI.mGuiNodeID;
-            RenderPass* pNodeRenderPass = mRenderGraphRef.getPass(currentPass.first).get();
+            RenderPass* pNodeRenderPass = mpRenderGraph->getPass(currentPass.first).get();
             nameString = currentPass.first;
         
-            if (!sNodeGraphEditor.getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))
+            if (!mpNodeGraphEditor->getAllNodesOfType(currentPassUI.mGuiNodeID, nullptr, false))
             {
-                glm::vec2 nextPosition = getNextNodePosition(mRenderGraphRef.getPassIndex(nameString));
+                glm::vec2 nextPosition = getNextNodePosition(mpRenderGraph->getPassIndex(nameString));
         
-                RenderGraphNode::setInitData(nameString, outputsString, inputsString, guiNodeID, pNodeRenderPass);
-                spIDToNode[guiNodeID] = sNodeGraphEditor.addNode(guiNodeID, ImVec2(nextPosition.x, nextPosition.y));
+                mpNodeGraphEditor->getNodeFromID(guiNodeID) = mpNodeGraphEditor->addAndInitNode(guiNodeID,
+                    nameString, outputsString, inputsString, guiNodeID, pNodeRenderPass,
+                    ImVec2(nextPosition.x, nextPosition.y));
                 if (bFromDragAndDrop) addRenderPass(nameString, pNodeRenderPass->getName()); 
                 bFromDragAndDrop = false;
             }
@@ -777,14 +944,15 @@ namespace Falcor
         
         updatePins();
         
-        sNodeGraphEditor.render();
+        mpNodeGraphEditor->render();
     }
 
     void RenderGraphUI::reset()
     {
-        sNodeGraphEditor.reset();
-        sNodeGraphEditor.clear();
-        sRebuildDisplayData = true;
+        mpNodeGraphEditor->setOutputNode(nullptr);
+        mpNodeGraphEditor->reset();
+        mpNodeGraphEditor->clear();
+        mRebuildDisplayData = true;
     }
 
     std::vector<uint32_t> RenderGraphUI::getExecutionOrder()
@@ -792,13 +960,13 @@ namespace Falcor
         std::vector<uint32_t> executionOrder;
         std::map<float, uint32_t> posToIndex;
 
-        for ( uint32_t i = 0; i < static_cast<uint32_t>(sNodeGraphEditor.getNumNodes()); ++i)
+        for ( uint32_t i = 0; i < static_cast<uint32_t>(mpNodeGraphEditor->getNumNodes()); ++i)
         {
-            RenderGraphNode* pCurrentGraphNode = static_cast<RenderGraphNode*>(sNodeGraphEditor.getNode(i));
+            RenderGraphNode* pCurrentGraphNode = static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNode(i));
             std::string currentNodeName = pCurrentGraphNode->getName();
             if (currentNodeName == "GraphOutput") continue;
             float position = pCurrentGraphNode->getPos().x;
-            posToIndex[position] = (mRenderGraphRef.getPassIndex(currentNodeName));
+            posToIndex[position] = (mpRenderGraph->getPassIndex(currentNodeName));
         }
 
         for (const auto& posIndexPair : posToIndex)
@@ -807,6 +975,11 @@ namespace Falcor
         }
 
         return executionOrder;
+    }
+
+    void RenderGraphUI::setRecordUpdates(bool recordUpdates)
+    {
+        mRecordUpdates = recordUpdates;
     }
 
     void RenderGraphUI::updatePins(bool addLinks)
@@ -827,23 +1000,33 @@ namespace Falcor
                     {
                         for (const auto& connectedPin : (inputPins->second))
                         {
-                            if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                spIDToNode[connectedPin.second], connectedPin.first))
+                            if (!mpNodeGraphEditor->isLinkPresent(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
+                                mpNodeGraphEditor->getNodeFromID(connectedPin.second), connectedPin.first))
                             {
-                                RenderGraphNode::sAddedFromGraphData = true;
-                                
-                                // get edge data from the referenced graph
-                                uint32_t edgeId = mInputPinStringToLinkID[currentPass.first + "." + spIDToNode[connectedPin.second]->getName()];
+                                RenderGraphNode* pNode = static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(connectedPin.second));
+                                std::string dstName = pNode->getInputName(connectedPin.first);
+                                std::string srcString = currentPass.first + "." + currentPinName;
+                                std::string dstString = std::string(pNode->getName()) + "." + dstName;
+                                const RenderPassReflection::Field& srcPin = currentPassUI.mReflection.getField(currentPinName);
+                                const RenderPassReflection::Field& dstPin = mRenderPassUI[pNode->getName()].mReflection.getField(dstName);
 
-                                // set color if autogenerated
-                                uint32_t currentEdgeColor = mEdgesColor;
-                                if (mRenderGraphRef.mEdgeData[edgeId].autoGenerated) currentEdgeColor = mAutoGenEdgesColor;
+                                uint32_t edgeColor = mEdgesColor;
+                                if (mpRenderGraph->canAutoResolve(srcPin, dstPin))
+                                {
+                                    mLogString += std::string("Warning: Edge ") + srcString + " - " + dstName + " can auto-resolve.\n";
+                                    edgeColor = mAutoResolveEdgesColor;
+                                }
+                                else
+                                {
+                                    uint32_t edgeId = mpRenderGraph->getEdge(srcString, dstString);
+                                    if (mpRenderGraph->mEdgeData[edgeId].autoGenerated) edgeColor = mAutoGenEdgesColor;
+                                }
 
-                                sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                    spIDToNode[connectedPin.second], connectedPin.first, false, currentEdgeColor);
+                                uint32_t id = mpNodeGraphEditor->addLinkFromGraph(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
+                                   mpNodeGraphEditor->getNodeFromID(connectedPin.second), connectedPin.first, false, edgeColor);
 
-                                static_cast<RenderGraphNode*>(spIDToNode[connectedPin.second])->mInputPinConnected[connectedPin.first] = true;
-                                static_cast<RenderGraphNode*>(spIDToNode[currentPassUI.mGuiNodeID])->mOutputPinConnected[currentPinUI.mGuiPinID] = true;
+                                static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(connectedPin.second))->mInputPinConnected[connectedPin.first] = true;
+                                static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID))->mOutputPinConnected[currentPinUI.mGuiPinID] = true;
                             }
                         }
                     }
@@ -851,13 +1034,12 @@ namespace Falcor
                     // mark graph outputs to graph output node
                     if (currentPinUI.mIsGraphOutput)
                     {
-                        if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                            sNodeGraphEditor.pGraphOutputNode, 0))
+                        if (!mpNodeGraphEditor->isLinkPresent(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
+                            mpNodeGraphEditor->getOutputNode(), 0))
                         {
-                            RenderGraphNode::sAddedFromGraphData = true;
                             ImU32 linkColor = ImGui::GetColorU32({ mGraphOutputsColor.x, mGraphOutputsColor.y, mGraphOutputsColor.z, mGraphOutputsColor.w });
-                            sNodeGraphEditor.addLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                sNodeGraphEditor.pGraphOutputNode, 0, false, linkColor);
+                            mpNodeGraphEditor->addLinkFromGraph(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
+                                mpNodeGraphEditor->getOutputNode(), 0, false, linkColor);
                         }
                     }
                 }
@@ -866,12 +1048,12 @@ namespace Falcor
                     // remove graph output links
                     if (currentPinUI.mIsGraphOutput)
                     {
-                        if (!sNodeGraphEditor.isLinkPresent(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                            sNodeGraphEditor.pGraphOutputNode, 0))
+                        if (!mpNodeGraphEditor->isLinkPresent(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
+                            mpNodeGraphEditor->getOutputNode(), 0))
                         {
                             removeOutput(currentPass.first, currentPinUI.mPinName);
-                            sNodeGraphEditor.removeLink(spIDToNode[currentPassUI.mGuiNodeID], currentPinUI.mGuiPinID,
-                                sNodeGraphEditor.pGraphOutputNode, 0);
+                            mpNodeGraphEditor->removeLink(mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
+                                mpNodeGraphEditor->getOutputNode(), 0);
                         }
                     }
                 }
@@ -884,29 +1066,27 @@ namespace Falcor
                     const std::string& currentPinName = currentPinUI.mPinName;
                     // draw label for input pin
                 
-                    if (!currentPinUI.mConnectedNodeName.size())
-                    {
-                        continue;
-                    }
+                    if (!currentPinUI.mConnectedNodeName.size()) continue;
 
                     std::pair<uint32_t, uint32_t> inputIDs{ currentPinUI.mGuiPinID, currentPassUI.mGuiNodeID };
                     const auto& connectedNodeUI = mRenderPassUI[currentPinUI.mConnectedNodeName];
                     uint32_t inputPinID = connectedNodeUI.mNameToIndexOutput.find(currentPinUI.mConnectedPinName)->second;
 
-                    if (!sNodeGraphEditor.isLinkPresent(spIDToNode[connectedNodeUI.mGuiNodeID], inputPinID,
-                        spIDToNode[inputIDs.second],inputIDs.first ))
+                    if (!mpNodeGraphEditor->isLinkPresent(mpNodeGraphEditor->getNodeFromID(connectedNodeUI.mGuiNodeID), inputPinID,
+                        mpNodeGraphEditor->getNodeFromID(inputIDs.second),inputIDs.first ))
                     {
                         auto edgeIt = mInputPinStringToLinkID.find(currentPass.first + "." + currentPinName);
                         assert(edgeIt != mInputPinStringToLinkID.end()); 
                         uint32_t edgeID = edgeIt->second;
                         
-                        removeEdge(spIDToNode[connectedNodeUI.mGuiNodeID]->getName(), spIDToNode[inputIDs.second]->getName(), mRenderGraphRef.mEdgeData[edgeID].srcField, mRenderGraphRef.mEdgeData[edgeID].dstField);
-                        mRenderGraphRef.removeEdge(edgeID);
+                        removeEdge(mpNodeGraphEditor->getNodeFromID(connectedNodeUI.mGuiNodeID)->getName(),
+                            mpNodeGraphEditor->getNodeFromID(inputIDs.second)->getName(), mpRenderGraph->mEdgeData[edgeID].srcField, mpRenderGraph->mEdgeData[edgeID].dstField);
+                        mpRenderGraph->removeEdge(edgeID);
 
                         currentPinUI.mConnectedNodeName = "";
 
-                        static_cast<RenderGraphNode*>(spIDToNode[inputIDs.second])->mInputPinConnected[inputIDs.first] = false;
-                        static_cast<RenderGraphNode*>(spIDToNode[connectedNodeUI.mGuiNodeID])->mOutputPinConnected[inputPinID] = false;
+                        static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(inputIDs.second))->mInputPinConnected[inputIDs.first] = false;
+                        static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(connectedNodeUI.mGuiNodeID))->mOutputPinConnected[inputPinID] = false;
 
                         continue;
                     }
@@ -921,38 +1101,46 @@ namespace Falcor
         const float offsetY = 128.0f;
         glm::vec2 newNodePosition = mNewNodeStartPosition;
 
-        if (std::find(mRenderGraphRef.mExecutionList.begin(), mRenderGraphRef.mExecutionList.end(), nodeID) == mRenderGraphRef.mExecutionList.end())
+        if (!mpRenderGraph->mExecutionList.size())
         {
-            return newNodePosition;
+            newNodePosition.x += offsetX * nodeID;
         }
-
-        for (const auto& passID : mRenderGraphRef.mExecutionList)
+        else
         {
-            newNodePosition.x += offsetX;
-
-            if (passID == nodeID)
+            for (const auto& passID : mpRenderGraph->mExecutionList)
             {
-                const DirectedGraph::Node* pNode = mRenderGraphRef.mpGraph->getNode(nodeID);
-                for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); ++i)
+                newNodePosition.x += offsetX;
+
+                if (passID == nodeID)
                 {
-                    uint32_t outgoingEdgeCount = mRenderGraphRef.mpGraph->getNode(mRenderGraphRef.mpGraph->getEdge(pNode->getIncomingEdge(i))->getSourceNode())->getOutgoingEdgeCount();
-                    if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
+                    const DirectedGraph::Node* pNode = mpRenderGraph->mpGraph->getNode(nodeID);
+                    if (!pNode->getIncomingEdgeCount())
                     {
-                        // move down by index in 
-                        newNodePosition.y += offsetY * (outgoingEdgeCount - pNode->getIncomingEdgeCount() );
+                        newNodePosition.y += offsetY * pNode->getIncomingEdgeCount() * passID;
                         break;
                     }
-                }
 
-                break;
+                    for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); ++i)
+                    {
+                        uint32_t outgoingEdgeCount = mpRenderGraph->mpGraph->getNode(mpRenderGraph->mpGraph->getEdge(pNode->getIncomingEdge(i))->getSourceNode())->getOutgoingEdgeCount();
+                        if (outgoingEdgeCount > pNode->getIncomingEdgeCount())
+                        {
+                            // move down by index in 
+                            newNodePosition.y += offsetY * (outgoingEdgeCount - pNode->getIncomingEdgeCount());
+                            break;
+                        }
+                    }
+
+                    break;
+                }
             }
         }
 
-        RenderGraphNode* pGraphOutputNode = static_cast<RenderGraphNode*>(sNodeGraphEditor.pGraphOutputNode);
-        glm::vec2 graphOutputNodePos = pGraphOutputNode->getPos();
+        RenderGraphNode* mpGraphOutputNode = static_cast<RenderGraphNode*>(mpNodeGraphEditor->getOutputNode());
+        glm::vec2 graphOutputNodePos = mpGraphOutputNode->getPos();
         if (graphOutputNodePos.x <= newNodePosition.x)
         {
-            pGraphOutputNode->setPos({ newNodePosition.x + offsetX, newNodePosition.y });
+            mpGraphOutputNode->setPos({ newNodePosition.x + offsetX, newNodePosition.y });
         }
 
         if (newNodePosition.x > mMaxNodePositionX)
@@ -981,15 +1169,15 @@ namespace Falcor
             previousGuiNodeIDs.insert(std::make_pair(currentRenderPassUI.first, currentRenderPassUI.second.mGuiNodeID));
         }
 
-        mRenderGraphRef.resolveExecutionOrder();
+        mpRenderGraph->resolveExecutionOrder();
 
         mRenderPassUI.clear();
         mInputPinStringToLinkID.clear();
 
         // build information for displaying graph
-        for (const auto& nameToIndex : mRenderGraphRef.mNameToIndex)
+        for (const auto& nameToIndex : mpRenderGraph->mNameToIndex)
         {
-            auto pCurrentPass = mRenderGraphRef.mpGraph->getNode(nameToIndex.second);
+            auto pCurrentPass = mpRenderGraph->mpGraph->getNode(nameToIndex.second);
             RenderPassUI renderPassUI;
 
             mAllNodeTypeStrings.insert(nameToIndex.first);
@@ -1013,12 +1201,12 @@ namespace Falcor
 
             // clear and rebuild reflection for each pass. 
             renderPassUI.mReflection = RenderPassReflection();
-            mRenderGraphRef.mNodeData[nameToIndex.second].pPass->reflect(renderPassUI.mReflection);
+            mpRenderGraph->mNodeData[nameToIndex.second].pPass->reflect(renderPassUI.mReflection);
 
             // test to see if we have hit a graph output
             std::unordered_set<std::string> passGraphOutputs;
 
-            for (const auto& output : mRenderGraphRef.mOutputs)
+            for (const auto& output : mpRenderGraph->mOutputs)
             {
                 if (output.nodeId == nameToIndex.second)
                 {
@@ -1033,7 +1221,7 @@ namespace Falcor
             for (uint32_t i = 0; i < pCurrentPass->getIncomingEdgeCount(); ++i)
             {
                 uint32_t edgeID = pCurrentPass->getIncomingEdge(i);
-                auto currentEdge = mRenderGraphRef.mEdgeData[edgeID];
+                auto currentEdge = mpRenderGraph->mEdgeData[edgeID];
                 uint32_t pinIndex = 0;
                 inputPinIndex = 0;
 
@@ -1048,8 +1236,8 @@ namespace Falcor
                     pinIndex++;
                 }
 
-                auto pSourceNode = mRenderGraphRef.mNodeData.find( mRenderGraphRef.mpGraph->getEdge(edgeID)->getSourceNode());
-                assert(pSourceNode != mRenderGraphRef.mNodeData.end());
+                auto pSourceNode = mpRenderGraph->mNodeData.find( mpRenderGraph->mpGraph->getEdge(edgeID)->getSourceNode());
+                assert(pSourceNode != mpRenderGraph->mNodeData.end());
 
                 renderPassUI.addUIPin(currentEdge.dstField, inputPinIndex, true, currentEdge.srcField, pSourceNode->second.nodeName);
                 
@@ -1068,7 +1256,7 @@ namespace Falcor
             for (uint32_t i = 0; i < pCurrentPass->getOutgoingEdgeCount(); ++i)
             {
                 uint32_t edgeID = pCurrentPass->getOutgoingEdge(i);
-                auto currentEdge = mRenderGraphRef.mEdgeData[edgeID];
+                auto currentEdge = mpRenderGraph->mEdgeData[edgeID];
                 outputPinIndex = 0;
 
                 std::string pinString = nameToIndex.first + "." + currentEdge.srcField;
@@ -1091,8 +1279,8 @@ namespace Falcor
                     pinIndex++;
                 }
                 
-                auto pDestNode = mRenderGraphRef.mNodeData.find(mRenderGraphRef.mpGraph->getEdge(edgeID)->getSourceNode());
-                assert(pDestNode != mRenderGraphRef.mNodeData.end());
+                auto pDestNode = mpRenderGraph->mNodeData.find(mpRenderGraph->mpGraph->getEdge(edgeID)->getSourceNode());
+                assert(pDestNode != mpRenderGraph->mNodeData.end());
 
                 renderPassUI.addUIPin(currentEdge.srcField, outputPinIndex, false, currentEdge.dstField, pDestNode->second.nodeName, isGraphOutput);
                 nodeConnectedOutput.insert(pinString);
