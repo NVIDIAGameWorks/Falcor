@@ -178,7 +178,7 @@ namespace Falcor
         // If name exists, update time range
         if (mNameToIndex.count(name) > 0)
         {
-            uint32_t index = mNameToIndex[alias];
+            uint32_t index = mNameToIndex[name];
             mergeTimePoint(mResourceData[index].firstUsed, mResourceData[index].lastUsed, timePoint);
             return;
         }
