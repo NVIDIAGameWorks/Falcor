@@ -65,7 +65,7 @@ SceneEditor : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorApp.cpp,SceneEditor)
 
 RenderGraphEditor : $(SAMPLE_CONFIG)
-	$(call CompileSample, Samples/Utils/RenderGraphEditor/RenderGraphEditor.cpp, RenderGraphEditor)
+	$(call CompileSample,Samples/Utils/RenderGraphEditor/,RenderGraphEditor.cpp,RenderGraphEditor)
 
 CC:=g++
 

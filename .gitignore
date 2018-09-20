@@ -15,6 +15,7 @@ Framework/BuildScripts/PatchFalcorProps/PatchFalcorPropertySheet/PatchFalcorProp
 FalcorTest/TestResults/*
 Falcor.VC.VC.opendb
 .vs/*
+.vscode/
 *.pyc
 *.o
 *slang-dump-*

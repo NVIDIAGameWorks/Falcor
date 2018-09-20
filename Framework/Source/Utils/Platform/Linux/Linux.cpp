@@ -194,7 +194,7 @@ namespace Falcor
 
     const std::string& getExecutableDirectory()
     {
-        char result[PATH_MAX];
+        char result[PATH_MAX] = { 0 };
         ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
         const char* path;
         if (count != -1)
