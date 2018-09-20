@@ -485,25 +485,17 @@ namespace Falcor
         return false;
     }
 
-    // Matt TODO: No need to go over the edges, for each node just get all the outputs
-    std::vector<RenderGraph::OutputInfo> RenderGraph::getAvailableOutputs() const
+    std::vector<std::string> RenderGraph::getAvailableOutputs() const
     {
-        std::vector<OutputInfo> outputs;
-        std::unordered_set<std::string> visitedOutputs;
+        std::vector<std::string> outputs;
         for (const auto& node : mNodeData)
         {
-            const DirectedGraph::Node* pNode = mpGraph->getNode(node.first);
-            for (uint32_t i = 0; i < pNode->getOutgoingEdgeCount(); ++i)
+            RenderPassReflection reflection;
+            node.second.pPass->reflect(reflection);
+            for (size_t i = 0; i < reflection.getFieldCount(); i++)
             {
-                const RenderGraph::EdgeData& edgeData = mEdgeData.find(pNode->getOutgoingEdge(i))->second;
-                GraphOut thisOutput{ node.first, edgeData.srcField };
-                bool isOutput = isGraphOutput(thisOutput);
-                std::string fieldName = node.second.nodeName + "." + thisOutput.field;
-                if (visitedOutputs.find(fieldName) == visitedOutputs.end())
-                {
-                    visitedOutputs.insert(fieldName);
-                    outputs.push_back(OutputInfo{ fieldName, isOutput });
-                }
+                const auto& f = reflection.getField(i);
+                if(is_set(f.getType(), RenderPassReflection::Field::Type::Output)) outputs.push_back(node.second.nodeName + "." + f.getName());
             }
         }
         return outputs;
@@ -768,6 +760,9 @@ namespace Falcor
         {
             it.second.pPass->onResize(mSwapChainData.width, mSwapChainData.height);
         }
+
+        // Invalidate the graph. Render-passes might change their reflection based on the resize information
+        mRecompile = true;
     }
 
     bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst)

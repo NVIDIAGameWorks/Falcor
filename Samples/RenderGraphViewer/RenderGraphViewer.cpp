@@ -58,14 +58,14 @@ void RenderGraphViewer::resetCurrentGraphOutputs()
     
     for (const auto& output : graphInfo.mCurrentOutputs)
     {
-        auto outputIt = graphInfo.mOriginalOutputNames.find(output.outputName);
-        if (output.isGraphOutput && outputIt == graphInfo.mOriginalOutputNames.end())
+        auto outputIt = graphInfo.mOriginalOutputNames.find(output);
+        if (outputIt == graphInfo.mOriginalOutputNames.end())
         {
-            graphInfo.mpGraph->unmarkOutput(output.outputName);
+            graphInfo.mpGraph->unmarkOutput(output);
         }
-        else if (!output.isGraphOutput && outputIt != graphInfo.mOriginalOutputNames.end())
+        else
         {
-            graphInfo.mpGraph->markOutput(output.outputName);
+            graphInfo.mpGraph->markOutput(output);
         }
     }
 }
@@ -416,11 +416,11 @@ void RenderGraphViewer::updateOutputDropdown(const std::string& passName)
 
     graphInfo.mOutputDropdown.clear();
 
-    for (const auto& outputPair : graphInfo.mCurrentOutputs)
+    for (const auto& outputName : graphInfo.mCurrentOutputs)
     {
         Gui::DropdownValue graphOutput;
-        graphOutput.label = outputPair.outputName;
-        if (outputPair.outputName == graphInfo.mOutputString) graphInfo.mGraphOutputIndex = i;
+        graphOutput.label = outputName;
+        if (outputName == graphInfo.mOutputString) graphInfo.mGraphOutputIndex = i;
         graphOutput.value = i++;
         graphInfo.mOutputDropdown.push_back(graphOutput);
     }

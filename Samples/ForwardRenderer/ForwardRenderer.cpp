@@ -545,7 +545,7 @@ void ForwardRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width
     mpPostProcessFbo = FboHelper::create2D(width, height, fboDesc);
 
     applyAaMode(pSample);
-    mShadowPass.pCsm->resizeVisibilityBuffer(width, height);
+    mShadowPass.pCsm->onResize(width, height);
 
     if(mpSceneRenderer)
     {
