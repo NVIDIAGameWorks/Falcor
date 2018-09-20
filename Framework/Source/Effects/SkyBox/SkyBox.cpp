@@ -84,13 +84,7 @@ namespace Falcor
 
     Dictionary SkyBox::getScriptingDictionary() const
     {
-//         RenderPassSerializer renderPassSerializer;
-//         renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.minFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-//         renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.magFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-//         renderPassSerializer.addVariable<std::uint32_t>("sampleDesc.mipFilter", static_cast<uint32_t>(Sampler::Filter::Linear));
-//         renderPassSerializer.addVariable<bool>("loadAsSrgb", true);
-//         return renderPassSerializer;
-        return {};
+        return Dictionary();
     }
 
     void SkyBox::setTexture(const Texture::SharedPtr& pTexture)
@@ -126,7 +120,7 @@ namespace Falcor
         const ParameterBlockReflection* pDefaultBlockReflection = mpProgram->getReflector()->getDefaultParameterBlock().get();
         mBindLocations.perFrameCB = pDefaultBlockReflection->getResourceBinding("PerFrameCB");
         mBindLocations.texture = pDefaultBlockReflection->getResourceBinding("gTexture");
-        mBindLocations.sampler= pDefaultBlockReflection->getResourceBinding("gSampler");
+        mBindLocations.sampler = pDefaultBlockReflection->getResourceBinding("gSampler");
 
         ParameterBlock* pDefaultBlock = mpVars->getDefaultBlock().get();
         ConstantBuffer* pCB = pDefaultBlock->getConstantBuffer(mBindLocations.perFrameCB, 0).get();
@@ -202,6 +196,8 @@ namespace Falcor
 
     void SkyBox::execute(RenderContext* pRenderContext, const RenderData* pData)
     {
+        assert(mpTexture);
+
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthFunc(DepthStencilState::Func::Always);
         auto pDS = DepthStencilState::create(dsDesc);

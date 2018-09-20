@@ -72,6 +72,11 @@ namespace Falcor
         */
         virtual Dictionary getScriptingDictionary() const { return {}; }
 
+        // Matt TODO remove it
+        /** Set the dictionary to change the state of the object
+        */
+        virtual void setScriptingDictionary(const Dictionary& dict) {}
+
         /** Render the pass's UI
         */
         virtual void renderUI(Gui* pGui, const char* uiGroup) {}

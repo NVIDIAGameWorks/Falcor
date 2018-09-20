@@ -29,7 +29,10 @@
 #include "Graphics/RenderGraph/RenderGraph.h"
 #include "Graphics/RenderGraph/RenderPass.h"
 #include "Graphics/RenderGraph/RenderPassReflection.h"
+#include "Graphics/RenderGraph/RenderGraphIR.h"
+#include "Graphics/RenderGraph/RenderGraphScripting.h"
 #include <array>
+#include <fstream>
 
 namespace Falcor
 {
@@ -68,8 +71,9 @@ namespace Falcor
     class RenderGraphUI
     {
     public:
+        RenderGraphUI();
 
-        RenderGraphUI(RenderGraph& renderGraphRef);
+        RenderGraphUI(const RenderGraph::SharedPtr& pGraph, const std::string& graphName);
 
         ~RenderGraphUI();
 
@@ -77,7 +81,13 @@ namespace Falcor
         */
         void renderUI(Gui *pGui);
 
+        /** Clear graph ui for rebuilding node graph
+        */
         void reset();
+
+        /** Set ui to rebuild all display data before next render ui
+        */
+        void setToRebuild() { mRebuildDisplayData = true; }
 
         /** Writes out all the changes made to the graph 
         */
@@ -85,7 +95,7 @@ namespace Falcor
 
         /** function used to add an edge for the internally referenced render graph and update ui data
          */
-        bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField);
+        bool addLink(const std::string& srcPass, const std::string& dstPass, const std::string& srcField, const std::string& dstField, uint32_t& color);
 
         /** function used to remove edge referenced graph and update ui data
         */
@@ -107,7 +117,6 @@ namespace Falcor
         */
         void removeOutput(const std::string& outputPass, const std::string& outputField);
 
-        
         /** function used to add a new node for a render pass referenced graph and update ui data
         */
         void addRenderPass(const std::string& name, const std::string& nodeTypeName);
@@ -116,15 +125,30 @@ namespace Falcor
         */
         std::vector<uint32_t> getExecutionOrder();
 
-        /** Flag to re-traverse the graph and build on of the intermediate data again.
-         */
-        static bool sRebuildDisplayData;
-
-        /** String containing the most recent log results from and isValid render graph call
+        /** Returns the current log from the events in the editor
         */
-        static std::string sLogString;
+        std::string getCurrentLog() const { return mLogString; }
+
+        /** Toggle building up delta changes for live preview
+        */
+        void setRecordUpdates(bool recordUpdates);
+
+        /** Clears the current log
+        */
+        void clearCurrentLog() { mLogString.clear();  }
+
+        /** Update change for the graph based on script
+        */
+        void updateGraph();
+
+        /** Get name of reference graph
+        */
+        std::string getName() { return mRenderGraphName; }
 
     private:
+        // forward declaration. private to avoid initialization outside of implementation file
+        class NodeGraphEditorGui;
+        class RenderGraphNode;
 
         /** Updates structure for drawing the GUI graph
         */
@@ -134,10 +158,6 @@ namespace Falcor
         */
         void updatePins(bool addLinks = true);
 
-        /** Helper function. Validates graph before pushing commands for live update
-        */
-        bool pushUpdateCommand(const std::string& commandString);
-
         /** Helper function to calculate position of the next node in execution order
         */
         glm::vec2 getNextNodePosition(uint32_t nodeID);
@@ -146,8 +166,18 @@ namespace Falcor
         */
         void renderPopupMenu(Gui* pGui);
 
+        /** Displays pop-up message if can auto resolve on an edge
+        */
+        bool autoResolveWarning(const std::string& srcString, const std::string& dstString);
+
+        /** String containing the most recent log results from and isValid render graph call
+        */
+        std::string mLogString;
+
         // start with reference of render graph
-        RenderGraph& mRenderGraphRef;
+        RenderGraph::SharedPtr mpRenderGraph;
+
+        RenderGraphIR::SharedPtr mpIr;
 
         uint32_t mEdgesColor = 0xFFFFFFFF;
         uint32_t mAutoGenEdgesColor = 0xFFFF0400;
@@ -168,9 +198,22 @@ namespace Falcor
         std::unordered_map <std::string, std::vector< std::pair<uint32_t, uint32_t > > > mOutputToInputPins;
 
         // if in external editing mode, building list of commands for changes to send to the other process
-        std::vector<std::string> mCommandStrings;
+        std::string mUpdateCommands;
+        std::string mLastCommand;
+        bool mRecordUpdates = false;
 
         // to avoid attempting to write changes every frame.
         float mTimeSinceLastUpdate = 0.0f;
+        bool mDisplayDragAndDropPopup = false;
+        std::string  mNextPassName = "";
+        std::string mRenderGraphName;
+        bool mDisplayAutoResolvePopup = true;
+
+        // internal node GUi structure
+        std::shared_ptr<NodeGraphEditorGui> mpNodeGraphEditor;
+
+        // Flag to re-traverse the graph and build on of the intermediate data again.
+        bool mRebuildDisplayData = true;
+        bool mShouldUpdate = false;
     };
 }

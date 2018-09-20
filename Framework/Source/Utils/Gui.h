@@ -92,6 +92,14 @@ namespace Falcor
         */
         bool onKeyboardEvent(const KeyboardEvent& event);
 
+        /** Display image within imgui
+            \param[in] label. Name for id for item.
+            \param[in] pTex. Pointer to texture resource to draw in imgui
+            \param[in] size. Size in pixels of the image to draw
+            \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+        */
+        void addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size = {128.0f, 128.0f}, bool sameLine = false);
+
         /** Display rectangle with specified color
             \param[in] size size in pixels of rectangle
             \param[in] color Optional. color as an rgba vec4
@@ -346,6 +354,28 @@ namespace Falcor
         */
         void popWindow();
 
+        /** Set the current window position in pixels
+            \param[in] x horizontal window position in pixels
+            \param[in] y vertical window position in pixels
+        */
+        void setCurrentWindowPos(uint32_t x, uint32_t y);
+
+        /** Get the position of the current window.
+            \return vec2 Value of window position
+        */
+        glm::vec2 getCurrentWindowPos();
+
+        /**  Set the size of the current window in pixels
+            \param[in] width Window width in pixels
+            \param[in] height Window height in pixels
+        */
+        void setCurrentWindowSize(uint32_t width, uint32_t height);
+
+        /** Get the size of the current window in pixels.
+            \return vec2 Value of window size
+        */
+        glm::vec2 getCurrentWindowSize();
+
         /** Start a new frame. Must be called at the start of each frame
         */
         void beginFrame();
@@ -388,5 +418,8 @@ namespace Falcor
         GraphicsState::SharedPtr mpPipelineState;
         uint32_t mGroupStackSize = 0;
         float mFontScale = 1;
+
+        std::vector<Texture::SharedPtr> mpImages;
+        ParameterBlockReflection::BindLocation mGuiImageLoc;
     };
 }

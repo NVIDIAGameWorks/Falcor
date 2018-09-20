@@ -44,6 +44,7 @@ namespace Falcor
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
         virtual Dictionary getScriptingDictionary() const override;
+        virtual void setScriptingDictionary(const Dictionary& dict) override;
 
         void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:

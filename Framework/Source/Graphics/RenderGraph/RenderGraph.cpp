@@ -99,11 +99,26 @@ namespace Falcor
         // Update the indices
         mNameToIndex.erase(name);
 
+        // remove pass data
+        mNodeData.erase(index);
+
         // Remove all the edges associated with this pass
         const auto& removedEdges = mpGraph->removeNode(index);
         for (const auto& e : removedEdges) mEdgeData.erase(e);
 
+        // Matt TODO unmark all outputs
+
         mRecompile = true;
+    }
+
+    // Matt TODO figure this out
+    void RenderGraph::updatePass(const std::string& name, const Dictionary& dict)
+    {
+        const auto pPass = getPass(name);
+        if (pPass)
+        {
+            pPass->setScriptingDictionary(dict);
+        }
     }
 
     const RenderPass::SharedPtr& RenderGraph::getPass(const std::string& name) const
@@ -257,30 +272,85 @@ namespace Falcor
         mRecompile = true;
     }
 
-    bool RenderGraph::isValid(std::string& log) const
+    uint32_t RenderGraph::getEdge(const std::string& src, const std::string& dst)
     {
-        return true;
-    }
+        str_pair srcPair, dstPair;
+        parseFieldName(src, srcPair);
+        parseFieldName(dst, dstPair);
 
-    std::vector<std::string> RenderGraph::getAllOutputs() const
-    {
-        std::vector<std::string> outputs;
-        for (const auto& node : mNodeData)
+        for (uint32_t i = 0; i < mpGraph->getCurrentEdgeId(); ++i)
         {
-            RenderPassReflection reflector;
-            node.second.pPass->reflect(reflector);
+            if (!mpGraph->doesEdgeExist(i)) { continue; }
 
-            for (size_t i = 0; i < reflector.getFieldCount(); ++i)
+            const DirectedGraph::Edge* pEdge = mpGraph->getEdge(i);
+            if (dstPair.first == mNodeData[pEdge->getDestNode()].nodeName &&
+                srcPair.first == mNodeData[pEdge->getSourceNode()].nodeName)
             {
-                const RenderPassReflection::Field& field = reflector.getField(i);
-                if (static_cast<bool>(field.getType() & RenderPassReflection::Field::Type::Output))
+                if (mEdgeData[i].dstField == dstPair.second
+                    && mEdgeData[i].srcField == srcPair.second)
                 {
-                    outputs.push_back(node.second.nodeName + "." + field.getName());
+                    return i;
                 }
             }
         }
 
-        return outputs;
+        return static_cast<uint32_t>(-1);
+    }
+
+    // Matt TODO
+    bool RenderGraph::isValid(std::string& log) const
+    {
+        std::unordered_map<RenderPass*, RenderPassReflection> passReflectionMap;
+        std::vector<const NodeData*> nodeVec;
+        
+        // If there are no marked graph outputs, is not valid
+        if (!mOutputs.size()) return false;
+
+        for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
+        {
+            if (mpGraph->doesNodeExist(i))
+            {
+                const auto& nodeIt = mNodeData.find(i);
+                nodeVec.push_back(&nodeIt->second);
+                nodeIt->second.pPass->reflect(passReflectionMap[nodeIt->second.pPass.get()]);
+            }
+        }
+        
+        for (const NodeData* pNodeData : nodeVec)
+        {
+            RenderPassReflection passReflection = passReflectionMap[pNodeData->pPass.get()];
+
+            if (is_set(passReflection.getFlags(), RenderPassReflection::Flags::ForceExecution)) continue;
+
+            uint_t numRequiredInputs = 0;
+            bool hasGraphOutput = false;
+            const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex.at(pNodeData->nodeName));
+            
+            // get input count
+            for (uint32_t i = 0; i < passReflection.getFieldCount(); ++i)
+            {
+                const RenderPassReflection::Field& field = passReflection.getField(i);
+
+                if (is_set(field.getType(), RenderPassReflection::Field::Type::Input))
+                {
+                    if (!is_set(field.getFlags(), RenderPassReflection::Field::Flags::Optional)) numRequiredInputs++;
+                }
+
+                GraphOut graphOut;
+                graphOut.field = field.getName();
+                graphOut.nodeId = getPassIndex(pNodeData->nodeName);
+                hasGraphOutput |= isGraphOutput(graphOut);
+            }
+
+            // check if node has no inputs, and has connected outgoing edges
+            bool hasOutputs = (pNode->getOutgoingEdgeCount() || hasGraphOutput);
+            if (hasOutputs && (numRequiredInputs > pNode->getIncomingEdgeCount()) )
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool RenderGraph::resolveExecutionOrder()
@@ -318,6 +388,40 @@ namespace Falcor
         return true;
     }
 
+    bool RenderGraph::isGraphOutput(const GraphOut& graphOut) const
+    {
+        for (const GraphOut& currentOut : mOutputs)
+        {
+            if (graphOut == currentOut) return true;
+        }
+        
+        return false;
+    }
+
+    // Matt TODO: No need to go over the edges, for each node just get all the outputs
+    std::vector<RenderGraph::OutputInfo> RenderGraph::getAvailableOutputs() const
+    {
+        std::vector<OutputInfo> outputs;
+        std::unordered_set<std::string> visitedOutputs;
+        for (const auto& node : mNodeData)
+        {
+            const DirectedGraph::Node* pNode = mpGraph->getNode(node.first);
+            for (uint32_t i = 0; i < pNode->getOutgoingEdgeCount(); ++i)
+            {
+                const RenderGraph::EdgeData& edgeData = mEdgeData.find(pNode->getOutgoingEdge(i))->second;
+                GraphOut thisOutput{ node.first, edgeData.srcField };
+                bool isOutput = isGraphOutput(thisOutput);
+                std::string fieldName = node.second.nodeName + "." + thisOutput.field;
+                if (visitedOutputs.find(fieldName) == visitedOutputs.end())
+                {
+                    visitedOutputs.insert(fieldName);
+                    outputs.push_back(OutputInfo{ fieldName, isOutput });
+                }
+            }
+        }
+        return outputs;
+    }
+
     bool RenderGraph::resolveResourceTypes()
     {
         // Build list to look up execution order index from the pass
@@ -326,7 +430,7 @@ namespace Falcor
         {
             passToIndex.emplace(mNodeData[mExecutionList[i]].pPass.get(), uint32_t(i));
         }
-
+        
         for (size_t i = 0; i < mExecutionList.size(); i++)
         {
             uint32_t nodeIndex = mExecutionList[i];
@@ -382,7 +486,6 @@ namespace Falcor
                 const auto& pDstPass = mNodeData[pEdge->getDestNode()].pPass;
                 RenderPassReflection::Field dstField = mPassReflectionMap[pDstPass.get()].getField(edgeData.dstField);
 
-                assert(passToIndex.count(pDstPass.get()) > 0);
                 mpResourcesCache->registerField(srcResourceName, field, passToIndex[pSrcPass]);
                 mpResourcesCache->registerField(dstResourceName, dstField, passToIndex[pDstPass.get()], srcResourceName);
             }
@@ -436,23 +539,70 @@ namespace Falcor
         if (profile) Profiler::endEvent("RenderGraph::execute()");
     }
 
+    void RenderGraph::update(const SharedPtr& pGraph)
+    {
+        // fill in missing passes from referenced graph
+        for (const auto& nameIndexPair : pGraph->mNameToIndex)
+        {
+            // if same name and type
+            RenderPass::SharedPtr pRenderPass = pGraph->mNodeData[nameIndexPair.second].pPass;
+            std::string passTypeName = pRenderPass->getName();
+
+            if (!doesPassExist(nameIndexPair.first))
+            { 
+                addPass(pRenderPass, nameIndexPair.first);
+            }
+        }
+
+        std::vector<std::string> passesToRemove;
+
+        // remove nodes that should no longer be within the graph
+        for (const auto& nameIndexPair : mNameToIndex)
+        {
+            if (!pGraph->doesPassExist(nameIndexPair.first))
+            {
+                passesToRemove.push_back(nameIndexPair.first);
+            }
+        }
+        
+        for (const std::string& passName : passesToRemove)
+        {
+            removePass(passName);
+        }
+
+        // remove all edges from this graph
+        for (uint32_t i = 0; i < mpGraph->getCurrentEdgeId(); ++i)
+        {
+            if (!mpGraph->doesEdgeExist(i)) { continue; }
+            
+            mpGraph->removeEdge(i);
+        }
+        mEdgeData.clear();
+
+        // add all edges from the other graph
+        for (uint32_t i = 0; i < pGraph->mpGraph->getCurrentEdgeId(); ++i)
+        {
+            if (!pGraph->mpGraph->doesEdgeExist(i)) { continue; }
+
+            const DirectedGraph::Edge* pEdge = pGraph->mpGraph->getEdge(i);
+            std::string dst = pGraph->mNodeData.find(pEdge->getDestNode())->second.nodeName;
+            std::string src = pGraph->mNodeData.find(pEdge->getSourceNode())->second.nodeName;
+
+            if ((mNameToIndex.find(src) != mNameToIndex.end()) && (mNameToIndex.find(dst) != mNameToIndex.end()))
+            {
+                dst += std::string(".") + pGraph->mEdgeData[i].dstField;
+                src += std::string(".") + pGraph->mEdgeData[i].srcField;
+                addEdge(src, dst);
+            }
+        }
+    }
+
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<true>(this, name, "RenderGraph::setInput()", strPair);
         if (pPass == nullptr) return false;
         mpResourcesCache->registerExternalResource(name, pResource);
-        return true;
-    }
-
-    bool RenderGraph::setOutput(const std::string& name, const std::shared_ptr<Resource>& pResource)
-    {
-        str_pair strPair;
-        RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::setOutput()", strPair);
-        if (pPass == nullptr) return false;
-        mpResourcesCache->registerExternalResource(name, pResource);
-        markOutput(name);
-        if (!pResource) mRecompile = true;
         return true;
     }
 
@@ -503,8 +653,11 @@ namespace Falcor
         static const Resource::SharedPtr pNull;
         str_pair strPair;
         RenderPass* pPass = getRenderPassAndNamePair<false>(this, name, "RenderGraph::getOutput()", strPair);
+        uint32_t passIndex = getPassIndex(strPair.first);
+        GraphOut thisOutput = { passIndex, strPair.second };
+        bool isOuput = isGraphOutput(thisOutput);
 
-        return pPass ? mpResourcesCache->getResource(name) : pNull;
+        return (pPass && isOuput) ? mpResourcesCache->getResource(name) : pNull;
     }
 
     std::string RenderGraph::getOutputName(size_t index) const
@@ -572,7 +725,7 @@ namespace Falcor
                     uint32_t dstIndex = mNameToIndex[pdstNode->nodeName];
 
                     uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
-                    mEdgeData[e] = { true, RenderGraph::EdgeData::Flags::None, srcField.getName(), dstFieldIt->getName() };
+                    mEdgeData[e] = { true, srcField.getName(), dstFieldIt->getName() };
                     mRecompile = true;
 
                     // If connection was found, continue to next unsatisfied input
@@ -591,16 +744,16 @@ namespace Falcor
         return src.getSampleCount() > 1 && dst.getSampleCount() == 1;
     }
 
-    void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList)
+    void RenderGraph::getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList) const
     {
         assert(mNameToIndex.count(pNodeData->nodeName) > 0);
 
         // Get names of connected input edges
         std::vector<std::string> satisfiedFields;
-        const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex[pNodeData->nodeName]);
+        const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex.at(pNodeData->nodeName));
         for (uint32_t i = 0; i < pNode->getIncomingEdgeCount(); i++)
         {
-            const auto& edgeData = mEdgeData[pNode->getIncomingEdge(i)];
+            const auto& edgeData = mEdgeData.at(pNode->getIncomingEdge(i));
             satisfiedFields.push_back(edgeData.dstField);
         }
 
@@ -689,6 +842,8 @@ namespace Falcor
                     pGui->endGroup();
                 }
             }
+
+            if (uiGroup) pGui->endGroup();
         }
     }
 

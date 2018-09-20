@@ -40,7 +40,7 @@ namespace Falcor
         {
             pGui->addFloatVar("Sub-Pixel Quality", mQualitySubPix, 0, 1);
             pGui->addFloatVar("Edge Threshold", mQualityEdgeThreshold, 0, 1);
-            pGui->addFloatVar("Edge Threhold Min", mQualityEdgeThresholdMin, 0, 1);
+            pGui->addFloatVar("Edge Threshold Min", mQualityEdgeThresholdMin, 0, 1);
             pGui->addCheckBox("Early out", mEarlyOut);
             if (uiGroup) pGui->endGroup();
         }

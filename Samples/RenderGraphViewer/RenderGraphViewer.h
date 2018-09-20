@@ -41,23 +41,58 @@ public:
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
-
+    void onDataReload(SampleCallbacks* pSample) override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onBeginTestFrame(SampleTest* pSampleTest) override;
+    
 private:
-    RenderGraph::SharedPtr mpGraph;
-    FirstPersonCameraController mCamControl;
-    void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
-    void createGraph(SampleCallbacks* pSample);
+    void renderGUIPreviewWindows(Gui* pGui);
     void fileWriteCallback(const std::string& filename);
+    void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
+    void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
     void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
+    RenderGraph::SharedPtr createDefaultGraph(SampleCallbacks* pSample);
+    void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const std::string& fileName, const std::string& name);
+    void updateOutputDropdown(const std::string& passName);
+    void resetCurrentGraphOutputs();
+    RenderGraph::SharedPtr createGraph(SampleCallbacks* pSample);
 
+    FirstPersonCameraController mCamControl;
     Scene::SharedPtr mpScene;
     std::string mSceneFilename;
-    bool mEnableDepthPrePass = true;
-    uint32_t mGraphOutputIndex = 0;
     bool mShowAllOutputs = true;
-    std::string mOutputString = "BlitPass.dst";
-    std::vector<std::string> mOriginalOutputs;
     bool mEditorRunning = false;
+    bool mApplyGraphChanges = false;
     size_t mEditorProcess = 0;
     std::string mTempFilePath;
+    std::string mActiveRenderGraphName;
+    std::string mEditingRenderGraphName;
+    Gui::DropdownList mRenderGraphsList;
+    uint32_t mActiveGraphIndex;
+    std::unordered_set<std::string> mActiveGraphNames;
+
+    struct DebugWindowInfo
+    {
+        std::string mGraphName;
+        std::string mOutputName;
+        bool mRenderOutput = true;
+        uint32_t mNextOutputIndex = 0;
+    };
+
+    std::unordered_map<std::string, DebugWindowInfo> mDebugWindowInfos;
+
+    struct GraphViewerInfo
+    {
+        RenderGraph::SharedPtr mpGraph;
+        std::string mOutputString = "BlitPass.dst";
+        uint32_t mGraphOutputIndex = 0;
+        std::string mFileName;
+        std::vector< RenderGraph::OutputInfo > mCurrentOutputs;
+        std::unordered_set<std::string> mOriginalOutputNames;
+        std::vector<std::string> mOutputNames;
+        std::string mLastScript;
+        Gui::DropdownList mOutputDropdown;
+    };
+
+    std::unordered_map<std::string, GraphViewerInfo> mGraphInfos;
 };

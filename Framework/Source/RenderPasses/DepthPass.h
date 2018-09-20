@@ -48,6 +48,7 @@ namespace Falcor
         virtual void setScene(const Scene::SharedPtr& pScene);
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
         virtual Dictionary getScriptingDictionary() const;
+        virtual void setScriptingDictionary(const Dictionary& dict) override;
 
         DepthPass& setDepthBufferFormat(ResourceFormat format);
         DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);

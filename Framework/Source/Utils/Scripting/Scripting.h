@@ -45,14 +45,14 @@ namespace Falcor
                 };
 
                 template<typename T>
-                std::vector<ObjectDesc<typename T>> getObjects()
+                std::vector<ObjectDesc<T>> getObjects()
                 {
-                    std::vector<ObjectDesc<typename T>> v;
+                    std::vector<ObjectDesc<T>> v;
                     for (const auto& l : mLocals)
                     {
                         try
                         {
-                            v.push_back(ObjectDesc<typename T>(l.first.cast<std::string>(), l.second.cast<T>()));
+                            v.push_back(ObjectDesc<T>(l.first.cast<std::string>(), l.second.cast<T>()));
                         }
                         catch (std::exception&) {}
                     }

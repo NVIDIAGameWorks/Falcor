@@ -405,7 +405,7 @@ class NodeGraphEditor
     ImVector<int> availableNodesInfoInverseMap;         // map: absolute node type -> availableNodesInfo index. Must be size() = totalNumberOfNodeTypes.
 
     typedef void (*NodeCallback)(Node*& node,NodeState state,NodeGraphEditor& editor);
-    typedef void (*LinkCallback)(const NodeLink& link,LinkState state,NodeGraphEditor& editor);
+    typedef void (*LinkCallback)(NodeLink& link,LinkState state,NodeGraphEditor& editor);
     LinkCallback linkCallback;// called after a link is added and before it's deleted
     NodeCallback nodeCallback;// called after a node is added, after it's edited and before it's deleted
     float nodeEditedTimeThreshold; // time in seconds that must elapse after the last "editing touch" before the NS_EDITED callback is called
@@ -547,7 +547,7 @@ class NodeGraphEditor
     void clear() {
         if (linkCallback)   {
             for (int i=links.size()-1;i>=0;i--)  {
-                const NodeLink& link = links[i];
+                NodeLink& link = links[i];
                 linkCallback(link,LS_DELETED,*this);
             }
         }

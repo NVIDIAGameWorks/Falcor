@@ -43,21 +43,20 @@ public:
     ~RenderGraphEditor();
 
 private:
-    void createRenderGraph(const std::string& renderGraphName, const std::string& renderGraphNameFileName);
-    void createAndAddRenderPass(const std::string& renderPassType, const std::string& renderPassName);
-    void createAndAddConnection(const std::string& srcRenderPass, const std::string& dstRenderPass, const std::string& srcField, const std::string& dstField);
+    void createRenderGraph(const std::string& renderGraphName);
+    void loadGraphsFromFile(const std::string& fileName);
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);
     void renderLogWindow(Gui* pGui);
 
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
+    std::unordered_map<std::string, uint32_t> mGraphNamesToIndex;
     size_t mCurrentGraphIndex;
-    
+    glm::uvec2 mWindowSize;
     std::string mCurrentLog;
-
     std::string mNextGraphString;
-    std::string mCurrentGraphOutput; // needs to be set by the loader as well
+    std::string mCurrentGraphOutput;
     std::string mGraphOutputEditString;
     std::string mFilePath;
 
@@ -66,4 +65,5 @@ private:
     bool mViewerRunning = false;
     size_t mViewerProcess = 0;
     bool mCanPreview = false;
+    bool mResetGuiWindows = false;
 };

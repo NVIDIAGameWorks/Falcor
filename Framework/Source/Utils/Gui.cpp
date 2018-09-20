@@ -71,6 +71,8 @@ namespace Falcor
         style.Colors[ImGuiCol_FrameBg].z *= 0.1f;
         style.ScrollbarSize *= 0.7f;
 
+        style.Colors[ImGuiCol_MenuBarBg] = style.Colors[ImGuiCol_WindowBg];
+
         // Create the pipeline state cache
         mpPipelineState = GraphicsState::create();
 
@@ -113,6 +115,8 @@ namespace Falcor
         pBufLayout->addElement("COLOR", offsetof(ImDrawVert, col), ResourceFormat::RGBA8Unorm, 1, 2);
         mpLayout = VertexLayout::create();
         mpLayout->addBufferLayout(0, pBufLayout);
+
+        mGuiImageLoc = mpProgram->getReflector()->getDefaultParameterBlock()->getResourceBinding("guiImage");
     }
 
     Gui::~Gui()
@@ -248,6 +252,15 @@ namespace Falcor
             {
                 const ImDrawCmd* pCmd = &pCmdList->CmdBuffer[cmd];
                 GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
+                if (pCmd->TextureId) 
+                {
+                    mpProgramVars->getDefaultBlock()->setSrv(mGuiImageLoc, 0, (mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
+                    mpProgramVars["PerFrameCB"]["useGuiImage"] = true;
+                }
+                else
+                {
+                    mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
+                }
                 mpPipelineState->setScissors(0, scissor);
                 pContext->drawIndexed(pCmd->ElemCount, idxOffset, vtxOffset);
                 idxOffset += pCmd->ElemCount;
@@ -260,6 +273,8 @@ namespace Falcor
         io.DeltaTime = elapsedTime;
         mGroupStackSize = 0;
         pContext->popGraphicsState();
+
+        mpImages.clear();
     }
 
     glm::vec4 Gui::pickUniqueColor(const std::string& key)
@@ -589,6 +604,8 @@ namespace Falcor
 
     bool Gui::dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString)
     {
+        if (ImGui::IsItemHovered() && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1))) ImGui::SetWindowFocus();
+        if (!(ImGui::IsWindowFocused())) return false;
         bool b = ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID);
         if (b)
         {
@@ -653,6 +670,15 @@ namespace Falcor
         }
     }
 
+    void Gui::addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size, bool sameLine)
+    {
+        ImGui::PushID(label);
+        if (sameLine) ImGui::SameLine();
+        mpImages.push_back(pTex);
+        ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, size.y });
+        ImGui::PopID();
+    }
+
     bool Gui::onMouseEvent(const MouseEvent& event)
     {
         ImGuiIO& io = ImGui::GetIO();
@@ -710,6 +736,28 @@ namespace Falcor
     void Gui::popWindow()
     {
         ImGui::End();
+    }
+
+    void Gui::setCurrentWindowPos(uint32_t x, uint32_t y)
+    {
+        ImGui::SetWindowPos({ static_cast<float>(x), static_cast<float>(y) });
+    }
+
+    glm::vec2 Gui::getCurrentWindowPos()
+    {
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        return { windowPos.x, windowPos.y };
+    }
+
+    void Gui::setCurrentWindowSize(uint32_t width, uint32_t height)
+    {
+        ImGui::SetWindowSize({ static_cast<float>(width), static_cast<float>(height) });
+    }
+
+    glm::vec2 Gui::getCurrentWindowSize()
+    {
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        return {windowSize.x, windowSize.y};
     }
 
     void Gui::addSeparator()
