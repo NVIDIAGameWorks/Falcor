@@ -297,12 +297,21 @@ void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
     }
 }
 
-void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName)
+void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const std::string& graphName)
 {
     assert(fileName.size());
 
     // behavior is load each graph defined within the file as a separate editor ui
-    auto newGraphs = RenderGraphImporter::importAllGraphs(fileName);
+    std::vector <RenderGraphImporter::GraphData> newGraphs;
+    if (graphName.size())
+    {
+        auto pGraph = RenderGraphImporter::import(graphName, fileName);
+        if (pGraph) newGraphs.push_back({ graphName, pGraph});
+    }
+    else
+    {
+        newGraphs = RenderGraphImporter::importAllGraphs(fileName);
+    }
 
     for (const auto& graphInfo : newGraphs)
     {
@@ -376,8 +385,12 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     
     if (mFilePath.size())
     {
+        std::vector<ArgList::Arg> graphArgs = pSample->getArgList().getValues("graphname");
+        std::string graphName;
+        if (graphArgs.size()) graphName = graphArgs[0].asString();
+
         mViewerRunning = true;
-        loadGraphsFromFile(mFilePath);
+        loadGraphsFromFile(mFilePath, graphName);
     }
     else
     {

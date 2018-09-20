@@ -116,7 +116,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
     
         // load application for the editor given it the name of the mapped file
-        std::string commandLine = std::string("-tempFile ") + mTempFilePath;
+        std::string commandLine = std::string("-tempFile ") + mTempFilePath + std::string(" -graphname ") + mActiveRenderGraphName;
         mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
     
         assert(mEditorProcess);
