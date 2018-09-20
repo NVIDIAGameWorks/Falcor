@@ -37,8 +37,8 @@ namespace Falcor
 
     void ResolvePass::reflect(RenderPassReflection& reflector) const
     {
-        reflector.addInput(kSrc);
-        reflector.addOutput(kDst).setSampleCount(1);
+        reflector.addInput(kSrc).setFormat(mFormat).setSampleCount(0);
+        reflector.addOutput(kDst).setFormat(mFormat).setSampleCount(1);
     }
 
     ResolvePass::SharedPtr ResolvePass::create(const Dictionary& dictionary)
