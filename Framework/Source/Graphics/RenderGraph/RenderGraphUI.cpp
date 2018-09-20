@@ -655,7 +655,6 @@ namespace Falcor
         sNodeGraphEditor.setLinkCallback(setLink);
         sNodeGraphEditor.setNodeCallback(setNode);
         
-        const ImVec2& mousePos = ImGui::GetMousePos();
         bool bFromDragAndDrop = true;
 
         // update the deleted links from the GUI since the library doesn't call its own callback

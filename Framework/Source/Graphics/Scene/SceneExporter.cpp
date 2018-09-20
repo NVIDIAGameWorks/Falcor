@@ -101,6 +101,9 @@ namespace Falcor
     {
         mExportOptions = exportOptions;
 
+        // to remove. unused in this file for linux
+        (void)SceneKeys::kEnvMap;
+
         // create the file
         mJDoc.SetObject();
 

@@ -200,6 +200,7 @@ namespace Falcor
 
         Scripting::start();
         Logger::showBoxOnError(config.showMessageBoxOnError);
+        Scripting::start();
 
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
