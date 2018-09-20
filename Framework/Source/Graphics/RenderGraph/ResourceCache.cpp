@@ -94,7 +94,7 @@ namespace Falcor
     var = base.get##dim(); \
     if (newField.get##dim() != 0) { \
         if (base.get##dim() == 0) var = newField.get##dim(); \
-        else warningMsg += " " + std::string(#dim) + " already specified. "; }
+        else if(base.get##dim() != newField.get##dim()) warningMsg += " " + std::string(#dim) + " already specified. "; }
 
         uint32_t w = 0, h = 0, d = 0;
         get_dim(w, Width);
