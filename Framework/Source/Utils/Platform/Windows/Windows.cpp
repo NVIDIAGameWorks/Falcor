@@ -107,6 +107,12 @@ namespace Falcor
         return res == TRUE;
     }
 
+    std::string createTemperaryFile()
+    {
+        char* error = nullptr;
+        return std::tmpnam(error);
+    }
+
     const std::string& getExecutableDirectory()
     {
         static std::string folder;
