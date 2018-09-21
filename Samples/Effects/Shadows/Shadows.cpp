@@ -238,7 +238,7 @@ void Shadows::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32
     mWindowDimensions.y = height;
     for (auto it = mpCsmTech.begin(); it != mpCsmTech.end(); ++it)
     {
-        (*it)->resizeVisibilityBuffer(width, height);
+        (*it)->onResize(width, height);
     }
 }
 
