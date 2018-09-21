@@ -66,7 +66,7 @@ namespace Falcor
 
         /** Update dictionary for specified render pass.
         */
-        void updatePass(const std::string& name, const Dictionary& dict);
+        void updatePass(const std::string& passName, const Dictionary& dict);
 
         /** Insert an edge from a render-pass' output into a different render-pass input.
             The render passes must be different, the graph must be a DAG.

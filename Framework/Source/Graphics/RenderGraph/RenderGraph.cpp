@@ -114,9 +114,9 @@ namespace Falcor
     }
 
     // Matt TODO figure this out
-    void RenderGraph::updatePass(const std::string& name, const Dictionary& dict)
+    void RenderGraph::updatePass(const std::string& passName, const Dictionary& dict)
     {
-        const auto pPass = getPass(name);
+        const auto pPass = getPass(passName);
         if (pPass)
         {
             pPass->setScriptingDictionary(dict);
