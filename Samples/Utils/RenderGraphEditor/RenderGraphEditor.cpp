@@ -423,6 +423,10 @@ int main(int argc, char** argv)
 {
     RenderGraphEditor::UniquePtr pEditor = std::make_unique<RenderGraphEditor>();
     SampleConfig config;
+#ifndef _WIN32
+    config.argv = argv;
+    config.argc = (uint32_t)argc;
+#endif
     config.windowDesc.title = "Render Graph Editor";
     config.windowDesc.resizableWindow = true;
     Sample::run(config, pEditor);
