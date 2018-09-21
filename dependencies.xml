@@ -14,7 +14,7 @@
         <package name="dear_imgui" version="1.65" />
     </dependency>
     <dependency name="glm" linkPath="Framework/Externals/GLM">
-        <package name="glm" version="0.9.9.2" />
+        <package name="glm" version="0.9.9.2.falcor" />
     </dependency>
     <dependency name="ffmpeg" linkPath="Framework/Externals/FFMPEG">
         <package name="ffmpeg" version="3.4.2" platforms="win" />
