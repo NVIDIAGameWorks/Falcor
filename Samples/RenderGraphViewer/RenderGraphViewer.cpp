@@ -113,8 +113,10 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         RenderGraphExporter::save(pGraph, mActiveRenderGraphName, mTempFilePath);
 
         graphInfo.mFileName = mTempFilePath;
+    #ifdef _WIN32
         openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
-    
+    #endif
+
         // load application for the editor given it the name of the mapped file
         std::string commandLine = std::string("-tempFile ") + mTempFilePath + std::string(" -graphname ") + mActiveRenderGraphName;
         mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
