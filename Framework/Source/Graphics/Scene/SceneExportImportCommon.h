@@ -60,6 +60,7 @@ namespace Falcor
         static const char* kLightingScale = "lighting_scale";
 
         static const char* kName = "name";
+        static const char* kEnvMap = "env_map";
 
         static const char* kModels = "models";
         static const char* kFilename = "file";

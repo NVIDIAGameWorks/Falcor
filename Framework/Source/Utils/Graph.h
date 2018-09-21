@@ -44,8 +44,6 @@ namespace Falcor
             return SharedPtr(new Graph());
         }
 
-        void gotoStart() { mCurrentNode = 0; }
-
         bool isEdgeExists(const EdgeType& e) const 
         {
             return (getEdgeIt(e) != mGraph[mCurrentNode].edges.end());

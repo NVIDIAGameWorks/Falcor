@@ -71,6 +71,8 @@ namespace Falcor
         style.Colors[ImGuiCol_FrameBg].z *= 0.1f;
         style.ScrollbarSize *= 0.7f;
 
+        style.Colors[ImGuiCol_MenuBarBg] = style.Colors[ImGuiCol_WindowBg];
+
         // Create the pipeline state cache
         mpPipelineState = GraphicsState::create();
 
@@ -83,7 +85,7 @@ namespace Falcor
         uint8_t* pFontData;
         int32_t width, height;
         std::string fontFile;
-        if(findFileInDataDirectories("Framework/Fonts/trebucbd.ttf", fontFile))
+        if(findFileInDataDirectories("Framework/Fonts/consolab.ttf", fontFile))
         {
             io.Fonts->AddFontFromFileTTF(fontFile.c_str(), 14);
         }
@@ -113,6 +115,8 @@ namespace Falcor
         pBufLayout->addElement("COLOR", offsetof(ImDrawVert, col), ResourceFormat::RGBA8Unorm, 1, 2);
         mpLayout = VertexLayout::create();
         mpLayout->addBufferLayout(0, pBufLayout);
+
+        mGuiImageLoc = mpProgram->getReflector()->getDefaultParameterBlock()->getResourceBinding("guiImage");
     }
 
     Gui::~Gui()
@@ -248,6 +252,15 @@ namespace Falcor
             {
                 const ImDrawCmd* pCmd = &pCmdList->CmdBuffer[cmd];
                 GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
+                if (pCmd->TextureId) 
+                {
+                    mpProgramVars->getDefaultBlock()->setSrv(mGuiImageLoc, 0, (mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
+                    mpProgramVars["PerFrameCB"]["useGuiImage"] = true;
+                }
+                else
+                {
+                    mpProgramVars["PerFrameCB"]["useGuiImage"] = false;
+                }
                 mpPipelineState->setScissors(0, scissor);
                 pContext->drawIndexed(pCmd->ElemCount, idxOffset, vtxOffset);
                 idxOffset += pCmd->ElemCount;
@@ -260,6 +273,57 @@ namespace Falcor
         io.DeltaTime = elapsedTime;
         mGroupStackSize = 0;
         pContext->popGraphicsState();
+
+        mpImages.clear();
+    }
+
+    glm::vec4 Gui::pickUniqueColor(const std::string& key)
+    {
+        union hashedValue
+        {
+            size_t st;
+            int32_t i32[2];
+        };
+        hashedValue color;
+        color.st = std::hash<std::string>()(key);
+
+        return glm::vec4(color.i32[0] % 1000 / 2000.0f, color.i32[1] % 1000 / 2000.0f, (color.i32[0] * color.i32[1]) % 1000 / 2000.0f, 1.0f);
+    }
+
+    void Gui::addDummyItem(const char label[], const glm::vec2& size, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        ImGui::PushID(label);
+        ImGui::Dummy({ size.x, size.y });
+        ImGui::PopID();
+    }
+
+    void Gui::addRect(const glm::vec2& size, const glm::vec4& color, bool filled, bool sameLine)
+    {
+        if (sameLine) ImGui::SameLine();
+        
+        const ImVec2& cursorPos = ImGui::GetCursorScreenPos();
+        ImVec2 bottomLeft{ cursorPos.x + size.x, cursorPos.y + size.y };
+        ImVec4 rectColor{color.x, color.y, color.z, color.w};
+        
+        if (filled)
+        {
+            ImGui::GetWindowDrawList()->AddRectFilled(ImGui::GetCursorScreenPos(), bottomLeft, ImGui::ColorConvertFloat4ToU32(rectColor));
+        }
+        else
+        {
+            ImGui::GetWindowDrawList()->AddRect(ImGui::GetCursorScreenPos(), bottomLeft, ImGui::ColorConvertFloat4ToU32(rectColor));
+        }
+    }
+
+    void Gui::beginColumns(uint32_t numColumns)
+    {
+        ImGui::Columns(numColumns);
+    }
+
+    void Gui::nextColumn()
+    {
+        ImGui::NextColumn();
     }
 
     bool Gui::addCheckBox(const char label[], bool& var, bool sameLine)
@@ -495,10 +559,35 @@ namespace Falcor
                 topLeft.x -= 1; topLeft.y -= 1;
                 auto colorVec4 =ImGui::GetStyleColorVec4(ImGuiCol_ScrollbarGrab); colorVec4.w *= 0.25f;
                 ImU32 color = ImGui::ColorConvertFloat4ToU32(colorVec4);
-                ImGui::GetOverlayDrawList()->AddRect(topLeft, bottomRight, color);
+                ImGui::GetWindowDrawList()->AddRect(topLeft, bottomRight, color);
             }
         }
         return b;
+    }
+
+    bool Gui::beginMainMenuBar()
+    {
+        return ImGui::BeginMainMenuBar();
+    }
+
+    bool Gui::beginDropDownMenu(const char label[])
+    {
+        return ImGui::BeginMenu(label);
+    }
+
+    void Gui::endDropDownMenu()
+    {
+        ImGui::EndMenu();
+    }
+
+    bool Gui::addMenuItem(const char label[])
+    {
+        return ImGui::MenuItem(label);
+    }
+
+    void Gui::endMainMenuBar()
+    {
+        ImGui::EndMainMenuBar();
     }
 
     bool Gui::addRgbColor(const char label[], glm::vec3& var, bool sameLine)
@@ -511,6 +600,38 @@ namespace Falcor
     {
         if (sameLine) ImGui::SameLine();
         return ImGui::ColorEdit4(label, glm::value_ptr(var));
+    }
+
+    bool Gui::dragDropSource(const char label[], const char dataLabel[], const std::string& payloadString)
+    {
+        if (ImGui::IsItemHovered() && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1))) ImGui::SetWindowFocus();
+        if (!(ImGui::IsWindowFocused())) return false;
+        bool b = ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID);
+        if (b)
+        {
+            ImGui::SetDragDropPayload(dataLabel, payloadString.data(), payloadString.size() * sizeof(payloadString[0]), ImGuiCond_Once);
+            ImGui::EndDragDropSource();
+        }
+        return b;
+    }
+
+    bool Gui::dragDropDest(const char dataLabel[], std::string& payloadString)
+    {
+        bool b = false;
+        if (ImGui::BeginDragDropTarget())
+        {
+            auto dragDropPayload = ImGui::AcceptDragDropPayload(dataLabel);
+            b = dragDropPayload && dragDropPayload->IsDataType(dataLabel) && (dragDropPayload->Data != nullptr);
+            if (b)
+            {
+                payloadString.resize(dragDropPayload->DataSize);
+                std::memcpy(&payloadString.front(), dragDropPayload->Data, dragDropPayload->DataSize);
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+        
+        return b;
     }
 
     bool Gui::onKeyboardEvent(const KeyboardEvent& event)
@@ -549,6 +670,15 @@ namespace Falcor
         }
     }
 
+    void Gui::addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size, bool sameLine)
+    {
+        ImGui::PushID(label);
+        if (sameLine) ImGui::SameLine();
+        mpImages.push_back(pTex);
+        ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, size.y });
+        ImGui::PopID();
+    }
+
     bool Gui::onMouseEvent(const MouseEvent& event)
     {
         ImGuiIO& io = ImGui::GetIO();
@@ -584,7 +714,7 @@ namespace Falcor
         return io.WantCaptureMouse;
     }
 
-    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar)
+    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar, bool allowMove)
     {
         ImVec2 pos{ float(x), float(y) };
         ImVec2 size{ float(width), float(height) };
@@ -595,12 +725,39 @@ namespace Falcor
         {
             flags |= ImGuiWindowFlags_NoTitleBar;
         }
+        if (!allowMove)
+        {
+            flags |= ImGuiWindowFlags_NoMove;
+        }
+
         ImGui::Begin(label, nullptr, flags);
     }
 
     void Gui::popWindow()
     {
         ImGui::End();
+    }
+
+    void Gui::setCurrentWindowPos(uint32_t x, uint32_t y)
+    {
+        ImGui::SetWindowPos({ static_cast<float>(x), static_cast<float>(y) });
+    }
+
+    glm::vec2 Gui::getCurrentWindowPos()
+    {
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        return { windowPos.x, windowPos.y };
+    }
+
+    void Gui::setCurrentWindowSize(uint32_t width, uint32_t height)
+    {
+        ImGui::SetWindowSize({ static_cast<float>(width), static_cast<float>(height) });
+    }
+
+    glm::vec2 Gui::getCurrentWindowSize()
+    {
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        return {windowSize.x, windowSize.y};
     }
 
     void Gui::addSeparator()
@@ -688,6 +845,19 @@ namespace Falcor
 
         text = std::string(buf);
         return result;
+    }
+
+    bool Gui::addMultiTextBox(const char label[], const std::vector<std::string>& textLabels, std::vector<std::string>& textEntries)
+    {
+        static uint32_t sIdOffset = 0;
+        bool result = false;
+
+        for (uint32_t i = 0; i < textEntries.size(); ++i)
+        {
+            result |= addTextBox(std::string(textLabels[i] + "##" + std::to_string(sIdOffset)).c_str(), textEntries[i]);
+        }
+
+        return addButton(label) | result;
     }
 
     void Gui::addTooltip(const char tip[], bool sameLine)

@@ -34,6 +34,7 @@
 #include "glm/gtc/random.hpp"
 #include "glm/gtc/packing.hpp"
 #include "Utils/Math/FalcorMath.h"
+#include "Graphics/Scene/Scene.h"
 
 namespace Falcor
 {
@@ -44,34 +45,39 @@ namespace Falcor
         { (int32_t)SampleDistribution::CosineHammersley, "Cosine Hammersley" }
     };
 
-    SSAO::UniquePtr SSAO::create(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution)
+    SSAO::SharedPtr SSAO::create(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution)
     {
-        return UniquePtr(new SSAO(aoMapSize, kernelSize, blurSize, blurSigma, noiseSize, distribution));
+        return SharedPtr(new SSAO(aoMapSize, kernelSize, blurSize, blurSigma, noiseSize, distribution));
     }
 
-    void SSAO::renderGui(Gui* pGui)
+    void SSAO::renderUI(Gui* pGui, const char* uiGroup)
     {
-        if (pGui->addDropdown("Kernel Distribution", kDistributionDropdown, mHemisphereDistribution))
+        if(!uiGroup || pGui->beginGroup(uiGroup))
         {
-            setKernel(mData.kernelSize, (SampleDistribution)mHemisphereDistribution);
-        }
+            if (pGui->addDropdown("Kernel Distribution", kDistributionDropdown, mHemisphereDistribution))
+            {
+                setKernel(mData.kernelSize, (SampleDistribution)mHemisphereDistribution);
+            }
 
-        int32_t size = mData.kernelSize;
-        if (pGui->addIntVar("Kernel Size", size, 1, MAX_SAMPLES))
-        {
-            setKernel((uint32_t)size, (SampleDistribution)mHemisphereDistribution);
-        }
+            int32_t size = mData.kernelSize;
+            if (pGui->addIntVar("Kernel Size", size, 1, MAX_SAMPLES))
+            {
+                setKernel((uint32_t)size, (SampleDistribution)mHemisphereDistribution);
+            }
 
-        if (pGui->addFloatVar("Sample Radius", mData.radius, 0.001f, FLT_MAX))
-        {
-            mDirty = true;
-        }
+            if (pGui->addFloatVar("Sample Radius", mData.radius, 0.001f, FLT_MAX))
+            {
+                mDirty = true;
+            }
 
-        pGui->addCheckBox("Apply Blur", mApplyBlur);
+            pGui->addCheckBox("Apply Blur", mApplyBlur);
 
-        if (mApplyBlur)
-        {
-            mpBlur->renderUI(pGui, "Blur Settings");
+            if (mApplyBlur)
+            {
+                mpBlur->renderUI(pGui, "Blur Settings");
+            }
+
+            if (uiGroup) pGui->endGroup();
         }
     }
 
@@ -86,7 +92,7 @@ namespace Falcor
         pDefaultBlock->setSampler(mBindLocations.textureSampler, 0, mpTextureSampler);
         pDefaultBlock->setSrv(mBindLocations.depthTex, 0, pDepthTexture->getSRV());
         pDefaultBlock->setSrv(mBindLocations.noiseTex, 0, mpNoiseTexture->getSRV());
-        pDefaultBlock->setSrv(mBindLocations.normalTex, 0, pNormalTexture->getSRV());
+        pDefaultBlock->setSrv(mBindLocations.normalTex, 0, pNormalTexture ? pNormalTexture->getSRV() : nullptr);
 
         ConstantBuffer* pCB = pDefaultBlock->getConstantBuffer(mBindLocations.internalPerFrameCB, 0).get();
         if (pCB != nullptr)
@@ -110,7 +116,7 @@ namespace Falcor
         return mpAOFbo->getColorTexture(0);
     }
 
-    SSAO::SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution)
+    SSAO::SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution) : RenderPass("SSAO")
     {
         Fbo::Desc fboDesc;
         fboDesc.setColorTarget(0, Falcor::ResourceFormat::R8Unorm);
@@ -131,6 +137,15 @@ namespace Falcor
 
         setKernel(kernelSize, distribution);
         setNoiseTexture(noiseSize.x, noiseSize.y);
+
+        mComposeData.pApplySSAOPass = FullScreenPass::create("ApplyAO.ps.slang");
+        mComposeData.pVars = GraphicsVars::create(mComposeData.pApplySSAOPass->getProgram()->getReflector());
+
+        Sampler::Desc desc;
+        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        mComposeData.pVars->setSampler("gSampler", Sampler::create(desc));
+        mComposeData.pState = GraphicsState::create();
+        mComposeData.pState->setFbo(Fbo::create());
     }
 
     void SSAO::upload()
@@ -218,4 +233,46 @@ namespace Falcor
         mDirty = true;
     }
 
+    static const std::string kColorIn = "colorIn";
+    static const std::string kColorOut = "colorOut";
+    static const std::string kDepth = "depth";
+    static const std::string kNormals = "normals";
+
+    void SSAO::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInput(kColorIn);
+        reflector.addOutput(kColorOut);
+        reflector.addInput(kDepth);
+        reflector.addInput(kNormals).setFlags(RenderPassReflection::Field::Flags::Optional);
+    }
+
+    void SSAO::execute(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pColorIn, const Texture::SharedPtr& pColorOut, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
+    {
+        assert(pColorOut != pColorIn);
+        auto pAoMap = generateAOMap(pContext, mpScene->getActiveCamera().get(), pDepthTexture, pNormalTexture);
+
+        mComposeData.pVars->setTexture("gColor", pColorIn);
+        mComposeData.pVars->setTexture("gAOMap", pAoMap);
+        auto pFbo = mComposeData.pState->getFbo();
+        pFbo->attachColorTarget(pColorOut, 0);
+        mComposeData.pState->setFbo(pFbo);
+
+        pContext->pushGraphicsState(mComposeData.pState);
+        pContext->pushGraphicsVars(mComposeData.pVars);
+
+        mComposeData.pApplySSAOPass->execute(pContext);
+
+        pContext->popGraphicsState();
+        pContext->popGraphicsVars();
+    }
+
+    void SSAO::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        // Run the AO pass
+        auto pDepth = pData->getTexture(kDepth);
+        auto pNormals = pData->getTexture(kNormals);        
+        auto pColorOut = pData->getTexture(kColorOut);
+        auto pColorIn = pData->getTexture(kColorIn);
+        execute(pRenderContext, mpScene->getActiveCamera().get(), pColorIn, pColorOut, pDepth, pNormals);
+    }
 }

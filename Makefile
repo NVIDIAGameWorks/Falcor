@@ -17,6 +17,11 @@ ForwardRenderer : $(SAMPLE_CONFIG)
 	$(call MoveProjectData,$(DIR), $(OUT_DIR))
 	@echo Built $@
 
+# Render Graph Viewer project
+
+RenderGraphViewer : RenderGraphEditor $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/RenderGraphViewer/,RenderGraphViewer.cpp,RenderGraphViewer)
+
 # Core Samples
 
 ComputeShader : $(SAMPLE_CONFIG)
@@ -59,6 +64,9 @@ ModelViewer : $(SAMPLE_CONFIG)
 SceneEditor : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorApp.cpp,SceneEditor)
 
+RenderGraphEditor : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/Utils/RenderGraphEditor/,RenderGraphEditor.cpp,RenderGraphEditor)
+
 CC:=g++
 
 INCLUDES = \
@@ -67,8 +75,9 @@ INCLUDES = \
 -I "Framework/Externals/GLM" \
 -I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/RapidJson/include" \
+-I "Framework/Externals/pybind11/include" \
 -I "$(VULKAN_SDK)/include" \
-$(shell pkg-config --cflags assimp gtk+-3.0 glfw3) \
+$(shell pkg-config --cflags assimp gtk+-3.0 glfw3 python3) \
 $(shell pkg-config --cflags libavcodec libavdevice libavformat libswscale libavutil)
 
 ADDITIONAL_LIB_DIRS = -L "Bin/" \
@@ -78,7 +87,7 @@ ADDITIONAL_LIB_DIRS = -L "Bin/" \
 
 LIBS = -lfalcor \
 -lfreeimage -lslang -lslang-glslang -lopenvr_api \
-$(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11) \
+$(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11 python3) \
 $(shell pkg-config --libs libavcodec libavdevice libavformat libswscale libavutil) \
 -lvulkan -lstdc++fs -lpthread -lrt -lm -ldl -lz
 
@@ -102,10 +111,10 @@ SOURCE_DIR:=Framework/Source/
 RELATIVE_DIRS:=/ \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/FXAA/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
-Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ \
+Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/RenderGraph/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
+Utils/ Utils/Math/ Utils/Scripting/ Utils/Picking/ Utils/PatternGenerators/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ RenderPasses/ \
 VR/ VR/OpenVR/ \
-../Externals/dear_imgui/
+../Externals/dear_imgui/ ../Externals/dear_imgui_addons/imguinodegrapheditor/
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
 SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))

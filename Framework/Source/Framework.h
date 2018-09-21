@@ -31,6 +31,7 @@
 #include <memory>
 #include <iostream>
 #include "Utils/Logger.h"
+#include "Utils/Scripting/Scripting.h"
 
 #define GLM_FORCE_CTOR_INIT
 #define GLM_ENABLE_EXPERIMENTAL
@@ -78,15 +79,6 @@ using namespace glm;
 #define align_to(_alignment, _val) (((_val + _alignment - 1) / _alignment) * _alignment)
 #define concat_strings_(a, b) a##b
 #define concat_strings(a, b) concat_strings_(a, b)
-
-#if defined(_MSC_VER)
-#define FALCOR_DEPRECATED(MESSAGE) __declspec(deprecated(MESSAGE))
-#define forceinline __forceinline
-#else
-// TODO: add cases for clang/gcc when/if needed
-#define FALCOR_DEPRECATED(MESSAGE) /* emtpy */
-#define forceinline __attribute__((always_inline))
-#endif
 
 namespace Falcor
 {
@@ -149,6 +141,20 @@ namespace Falcor
     };
 
     enum_class_operators(FboAttachmentType);
+
+
+    enum class ComparisonFunc
+    {
+        Disabled,       ///< Comparison is disabled
+        Never,          ///< Comparison always fails
+        Always,         ///< Comparison always succeeds
+        Less,           ///< Passes if source is less than the destination
+        Equal,          ///< Passes if source is equal to the destination
+        NotEqual,       ///< Passes if source is not equal to the destination
+        LessEqual,      ///< Passes if source is less than or equal to the destination
+        Greater,        ///< Passes if source is greater than to the destination
+        GreaterEqual,   ///< Passes if source is greater than or equal to the destination
+    };
 
     /** Clamps a value within a range.
         \param[in] val Value to clamp
@@ -249,10 +255,38 @@ namespace Falcor
             return "";
         }
     }
+
+
+#define compare_str(a) case ComparisonFunc::a: return #a
+    inline std::string to_string(ComparisonFunc f)
+    {
+        switch (f)
+        {
+            compare_str(Disabled);
+            compare_str(LessEqual);
+            compare_str(GreaterEqual);
+            compare_str(Less);
+            compare_str(Greater);
+            compare_str(Equal);
+            compare_str(NotEqual);
+            compare_str(Always);
+            compare_str(Never);
+        default: should_not_get_here(); return "";
+        }
+    }
+#undef compare_str
 }
 
 #include "Utils/Platform/OS.h"
 #include "Utils/Profiler.h"
+
+#if defined(_MSC_VER)
+#define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
+#define forceinline __forceinline
+#else
+#define deprecate(_ver_, _msg_) 
+#define forceinline __attribute__((always_inline))
+#endif
 
 #if (_ENABLE_NVAPI == true)
 #include "nvapi.h"

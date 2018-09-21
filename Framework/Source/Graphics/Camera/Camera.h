@@ -32,6 +32,7 @@
 #include "Data/HostDeviceData.h"
 #include <vector>
 #include "Graphics/Paths/MovableObject.h"
+#include "Utils/PatternGenerators/PatternGenerator.h"
 
 namespace Falcor
 {
@@ -142,11 +143,19 @@ namespace Falcor
         */
         float getFarPlane() const { return mData.farZ; }
 
+        /** Set a pattern generator. If a generator is set, then a jitter will be set every frame based on the generator
+        */
+        void setPatternGenerator(const PatternGenerator::SharedPtr& pGenerator, const vec2& scale = vec2(1));
+
+        /** Get the bound pattern generator
+        */
+        const PatternGenerator::SharedPtr& getPatternGenerator() const { return mJitterPattern.pGenerator; }
+
         /** Set the camera's jitter.
             \param[in] jitterX Subpixel offset along X axis divided by screen width
             \param[in] jitterY Subpixel offset along Y axis divided by screen height
         */
-        void setJitter(float jitterX, float jitterY) { mData.jitterX = jitterX; mData.jitterY = jitterY; mDirty = true; }
+        void setJitter(float jitterX, float jitterY);
         float getJitterX() const { return mData.jitterX; }
         float getJitterY() const { return mData.jitterY; }
 
@@ -252,5 +261,13 @@ namespace Falcor
             float       negW;   ///< Camera frustum plane, sign of the coordinates
             glm::vec3   sign;   ///< Camera frustum plane position
         } mutable mFrustumPlanes[6];
+
+        struct  
+        {
+            PatternGenerator::SharedPtr pGenerator;
+            vec2 scale;
+        } mJitterPattern;
+
+        void setJitterInternal(float jitterX, float jitterY);
     };
 }

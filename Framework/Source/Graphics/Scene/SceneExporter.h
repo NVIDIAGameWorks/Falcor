@@ -31,7 +31,7 @@
 #include "glm/vec3.hpp"
 #include "glm/vec4.hpp"
 #include "Scene.h"
-#include "Externals/RapidJson/include/rapidjson/document.h"
+#include "rapidjson/document.h"
 #include <sstream>
 
 namespace Falcor
