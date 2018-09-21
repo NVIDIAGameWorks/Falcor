@@ -6,7 +6,7 @@
 #define IMGUINODEGRAPHEDITOR_H_
 
 #ifndef IMGUI_API
-#include <imgui.h>
+#include "Externals/dear_imgui/imgui.h"
 #endif //IMGUI_API
 
 /*
@@ -353,10 +353,12 @@ namespace ImGui {
     {
         Node*  InputNode;   int InputSlot;
         Node*  OutputNode;  int OutputSlot;
+        ImU32 LinkColor;
 
-        NodeLink(Node* input_node, int input_slot, Node* output_node, int output_slot) {
+        NodeLink(Node* input_node, int input_slot, Node* output_node, int output_slot, ImU32 col) {
             InputNode = input_node; InputSlot = input_slot;
-            OutputNode = output_node; OutputSlot = output_slot;
+            OutputNode = output_node; OutputSlot = output_slot; 
+            LinkColor = col;
         }
 
         friend class NodeGraphEditor;
@@ -371,6 +373,8 @@ namespace ImGui {
         typedef Node* (*NodeFactoryDelegate)(int nodeType,const ImVec2& pos,const NodeGraphEditor& nge);
         enum NodeState { NS_ADDED,NS_DELETED,NS_EDITED };
         enum LinkState { LS_ADDED,LS_DELETED };
+        ImU32 selectedLink = -1;
+        ImVec2 offset;
 
         protected:
         ImVector<Node*> nodes;          // used as a garbage collector too
@@ -401,7 +405,7 @@ namespace ImGui {
         ImVector<int> availableNodesInfoInverseMap;         // map: absolute node type -> availableNodesInfo index. Must be size() = totalNumberOfNodeTypes.
 
         typedef void(*NodeCallback)(Node*& node,NodeState state,NodeGraphEditor& editor);
-        typedef void(*LinkCallback)(const NodeLink& link,LinkState state,NodeGraphEditor& editor);
+        typedef void(*LinkCallback)(NodeLink& link,LinkState state,NodeGraphEditor& editor);
         LinkCallback linkCallback;// called after a link is added and before it's deleted
         NodeCallback nodeCallback;// called after a node is added, after it's edited and before it's deleted
         float nodeEditedTimeThreshold; // time in seconds that must elapse after the last "editing touch" before the NS_EDITED callback is called
@@ -553,7 +557,7 @@ namespace ImGui {
         void clear() {
             if (linkCallback) {
                 for (int i = links.size() - 1; i >= 0; i--) {
-                    const NodeLink& link = links[i];
+                    NodeLink& link = links[i];
                     linkCallback(link,LS_DELETED,*this);
                 }
             }
@@ -638,12 +642,12 @@ namespace ImGui {
             if (pMaxNumAllowedInstancesForThisNodeType) *pMaxNumAllowedInstancesForThisNodeType = ni ? ni->maxNumInstances : -1;
             return ni->curNumInstances;
         }
-        bool addLink(Node* inputNode, int input_slot, Node* outputNode, int output_slot,bool checkIfAlreadyPresent = false) {
+        bool addLink(Node* inputNode, int input_slot, Node* outputNode, int output_slot,bool checkIfAlreadyPresent = false, ImU32 col = 0xFFFFFFFF) {
             if (!inputNode || !outputNode) return false;
             bool insert = true;
             if (checkIfAlreadyPresent) insert = !isLinkPresent(inputNode,input_slot,outputNode,output_slot);
             if (insert) {
-                links.push_back(NodeLink(inputNode,input_slot,outputNode,output_slot));
+                links.push_back(NodeLink(inputNode,input_slot,outputNode,output_slot, col));
                 if (linkCallback) linkCallback(links[links.size() - 1],LS_ADDED,*this);
             }
             return insert;

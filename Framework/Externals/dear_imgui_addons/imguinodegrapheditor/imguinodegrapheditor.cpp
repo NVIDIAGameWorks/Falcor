@@ -826,7 +826,7 @@ namespace ImGui {
                 ImVec2 win_pos = ImGui::GetCursorScreenPos();
                 if (node_to_center_view_around && !nodesHaveZeroSize) { scrolling = node_to_center_view_around->GetPos(currentFontWindowScale) + node_to_center_view_around->Size*0.5f; node_to_center_view_around = NULL; }
                 ImVec2 effectiveScrolling = scrolling - canvasSize * .5f;
-                ImVec2 offset = ImGui::GetCursorScreenPos() - effectiveScrolling;
+                offset = ImGui::GetCursorScreenPos() - effectiveScrolling;
                 ImVec2 offset2 = ImGui::GetCursorPos() - effectiveScrolling;//scrolling;
 
 
@@ -1408,6 +1408,12 @@ namespace ImGui {
                         }
                         cp1 = p1 + link_cp;
                         cp2 = p2 - link_cp;
+                        
+                        const float distanceSquared = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
+                        if (ImGui::IsMouseClicked(1))
+                        {
+                            if (distanceSquared < 5.0f) selectedLink = link_idx;
+                        }
 
                         // highlight nearest link
                         if (mustCheckForNearestLink && nearestLinkId == -1 && (enableLinkCulling ? cullLink.Contains(io.MousePos) : true)) {
@@ -1417,7 +1423,7 @@ namespace ImGui {
                             //if (io.MouseDelta.x!=0.f || io.MouseDelta.y!=0.f)   fprintf(stderr,"%d) MP{%1.0f,%1.0f} p1{%1.0f,%1.0f} p2{%1.0f,%1.0f} distanceSquared=%1.4f hoveredLinkDistSqrThres=%1.4f\n",link_idx,io.MousePos.x,io.MousePos.y,p1.x,p1.y,p2.x,p2.y,distanceSquared,hoveredLinkDistSqrThres);
                         }
 
-                        draw_list->AddBezierCurve(p1, cp1, cp2, p2, style.color_link, (nearestLinkId != link_idx) ? link_line_width : (link_line_width*2.f), style.link_num_segments);
+                        draw_list->AddBezierCurve(p1, cp1, cp2, p2, link.LinkColor, (nearestLinkId != link_idx) ? link_line_width : (link_line_width*2.f), style.link_num_segments);
                     }
                     if (nearestLinkId != -1 && io.MouseReleased[0]) {
                         //fprintf(stderr,"Removing link at: %d\n",nearestLinkId);
