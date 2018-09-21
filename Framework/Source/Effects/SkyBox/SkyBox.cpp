@@ -196,8 +196,6 @@ namespace Falcor
 
     void SkyBox::execute(RenderContext* pRenderContext, const RenderData* pData)
     {
-        assert(mpTexture);
-
         DepthStencilState::Desc dsDesc;
         dsDesc.setDepthFunc(DepthStencilState::Func::Always);
         auto pDS = DepthStencilState::create(dsDesc);

@@ -44,7 +44,7 @@ namespace Falcor
     class RenderGraphUI::NodeGraphEditorGui : public ImGui::NodeGraphEditor
     {
     public:
-        RenderGraphUI::NodeGraphEditorGui(RenderGraphUI* pRenderGraphUI) : mpRenderGraphUI(pRenderGraphUI) {}
+        NodeGraphEditorGui(RenderGraphUI* pRenderGraphUI) : mpRenderGraphUI(pRenderGraphUI) {}
 
         // call on beginning a new frame
         void setCurrentGui(Gui* pGui) { mpGui = pGui; }
@@ -106,7 +106,7 @@ namespace Falcor
         // callback for ImGui setting link between to nodes in the visual interface
         static void setLinkFromGui( ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
         static void setLinkFromGraph( ImGui::NodeLink& link, ImGui::NodeGraphEditor::LinkState state, ImGui::NodeGraphEditor& editor);
-        static ImGui::Node* NodeGraphEditorGui::createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&);
+        static ImGui::Node* createNode(int, const ImVec2& pos, const ImGui::NodeGraphEditor&);
 
         RenderGraphUI* mpRenderGraphUI;
 
@@ -717,7 +717,7 @@ namespace Falcor
                 ImGui::NodeLink& selectedLink = mpNodeGraphEditor->getLink(mpNodeGraphEditor->selectedLink);
                 std::string srcPassName = std::string(selectedLink.InputNode->getName());
                 std::string dstPassName = std::string(selectedLink.OutputNode->getName());
-                ImGui::Text((std::string("Edge: ") + srcPassName + "-" + dstPassName).c_str());
+                pGui->addText((std::string("Edge: ") + srcPassName + '-' + dstPassName).c_str());
                 std::string inputString = srcPassName + "." + 
                     std::string(static_cast<RenderGraphNode*>(selectedLink.OutputNode)->getInputName(selectedLink.OutputSlot));
                 uint32_t linkID = mInputPinStringToLinkID[inputString];
@@ -758,6 +758,7 @@ namespace Falcor
         mpNodeGraphEditor->setLinkCallback(NodeGraphEditorGui::setLinkFromGui);
         mpNodeGraphEditor->setNodeCallback(NodeGraphEditorGui::setNode);
         
+        ImVec2 mousePos = ImGui::GetMousePos();
         bool bFromDragAndDrop = false;
 
         ImGui::NodeGraphEditor::Style& style = ImGui::NodeGraphEditor::GetStyle(); 

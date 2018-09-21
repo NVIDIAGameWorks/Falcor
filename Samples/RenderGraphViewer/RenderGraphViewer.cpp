@@ -231,7 +231,7 @@ void RenderGraphViewer::renderGUIPreviewWindows(Gui* pGui)
             // mark as graph output
             pPreviewGraph->markOutput(debugWindowInfo.mOutputName);
             Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(pPreviewGraph->getOutput(debugWindowInfo.mOutputName));
-            auto format = pPreviewTex->getFormat();
+            // auto format = pPreviewTex->getFormat();
 
             if (pGui->addButton("Save to File", true))
             {
@@ -390,7 +390,6 @@ RenderGraph::SharedPtr RenderGraphViewer::createDefaultGraph(SampleCallbacks* pS
 
 void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, const std::string& fileName, const std::string& graphName)
 {
-    size_t renderGraphIndex = mRenderGraphsList.size();
     mActiveRenderGraphName = graphName; // Matt TODO store the graph name in the graph, then removed this mFocusedThing (maybe)
 
     Gui::DropdownValue value;
@@ -608,7 +607,11 @@ void RenderGraphViewer::onBeginTestFrame(SampleTest* pSampleTest)
     }
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     RenderGraphViewer::UniquePtr pRenderer = std::make_unique<RenderGraphViewer>();
     SampleConfig config;

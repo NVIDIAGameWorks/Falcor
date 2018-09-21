@@ -64,8 +64,6 @@ namespace Falcor
         deprecate("3.2", "Use create() instead. Note that it returns a SharedPtr and not a UniquePtr.")
         static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         static SharedPtr create(const std::string& textureFile, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
-        static SharedPtr create(const Dictionary& dict = {});
-
         /** Render the sky box.
             \param[in] pRenderCtx Render context
             \param[in] pCamera Camera to use when rendering

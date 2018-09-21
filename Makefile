@@ -113,7 +113,7 @@ Effects/AmbientOcclusion/ Effects/FXAA/ Effects/NormalMap/ Effects/ParticleSyste
 Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/RenderGraph/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
 Utils/ Utils/Math/ Utils/Scripting/ Utils/Picking/ Utils/PatternGenerators/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ RenderPasses/ \
 VR/ VR/OpenVR/ \
-../Externals/dear_imgui/
+../Externals/dear_imgui/ ../Externals/dear_imgui_addons/imguinodegrapheditor/
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
 SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))

@@ -2342,7 +2342,6 @@ bool FieldInfo::render(int nodeWidth)   {
         strcpy(precisionStr,"%d");
         const int minValue = (int) f.minValue;
         const int maxValue = (int) f.maxValue;
-        const ImGuiDataType dataType = ImGuiDataType_Int;
         int* pField = (int*) f.pdata;
         int value[4] = {0,0,0,0};  // TODO: Probably we can remove this hack now that Dear ImGui supports all types
         for (int vl=0;vl<f.numArrayElements;vl++) {value[vl] = (int) *(pField+vl);}
