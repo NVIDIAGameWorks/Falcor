@@ -77,7 +77,7 @@ namespace Falcor
     {
         std::string filename;
         Dictionary::Value v = dict[kSkyboxFile];
-        if (dict.keyExists(kSkyboxFile)) filename = static_cast<std::string>(dict[kSkyboxFile]);
+        if (dict.keyExists(kSkyboxFile)) filename = (dict[kSkyboxFile]).operator std::string();
 
         return create(filename);
     }
