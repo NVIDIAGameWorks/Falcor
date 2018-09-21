@@ -324,7 +324,7 @@ namespace Falcor
 
             if (is_set(passReflection.getFlags(), RenderPassReflection::Flags::ForceExecution)) continue;
 
-            uint_t numRequiredInputs = 0;
+            uint32_t numRequiredInputs = 0;
             bool hasGraphOutput = false;
             const DirectedGraph::Node* pNode = mpGraph->getNode(mNameToIndex.at(pNodeData->nodeName));
             
