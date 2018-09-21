@@ -47,7 +47,7 @@ namespace Falcor
                 template<typename T>
                 std::vector<ObjectDesc<T>> getObjects()
                 {
-                    std::vector<ObjectDesc< T > > v;
+                    std::vector<ObjectDesc<T>> v;
                     for (const auto& l : mLocals)
                     {
                         try

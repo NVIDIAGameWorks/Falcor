@@ -101,9 +101,6 @@ namespace Falcor
     {
         mExportOptions = exportOptions;
 
-        // to remove. unused in this file for linux
-        (void)SceneKeys::kEnvMap;
-
         // create the file
         mJDoc.SetObject();
 
@@ -413,6 +410,7 @@ namespace Falcor
         auto& allocator = mJDoc.GetAllocator();
 
         // TODO -- use these. unused scenekeys to avoid linux warning
+        (void)SceneKeys::kEnvMap;
         (void)SceneKeys::kAreaLightRect;
         (void)SceneKeys::kAreaLightSphere;
         (void)SceneKeys::kAreaLightDisc;
