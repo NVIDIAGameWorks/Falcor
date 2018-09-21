@@ -131,6 +131,11 @@ namespace Falcor
     */
     void closeSharedFile(const std::string& filePath);
 
+    /** Creates a file in the temperary directory and returns the path.
+        \return pathName Absolute path to unique temp file.  
+    */
+    std::string createTemperaryFile();
+
     /** Create a directory from path.
     */
     bool createDirectory(const std::string& path);

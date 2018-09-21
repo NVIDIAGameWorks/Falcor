@@ -136,15 +136,12 @@ namespace Falcor
         std::string linuxAppName = getExecutableDirectory(); linuxAppName += "/" + appName;
         std::vector<const char*> argv;
         std::vector<std::string> argvStrings;
-        argvStrings.push_back(linuxAppName);
         size_t offset = 0;
         size_t oldOffset = 0;
 
-        while ((offset = commandLineArgs.find_first_of(' ', oldOffset)) != std::string::npos)
-        {
-            argvStrings.push_back(commandLineArgs.substr(oldOffset, offset - oldOffset));
-            oldOffset = offset + 1;
-        }
+        auto argStrings = splitString(commandLineArgs, " ");
+        argvStrings.insert(argvStrings.end(), argStrings.begin(), argStrings.end());
+
         for (const std::string& argString : argvStrings )
         {
             argv.push_back(argString.c_str());
@@ -203,6 +200,14 @@ namespace Falcor
     {
         (void)filePath;
         should_not_get_here();
+    }
+
+    std::string createTemperaryFile()
+    {
+        std::string filePath = std::experimental::filesystem::temp_directory_path();
+        filePath += "/fileXXXXXX";
+        mkstemp(&filePath.front());
+        return filePath;
     }
 
     const std::string& getExecutableDirectory()

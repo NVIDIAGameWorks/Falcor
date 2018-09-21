@@ -41,7 +41,9 @@ const char* kSaveFileFilter = "PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
 
 RenderGraphViewer::~RenderGraphViewer()
 {
+#ifdef WIN32
     closeSharedFile(mTempFilePath);
+#endif
 
     if (mEditorProcess)
     {
@@ -106,10 +108,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (!mEditorRunning && pGui->addButton("Open RenderGraph Editor"))
     {
         resetCurrentGraphOutputs();
-    
-        char* result = nullptr;
-        mTempFilePath = std::tmpnam(result);
-
+        mTempFilePath = createTemperaryFile();
         RenderGraphExporter::save(pGraph, mActiveRenderGraphName, mTempFilePath);
 
         graphInfo.mFileName = mTempFilePath;
