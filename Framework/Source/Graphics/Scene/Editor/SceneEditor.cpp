@@ -30,7 +30,6 @@
 #include "Graphics/Scene/Scene.h"
 #include "Graphics/Scene/Editor/SceneEditor.h"
 #include "Utils/Gui.h"
-#include "glm/detail/func_trigonometric.hpp"
 #include "Utils/Platform/OS.h"
 #include "Graphics/Scene/SceneExporter.h"
 #include "Graphics/Model/AnimationController.h"

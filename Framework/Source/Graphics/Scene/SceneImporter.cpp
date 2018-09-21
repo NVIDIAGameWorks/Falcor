@@ -25,9 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "glm/detail/func_trigonometric.hpp"
-#include "glm/gtx/euler_angles.hpp"
-
 #include "Framework.h"
 #include "SceneImporter.h"
 #include "rapidjson/error/en.h"
