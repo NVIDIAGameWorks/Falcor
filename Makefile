@@ -19,7 +19,7 @@ ForwardRenderer : $(SAMPLE_CONFIG)
 
 # Render Graph Viewer project
 
-RenderGraphViewer : $(SAMPLE_CONFIG)
+RenderGraphViewer : RenderGraphEditor $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/RenderGraphViewer/,RenderGraphViewer.cpp,RenderGraphViewer)
 
 # Core Samples

@@ -133,29 +133,42 @@ namespace Falcor
 
     size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
     {
-        std::string linuxAppName = "./"; linuxAppName += appName;
+        std::string linuxAppName = getExecutableDirectory(); linuxAppName += "/" + appName;
         std::vector<const char*> argv;
+        std::vector<std::string> argvStrings;
+        argvStrings.push_back(linuxAppName);
         size_t offset = 0;
         size_t oldOffset = 0;
 
         while ((offset = commandLineArgs.find_first_of(' ', oldOffset)) != std::string::npos)
         {
-            argv.push_back(commandLineArgs.data() + oldOffset);
+            argvStrings.push_back(commandLineArgs.substr(oldOffset, offset - oldOffset));
             oldOffset = offset + 1;
         }
-
-        if (execv(linuxAppName.c_str(), (char* const*)argv.data()))
+        for (const std::string& argString : argvStrings )
         {
-            msgBox("Failed to launch process");
+            argv.push_back(argString.c_str());
+        }
+        argv.push_back(nullptr);
+
+        int32_t forkVal = fork();
+
+        assert(forkVal != -1);
+        if(forkVal == 0)
+        {
+            if (execv(linuxAppName.c_str(), (char* const*)argv.data()))
+            {
+                msgBox("Failed to launch process");    
+            }
         }
 
-        return 0;
+        return forkVal;
     }
 
     bool isProcessRunning(size_t processID)
     {
-        should_not_get_here();
-        return true;
+        // TODO
+        return static_cast<bool>(processID);
     }
 
     void terminateProcess(size_t processID)
