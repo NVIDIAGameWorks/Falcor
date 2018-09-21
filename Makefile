@@ -75,6 +75,7 @@ INCLUDES = \
 -I "Framework/Externals/GLM" \
 -I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/RapidJson/include" \
+-I "Framework/Externals/pybind11/include" \
 -I "$(VULKAN_SDK)/include" \
 $(shell pkg-config --cflags assimp gtk+-3.0 glfw3 python3) \
 $(shell pkg-config --cflags libavcodec libavdevice libavformat libswscale libavutil)
