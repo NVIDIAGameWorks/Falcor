@@ -49,8 +49,9 @@ namespace Falcor
             enum class Type
             {
                 None        = 0x0,
-                Input       = 0x1,
-                Output      = 0x2,
+                Input       = 0x1,  // Input field
+                Output      = 0x2,  // Output field
+                Internal    = 0x4,  // Internal field. You can use this value to ask the resource-cache for any required internal resource
             };
 
             enum class Flags
@@ -60,6 +61,7 @@ namespace Falcor
                 Persistent = 0x2,   ///< The resource bound to this field must not change between execute() calls (not the pointer nor the data). It can change only during the RenderGraph recompilation.
             };
 
+            Field();
             Field(const std::string& name, Type type);
 
             bool isValid() const;
@@ -86,7 +88,6 @@ namespace Falcor
 
         private:
             static const ReflectionResourceType::SharedPtr kpTex2DType;
-            Field();
 
             std::string mName;                             ///< The field's name
             ReflectionResourceType::SharedConstPtr mpType = kpTex2DType; ///< The resource type. The default is a 2D texture
@@ -105,7 +106,8 @@ namespace Falcor
         Field& addInput(const std::string& name);
         Field& addOutput(const std::string& name);
         Field& addInputOutput(const std::string& name);
-        void setFlags(RenderPassReflection::Flags flags) { mFlags = flags; }
+        Field& addInternal(const std::string& name);
+        RenderPassReflection& setFlags(RenderPassReflection::Flags flags) { mFlags = flags; }
 
         size_t getFieldCount() const { return mFields.size(); }
         const Field& getField(size_t f) const { return mFields[f]; }

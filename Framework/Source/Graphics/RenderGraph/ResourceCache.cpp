@@ -44,10 +44,10 @@ namespace Falcor
     const std::shared_ptr<Resource>& ResourceCache::getResource(const std::string& name) const
     {
         static const std::shared_ptr<Resource> pNull;
-        auto extIt = mExternalResources.find(name);
-        
+        auto extIt = mExternalInputs.find(name);
+
         // Search external resources if not found in render graph resources
-        if (extIt == mExternalResources.end())
+        if (extIt == mExternalInputs.end())
         {
             const auto& it = mNameToIndex.find(name);
             if (it == mNameToIndex.end())
@@ -61,26 +61,26 @@ namespace Falcor
         return extIt->second;
     }
 
-    void ResourceCache::registerExternalResource(const std::string& name, const std::shared_ptr<Resource>& pResource)
+    void ResourceCache::registerExternalInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
-        mExternalResources[name] = pResource;
+        mExternalInputs[name] = pResource;
     }
 
-    void ResourceCache::removeExternalResource(const std::string& name)
+    void ResourceCache::removeExternalInput(const std::string& name)
     {
-        auto it = mExternalResources.find(name);
-        if (it == mExternalResources.end())
+        auto it = mExternalInputs.find(name);
+        if (it == mExternalInputs.end())
         {
             logWarning("ResourceCache::removeExternalResource: " + name + " does not exist.");
             return;
         }
 
-        mExternalResources.erase(it);
+        mExternalInputs.erase(it);
     }
 
     /** Overwrite previously unknown/unspecified fields with specified ones.
 
-        If a field property is specified both in the existing cache, as well as the input properties, 
+        If a field property is specified both in the existing cache, as well as the input properties,
         a warning will be logged and the cached properties will not be changed.
     */
     bool mergeFields(RenderPassReflection::Field& base, const RenderPassReflection::Field& newField, const std::string& newFieldName)
@@ -94,7 +94,7 @@ namespace Falcor
     var = base.get##dim(); \
     if (newField.get##dim() != 0) { \
         if (base.get##dim() == 0) var = newField.get##dim(); \
-        else warningMsg += std::string(#dim) + " already specified."; }
+        else if(base.get##dim() != newField.get##dim()) warningMsg += " " + std::string(#dim) + " already specified. "; }
 
         uint32_t w = 0, h = 0, d = 0;
         get_dim(w, Width);
@@ -106,13 +106,23 @@ namespace Falcor
         if (newField.getFormat() != ResourceFormat::Unknown)
         {
             if (base.getFormat() == ResourceFormat::Unknown) base.setFormat(newField.getFormat());
-            else warningMsg += " Format already specified.";
+            else if (base.getFormat() != newField.getFormat()) warningMsg += " Format already specified. ";
         }
 
-        if (warningMsg.empty() == false)
+        // Merge sample counts
+        if (newField.getSampleCount() != 0)
         {
-            logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
-            return false;
+            // if base field doesn't have anything specified, apply new property
+            if (base.getSampleCount() == 0)
+            {
+                base.setSampleCount(newField.getSampleCount());
+            }
+            // if they differ in any other way, that is invalid
+            else if (base.getSampleCount() != newField.getSampleCount())
+            {
+                warningMsg += " Cannot merge sample count specified by " + newFieldName + ". ";
+                warningMsg += newFieldName + " has sample count " + std::to_string(newField.getSampleCount()) + ", existing merged properties has sample count " + std::to_string(base.getSampleCount());
+            }
         }
 
         Resource::BindFlags baseFlags = base.getBindFlags();
@@ -121,7 +131,7 @@ namespace Falcor
         if ((is_set(baseFlags, Resource::BindFlags::RenderTarget) && is_set(newFlags, Resource::BindFlags::DepthStencil)) ||
             (is_set(baseFlags, Resource::BindFlags::DepthStencil) && is_set(newFlags, Resource::BindFlags::RenderTarget)))
         {
-            logWarning("ResourceCache: Cannot merge field " + newFieldName + ", usage contained both RenderTarget and DepthStencil bind flags.");
+            warningMsg += " Usage contained both RenderTarget and DepthStencil bind flags.";
             return false;
         }
         else
@@ -129,17 +139,47 @@ namespace Falcor
             base.setBindFlags(baseFlags | newFlags);
         }
 
+        if (warningMsg.empty() == false)
+        {
+            logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
+            return false;
+        }
+
         return true;
+    }
+
+    void mergeTimePoint(uint32_t& minTime, uint32_t& maxTime, uint32_t newTime)
+    {
+        minTime = min(minTime, newTime);
+        maxTime = max(maxTime, newTime);
     }
 
     void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias)
     {
+        auto nameIt = mNameToIndex.find(name);
+        auto aliasIt = mNameToIndex.find(alias);
+        // If two fields were registered separately before, but are now aliased together, merge the fields, with alias field being the base
+        if ((nameIt != mNameToIndex.end()) && (aliasIt != mNameToIndex.end()) && (nameIt->second != aliasIt->second))
+        {
+            // Merge data
+            auto& baseResData = mResourceData[aliasIt->second];
+            auto& newResData = mResourceData[nameIt->second];
+            mergeFields(baseResData.field, newResData.field, name);
+            mergeTimePoint(baseResData.firstUsed, baseResData.lastUsed, newResData.firstUsed);
+            mergeTimePoint(baseResData.firstUsed, baseResData.lastUsed, newResData.lastUsed);
+
+            // Clear data that has been merged
+            mResourceData[nameIt->second] = ResourceData();
+
+            // Redirect 'name' to look up the alias field
+            nameIt->second = aliasIt->second;
+        }
+
         // If name exists, update time range
         if (mNameToIndex.count(name) > 0)
         {
-            uint32_t index = mNameToIndex[alias];
-            mResourceData[index].firstUsed = min(mResourceData[index].firstUsed, timePoint);
-            mResourceData[index].lastUsed = max(mResourceData[index].lastUsed, timePoint);
+            uint32_t index = mNameToIndex[name];
+            mergeTimePoint(mResourceData[index].firstUsed, mResourceData[index].lastUsed, timePoint);
             return;
         }
 
@@ -164,9 +204,7 @@ namespace Falcor
             mNameToIndex[name] = index;
 
             mergeFields(mResourceData[index].field, field, name);
-
-            mResourceData[index].firstUsed = min(mResourceData[index].firstUsed, timePoint);
-            mResourceData[index].lastUsed = max(mResourceData[index].lastUsed, timePoint);
+            mergeTimePoint(mResourceData[index].firstUsed, mResourceData[index].lastUsed, timePoint);
 
             mResourceData[index].dirty = true;
         }
@@ -209,7 +247,7 @@ namespace Falcor
     {
         for (auto& data : mResourceData)
         {
-            if (data.pResource == nullptr || data.dirty)
+            if ((data.pResource == nullptr || data.dirty) && data.field.isValid())
             {
                 data.pResource = createTextureForPass(params, data.field);
                 data.dirty = false;

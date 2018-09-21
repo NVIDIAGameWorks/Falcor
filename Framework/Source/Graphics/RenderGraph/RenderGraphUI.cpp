@@ -615,6 +615,7 @@ namespace Falcor
             }
         }
 
+        // Matt TODO: Make sure only input/output fields are shown (ignore everything that is not IO)
         const RenderPassReflection::Field& field = mReflection.getField(index);
         RenderPassReflection::Field::Type type = field.getType();
 
@@ -623,16 +624,15 @@ namespace Falcor
 
         pGui->addText("ResourceFlags : ");
 
-        if (static_cast<bool>(type & RenderPassReflection::Field::Type::Input) &&
-            static_cast<bool>(type & RenderPassReflection::Field::Type::Output))
+        if (is_set(type, RenderPassReflection::Field::Type::Input) && is_set(type, RenderPassReflection::Field::Type::Output))
         {
             pGui->addText("InputOutput", true);
         }
-        else if (static_cast<bool>(type & RenderPassReflection::Field::Type::Input))
+        else if (is_set(type, RenderPassReflection::Field::Type::Input))
         {
             pGui->addText("Input", true);
         }
-        else if (static_cast<bool>(type & RenderPassReflection::Field::Type::Output))
+        else if (is_set(type, RenderPassReflection::Field::Type::Output))
         {
             pGui->addText("Output", true);
         }
@@ -1228,7 +1228,7 @@ namespace Falcor
 
                 while (pinIndex < renderPassUI.mReflection.getFieldCount())
                 {
-                    bool isInput = (static_cast<uint32_t>(renderPassUI.mReflection.getField(pinIndex).getType() & RenderPassReflection::Field::Type::Input) != 0);
+                    bool isInput = is_set(renderPassUI.mReflection.getField(pinIndex).getType(),RenderPassReflection::Field::Type::Input);
                     if (isInput) 
                     { 
                         if (renderPassUI.mReflection.getField(pinIndex).getName() == currentEdge.dstField) { break;  }
@@ -1296,7 +1296,7 @@ namespace Falcor
             {
                 const auto& currentField = renderPassUI.mReflection.getField(i);
 
-                if (static_cast<uint32_t>(currentField.getType() & RenderPassReflection::Field::Type::Input) != 0)
+                if (is_set(currentField.getType(), RenderPassReflection::Field::Type::Input))
                 {
                     if (nodeConnectedInput.find(nameToIndex.first + "." + currentField.getName()) == nodeConnectedInput.end())
                     {
@@ -1306,7 +1306,7 @@ namespace Falcor
                     inputPinIndex++;
                 }
                 
-                if (static_cast<uint32_t>(currentField.getType() & RenderPassReflection::Field::Type::Output) != 0)
+                if (is_set(currentField.getType(), RenderPassReflection::Field::Type::Output))
                 {
                     if (nodeConnectedOutput.find(nameToIndex.first + "." + currentField.getName()) == nodeConnectedOutput.end())
                     {

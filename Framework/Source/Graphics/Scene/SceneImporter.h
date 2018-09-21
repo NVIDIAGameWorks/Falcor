@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include <string>
-#include "Externals/RapidJson/include/rapidjson/document.h"
+#include "rapidjson/document.h"
 #include "Graphics/Material/Material.h"
 #include "glm/vec2.hpp"
 #include "glm/vec3.hpp"

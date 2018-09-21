@@ -152,6 +152,7 @@ namespace Falcor
 
         /** Resize the visibility buffer
         */
+        deprecate("3.2", "Use `onResize()` instead")
         void resizeVisibilityBuffer(uint32_t width, uint32_t height);
 
         /** Set the visibility's buffer bits-per-channel
@@ -178,6 +179,9 @@ namespace Falcor
         */
         void setLight(const Light::SharedConstPtr& pLight);
 
+        /** Resize callback
+        */
+        virtual void onResize(uint32_t width, uint32_t height) override;
     private:
         CascadedShadowMaps(uint32_t mapWidth = 2048, uint32_t mapHeight = 2048);
         Light::SharedConstPtr mpLight;

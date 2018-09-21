@@ -87,7 +87,7 @@ private:
         std::string mOutputString = "BlitPass.dst";
         uint32_t mGraphOutputIndex = 0;
         std::string mFileName;
-        std::vector< RenderGraph::OutputInfo > mCurrentOutputs;
+        std::vector<std::string> mCurrentOutputs;
         std::unordered_set<std::string> mOriginalOutputNames;
         std::vector<std::string> mOutputNames;
         std::string mLastScript;

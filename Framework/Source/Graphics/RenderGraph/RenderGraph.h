@@ -98,7 +98,6 @@ namespace Falcor
             This is an alias for `getRenderPass(renderPassName)->setInput(resourceName, pResource)`
         */
         bool setInput(const std::string& name, const std::shared_ptr<Resource>& pResource);
-        
         /** Returns true if a render pass exists by this name in the graph.
          */
         bool doesPassExist(const std::string& name) const { return (mNameToIndex.find(name) != mNameToIndex.end()); }
@@ -139,15 +138,9 @@ namespace Falcor
         */
         size_t getOutputCount() const { return mOutputs.size(); }
 
-        struct OutputInfo
-        {
-            std::string outputName;
-            bool isGraphOutput;
-        };
-
         /** Get all output names for the render graph
         */
-        std::vector<OutputInfo> getAvailableOutputs() const;
+        std::vector<std::string> getAvailableOutputs() const;
 
         /** Attempts to auto generate edges for render passes.
             \param[in] executionOrder Optional. Ordered list of node ID's as an override of pass search order to use when generating edges.
@@ -180,10 +173,11 @@ namespace Falcor
         friend class RenderGraphExporter;
 
         RenderGraph();
+
         bool compile(std::string& log);
         bool resolveExecutionOrder();
+        bool insertAutoPasses();
         bool resolveResourceTypes();
-        bool allocateResources();
         
         struct EdgeData
         {
@@ -202,6 +196,7 @@ namespace Falcor
         void getUnsatisfiedInputs(const NodeData* pNodeData, const RenderPassReflection& passReflection, std::vector<RenderPassReflection::Field>& outList) const;
         void autoConnectPasses(const NodeData* pSrcNode, const RenderPassReflection& srcReflection, const NodeData* pDestNode, std::vector<RenderPassReflection::Field>& unsatisfiedInputs);
         bool canAutoResolve(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst);
+        void restoreCompilationChanges();
 
         bool mRecompile = true;
         std::shared_ptr<Scene> mpScene;
@@ -233,9 +228,16 @@ namespace Falcor
 
         ResourceCache::DefaultProperties mSwapChainData;
 
-        std::vector<uint32_t> mExecutionList;
         std::unordered_map<RenderPass*, RenderPassReflection> mPassReflectionMap;
+        std::vector<uint32_t> mExecutionList;
         ResourceCache::SharedPtr mpResourcesCache;
+
+        // TODO Better way to track history, or avoid changing the original graph altogether?
+        struct {
+            std::vector<std::string> generatedPasses;
+            std::vector<std::pair<std::string, std::string>> removedEdges;
+        } mCompilationChanges;
+
         bool mProfileGraph = true;
         Dictionary::SharedPtr mpPassDictionary;
     };

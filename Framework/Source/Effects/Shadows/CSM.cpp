@@ -246,7 +246,7 @@ namespace Falcor
     CascadedShadowMaps::UniquePtr CascadedShadowMaps::create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedPtr pScene, uint32_t cascadeCount, uint32_t visMapBitsPerChannel)
     {
         CascadedShadowMaps* pCsm = new CascadedShadowMaps(mapWidth, mapHeight);
-        pCsm->resizeVisibilityBuffer(visibilityBufferWidth, visibilityBufferHeight);
+        pCsm->onResize(visibilityBufferWidth, visibilityBufferHeight);
         pCsm->setScene(pScene);
         pCsm->setCascadeCount(cascadeCount);
         pCsm->setVisibilityBufferBitsPerChannel(visMapBitsPerChannel);
@@ -979,6 +979,11 @@ namespace Falcor
     }
 
     void CascadedShadowMaps::resizeVisibilityBuffer(uint32_t width, uint32_t height)
+    {
+        onResize(width, height);
+    }
+
+    void CascadedShadowMaps::onResize(uint32_t width, uint32_t height)
     {
         mVisibilityPassData.screenDim = uvec2(width, height);
         mVisibilityPass.pState->getFbo()->attachColorTarget(nullptr, 0);

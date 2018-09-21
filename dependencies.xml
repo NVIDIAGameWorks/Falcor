@@ -48,6 +48,6 @@
         <package name="python" version="3.7.0-windows-x64" platforms="win" />
     </dependency>
     <dependency name="pybind11" linkPath="Framework/Externals/pybind11">
-        <package name="pybind11" version="2.2.3" />
+        <package name="pybind11" version="2.2.4" />
     </dependency>
 </project>
