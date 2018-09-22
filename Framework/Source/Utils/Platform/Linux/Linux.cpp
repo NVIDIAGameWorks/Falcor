@@ -136,8 +136,6 @@ namespace Falcor
         std::string linuxAppName = getExecutableDirectory(); linuxAppName += "/" + appName;
         std::vector<const char*> argv;
         std::vector<std::string> argvStrings;
-        size_t offset = 0;
-        size_t oldOffset = 0;
 
         auto argStrings = splitString(commandLineArgs, " ");
         argvStrings.insert(argvStrings.end(), argStrings.begin(), argStrings.end());
@@ -206,7 +204,9 @@ namespace Falcor
     {
         std::string filePath = std::experimental::filesystem::temp_directory_path();
         filePath += "/fileXXXXXX";
-        mkstemp(&filePath.front());
+        
+        // The if is here to avoid the warn_unused_result attribute on mkstemp
+        if(mkstemp(&filePath.front())) {}
         return filePath;
     }
 

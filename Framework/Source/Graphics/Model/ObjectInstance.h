@@ -30,8 +30,6 @@
 
 #include "Graphics/Paths/MovableObject.h"
 #include "Utils/AABB.h"
-#include "glm/mat4x4.hpp"
-#include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtx/euler_angles.hpp"
 #include "Utils/Math/FalcorMath.h"
 

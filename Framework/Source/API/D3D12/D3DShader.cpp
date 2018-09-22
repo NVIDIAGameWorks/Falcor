@@ -58,101 +58,6 @@ namespace Falcor
         }
     }
 
-    struct SlangBlob : ID3DBlob
-    {
-        std::vector<uint8_t> data;
-        size_t refCount;
-
-        SlangBlob(const void* buffer, size_t bufferSize)
-            : data((uint8_t*)buffer, ((uint8_t*)buffer) + bufferSize)
-            , refCount(1)
-        {}
-
-        // IUnknown
-
-        virtual HRESULT STDMETHODCALLTYPE QueryInterface( 
-            /* [in] */ REFIID riid,
-            /* [iid_is][out] */ _COM_Outptr_ void __RPC_FAR *__RPC_FAR *ppvObject) override
-        {
-            *ppvObject = this;
-            return S_OK;
-        }
-
-        virtual ULONG STDMETHODCALLTYPE AddRef( void) override
-        {
-            ++refCount;
-            return (ULONG) refCount;
-        }
-
-        virtual ULONG STDMETHODCALLTYPE Release( void) override
-        {
-            --refCount;
-            if(refCount == 0)
-            {
-                delete this;
-            }
-            return (ULONG) refCount;
-        }
-
-        // ID3DBlob
-
-        virtual LPVOID STDMETHODCALLTYPE GetBufferPointer() override
-        {
-            return data.data();
-        }
-
-        virtual SIZE_T STDMETHODCALLTYPE GetBufferSize() override
-        {
-            return data.size();
-        }
-    };
-
-    UINT getD3dCompilerFlags(Shader::CompilerFlags flags)
-    {
-        UINT d3dFlags = 0;
-#ifdef _DEBUG
-        d3dFlags |= D3DCOMPILE_DEBUG;
-#endif
-        d3dFlags |= D3DCOMPILE_PACK_MATRIX_ROW_MAJOR;
-        if (is_set(flags, Shader::CompilerFlags::TreatWarningsAsErrors)) d3dFlags |= D3DCOMPILE_WARNINGS_ARE_ERRORS;
-        return d3dFlags;
-    };
-
-    ID3DBlobPtr Shader::compile(const Blob& blob, const std::string& entryPointName, CompilerFlags flags, std::string& errorLog)
-    {
-        ID3DBlob* pCode = nullptr;
-
-        if (blob.type == Blob::Type::String)
-        {
-            ID3DBlobPtr pErrors;
-            UINT d3dFlags = getD3dCompilerFlags(flags);
-
-            HRESULT hr = D3DCompile(
-                blob.data.data(),
-                blob.data.size(),
-                nullptr,
-                nullptr,
-                nullptr,
-                entryPointName.c_str(),
-                getTargetString(mType, blob.shaderModel).c_str(),
-                d3dFlags,
-                0,
-                &pCode,
-                &pErrors);
-            if (FAILED(hr))
-            {
-                errorLog = convertBlobToString(pErrors.GetInterfacePtr());
-                return nullptr;
-            }
-        }
-        else
-        {
-            assert(blob.type == Blob::Type::Bytecode);
-            pCode = new SlangBlob(blob.data.data(), blob.data.size());
-        }
-        return pCode;
-    }
-
     Shader::Shader(ShaderType type) : mType(type)
     {
         mpPrivateData = new ShaderData;
@@ -168,7 +73,7 @@ namespace Falcor
     {
         // Compile the shader
         ShaderData* pData = (ShaderData*)mpPrivateData;
-        pData->pBlob = compile(shaderBlob, entryPointName, flags, log);
+        pData->pBlob = shaderBlob.get();
 
         if (pData->pBlob == nullptr)
         {

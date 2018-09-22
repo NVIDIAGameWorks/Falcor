@@ -37,16 +37,10 @@ namespace Falcor
 
     bool Shader::init(const Blob& shaderBlob, const std::string& entryPointName, CompilerFlags flags, std::string& log)
     {
-        if (shaderBlob.type != Blob::Type::Bytecode)
-        {
-            logError("Vulkan Shaders can only be created from SPIR-V bytecode");
-            return false;
-        }
-
         VkShaderModuleCreateInfo moduleCreateInfo = {};
         moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        moduleCreateInfo.codeSize = shaderBlob.data.size();
-        moduleCreateInfo.pCode = (uint32_t*)shaderBlob.data.data();
+        moduleCreateInfo.codeSize = shaderBlob->getBufferSize();
+        moduleCreateInfo.pCode = (uint32_t*)shaderBlob->getBufferPointer();
 
         assert(moduleCreateInfo.codeSize % 4 == 0);
 

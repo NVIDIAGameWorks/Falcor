@@ -29,11 +29,13 @@
 #include "FalcorConfig.h"
 #include <stdint.h>
 #include <memory>
-#include "glm/glm.hpp"
 #include <iostream>
 #include "Utils/Logger.h"
 #include "Utils/Scripting/Scripting.h"
 
+#define GLM_FORCE_CTOR_INIT
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/glm.hpp"
 using namespace glm;
 
 #ifndef arraysize

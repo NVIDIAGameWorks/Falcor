@@ -27,7 +27,6 @@
 ***************************************************************************/
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/prettywriter.h"
-#include "glm/detail/func_trigonometric.hpp"
 
 #include "Framework.h"
 #include "SceneExporter.h"
