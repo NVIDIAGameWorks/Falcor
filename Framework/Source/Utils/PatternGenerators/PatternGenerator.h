@@ -33,7 +33,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<PatternGenerator>;
-        virtual ~PatternGenerator() {}
+        virtual ~PatternGenerator() = default;
 
         virtual uint32_t getSampleCount() const = 0;
         virtual void reset(uint32_t startID = 0) = 0;
