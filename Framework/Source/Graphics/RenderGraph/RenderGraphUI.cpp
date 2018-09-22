@@ -28,7 +28,6 @@
 #include "Framework.h"
 #include "RenderGraphUI.h"
 #include "Utils/Gui.h"
-#   define IMGUINODE_MAX_SLOT_NAME_LENGTH 255
 #include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 #include "Externals/dear_imgui/imgui.h"
 // Matt TODO Don't do this
@@ -235,7 +234,6 @@ namespace Falcor
                         {
                             pGraphEditorGui->setPopupNode(pCurrentNode);
                             pGraphEditorGui->setPopupPin(i, !static_cast<bool>(j));
-
                         }
                     }
                     else
