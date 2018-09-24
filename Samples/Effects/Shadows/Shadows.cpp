@@ -153,10 +153,11 @@ void Shadows::runMainPass(RenderContext* pContext)
 
 void Shadows::displayShadowMap(RenderContext* pContext)
 {
-    mShadowVisualizer.pShadowMapProgramVars->setSrv(0, 0, 0, mpCsmTech[mControls.lightIndex]->getShadowMap()->getSRV());
+    const ParameterBlock::SharedPtr& pDefaultBlock = mShadowVisualizer.pShadowMapProgramVars->getDefaultBlock();
+    mShadowVisualizer.pShadowMapProgramVars->setTexture("gTexture", mpCsmTech[mControls.lightIndex]->getShadowMap());
     if (mControls.cascadeCount > 1)
     {
-        mShadowVisualizer.pShadowMapProgramVars->getConstantBuffer(0, 0, 0)->setBlob(&mControls.displayedCascade, mOffsets.displayedCascade, sizeof(mControls.displayedCascade));
+        mShadowVisualizer.pShadowMapProgramVars["PerImageCB"]->setBlob(&mControls.displayedCascade, mOffsets.displayedCascade, sizeof(mControls.displayedCascade));
     }
     pContext->pushGraphicsVars(mShadowVisualizer.pShadowMapProgramVars);
     mShadowVisualizer.pShadowMapProgram->execute(pContext);
@@ -165,7 +166,8 @@ void Shadows::displayShadowMap(RenderContext* pContext)
 
 void Shadows::displayVisibilityBuffer(RenderContext* pContext)
 {
-    mShadowVisualizer.pVisibilityBufferProgramVars->setSrv(0, 0, 0, mpVisibilityBuffers[mControls.lightIndex]->getSRV());
+    mShadowVisualizer.pVisibilityBufferProgramVars->setTexture("gTexture", mpVisibilityBuffers[mControls.lightIndex]);
+
     pContext->pushGraphicsVars(mShadowVisualizer.pVisibilityBufferProgramVars);
     mShadowVisualizer.pVisibilityBufferProgram->execute(pContext);
     pContext->popGraphicsVars();

@@ -30,7 +30,7 @@ SamplerState gSampler : register(s0);
 #ifdef _USE_2D_ARRAY
 Texture2DArray gTexture;
 #else
-texture2D gTexture;
+Texture2D gTexture;
 #endif
 
 cbuffer PerImageCB : register(b0)
