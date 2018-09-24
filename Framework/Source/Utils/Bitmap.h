@@ -30,6 +30,8 @@
 
 namespace Falcor
 {
+    class Texture;
+
     /** A class representing a memory bitmap
     */
     class Bitmap : public std::enable_shared_from_this<Bitmap>
@@ -77,7 +79,7 @@ namespace Falcor
         static void saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
 
         // right place?
-        static void saveImageDialog(const Texture::SharedPtr& pTexture);
+        static void saveImageDialog(const std::shared_ptr<Texture>& pTexture);
 
         ~Bitmap();
 

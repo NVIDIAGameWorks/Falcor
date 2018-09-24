@@ -113,7 +113,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         graphInfo.mFileName = mTempFilePath;
     #ifdef _WIN32
-        openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+        openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::editorUpdateCB, this, std::placeholders::_1));
     #endif
 
         // load application for the editor given it the name of the mapped file
@@ -232,38 +232,7 @@ void RenderGraphViewer::renderGUIPreviewWindows(Gui* pGui)
 
             if (pGui->addButton("Save to File", true))
             {
-                std::string filePath;
-
-                if (saveFileDialog(kSaveFileFilter, filePath))
-                {
-                // Matt TODO That code should be in Bitmap or something (use FileFormat::AutoDetect)
-                    size_t extensionPos = filePath.find_last_of('.', 0);
-                    Bitmap::FileFormat fileFormat = Bitmap::FileFormat::PngFile;
-
-                    if (extensionPos != std::string::npos)
-                    {
-                        std::string extensionString = filePath.substr(extensionPos, filePath.size() - extensionPos);
-
-                        if (extensionString == "bmp")
-                        {
-                            fileFormat = Bitmap::FileFormat::BmpFile;
-                        }
-                        else if (extensionString == "hdr")
-                        {
-                            fileFormat = Bitmap::FileFormat::ExrFile;
-                        }
-                        else if (extensionString == "tga")
-                        {
-                            fileFormat = Bitmap::FileFormat::TgaFile;
-                        }
-                        else if (extensionString == "jpg" || extensionString == "jpeg")
-                        {
-                            fileFormat = Bitmap::FileFormat::JpegFile;
-                        }
-                    }
-
-                    pPreviewTex->captureToFile(0, 0, filePath, fileFormat);
-                }
+                Bitmap::saveImageDialog(pPreviewTex);
             }
 
             // get size of window to scale image correctly
@@ -313,7 +282,7 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 }
 
 // Matt TODO give it a better name
-void RenderGraphViewer::fileWriteCallback(const std::string& fileName)
+void RenderGraphViewer::editorUpdateCB(const std::string& fileName)
 {
     GraphViewerInfo& graphInfo = mGraphInfos[mEditingGraphName];
     std::string fullScript, script;
@@ -428,7 +397,7 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         loadGraphsFromFile(pSample, filePath);
         if (filePath.size())
         {
-            openSharedFile(filePath, std::bind(&RenderGraphViewer::fileWriteCallback, this, std::placeholders::_1));
+            openSharedFile(filePath, std::bind(&RenderGraphViewer::editorUpdateCB, this, std::placeholders::_1));
             mEditingGraphName = mActiveGraphName;
         }
         else

@@ -47,7 +47,7 @@ public:
     
 private:
     void renderGUIPreviewWindows(Gui* pGui);
-    void fileWriteCallback(const std::string& filename);
+    void editorUpdateCB(const std::string& filename);
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
     // get rid of this
     void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);

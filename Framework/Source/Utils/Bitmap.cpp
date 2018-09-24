@@ -32,6 +32,7 @@
 #include "API/Device.h"
 #include <cstring>
 #include "StringUtils.h"
+#include "API/Texture.h"
 
 namespace Falcor
 {
@@ -196,42 +197,65 @@ namespace Falcor
     
 
     // Matt TODO this should be in Bitmap.cpp
-    const char* kSaveFileFilter = "PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
+    const char* kSaveFileFilter = "Auto(.)\0.;\0PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
    \0JPG(.jpg)\0*.jpg;\0HDR(.hdr)\0*.hdr;\0TGA(.tga)\0*.tga;\0";
+
+    static const char* kExtensions[] = {
+        /* PngFile */ ".png",
+        /*JpegFile */ ".jpg",
+        /* TgaFile */ ".tga",
+        /* BmpFile */ ".bmp",
+        /* PfmFile */ ".hdr",
+        /* ExrFile */ ".hdr"
+    };
+
+    static Bitmap::FileFormat detectFileFormat(const Texture::SharedPtr& pTex)
+    {
+        auto format = pTex->getFormat();
+        
+        // if is floating point
+        if (getFormatType(format) == FormatType::Float && getFormatChannelCount(format) >= 3)
+        {
+            if ((getFormatBytesPerBlock(format) / getFormatChannelCount(format)) == 4)
+            {
+                return Bitmap::FileFormat::PfmFile;
+            }
+            else
+            {
+                return Bitmap::FileFormat::ExrFile;
+            }
+        }
+        
+        // default to png for 8-bit images
+        return Bitmap::FileFormat::PngFile;
+    }
 
     void Bitmap::saveImageDialog(const Texture::SharedPtr& pTexture)
     {
         std::string filePath;
         if (saveFileDialog(kSaveFileFilter, filePath))
         {
-            // Matt TODO That code should be in Bitmap or something (use FileFormat::AutoDetect)
-            size_t extensionPos = filePath.find_last_of('.', 0);
-            Bitmap::FileFormat fileFormat = Bitmap::FileFormat::PngFile;
-            FileFormat::;
+            std::string extensionString = getExtensionFromFile(filePath);
+            FileFormat fileFormat;
 
-            if (extensionPos != std::string::npos)
+            if (extensionString.size())
             {
-                std::string extensionString = filePath.substr(extensionPos, filePath.size() - extensionPos);
-
-                if (extensionString == "bmp")
+                for (uint32_t i = 0; i < static_cast<uint32_t>(FileFormat::AutoDetect); ++i)
                 {
-                    fileFormat = Bitmap::FileFormat::BmpFile;
-                }
-                else if (extensionString == "hdr")
-                {
-                    fileFormat = Bitmap::FileFormat::ExrFile;
-                }
-                else if (extensionString == "tga")
-                {
-                    fileFormat = Bitmap::FileFormat::TgaFile;
-                }
-                else if (extensionString == "jpg" || extensionString == "jpeg")
-                {
-                    fileFormat = Bitmap::FileFormat::JpegFile;
+                    if (extensionString == kExtensions[i])
+                    {
+                        fileFormat = static_cast<FileFormat>(i);
+                        break;
+                    }
                 }
             }
+            else
+            {
+                fileFormat = detectFileFormat(pTexture);
+                filePath.append(kExtensions[static_cast<uint32_t>(fileFormat)]);
+            }
 
-            // pPreviewTex->captureToFile(0, 0, filePath, fileFormat);
+            pTexture->captureToFile(0, 0, filePath, fileFormat);
         }
     }
 

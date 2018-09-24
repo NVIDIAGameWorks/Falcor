@@ -676,7 +676,7 @@ namespace Falcor
         if (sameLine) ImGui::SameLine();
         mpImages.push_back(pTex);
         float aspectRatio = maintainRatio ? (static_cast<float>(pTex->getHeight()) / static_cast<float>(pTex->getWidth())) : 1.0f;
-        ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x * aspectRatio, size.y });
+        ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, maintainRatio ? size.x  * aspectRatio : size.y });
         ImGui::PopID();
     }
 
