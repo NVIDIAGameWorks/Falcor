@@ -30,7 +30,6 @@
 #include "Utils/Gui.h"
 #include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 #include "Externals/dear_imgui/imgui.h"
-// Matt TODO Don't do this
 #include "Externals/dear_imgui/imgui_internal.h"
 #include <experimental/filesystem>
 #include <functional>

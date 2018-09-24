@@ -65,7 +65,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 mShowCreateGraphWindow = true;
             }
 
-            if (pGui->addMenuItem("Load Graph"))
+            if (pGui->addMenuItem("Load File"))
             {
                 std::string renderGraphFilePath;
                 if (openFileDialog("", renderGraphFilePath))
@@ -75,7 +75,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
-            if (pGui->addMenuItem("Save Graph"))
+            if (pGui->addMenuItem("Save To File"))
             {
                 bool saveGraph = true;
                 std::string log;
@@ -230,7 +230,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mFilePath);
             
             // load application for the editor given it the name of the mapped file
-            std::string commandLine = std::string("-tempFile ") + mFilePath;
+            std::string commandLine = std::string("-tempFile ") + mFilePath + "-graphname" + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
             mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
             
             assert(mViewerProcess);
@@ -258,7 +258,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (pGui->addButton("Create Graph") && mNextGraphString[0])
         {
-            createRenderGraph(mNextGraphString);
+            createNewGraph(mNextGraphString);
             mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
             mNextGraphString.clear();
             mNextGraphString.resize(255, '0');
@@ -347,8 +347,7 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const st
     }
 }
 
-// Matt TODO rename to createNewGraph()
-void RenderGraphEditor::createRenderGraph(const std::string& renderGraphName)
+void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
 {
     std::string graphName = renderGraphName;
     auto nameToIndexIt = mGraphNamesToIndex.find(graphName);
@@ -395,7 +394,7 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     }
     else
     {
-        createRenderGraph("DefaultRenderGraph");
+        createNewGraph("DefaultRenderGraph");
     }
 }
 

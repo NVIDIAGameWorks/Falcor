@@ -43,7 +43,7 @@ public:
     ~RenderGraphEditor();
 
 private:
-    void createRenderGraph(const std::string& renderGraphName);
+    void createNewGraph(const std::string& renderGraphName);
     void loadGraphsFromFile(const std::string& fileName, const std::string& graphName = "");
     void serializeRenderGraph(const std::string& fileName);
     void deserializeRenderGraph(const std::string& fileName);

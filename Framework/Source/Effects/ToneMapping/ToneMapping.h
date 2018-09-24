@@ -142,8 +142,6 @@ namespace Falcor
         /** Get the scripting dictionary
         */
         Dictionary getScriptingDictionary() const override;
-
-        void setScriptingDictionary(const Dictionary& dict) override;
     private:
         ToneMapping(Operator op);
         void createLuminanceFbo(const Texture::SharedPtr& pSrc);
