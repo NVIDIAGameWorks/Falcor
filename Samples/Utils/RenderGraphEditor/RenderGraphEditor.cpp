@@ -68,10 +68,17 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             if (pGui->addMenuItem("Load File"))
             {
                 std::string renderGraphFilePath;
-                if (openFileDialog("", renderGraphFilePath))
+                if (mViewerRunning)
                 {
-                    loadGraphsFromFile(renderGraphFilePath);
-                    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+                    msgBox("Viewer is running. Please close the viewer before loading a graph file.", MsgBoxType::Ok);
+                }
+                else
+                {
+                    if (openFileDialog("", renderGraphFilePath))
+                    {
+                        loadGraphsFromFile(renderGraphFilePath);
+                        mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+                    }
                 }
             }
 
@@ -91,19 +98,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 {
                     std::string renderGraphFileName;
                     if (saveFileDialog("", renderGraphFileName)) serializeRenderGraph(renderGraphFileName);
-                }
-            }
-
-            if (pGui->addMenuItem("RunScript"))
-            {
-                std::string renderGraphFileName;
-                if (openFileDialog("", renderGraphFileName))
-                {
-                // Matt todo the user shouldn't know that we are using a scripting language
-                    RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create();
-                    pScripting->addGraph(mRenderGraphUIs[mCurrentGraphIndex].getName(), mpGraphs[mCurrentGraphIndex]);
-                    pScripting->runScript(readFile(renderGraphFileName));
-                    mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
                 }
             }
 

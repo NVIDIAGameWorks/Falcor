@@ -180,9 +180,7 @@ namespace Falcor
             ImVec2 currentScreenPos{ pGraphEditorGui->offset.x  + pCurrentNode->Pos.x * ImGui::GetCurrentWindow()->FontWindowScale,
                 pGraphEditorGui->offset.y + pCurrentNode->Pos.y * ImGui::GetCurrentWindow()->FontWindowScale };
             ImVec2 pinRectBoundsOffsetx{ -kPinRadius * 2.0f, kPinRadius * 4.0f };
-
-            // TODO the pin colors need to be taken from the global style
-            ImU32 pinColor = 0xFFFFFFFF;
+            ImU32 pinColor = pGraphEditorGui->mpRenderGraphUI->mPinColor;
             float slotNum = 1.0f;
             float pinOffsetx = kPinRadius * 2.0f;
             uint32_t pinCount = static_cast<uint32_t>(pCurrentNode->InputsCount);
