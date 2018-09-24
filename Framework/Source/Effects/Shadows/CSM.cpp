@@ -381,19 +381,18 @@ namespace Falcor
     void CascadedShadowMaps::createVisibilityPassResources()
     {
         mVisibilityPass.pState = GraphicsState::create();
+        mVisibilityPass.pState->setFbo(Fbo::create());
         mVisibilityPass.pPass = FullScreenPass::create(kVisibilityPassFile);
         mVisibilityPass.pGraphicsVars = GraphicsVars::create(mVisibilityPass.pPass->getProgram()->getReflector());
         mVisibilityPass.mVisualizeCascadesOffset = (uint32_t)mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB")->getVariableOffset("visualizeCascades");
-        mVisibilityPass.pState->setFbo(Fbo::create());
     }
 
     void CascadedShadowMaps::setCascadeCount(uint32_t cascadeCount)
     {
-        if(mpLight && mpLight->getType() != LightDirectional)
+        if(mpLight && (mpLight->getType() != LightDirectional) && (cascadeCount != 1))
         {
-            if (cascadeCount != 1) logWarning("CascadedShadowMaps::setCascadeCount() - cascadeCount for directional light must be 1");
-            assert(mCsmData.cascadeCount == 1);
-            return;
+            logWarning("CascadedShadowMaps::setCascadeCount() - cascadeCount for a non-directional light must be 1");
+            cascadeCount = 1;
         }
 
         if(mCsmData.cascadeCount != cascadeCount)
@@ -732,18 +731,18 @@ namespace Falcor
     void CascadedShadowMaps::executeDepthPass(RenderContext* pCtx, const Camera* pCamera)
     {
         // Must have an FBO attached, otherwise don't know the size of the depth map
-		const auto& pStateFbo = pCtx->getGraphicsState()->getFbo();
-		uint32_t width, height;
-		if(pStateFbo)
-		{
-			width = pStateFbo->getWidth();
-			height = pStateFbo->getHeight();
-		}
-		else
-		{
-			width = (uint32_t)mShadowPass.mapSize.x;
-			height = (uint32_t)mShadowPass.mapSize.y;
-		}
+        const auto& pStateFbo = pCtx->getGraphicsState()->getFbo();
+        uint32_t width, height;
+        if (pStateFbo)
+        {
+            width = pStateFbo->getWidth();
+            height = pStateFbo->getHeight();
+        }
+        else
+        {
+            width = (uint32_t)mShadowPass.mapSize.x;
+            height = (uint32_t)mShadowPass.mapSize.y;
+        }
 
         Fbo::SharedConstPtr pFbo = mDepthPass.pState->getFbo();
         if((pFbo == nullptr) || (pFbo->getWidth() != width) || (pFbo->getHeight() != height))
@@ -850,17 +849,19 @@ namespace Falcor
         }
         pRenderCtx->popGraphicsState();
 
-        //Clear visibility buffer
+        // Clear visibility buffer
         auto pFbo = mVisibilityPass.pState->getFbo().get();
         pRenderCtx->clearFbo(pFbo, glm::vec4(1, 0, 0, 0), 1, 0, FboAttachmentType::All);
-        //Update Vars
-        mVisibilityPass.pGraphicsVars->setTexture("gDepth", pSceneDepthBuffer);
+
+        // Update Vars
+        mVisibilityPass.pGraphicsVars->setTexture("gDepth", pSceneDepthBuffer ? pSceneDepthBuffer : mDepthPass.pState->getFbo()->getDepthStencilTexture());
         setDataIntoGraphicsVars(mVisibilityPass.pGraphicsVars, "gCsmData");
-        auto pCb = mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB");            
+        auto pCb = mVisibilityPass.pGraphicsVars->getConstantBuffer("PerFrameCB");
         mVisibilityPassData.camInvViewProj = pCamera->getInvViewProjMatrix();
         mVisibilityPassData.screenDim = glm::uvec2(pFbo->getWidth(), pFbo->getHeight());
         pCb->setBlob(&mVisibilityPassData, mVisibilityPass.mVisualizeCascadesOffset, sizeof(mVisibilityPassData));
-        //Render visibility buffer
+
+        // Render visibility buffer
         pRenderCtx->pushGraphicsState(mVisibilityPass.pState);
         pRenderCtx->pushGraphicsVars(mVisibilityPass.pGraphicsVars);
         mVisibilityPass.pPass->execute(pRenderCtx);
