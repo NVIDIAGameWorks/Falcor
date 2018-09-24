@@ -31,7 +31,6 @@ const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 // Matt TODO: store the state of the debug windows per-graph
-
 RenderGraphViewer::~RenderGraphViewer()
 {
 #ifdef WIN32
@@ -96,11 +95,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addDropdown("Active Render Graph", mRenderGraphsList, mActiveGraphIndex))
     {
         mActiveGraphName  = std::string(mRenderGraphsList[mActiveGraphIndex].label);
-    }
-
-    if (pGui->addButton("Close all DebugWindows"))
-    {
-        mDebugWindowInfos.clear();
     }
 
     if (!mEditorRunning && pGui->addButton("Open RenderGraph Editor"))
@@ -182,6 +176,11 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
+            if (pGui->addButton("Close all DebugWindows"))
+            {
+                mDebugWindowInfos.clear();
+            }
+
             pGraph->renderUI(pGui, nullptr);
         }
 
@@ -226,14 +225,13 @@ void RenderGraphViewer::renderGUIPreviewWindows(Gui* pGui)
             // mark as graph output
             pPreviewGraph->markOutput(debugWindowInfo.mOutputName);
             Texture::SharedPtr pPreviewTex = std::static_pointer_cast<Texture>(pPreviewGraph->getOutput(debugWindowInfo.mOutputName));
-            // auto format = pPreviewTex->getFormat();
 
             if (pGui->addButton("Save to File", true))
             {
                 Bitmap::saveImageDialog(pPreviewTex);
             }
 
-            // get size of window to scale image correctly
+            // get size of window to scale image correctly 
             pGui->addImage(nameWindow.first.c_str(), pPreviewTex, pGui->getCurrentWindowSize());
         }
 

@@ -49,9 +49,6 @@ private:
     void renderGUIPreviewWindows(Gui* pGui);
     void editorUpdateCB(const std::string& filename);
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
-    // get rid of this
-    void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
-
     void loadGraphsFromFile(SampleCallbacks* pSample, const std::string& filename);
     RenderGraph::SharedPtr createDefaultGraph(SampleCallbacks* pSample);
     void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const std::string& fileName, const std::string& name);
