@@ -51,6 +51,7 @@ namespace Falcor
             BmpFile,    //< BMP file for lossless uncompressed 8-bits images with optional alpha
             PfmFile,    //< PFM file for floating point HDR images with 32-bit float per channel
             ExrFile,    //< EXR file for floating point HDR images with 16-bit float per channel
+            AutoDetect  //< Detect format from texture parameters
         };
 
         using UniquePtr = std::unique_ptr<Bitmap>;
@@ -74,6 +75,9 @@ namespace Falcor
             \param[in] pData Pointer to the buffer containing the image
         */
         static void saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
+
+        // right place?
+        static void saveImageDialog(const Texture::SharedPtr& pTexture);
 
         ~Bitmap();
 

@@ -49,8 +49,10 @@ private:
     void renderGUIPreviewWindows(Gui* pGui);
     void fileWriteCallback(const std::string& filename);
     void loadScene(const std::string& filename, bool showProgressBar, SampleCallbacks* pSample);
+    // get rid of this
     void loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar);
-    void loadGraphFromFile(SampleCallbacks* pSample, const std::string& filename);
+
+    void loadGraphsFromFile(SampleCallbacks* pSample, const std::string& filename);
     RenderGraph::SharedPtr createDefaultGraph(SampleCallbacks* pSample);
     void insertNewGraph(const RenderGraph::SharedPtr& pGraph, const std::string& fileName, const std::string& name);
     void updateOutputDropdown(const std::string& passName);
@@ -65,11 +67,10 @@ private:
     bool mApplyGraphChanges = false;
     size_t mEditorProcess = 0;
     std::string mTempFilePath;
-    std::string mActiveRenderGraphName;
-    std::string mEditingRenderGraphName;
+    std::string mActiveGraphName;
+    std::string mEditingGraphName;
     Gui::DropdownList mRenderGraphsList;
     uint32_t mActiveGraphIndex;
-    std::unordered_set<std::string> mActiveGraphNames;
 
     struct DebugWindowInfo
     {

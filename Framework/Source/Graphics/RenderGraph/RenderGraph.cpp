@@ -334,6 +334,7 @@ namespace Falcor
         return static_cast<uint32_t>(-1);
     }
 
+    // MATT TODO
     bool RenderGraph::isValid(std::string& log) const
     {
         std::vector<const NodeData*> nodeVec;
@@ -699,7 +700,7 @@ namespace Falcor
         }
 
         // must be called if nodes removed for anything dependent on order this frame
-        resolveExecutionOrder();
+        if (passesToRemove.size())   resolveExecutionOrder();
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
