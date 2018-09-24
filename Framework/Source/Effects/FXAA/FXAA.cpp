@@ -2,6 +2,8 @@
 * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 ***************************************************************************/
 #include "FXAA.h"
+#include "Utils/Gui.h"
+#include "API/RenderContext.h"
 
 namespace Falcor
 {
@@ -9,7 +11,7 @@ namespace Falcor
 
     FXAA::~FXAA() = default;
 
-    FXAA::FXAA()
+    FXAA::FXAA() : RenderPass("FXAA")
     {
         mpPass = FullScreenPass::create(kShaderFilename);
         mpGraphicsVars = GraphicsVars::create(mpPass->getProgram()->getReflector());
@@ -19,12 +21,12 @@ namespace Falcor
         mpGraphicsVars->setSampler("gSampler", mpLinearSampler);
     }
 
-    FXAA::UniquePtr FXAA::create()
+    FXAA::SharedPtr FXAA::create(const Dictionary& dict)
     {
         try
         {
-            FXAA* pTaa = new FXAA();
-            return FXAA::UniquePtr(pTaa);
+            FXAA* pFxaa = new FXAA();
+            return FXAA::SharedPtr(pFxaa);
         }
         catch (const std::exception&)
         {
@@ -38,7 +40,7 @@ namespace Falcor
         {
             pGui->addFloatVar("Sub-Pixel Quality", mQualitySubPix, 0, 1);
             pGui->addFloatVar("Edge Threshold", mQualityEdgeThreshold, 0, 1);
-            pGui->addFloatVar("Edge Threhold Min", mQualityEdgeThresholdMin, 0, 1);
+            pGui->addFloatVar("Edge Threshold Min", mQualityEdgeThresholdMin, 0, 1);
             pGui->addCheckBox("Early out", mEarlyOut);
             if (uiGroup) pGui->endGroup();
         }
@@ -47,7 +49,7 @@ namespace Falcor
     void FXAA::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrcTex, const Fbo::SharedPtr& pDstFbo)
     {
         mpGraphicsVars->setTexture("gSrc", pSrcTex);
-        float2 rcpFrame = 1.0f / float2(pSrcTex->getWidth(), pSrcTex->getHeight());
+        vec2 rcpFrame = 1.0f / vec2(pSrcTex->getWidth(), pSrcTex->getHeight());
         auto pCB = mpGraphicsVars->getDefaultBlock()["PerFrameCB"];
         pCB["rcpTexDim"] = rcpFrame;
         pCB["qualitySubPix"] = mQualitySubPix;
@@ -64,5 +66,24 @@ namespace Falcor
 
         pRenderContext->getGraphicsState()->popFbo();
         pRenderContext->popGraphicsVars();
+    }
+
+    static const std::string kSrc = "src";
+    static const std::string kDst = "dst";
+
+    void FXAA::reflect(RenderPassReflection& reflector) const
+    {
+        reflector.addInput(kSrc);
+        reflector.addOutput(kDst);
+    }
+
+    void FXAA::execute(RenderContext* pContext, const RenderData* pData)
+    {
+        auto pSrc = pData->getTexture(kSrc);
+        auto pDst = pData->getTexture(kDst);
+
+        Fbo::SharedPtr pFbo = Fbo::create();
+        pFbo->attachColorTarget(pDst, 0);
+        execute(pContext, pSrc, pFbo);
     }
 }

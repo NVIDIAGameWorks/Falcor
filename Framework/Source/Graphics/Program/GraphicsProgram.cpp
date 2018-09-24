@@ -33,7 +33,9 @@ namespace Falcor
     GraphicsProgram::SharedPtr GraphicsProgram::create(const Desc& desc, const Program::DefineList& programDefines)
     {
         SharedPtr pProg = SharedPtr(new GraphicsProgram);
-        pProg->init(desc, programDefines);
+        Desc d = desc;
+        d.addDefaultVertexShaderIfNeeded();
+        pProg->init(d, programDefines);
         return pProg;
 
     }

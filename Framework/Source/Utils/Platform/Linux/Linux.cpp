@@ -131,6 +131,47 @@ namespace Falcor
         }
     }
 
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
+    {
+        std::string linuxAppName = getExecutableDirectory(); linuxAppName += "/" + appName;
+        std::vector<const char*> argv;
+        std::vector<std::string> argvStrings;
+
+        auto argStrings = splitString(commandLineArgs, " ");
+        argvStrings.insert(argvStrings.end(), argStrings.begin(), argStrings.end());
+
+        for (const std::string& argString : argvStrings )
+        {
+            argv.push_back(argString.c_str());
+        }
+        argv.push_back(nullptr);
+
+        int32_t forkVal = fork();
+
+        assert(forkVal != -1);
+        if(forkVal == 0)
+        {
+            if (execv(linuxAppName.c_str(), (char* const*)argv.data()))
+            {
+                msgBox("Failed to launch process");    
+            }
+        }
+
+        return forkVal;
+    }
+
+    bool isProcessRunning(size_t processID)
+    {
+        // TODO
+        return static_cast<bool>(processID);
+    }
+
+    void terminateProcess(size_t processID)
+    {
+        (void)processID;
+        should_not_get_here();
+    }
+
     bool doesFileExist(const std::string& filename)
     {
         int32_t handle = open(filename.c_str(), O_RDONLY);
@@ -146,10 +187,32 @@ namespace Falcor
         struct stat sb;
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
+    
+    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    {
+        (void)filePath; (void)callback;
+        should_not_get_here();
+    }
+
+    void closeSharedFile(const std::string& filePath)
+    {
+        (void)filePath;
+        should_not_get_here();
+    }
+
+    std::string createTemperaryFile()
+    {
+        std::string filePath = std::experimental::filesystem::temp_directory_path();
+        filePath += "/fileXXXXXX";
+        
+        // The if is here to avoid the warn_unused_result attribute on mkstemp
+        if(mkstemp(&filePath.front())) {}
+        return filePath;
+    }
 
     const std::string& getExecutableDirectory()
     {
-        char result[PATH_MAX];
+        char result[PATH_MAX] = { 0 };
         ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
         const char* path;
         if (count != -1)

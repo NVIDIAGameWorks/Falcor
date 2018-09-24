@@ -34,8 +34,6 @@
 #include "Graphics/Program/ProgramReflection.h"
 #include "API/Device.h"
 
-#include "Renderer.h"
-
 namespace Falcor
 {
     ConstantBuffer::~ConstantBuffer() = default;

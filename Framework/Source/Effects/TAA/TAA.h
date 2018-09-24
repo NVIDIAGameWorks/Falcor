@@ -26,7 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Falcor.h"
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "API/FBO.h"
+#include "Graphics/FullScreenPass.h"
+#include "Graphics/Program/ProgramVars.h"
 
 namespace Falcor
 {
@@ -34,10 +37,10 @@ namespace Falcor
 
     /** Temporal AA class
     */
-    class TemporalAA
+    class TemporalAA : public RenderPass, public inherit_shared_from_this<RenderPass, TemporalAA>
     {
     public:
-        using UniquePtr = std::unique_ptr<TemporalAA>;
+        using SharedPtr = std::shared_ptr<TemporalAA>;
 
         /** Destructor
         */
@@ -45,12 +48,12 @@ namespace Falcor
 
         /** Create a new instance
         */
-        static UniquePtr create();
+        static SharedPtr create(const Dictionary& dict = {});
 
         /** Render UI controls for this effect.
             \param[in] pGui GUI object to render UI elements with
         */
-        void renderUI(Gui* pGui);
+        virtual void renderUI(Gui* pGui, const char* uiGroup = "") override;
 
         /** Run the effect
             \param[in] pRenderContext Render context with the destination FBO already set
@@ -67,6 +70,10 @@ namespace Falcor
         /** Sets the sigma value
         */
         void setColorBoxSigma(float sigma) { mControls.colorBoxSigma = sigma; }
+
+        // Render-pass stuff
+        virtual void execute(RenderContext* pContext, const RenderData* pData) override;
+        virtual void reflect(RenderPassReflection& reflection) const override;
 
     private:
         TemporalAA();
@@ -100,5 +107,8 @@ namespace Falcor
 
         //  
         Controls mControls;
+
+        Texture::SharedPtr mpPrevColor;
+        void allocatePrevColor(const Texture* pColorOut);
     };
 }

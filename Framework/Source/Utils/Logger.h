@@ -49,10 +49,6 @@ namespace Falcor
             Disabled = -1
         };
 
-        /** Initialize the logger. Has to be called once before logging is possible. This function will create the log file.
-        */
-        static void init();
-
         /** Shutdown the logger and close the log file.
         */
         static void shutdown();
@@ -88,6 +84,7 @@ namespace Falcor
         static FILE* sLogFile;
         static bool sInit;
         static Level sVerbosity;
+        static bool init();
     };
 
     inline void logInfo(const std::string& msg, bool forceMsgBox = false) { Logger::log(Logger::Level::Info, msg, forceMsgBox); }

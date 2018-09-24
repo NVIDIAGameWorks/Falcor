@@ -44,7 +44,7 @@ Vao::SharedConstPtr ShaderBuffersSample::getVao()
     return pVao;
 }
 
-void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pContext)
+void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext)
 {
     mpCamera = Camera::create();
 
@@ -107,7 +107,7 @@ void ShaderBuffersSample::onLoad(SampleCallbacks* pSample, RenderContext::Shared
     mpComputeVars->setStructuredBuffer("gLightOut", mpAppendLightData);
 }
 
-void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pContext, Fbo::SharedPtr pTargetFbo)
+void ShaderBuffersSample::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

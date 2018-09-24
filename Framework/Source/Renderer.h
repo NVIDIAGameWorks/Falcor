@@ -84,6 +84,9 @@ namespace Falcor
         /** Show/hide the UI */
         virtual void toggleUI(bool showUI) = 0;
 
+        /** Show/hide the globalUI */
+        virtual void toggleGlobalUI(bool showGlobalUI) = 0;
+
         /** Set the default GUI size */
         virtual void setDefaultGuiSize(uint32_t width, uint32_t height) = 0;
 
@@ -130,11 +133,11 @@ namespace Falcor
 
         /** Called once right after context creation.
         */
-        virtual void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) {}
+        virtual void onLoad(SampleCallbacks* pSample, const std::shared_ptr<RenderContext>& pRenderContext) {}
 
         /** Called on each frame render.
         */
-        virtual void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) {}
+        virtual void onFrameRender(SampleCallbacks* pSample, const std::shared_ptr<RenderContext>&  pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
 
         /** Called right before the context is destroyed.
         */

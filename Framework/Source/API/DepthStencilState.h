@@ -48,18 +48,7 @@ namespace Falcor
 
         /** Comparison function
         */
-        enum class Func
-        {
-            Disabled,       ///< Comparison is disabled
-            Never,          ///< Comparison always fails
-            Always,         ///< Comparison always succeeds
-            Less,           ///< Passes if source is less than the destination
-            Equal,          ///< Passes if source is equal to the destination
-            NotEqual,       ///< Passes if source is not equal to the destination
-            LessEqual,      ///< Passes if source is less than or equal to the destination
-            Greater,        ///< Passes if source is greater than to the destination
-            GreaterEqual,   ///< Passes if source is greater than or equal to the destination
-        };
+        using Func = ComparisonFunc;
 
         /** Stencil operation
         */

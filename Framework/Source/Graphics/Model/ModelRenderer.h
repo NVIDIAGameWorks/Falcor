@@ -33,9 +33,7 @@ namespace Falcor
     class RenderContext;
     class Camera;
 
-    /**
-    * This is deprecated and has performance issues
-    **/
+    deprecate("3.2", "")
     class ModelRenderer
     {
     public:

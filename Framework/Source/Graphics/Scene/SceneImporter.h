@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include <string>
-#include "Externals/RapidJson/include/rapidjson/document.h"
+#include "rapidjson/document.h"
 #include "Graphics/Material/Material.h"
 #include "glm/vec2.hpp"
 #include "glm/vec3.hpp"
@@ -59,6 +59,7 @@ namespace Falcor
         bool parseUserDefinedSection(const rapidjson::Value& jsonVal);
         bool parseActivePath(const rapidjson::Value& jsonVal);
         bool parseIncludes(const rapidjson::Value& jsonVal);
+        bool parseEnvMap(const rapidjson::Value& jsonVal);
 
         bool topLevelLoop();
 

@@ -76,7 +76,7 @@ namespace Falcor
         ComPtr(ThisType&& rhs) : mpObject(rhs.mpObject) { rhs.mpObject = nullptr; }
 
         /// Transfer ownership of a reference.
-        ComPtr& operator=(ThisType&& rhs) { ObjectType* swap = mpObject; mpObject = rhs.mpObject; rhs.mpObject = swap; return *this; }
+        ComPtr& operator=(ThisType&& rhs) { T* swap = mpObject; mpObject = rhs.mpObject; rhs.mpObject = swap; return *this; }
 
         /// Clear out object pointer.
         void setNull()

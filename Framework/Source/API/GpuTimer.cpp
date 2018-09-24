@@ -86,21 +86,23 @@ namespace Falcor
 
     double GpuTimer::getElapsedTime()
     {
-        if (mStatus != Status::End)
+        if (mStatus == Status::Begin)
         {
             logWarning("GpuTimer::getElapsedTime() was called but the GpuTimer::end() wasn't called. No data to fetch.");
             return 0;
         }
+        else if (mStatus == Status::End)
+        {
+            uint64_t result[2];
+            apiResolve(result);
 
-        uint64_t result[2];
-        apiResolve(result);
-
-        double start = (double)result[0];
-        double end = (double)result[1];
-        double range = end - start;
-        double elapsedTime = range * gpDevice->getGpuTimestampFrequency();
-        mStatus = Status::Idle;
-
-        return elapsedTime;
+            double start = (double)result[0];
+            double end = (double)result[1];
+            double range = end - start;
+            mElapsedTime = range * gpDevice->getGpuTimestampFrequency();
+            mStatus = Status::Idle;
+        }
+        assert(mStatus == Status::Idle);
+        return mElapsedTime;
     }
 }

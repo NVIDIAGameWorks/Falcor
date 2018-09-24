@@ -169,7 +169,7 @@ namespace Falcor
         // Export model material properties
         rapidjson::Value materialValue;
         materialValue.SetObject();
-        switch(pModel->getMesh(0)->getMaterial()->getShadingModel())
+        switch (pModel->getMesh(0)->getMaterial()->getShadingModel())
         {
         case ShadingModelMetalRough:
             addString(materialValue, allocator, SceneKeys::kShadingModel, SceneKeys::kShadingMetalRough);
@@ -407,6 +407,12 @@ namespace Falcor
 
         rapidjson::Value jsonUserValues(rapidjson::kObjectType);
         auto& allocator = mJDoc.GetAllocator();
+
+        // TODO -- use these. unused scenekeys to avoid linux warning
+        (void)SceneKeys::kEnvMap;
+        (void)SceneKeys::kAreaLightRect;
+        (void)SceneKeys::kAreaLightSphere;
+        (void)SceneKeys::kAreaLightDisc;
 
         for (uint32_t varID = 0; varID < mpScene->getUserVariableCount(); varID++)
         {

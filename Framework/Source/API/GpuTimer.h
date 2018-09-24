@@ -78,6 +78,7 @@ namespace Falcor
         LowLevelContextData::SharedPtr mpLowLevelData;
         uint32_t mStart;
         uint32_t mEnd;
+        double mElapsedTime;
         void apiBegin();
         void apiEnd();
         void apiResolve(uint64_t result[2]);

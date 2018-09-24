@@ -25,7 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 #pragma once
 
 #include "API/FBO.h"
@@ -34,16 +33,18 @@
 #include "Data/Effects/SSAOData.h"
 #include "Effects/Utils/GaussianBlur.h"
 #include "Utils/Gui.h"
+#include "Graphics/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
     class Gui;
     class Camera;
+    class Scene;
 
-    class SSAO
+    class SSAO : public RenderPass, public inherit_shared_from_this<RenderPass, SSAO>
     {
     public:
-        using UniquePtr = std::unique_ptr<SSAO>;
+        using SharedPtr = std::shared_ptr<SSAO>;
 
         enum class SampleDistribution
         {
@@ -61,11 +62,12 @@ namespace Falcor
             \param[in] distribution Distribution of sample points when using a hemisphere kernel.
             \return SSAO pass object.
         */
-        static UniquePtr create(const uvec2& aoMapSize, uint32_t kernelSize = 16, uint32_t blurSize = 5, float blurSigma = 2.0f, const uvec2& noiseSize = uvec2(16), SampleDistribution distribution = SampleDistribution::CosineHammersley);
+        static SharedPtr create(const uvec2& aoMapSize, uint32_t kernelSize = 16, uint32_t blurSize = 5, float blurSigma = 2.0f, const uvec2& noiseSize = uvec2(16), SampleDistribution distribution = SampleDistribution::CosineHammersley);
+        static SharedPtr create(const Dictionary& dict) { return create(uvec2(1024)); }
 
         /** Render GUI for tweaking SSAO settings
         */
-        void renderGui(Gui* pGui);
+        void renderUI(Gui* pGui, const char* uiGroup = "") override;
 
         /** Generate the AO map
             \param[in] pContext Render context
@@ -74,7 +76,12 @@ namespace Falcor
             \param[in] pNormalTexture Scene world-space normals buffer
             \return AO map texture
         */
-        Texture::SharedPtr generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexturer);
+        Texture::SharedPtr generateAOMap(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
+
+        /** Execute the SSAO pass and apply the result to the color target
+            pColorIn and pColorOut must be different
+        */
+        void execute(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pColorIn, const Texture::SharedPtr& pColorOut, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture);
 
         /** Sets blur kernel size
         */
@@ -96,12 +103,16 @@ namespace Falcor
         */
         void setNoiseTexture(uint32_t width, uint32_t height);
 
+        virtual void reflect(RenderPassReflection& reflector) const override;
+
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
+
+        virtual void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
     private:
 
         SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution);
 
         void upload();
-
         void initShader();
 
         SSAOData mData;
@@ -135,6 +146,14 @@ namespace Falcor
 
         bool mApplyBlur = true;
         GaussianBlur::UniquePtr mpBlur;
+        std::shared_ptr<Scene> mpScene;
+
+        struct
+        {
+            FullScreenPass::UniquePtr pApplySSAOPass;
+            GraphicsVars::SharedPtr pVars;
+            GraphicsState::SharedPtr pState;
+        } mComposeData;
     };
 
 }

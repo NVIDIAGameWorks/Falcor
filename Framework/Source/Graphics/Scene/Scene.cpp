@@ -46,6 +46,7 @@ namespace Falcor
         {
             pScene = nullptr;
         }
+        pScene->mFileName = filename;
         return pScene;
     }
 
@@ -86,7 +87,7 @@ namespace Falcor
                     }
                 }
             }
-            
+
             mCenter = sceneAABB.center;
             mRadius = length(sceneAABB.extent) * 0.5f;
 
