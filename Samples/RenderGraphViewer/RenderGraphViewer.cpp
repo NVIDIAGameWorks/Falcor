@@ -29,15 +29,8 @@
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
-// Matt TODO this should be in Bitmap.cpp
-const char* kSaveFileFilter = "PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
-   \0JPG(.jpg)\0*.jpg;\0HDR(.hdr)\0*.hdr;\0TGA(.tga)\0*.tga;\0";
-
 
 // Matt TODO: store the state of the debug windows per-graph
-// Add a `CloseAllDebugWindows` button
-// Make sure we save the correct texture when multiple windows are open
-// When the editor is open, disable F5
 
 RenderGraphViewer::~RenderGraphViewer()
 {
@@ -103,6 +96,11 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addDropdown("Active Render Graph", mRenderGraphsList, mActiveGraphIndex))
     {
         mActiveGraphName  = std::string(mRenderGraphsList[mActiveGraphIndex].label);
+    }
+
+    if (pGui->addButton("Close all DebugWindows"))
+    {
+        mDebugWindowInfos.clear();
     }
 
     if (!mEditorRunning && pGui->addButton("Open RenderGraph Editor"))
@@ -281,7 +279,6 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     }
 }
 
-// Matt TODO give it a better name
 void RenderGraphViewer::editorUpdateCB(const std::string& fileName)
 {
     GraphViewerInfo& graphInfo = mGraphInfos[mEditingGraphName];
@@ -315,6 +312,8 @@ void RenderGraphViewer::loadGraphsFromFile(SampleCallbacks* pSample, const std::
 
 RenderGraph::SharedPtr RenderGraphViewer::createDefaultGraph(SampleCallbacks* pSample)
 {
+    // TODO -- move this to render graph file or something
+
     Falcor::RenderGraphIR::SharedPtr pIr = RenderGraphIR::create("forward_renderer");
 
     pIr->addPass("DepthPass", "DepthPrePass");
@@ -493,37 +492,10 @@ void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
     }
 }
 
-// Matt TODO no loadModel()
-void RenderGraphViewer::loadModel(SampleCallbacks* pSample, const std::string& filename, bool showProgressBar)
-{
-    Mesh::resetGlobalIdCounter();
- 
-    ProgressBar::SharedPtr pBar;
-    if (showProgressBar)
-    {
-        pBar = ProgressBar::create("Loading Model");
-    }
-
-    Model::SharedPtr pModel = Model::createFromFile(filename.c_str());
-    if (!pModel)
-    {
-        logError(std::string("Failed to load model: \"") + filename + "\"");
-    }
-
-    mGraphInfos[mActiveGraphName].mpGraph->getScene()->addModelInstance(pModel, "instance");
-}
 
 void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pSample)
 {
     auto args = pSample->getArgList();
-    std::vector<ArgList::Arg> model = args.getValues("loadmodel");
-    if (!model.empty())
-    {
-        loadModel(pSample, model[0].asString(), false);
-    }
-
-    // change the test to loading a scene instead
-
     std::vector<ArgList::Arg> scene = args.getValues("loadscene");
     if (!scene.empty())
     {
@@ -548,6 +520,7 @@ void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pSample)
 void RenderGraphViewer::onBeginTestFrame(SampleTest* pSampleTest)
 {
     //  Already existing. Is this a problem?    
+
     auto nextTriggerType = pSampleTest->getNextTriggerType();
     if (nextTriggerType == SampleTest::TriggerType::None)
     {
@@ -558,6 +531,8 @@ void RenderGraphViewer::onBeginTestFrame(SampleTest* pSampleTest)
             // Matt TODO this should be part of CascadedShadowMaps::Dictionary and store in the graph file
             std::static_pointer_cast<CascadedShadowMaps>(pShadowPass)->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
         }
+
+
     }
 }
 
