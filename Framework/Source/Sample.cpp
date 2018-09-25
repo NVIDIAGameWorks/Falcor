@@ -528,7 +528,10 @@ namespace Falcor
 
     void Sample::initUI()
     {
-        mpGui = Gui::create(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight(), getDisplayScaleFactor());
+        float scaling = getDisplayScaleFactor();
+        mpGui = Gui::create(uint32_t(mpBackBufferFBO->getWidth()), uint32_t(mpBackBufferFBO->getHeight()), scaling);
+        mSampleGuiHeight = (uint32_t)(mSampleGuiHeight * scaling);
+        mSampleGuiWidth = (uint32_t)(mSampleGuiWidth * scaling);
         mpTextRenderer = TextRenderer::create();
     }
 

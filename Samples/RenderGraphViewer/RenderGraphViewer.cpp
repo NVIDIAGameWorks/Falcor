@@ -184,7 +184,7 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
 void RenderGraphViewer::addGraph(const Fbo* pTargetFbo, SampleCallbacks* pCallbacks)
 {
     std::string filename;
-    if (openFileDialog("py", filename))
+    if (openFileDialog("*.py", filename))
     {
         auto graphs = RenderGraphImporter::importAllGraphs(filename, pTargetFbo);
         if(graphs.size() && !mpScene) loadSceneFromFile(gkDefaultScene, pCallbacks);
