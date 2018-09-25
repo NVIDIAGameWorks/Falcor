@@ -235,6 +235,8 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
     if (mGraphs.size())
     {
+        mpScene->update(pSample->getCurrentTime(), &mCamController);
+
         auto& pGraph = mGraphs[mActiveGraph].pGraph;
         pGraph->execute(pRenderContext.get());
         if(mGraphs[mActiveGraph].mainOutput.size())
