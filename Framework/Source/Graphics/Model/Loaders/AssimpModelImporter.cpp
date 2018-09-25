@@ -748,7 +748,8 @@ namespace Falcor
 
     BoundingBox createMeshBbox(const aiMesh* pAiMesh)
     {
-        glm::vec3 boxMin, boxMax;
+        vec3 boxMin(FLT_MAX);
+        vec3 boxMax(FLT_MIN);
         for (uint32_t vertexID = 0; vertexID < pAiMesh->mNumVertices; vertexID++)
         {
             glm::vec3 xyz(pAiMesh->mVertices[vertexID].x, pAiMesh->mVertices[vertexID].y, pAiMesh->mVertices[vertexID].z);
