@@ -29,8 +29,6 @@
 #include "CameraController.h"
 #include "Camera.h"
 #include "Utils/Math/FalcorMath.h"
-#include "glm/mat3x3.hpp"
-#include "glm/gtx/euler_angles.hpp"
 
 #include "VR/OpenVR/VRSystem.h"
 

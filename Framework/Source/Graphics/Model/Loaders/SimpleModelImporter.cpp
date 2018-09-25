@@ -33,10 +33,8 @@
 #include "API/VertexLayout.h"
 #include "Data/VertexAttrib.h"
 #include "API/Buffer.h"
-#include "glm/common.hpp"
 #include "API/Formats.h"
 #include "API/Texture.h"
-#include "glm/geometric.hpp"
 
 namespace Falcor
 {

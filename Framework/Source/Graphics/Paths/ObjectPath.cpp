@@ -29,7 +29,6 @@
 #include "Framework.h"
 #include "ObjectPath.h"
 #include "MovableObject.h"
-#include "glm/common.hpp"
 #include <algorithm>
 
 namespace Falcor

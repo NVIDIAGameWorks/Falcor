@@ -29,7 +29,6 @@
 #include "Framework.h"
 #include "Graphics/Scene/Editor/Gizmo.h"
 #include "glm/gtx/intersect.hpp"
-#include "glm/gtc/epsilon.hpp"
 #include "glm/gtx/matrix_interpolation.hpp"
 #include "Utils/Math/FalcorMath.h"
 #include <cmath>

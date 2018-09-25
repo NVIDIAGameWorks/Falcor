@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "ProjectTemplate.h"
-#include "glm/gtc/epsilon.hpp"
 
 void ProjectTemplate::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {

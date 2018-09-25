@@ -28,9 +28,6 @@
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "glm/matrix.hpp"
-#include "glm/common.hpp"
-#include "glm/geometric.hpp"
 
 #include "Framework.h"
 #include "AssimpModelImporter.h"
@@ -751,7 +748,8 @@ namespace Falcor
 
     BoundingBox createMeshBbox(const aiMesh* pAiMesh)
     {
-        glm::vec3 boxMin, boxMax;
+        vec3 boxMin(FLT_MAX);
+        vec3 boxMax(-FLT_MAX);
         for (uint32_t vertexID = 0; vertexID < pAiMesh->mNumVertices; vertexID++)
         {
             glm::vec3 xyz(pAiMesh->mVertices[vertexID].x, pAiMesh->mVertices[vertexID].y, pAiMesh->mVertices[vertexID].z);
