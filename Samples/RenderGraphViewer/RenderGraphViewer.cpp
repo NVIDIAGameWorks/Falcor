@@ -103,7 +103,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mTempFilePath = createTemperaryFile();
         RenderGraphExporter::save(pGraph, mActiveGraphName, mTempFilePath);
 
-        graphInfo.mFileName = mTempFilePath;
+        graphInfo.mFilename = mTempFilePath;
     #ifdef _WIN32
         openSharedFile(mTempFilePath, std::bind(&RenderGraphViewer::editorUpdateCB, this, std::placeholders::_1));
     #endif
@@ -114,7 +114,6 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     
         assert(mEditorProcess);
         mEditorRunning = true;
-        mEditingGraphName = mActiveGraphName;
         pGraph->markOutput(graphInfo.mOutputString);
     }
 
@@ -266,7 +265,6 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
     }
 
     mpScene = Scene::loadFromFile(filename);
-    mSceneFilename = filename;
     mCamControl.attachCamera(mpScene->getCamera(0));
     mpScene->getActiveCamera()->setAspectRatio((float)pSample->getCurrentFbo()->getWidth() / (float)pSample->getCurrentFbo()->getHeight());
 
@@ -279,7 +277,7 @@ void RenderGraphViewer::loadScene(const std::string& filename, bool showProgress
 
 void RenderGraphViewer::editorUpdateCB(const std::string& fileName)
 {
-    GraphViewerInfo& graphInfo = mGraphInfos[mEditingGraphName];
+    GraphViewerInfo& graphInfo = mGraphInfos[mActiveGraphName];
     std::string fullScript, script;
     readFileToString(fileName, fullScript);
     if (!fullScript.size()) return;
@@ -361,7 +359,7 @@ void RenderGraphViewer::insertNewGraph(const RenderGraph::SharedPtr& pGraph, con
 
     graphInfo.mpGraph = pGraph;
     graphInfo.mCurrentOutputs = pGraph->getAvailableOutputs();
-    graphInfo.mFileName = fileName;
+    graphInfo.mFilename = fileName;
 }
 
 void RenderGraphViewer::updateOutputDropdown(const std::string& passName)
@@ -395,7 +393,6 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         if (filePath.size())
         {
             openSharedFile(filePath, std::bind(&RenderGraphViewer::editorUpdateCB, this, std::placeholders::_1));
-            mEditingGraphName = mActiveGraphName;
         }
         else
         {
@@ -420,11 +417,11 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
     if (mApplyGraphChanges)
     {
-        GraphViewerInfo& applyGraphInfo = mGraphInfos[mEditingGraphName];
+        GraphViewerInfo& applyGraphInfo = mGraphInfos[mActiveGraphName];
 
         // apply all change for valid graph
         auto pScripting = RenderGraphScripting::create();
-        pScripting->addGraph(mEditingGraphName, applyGraphInfo.mpGraph);
+        pScripting->addGraph(mActiveGraphName, applyGraphInfo.mpGraph);
         pScripting->runScript(applyGraphInfo.mLastScript);
 
         applyGraphInfo.mLastScript.clear();
@@ -475,7 +472,7 @@ void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
     {
         RenderGraph::SharedPtr pGraph = graphInfo.second.mpGraph;
         RenderGraph::SharedPtr pNewGraph;
-        pNewGraph = RenderGraphImporter::import(graphInfo.first, graphInfo.second.mFileName);        
+        pNewGraph = RenderGraphImporter::import(graphInfo.first, graphInfo.second.mFilename);        
         pGraph->update(pNewGraph);
     }
 }

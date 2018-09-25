@@ -222,7 +222,9 @@ namespace Falcor
         */
         const Texture::SharedPtr& getEnvironmentMap() const { return mpEnvMap; }
 
-        std::string mFileName;
+        /** Get the filename
+        */
+        const std::string& getFilename() const { return mFilename; }
     protected:
 
         Scene();
@@ -253,6 +255,8 @@ namespace Falcor
         vec3 mCenter = vec3(0, 0, 0);
 
         bool mExtentsDirty = true;
+
+        std::string mFilename;
 
         using string_uservar_map = std::map<const std::string, UserVariable>;
         string_uservar_map mUserVars;
