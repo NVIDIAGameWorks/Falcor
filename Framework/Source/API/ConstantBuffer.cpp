@@ -29,7 +29,6 @@
 #include "ConstantBuffer.h"
 #include "Graphics/Program/ProgramVersion.h"
 #include "Buffer.h"
-#include "glm/glm.hpp"
 #include "Texture.h"
 #include "Graphics/Program/ProgramReflection.h"
 #include "API/Device.h"

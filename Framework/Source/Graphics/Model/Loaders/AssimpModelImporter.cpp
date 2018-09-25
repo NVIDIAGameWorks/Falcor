@@ -28,9 +28,6 @@
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
 #include "assimp/scene.h"
-#include "glm/matrix.hpp"
-#include "glm/common.hpp"
-#include "glm/geometric.hpp"
 
 #include "Framework.h"
 #include "AssimpModelImporter.h"

@@ -28,10 +28,8 @@
 #include "Framework.h"
 #include "CSM.h"
 #include "Graphics/Scene/SceneRenderer.h"
-#include "glm/gtx/transform.hpp"
 #include "Utils/Math/FalcorMath.h"
 #include "Graphics/FboHelper.h"
-
 
 namespace Falcor
 {

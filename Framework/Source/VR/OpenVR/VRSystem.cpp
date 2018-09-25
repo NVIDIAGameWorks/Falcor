@@ -30,8 +30,6 @@
 
 #include "VRSystem.h"
 #include "openvr.h"
-#include "glm/glm.hpp"
-#include "glm/gtx/transform.hpp"
 #include "API/Device.h"
 #include "Utils/StringUtils.h"
 

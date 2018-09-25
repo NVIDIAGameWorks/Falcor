@@ -32,7 +32,6 @@
 #include "Loaders/BinaryModelExporter.h"
 #include "Utils/Platform/OS.h"
 #include "Mesh.h"
-#include "glm/geometric.hpp"
 #include "AnimationController.h"
 #include "Animation.h"
 #include "API/Buffer.h"

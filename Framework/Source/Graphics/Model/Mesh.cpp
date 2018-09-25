@@ -29,8 +29,6 @@
 #include "Mesh.h"
 #include "Model.h"
 #include "assimp/mesh.h"
-#include "glm/common.hpp"
-#include "glm/glm.hpp"
 #include "API/Buffer.h"
 #include "AnimationController.h"
 #include "API/VertexLayout.h"
