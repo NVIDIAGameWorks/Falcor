@@ -43,6 +43,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load Scene")) loadScene();
     if (pGui->addButton("Add Graph")) addGraph(pSample->getCurrentFbo().get());
+    pGui->addSeparator();
 
     // Display a list with all the graphs
     if (mGraphs.size())
@@ -52,10 +53,44 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         pGui->addDropdown("Active Graph", graphList, mActiveGraph);
 
         if (pGui->addButton("Remove Active Graph")) removeActiveGraph();
+
+        // Active graph output
+        pGui->addSeparator();
+        pGui->addCheckBox("Show All Outputs", mGraphs[mActiveGraph].showAllOutputs);
+
+        RenderGraph::SharedPtr pGraph = mGraphs[mActiveGraph].pGraph;
+        Gui::DropdownList graphOuts;
+        uint32_t activeOut;
+
+        if (mGraphs[mActiveGraph].showAllOutputs)
+        {
+            const auto& allOuts = pGraph->getAvailableOutputs();
+            for (size_t i = 0; i < allOuts.size(); i++)
+            {
+                graphOuts.push_back({ (int32_t)i, allOuts[i] });
+                if (allOuts[i] == mGraphs[mActiveGraph].mainOutput) activeOut = (uint32_t)i;
+            }
+        }
+        else
+        {
+            for (size_t i = 0; i < pGraph->getOutputCount(); i++)
+            {
+                std::string name = pGraph->getOutputName(i);
+                graphOuts.push_back({ (int32_t)i, name });
+                if (name == mGraphs[mActiveGraph].mainOutput) activeOut = (uint32_t)i;
+            }
+        }
+
+        if (graphOuts.size())
+        {
+            if (pGui->addDropdown("Main Output", graphOuts, activeOut)) mGraphs[mActiveGraph].mainOutput = graphOuts[activeOut].label;
+        }
+
+        // Graph UI
+        pGui->addSeparator();
+        pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
     }
 
-    pGui->addSeparator();
-    if (mGraphs.size()) mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
 }
 
 void RenderGraphViewer::removeActiveGraph()
@@ -88,6 +123,7 @@ void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)
             }
             if (!found) mGraphs.push_back({ newG.name, newG.pGraph });
             newG.pGraph->setScene(mpScene);
+            if (newG.pGraph->getOutputCount() != 0) mGraphs.back().mainOutput = newG.pGraph->getOutputName(0);
         }
     }
 }
@@ -116,8 +152,11 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
     {
         auto& pGraph = mGraphs[mActiveGraph].pGraph;
         pGraph->execute(pRenderContext.get());
-        Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput("BlitPass.dst"));
-        pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
+        if(mGraphs[mActiveGraph].mainOutput.size())
+        {
+            Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput(mGraphs[mActiveGraph].mainOutput));
+            pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
+        }
     }
 }
 

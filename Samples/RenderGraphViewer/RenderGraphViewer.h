@@ -56,6 +56,8 @@ private:
     {
         std::string name;
         RenderGraph::SharedPtr pGraph;
+        std::string mainOutput;
+        bool showAllOutputs = false;
     };
 
     std::vector<GraphData> mGraphs;
