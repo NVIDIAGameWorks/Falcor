@@ -41,8 +41,19 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (pGui->addButton("LoadScene")) loadScene();
+    if (pGui->addButton("Load Scene")) loadScene();
     if (pGui->addButton("Add Graph")) addGraph(pSample->getCurrentFbo().get());
+
+    // Display a list with all the graphs
+    if (mGraphs.size() > 1)
+    {
+        Gui::DropdownList graphList;
+        for (size_t i = 0; i < mGraphs.size(); i++) graphList.push_back({ (int32_t)i, mGraphs[i].name });
+        pGui->addDropdown("Active Graph", graphList, mActiveGraph);
+    }
+
+    pGui->addSeparator();
+    if (mGraphs.size()) mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
 }
 
 void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)
@@ -50,10 +61,25 @@ void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)
     std::string filename;
     if (openFileDialog("py", filename))
     {
-        auto graphs = RenderGraphImporter::importAllGraphs(filename);
-        mpActiveGraph = graphs[0].pGraph;
-        mpActiveGraph->setScene(mpScene);               // NIR
-        mpActiveGraph->onResizeSwapChain(pTargetFbo);   // NIR Perhaps we should pass those values during graph creation
+        auto graphs = RenderGraphImporter::importAllGraphs(filename, pTargetFbo);
+        if(graphs.size() && !mpScene) loadSceneFromFile(gkDefaultScene);
+
+        for(auto& newG : graphs)
+        {
+            bool found = false;
+            // Check if the graph already exists. If it is, replace it
+            for (auto& oldG : mGraphs)
+            {
+                if (oldG.name == newG.name)
+                {
+                    found = true;
+                    logWarning("Graph `" + newG.name + "` already exists. Replacing it");
+                    oldG.pGraph = newG.pGraph;
+                }
+            }
+            if (!found) mGraphs.push_back({ newG.name, newG.pGraph });
+            newG.pGraph->setScene(mpScene);
+        }
     }
 }
 
@@ -62,9 +88,14 @@ void RenderGraphViewer::loadScene()
     std::string filename;
     if (openFileDialog(Scene::kFileFormatString, filename))
     {
-        mpScene = Scene::loadFromFile(filename);
-        if (mpActiveGraph) mpActiveGraph->setScene(mpScene);
+        loadSceneFromFile(filename);
     }
+}
+
+void RenderGraphViewer::loadSceneFromFile(const std::string& filename)
+{
+    mpScene = Scene::loadFromFile(filename);
+    for(auto& g : mGraphs) g.pGraph->setScene(mpScene);
 }
 
 void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
@@ -72,29 +103,30 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
-    if (mpActiveGraph)
+    if (mGraphs.size())
     {
-        mpActiveGraph->execute(pRenderContext.get());
-        Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(mpActiveGraph->getOutput("BlitPass.dst"));
+        auto& pGraph = mGraphs[mActiveGraph].pGraph;
+        pGraph->execute(pRenderContext.get());
+        Texture::SharedPtr pOutTex = std::dynamic_pointer_cast<Texture>(pGraph->getOutput("BlitPass.dst"));
         pRenderContext->blit(pOutTex->getSRV(), pTargetFbo->getRenderTargetView(0));
     }
 }
 
 bool RenderGraphViewer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent)
 {
-    if (mpActiveGraph) mpActiveGraph->onMouseEvent(mouseEvent);
+    if (mGraphs.size()) mGraphs[mActiveGraph].pGraph->onMouseEvent(mouseEvent);
     return mCamController.onMouseEvent(mouseEvent);
 }
 
 bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)
 {
-    if (mpActiveGraph) mpActiveGraph->onKeyEvent(keyEvent);
+    if (mGraphs.size()) mGraphs[mActiveGraph].pGraph->onKeyEvent(keyEvent);
     return mCamController.onKeyEvent(keyEvent);
 }
 
 void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    if (mpActiveGraph) mpActiveGraph->onResizeSwapChain(pSample->getCurrentFbo().get());
+    for(auto& g : mGraphs) g.pGraph->onResize(pSample->getCurrentFbo().get());
 }
 
 #ifdef _WIN32

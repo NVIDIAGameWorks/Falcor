@@ -46,8 +46,17 @@ public:
     
 private:
     Scene::SharedPtr mpScene;
-    RenderGraph::SharedPtr mpActiveGraph;
     FirstPersonCameraController mCamController;
     void addGraph(const Fbo* pTargetFbo);
     void loadScene();
+    void loadSceneFromFile(const std::string& filename);
+
+    struct GraphData
+    {
+        std::string name;
+        RenderGraph::SharedPtr pGraph;
+    };
+
+    std::vector<GraphData> mGraphs;
+    uint32_t mActiveGraph = 0;
 };

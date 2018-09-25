@@ -753,7 +753,7 @@ namespace Falcor
         return mNodeData.find(graphOut.nodeId)->second.nodeName + "." + graphOut.field;
     }
 
-    void RenderGraph::onResizeSwapChain(const Fbo* pTargetFbo)
+    void RenderGraph::onResize(const Fbo* pTargetFbo)
     {
         // Store the back-buffer values
         const Texture* pColor = pTargetFbo->getColorTexture(0).get();

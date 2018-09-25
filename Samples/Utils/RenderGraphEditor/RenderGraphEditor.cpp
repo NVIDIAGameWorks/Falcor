@@ -77,7 +77,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                     if (openFileDialog("", renderGraphFilePath))
                     {
                         loadGraphsFromFile(renderGraphFilePath);
-                        mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+                        mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
                     }
                 }
             }
@@ -253,7 +253,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (pGui->addButton("Create Graph") && mNextGraphString[0])
         {
             createNewGraph(mNextGraphString);
-            mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+            mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
             mNextGraphString.clear();
             mNextGraphString.resize(255, '0');
             mShowCreateGraphWindow = false;
@@ -402,7 +402,7 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+    mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
     mWindowSize = {width, height};
     mResetGuiWindows = true;
 }

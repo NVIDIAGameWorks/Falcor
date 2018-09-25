@@ -30,6 +30,7 @@
 namespace Falcor
 {
     class RenderGraph;
+    class Fbo;
 
     class RenderGraphImporter
     {
@@ -40,7 +41,7 @@ namespace Falcor
             \param[in] funcName  The function name inside the graph script. If the string is empty, will try invoking a function called `render_graph_<graphName>()`
             \return A new render-graph object or nullptr if something went horribly wrong
         */
-        static std::shared_ptr<RenderGraph> import(std::string graphName, std::string filename = {}, std::string funcName = {});
+        static std::shared_ptr<RenderGraph> import(std::string graphName, std::string filename = {}, std::string funcName = {}, const Fbo* pDstFbo = nullptr);
 
         struct GraphData
         {
@@ -50,7 +51,7 @@ namespace Falcor
 
         /** Import all the graphs found in the script's global namespace
         */
-        static std::vector <GraphData> importAllGraphs(const std::string& filename);
+        static std::vector <GraphData> importAllGraphs(const std::string& filename, const Fbo* pDstFbo = nullptr);
     };
 
     class RenderGraphExporter
