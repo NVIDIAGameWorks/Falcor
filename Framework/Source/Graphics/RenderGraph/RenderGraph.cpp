@@ -81,7 +81,6 @@ namespace Falcor
         auto passChangedCB = [this]() {mRecompile = true; };
         pPass->setPassChangedCB(passChangedCB);
         pPass->setScene(mpScene);
-        pPass->reflect(mPassReflectionMap[pPass.get()]);
         uint32_t node = mpGraph->addNode();
         mNameToIndex[passName] = node;
         mNodeData[node] = { passName, pPass };
@@ -98,23 +97,19 @@ namespace Falcor
             return;
         }
 
-        auto pOldPass = mNodeData.at(index).pPass;
+        // Unmark graph outputs that belong to this pass
+        // Because the way std::vector works, we can't call umarkOutput() immediatly, so we store the outputs in a vector
         std::vector<std::string> outputsToDelete;
-        const RenderPassReflection& reflection = mPassReflectionMap[pOldPass.get()];
-        for (const auto& output : mOutputs)
+        const std::string& outputPrefix = name + '.';
+        for(auto& o : mOutputs)
         {
-            // test to see if an output exists in the pass reflection
-            if (reflection.getField(output.field).getName().size())
-            {
-                outputsToDelete.push_back(name + "." + output.field);
-            }
+            if (o.nodeId == index) outputsToDelete.push_back(outputPrefix + o.field);
         }
+        
         for (const auto& name : outputsToDelete)
         {
             unmarkOutput(name);
         }
-
-        mPassReflectionMap.erase(pOldPass.get());
 
         // Update the indices
         mNameToIndex.erase(name);
@@ -141,7 +136,6 @@ namespace Falcor
 
         // recreate pass without changing graph using new dictionary
         auto pOldPass = pPassIt->second.pPass;
-        mPassReflectionMap.erase(pOldPass.get());
         std::string passTypeName = pOldPass->getName();
         auto pPass = RenderPassLibrary::createPass(passTypeName.c_str(), dict);
         pPassIt->second.pPass = pPass;
@@ -151,11 +145,6 @@ namespace Falcor
 
         pPass->setScene(mpScene);
         mRecompile = true;
-
-        // update pass reflection with new pointer to hash
-        RenderPassReflection reflect;
-        pPass->reflect(reflect);
-        mPassReflectionMap[pPass.get()] = reflect;
     }
 
     const RenderPass::SharedPtr& RenderGraph::getPass(const std::string& name) const
@@ -175,8 +164,7 @@ namespace Falcor
     template<bool input>
     static bool checkRenderPassIoExist(const RenderPass* pPass, const std::string& name)
     {
-        RenderPassReflection reflect;
-        pPass->reflect(reflect);
+        RenderPassReflection reflect = pPass->reflect();
         for (size_t i = 0; i < reflect.getFieldCount(); i++)
         {
             const auto& f = reflect.getField(i);
@@ -353,7 +341,7 @@ namespace Falcor
         
         for (const NodeData* pNodeData : nodeVec)
         {
-            RenderPassReflection passReflection = mPassReflectionMap.at(pNodeData->pPass.get());
+            RenderPassReflection passReflection = pNodeData->pPass->reflect();
 
             if (is_set(passReflection.getFlags(), RenderPassReflection::Flags::ForceExecution)) continue;
 
@@ -414,9 +402,6 @@ namespace Falcor
             if (participatingPasses.find(node) != participatingPasses.end())
             {
                 mExecutionList.push_back(node);
-                RenderPassReflection r;
-                mNodeData[node].pPass->reflect(r);
-                mPassReflectionMap[mNodeData[node].pPass.get()] = r;
             }
         }
 
@@ -432,7 +417,7 @@ namespace Falcor
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
             assert(pNode);
             RenderPass* pSrcPass = mNodeData[nodeIndex].pPass.get();
-            const RenderPassReflection& passReflection = mPassReflectionMap.at(pSrcPass);
+            RenderPassReflection passReflection = pSrcPass->reflect();
 
             // Check for opportunities to automatically resolve MSAA
             // - Only take explicitly specified MS output
@@ -459,10 +444,9 @@ namespace Falcor
                         const std::string& dstPassName = mNodeData[pEdge->getDestNode()].nodeName;
 
                         // If edge is connected to something that isn't executed, ignore
-                        auto reflIt = mPassReflectionMap.find(mNodeData[pEdge->getDestNode()].pPass.get());
-                        if (reflIt == mPassReflectionMap.end()) continue;
+                        if (std::find(mExecutionList.begin(), mExecutionList.end(), pEdge->getDestNode()) == mExecutionList.end()) continue;
 
-                        const RenderPassReflection& dstReflection = reflIt->second;
+                        RenderPassReflection dstReflection = mNodeData[pEdge->getDestNode()].pPass->reflect();
                         const auto& dstField = dstReflection.getField(edgeData.dstField, RenderPassReflection::Field::Type::Input);
 
                         assert(srcField.isValid() && dstField.isValid());
@@ -522,8 +506,7 @@ namespace Falcor
         std::vector<std::string> outputs;
         for (const auto& node : mNodeData)
         {
-            RenderPassReflection reflection;
-            node.second.pPass->reflect(reflection);
+            RenderPassReflection reflection = node.second.pPass->reflect();
             for (size_t i = 0; i < reflection.getFieldCount(); i++)
             {
                 const auto& f = reflection.getField(i);
@@ -548,7 +531,7 @@ namespace Falcor
             const DirectedGraph::Node* pNode = mpGraph->getNode(nodeIndex);
             assert(pNode);
             RenderPass* pCurrPass = mNodeData[nodeIndex].pPass.get();
-            const RenderPassReflection& passReflection = mPassReflectionMap.at(pCurrPass);
+            RenderPassReflection passReflection = pCurrPass->reflect();
 
             const auto isGraphOutput = [=](uint32_t nodeId, const std::string& field)
             {
@@ -590,7 +573,7 @@ namespace Falcor
                 std::string dstFieldName = mNodeData[nodeIndex].nodeName + '.' + dstField.getName();
 
                 const auto& pSrcPass = mNodeData[pEdge->getSourceNode()].pPass;
-                const RenderPassReflection::Field& srcField = mPassReflectionMap[pSrcPass.get()].getField(edgeData.srcField);
+                const RenderPassReflection::Field& srcField = pSrcPass->reflect().getField(edgeData.srcField);
 
                 assert(passToIndex.count(pSrcPass.get()) > 0);
                 mpResourcesCache->registerField(dstFieldName, srcField, passToIndex[pSrcPass.get()], srcFieldName);
@@ -698,9 +681,6 @@ namespace Falcor
                 addEdge(src, dst);
             }
         }
-
-        // must be called if nodes removed for anything dependent on order this frame
-        if (passesToRemove.size())   resolveExecutionOrder();
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
@@ -747,7 +727,6 @@ namespace Falcor
             if (mOutputs[i].nodeId == removeMe.nodeId && mOutputs[i].field == removeMe.field)
             {
                 mOutputs.erase(mOutputs.begin() + i);
-                mpResourcesCache->removeExternalInput(name);
                 mRecompile = true;
                 return;
             }
@@ -911,7 +890,6 @@ namespace Falcor
             for (const uint32_t& nodeId : executionOrder)
             {
                 nodeVec.push_back(&mNodeData[nodeId]);
-                mNodeData[nodeId].pPass->reflect(passReflectionMap[mNodeData[nodeId].pPass.get()]);
             }
         }
         else
@@ -921,7 +899,6 @@ namespace Falcor
                 if (mpGraph->doesNodeExist(i))
                 {
                     nodeVec.push_back(&mNodeData[i]);
-                    mNodeData[i].pPass->reflect(passReflectionMap[mNodeData[i].pPass.get()]);
                 }
             }
         }

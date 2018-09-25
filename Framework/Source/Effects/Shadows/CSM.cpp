@@ -1013,13 +1013,17 @@ namespace Falcor
     static const std::string kDepth = "depth";
     static const std::string kVisibility = "visibility";
 
-    void CascadedShadowMaps::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection CascadedShadowMaps::reflect() const
     {
+        RenderPassReflection reflector;
+
         reflector.addOutput(kVisibility)
             .setFormat(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades))
             .setDimensions(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, 1);
 
         reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional);
+
+        return reflector;
     }
 
     void CascadedShadowMaps::execute(RenderContext* pContext, const RenderData* pRenderData)
