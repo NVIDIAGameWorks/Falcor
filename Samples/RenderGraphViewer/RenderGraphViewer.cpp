@@ -39,6 +39,50 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
 
 }
 
+bool isInVector(const std::vector<std::string>& strVec, const std::string& str)
+{
+    return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
+}
+
+Gui::DropdownList createDropdownFromVec(const std::vector<std::string>& strVec, uint32_t& activeIndex, const std::string& currentLabel)
+{
+    Gui::DropdownList dropdown;
+
+    for (size_t i = 0; i < strVec.size(); i++)
+    {
+        dropdown.push_back({ (int32_t)i, strVec[i] });
+        if (strVec[i] == currentLabel) activeIndex = (uint32_t)i;
+    }
+
+    return dropdown;
+}
+
+void RenderGraphViewer::graphOutputsGui(Gui* pGui)
+{
+    RenderGraph::SharedPtr pGraph = mGraphs[mActiveGraph].pGraph;
+    pGui->addCheckBox("Show All Outputs", mGraphs[mActiveGraph].showAllOutputs);
+
+    auto& strVec = mGraphs[mActiveGraph].showAllOutputs ? pGraph->getAvailableOutputs() : mGraphs[mActiveGraph].originalOutputs;
+    uint32_t activeOut = -1;
+    Gui::DropdownList graphOuts = createDropdownFromVec(strVec, activeOut, mGraphs[mActiveGraph].mainOutput);
+
+    // This can happen when `showAllOutputs` changes to false, and the chosen output is not an original output. We will force an ouptut change
+    bool forceOutputChange = activeOut == -1;
+    if (forceOutputChange) activeOut = 0;
+
+    if (graphOuts.size())
+    {
+        if (pGui->addDropdown("Main Output", graphOuts, activeOut) || forceOutputChange)
+        {
+            // If the previous output wasn't an original output, unmark it
+            if (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false) pGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
+            // If the new output isn't a graph output, mark it
+            if (isInVector(mGraphs[mActiveGraph].originalOutputs, graphOuts[activeOut].label) == false) pGraph->markOutput(graphOuts[activeOut].label);
+            mGraphs[mActiveGraph].mainOutput = graphOuts[activeOut].label;
+        }
+    }
+}
+
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load Scene")) loadScene();
@@ -56,39 +100,11 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         // Active graph output
         pGui->addSeparator();
-        pGui->addCheckBox("Show All Outputs", mGraphs[mActiveGraph].showAllOutputs);
-
-        RenderGraph::SharedPtr pGraph = mGraphs[mActiveGraph].pGraph;
-        Gui::DropdownList graphOuts;
-        uint32_t activeOut;
-
-        if (mGraphs[mActiveGraph].showAllOutputs)
-        {
-            const auto& allOuts = pGraph->getAvailableOutputs();
-            for (size_t i = 0; i < allOuts.size(); i++)
-            {
-                graphOuts.push_back({ (int32_t)i, allOuts[i] });
-                if (allOuts[i] == mGraphs[mActiveGraph].mainOutput) activeOut = (uint32_t)i;
-            }
-        }
-        else
-        {
-            for (size_t i = 0; i < pGraph->getOutputCount(); i++)
-            {
-                std::string name = pGraph->getOutputName(i);
-                graphOuts.push_back({ (int32_t)i, name });
-                if (name == mGraphs[mActiveGraph].mainOutput) activeOut = (uint32_t)i;
-            }
-        }
-
-        if (graphOuts.size())
-        {
-            if (pGui->addDropdown("Main Output", graphOuts, activeOut)) mGraphs[mActiveGraph].mainOutput = graphOuts[activeOut].label;
-        }
+        graphOutputsGui(pGui);
 
         // Graph UI
         pGui->addSeparator();
-        pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
+        mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
     }
 
 }
@@ -98,6 +114,17 @@ void RenderGraphViewer::removeActiveGraph()
     assert(mGraphs.size());
     mGraphs.erase(mGraphs.begin() + mActiveGraph);
     mActiveGraph = 0;
+}
+
+void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, GraphData& data)
+{
+    data.name = name;
+    data.pGraph = pGraph;
+    data.pGraph->setScene(mpScene);
+    if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
+
+    // Store the original outputs
+    for (size_t i = 0; i < data.pGraph->getOutputCount(); i++) data.originalOutputs.push_back(data.pGraph->getOutputName(i));
 }
 
 void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)
@@ -118,12 +145,16 @@ void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)
                 {
                     found = true;
                     logWarning("Graph `" + newG.name + "` already exists. Replacing it");
-                    oldG.pGraph = newG.pGraph;
+                    initGraph(newG.pGraph, newG.name, oldG);
+                 
                 }
             }
-            if (!found) mGraphs.push_back({ newG.name, newG.pGraph });
-            newG.pGraph->setScene(mpScene);
-            if (newG.pGraph->getOutputCount() != 0) mGraphs.back().mainOutput = newG.pGraph->getOutputName(0);
+
+            if(!found)
+            {
+                mGraphs.push_back({});
+                initGraph(newG.pGraph, newG.name, mGraphs.back());
+            }
         }
     }
 }

@@ -51,14 +51,17 @@ private:
     void removeActiveGraph();
     void loadScene();
     void loadSceneFromFile(const std::string& filename);
-
     struct GraphData
     {
         std::string name;
         RenderGraph::SharedPtr pGraph;
         std::string mainOutput;
         bool showAllOutputs = false;
+        std::vector<std::string> originalOutputs;
     };
+
+    void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, GraphData& data);
+    void graphOutputsGui(Gui* pGui);
 
     std::vector<GraphData> mGraphs;
     uint32_t mActiveGraph = 0;
