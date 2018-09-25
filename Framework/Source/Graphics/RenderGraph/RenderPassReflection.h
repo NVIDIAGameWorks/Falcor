@@ -44,8 +44,6 @@ namespace Falcor
         class Field
         {
         public:
-            static const Field kEmptyField;
-
             enum class Type
             {
                 None        = 0x0,
