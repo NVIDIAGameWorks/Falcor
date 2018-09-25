@@ -47,10 +47,10 @@ public:
 private:
     Scene::SharedPtr mpScene;
     FirstPersonCameraController mCamController;
-    void addGraph(const Fbo* pTargetFbo);
+    void addGraph(const Fbo* pTargetFbo, SampleCallbacks* pCallbacks);
     void removeActiveGraph();
-    void loadScene();
-    void loadSceneFromFile(const std::string& filename);
+    void loadScene(SampleCallbacks* pCallbacks);
+    void loadSceneFromFile(const std::string& filename, SampleCallbacks* pCallbacks);
 
     struct DebugWindow
     {

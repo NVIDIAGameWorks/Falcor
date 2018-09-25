@@ -139,8 +139,8 @@ void RenderGraphViewer::graphOutputsGui(Gui* pGui)
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (pGui->addButton("Load Scene")) loadScene();
-    if (pGui->addButton("Add Graphs")) addGraph(pSample->getCurrentFbo().get());
+    if (pGui->addButton("Load Scene")) loadScene(pSample);
+    if (pGui->addButton("Add Graphs")) addGraph(pSample->getCurrentFbo().get(), pSample);
     pGui->addSeparator();
 
     // Display a list with all the graphs
@@ -181,13 +181,13 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
     for (size_t i = 0; i < data.pGraph->getOutputCount(); i++) data.originalOutputs.push_back(data.pGraph->getOutputName(i));
 }
 
-void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)
+void RenderGraphViewer::addGraph(const Fbo* pTargetFbo, SampleCallbacks* pCallbacks)
 {
     std::string filename;
     if (openFileDialog("py", filename))
     {
         auto graphs = RenderGraphImporter::importAllGraphs(filename, pTargetFbo);
-        if(graphs.size() && !mpScene) loadSceneFromFile(gkDefaultScene);
+        if(graphs.size() && !mpScene) loadSceneFromFile(gkDefaultScene, pCallbacks);
 
         for(auto& newG : graphs)
         {
@@ -213,18 +213,21 @@ void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)
     }
 }
 
-void RenderGraphViewer::loadScene()
+void RenderGraphViewer::loadScene(SampleCallbacks* pCallbacks)
 {
     std::string filename;
     if (openFileDialog(Scene::kFileFormatString, filename))
     {
-        loadSceneFromFile(filename);
+        loadSceneFromFile(filename, pCallbacks);
     }
 }
 
-void RenderGraphViewer::loadSceneFromFile(const std::string& filename)
+void RenderGraphViewer::loadSceneFromFile(const std::string& filename, SampleCallbacks* pCallbacks)
 {
     mpScene = Scene::loadFromFile(filename);
+    const auto& pFbo = pCallbacks->getCurrentFbo();
+    float ratio = float(pFbo->getWidth()) / float(pFbo->getHeight());
+    mpScene->setCamerasAspectRatio(ratio);
     for(auto& g : mGraphs) g.pGraph->setScene(mpScene);
 }
 
@@ -262,6 +265,7 @@ bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent
 void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
     for(auto& g : mGraphs) g.pGraph->onResize(pSample->getCurrentFbo().get());
+    if (mpScene)  mpScene->setCamerasAspectRatio((float)width / (float)height);
 }
 
 #ifdef _WIN32
