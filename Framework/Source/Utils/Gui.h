@@ -70,7 +70,7 @@ namespace Falcor
 
         /** Create a new GUI object. Each object is essentially a container for a GUI window
         */
-        static UniquePtr create(uint32_t width, uint32_t height);
+        static UniquePtr create(uint32_t width, uint32_t height, float scaleFactor = 1.0f);
 
         ~Gui();
 
@@ -344,7 +344,7 @@ namespace Falcor
 
         /** Set global font size scaling
         */
-        static void setGlobalFontScaling(float scale);
+        static void setGlobalGuiScaling(float scale);
 
         /** Create a new window on the stack
         */
@@ -387,7 +387,7 @@ namespace Falcor
 
     private:
         Gui() = default;
-        void init();
+        void init(float scaleFactor);
         void createVao(uint32_t vertexCount, uint32_t indexCount);
 
         // Helper to create multiple inline text boxes
@@ -417,7 +417,6 @@ namespace Falcor
         GraphicsProgram::SharedPtr mpProgram;
         GraphicsState::SharedPtr mpPipelineState;
         uint32_t mGroupStackSize = 0;
-        float mFontScale = 1;
 
         std::vector<Texture::SharedPtr> mpImages;
         ParameterBlockReflection::BindLocation mGuiImageLoc;

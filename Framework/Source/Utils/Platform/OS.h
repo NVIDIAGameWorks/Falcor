@@ -52,6 +52,10 @@ namespace Falcor
     */
     int getDisplayDpi();
 
+    /** Get the requested display scale factor
+    */
+    float getDisplayScaleFactor();
+
     /** Type of message box to display
     */
     enum class MsgBoxType

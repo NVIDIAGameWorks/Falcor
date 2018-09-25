@@ -336,6 +336,11 @@ namespace Falcor
         return int(200);
     }
 
+    float getDisplayScaleFactor()
+    {
+        return 1;
+    }
+
     bool isDebuggerPresent()
     {
 #ifdef _DEBUG

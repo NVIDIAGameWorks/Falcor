@@ -528,7 +528,7 @@ namespace Falcor
 
     void Sample::initUI()
     {
-        mpGui = Gui::create(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight());
+        mpGui = Gui::create(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight(), getDisplayScaleFactor());
         mpTextRenderer = TextRenderer::create();
     }
 

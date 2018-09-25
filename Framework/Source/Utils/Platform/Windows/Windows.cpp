@@ -38,6 +38,7 @@
 #include "psapi.h"
 #include "Utils/ThreadPool.h"
 #include <future>
+#include <shellscalingapi.h>
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -218,6 +219,42 @@ namespace Falcor
         double vPixelsPerInch = GetDeviceCaps(screen, LOGPIXELSY);
         ::ReleaseDC(NULL, screen);
         return int((hPixelsPerInch + vPixelsPerInch) * 0.5);
+    }
+
+    float getDisplayScaleFactor()
+    {
+        float dpi = (float)getDisplayDpi();
+        float scale = dpi / 96.0f;
+        return scale;
+
+        ::SetProcessDPIAware();
+        DEVICE_SCALE_FACTOR factor;
+        if (GetScaleFactorForMonitor(nullptr, &factor) == S_OK)
+        {
+            switch (factor)
+            {
+            case SCALE_100_PERCENT: return 1.0f;
+            case SCALE_120_PERCENT: return 1.2f;
+            case SCALE_125_PERCENT: return 1.25f;
+            case SCALE_140_PERCENT: return 1.40f;
+            case SCALE_150_PERCENT: return 1.50f;
+            case SCALE_160_PERCENT: return 1.60f;
+            case SCALE_175_PERCENT: return 1.70f;
+            case SCALE_180_PERCENT: return 1.80f;
+            case SCALE_200_PERCENT: return 2.00f;
+            case SCALE_225_PERCENT: return 2.25f;
+            case SCALE_250_PERCENT: return 2.50f;
+            case SCALE_300_PERCENT: return 3.00f;
+            case SCALE_350_PERCENT: return 3.50f;
+            case SCALE_400_PERCENT: return 4.00f;
+            case SCALE_450_PERCENT: return 4.50f;
+            case SCALE_500_PERCENT: return 4.60f;
+            default:
+                should_not_get_here();
+                return 1.0f;
+            }
+        }
+        return 1.0f;
     }
 
     bool isDebuggerPresent()

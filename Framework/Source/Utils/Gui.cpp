@@ -39,7 +39,7 @@
 #pragma warning (disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
 namespace Falcor
 {
-    void Gui::init()
+    void Gui::init(float scaleFactor)
     {
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
@@ -72,6 +72,7 @@ namespace Falcor
         style.ScrollbarSize *= 0.7f;
 
         style.Colors[ImGuiCol_MenuBarBg] = style.Colors[ImGuiCol_WindowBg];
+        style.ScaleAllSizes(scaleFactor);
 
         // Create the pipeline state cache
         mpPipelineState = GraphicsState::create();
@@ -87,7 +88,8 @@ namespace Falcor
         std::string fontFile;
         if(findFileInDataDirectories("Framework/Fonts/consolab.ttf", fontFile))
         {
-            io.Fonts->AddFontFromFileTTF(fontFile.c_str(), 14);
+            float size = 14.0f * scaleFactor;
+            io.Fonts->AddFontFromFileTTF(fontFile.c_str(), size);
         }
         io.Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
         Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
@@ -124,10 +126,10 @@ namespace Falcor
         ImGui::DestroyContext();
     }
 
-    Gui::UniquePtr Gui::create(uint32_t width, uint32_t height)
+    Gui::UniquePtr Gui::create(uint32_t width, uint32_t height, float scaleFactor)
     {
         UniquePtr pGui = UniquePtr(new Gui);
-        pGui->init();
+        pGui->init(scaleFactor);
         pGui->onWindowResize(width, height);
         return pGui;
     }
@@ -808,10 +810,11 @@ namespace Falcor
         return b && prevItem != curItem;
     }
 
-    void Gui::setGlobalFontScaling(float scale)
+    void Gui::setGlobalGuiScaling(float scale)
     {
         ImGuiIO& io = ImGui::GetIO();
         io.FontGlobalScale = scale;
+        ImGui::GetStyle().ScaleAllSizes(scale);
     }
 
     bool Gui::addTextBox(const char label[], char buf[], size_t bufSize, uint32_t lineCount)
