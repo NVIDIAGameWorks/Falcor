@@ -573,7 +573,8 @@ namespace Falcor
                 std::string dstFieldName = mNodeData[nodeIndex].nodeName + '.' + dstField.getName();
 
                 const auto& pSrcPass = mNodeData[pEdge->getSourceNode()].pPass;
-                const RenderPassReflection::Field& srcField = pSrcPass->reflect().getField(edgeData.srcField);
+                auto srcReflection = pSrcPass->reflect();
+                const RenderPassReflection::Field& srcField = srcReflection.getField(edgeData.srcField);
 
                 assert(passToIndex.count(pSrcPass.get()) > 0);
                 mpResourcesCache->registerField(dstFieldName, srcField, passToIndex[pSrcPass.get()], srcFieldName);

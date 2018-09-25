@@ -41,6 +41,7 @@ namespace Falcor
 
     RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName)
     {
+        bool gotFuncName = funcName.size();
         updateGraphStrings(graphName, filename, funcName);
 
         std::string fullpath;
@@ -50,9 +51,16 @@ namespace Falcor
             return nullptr;
         }
 
+        // Run the script and try to get the graph
         RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(fullpath);
-        if (pScripting->runScript(graphName + '=' + funcName + "()") == false) return nullptr;
+        if(gotFuncName)
+        {
+            auto pGraph = pScripting->getGraph(graphName);
+            if (pGraph) return pGraph;
+        }
 
+        // If we didn't succeed or got a custom function name, try and call the graph function explicitly
+        if (pScripting->runScript(graphName + '=' + funcName + "()") == false) return nullptr;
         return pScripting->getGraph(graphName);
     }
 
@@ -105,7 +113,8 @@ namespace Falcor
 
         // Save it to file
         std::ofstream f(filename);
-        f << pIR->getIR();
+        f << pIR->getIR() << std::endl;
+        f << graphName << " = " << funcName + "()";
         return true;
     }
 }
