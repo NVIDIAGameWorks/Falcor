@@ -35,7 +35,7 @@ namespace Falcor
 {
     static void updateGraphStrings(const std::string& graph, std::string& file, std::string& func)
     {
-        file = file.empty() ? graph + ".graph" : file;
+        file = file.empty() ? graph + ".py" : file;
         func = func.empty() ? "render_graph_" + graph : func;
     }
 

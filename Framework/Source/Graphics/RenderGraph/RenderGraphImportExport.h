@@ -37,7 +37,7 @@ namespace Falcor
     public:
         /** Import a graph from a file.
             \param[in] graphName The name of the graph to import
-            \param[in] filename  The graphs filename. If the string is empty, the function will search for a file called `<graphName>.graph`
+            \param[in] filename  The graphs filename. If the string is empty, the function will search for a file called `<graphName>.py`
             \param[in] funcName  The function name inside the graph script. If the string is empty, will try invoking a function called `render_graph_<graphName>()`
             \return A new render-graph object or nullptr if something went horribly wrong
         */
