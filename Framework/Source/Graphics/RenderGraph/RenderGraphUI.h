@@ -178,6 +178,7 @@ namespace Falcor
 
         RenderGraphIR::SharedPtr mpIr;
 
+        uint32_t mPinColor = 0xFFFFFFFF;
         uint32_t mEdgesColor = 0xFFFFFFFF;
         uint32_t mAutoGenEdgesColor = 0xFFFF0400;
         uint32_t mAutoResolveEdgesColor = 0xFF0104FF;

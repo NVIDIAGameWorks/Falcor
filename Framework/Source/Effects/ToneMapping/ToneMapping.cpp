@@ -83,14 +83,6 @@ namespace Falcor
         return d;
     }
 
-    void ToneMapping::setScriptingDictionary(const Dictionary& dict)
-    {
-        if (static_cast<Operator>(dict[kOperator]) != mOperator)
-        {
-            setOperator(dict[kOperator]);
-        }
-    }
-
     void ToneMapping::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     {
         bool createFbo = mpLuminanceFbo == nullptr;

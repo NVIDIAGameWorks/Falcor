@@ -222,6 +222,12 @@ namespace Falcor
     */
     std::string getDirectoryFromFile(const std::string& filename);
 
+    /** Get  extension tag from filename.
+        \param[in] filename File path to strip extension name from
+        \return Stripped extension name.
+    */
+    std::string getExtensionFromFile(const std::string& filename);
+
     /** Strip path from a full filename
         \param[in] filename File path
         \return Stripped filename

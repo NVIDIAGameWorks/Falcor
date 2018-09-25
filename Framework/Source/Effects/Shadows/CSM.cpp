@@ -38,6 +38,7 @@ namespace Falcor
     const char* kDepthPassFile = "Effects/DepthPass.slang";
     const char* kShadowPassfile = "Effects/ShadowPass.slang";
     const char* kVisibilityPassFile = "Effects/VisibilityPass.ps.slang";
+    const char* kSdsmReadbackLatency = "kSdsmReadbackLatency";
 
     const Gui::DropdownList kFilterList = {
         { (uint32_t)CsmFilterPoint, "Point" },
@@ -265,7 +266,14 @@ namespace Falcor
 
     CascadedShadowMaps::SharedPtr CascadedShadowMaps::create(const Dictionary& dict)
     {
-        return SharedPtr(new CascadedShadowMaps());
+        auto pCSM = SharedPtr(new CascadedShadowMaps());
+        for (const auto& v : dict)
+        {
+            const std::string& key = v.key();
+            if (key == kSdsmReadbackLatency)    pCSM->setSdsmReadbackLatency(v.val());
+            else logWarning("Unknown field `" + key + "` in a CascadedShadowMaps dictionary");
+        }
+        return pCSM;
     }
 
     void CascadedShadowMaps::setSdsmReadbackLatency(uint32_t latency)

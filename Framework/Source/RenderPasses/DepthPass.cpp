@@ -57,14 +57,6 @@ namespace Falcor
         return d;
     }
 
-    void DepthPass::setScriptingDictionary(const Dictionary& dict)
-    {
-        if (mDepthFormat != static_cast<ResourceFormat>(dict[kDepthFormat]))
-        {
-            setDepthBufferFormat(dict[kDepthFormat]);
-        }
-    }
-
     DepthPass::SharedPtr DepthPass::create(const Dictionary& dict)
     {
         DepthPass* pThis = new DepthPass;
