@@ -45,15 +45,24 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Add Graph")) addGraph(pSample->getCurrentFbo().get());
 
     // Display a list with all the graphs
-    if (mGraphs.size() > 1)
+    if (mGraphs.size())
     {
         Gui::DropdownList graphList;
         for (size_t i = 0; i < mGraphs.size(); i++) graphList.push_back({ (int32_t)i, mGraphs[i].name });
         pGui->addDropdown("Active Graph", graphList, mActiveGraph);
+
+        if (pGui->addButton("Remove Active Graph")) removeActiveGraph();
     }
 
     pGui->addSeparator();
     if (mGraphs.size()) mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
+}
+
+void RenderGraphViewer::removeActiveGraph()
+{
+    assert(mGraphs.size());
+    mGraphs.erase(mGraphs.begin() + mActiveGraph);
+    mActiveGraph = 0;
 }
 
 void RenderGraphViewer::addGraph(const Fbo* pTargetFbo)

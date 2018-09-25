@@ -48,6 +48,7 @@ private:
     Scene::SharedPtr mpScene;
     FirstPersonCameraController mCamController;
     void addGraph(const Fbo* pTargetFbo);
+    void removeActiveGraph();
     void loadScene();
     void loadSceneFromFile(const std::string& filename);
 
