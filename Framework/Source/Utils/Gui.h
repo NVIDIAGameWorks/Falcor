@@ -95,10 +95,10 @@ namespace Falcor
         /** Display image within imgui
             \param[in] label. Name for id for item.
             \param[in] pTex. Pointer to texture resource to draw in imgui
-            \param[in] size. Size in pixels of the image to draw
+            \param[in] size. Size in pixels of the image to draw. 0 means fit to window
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
         */
-        void addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size = {128.0f, 128.0f}, bool maintainRatio = true, bool sameLine = false);
+        void addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size = vec2(0), bool maintainRatio = true, bool sameLine = false);
 
         /** Display rectangle with specified color
             \param[in] size size in pixels of rectangle

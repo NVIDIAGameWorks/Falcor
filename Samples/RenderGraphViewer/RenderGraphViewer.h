@@ -51,6 +51,14 @@ private:
     void removeActiveGraph();
     void loadScene();
     void loadSceneFromFile(const std::string& filename);
+
+    struct DebugWindow
+    {
+        std::string windowName;
+        std::string currentOutput;
+        static size_t index;
+    };
+
     struct GraphData
     {
         std::string name;
@@ -58,10 +66,14 @@ private:
         std::string mainOutput;
         bool showAllOutputs = false;
         std::vector<std::string> originalOutputs;
+        std::vector<DebugWindow> debugWindows;
     };
 
     void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, GraphData& data);
     void graphOutputsGui(Gui* pGui);
+    bool renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data); // Returns true if we need to close the window
+    void renderOutputUI(Gui* pGui, const Gui::DropdownList& dropdown, std::string& selectedOutput);
+    void addDebugWindow();
 
     std::vector<GraphData> mGraphs;
     uint32_t mActiveGraph = 0;

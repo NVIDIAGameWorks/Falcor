@@ -27,6 +27,8 @@
 ***************************************************************************/
 #include "RenderGraphViewer.h"
 
+size_t RenderGraphViewer::DebugWindow::index = 0;
+
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
@@ -44,49 +46,101 @@ bool isInVector(const std::vector<std::string>& strVec, const std::string& str)
     return std::find(strVec.begin(), strVec.end(), str) != strVec.end();
 }
 
-Gui::DropdownList createDropdownFromVec(const std::vector<std::string>& strVec, uint32_t& activeIndex, const std::string& currentLabel)
+Gui::DropdownList createDropdownFromVec(const std::vector<std::string>& strVec, const std::string& currentLabel)
 {
     Gui::DropdownList dropdown;
+    for (size_t i = 0; i < strVec.size(); i++) dropdown.push_back({ (int32_t)i, strVec[i] });    
+    return dropdown;
+}
 
-    for (size_t i = 0; i < strVec.size(); i++)
+void RenderGraphViewer::addDebugWindow()
+{
+    DebugWindow window;
+    window.windowName = "Debug Window " + std::to_string(DebugWindow::index++);
+    window.currentOutput = mGraphs[mActiveGraph].mainOutput;
+    mGraphs[mActiveGraph].debugWindows.push_back(window);
+}
+
+void RenderGraphViewer::renderOutputUI(Gui* pGui, const Gui::DropdownList& dropdown, std::string& selectedOutput)
+{
+    uint32_t activeOut = -1;
+    for(size_t i = 0 ; i < dropdown.size() ; i++) 
     {
-        dropdown.push_back({ (int32_t)i, strVec[i] });
-        if (strVec[i] == currentLabel) activeIndex = (uint32_t)i;
+        if (dropdown[i].label == selectedOutput)
+        {
+            activeOut = (uint32_t)i;
+            break;
+        }
     }
 
-    return dropdown;
+    // This can happen when `showAllOutputs` changes to false, and the chosen output is not an original output. We will force an ouptut change
+    bool forceOutputChange = activeOut == -1;
+    if (forceOutputChange) activeOut = 0;
+
+    if (pGui->addDropdown("Output", dropdown, activeOut) || forceOutputChange)
+    {
+        // If the previous output wasn't an original output, unmark it
+        if (isInVector(mGraphs[mActiveGraph].originalOutputs, selectedOutput) == false) mGraphs[mActiveGraph].pGraph->unmarkOutput(selectedOutput);
+        // If the new output isn't a graph output, mark it
+        if (isInVector(mGraphs[mActiveGraph].originalOutputs, dropdown[activeOut].label) == false) mGraphs[mActiveGraph].pGraph->markOutput(dropdown[activeOut].label);
+        selectedOutput = dropdown[activeOut].label;
+    }
+}
+
+bool RenderGraphViewer::renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data)
+{
+    // Get the current output, in case `renderOutputUI()` unmarks it
+    Texture::SharedPtr pTex = std::dynamic_pointer_cast<Texture>(mGraphs[mActiveGraph].pGraph->getOutput(data.currentOutput));
+    std::string label = data.currentOutput + "##" + mGraphs[mActiveGraph].name;
+
+    // Display the dropdown
+    pGui->pushWindow(data.windowName.c_str(), 330, 268);
+    bool close = pGui->addButton("Close");
+    renderOutputUI(pGui, dropdown, data.currentOutput);
+    pGui->addSeparator();
+
+    // Display the image
+    pGui->addImage(label.c_str(), pTex);
+    std::string filename;
+    if (pGui->addButton("Save To File")) Bitmap::saveImageDialog(pTex);
+
+    pGui->popWindow();
+
+    return close;
 }
 
 void RenderGraphViewer::graphOutputsGui(Gui* pGui)
 {
     RenderGraph::SharedPtr pGraph = mGraphs[mActiveGraph].pGraph;
     pGui->addCheckBox("Show All Outputs", mGraphs[mActiveGraph].showAllOutputs);
+    pGui->addTooltip("If there's a debug window open, you won't be able to uncheck this");
+    if (mGraphs[mActiveGraph].debugWindows.size()) mGraphs[mActiveGraph].showAllOutputs = true;
 
     auto& strVec = mGraphs[mActiveGraph].showAllOutputs ? pGraph->getAvailableOutputs() : mGraphs[mActiveGraph].originalOutputs;
-    uint32_t activeOut = -1;
-    Gui::DropdownList graphOuts = createDropdownFromVec(strVec, activeOut, mGraphs[mActiveGraph].mainOutput);
-
-    // This can happen when `showAllOutputs` changes to false, and the chosen output is not an original output. We will force an ouptut change
-    bool forceOutputChange = activeOut == -1;
-    if (forceOutputChange) activeOut = 0;
+    Gui::DropdownList graphOuts = createDropdownFromVec(strVec, mGraphs[mActiveGraph].mainOutput);
 
     if (graphOuts.size())
     {
-        if (pGui->addDropdown("Main Output", graphOuts, activeOut) || forceOutputChange)
+        renderOutputUI(pGui, graphOuts, mGraphs[mActiveGraph].mainOutput);
+        for (size_t i = 0; i < mGraphs[mActiveGraph].debugWindows.size();)
         {
-            // If the previous output wasn't an original output, unmark it
-            if (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false) pGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
-            // If the new output isn't a graph output, mark it
-            if (isInVector(mGraphs[mActiveGraph].originalOutputs, graphOuts[activeOut].label) == false) pGraph->markOutput(graphOuts[activeOut].label);
-            mGraphs[mActiveGraph].mainOutput = graphOuts[activeOut].label;
+            if (renderDebugWindow(pGui, graphOuts, mGraphs[mActiveGraph].debugWindows[i]))
+            {
+                mGraphs[mActiveGraph].debugWindows.erase(mGraphs[mActiveGraph].debugWindows.begin() + i);
+            }
+            else i++;
         }
+
+        // Render the debug windows *before* adding/removing debug windows
+        if (pGui->addButton("Open Debug Window")) addDebugWindow();
+        if (pGui->addButton("Close all debug windows")) mGraphs[mActiveGraph].debugWindows.clear();
     }
 }
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load Scene")) loadScene();
-    if (pGui->addButton("Add Graph")) addGraph(pSample->getCurrentFbo().get());
+    if (pGui->addButton("Add Graphs")) addGraph(pSample->getCurrentFbo().get());
     pGui->addSeparator();
 
     // Display a list with all the graphs

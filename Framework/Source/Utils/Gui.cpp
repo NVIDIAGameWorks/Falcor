@@ -670,8 +670,10 @@ namespace Falcor
         }
     }
 
-    void Gui::addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size, bool maintainRatio, bool sameLine)
+    void Gui::addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
     {
+        if (size == vec2(0)) size = getCurrentWindowSize();
+
         ImGui::PushID(label);
         if (sameLine) ImGui::SameLine();
         mpImages.push_back(pTex);
