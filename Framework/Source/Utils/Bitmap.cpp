@@ -195,10 +195,8 @@ namespace Falcor
         return FIT_BITMAP;
     }
     
-
-    // Matt TODO this should be in Bitmap.cpp
     const char* kSaveFileFilter = "Auto(.)\0.;\0PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
-   \0JPG(.jpg)\0*.jpg;\0HDR(.hdr)\0*.hdr;\0TGA(.tga)\0*.tga;\0";
+        \0JPG(.jpg)\0*.jpg;\0HDR(.hdr)\0*.hdr;\0TGA(.tga)\0*.tga;\0";
 
     static const char* kExtensions[] = {
         /* PngFile */ ".png",

@@ -78,7 +78,10 @@ namespace Falcor
         */
         static void saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
 
-        // right place?
+        /**  Open dialog to save image to a file
+            \param[in] pTexture Texture to save to file
+             
+        */
         static void saveImageDialog(const std::shared_ptr<Texture>& pTexture);
 
         ~Bitmap();
