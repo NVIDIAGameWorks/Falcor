@@ -34,6 +34,8 @@
 #include "Graphics/Program//Program.h"
 #include "Graphics/GraphicsState.h"
 
+struct ImFont;
+
 namespace Falcor
 {
     class RenderContext;
@@ -380,15 +382,19 @@ namespace Falcor
         */
         void beginFrame();
 
-    protected:
-        bool keyboardCallback(const KeyboardEvent& keyEvent);
-        bool mouseCallback(const MouseEvent& mouseEvent);
-        void windowSizeCallback(uint32_t width, uint32_t height);
+        /** Add a font
+        */
+        void addFont(const std::string& name, const std::string& filename);
+
+        /** Set the active font
+        */
+        void setActiveFont(const std::string& font);
 
     private:
         Gui() = default;
         void init(float scaleFactor);
         void createVao(uint32_t vertexCount, uint32_t indexCount);
+        void compileFonts();
 
         // Helper to create multiple inline text boxes
         bool addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine);
@@ -420,5 +426,8 @@ namespace Falcor
 
         std::vector<Texture::SharedPtr> mpImages;
         ParameterBlockReflection::BindLocation mGuiImageLoc;
+        float mScaleFactor = 1.0f;
+        std::unordered_map<std::string, ImFont*> mFontMap;
+        ImFont* mpActiveFont = nullptr;
     };
 }

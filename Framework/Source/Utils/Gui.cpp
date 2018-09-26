@@ -41,6 +41,7 @@ namespace Falcor
 {
     void Gui::init(float scaleFactor)
     {
+        mScaleFactor = scaleFactor;
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
@@ -82,18 +83,9 @@ namespace Falcor
         mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 
-        // Create and set the texture
-        uint8_t* pFontData;
-        int32_t width, height;
-        std::string fontFile;
-        if(findFileInDataDirectories("Framework/Fonts/consolab.ttf", fontFile))
-        {
-            float size = 14.0f * scaleFactor;
-            io.Fonts->AddFontFromFileTTF(fontFile.c_str(), size);
-        }
-        io.Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
-        Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
-        mpProgramVars->setTexture("gFont", pTexture);
+        // Add the default font
+        addFont("", "Framework/Fonts/trebucbd.ttf");
+        setActiveFont("");
 
         // Create the blend state
         BlendState::Desc blendDesc;
@@ -736,10 +728,12 @@ namespace Falcor
         }
 
         ImGui::Begin(label, nullptr, flags);
+        ImGui::PushFont(mpActiveFont);
     }
 
     void Gui::popWindow()
     {
+        ImGui::PopFont();
         ImGui::End();
     }
 
@@ -892,5 +886,42 @@ namespace Falcor
         bool b = addFloat3Var(label, dir, -1, 1);
         direction = glm::normalize(dir);
         return b;
+    }
+
+    void Gui::compileFonts()
+    {
+        uint8_t* pFontData;
+        int32_t width, height;
+
+        // Initialize font data
+        ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
+        Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
+        mpProgramVars->setTexture("gFont", pTexture);
+    }
+
+    void Gui::addFont(const std::string& name, const std::string& filename)
+    {
+        std::string fullpath;
+        if (findFileInDataDirectories(filename, fullpath) == false)
+        {
+            logWarning("Can't find font file `" + filename + "`");
+            return;
+        }
+
+        float size = 14.0f * mScaleFactor;
+        ImFont* pFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(fullpath.c_str(), size);
+        mFontMap[name] = pFont;
+        compileFonts();
+    }
+
+    void Gui::setActiveFont(const std::string& font)
+    {
+        const auto& it = mFontMap.find(font);
+        if (it == mFontMap.end())
+        {
+            logWarning("Can't find a font named `" + font + "`");
+            mpActiveFont = nullptr;
+        }
+        mpActiveFont = it->second;
     }
 }

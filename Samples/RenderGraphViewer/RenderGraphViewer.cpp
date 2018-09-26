@@ -132,7 +132,10 @@ void RenderGraphViewer::graphOutputsGui(Gui* pGui)
 
         // Render the debug windows *before* adding/removing debug windows
         if (pGui->addButton("Open Debug Window")) addDebugWindow();
-        if (pGui->addButton("Close all debug windows")) mGraphs[mActiveGraph].debugWindows.clear();
+        if(mGraphs[mActiveGraph].debugWindows.size())
+        {
+            if (pGui->addButton("Close all debug windows")) mGraphs[mActiveGraph].debugWindows.clear();
+        }
     }
 }
 
