@@ -39,15 +39,16 @@ public:
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
-//    void onDataReload(SampleCallbacks* pSample) override;
+    void onDataReload(SampleCallbacks* pSample) override;
     void onShutdown(SampleCallbacks* pSample) override;
-//    void onInitializeTesting(SampleCallbacks* pSample) override;
-//    void onBeginTestFrame(SampleTest* pSampleTest) override;
+    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onBeginTestFrame(SampleTest* pSampleTest) override;
     
 private:
     Scene::SharedPtr mpScene;
     FirstPersonCameraController mCamController;
-    void addGraph(const Fbo* pTargetFbo, SampleCallbacks* pCallbacks);
+    void addGraphDialog(SampleCallbacks* pCallbacks);
+    void addGraphsFromFile(const std::string& filename, SampleCallbacks* pCallbacks);
     void removeActiveGraph();
     void loadScene(SampleCallbacks* pCallbacks);
     void loadSceneFromFile(const std::string& filename, SampleCallbacks* pCallbacks);
@@ -61,6 +62,7 @@ private:
 
     struct GraphData
     {
+        std::string filename;
         std::string name;
         RenderGraph::SharedPtr pGraph;
         std::string mainOutput;
@@ -69,7 +71,7 @@ private:
         std::vector<DebugWindow> debugWindows;
     };
 
-    void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, GraphData& data);
+    void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, GraphData& data);
     std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
     void graphOutputsGui(Gui* pGui);
     bool renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data); // Returns true if we need to close the window
@@ -85,6 +87,7 @@ private:
     void editorFileChangeCB();
     void applyEditorChanges();
 
+    static const size_t kInvalidProcessId = -1; // We use this to know that the editor was launching the viewer
     size_t mEditorProcess = 0;
     std::string mEditorTempFile;
     std::string mEditorScript;

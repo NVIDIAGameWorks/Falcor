@@ -39,7 +39,20 @@ void RenderGraphViewer::onShutdown(SampleCallbacks* pSample)
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
-
+    // if editor opened from running render graph, get the name of the file to read
+    std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
+   
+    if (commandArgs.size())
+    {
+        std::string filename = commandArgs.front().asString();
+        if (filename.size())
+        {
+            addGraphsFromFile(filename, pSample);
+            monitorFileUpdates(filename, std::bind(&RenderGraphViewer::editorFileChangeCB, this));
+            mEditorProcess = kInvalidProcessId;
+        }
+        else msgBox("No path to temporary file provided");
+    }
 }
 
 bool isInVector(const std::vector<std::string>& strVec, const std::string& str)
@@ -143,7 +156,7 @@ void RenderGraphViewer::graphOutputsGui(Gui* pGui)
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
     if (pGui->addButton("Load Scene")) loadScene(pSample);
-    if (pGui->addButton("Add Graphs")) addGraph(pSample->getCurrentFbo().get(), pSample);
+    if (pGui->addButton("Add Graphs")) addGraphDialog(pSample);
     pGui->addSeparator();
 
     // Display a list with all the graphs
@@ -203,8 +216,11 @@ void RenderGraphViewer::resetEditor()
     {
         closeSharedFile(mEditorTempFile);
         std::remove(mEditorTempFile.c_str());
-        terminateProcess(mEditorProcess);
-        mEditorProcess = 0;
+        if(mEditorProcess != kInvalidProcessId)
+        {
+            terminateProcess(mEditorProcess);
+            mEditorProcess = 0;
+        }
     }
 }
 
@@ -222,9 +238,10 @@ std::vector<std::string> RenderGraphViewer::getGraphOutputs(const RenderGraph::S
     return outputs;
 }
 
-void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, GraphData& data)
+void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, GraphData& data)
 {
     data.name = name;
+    data.filename = filename;
     data.pGraph = pGraph;
     data.pGraph->setScene(mpScene);
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
@@ -233,34 +250,37 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
     data.originalOutputs = getGraphOutputs(pGraph);
 }
 
-void RenderGraphViewer::addGraph(const Fbo* pTargetFbo, SampleCallbacks* pCallbacks)
+void RenderGraphViewer::addGraphDialog(SampleCallbacks* pCallbacks)
 {
     std::string filename;
-    if (openFileDialog("*.py", filename))
+    if (openFileDialog("*.py", filename)) addGraphsFromFile(filename, pCallbacks);
+}
+
+void RenderGraphViewer::addGraphsFromFile(const std::string& filename, SampleCallbacks* pCallbacks)
+{
+    const auto& pTargetFbo = pCallbacks->getCurrentFbo().get();
+    auto graphs = RenderGraphImporter::importAllGraphs(filename, pTargetFbo);
+    if (graphs.size() && !mpScene) loadSceneFromFile(gkDefaultScene, pCallbacks);
+
+    for (auto& newG : graphs)
     {
-        auto graphs = RenderGraphImporter::importAllGraphs(filename, pTargetFbo);
-        if(graphs.size() && !mpScene) loadSceneFromFile(gkDefaultScene, pCallbacks);
-
-        for(auto& newG : graphs)
+        bool found = false;
+        // Check if the graph already exists. If it is, replace it
+        for (auto& oldG : mGraphs)
         {
-            bool found = false;
-            // Check if the graph already exists. If it is, replace it
-            for (auto& oldG : mGraphs)
+            if (oldG.name == newG.name)
             {
-                if (oldG.name == newG.name)
-                {
-                    found = true;
-                    logWarning("Graph `" + newG.name + "` already exists. Replacing it");
-                    initGraph(newG.pGraph, newG.name, oldG);
-                 
-                }
-            }
+                found = true;
+                logWarning("Graph `" + newG.name + "` already exists. Replacing it");
+                initGraph(newG.pGraph, newG.name, filename, oldG);
 
-            if(!found)
-            {
-                mGraphs.push_back({});
-                initGraph(newG.pGraph, newG.name, mGraphs.back());
             }
+        }
+
+        if (!found)
+        {
+            mGraphs.push_back({});
+            initGraph(newG.pGraph, newG.name, filename, mGraphs.back());
         }
     }
 }
@@ -287,7 +307,7 @@ void RenderGraphViewer::applyEditorChanges()
 {
     if (!mEditorProcess) return;
     // If the editor was closed, reset the handles
-    if (isProcessRunning(mEditorProcess) == false) resetEditor();
+    if ((mEditorProcess != kInvalidProcessId) && isProcessRunning(mEditorProcess) == false) resetEditor();
 
     if (mEditorScript.empty()) return;
 
@@ -347,6 +367,62 @@ void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t wid
 {
     for(auto& g : mGraphs) g.pGraph->onResize(pSample->getCurrentFbo().get());
     if (mpScene)  mpScene->setCamerasAspectRatio((float)width / (float)height);
+}
+
+void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pSample)
+{
+    auto args = pSample->getArgList();
+    std::vector<ArgList::Arg> scene = args.getValues("loadscene");
+    if (!scene.empty())
+    {
+        loadSceneFromFile(scene[0].asString(), pSample);
+    }
+
+    std::vector<ArgList::Arg> cameraPos = args.getValues("camerapos");
+    if (!cameraPos.empty())
+    {
+        mpScene->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
+    }
+
+    std::vector<ArgList::Arg> cameraTarget = args.getValues("cameratarget");
+    if (!cameraTarget.empty())
+    {
+        mpScene->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
+    }
+}
+
+void RenderGraphViewer::onBeginTestFrame(SampleTest* pSampleTest)
+{
+    //  Already existing. Is this a problem?    
+    auto nextTriggerType = pSampleTest->getNextTriggerType();
+    if (nextTriggerType == SampleTest::TriggerType::None)
+    {
+        SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
+        RenderPass::SharedPtr pShadowPass = mGraphs[mActiveGraph].pGraph->getPass("ShadowPass");
+        if (pShadowPass != nullptr)
+        {
+            // Matt TODO this should be part of CascadedShadowMaps::Dictionary and store in the graph file
+            std::static_pointer_cast<CascadedShadowMaps>(pShadowPass)->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
+        }
+    }
+}
+
+void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
+{
+    if (mEditorProcess)
+    {
+        logWarning("Warning: Updating graph while editor is open. Graphs will not be reloaded from file.");
+        return;
+    }
+
+    // Reload all graphs, while maintaining state
+    for (const auto& g : mGraphs)
+    {
+        RenderGraph::SharedPtr pGraph = g.pGraph;
+        RenderGraph::SharedPtr pNewGraph;
+        pNewGraph = RenderGraphImporter::import(g.name, g.filename);
+        pGraph->update(pNewGraph);
+    }
 }
 
 #ifdef _WIN32

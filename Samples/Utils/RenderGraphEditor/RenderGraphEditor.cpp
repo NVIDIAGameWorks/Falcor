@@ -224,9 +224,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mFilePath);
             
             // load application for the editor given it the name of the mapped file
-            std::string commandLine = std::string("-tempFile ") + mFilePath + "-graphname" + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
+            std::string commandLine = std::string("-tempFile ") + mFilePath + " -graphname " + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
             mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
-            
             assert(mViewerProcess);
             mViewerRunning = true;
         }
