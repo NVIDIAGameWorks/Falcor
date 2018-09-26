@@ -13,7 +13,7 @@ v3.1.0
 - Better abstraction of the alpha-test
 - Fixed VideoCapture UI
 - Added `env_map` attribute and environment texture to the scene
-
+- Added `Scene::setCamerasAspectRatio()` which will set all the scene's cameras aspect ratio at once
 v3.0.7
 ------
 - Updated Slang to 0.10.31

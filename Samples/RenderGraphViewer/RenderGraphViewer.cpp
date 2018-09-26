@@ -96,13 +96,12 @@ bool RenderGraphViewer::renderDebugWindow(Gui* pGui, const Gui::DropdownList& dr
     // Display the dropdown
     pGui->pushWindow(data.windowName.c_str(), 330, 268);
     bool close = pGui->addButton("Close");
+    if (pGui->addButton("Save To File", true)) Bitmap::saveImageDialog(pTex);
     renderOutputUI(pGui, dropdown, data.currentOutput);
     pGui->addSeparator();
 
     // Display the image
     pGui->addImage(label.c_str(), pTex);
-    std::string filename;
-    if (pGui->addButton("Save To File")) Bitmap::saveImageDialog(pTex);
 
     pGui->popWindow();
 
