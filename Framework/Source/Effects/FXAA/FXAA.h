@@ -64,7 +64,7 @@ namespace Falcor
         */
         void execute(RenderContext* pRenderContext, const std::shared_ptr<Texture>& pSrcTex, const std::shared_ptr<Fbo>& pDstFbo);
 
-        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual RenderPassReflection reflect() const override;
         virtual void execute(RenderContext* pContext, const RenderData* pData) override;
     private:
         FXAA();

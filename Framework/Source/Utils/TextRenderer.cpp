@@ -29,7 +29,6 @@
 #include "Font.h"
 #include "TextRenderer.h"
 #include <vector>
-#include "glm/mat4x4.hpp"
 
 namespace Falcor
 {

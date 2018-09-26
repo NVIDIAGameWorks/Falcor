@@ -28,7 +28,6 @@
 #include "Framework.h"
 #include "Program.h"
 #include <vector>
-#include "glm/glm.hpp"
 #include "glm/gtc/type_ptr.hpp"
 #include "Graphics/TextureHelper.h"
 #include "Utils/Platform/OS.h"

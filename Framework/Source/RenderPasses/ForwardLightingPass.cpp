@@ -79,8 +79,10 @@ namespace Falcor
         mpDsNoDepthWrite = DepthStencilState::create(dsDesc);        
     }
 
-    void ForwardLightingPass::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection ForwardLightingPass::reflect() const
     {
+        RenderPassReflection reflector;
+
         reflector.addInput(kVisBuffer).setFlags(RenderPassReflection::Field::Flags::Optional);
         reflector.addInputOutput(kColor).setFormat(mColorFormat).setSampleCount(mSampleCount);
 
@@ -96,6 +98,8 @@ namespace Falcor
         {
             reflector.addOutput(kMotionVecs).setFormat(mMotionVecFormat).setSampleCount(mSampleCount);
         }
+
+        return reflector;
     }
 
     void ForwardLightingPass::setScene(const Scene::SharedPtr& pScene)

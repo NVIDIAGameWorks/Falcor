@@ -228,7 +228,6 @@ namespace Falcor
 
         ResourceCache::DefaultProperties mSwapChainData;
 
-        std::unordered_map<RenderPass*, RenderPassReflection> mPassReflectionMap;
         std::vector<uint32_t> mExecutionList;
         ResourceCache::SharedPtr mpResourcesCache;
 

@@ -29,7 +29,6 @@
 #include "ParallelReduction.h"
 #include "Graphics/FboHelper.h"
 #include "API/RenderContext.h"
-#include "glm/vec2.hpp"
 #include <cstring>
 
 namespace Falcor

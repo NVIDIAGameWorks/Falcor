@@ -462,9 +462,8 @@ namespace Falcor
             dstRenderPassUI.mInputPins[dstPinIndex].mConnectedPinName = srcField;
             dstRenderPassUI.mInputPins[dstPinIndex].mConnectedNodeName = srcPass;
             
-            RenderPassReflection srcReflection, dstReflection;
-            mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(srcPass)].pPass->reflect(srcReflection);
-            mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(dstPass)].pPass->reflect(dstReflection);
+            RenderPassReflection srcReflection = mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(srcPass)].pPass->reflect();
+            RenderPassReflection dstReflection = mpRenderGraph->mNodeData[mpRenderGraph->getPassIndex(dstPass)].pPass->reflect();
 
             bool canAutoResolve = mpRenderGraph->canAutoResolve(srcReflection.getField(srcField), dstReflection.getField(dstField));
             if (canAutoResolve && mDisplayAutoResolvePopup) canCreateEdge = autoResolveWarning(srcString, dstString);
@@ -1182,8 +1181,7 @@ namespace Falcor
             }
 
             // clear and rebuild reflection for each pass. 
-            renderPassUI.mReflection = RenderPassReflection();
-            mpRenderGraph->mNodeData[nameToIndex.second].pPass->reflect(renderPassUI.mReflection);
+            renderPassUI.mReflection = mpRenderGraph->mNodeData[nameToIndex.second].pPass->reflect();
 
             // test to see if we have hit a graph output
             std::unordered_set<std::string> passGraphOutputs;

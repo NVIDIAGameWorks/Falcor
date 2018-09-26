@@ -188,10 +188,13 @@ namespace Falcor
     static const std::string kTarget = "target";
     static const std::string kDepth = "depth";
 
-    void SkyBox::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection SkyBox::reflect() const
     {
+        RenderPassReflection reflector;
+
         reflector.addOutput(kTarget).setFormat(ResourceFormat::RGBA32Float);
         reflector.addInputOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil);
+        return reflector;
     }
 
     void SkyBox::execute(RenderContext* pRenderContext, const RenderData* pData)

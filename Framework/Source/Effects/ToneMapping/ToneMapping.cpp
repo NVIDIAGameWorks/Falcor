@@ -253,10 +253,12 @@ namespace Falcor
     static const std::string kSrc = "src";
     static const std::string kDst = "dst";
 
-    void ToneMapping::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection ToneMapping::reflect() const
     {
+        RenderPassReflection reflector;
         reflector.addInput(kSrc);
         reflector.addOutput(kDst);
+        return reflector;
     }
 
     void ToneMapping::execute(RenderContext* pRenderContext, const RenderData* pData)

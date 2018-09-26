@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Graphics\Model\AnimationController.cpp">
@@ -173,9 +173,6 @@
       <Filter>API</Filter>
     </ClCompile>
     <ClCompile Include="..\Externals\dear_imgui\imgui.cpp">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Externals\dear_imgui\imgui_widgets.cpp">
       <Filter>Externals\dear_imgui</Filter>
     </ClCompile>
     <ClCompile Include="..\Externals\dear_imgui\imgui_demo.cpp">
@@ -559,8 +556,6 @@
     <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp">
       <Filter>Utils\PatternGenerators</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
     <ClCompile Include="RenderPasses\ResolvePass.cpp">
       <Filter>RenderPasses</Filter>
     </ClCompile>
@@ -578,6 +573,18 @@
     </ClCompile>
     <ClCompile Include="Utils\Scripting\EnumsScriptBindings.cpp">
       <Filter>Utils\Scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
+      <Filter>Externals\dear_imgui_addons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Externals\dear_imgui\imgui_widgets.cpp">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
     <ClCompile Include="..\Externals\GLM\glm\detail\glm.cpp">
       <Filter>Externals\GLM\detail</Filter>
@@ -1398,74 +1405,59 @@
     <ClInclude Include="Utils\VariablesBufferUI.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\common.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="RenderPasses\DepthPass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\exponential.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\ext.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\fwd.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\geometric.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h">
+      <Filter>Utils\PatternGenerators</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\glm.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h">
+      <Filter>Utils\PatternGenerators</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\integer.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h">
+      <Filter>Utils\PatternGenerators</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat2x2.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Utils\DirectedGraphTraversal.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat2x3.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Utils\Dictionary.h">
+      <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat2x4.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="RenderPasses\ResolvePass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat3x2.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="RenderPasses\ForwardLightingPass.h">
+      <Filter>RenderPasses</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat3x3.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphScripting.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat3x4.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Utils\Scripting\Scripting.h">
+      <Filter>Utils\Scripting</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat4x2.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat4x3.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h">
+      <Filter>Utils\Scripting</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\mat4x4.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h">
+      <Filter>Externals\dear_imgui_addons</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\matrix.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\packing.hpp">
-      <Filter>Externals\GLM</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\trigonometric.hpp">
-      <Filter>Externals\GLM</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\vec2.hpp">
-      <Filter>Externals\GLM</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\vec3.hpp">
-      <Filter>Externals\GLM</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\vec4.hpp">
-      <Filter>Externals\GLM</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\vector_relational.hpp">
-      <Filter>Externals\GLM</Filter>
+    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
     <ClInclude Include="..\Externals\GLM\glm\detail\_features.hpp">
       <Filter>Externals\GLM\detail</Filter>
@@ -1836,6 +1828,12 @@
     <ClInclude Include="..\Externals\GLM\glm\ext\vector_uint4_precision.hpp">
       <Filter>Externals\GLM\ext</Filter>
     </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\gtc\bitfield.hpp">
+      <Filter>Externals\GLM\gtc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\gtc\color_space.hpp">
+      <Filter>Externals\GLM\gtc</Filter>
+    </ClInclude>
     <ClInclude Include="..\Externals\GLM\glm\gtc\constants.hpp">
       <Filter>Externals\GLM\gtc</Filter>
     </ClInclude>
@@ -1890,11 +1888,11 @@
     <ClInclude Include="..\Externals\GLM\glm\gtc\vec1.hpp">
       <Filter>Externals\GLM\gtc</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\gtc\bitfield.hpp">
-      <Filter>Externals\GLM\gtc</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\gtx\associated_min_max.hpp">
+      <Filter>Externals\GLM\gtx</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\gtc\color_space.hpp">
-      <Filter>Externals\GLM\gtc</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\gtx\bit.hpp">
+      <Filter>Externals\GLM\gtx</Filter>
     </ClInclude>
     <ClInclude Include="..\Externals\GLM\glm\gtx\closest_point.hpp">
       <Filter>Externals\GLM\gtx</Filter>
@@ -2079,11 +2077,14 @@
     <ClInclude Include="..\Externals\GLM\glm\gtx\wrap.hpp">
       <Filter>Externals\GLM\gtx</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\gtx\associated_min_max.hpp">
-      <Filter>Externals\GLM\gtx</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\simd\common.h">
+      <Filter>Externals\GLM\simd</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\gtx\bit.hpp">
-      <Filter>Externals\GLM\gtx</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\simd\exponential.h">
+      <Filter>Externals\GLM\simd</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\simd\geometric.h">
+      <Filter>Externals\GLM\simd</Filter>
     </ClInclude>
     <ClInclude Include="..\Externals\GLM\glm\simd\integer.h">
       <Filter>Externals\GLM\simd</Filter>
@@ -2103,61 +2104,74 @@
     <ClInclude Include="..\Externals\GLM\glm\simd\vector_relational.h">
       <Filter>Externals\GLM\simd</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\simd\common.h">
-      <Filter>Externals\GLM\simd</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\common.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\simd\exponential.h">
-      <Filter>Externals\GLM\simd</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\exponential.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="..\Externals\GLM\glm\simd\geometric.h">
-      <Filter>Externals\GLM\simd</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\ext.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\DepthPass.h">
-      <Filter>RenderPasses</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\fwd.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
-      <Filter>Graphics\RenderGraph</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\geometric.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
-      <Filter>Graphics\RenderGraph</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\glm.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
-      <Filter>Graphics\RenderGraph</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\integer.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h">
-      <Filter>Utils\PatternGenerators</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat2x2.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\PatternGenerators\DxSamplePattern.h">
-      <Filter>Utils\PatternGenerators</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat2x3.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\PatternGenerators\HaltonSamplePattern.h">
-      <Filter>Utils\PatternGenerators</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat2x4.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\DirectedGraphTraversal.h">
-      <Filter>Utils</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat3x2.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Dictionary.h">
-      <Filter>Utils</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat3x3.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h" />
-    <ClInclude Include="RenderPasses\ResolvePass.h">
-      <Filter>RenderPasses</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat3x4.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\ForwardLightingPass.h">
-      <Filter>RenderPasses</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat4x2.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphScripting.h">
-      <Filter>Graphics\RenderGraph</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat4x3.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Scripting\Scripting.h">
-      <Filter>Utils\Scripting</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\mat4x4.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
-      <Filter>Graphics\RenderGraph</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\matrix.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h">
-      <Filter>Utils\Scripting</Filter>
+    <ClInclude Include="..\Externals\GLM\glm\packing.hpp">
+      <Filter>Externals\GLM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\trigonometric.hpp">
+      <Filter>Externals\GLM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\vec2.hpp">
+      <Filter>Externals\GLM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\vec3.hpp">
+      <Filter>Externals\GLM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\vec4.hpp">
+      <Filter>Externals\GLM</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\GLM\glm\vector_relational.hpp">
+      <Filter>Externals\GLM</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2169,15 +2183,6 @@
     </Filter>
     <Filter Include="Externals\GLM">
       <UniqueIdentifier>{e92b12af-efa7-464a-8e6e-70385c85a1b5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Externals\GLM\detail">
-      <UniqueIdentifier>{0893b0d3-6632-4454-b9a3-e767429eb60f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Externals\GLM\gtc">
-      <UniqueIdentifier>{a9cf70e7-8ec1-476f-8a3b-7b02be552d8c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Externals\GLM\gtx">
-      <UniqueIdentifier>{8c9b8305-4910-405f-b136-7d2c4aa05499}</UniqueIdentifier>
     </Filter>
     <Filter Include="Externals\FreeImage">
       <UniqueIdentifier>{f2ec6f46-f660-4827-a0be-ecbf231b69b0}</UniqueIdentifier>
@@ -2347,12 +2352,6 @@
     <Filter Include="Effects\FXAA">
       <UniqueIdentifier>{51b693f1-34da-4d5e-a6d5-925944c92c79}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Externals\GLM\simd">
-      <UniqueIdentifier>{5bee4c25-1a69-4642-bab4-b6abb96f22c9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Externals\GLM\ext">
-      <UniqueIdentifier>{5b2b7469-98ac-4316-ac45-6ee5dbc7d61f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Graphics\RenderGraph">
       <UniqueIdentifier>{60443751-4f7a-4361-adb2-d3e6edabecf8}</UniqueIdentifier>
     </Filter>
@@ -2368,8 +2367,29 @@
     <Filter Include="Utils\Scripting">
       <UniqueIdentifier>{0193cc13-996d-498d-a32e-8990117f264d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Externals\dear_imgui_addons">
+      <UniqueIdentifier>{69cc9fe7-63a0-4493-bce3-789892d9df23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\GLM\detail">
+      <UniqueIdentifier>{17bed071-6e42-4df7-8389-70de86f01a8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\GLM\ext">
+      <UniqueIdentifier>{3c2596b8-a604-47c0-8627-5327a1b71a7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\GLM\gtc">
+      <UniqueIdentifier>{90cb7750-bb00-4f68-bd33-c9fb300b18d0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\GLM\gtx">
+      <UniqueIdentifier>{a6e3acfa-a028-4555-a490-d51604b42b99}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\GLM\simd">
+      <UniqueIdentifier>{06fa6d05-49c9-43d3-8741-a6f1b441a43a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Externals\dear_imgui\LICENSE">
+      <Filter>Externals\dear_imgui</Filter>
+    </None>
     <None Include="..\Externals\dear_imgui\README.md">
       <Filter>Externals\dear_imgui</Filter>
     </None>
@@ -2484,7 +2504,9 @@
     <None Include="Data\Effects\FXAA.slang">
       <Filter>Data\Effects</Filter>
     </None>
-    <None Include="..\Externals\dear_imgui\LICENSE" />
+    <None Include="Data\RenderPasses\ForwardLightingPass.slang">
+      <Filter>Data\RenderPasses</Filter>
+    </None>
     <None Include="..\Externals\GLM\glm\detail\func_common.inl">
       <Filter>Externals\GLM\detail</Filter>
     </None>
@@ -2626,12 +2648,20 @@
     <None Include="..\Externals\GLM\glm\ext\scalar_constants.inl">
       <Filter>Externals\GLM\ext</Filter>
     </None>
+    <None Include="..\Externals\GLM\glm\ext\scalar_relational.inl">
+      <Filter>Externals\GLM\ext</Filter>
     </None>
     <None Include="..\Externals\GLM\glm\ext\vector_common.inl">
       <Filter>Externals\GLM\ext</Filter>
     </None>
     <None Include="..\Externals\GLM\glm\ext\vector_relational.inl">
       <Filter>Externals\GLM\ext</Filter>
+    </None>
+    <None Include="..\Externals\GLM\glm\gtc\bitfield.inl">
+      <Filter>Externals\GLM\gtc</Filter>
+    </None>
+    <None Include="..\Externals\GLM\glm\gtc\color_space.inl">
+      <Filter>Externals\GLM\gtc</Filter>
     </None>
     <None Include="..\Externals\GLM\glm\gtc\constants.inl">
       <Filter>Externals\GLM\gtc</Filter>
@@ -2681,11 +2711,11 @@
     <None Include="..\Externals\GLM\glm\gtc\ulp.inl">
       <Filter>Externals\GLM\gtc</Filter>
     </None>
-    <None Include="..\Externals\GLM\glm\gtc\bitfield.inl">
-      <Filter>Externals\GLM\gtc</Filter>
+    <None Include="..\Externals\GLM\glm\gtx\associated_min_max.inl">
+      <Filter>Externals\GLM\gtx</Filter>
     </None>
-    <None Include="..\Externals\GLM\glm\gtc\color_space.inl">
-      <Filter>Externals\GLM\gtc</Filter>
+    <None Include="..\Externals\GLM\glm\gtx\bit.inl">
+      <Filter>Externals\GLM\gtx</Filter>
     </None>
     <None Include="..\Externals\GLM\glm\gtx\closest_point.inl">
       <Filter>Externals\GLM\gtx</Filter>
@@ -2862,12 +2892,6 @@
       <Filter>Externals\GLM\gtx</Filter>
     </None>
     <None Include="..\Externals\GLM\glm\gtx\wrap.inl">
-      <Filter>Externals\GLM\gtx</Filter>
-    </None>
-    <None Include="..\Externals\GLM\glm\gtx\associated_min_max.inl">
-      <Filter>Externals\GLM\gtx</Filter>
-    </None>
-    <None Include="..\Externals\GLM\glm\gtx\bit.inl">
       <Filter>Externals\GLM\gtx</Filter>
     </None>
   </ItemGroup>

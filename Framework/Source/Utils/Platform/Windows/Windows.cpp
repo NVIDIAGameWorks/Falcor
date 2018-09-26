@@ -277,7 +277,7 @@ namespace Falcor
     static void checkFileModifiedStatus(const std::string& filePath, const std::function<void(const std::string&)>& callback)
     {
         std::string fileName = getFilenameFromPath(filePath);
-        std::string dir = filePath.substr(0, filePath.find_last_of('\\'));
+        std::string dir = getDirectoryFromFile(filePath);
         
         HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);

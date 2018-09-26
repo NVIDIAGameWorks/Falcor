@@ -28,7 +28,6 @@
 #include "Framework.h"
 #include "FullScreenPass.h"
 #include "API/VAO.h"
-#include "glm/vec2.hpp"
 #include "API/Buffer.h"
 #include "API/DepthStencilState.h"
 #include "API/RenderContext.h"

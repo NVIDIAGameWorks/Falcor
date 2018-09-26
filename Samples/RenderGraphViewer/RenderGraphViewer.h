@@ -58,14 +58,12 @@ private:
 
     FirstPersonCameraController mCamControl;
     Scene::SharedPtr mpScene;
-    std::string mSceneFilename;
-    bool mShowAllOutputs = true;
+    bool mShowAllOutputs = false;
     bool mEditorRunning = false;
     bool mApplyGraphChanges = false;
-    size_t mEditorProcess = 0;
+    size_t mEditorProcess = 0;  // If the viewer created the editor, then this value will be different then 0
     std::string mTempFilePath;
     std::string mActiveGraphName;
-    std::string mEditingGraphName;
     Gui::DropdownList mRenderGraphsList;
     uint32_t mActiveGraphIndex;
 
@@ -84,7 +82,7 @@ private:
         RenderGraph::SharedPtr mpGraph;
         std::string mOutputString = "BlitPass.dst";
         uint32_t mGraphOutputIndex = 0;
-        std::string mFileName;
+        std::string mFilename;
         std::vector<std::string> mCurrentOutputs;
         std::unordered_set<std::string> mOriginalOutputNames;
         std::vector<std::string> mOutputNames;
