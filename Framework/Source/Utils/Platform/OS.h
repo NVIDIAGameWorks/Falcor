@@ -138,7 +138,7 @@ namespace Falcor
     /** Creates a file in the temperary directory and returns the path.
         \return pathName Absolute path to unique temp file.  
     */
-    std::string createTemperaryFile();
+    std::string getTempFilename();
 
     /** Create a directory from path.
     */

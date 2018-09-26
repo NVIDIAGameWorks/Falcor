@@ -200,7 +200,7 @@ namespace Falcor
         should_not_get_here();
     }
 
-    std::string createTemperaryFile()
+    std::string getTempFilename()
     {
         std::string filePath = std::experimental::filesystem::temp_directory_path();
         filePath += "/fileXXXXXX";

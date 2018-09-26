@@ -108,7 +108,7 @@ namespace Falcor
         return res == TRUE;
     }
 
-    std::string createTemperaryFile()
+    std::string getTempFilename()
     {
         char* error = nullptr;
         return std::tmpnam(error);

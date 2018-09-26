@@ -220,7 +220,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (openViewer)
         {
-            mFilePath = createTemperaryFile();
+            mFilePath = getTempFilename();
             RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mFilePath);
             
             // load application for the editor given it the name of the mapped file

@@ -77,4 +77,11 @@ private:
 
     std::vector<GraphData> mGraphs;
     uint32_t mActiveGraph = 0;
+
+    // Editor stuff
+    void openEditor();
+    void resetEditor();
+    void editorUpdateCB(const std::string& filename);
+    size_t mEditorProcess = 0;
+    std::string mEditorTempFile;
 };

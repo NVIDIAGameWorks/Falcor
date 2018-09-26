@@ -34,6 +34,7 @@ const char* kEditorExecutableName = "RenderGraphEditor";
 
 void RenderGraphViewer::onShutdown(SampleCallbacks* pSample)
 {
+    resetEditor();
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -150,12 +151,15 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         Gui::DropdownList graphList;
         for (size_t i = 0; i < mGraphs.size(); i++) graphList.push_back({ (int32_t)i, mGraphs[i].name });
-        pGui->addDropdown("Active Graph", graphList, mActiveGraph);
-
-        if (pGui->addButton("Remove Active Graph")) removeActiveGraph();
+        if(mEditorProcess == 0) 
+        {
+            pGui->addDropdown("Active Graph", graphList, mActiveGraph);
+            if (pGui->addButton("Remove Graph")) removeActiveGraph();
+            if (pGui->addButton("Edit Graph")) openEditor();
+            pGui->addSeparator();
+        }
 
         // Active graph output
-        pGui->addSeparator();
         graphOutputsGui(pGui);
 
         // Graph UI
@@ -163,6 +167,43 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
     }
 
+}
+
+void RenderGraphViewer::editorUpdateCB(const std::string& filename)
+{
+    msgBox(filename);
+}
+
+void RenderGraphViewer::openEditor()
+{
+    bool unmarkOut = (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false);
+    // If the current graph output is not an original output, unmar it
+    if (unmarkOut) mGraphs[mActiveGraph].pGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
+
+    mEditorTempFile = getTempFilename();
+
+    // Save the graph
+    RenderGraphExporter::save(mGraphs[mActiveGraph].pGraph, mGraphs[mActiveGraph].name, mEditorTempFile);
+
+    // Register an update callback
+    openSharedFile(mEditorTempFile, std::bind(&RenderGraphViewer::editorUpdateCB, this, std::placeholders::_1));
+
+    // Run the process
+    std::string commandLine = std::string("-tempFile ") + mEditorTempFile + std::string(" -graphname ") + mGraphs[mActiveGraph].name;
+    mEditorProcess = executeProcess(kEditorExecutableName, commandLine);
+
+    // Mark the output if it's required
+    if (unmarkOut) mGraphs[mActiveGraph].pGraph->markOutput(mGraphs[mActiveGraph].mainOutput);
+}
+
+void RenderGraphViewer::resetEditor()
+{
+    if(mEditorProcess)
+    {
+        closeSharedFile(mEditorTempFile);
+        terminateProcess(mEditorProcess);
+        mEditorProcess = 0;
+    }
 }
 
 void RenderGraphViewer::removeActiveGraph()
@@ -235,6 +276,10 @@ void RenderGraphViewer::loadSceneFromFile(const std::string& filename, SampleCal
 
 void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
+    // If the editor was closed, reset the handles
+    if (mEditorProcess && (isProcessRunning(mEditorProcess) == false)) resetEditor();
+
+    // Render
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 
