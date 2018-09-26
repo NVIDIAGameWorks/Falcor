@@ -13,6 +13,8 @@ v3.1.0
 - Better abstraction of the alpha-test
 - Fixed VideoCapture UI
 - Added `env_map` attribute and environment texture to the scene
+- Added `Scene::setCamerasAspectRatio()` which will set all the scene's cameras aspect ratio at once
+- Gui class supports multiple fonts. Default font is trebuchet, profiler font is consolas-bold
 
 v3.0.7
 ------

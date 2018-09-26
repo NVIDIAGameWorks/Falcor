@@ -34,6 +34,8 @@
 #include "Graphics/Program//Program.h"
 #include "Graphics/GraphicsState.h"
 
+struct ImFont;
+
 namespace Falcor
 {
     class RenderContext;
@@ -70,7 +72,7 @@ namespace Falcor
 
         /** Create a new GUI object. Each object is essentially a container for a GUI window
         */
-        static UniquePtr create(uint32_t width, uint32_t height);
+        static UniquePtr create(uint32_t width, uint32_t height, float scaleFactor = 1.0f);
 
         ~Gui();
 
@@ -95,10 +97,10 @@ namespace Falcor
         /** Display image within imgui
             \param[in] label. Name for id for item.
             \param[in] pTex. Pointer to texture resource to draw in imgui
-            \param[in] size. Size in pixels of the image to draw
+            \param[in] size. Size in pixels of the image to draw. 0 means fit to window
             \param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
         */
-        void addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size = {128.0f, 128.0f}, bool maintainRatio = true, bool sameLine = false);
+        void addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size = vec2(0), bool maintainRatio = true, bool sameLine = false);
 
         /** Display rectangle with specified color
             \param[in] size size in pixels of rectangle
@@ -344,7 +346,7 @@ namespace Falcor
 
         /** Set global font size scaling
         */
-        static void setGlobalFontScaling(float scale);
+        static void setGlobalGuiScaling(float scale);
 
         /** Create a new window on the stack
         */
@@ -380,15 +382,19 @@ namespace Falcor
         */
         void beginFrame();
 
-    protected:
-        bool keyboardCallback(const KeyboardEvent& keyEvent);
-        bool mouseCallback(const MouseEvent& mouseEvent);
-        void windowSizeCallback(uint32_t width, uint32_t height);
+        /** Add a font
+        */
+        void addFont(const std::string& name, const std::string& filename);
+
+        /** Set the active font
+        */
+        void setActiveFont(const std::string& font);
 
     private:
         Gui() = default;
-        void init();
+        void init(float scaleFactor);
         void createVao(uint32_t vertexCount, uint32_t indexCount);
+        void compileFonts();
 
         // Helper to create multiple inline text boxes
         bool addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine);
@@ -417,9 +423,11 @@ namespace Falcor
         GraphicsProgram::SharedPtr mpProgram;
         GraphicsState::SharedPtr mpPipelineState;
         uint32_t mGroupStackSize = 0;
-        float mFontScale = 1;
 
         std::vector<Texture::SharedPtr> mpImages;
         ParameterBlockReflection::BindLocation mGuiImageLoc;
+        float mScaleFactor = 1.0f;
+        std::unordered_map<std::string, ImFont*> mFontMap;
+        ImFont* mpActiveFont = nullptr;
     };
 }

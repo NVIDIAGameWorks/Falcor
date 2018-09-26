@@ -522,15 +522,9 @@ namespace Falcor
         std::string log;
         if (!mpRenderGraph->isValid(log)) return;
 
-        static std::ofstream outputFileStream(filePath, std::ios_base::out);
-        size_t size = mUpdateCommands.size();
-
-        outputFileStream.write((const char*)&size, sizeof(size_t));
-        outputFileStream.write(mUpdateCommands.c_str(), mUpdateCommands.size());
+        std::ofstream outputFileStream(filePath, std::ios_base::out);
+        outputFileStream << mUpdateCommands;
         mUpdateCommands.clear();
-        outputFileStream.seekp(0, std::ios::beg);
-
-        std::experimental::filesystem::last_write_time(filePath, std::chrono::system_clock::now());
     }
 
     RenderGraphUI::RenderGraphUI()

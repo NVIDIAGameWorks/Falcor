@@ -225,6 +225,10 @@ namespace Falcor
         /** Get the filename
         */
         const std::string& getFilename() const { return mFilename; }
+
+        /** Set a new aspect ratio for all the cameras in the scene
+        */
+        void setCamerasAspectRatio(float ratio);
     protected:
 
         Scene();

@@ -124,7 +124,7 @@ namespace Falcor
 
         /** Call this when the swap-chain was resized
         */
-        void onResizeSwapChain(const Fbo* pTargetFbo);
+        void onResize(const Fbo* pTargetFbo);
 
         /** Get the attached scene
         */

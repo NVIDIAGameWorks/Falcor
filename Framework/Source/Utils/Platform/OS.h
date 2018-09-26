@@ -52,6 +52,10 @@ namespace Falcor
     */
     int getDisplayDpi();
 
+    /** Get the requested display scale factor
+    */
+    float getDisplayScaleFactor();
+
     /** Type of message box to display
     */
     enum class MsgBoxType
@@ -122,9 +126,9 @@ namespace Falcor
     
     /** Open watch thread for file changes and call callback when the file is written to.
         \param[in] full path to the file to watch for changes
-        \param[in] callback function. parameter is filePath.
+        \param[in] callback function
     */
-    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback = {});
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback = {});
 
     /** Close watch thread for file changes
         \param[in] full path to the file that was being watched for changes
@@ -134,7 +138,7 @@ namespace Falcor
     /** Creates a file in the temperary directory and returns the path.
         \return pathName Absolute path to unique temp file.  
     */
-    std::string createTemperaryFile();
+    std::string getTempFilename();
 
     /** Create a directory from path.
     */
@@ -176,13 +180,6 @@ namespace Falcor
     /** Get a list of all recorded data directories.
     */
     const std::vector<std::string>& getDataDirectoriesList();
-
-    /** Read a file into a string. The function expects a full path to the file, and will not look in the common directories.
-        \param[in] fullpath The path to the requested file
-        \param[in] str On successful return, the content of the file
-        \return true if the was read successfully, false if an error occurred (usually file not found)
-    */
-    bool readFileToString(const std::string& fullpath, std::string& str);
 
     /** Adds a folder into the search directory. Once added, calls to FindFileInCommonDirs() will seach that directory as well
         \param[in] dir The new directory to add to the common directories.
