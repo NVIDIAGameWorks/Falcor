@@ -15,6 +15,7 @@ v3.1.0
 - Added `env_map` attribute and environment texture to the scene
 - Added `Scene::setCamerasAspectRatio()` which will set all the scene's cameras aspect ratio at once
 - Gui class supports multiple fonts. Default font is trebuchet, profiler font is consolas-bold
+- Added support for high-DPI displays (GUI only)
 
 v3.0.7
 ------

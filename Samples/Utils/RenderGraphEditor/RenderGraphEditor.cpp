@@ -101,6 +101,15 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
+            if (pGui->addMenuItem("Load Pass Library"))
+            {
+                std::string passLib;
+                if(openFileDialog("*.dll", passLib))
+                {
+                    RenderPassLibrary::loadPassLibrary(passLib);
+                }
+            }
+
             pGui->endDropDownMenu();
         }
 

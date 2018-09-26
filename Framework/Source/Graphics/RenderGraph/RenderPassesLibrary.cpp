@@ -112,4 +112,21 @@ namespace Falcor
         assert(pass < getClassCount());
         return std::next(gRenderPassList.begin(), pass)->second.passDesc;
     }
+
+    void RenderPassLibrary::loadPassLibrary(const std::string& filename)
+    {
+        std::string fullpath;
+        if (findFileInDataDirectories(filename, fullpath) == false)
+        {
+            logWarning("Can't find render-pass library file `" + filename + "`");
+            return;
+        }
+
+        HMODULE h = LoadLibraryA(fullpath.c_str());
+        auto f = (LibraryFunc)GetProcAddress(h, "getPasses");
+        std::vector<RenderPassLibrary::RenderPassLibDesc> passesList;
+        f(passesList);
+
+        for (const auto& d : passesList) addPassClass(d.className, d.desc, d.func);
+    }
 }
