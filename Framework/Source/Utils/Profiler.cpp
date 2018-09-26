@@ -144,7 +144,7 @@ namespace Falcor
 
     std::string Profiler::getEventsString()
     {
-        std::string results("Name\t\t\t\t\t\t\tCPU time(ms)\t\t\t\t\tGPU time(ms)\n");
+        std::string results("Name\t\t\t\t\tCPU time(ms)\tGPU time(ms)\n");
 
         for (EventData* pData : sProfilerVector)
         {
@@ -155,8 +155,8 @@ namespace Falcor
 
             char event[1000];
             uint32_t nameIndent = pData->level * 2 + 1;
-            uint32_t cpuIndent = 38 - (nameIndent + (uint32_t)pData->name.size());
-            snprintf(event, 1000, "%*s%s %*.2f %30.2f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, getCpuTime(pData), gpuTime);
+            uint32_t cpuIndent = 30 - (nameIndent + (uint32_t)pData->name.size());
+            snprintf(event, 1000, "%*s%s %*.2f %14.2f\n", nameIndent, " ", pData->name.c_str(), cpuIndent, getCpuTime(pData), gpuTime);
 #if _PROFILING_LOG == 1
             pData->cpuMs[pData->stepNr] = pData->cpuTotal;
             pData->gpuMs[pData->stepNr] = (float)gpuTime;
