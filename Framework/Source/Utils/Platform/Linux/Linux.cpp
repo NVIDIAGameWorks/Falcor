@@ -188,7 +188,7 @@ namespace Falcor
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
     
-    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
     {
         (void)filePath; (void)callback;
         should_not_get_here();

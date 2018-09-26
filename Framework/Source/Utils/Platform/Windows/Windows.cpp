@@ -311,7 +311,7 @@ namespace Falcor
 
     static std::unordered_map<std::string, std::pair<std::thread, bool> > fileThreads;
 
-    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void()>& callback)
     {
         std::string fileName = getFilenameFromPath(filePath);
         std::string dir = getDirectoryFromFile(filePath);
@@ -363,7 +363,7 @@ namespace Falcor
 
                 if (currentFileName == fileName && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
                 {
-                    callback(filePath);
+                    callback();
                     break;
                 }
 
@@ -375,7 +375,7 @@ namespace Falcor
         CloseHandle(hFile);
     }
 
-    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
     {
         const auto& fileThreadsIt = fileThreads.find(filePath);
 

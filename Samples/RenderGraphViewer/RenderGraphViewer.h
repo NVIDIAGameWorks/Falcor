@@ -70,6 +70,7 @@ private:
     };
 
     void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, GraphData& data);
+    std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
     void graphOutputsGui(Gui* pGui);
     bool renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data); // Returns true if we need to close the window
     void renderOutputUI(Gui* pGui, const Gui::DropdownList& dropdown, std::string& selectedOutput);
@@ -81,7 +82,10 @@ private:
     // Editor stuff
     void openEditor();
     void resetEditor();
-    void editorUpdateCB(const std::string& filename);
+    void editorFileChangeCB();
+    void applyEditorChanges();
+
     size_t mEditorProcess = 0;
     std::string mEditorTempFile;
+    std::string mEditorScript;
 };

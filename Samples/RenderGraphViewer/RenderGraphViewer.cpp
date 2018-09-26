@@ -169,15 +169,16 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
 }
 
-void RenderGraphViewer::editorUpdateCB(const std::string& filename)
+void RenderGraphViewer::editorFileChangeCB()
 {
-    msgBox(filename);
+    // Load the script
+    mEditorScript = readFile(mEditorTempFile);
 }
 
 void RenderGraphViewer::openEditor()
 {
     bool unmarkOut = (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false);
-    // If the current graph output is not an original output, unmar it
+    // If the current graph output is not an original output, unmark it
     if (unmarkOut) mGraphs[mActiveGraph].pGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
 
     mEditorTempFile = getTempFilename();
@@ -186,7 +187,7 @@ void RenderGraphViewer::openEditor()
     RenderGraphExporter::save(mGraphs[mActiveGraph].pGraph, mGraphs[mActiveGraph].name, mEditorTempFile);
 
     // Register an update callback
-    openSharedFile(mEditorTempFile, std::bind(&RenderGraphViewer::editorUpdateCB, this, std::placeholders::_1));
+    monitorFileUpdates(mEditorTempFile, std::bind(&RenderGraphViewer::editorFileChangeCB, this));
 
     // Run the process
     std::string commandLine = std::string("-tempFile ") + mEditorTempFile + std::string(" -graphname ") + mGraphs[mActiveGraph].name;
@@ -201,6 +202,7 @@ void RenderGraphViewer::resetEditor()
     if(mEditorProcess)
     {
         closeSharedFile(mEditorTempFile);
+        std::remove(mEditorTempFile.c_str());
         terminateProcess(mEditorProcess);
         mEditorProcess = 0;
     }
@@ -213,6 +215,13 @@ void RenderGraphViewer::removeActiveGraph()
     mActiveGraph = 0;
 }
 
+std::vector<std::string> RenderGraphViewer::getGraphOutputs(const RenderGraph::SharedPtr& pGraph)
+{
+    std::vector<std::string> outputs;
+    for (size_t i = 0; i < pGraph->getOutputCount(); i++) outputs.push_back(pGraph->getOutputName(i));
+    return outputs;
+}
+
 void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, GraphData& data)
 {
     data.name = name;
@@ -221,7 +230,7 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
 
     // Store the original outputs
-    for (size_t i = 0; i < data.pGraph->getOutputCount(); i++) data.originalOutputs.push_back(data.pGraph->getOutputName(i));
+    data.originalOutputs = getGraphOutputs(pGraph);
 }
 
 void RenderGraphViewer::addGraph(const Fbo* pTargetFbo, SampleCallbacks* pCallbacks)
@@ -274,10 +283,35 @@ void RenderGraphViewer::loadSceneFromFile(const std::string& filename, SampleCal
     for(auto& g : mGraphs) g.pGraph->setScene(mpScene);
 }
 
+void RenderGraphViewer::applyEditorChanges()
+{
+    if (!mEditorProcess) return;
+    // If the editor was closed, reset the handles
+    if (isProcessRunning(mEditorProcess) == false) resetEditor();
+
+    if (mEditorScript.empty()) return;
+
+    // Unmark the current output if it wasn't an original one
+    bool unmarkOut = (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false);
+    if (unmarkOut) mGraphs[mActiveGraph].pGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
+
+    // Run the scripting
+    auto pScripting = RenderGraphScripting::create();
+    pScripting->addGraph(mGraphs[mActiveGraph].name, mGraphs[mActiveGraph].pGraph);
+    pScripting->runScript(mEditorScript);
+
+    // Update the original output list
+    mGraphs[mActiveGraph].originalOutputs = getGraphOutputs(mGraphs[mActiveGraph].pGraph);
+
+    // Mark the current output if it's required
+    if (unmarkOut) mGraphs[mActiveGraph].pGraph->markOutput(mGraphs[mActiveGraph].mainOutput);
+
+    mEditorScript.clear();
+}
+
 void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
-    // If the editor was closed, reset the handles
-    if (mEditorProcess && (isProcessRunning(mEditorProcess) == false)) resetEditor();
+    applyEditorChanges();
 
     // Render
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
