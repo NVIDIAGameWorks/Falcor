@@ -34,9 +34,12 @@ namespace pybind11
 
 namespace Falcor
 {
-    class EnumsScriptBindings
+    class ScriptBindings
     {
     public:
         static void registerScriptingObjects(pybind11::module& m);
+
+        static const char* kLoadScene;
+        static const char* kLoadRtScene;
     };
 }

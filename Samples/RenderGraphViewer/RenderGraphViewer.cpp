@@ -442,6 +442,10 @@ int main(int argc, char** argv)
     SampleConfig config;
     config.windowDesc.title = "Render Graph Viewer";
     config.windowDesc.resizableWindow = true;
+#ifdef FALCOR_DXR
+    RtSample::run(config, pRenderer);
+#else
     Sample::run(config, pRenderer);
+#endif
     return 0;
 }
