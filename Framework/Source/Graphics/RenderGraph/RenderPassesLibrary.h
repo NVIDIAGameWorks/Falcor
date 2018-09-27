@@ -38,6 +38,7 @@ namespace Falcor
     public:
         RenderPassLibrary() = default;
         RenderPassLibrary(RenderPassLibrary&) = delete;
+        ~RenderPassLibrary();
 
         static RenderPassLibrary& instance();
         void shutdown();

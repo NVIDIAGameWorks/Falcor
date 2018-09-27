@@ -54,9 +54,15 @@ namespace Falcor
         return *spInstance;
     }
 
+    RenderPassLibrary::~RenderPassLibrary()
+    {
+        mPasses.clear();
+        for (auto& l : mLibs) FreeLibrary(l);
+        mLibs.clear();
+    }
+
     void RenderPassLibrary::shutdown()
     {
-        for (auto& l : mLibs) FreeLibrary(l);
         safe_delete(spInstance);
     }
 
