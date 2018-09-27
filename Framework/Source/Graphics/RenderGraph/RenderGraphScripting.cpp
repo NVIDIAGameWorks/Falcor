@@ -71,7 +71,12 @@ namespace Falcor
             return RenderPassLibrary::instance().createPass(passName.c_str(), Dictionary(d));
         };
         m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
-        m.def(kLoadPassLibrary, &RenderPassLibrary::loadLibrary);
+
+        const auto& loadPassLibrary = [](const std::string& library)
+        {
+            return RenderPassLibrary::instance().loadLibrary(library);
+        };
+        m.def(kLoadPassLibrary, loadPassLibrary);
 
         const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d )
         {
