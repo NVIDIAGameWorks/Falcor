@@ -238,16 +238,19 @@ namespace Falcor
         }
     }
 
-    bool isSrgbRequired(aiTextureType aiType, bool isSrgbRequested)
+    bool isSrgbRequired(aiTextureType aiType, bool isSrgbRequested, uint32_t shadingModel)
     {
         if (isSrgbRequested == false)
         {
             return false;
         }
+
         switch (aiType)
         {
-        case aiTextureType_DIFFUSE:
         case aiTextureType_SPECULAR:
+            assert(shadingModel == ShadingModelMetalRough || shadingModel == ShadingModelSpecGloss);
+            return (shadingModel == ShadingModelSpecGloss);
+        case aiTextureType_DIFFUSE:
         case aiTextureType_AMBIENT:
         case aiTextureType_EMISSIVE:
         case aiTextureType_LIGHTMAP:
@@ -304,7 +307,7 @@ namespace Falcor
                     // create a new texture
                     std::string fullpath = folder + '/' + s;
                     fullpath = replaceSubstring(fullpath, "\\", "/");
-                    pTex = createTextureFromFile(fullpath, true, isSrgbRequired(aiType, useSrgb));
+                    pTex = createTextureFromFile(fullpath, true, isSrgbRequired(aiType, useSrgb, pMaterial->getShadingModel()));
                     if (pTex)
                     {
                         mTextureCache[s] = pTex;
@@ -331,12 +334,12 @@ namespace Falcor
         auto nameVec = splitString(nameStr, ".");   // The name might contain information about the material
         Material::SharedPtr pMaterial = Material::create(nameVec[0]);
 
-        loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
-
-        if(is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials))
+        if (is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials))
         {
             pMaterial->setShadingModel(ShadingModelSpecGloss);
         }
+
+        loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
 
         // Opacity
         float opacity;
