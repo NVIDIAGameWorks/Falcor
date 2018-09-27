@@ -56,6 +56,7 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderGraphViewer", "Samples\RenderGraphViewer\RenderGraphViewer.vcxproj", "{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}"
 	ProjectSection(ProjectDependencies) = postProject
 		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71} = {DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}
+		{232CBBB4-33D9-4445-BB62-08A7E7700147} = {232CBBB4-33D9-4445-BB62-08A7E7700147}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderGraphEditor", "Samples\Utils\RenderGraphEditor\RenderGraphEditor.vcxproj", "{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}"

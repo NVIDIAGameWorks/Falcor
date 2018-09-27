@@ -32,7 +32,7 @@
 namespace Falcor
 {
     class RenderPass;
-    
+    class Device;
     class RenderPassLibrary
     {
     public:
@@ -56,7 +56,7 @@ namespace Falcor
             CreateFunc func;
         };
 
-        using LibraryFunc = void(*)(RenderPassLibrary&);
+        using LibraryFunc = void(*)(const std::shared_ptr<Device>&, RenderPassLibrary&);
         void loadLibrary(const std::string& filename);
 
     private:

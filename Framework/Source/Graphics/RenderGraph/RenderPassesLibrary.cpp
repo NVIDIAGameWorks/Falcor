@@ -37,6 +37,7 @@
 #include "Effects/AmbientOcclusion/SSAO.h"
 #include "Effects/TAA/TAA.h"
 #include "RenderPasses/ResolvePass.h"
+#include "API/Device.h"
 
 namespace Falcor
 {
@@ -133,6 +134,6 @@ namespace Falcor
         HMODULE l = LoadLibraryA(fullpath.c_str());
         mLibs.push_back(l);
         auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
-        func(*this);
+        func(gpDevice, *this);
     }
 }
