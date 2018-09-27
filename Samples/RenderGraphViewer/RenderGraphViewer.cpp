@@ -237,14 +237,18 @@ std::vector<std::string> RenderGraphViewer::getGraphOutputs(const RenderGraph::S
     return outputs;
 }
 
-void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, GraphData& data)
+void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, SampleCallbacks* pCallbacks, GraphData& data)
 {
     if (pGraph->getName().empty()) pGraph->setName(name);
 
     data.name = name;
     data.filename = filename;
     data.pGraph = pGraph;
-    data.pGraph->setScene(mpScene);
+    if(data.pGraph->getScene() == nullptr)
+    {
+        if (!mpDefaultScene) loadSceneFromFile(gkDefaultScene, pCallbacks);
+        data.pGraph->setScene(mpDefaultScene);
+    }
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
 
     // Store the original outputs
@@ -261,7 +265,6 @@ void RenderGraphViewer::addGraphsFromFile(const std::string& filename, SampleCal
 {
     const auto& pTargetFbo = pCallbacks->getCurrentFbo().get();
     auto graphs = RenderGraphImporter::importAllGraphs(filename, pTargetFbo);
-    if (graphs.size() && !mpScene) loadSceneFromFile(gkDefaultScene, pCallbacks);
 
     for (auto& newG : graphs)
     {
@@ -273,15 +276,14 @@ void RenderGraphViewer::addGraphsFromFile(const std::string& filename, SampleCal
             {
                 found = true;
                 logWarning("Graph `" + newG.name + "` already exists. Replacing it");
-                initGraph(newG.pGraph, newG.name, filename, oldG);
-
+                initGraph(newG.pGraph, newG.name, filename, pCallbacks, oldG);
             }
         }
 
         if (!found)
         {
             mGraphs.push_back({});
-            initGraph(newG.pGraph, newG.name, filename, mGraphs.back());
+            initGraph(newG.pGraph, newG.name, filename, pCallbacks, mGraphs.back());
         }
     }
 }
@@ -297,11 +299,11 @@ void RenderGraphViewer::loadScene(SampleCallbacks* pCallbacks)
 
 void RenderGraphViewer::loadSceneFromFile(const std::string& filename, SampleCallbacks* pCallbacks)
 {
-    mpScene = Scene::loadFromFile(filename);
+    mpDefaultScene = Scene::loadFromFile(filename);
     const auto& pFbo = pCallbacks->getCurrentFbo();
     float ratio = float(pFbo->getWidth()) / float(pFbo->getHeight());
-    mpScene->setCamerasAspectRatio(ratio);
-    for(auto& g : mGraphs) g.pGraph->setScene(mpScene);
+    mpDefaultScene->setCamerasAspectRatio(ratio);
+    for(auto& g : mGraphs) g.pGraph->setScene(mpDefaultScene);
 }
 
 void RenderGraphViewer::applyEditorChanges()
@@ -340,9 +342,9 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
     if (mGraphs.size())
     {
-        mpScene->update(pSample->getCurrentTime(), &mCamController);
-
         auto& pGraph = mGraphs[mActiveGraph].pGraph;
+        pGraph->getScene()->update(pSample->getCurrentTime(), &mCamController);
+
         pGraph->execute(pRenderContext.get());
         if(mGraphs[mActiveGraph].mainOutput.size())
         {
@@ -366,8 +368,12 @@ bool RenderGraphViewer::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent
 
 void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    for(auto& g : mGraphs) g.pGraph->onResize(pSample->getCurrentFbo().get());
-    if (mpScene)  mpScene->setCamerasAspectRatio((float)width / (float)height);
+    for(auto& g : mGraphs) 
+    {
+        g.pGraph->onResize(pSample->getCurrentFbo().get());
+        g.pGraph->getScene()->setCamerasAspectRatio((float)width / (float)height);
+    }
+    if (mpDefaultScene)  mpDefaultScene->setCamerasAspectRatio((float)width / (float)height);
 }
 
 void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pSample)
@@ -382,13 +388,13 @@ void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pSample)
     std::vector<ArgList::Arg> cameraPos = args.getValues("camerapos");
     if (!cameraPos.empty())
     {
-        mpScene->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
+        mpDefaultScene->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
     }
 
     std::vector<ArgList::Arg> cameraTarget = args.getValues("cameratarget");
     if (!cameraTarget.empty())
     {
-        mpScene->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
+        mpDefaultScene->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
     }
 }
 

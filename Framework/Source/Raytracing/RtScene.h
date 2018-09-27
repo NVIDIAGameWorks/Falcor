@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
+#ifdef FALCOR_DXR
 #include "Graphics/Scene/Scene.h"
 #include "RtModel.h"
 #include <map>
@@ -37,6 +38,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<RtScene>;
         using SharedConstPtr = std::shared_ptr<const RtScene>;
+        SharedPtr shared_from_this() { return inherit_shared_from_this<Scene, RtScene>::shared_from_this(); }
 
         static RtScene::SharedPtr loadFromFile(const std::string& filename, RtBuildFlags rtFlags = RtBuildFlags::None, Model::LoadFlags modelLoadFlags = Model::LoadFlags::None, Scene::LoadFlags sceneLoadFlags = LoadFlags::None);
         static RtScene::SharedPtr create(RtBuildFlags rtFlags);
@@ -89,3 +91,4 @@ namespace Falcor
         bool mRefit = false;
     };
 }
+#endif // FALCOR_DXR

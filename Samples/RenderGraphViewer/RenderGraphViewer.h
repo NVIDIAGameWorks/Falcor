@@ -45,7 +45,7 @@ public:
     void onBeginTestFrame(SampleTest* pSampleTest) override;
     
 private:
-    Scene::SharedPtr mpScene;
+    Scene::SharedPtr mpDefaultScene;
     FirstPersonCameraController mCamController;
     void addGraphDialog(SampleCallbacks* pCallbacks);
     void addGraphsFromFile(const std::string& filename, SampleCallbacks* pCallbacks);
@@ -71,7 +71,7 @@ private:
         std::vector<DebugWindow> debugWindows;
     };
 
-    void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, GraphData& data);
+    void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, SampleCallbacks* pCallbacks, GraphData& data);
     std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
     void graphOutputsGui(Gui* pGui);
     bool renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data); // Returns true if we need to close the window

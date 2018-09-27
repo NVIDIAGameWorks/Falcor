@@ -1,7 +1,7 @@
 def render_graph_forward_renderer():
     skyBox = createRenderPass("SkyBox")
 
-    forward_renderer = createRenderGraph("Forward Renderer")
+    forward_renderer = createRenderGraph("Forward Renderer2")
     forward_renderer.addPass(createRenderPass("DepthPass"), "DepthPrePass")
     forward_renderer.addPass(createRenderPass("ForwardLightingPass"), "LightingPass")
     forward_renderer.addPass(createRenderPass("CascadedShadowMaps"), "ShadowPass")
@@ -25,6 +25,10 @@ def render_graph_forward_renderer():
     forward_renderer.addEdge("FXAA.dst", "BlitPass.src");
 
     forward_renderer.markOutput("BlitPass.dst")
+
+    scene = loadScene("SunTemple/SunTemple.fscene");
+    forward_renderer.setScene(scene);
+
     return forward_renderer
 
-forward_renderer = render_graph_forward_renderer()
+forward_renderer2 = render_graph_forward_renderer()

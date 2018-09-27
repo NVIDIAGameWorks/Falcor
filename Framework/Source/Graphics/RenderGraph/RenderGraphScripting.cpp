@@ -25,15 +25,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderGraphScripting.h"
 #include "Framework.h"
+#include "RenderGraphScripting.h"
 #include "Utils/Scripting/Scripting.h"
 #include <fstream>
 #include <sstream>
 #include "Graphics/RenderGraph/RenderPassesLibrary.h"
 #include "pybind11/operators.h"
+#include "Graphics/Scene/Scene.h"
+#include "Raytracing/RtScene.h"
 
-// TODO Matt
 using namespace pybind11::literals;
 
 namespace Falcor
@@ -49,6 +50,9 @@ namespace Falcor
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
     const char* RenderGraphScripting::kUpdatePass = "updatePass";
     const char* RenderGraphScripting::kSetName = "setName";
+    const char* RenderGraphScripting::kSetScene = "setScene";
+    const char* RenderGraphScripting::kLoadScene = "loadScene";
+    const char* RenderGraphScripting::kLoadRtScene = "loadRtScene";
 
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
@@ -63,6 +67,7 @@ namespace Falcor
         graphClass.def(kMarkOutput, &RenderGraph::markOutput).def(kUnmarkOutput, &RenderGraph::unmarkOutput);
         graphClass.def(kAutoGenEdges, &RenderGraph::autoGenEdges);
         graphClass.def(kSetName, &RenderGraph::setName);
+        graphClass.def(kSetScene, &RenderGraph::setScene);
 
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
@@ -79,6 +84,16 @@ namespace Falcor
             pGraph->updatePass(passName, Dictionary(d));
         };
         graphClass.def(kUpdatePass, updateRenderPass);
+
+        // Scene
+        m.def(kLoadScene, &Scene::loadFromFile, "filename"_a, "modelLoadFlags"_a = Model::LoadFlags::None, "sceneLoadFlags"_a = Scene::LoadFlags::None);
+        auto sceneClass = pybind11::class_<Scene, Scene::SharedPtr>(m, "Scene");
+
+        // RtScene
+#ifdef FALCOR_DXR
+        auto rtSceneClass = pybind11::class_<RtScene, RtScene::SharedPtr>(m, "RtScene");
+        m.def(kLoadRtScene, &RtScene::loadFromFile, "filename"_a, "rtBuildFlags"_a = RtBuildFlags::None, "modelLoadFlags"_a = Model::LoadFlags::None, "sceneLoadFlags"_a = Scene::LoadFlags::None);
+#endif
     }
 
     RenderGraphScripting::SharedPtr RenderGraphScripting::create()

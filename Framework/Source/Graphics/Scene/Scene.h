@@ -268,4 +268,18 @@ namespace Falcor
     };
 
     enum_class_operators(Scene::LoadFlags);
+
+#define flag_str(a) case Scene::LoadFlags::a: return #a
+    inline std::string to_string(Scene::LoadFlags f)
+    {
+        switch (f)
+        {
+            flag_str(None);
+            flag_str(GenerateAreaLights);
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
+#undef flag_str
 }

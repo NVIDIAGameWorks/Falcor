@@ -30,6 +30,8 @@
 #include "Scripting.h"
 #include "API/Sampler.h"
 #include "Effects/ToneMapping/ToneMapping.h"
+#include "Graphics/Scene/Scene.h"
+#include "Raytracing/RtScene.h"
 
 namespace Falcor
 {
@@ -66,10 +68,30 @@ namespace Falcor
         op.val(ToneMapping::Operator::HableUc2).val(ToneMapping::Operator::Aces);
     }
 
+    static void sceneFlags(pybind11::module& m)
+    {
+        // Model load flags
+        auto model = pybind11::enum_<Model::LoadFlags>(m, "ModelLoadFlags");
+        model.val(Model::LoadFlags::None).val(Model::LoadFlags::DontGenerateTangentSpace).val(Model::LoadFlags::FindDegeneratePrimitives).val(Model::LoadFlags::AssumeLinearSpaceTextures);
+        model.val(Model::LoadFlags::DontMergeMeshes).val(Model::LoadFlags::BuffersAsShaderResource).val(Model::LoadFlags::RemoveInstancing).val(Model::LoadFlags::UseSpecGlossMaterials);
+
+        // Scene load flags
+        auto scene = pybind11::enum_<Scene::LoadFlags>(m, "SceneLoadFlags");
+        scene.val(Scene::LoadFlags::None).val(Scene::LoadFlags::GenerateAreaLights);
+
+#ifdef FALCOR_DXR
+        // RtSceneFlags
+        auto rtScene = pybind11::enum_<RtBuildFlags>(m, "RtBuildFlags");
+        rtScene.val(RtBuildFlags::None).val(RtBuildFlags::AllowUpdate).val(RtBuildFlags::AllowCompaction).val(RtBuildFlags::FastTrace).val(RtBuildFlags::FastBuild);
+        rtScene.val(RtBuildFlags::MinimizeMemory).val(RtBuildFlags::PerformUpdate);
+#endif
+    }
+
     void EnumsScriptBindings::registerScriptingObjects(pybind11::module& m)
     {
         globalEnums(m);
         samplerState(m);
         toneMapping(m);
+        sceneFlags(m);
     }
 }

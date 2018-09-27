@@ -86,8 +86,8 @@ namespace Falcor
 
     PYBIND11_EMBEDDED_MODULE(falcor, m)
     {
-        RenderGraphScripting::registerScriptingObjects(m);
         EnumsScriptBindings::registerScriptingObjects(m);
+        RenderGraphScripting::registerScriptingObjects(m);
     }
 
     bool Scripting::sRunning = false;
