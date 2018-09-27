@@ -68,10 +68,10 @@ namespace Falcor
         // RenderPassLibrary
         const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})->RenderPass::SharedPtr
         {
-            return RenderPassLibrary::createPass(passName.c_str(), Dictionary(d));
+            return RenderPassLibrary::instance().createPass(passName.c_str(), Dictionary(d));
         };
         m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
-        m.def(kLoadPassLibrary, RenderPassLibrary::loadPassLibrary);
+        m.def(kLoadPassLibrary, &RenderPassLibrary::loadLibrary);
 
         const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d )
         {

@@ -106,7 +106,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 std::string passLib;
                 if(openFileDialog("*.dll", passLib))
                 {
-                    RenderPassLibrary::loadPassLibrary(passLib);
+                    RenderPassLibrary::instance().loadLibrary(passLib);
                 }
             }
 
@@ -124,16 +124,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         pGui->setCurrentWindowPos(screenWidth / 4, screenHeight * 3 / 4 + 20);
     }
 
-    size_t numRenderPasses = RenderPassLibrary::getClassCount();
+    size_t numRenderPasses = RenderPassLibrary::instance().getClassCount();
     pGui->beginColumns(5);
     for (size_t i = 0; i < numRenderPasses; ++i)
     {
-        std::string renderPassClassName = RenderPassLibrary::getClassName(i);
+        std::string renderPassClassName = RenderPassLibrary::instance().getClassName(i);
         pGui->addRect({ 148.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
         pGui->addDummyItem((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 44.0f });
         pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassType", renderPassClassName);
-        pGui->addText(RenderPassLibrary::getClassName(i).c_str());
-        pGui->addTooltip(RenderPassLibrary::getPassDesc(i).c_str(), false);
+        pGui->addText(RenderPassLibrary::instance().getClassName(i).c_str());
+        pGui->addTooltip(RenderPassLibrary::instance().getPassDesc(i).c_str(), false);
         pGui->nextColumn();
     }
 

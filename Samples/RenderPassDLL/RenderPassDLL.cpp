@@ -107,12 +107,7 @@ void MyBlitPass::renderUI(Gui* pGui, const char* uiGroup)
     }
 }
 
-extern "C" __declspec(dllexport) void getPasses(std::vector<RenderPassLibrary::RenderPassLibDesc>& passesList)
+extern "C" __declspec(dllexport) void getPasses(RenderPassLibrary& lib)
 {
-        RenderPassLibrary::RenderPassLibDesc d;
-        d.className = "MyBlitPass";
-        d.desc = "My blit class";
-        d.func = MyBlitPass::create;
-
-        passesList.push_back(d);
+    lib.registerClass("MyBlitPass", "My Blit Class", MyBlitPass::create);
 }

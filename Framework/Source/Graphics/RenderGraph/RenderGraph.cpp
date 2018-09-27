@@ -137,7 +137,7 @@ namespace Falcor
         // recreate pass without changing graph using new dictionary
         auto pOldPass = pPassIt->second.pPass;
         std::string passTypeName = pOldPass->getName();
-        auto pPass = RenderPassLibrary::createPass(passTypeName.c_str(), dict);
+        auto pPass = RenderPassLibrary::instance().createPass(passTypeName.c_str(), dict);
         pPassIt->second.pPass = pPass;
 
         auto passChangedCB = [this]() {mRecompile = true; };
@@ -462,7 +462,7 @@ namespace Falcor
                 if (dstFieldNames.size() > 0)
                 {
                     // One resolve pass is made for every output that requires it
-                    auto pResolvePass = std::static_pointer_cast<ResolvePass>(RenderPassLibrary::createPass("ResolvePass"));
+                    auto pResolvePass = std::static_pointer_cast<ResolvePass>(RenderPassLibrary::instance().createPass("ResolvePass"));
                     pResolvePass->setFormat(srcField.getFormat()); // Match input texture format
 
                     // Create pass and attach src to it

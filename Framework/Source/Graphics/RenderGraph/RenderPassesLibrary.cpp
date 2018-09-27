@@ -40,93 +40,99 @@
 
 namespace Falcor
 {
-    struct RenderPassDesc 
-    {
-        std::string passDesc;
-        RenderPassLibrary::CreateFunc create;
-    };
-
-    static std::unordered_map<std::string, RenderPassDesc> gRenderPassList;
+    RenderPassLibrary* RenderPassLibrary::spInstance = nullptr;
 
     template<typename Pass>
     using PassFunc = typename Pass::SharedPtr(*)(const Dictionary&);
 
-#define addClass(c, desc) RenderPassLibrary::addPassClass(#c, desc, (PassFunc<c>)c::create)
+#define addClass(c, desc) registerClass(#c, desc, (PassFunc<c>)c::create)
 
+    RenderPassLibrary& RenderPassLibrary::instance()
+    {
+        if (!spInstance) spInstance = new RenderPassLibrary;
+        return *spInstance;
+    }
+
+    void RenderPassLibrary::shutdown()
+    {
+        for (auto& l : mLibs) FreeLibrary(l);
+        safe_delete(spInstance);
+    }
 
     static bool addBuiltinPasses()
     {
-        addClass(BlitPass, "Blit one texture into another");
-        addClass(ForwardLightingPass, "Forward-rendering lighting pass");
-        addClass(DepthPass, "Depth pass");
-        addClass(CascadedShadowMaps, "Cascaded shadow maps");
-        addClass(ToneMapping, "Tone-Mapping");
-        addClass(FXAA, "Fast Approximate Anti-Aliasing");
-        addClass(SSAO, "Screen Space Ambient Occlusion");
-        addClass(TemporalAA, "Temporal Anti-Aliasing");
-        addClass(SkyBox, "Sky Box pass");
-        addClass(ResolvePass, "MSAA Resolve");
+        auto& lib = RenderPassLibrary::instance();
+
+        lib.addClass(BlitPass, "Blit one texture into another");
+        lib.addClass(ForwardLightingPass, "Forward-rendering lighting pass");
+        lib.addClass(DepthPass, "Depth pass");
+        lib.addClass(CascadedShadowMaps, "Cascaded shadow maps");
+        lib.addClass(ToneMapping, "Tone-Mapping");
+        lib.addClass(FXAA, "Fast Approximate Anti-Aliasing");
+        lib.addClass(SSAO, "Screen Space Ambient Occlusion");
+        lib.addClass(TemporalAA, "Temporal Anti-Aliasing");
+        lib.addClass(SkyBox, "Sky Box pass");
+        lib.addClass(ResolvePass, "MSAA Resolve");
 
         return true;
     };
 
     static const bool b = addBuiltinPasses();
 
-    void RenderPassLibrary::addPassClass(const char* className, const char* desc, CreateFunc func)
+    RenderPassLibrary& RenderPassLibrary::registerClass(const char* className, const char* desc, CreateFunc func)
     {
-        if (gRenderPassList.find(className) != gRenderPassList.end())
+        if (mPasses.find(className) != mPasses.end())
         {
-            logWarning(std::string("Trying to add a render-pass `") + className + "` to the render-passes library,  but a render-pass with the same name already exists. Ignoring the new definition");
+            logWarning(std::string("Trying to register a render-pass `") + className + "` to the render-passes library,  but a render-pass with the same name already exists. Ignoring the new definition");
         }
         else
         {
-            gRenderPassList[className] = { desc, func };
+            mPasses[className] = { desc, func };
         }
+
+        return *this;
     }
 
     std::shared_ptr<RenderPass> RenderPassLibrary::createPass(const char* className, const Dictionary& dict)
     {
-        if (gRenderPassList.find(className) == gRenderPassList.end())
+        if (mPasses.find(className) == mPasses.end())
         {
             logWarning(std::string("Trying to create a render-pass named `") + className + "`, but no such class exists in the library");
             return nullptr;
         }
 
-        auto& renderPass = gRenderPassList[className];
+        auto& renderPass = mPasses[className];
         return renderPass.create(dict);
     }
 
     size_t RenderPassLibrary::getClassCount()
     {
-        return gRenderPassList.size();
+        return mPasses.size();
     }
 
     const std::string& RenderPassLibrary::getClassName(size_t pass)
     {
         assert(pass < getClassCount());
-        return std::next(gRenderPassList.begin(), pass)->first;
+        return std::next(mPasses.begin(), pass)->first;
     }
 
     const std::string& RenderPassLibrary::getPassDesc(size_t pass)
     {
         assert(pass < getClassCount());
-        return std::next(gRenderPassList.begin(), pass)->second.passDesc;
+        return std::next(mPasses.begin(), pass)->second.passDesc;
     }
 
-    void RenderPassLibrary::loadPassLibrary(const std::string& filename)
+    void RenderPassLibrary::loadLibrary(const std::string& filename)
     {
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logWarning("Can't find render-pass library file `" + filename + "`");
+            logWarning("Can't load render-pass library `" + filename + "`. File not found");
             return;
         }
-
-        HMODULE h = LoadLibraryA(fullpath.c_str());
-        auto f = (LibraryFunc)GetProcAddress(h, "getPasses");
-        std::vector<RenderPassLibrary::RenderPassLibDesc> passesList;
-        f(passesList);
-
-        for (const auto& d : passesList) addPassClass(d.className, d.desc, d.func);
+        HMODULE l = LoadLibraryA(fullpath.c_str());
+        mLibs.push_back(l);
+        auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
+        func(*this);
     }
 }

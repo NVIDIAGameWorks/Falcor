@@ -39,6 +39,7 @@
 #include "Graphics/FboHelper.h"
 #include <sstream>
 #include <iomanip>
+#include "Graphics/RenderGraph/RenderPassesLibrary.h"
 
 namespace Falcor
 {
@@ -176,6 +177,7 @@ namespace Falcor
         VRSystem::cleanup();
 
         Scripting::shutdown();
+        RenderPassLibrary::instance().shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
         mpBackBufferFBO.reset();

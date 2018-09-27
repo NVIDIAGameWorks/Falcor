@@ -36,12 +36,18 @@ namespace Falcor
     class RenderPassLibrary
     {
     public:
+        RenderPassLibrary() = default;
+        RenderPassLibrary(RenderPassLibrary&) = delete;
+
+        static RenderPassLibrary& instance();
+        void shutdown();
+
         using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
-        static void addPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createPass(const char* className, const Dictionary& dict = {});
-        static size_t getClassCount();
-        static const std::string& getPassDesc(size_t pass);
-        static const std::string& getClassName(size_t pass);
+        RenderPassLibrary& registerClass(const char* className, const char* desc, CreateFunc func);
+        std::shared_ptr<RenderPass> createPass(const char* className, const Dictionary& dict = {});
+        size_t getClassCount();
+        const std::string& getPassDesc(size_t pass);
+        const std::string& getClassName(size_t pass);
 
         struct RenderPassLibDesc
         {
@@ -50,7 +56,19 @@ namespace Falcor
             CreateFunc func;
         };
 
-        using LibraryFunc = void(*)(std::vector<RenderPassLibrary::RenderPassLibDesc>&);
-        static void loadPassLibrary(const std::string& filename);
+        using LibraryFunc = void(*)(RenderPassLibrary&);
+        void loadLibrary(const std::string& filename);
+
+    private:
+        static RenderPassLibrary* spInstance;
+        std::vector<HMODULE> mLibs;
+
+        struct RenderPassDesc
+        {
+            std::string passDesc;
+            RenderPassLibrary::CreateFunc create;
+        };
+
+        std::unordered_map<std::string, RenderPassDesc> mPasses;
     };
 }
