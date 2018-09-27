@@ -163,7 +163,7 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (mGraphs.size())
     {
         Gui::DropdownList graphList;
-        for (size_t i = 0; i < mGraphs.size(); i++) graphList.push_back({ (int32_t)i, mGraphs[i].name });
+        for (size_t i = 0; i < mGraphs.size(); i++) graphList.push_back({ (int32_t)i, mGraphs[i].pGraph->getName() });
         if(mEditorProcess == 0) 
         {
             pGui->addDropdown("Active Graph", graphList, mActiveGraph);
@@ -177,14 +177,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         // Graph UI
         pGui->addSeparator();
-        mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].name.c_str());
+        mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].pGraph->getName().c_str());
     }
 
 }
 
 void RenderGraphViewer::editorFileChangeCB()
 {
-    // Load the script
     mEditorScript = readFile(mEditorTempFile);
 }
 
@@ -240,6 +239,8 @@ std::vector<std::string> RenderGraphViewer::getGraphOutputs(const RenderGraph::S
 
 void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, GraphData& data)
 {
+    if (pGraph->getName().empty()) pGraph->setName(name);
+
     data.name = name;
     data.filename = filename;
     data.pGraph = pGraph;

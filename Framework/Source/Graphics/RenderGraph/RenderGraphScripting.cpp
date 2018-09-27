@@ -48,12 +48,13 @@ namespace Falcor
     const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
     const char* RenderGraphScripting::kUpdatePass = "updatePass";
+    const char* RenderGraphScripting::kSetName = "setName";
 
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {
         // RenderGraph
-        m.def(kCreateGraph, &RenderGraph::create);
+        m.def(kCreateGraph, &RenderGraph::create, "name"_a = "");
 
         void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
         auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
@@ -61,7 +62,8 @@ namespace Falcor
         graphClass.def(kAddEdge, &RenderGraph::addEdge).def(kRemoveEdge, renderGraphRemoveEdge);
         graphClass.def(kMarkOutput, &RenderGraph::markOutput).def(kUnmarkOutput, &RenderGraph::unmarkOutput);
         graphClass.def(kAutoGenEdges, &RenderGraph::autoGenEdges);
-        
+        graphClass.def(kSetName, &RenderGraph::setName);
+
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
 

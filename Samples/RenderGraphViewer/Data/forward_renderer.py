@@ -1,7 +1,7 @@
 def render_graph_forward_renderer():
     skyBox = createRenderPass("SkyBox")
 
-    forward_renderer = createRenderGraph()
+    forward_renderer = createRenderGraph("Forward Renderer")
     forward_renderer.addPass(createRenderPass("DepthPass"), "DepthPrePass")
     forward_renderer.addPass(createRenderPass("ForwardLightingPass"), "LightingPass")
     forward_renderer.addPass(createRenderPass("CascadedShadowMaps"), "ShadowPass")

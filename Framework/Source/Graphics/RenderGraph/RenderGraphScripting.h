@@ -63,6 +63,7 @@ namespace Falcor
         static const char* kCreatePass;
         static const char* kCreateGraph;
         static const char* kUpdatePass;
+        static const char* kSetName;
 
     private:
         RenderGraphScripting() = default;
