@@ -176,8 +176,8 @@ namespace Falcor
 
         VRSystem::cleanup();
 
-        Scripting::shutdown();
         RenderPassLibrary::instance().shutdown();
+        Scripting::shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
         mpBackBufferFBO.reset();
