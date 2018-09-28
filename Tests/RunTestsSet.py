@@ -304,6 +304,10 @@ def analyze_screen_captures(tolerance, result_json_data, current_test_result_dir
                 result_str = image_compare_result[:image_compare_result.find(' ')]
                 result['Compare Result'] = result_str
                 result['Test Passed'] = float(result_str) <= tolerance
+  
+                if result['Test Passed'] == False:
+                    print '[FAILED] Comparision above tolerance' + result_str
+                
             # Error
             else:
                 result['Compare Result'] = "Error"
