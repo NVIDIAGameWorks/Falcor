@@ -57,7 +57,7 @@ namespace Falcor
     RenderPassLibrary::~RenderPassLibrary()
     {
         mPasses.clear();
-        for (auto& l : mLibs) releaseLibrary(l.first);
+        while (mLibs.size()) releaseLibrary(mLibs.begin()->first);
     }
 
     void RenderPassLibrary::shutdown()

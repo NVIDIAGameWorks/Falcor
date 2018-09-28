@@ -35,6 +35,7 @@ const char* kEditorExecutableName = "RenderGraphEditor";
 void RenderGraphViewer::onShutdown(SampleCallbacks* pSample)
 {
     resetEditor();
+    mGraphs.clear();
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

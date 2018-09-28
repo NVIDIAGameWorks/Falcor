@@ -110,10 +110,6 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
-            if (pGui->addMenuItem("Release Library"))
-            {
-                RenderPassLibrary::instance().releaseLibrary(RenderPassLibrary::instance().getLibName());
-            }
             pGui->endDropDownMenu();
         }
 
