@@ -57,8 +57,7 @@ namespace Falcor
     RenderPassLibrary::~RenderPassLibrary()
     {
         mPasses.clear();
-        for (auto& l : mLibs) FreeLibrary(l);
-        mLibs.clear();
+        for (auto& l : mLibs) releaseLibrary(l.first);
     }
 
     void RenderPassLibrary::shutdown()
@@ -88,16 +87,20 @@ namespace Falcor
 
     RenderPassLibrary& RenderPassLibrary::registerClass(const char* className, const char* desc, CreateFunc func)
     {
+        registerInternal(className, desc, func, nullptr);
+        return *this;
+    }
+
+    void RenderPassLibrary::registerInternal(const char* className, const char* desc, CreateFunc func, HMODULE module)
+    {
         if (mPasses.find(className) != mPasses.end())
         {
             logWarning(std::string("Trying to register a render-pass `") + className + "` to the render-passes library,  but a render-pass with the same name already exists. Ignoring the new definition");
         }
         else
         {
-            mPasses[className] = { desc, func };
+            mPasses[className] = ExtendeDesc(className, desc, func, module);
         }
-
-        return *this;
     }
 
     std::shared_ptr<RenderPass> RenderPassLibrary::createPass(const char* className, const Dictionary& dict)
@@ -109,24 +112,15 @@ namespace Falcor
         }
 
         auto& renderPass = mPasses[className];
-        return renderPass.create(dict);
+        return renderPass.func(dict);
     }
 
-    size_t RenderPassLibrary::getClassCount()
+    RenderPassLibrary::DescVec RenderPassLibrary::enumerateClasses() const
     {
-        return mPasses.size();
-    }
-
-    const std::string& RenderPassLibrary::getClassName(size_t pass)
-    {
-        assert(pass < getClassCount());
-        return std::next(mPasses.begin(), pass)->first;
-    }
-
-    const std::string& RenderPassLibrary::getPassDesc(size_t pass)
-    {
-        assert(pass < getClassCount());
-        return std::next(mPasses.begin(), pass)->second.passDesc;
+        DescVec v;
+        v.reserve(mPasses.size());
+        for (const auto& p : mPasses) v.push_back(p.second);
+        return v;
     }
 
     void RenderPassLibrary::loadLibrary(const std::string& filename)
@@ -138,11 +132,36 @@ namespace Falcor
             return;
         }
         HMODULE l = LoadLibraryA(fullpath.c_str());
-        mLibs.push_back(l);
+        mLibs[filename] = { l };
         auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
-        std::vector<RenderPassLibDesc> passes;
 
-        func(gpDevice, passes);
-        for (auto& p : passes) registerClass(p.className, p.desc, p.func);
+        RenderPassLibrary lib;
+        func(gpDevice, lib);
+
+        for (auto& p : lib.mPasses) registerInternal(p.second.className, p.second.desc, p.second.func, l);
     }
+
+    void RenderPassLibrary::releaseLibrary(const std::string& filename)
+    {
+        auto& libIt = mLibs.find(filename);
+        if (libIt == mLibs.end())
+        {
+            logWarning("Can't unload render-pass library `" + filename + "`. The library wasn't loaded");
+            return;
+        }
+
+        gpDevice->flushAndSync();
+
+        // Delete all the classes that were owned by the module
+        HMODULE module = libIt->second;
+        for (auto& it = mPasses.begin(); it != mPasses.end();)
+        {
+            if (it->second.module == module) it = mPasses.erase(it);
+            else ++it;
+        }
+
+        FreeLibrary(module);
+        mLibs.erase(libIt);
+    }
+        
 }

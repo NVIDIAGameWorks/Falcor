@@ -107,8 +107,8 @@ void MyBlitPass::renderUI(Gui* pGui, const char* uiGroup)
     }
 }
 
-extern "C" __declspec(dllexport) void getPasses(const Device::SharedPtr& pDevice, RenderPassLibrary::DescVec& passes)
+extern "C" __declspec(dllexport) void getPasses(const Device::SharedPtr& pDevice, RenderPassLibrary& lib)
 {
     gpDevice = pDevice;
-    passes.push_back({"MyBlitPass", "My Blit Class", MyBlitPass::create});
+    lib.registerClass("MyBlitPass", "My Blit Class", MyBlitPass::create);
 }

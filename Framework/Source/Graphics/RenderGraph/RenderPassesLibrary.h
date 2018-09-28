@@ -39,42 +39,68 @@ namespace Falcor
         RenderPassLibrary() = default;
         RenderPassLibrary(RenderPassLibrary&) = delete;
         ~RenderPassLibrary();
-
-        static RenderPassLibrary& instance();
-        void shutdown();
-
         using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
-        RenderPassLibrary& registerClass(const char* className, const char* desc, CreateFunc func);
-        std::shared_ptr<RenderPass> createPass(const char* className, const Dictionary& dict = {});
-        size_t getClassCount();
-        const std::string& getPassDesc(size_t pass);
-        const std::string& getClassName(size_t pass);
-
-        struct RenderPassLibDesc
-        {
-            RenderPassLibDesc(const char* name, const char* desc_, CreateFunc func_) : className(name), desc(desc_), func(func_) {}
-
-            const char* className;
-            const char* desc;
-            CreateFunc func;
-        };
-
-        using DeviceSharedPtr = std::shared_ptr<Device>;
-        using DescVec = std::vector<RenderPassLibDesc>;
-
-        using LibraryFunc = void(*)(const DeviceSharedPtr&, DescVec& passes);
-        void loadLibrary(const std::string& filename);
-
-    private:
-        static RenderPassLibrary* spInstance;
-        std::vector<HMODULE> mLibs;
 
         struct RenderPassDesc
         {
-            std::string passDesc;
-            RenderPassLibrary::CreateFunc create;
+            RenderPassDesc() = default;
+            RenderPassDesc(const char* name, const char* desc_, CreateFunc func_) : className(name), desc(desc_), func(func_) {}
+
+            const char* className = nullptr;
+            const char* desc = nullptr;
+            CreateFunc func = nullptr;
         };
 
-        std::unordered_map<std::string, RenderPassDesc> mPasses;
+        using DescVec = std::vector<RenderPassDesc>;
+        using DeviceSharedPtr = std::shared_ptr<Device>;
+
+        /** Get an instance of the library. It's a singleton, you'll always get the same object
+        */
+        static RenderPassLibrary& instance();
+
+        /** Call this before the app is shutting down to release all the libraries
+        */
+        void shutdown();
+
+        /** Add a new pass class to the library
+        */
+        RenderPassLibrary& registerClass(const char* className, const char* desc, CreateFunc func);
+
+        /** Instantiate a new render-pass object
+        */
+        std::shared_ptr<RenderPass> createPass(const char* className, const Dictionary& dict = {});
+
+        /** Get a list of all the registered classes
+        */
+        DescVec enumerateClasses() const;
+
+        /** Load a new render-pass DLL
+        */
+        void loadLibrary(const std::string& filename);
+
+        /** Release a previously loaded DLL
+        */
+        void releaseLibrary(const std::string& filename);
+
+        /** A render-pass DLL should implement a function called `getPasses` with the following signature
+        */
+        using LibraryFunc = void(*)(const DeviceSharedPtr&, RenderPassLibrary& lib);
+
+        std::string getLibName() const { return mLibs.begin()->first; }
+    private:
+        static RenderPassLibrary* spInstance;
+
+        struct ExtendeDesc : RenderPassDesc
+        {
+            ExtendeDesc() = default;
+            ExtendeDesc(const char* name, const char* desc_, CreateFunc func_, HMODULE module_) : RenderPassDesc(name, desc, func_), module(module_) {}
+
+            HMODULE module = nullptr;
+        };
+
+        void registerInternal(const char* className, const char* desc, CreateFunc func, HMODULE hmodule);
+
+        std::unordered_map<std::string, HMODULE> mLibs;
+        std::unordered_map<std::string, ExtendeDesc> mPasses;
     };
 }
