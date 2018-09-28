@@ -345,33 +345,7 @@ namespace Falcor
     {
         drawIndexedInstanced(indexCount, 1, startIndexLocation, baseVertexLocation, 0);
     }
-	/////////////////////////////////////////////////////////
-	//	right now Falcor use a global state for one resource, so if we call D3D12SetFbo in multithread mode, there will be conflict.
-	//  so we set the FBO before the multithreading and we don't set FBO again for every object drawing in multithreading. Afterwards we set bind flags back to ALL.
-	// 	1. for (int i = 0; i < n; i++) //n threads
-	// 	{
-	//
-	//	 getRenderContext(i)->prepareForDrawLocal(Falcor::RenderContext::StateBindFlags::Fbo);
-	//	}
-	//
-	//	2. Call drawIndexedInstancedMultiThread in thread instead of drawIndexedInstanced
-	//
-	//	3.  for (int i = 0; i < n; i++) //n threads
-	//		getRenderContext(i)->setBindFlags(Falcor::RenderContext::StateBindFlags::All);
-	//////////////////////////////////////////////////////////
-	void RenderContext::prepareForDrawLocal()
-	{
-		D3D12SetFbo(this, mpGraphicsState->getFbo().get());
-	}
-	
-	void RenderContext::drawIndexedInstancedMultiThread(uint32_t indexCount, uint32_t instanceCount, uint32_t startIndexLocation, int32_t baseVertexLocation, uint32_t startInstanceLocation)
-	{
-		setBindFlags( Falcor::RenderContext::StateBindFlags::All & ~Falcor::RenderContext::StateBindFlags::Fbo);
-		prepareForDraw();
-		mpLowLevelData->getCommandList()->DrawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
-		setBindFlags(Falcor::RenderContext::StateBindFlags::All);
-	}
-	
+
     void RenderContext::drawIndirect(const Buffer* argBuffer, uint64_t argBufferOffset)
     {
         prepareForDraw();

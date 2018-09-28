@@ -648,11 +648,9 @@ namespace Falcor
             mRootSets[i].dirty = (mRootSets[i].pSet == nullptr);
             if (mRootSets[i].pSet == nullptr)
             {
-				EnterCriticalSection(&ghMutex);
                 DescriptorSet::Layout layout;
                 const auto& set = mpReflector->getDescriptorSetLayouts()[i];
                 mRootSets[i].pSet = DescriptorSet::create(gpDevice->getGpuDescriptorPool(), set);
-				LeaveCriticalSection(&ghMutex);
                 if (mRootSets[i].pSet == nullptr)
                 {
                     return false;
