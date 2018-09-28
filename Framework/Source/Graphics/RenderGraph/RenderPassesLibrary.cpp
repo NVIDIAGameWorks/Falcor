@@ -140,6 +140,9 @@ namespace Falcor
         HMODULE l = LoadLibraryA(fullpath.c_str());
         mLibs.push_back(l);
         auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
-        func(gpDevice, *this);
+        std::vector<RenderPassLibDesc> passes;
+
+        func(gpDevice, passes);
+        for (auto& p : passes) registerClass(p.className, p.desc, p.func);
     }
 }

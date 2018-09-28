@@ -11,22 +11,25 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="RenderPassDLL.cpp" />
+    <ClCompile Include="SamplePassLibrary.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RenderPassDLL.h" />
+    <ClInclude Include="SamplePassLibrary.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Framework\Source\Falcor.vcxproj">
+    <ProjectReference Include="..\..\..\Framework\Source\Falcor.vcxproj">
       <Project>{3b602f0e-3834-4f73-b97d-7dfc91597a98}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\forward_renderer_with_dll.py" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{232CBBB4-33D9-4445-BB62-08A7E7700147}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>FeatureDemo</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
-    <ProjectName>RenderPassDLL</ProjectName>
+    <ProjectName>SamplePassLibrary</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -46,10 +49,10 @@
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Import Project="..\..\Framework\Source\Falcor.props" />
+    <Import Project="..\..\..\Framework\Source\Falcor.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Import Project="..\..\Framework\Source\Falcor.props" />
+    <Import Project="..\..\..\Framework\Source\Falcor.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">

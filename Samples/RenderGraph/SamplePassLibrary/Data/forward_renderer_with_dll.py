@@ -1,7 +1,7 @@
 def render_graph_forward_renderer():
     skyBox = createRenderPass("SkyBox")
 
-    loadRenderPassLibrary("renderPassDll.Dll")
+    loadRenderPassLibrary("SamplePassLibrary.Dll")
     
     forward_renderer = createRenderGraph()
     forward_renderer.addPass(createRenderPass("DepthPass"), "DepthPrePass")

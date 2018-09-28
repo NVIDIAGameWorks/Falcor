@@ -52,12 +52,17 @@ namespace Falcor
 
         struct RenderPassLibDesc
         {
+            RenderPassLibDesc(const char* name, const char* desc_, CreateFunc func_) : className(name), desc(desc_), func(func_) {}
+
             const char* className;
             const char* desc;
             CreateFunc func;
         };
 
-        using LibraryFunc = void(*)(const std::shared_ptr<Device>&, RenderPassLibrary&);
+        using DeviceSharedPtr = std::shared_ptr<Device>;
+        using DescVec = std::vector<RenderPassLibDesc>;
+
+        using LibraryFunc = void(*)(const DeviceSharedPtr&, DescVec& passes);
         void loadLibrary(const std::string& filename);
 
     private:

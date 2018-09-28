@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderPassDLL.h"
+#include "SamplePassLibrary.h"
 
 static const std::string kDst = "dst";
 static const std::string kSrc = "src";
@@ -107,8 +107,8 @@ void MyBlitPass::renderUI(Gui* pGui, const char* uiGroup)
     }
 }
 
-extern "C" __declspec(dllexport) void getPasses(const Device::SharedPtr& pDevice, RenderPassLibrary& lib)
+extern "C" __declspec(dllexport) void getPasses(const Device::SharedPtr& pDevice, RenderPassLibrary::DescVec& passes)
 {
     gpDevice = pDevice;
-    lib.registerClass("MyBlitPass", "My Blit Class", MyBlitPass::create);
+    passes.push_back({"MyBlitPass", "My Blit Class", MyBlitPass::create});
 }
