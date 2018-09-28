@@ -163,11 +163,9 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // Display a list with all the graphs
     if (mGraphs.size())
     {
-        if(pGui->addButton("Unload libs"))
+        if(pGui->addButton("Reload libraries"))
         {
-            mGraphs.clear();
-            RenderPassLibrary::instance().releaseLibrary(RenderPassLibrary::instance().getLibName());
-            return;
+            RenderPassLibrary::instance().reloadLibraries();
         }
 
         Gui::DropdownList graphList;

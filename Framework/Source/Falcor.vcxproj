@@ -425,7 +425,7 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraphScripting.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
     <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
@@ -1121,7 +1121,7 @@
     <ClInclude Include="Graphics\RenderGraph\RenderGraphScripting.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">

@@ -81,11 +81,14 @@ namespace Falcor
         */
         void releaseLibrary(const std::string& filename);
 
+        /** Reload libraries
+        */
+        void reloadLibraries();
+
         /** A render-pass DLL should implement a function called `getPasses` with the following signature
         */
         using LibraryFunc = void(*)(RenderPassLibrary& lib);
 
-        std::string getLibName() const { return mLibs.begin()->first; }
     private:
         static RenderPassLibrary* spInstance;
 

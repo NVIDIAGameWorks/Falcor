@@ -30,7 +30,7 @@
 #include "Utils/Scripting/Scripting.h"
 #include <fstream>
 #include <sstream>
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include "pybind11/operators.h"
 
 // TODO Matt

@@ -30,7 +30,7 @@
 #include "API/FBO.h"
 #include "Utils/DirectedGraphTraversal.h"
 #include "Utils/Gui.h"
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include "RenderPasses/ResolvePass.h"
 
 namespace Falcor
@@ -52,6 +52,14 @@ namespace Falcor
         mpGraph = DirectedGraph::create();
         mpResourcesCache = ResourceCache::create();
         mpPassDictionary = Dictionary::create();
+        gRenderGraphs.push_back(this);
+    }
+
+    RenderGraph::~RenderGraph()
+    {
+        auto& it = std::find(gRenderGraphs.begin(), gRenderGraphs.end(), this);
+        assert(it != gRenderGraphs.end());
+        gRenderGraphs.erase(it);
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const

@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "RenderPassesLibrary.h"
+#include "RenderPassLibrary.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
 #include "RenderPasses/ForwardLightingPass.h"
@@ -163,5 +163,9 @@ namespace Falcor
         FreeLibrary(module);
         mLibs.erase(libIt);
     }
-        
+ 
+    void RenderPassLibrary::reloadLibraries()
+    {
+
+    }
 }

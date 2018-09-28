@@ -44,6 +44,8 @@ namespace Falcor
 
         static const uint32_t kInvalidIndex = -1;
 
+        ~RenderGraph();
+
         /** Create a new object
         */
         static SharedPtr create();
@@ -240,4 +242,6 @@ namespace Falcor
         bool mProfileGraph = true;
         Dictionary::SharedPtr mpPassDictionary;
     };
+
+    dlldecl std::vector<RenderGraph*> gRenderGraphs;
 }

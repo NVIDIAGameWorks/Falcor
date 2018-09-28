@@ -547,9 +547,6 @@
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp">
       <Filter>Utils\PatternGenerators</Filter>
     </ClCompile>
@@ -588,6 +585,9 @@
     </ClCompile>
     <ClCompile Include="..\Externals\GLM\glm\detail\glm.cpp">
       <Filter>Externals\GLM\detail</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderPassLibrary.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1414,9 +1414,6 @@
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h">
       <Filter>Utils\PatternGenerators</Filter>
     </ClInclude>
@@ -2172,6 +2169,9 @@
     </ClInclude>
     <ClInclude Include="..\Externals\GLM\glm\vector_relational.hpp">
       <Filter>Externals\GLM</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassLibrary.h">
+      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -39,7 +39,7 @@
 #include "Graphics/FboHelper.h"
 #include <sstream>
 #include <iomanip>
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 
 namespace Falcor
 {

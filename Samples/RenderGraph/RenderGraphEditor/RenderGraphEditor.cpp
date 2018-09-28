@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphEditor.h"
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include <fstream>
 #include "RenderGraphEditor.h"
 
