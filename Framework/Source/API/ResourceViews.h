@@ -90,7 +90,6 @@ namespace Falcor
         ShaderResourceView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mostDetailedMip_, uint32_t mipCount_, uint32_t firstArraySlice_, uint32_t arraySize_) :
             ResourceView(pResource, handle, mostDetailedMip_, mipCount_, firstArraySlice_, arraySize_) {}
     private:
-        static SharedPtr sNullView;
     };
 
     class DepthStencilView : public ResourceView<DsvHandle>
@@ -104,7 +103,6 @@ namespace Falcor
     private:
         DepthStencilView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
-        static SharedPtr sNullView;
     };
 
     class UnorderedAccessView : public ResourceView<UavHandle>
@@ -117,8 +115,6 @@ namespace Falcor
     private:
         UnorderedAccessView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
-
-        static SharedPtr sNullView;
     };
 
     class RenderTargetView : public ResourceView<RtvHandle>
@@ -132,8 +128,6 @@ namespace Falcor
     private:
         RenderTargetView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
-
-        static SharedPtr sNullView;
     };
 
     class ConstantBufferView : public ResourceView<CbvHandle>
@@ -146,8 +140,12 @@ namespace Falcor
 
     private:
         ConstantBufferView(ResourceWeakPtr& pResource, ApiHandle handle) :
-            ResourceView(pResource, handle, 0, 1, 0, 1) {}
-        
-        static SharedPtr sNullView;
+            ResourceView(pResource, handle, 0, 1, 0, 1) {}        
     };
+
+    dlldecl ShaderResourceView::SharedPtr gNullSrv;
+    dlldecl ConstantBufferView::SharedPtr gNullCbv;
+    dlldecl RenderTargetView::SharedPtr   gNullRtv;
+    dlldecl UnorderedAccessView::SharedPtr gNullUav;
+    dlldecl DepthStencilView::SharedPtr gNullDsv;
 }

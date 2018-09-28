@@ -45,9 +45,9 @@ namespace Falcor
     ShaderResourceView::SharedPtr ShaderResourceView::create(ResourceWeakPtr pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullSrv)
         {
-            return sNullView;
+            return gNullSrv;
         }
 
         D3D12_SHADER_RESOURCE_VIEW_DESC desc;
@@ -65,7 +65,7 @@ namespace Falcor
             desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         }
         SharedPtr pNewObj;
-        SharedPtr& pObj = pSharedPtr ? pNewObj : sNullView;
+        SharedPtr& pObj = pSharedPtr ? pNewObj : gNullSrv;
 
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
@@ -80,9 +80,9 @@ namespace Falcor
     DepthStencilView::SharedPtr DepthStencilView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullDsv)
         {
-            return sNullView;
+            return gNullDsv;
         }
 
         D3D12_DEPTH_STENCIL_VIEW_DESC desc;
@@ -99,7 +99,7 @@ namespace Falcor
             desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
         }
         SharedPtr pNewObj;
-        SharedPtr& pObj = pSharedPtr ? pNewObj : sNullView;
+        SharedPtr& pObj = pSharedPtr ? pNewObj : gNullDsv;
 
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Dsv, 0, 1);
@@ -115,9 +115,9 @@ namespace Falcor
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
 
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullUav)
         {
-            return sNullView;
+            return gNullUav;
         }
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
@@ -143,7 +143,7 @@ namespace Falcor
         }
 
         SharedPtr pNewObj;
-        SharedPtr& pObj = pSharedPtr ? pNewObj : sNullView;
+        SharedPtr& pObj = pSharedPtr ? pNewObj : gNullUav;
 
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureUav, 0, 1);
@@ -162,9 +162,9 @@ namespace Falcor
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
 
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullRtv)
         {
-            return sNullView;
+            return gNullRtv;
         }
 
         D3D12_RENDER_TARGET_VIEW_DESC desc;
@@ -188,7 +188,7 @@ namespace Falcor
         gpDevice->getApiHandle()->CreateRenderTargetView(resHandle, &desc, handle->getCpuHandle(0));
 
         SharedPtr pNewObj;
-        SharedPtr& pObj = pSharedPtr ? pNewObj : sNullView;
+        SharedPtr& pObj = pSharedPtr ? pNewObj : gNullRtv;
 
         pObj = SharedPtr(new RenderTargetView(pResource, handle, mipLevel, firstArraySlice, arraySize));
         return pObj;
@@ -198,9 +198,9 @@ namespace Falcor
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
 
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullCbv)
         {
-            return sNullView;
+            return gNullCbv;
         }
 
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
@@ -224,7 +224,7 @@ namespace Falcor
         gpDevice->getApiHandle()->CreateConstantBufferView(&desc, handle->getCpuHandle(0));
 
         SharedPtr pNewObj;
-        SharedPtr& pObj = pSharedPtr ? pNewObj : sNullView;
+        SharedPtr& pObj = pSharedPtr ? pNewObj : gNullCbv;
 
         pObj = SharedPtr(new ConstantBufferView(pResource, handle));
         return pObj;

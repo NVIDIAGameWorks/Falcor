@@ -17,6 +17,9 @@
     <ClInclude Include="RenderGraphViewer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Framework\FalcorSharedObjects\FalcorSharedObjects.vcxproj">
+      <Project>{2c535635-e4c5-4098-a928-574f0e7cd5f9}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Framework\Source\Falcor.vcxproj">
       <Project>{3b602f0e-3834-4f73-b97d-7dfc91597a98}</Project>
     </ProjectReference>

@@ -136,7 +136,7 @@ namespace Falcor
         auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
 
         RenderPassLibrary lib;
-        func(gpDevice, lib);
+        func(lib);
 
         for (auto& p : lib.mPasses) registerInternal(p.second.className, p.second.desc, p.second.func, l);
     }

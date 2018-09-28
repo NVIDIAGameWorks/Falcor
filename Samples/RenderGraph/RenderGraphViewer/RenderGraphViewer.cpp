@@ -29,7 +29,7 @@
 
 size_t RenderGraphViewer::DebugWindow::index = 0;
 
-const std::string gkDefaultScene = "Arcade/Arcade.fscene";
+const std::string gkDefaultScene = "alphatest/alpha_test.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 void RenderGraphViewer::onShutdown(SampleCallbacks* pSample)
@@ -163,6 +163,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // Display a list with all the graphs
     if (mGraphs.size())
     {
+        if(pGui->addButton("Unload libs"))
+        {
+            mGraphs.clear();
+            RenderPassLibrary::instance().releaseLibrary(RenderPassLibrary::instance().getLibName());
+            return;
+        }
+
         Gui::DropdownList graphList;
         for (size_t i = 0; i < mGraphs.size(); i++) graphList.push_back({ (int32_t)i, mGraphs[i].name });
         if(mEditorProcess == 0) 

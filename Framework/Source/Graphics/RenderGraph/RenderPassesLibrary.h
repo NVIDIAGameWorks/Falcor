@@ -52,7 +52,6 @@ namespace Falcor
         };
 
         using DescVec = std::vector<RenderPassDesc>;
-        using DeviceSharedPtr = std::shared_ptr<Device>;
 
         /** Get an instance of the library. It's a singleton, you'll always get the same object
         */
@@ -84,7 +83,7 @@ namespace Falcor
 
         /** A render-pass DLL should implement a function called `getPasses` with the following signature
         */
-        using LibraryFunc = void(*)(const DeviceSharedPtr&, RenderPassLibrary& lib);
+        using LibraryFunc = void(*)(RenderPassLibrary& lib);
 
         std::string getLibName() const { return mLibs.begin()->first; }
     private:
