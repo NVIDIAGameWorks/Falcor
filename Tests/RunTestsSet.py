@@ -306,7 +306,7 @@ def analyze_screen_captures(tolerance, result_json_data, current_test_result_dir
                 result['Test Passed'] = float(result_str) <= tolerance
   
                 if result['Test Passed'] == False:
-                    print('[FAILED] Comparision above tolerance. Difference was ' + result_str + ' on image ' test_result_image_filename)
+                    print('[FAILED] Comparision above tolerance. Difference was ' + result_str + ' on image ' + test_result_image_filename)
                 
             # Error
             else:
