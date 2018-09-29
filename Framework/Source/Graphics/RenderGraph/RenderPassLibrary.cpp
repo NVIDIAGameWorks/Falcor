@@ -38,6 +38,7 @@
 #include "Effects/TAA/TAA.h"
 #include "RenderPasses/ResolvePass.h"
 #include "API/Device.h"
+#include "RenderGraph.h"
 
 namespace Falcor
 {
@@ -164,8 +165,53 @@ namespace Falcor
         mLibs.erase(libIt);
     }
  
+    void RenderPassLibrary::reloadLibrary(std::string name)
+    {
+        HMODULE module = mLibs[name];
+
+        struct PassesToReplace
+        {
+            RenderGraph* pGraph;
+            std::string className;
+            uint32_t nodeId;
+        };
+
+        std::vector<PassesToReplace> passesToReplace;
+        
+        for (auto& passDesc : mPasses)
+        {
+            if(passDesc.second.module != module) continue;
+
+            // Go over all the graphs and remove this pass
+            for (auto& pGraph : gRenderGraphs)
+            {
+                // Loop over the passes
+                for (auto& node : pGraph->mNodeData)
+                {
+                    if (node.second.pPass->getName() == passDesc.first)
+                    {
+                        passesToReplace.push_back({ pGraph, passDesc.first, node.first });
+                        node.second.pPass = nullptr;
+                    }
+                }
+            }
+        }
+
+        // OK, we removed all the passes. Reload the library
+        releaseLibrary(name);
+        loadLibrary(name);
+
+        // Recreate the passes
+        for (auto& r : passesToReplace)
+        {
+            r.pGraph->mNodeData[r.nodeId].pPass = createPass(r.className.c_str());
+        }
+    }
+
     void RenderPassLibrary::reloadLibraries()
     {
-
+        // Copy the libs vector so we don't screw up the iterator
+        auto libs = mLibs;
+        for (const auto& l : libs) reloadLibrary(l.first);
     }
 }

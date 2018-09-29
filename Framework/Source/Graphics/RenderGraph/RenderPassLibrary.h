@@ -104,5 +104,7 @@ namespace Falcor
 
         std::unordered_map<std::string, HMODULE> mLibs;
         std::unordered_map<std::string, ExtendeDesc> mPasses;
+
+        void reloadLibrary(std::string name);
     };
 }

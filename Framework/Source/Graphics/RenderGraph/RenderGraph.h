@@ -36,6 +36,7 @@ namespace Falcor
     class Texture;
     class Fbo;
     class RenderGraphExporter;
+    class RenderPassLibrary;
 
     class RenderGraph
     {
@@ -173,6 +174,7 @@ namespace Falcor
     private:
         friend class RenderGraphUI;
         friend class RenderGraphExporter;
+        friend class RenderPassLibrary;
 
         RenderGraph();
 

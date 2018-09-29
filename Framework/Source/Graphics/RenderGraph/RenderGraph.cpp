@@ -80,20 +80,23 @@ namespace Falcor
     uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
     {
         assert(pPass);
-        if (getPassIndex(passName) != kInvalidIndex)
+        uint32_t passIndex = getPassIndex(passName);
+        if (passIndex != kInvalidIndex)
         {
-            logWarning("Pass named `" + passName + "' already exists. Pass names must be unique");
-            return kInvalidIndex;
+            logWarning("Pass named `" + passName + "' already exists. Replacing existing pass");
+        }
+        else
+        {
+            passIndex = mpGraph->addNode();
+            mNameToIndex[passName] = passIndex;
         }
 
         auto passChangedCB = [this]() {mRecompile = true; };
         pPass->setPassChangedCB(passChangedCB);
         pPass->setScene(mpScene);
-        uint32_t node = mpGraph->addNode();
-        mNameToIndex[passName] = node;
-        mNodeData[node] = { passName, pPass };
+        mNodeData[passIndex] = { passName, pPass };
         mRecompile = true;
-        return node;
+        return passIndex;
     }
 
     void RenderGraph::removePass(const std::string& name)
