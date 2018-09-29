@@ -248,6 +248,7 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
 {
     data.name = name;
     data.filename = filename;
+    data.fileModifiedTime = getFileModifiedTime(filename);
     data.pGraph = pGraph;
     data.pGraph->setScene(mpScene);
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
@@ -421,13 +422,19 @@ void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
         return;
     }
 
+    // Reload all DLLs
+    RenderPassLibrary::instance().reloadLibraries();
+
     // Reload all graphs, while maintaining state
     for (const auto& g : mGraphs)
     {
-        RenderGraph::SharedPtr pGraph = g.pGraph;
-        RenderGraph::SharedPtr pNewGraph;
-        pNewGraph = RenderGraphImporter::import(g.name, g.filename);
-        pGraph->update(pNewGraph);
+        if(g.fileModifiedTime != getFileModifiedTime(g.filename))
+        {
+            RenderGraph::SharedPtr pGraph = g.pGraph;
+            RenderGraph::SharedPtr pNewGraph;
+            pNewGraph = RenderGraphImporter::import(g.name, g.filename);
+            pGraph->update(pNewGraph);
+        }
     }
 }
 
