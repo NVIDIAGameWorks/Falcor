@@ -102,7 +102,12 @@ namespace Falcor
 
         void registerInternal(const char* className, const char* desc, CreateFunc func, HMODULE hmodule);
 
-        std::unordered_map<std::string, HMODULE> mLibs;
+        struct LibDesc
+        {
+            HMODULE module;
+            time_t lastModified;
+        };
+        std::unordered_map<std::string, LibDesc> mLibs;
         std::unordered_map<std::string, ExtendeDesc> mPasses;
 
         void reloadLibrary(std::string name);

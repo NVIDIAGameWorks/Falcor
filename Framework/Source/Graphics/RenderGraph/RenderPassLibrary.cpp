@@ -132,8 +132,15 @@ namespace Falcor
             logWarning("Can't load render-pass library `" + filename + "`. File not found");
             return;
         }
+
+        if (mLibs.find(fullpath) != mLibs.end())
+        {
+            reloadLibrary(fullpath);
+            return;
+        }
+
         HMODULE l = LoadLibraryA(fullpath.c_str());
-        mLibs[filename] = { l };
+        mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
 
         RenderPassLibrary lib;
@@ -154,7 +161,7 @@ namespace Falcor
         gpDevice->flushAndSync();
 
         // Delete all the classes that were owned by the module
-        HMODULE module = libIt->second;
+        HMODULE module = libIt->second.module;
         for (auto& it = mPasses.begin(); it != mPasses.end();)
         {
             if (it->second.module == module) it = mPasses.erase(it);
@@ -167,7 +174,9 @@ namespace Falcor
  
     void RenderPassLibrary::reloadLibrary(std::string name)
     {
-        HMODULE module = mLibs[name];
+        if (getFileModifiedTime(name) == mLibs[name].lastModified) return;
+
+        HMODULE module = mLibs[name].module;
 
         struct PassesToReplace
         {
@@ -192,6 +201,7 @@ namespace Falcor
                     {
                         passesToReplace.push_back({ pGraph, passDesc.first, node.first });
                         node.second.pPass = nullptr;
+                        pGraph->mpResourcesCache->reset();
                     }
                 }
             }
@@ -205,6 +215,7 @@ namespace Falcor
         for (auto& r : passesToReplace)
         {
             r.pGraph->mNodeData[r.nodeId].pPass = createPass(r.className.c_str());
+            r.pGraph->mRecompile = true;
         }
     }
 
