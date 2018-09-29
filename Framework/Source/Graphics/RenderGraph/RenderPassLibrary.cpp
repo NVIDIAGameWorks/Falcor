@@ -39,9 +39,12 @@
 #include "RenderPasses/ResolvePass.h"
 #include "API/Device.h"
 #include "RenderGraph.h"
+#include <fstream>
 
 namespace Falcor
 {
+    static const std::string kDllPrefix = ".falcor";
+
     RenderPassLibrary* RenderPassLibrary::spInstance = nullptr;
 
     template<typename Pass>
@@ -124,6 +127,13 @@ namespace Falcor
         return v;
     }
 
+    void copyDllFile(const std::string& fullpath)
+    {
+        std::ifstream src(fullpath, std::ios::binary);
+        std::ofstream dst(fullpath + kDllPrefix, std::ios::binary);
+        dst << src.rdbuf();
+    }
+
     void RenderPassLibrary::loadLibrary(const std::string& filename)
     {
         std::string fullpath;
@@ -139,7 +149,10 @@ namespace Falcor
             return;
         }
 
-        HMODULE l = LoadLibraryA(fullpath.c_str());
+        // Copy the library to a temp file
+        copyDllFile(fullpath);
+
+        HMODULE l = LoadLibraryA((fullpath + kDllPrefix).c_str());
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
 
@@ -169,12 +182,14 @@ namespace Falcor
         }
 
         FreeLibrary(module);
+        std::remove((filename + kDllPrefix).c_str());
         mLibs.erase(libIt);
     }
  
     void RenderPassLibrary::reloadLibrary(std::string name)
     {
-        if (getFileModifiedTime(name) == mLibs[name].lastModified) return;
+        auto lastTime = getFileModifiedTime(name);
+        if ((lastTime == mLibs[name].lastModified) || (lastTime == 0)) return;
 
         HMODULE module = mLibs[name].module;
 
