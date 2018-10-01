@@ -29,19 +29,9 @@
             ]
         },
 
-        "AnimationTest":
-        {
-            "Enabled" : true,
-            "Project Name" : "ForwardRenderer",
-            "Project Tests Args" :
-            [
-                "-test -fixedtimedelta 0.03333 -loadscene Cerberus/Standard/Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
-            ]
-        },
-
         "ForwardRendererTest":
         {
-            "Enabled" : true,
+            "Enabled" : false,
             "Project Name" : "ForwardRenderer",
             "Test Config" : {
                 "Type" : "Image Compare",
@@ -60,7 +50,7 @@
             ]
         },
 
-        "RenderGraphAnimationTest":
+        "AnimationTest":
         {
             "Enabled" : true,
             "Project Name" : "RenderGraphViewer",

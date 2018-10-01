@@ -496,4 +496,20 @@ namespace Falcor
         return (uint32_t)__builtin_popcount(a);
     }
 
+    DllHandle loadDll(const std::string& libPath)
+    {
+        return dlopen(libPath.c_str(), RTLD_LAZY);
+    }
+
+    void releaseDll(DllHandle dll)
+    {
+        dlclose(dll);
+    }
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
+    {
+        return dlsym(dll, funcName.c_str());
+    }
 }

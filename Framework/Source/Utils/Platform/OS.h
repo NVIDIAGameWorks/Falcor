@@ -306,5 +306,17 @@ namespace Falcor
     */
     std::string readFile(const std::string& filename);
 
+    /** Load a shared-library
+    */
+    DllHandle loadDll(const std::string& libPath);
+
+    /** Release a shared-library
+    */
+    void releaseDll(DllHandle dll);
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName);
+
     /*! @} */
 };

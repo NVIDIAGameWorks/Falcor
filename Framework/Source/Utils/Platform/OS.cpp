@@ -176,7 +176,7 @@ namespace Falcor
             return str;
         }
     }
-    
+
     std::string getDirectoryFromFile(const std::string& filename)
     {
         fs::path path = filename;
@@ -188,7 +188,7 @@ namespace Falcor
         fs::path path = filename;
         return path.has_extension() ? path.extension().string() : "";
     }
-    
+
     std::string getFilenameFromPath(const std::string& filename)
     {
         return fs::path(filename).filename().string();
@@ -203,5 +203,24 @@ namespace Falcor
         filestream.seekg(0, std::ios::beg);
         str.assign(std::istreambuf_iterator<char>(filestream), std::istreambuf_iterator<char>());
         return str;
+    }
+
+    DllHandle loadDll(const std::string& libPath)
+    {
+        return LoadLibraryA(libPath.c_str());
+    }
+
+    /** Release a shared-library
+    */
+    void releaseDll(DllHandle dll)
+    {
+        FreeLibrary(dll);
+    }
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
+    {
+        return GetProcAddress(dll, funcName.c_str());
     }
 }
