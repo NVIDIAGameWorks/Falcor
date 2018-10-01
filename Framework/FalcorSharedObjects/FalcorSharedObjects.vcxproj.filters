@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="FalcorSharedObjects.cpp" />
+    <ClCompile Include="..\Externals\dear_imgui\imgui.cpp">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Externals\dear_imgui\imgui_demo.cpp">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Externals\dear_imgui\imgui_draw.cpp">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Externals\dear_imgui\imgui_widgets.cpp">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
+      <Filter>Externals\dear_imgui_addons</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Externals">
+      <UniqueIdentifier>{52cd6688-eada-48ae-af64-3d8d29ed629d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\dear_imgui">
+      <UniqueIdentifier>{12648101-552c-4a31-910a-b0ad1df000ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\dear_imgui_addons">
+      <UniqueIdentifier>{8d6b13a1-6495-4f78-8fe6-3a4aa069d9d8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Externals\dear_imgui\imconfig.h">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\dear_imgui\imgui.h">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\dear_imgui\imgui_internal.h">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\dear_imgui\stb_rect_pack.h">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\dear_imgui\stb_textedit.h">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\dear_imgui\stb_truetype.h">
+      <Filter>Externals\dear_imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h">
+      <Filter>Externals\dear_imgui_addons</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Externals\dear_imgui\LICENSE">
+      <Filter>Externals\dear_imgui</Filter>
+    </None>
+    <None Include="..\Externals\dear_imgui\README.md">
+      <Filter>Externals\dear_imgui</Filter>
+    </None>
+  </ItemGroup>
+</Project>

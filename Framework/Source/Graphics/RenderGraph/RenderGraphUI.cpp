@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "RenderGraphUI.h"
 #include "Utils/Gui.h"
+#include "Externals/dear_imgui/imgui.h"
 #include "Externals/dear_imgui_addons/imguinodegrapheditor/imguinodegrapheditor.h"
 #include "Externals/dear_imgui/imgui.h"
 #include "Externals/dear_imgui/imgui_internal.h"

@@ -11,7 +11,25 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\Externals\dear_imgui\imgui.cpp" />
+    <ClCompile Include="..\Externals\dear_imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\Externals\dear_imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\Externals\dear_imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp" />
     <ClCompile Include="FalcorSharedObjects.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Externals\dear_imgui\imconfig.h" />
+    <ClInclude Include="..\Externals\dear_imgui\imgui.h" />
+    <ClInclude Include="..\Externals\dear_imgui\imgui_internal.h" />
+    <ClInclude Include="..\Externals\dear_imgui\stb_rect_pack.h" />
+    <ClInclude Include="..\Externals\dear_imgui\stb_textedit.h" />
+    <ClInclude Include="..\Externals\dear_imgui\stb_truetype.h" />
+    <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Externals\dear_imgui\LICENSE" />
+    <None Include="..\Externals\dear_imgui\README.md" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2C535635-E4C5-4098-A928-574F0E7CD5F9}</ProjectGuid>
@@ -56,7 +74,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BUILDING_SHARED_DLL;WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILDING_SHARED_DLL;IMGUI_API=__declspec(dllexport);WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -71,7 +89,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BUILDING_SHARED_DLL;WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILDING_SHARED_DLL;IMGUI_API=__declspec(dllexport);WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
