@@ -144,9 +144,9 @@ namespace Falcor
     ShaderResourceView::SharedPtr ShaderResourceView::create(ResourceWeakPtr pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullSrv)
         {
-            return sNullView;
+            return gNullSrv;
         }
 
         auto view = createViewCommon(pSharedPtr, mostDetailedMip, mipCount, firstArraySlice, arraySize);
@@ -156,15 +156,15 @@ namespace Falcor
     DepthStencilView::SharedPtr DepthStencilView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullDsv)
         {
-            return sNullView;
+            return gNullDsv;
         }
 
         if (pSharedPtr->getApiHandle().getType() == VkResourceType::Buffer)
         {
             logWarning("Cannot create DepthStencilView from a buffer!");
-            return sNullView;
+            return gNullDsv;
         }
 
         auto view = createViewCommon(pSharedPtr, mipLevel, 1, firstArraySlice, arraySize);
@@ -175,9 +175,9 @@ namespace Falcor
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
 
-        if (!pSharedPtr && sNullView)
+        if (!pSharedPtr && gNullUav)
         {
-            return sNullView;
+            return gNullUav;
         }
 
         auto view = createViewCommon(pSharedPtr, mipLevel, 1, firstArraySlice, arraySize);
@@ -195,9 +195,9 @@ namespace Falcor
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
 
         // Create sNullView if we need to return it and it doesn't exist yet
-        if (pSharedPtr == nullptr && sNullView== nullptr)
+        if (pSharedPtr == nullptr && gNullRtv== nullptr)
         {
-            sNullView = SharedPtr(new RenderTargetView(pResource, nullptr, mipLevel, firstArraySlice, arraySize));
+            gNullRtv = SharedPtr(new RenderTargetView(pResource, nullptr, mipLevel, firstArraySlice, arraySize));
         }
 
         if (pSharedPtr != nullptr)
@@ -206,7 +206,7 @@ namespace Falcor
             if (pSharedPtr->getApiHandle().getType() == VkResourceType::Buffer)
             {
                 logWarning("Cannot create RenderTargetView from a buffer!");
-                return sNullView;
+                return gNullRtv;
             }
 
             // Create view
@@ -215,7 +215,7 @@ namespace Falcor
         }
         else
         {
-            return sNullView;
+            return gNullRtv;
         }
     }
 
@@ -223,12 +223,12 @@ namespace Falcor
     {
         Resource::SharedConstPtr pSharedPtr = pResource.lock();
 
-        if (pSharedPtr == nullptr && sNullView == nullptr)
+        if (pSharedPtr == nullptr && gNullCbv == nullptr)
         {
-            sNullView = SharedPtr(new ConstantBufferView(pResource, nullptr));
+            gNullCbv = SharedPtr(new ConstantBufferView(pResource, nullptr));
         }
 
-        if (pSharedPtr == nullptr) return sNullView;
+        if (pSharedPtr == nullptr) return gNullCbv;
 
         return SharedPtr(new ConstantBufferView(pResource, nullptr));
     }
