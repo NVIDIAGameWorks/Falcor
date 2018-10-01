@@ -555,7 +555,7 @@ namespace ImGui {
                         node_hovered_in_list = node;//menuNode=node;
                         if (ImGui::IsMouseClicked(1)) {
                             menuNode = node;
-                            open_context_menu = true;
+                            // open_context_menu = true;
                         }
                         else if (io.MouseReleased[2] || ImGui::IsKeyPressed(io.KeyMap[ImGuiKey_Home]) || io.MouseDoubleClicked[0]) node_to_center_view_around = node;
                     }
@@ -1128,7 +1128,7 @@ namespace ImGui {
                         }
                         if (ImGui::IsMouseClicked(1)) {
                             //menuNode = node;
-                            open_context_menu = true;
+                            // open_context_menu = true;
                         }
                     }
                     bool node_moving_active = !isMouseDraggingForScrolling && !nodeInEditMode && ImGui::IsItemActive() && !mouseRectangularSelectionForNodesStarted;
@@ -1223,7 +1223,7 @@ namespace ImGui {
                     for (int slot_idx = 0; slot_idx < node->InputsCount; slot_idx++) {
                         connectorScreenPos = offset + node->GetInputSlotPos(slot_idx, currentFontWindowScale);
                         //draw_list->AddCircleFilled(connectorScreenPos, NODE_SLOT_RADIUS, style.color_node_input_slots,connectorNumSegments);
-                        ImGui::NGE_Draw::ImDrawListAddCircle(draw_list, connectorScreenPos, NODE_SLOT_RADIUS, style.color_node_input_slots, style.color_node_input_slots_border, style.node_slots_num_segments, connectorBorderThickness);
+                        ImGui::NGE_Draw::ImDrawListAddCircle(draw_list, connectorScreenPos, NODE_SLOT_RADIUS, node->inputColors[slot_idx], style.color_node_input_slots_border, style.node_slots_num_segments, connectorBorderThickness);
                         /*if ((style.color_node_input_slots & IM_COL32_A_MASK) != 0)  {
                     const float a_max = IM_PI * 0.5f * 11.f/12.f;
                     draw_list->PathArcTo(connectorScreenPos, NODE_SLOT_RADIUS, IM_PI-a_max, IM_PI+a_max, 12);
@@ -1300,7 +1300,7 @@ namespace ImGui {
                     for (int slot_idx = 0; slot_idx < node->OutputsCount; slot_idx++) {
                         connectorScreenPos = offset + node->GetOutputSlotPos(slot_idx, currentFontWindowScale);
                         //draw_list->AddCircleFilled(connectorScreenPos, NODE_SLOT_RADIUS, style.color_node_output_slots,connectorNumSegments);
-                        ImGui::NGE_Draw::ImDrawListAddCircle(draw_list, connectorScreenPos, NODE_SLOT_RADIUS, style.color_node_output_slots, style.color_node_output_slots_border, style.node_slots_num_segments, connectorBorderThickness);
+                        ImGui::NGE_Draw::ImDrawListAddCircle(draw_list, connectorScreenPos, NODE_SLOT_RADIUS, node->outputColors[slot_idx], style.color_node_output_slots_border, style.node_slots_num_segments, connectorBorderThickness);
                         /*if ((style.color_node_output_slots & IM_COL32_A_MASK) != 0)  {
                     const float a_max = IM_PI * 0.5f * 11.f/12.f;
                     draw_list->PathArcTo(connectorScreenPos, NODE_SLOT_RADIUS, -a_max, a_max, 12);
@@ -1491,12 +1491,12 @@ namespace ImGui {
                     open_delete_only_context_menu = false;	// just in case...
                 }
                 else if (/*!isAContextMenuOpen &&*/ !ImGui::IsAnyItemHovered() && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) && getNumAvailableNodeTypes() > 0 && nodeFactoryFunctionPtr) {
-                    if (ImGui::IsMouseClicked(1)) {   // Open context menu for adding nodes
-                        menuNode = node_hovered_in_scene ? node_hovered_in_scene : node_hovered_in_list ? node_hovered_in_list : NULL;
-                        //fprintf(stderr,"menuNode.name=%s\n",menuNode?menuNode->getName():"NULL");
-                        node_hovered_in_list = node_hovered_in_scene = NULL;
-                        open_context_menu = true;
-                    }
+                    // if (ImGui::IsMouseClicked(1)) {   // Open context menu for adding nodes
+                    //     menuNode = node_hovered_in_scene ? node_hovered_in_scene : node_hovered_in_list ? node_hovered_in_list : NULL;
+                    //     //fprintf(stderr,"menuNode.name=%s\n",menuNode?menuNode->getName():"NULL");
+                    //     node_hovered_in_list = node_hovered_in_scene = NULL;
+                    //     //open_context_menu = true;
+                    // }
                 }
 
                 // Open context menu

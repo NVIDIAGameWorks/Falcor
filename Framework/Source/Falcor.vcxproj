@@ -425,7 +425,7 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraphScripting.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp" />
+    <ClCompile Include="Graphics\RenderGraph\RenderPassLibrary.cpp" />
     <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
     <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
@@ -443,7 +443,6 @@
     <ClCompile Include="Graphics\Scene\SceneImporter.cpp" />
     <ClCompile Include="Graphics\Scene\SceneRenderer.cpp" />
     <ClCompile Include="Graphics\TextureHelper.cpp" />
-    <ClCompile Include="MultiRendererSample.cpp" />
     <ClCompile Include="Raytracing\RtRenderContext.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
@@ -565,7 +564,7 @@
     <ClCompile Include="Utils\Psychophysics\SingleThresholdMeasurement.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp" />
     <ClCompile Include="Utils\Scripting\Scripting.cpp" />
-    <ClCompile Include="Utils\Scripting\EnumsScriptBindings.cpp" />
+    <ClCompile Include="Utils\Scripting\ScriptBindings.cpp" />
     <ClCompile Include="Utils\TextRenderer.cpp" />
     <ClCompile Include="Utils\VariablesBufferUI.cpp" />
     <ClCompile Include="Utils\Video\VideoDecoder.cpp" />
@@ -1121,7 +1120,7 @@
     <ClInclude Include="Graphics\RenderGraph\RenderGraphScripting.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h" />
+    <ClInclude Include="Graphics\RenderGraph\RenderPassLibrary.h" />
     <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
@@ -1140,7 +1139,6 @@
     <ClInclude Include="Graphics\Scene\SceneImporter.h" />
     <ClInclude Include="Graphics\Scene\SceneRenderer.h" />
     <ClInclude Include="Graphics\TextureHelper.h" />
-    <ClInclude Include="MultiRendererSample.h" />
     <ClInclude Include="Raytracing\dxcapi.use.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
@@ -1276,7 +1274,7 @@
     <ClInclude Include="Utils\PythonEmbedding.h" />
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
     <ClInclude Include="Utils\Scripting\Scripting.h" />
-    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h" />
+    <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
     <ClInclude Include="Utils\StringUtils.h" />
     <ClInclude Include="Utils\TextRenderer.h" />
     <ClInclude Include="Utils\ThreadPool.h" />
@@ -1504,6 +1502,11 @@
     <None Include="ShadingUtils\Lights.slang" />
     <None Include="ShadingUtils\Raytracing.slang" />
     <None Include="ShadingUtils\Shading.slang" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FalcorSharedObjects\FalcorSharedObjects.vcxproj">
+      <Project>{2c535635-e4c5-4098-a928-574f0e7cd5f9}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>

@@ -62,7 +62,7 @@ namespace Falcor
         /** Called once before compilation. Describes I/O requirements of the pass.
             The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
         */
-        virtual void reflect(RenderPassReflection& reflector) const = 0;
+        virtual RenderPassReflection reflect() const = 0;
 
         /** Executes the pass.
         */
@@ -71,11 +71,6 @@ namespace Falcor
         /** Get a dictionary that can be used to reconstruct the object
         */
         virtual Dictionary getScriptingDictionary() const { return {}; }
-
-        // Matt TODO remove it
-        /** Set the dictionary to change the state of the object
-        */
-        virtual void setScriptingDictionary(const Dictionary& dict) {}
 
         /** Render the pass's UI
         */

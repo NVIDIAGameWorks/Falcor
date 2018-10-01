@@ -213,9 +213,6 @@ namespace Falcor
         std::stack<GraphicsState::SharedPtr> mPipelineStateStack;
         std::stack<GraphicsVars::SharedPtr> mpGraphicsVarsStack;
 
-        static CommandSignatureHandle spDrawCommandSig;
-        static CommandSignatureHandle spDrawIndexCommandSig;
-
         /** Creates command signatures for DrawIndirect, DrawIndexedIndirect. Also calls
         compute context's initDispatchCommandSignature() to create command signature for dispatchIndirect
         */
@@ -228,4 +225,31 @@ namespace Falcor
     };
 
     enum_class_operators(RenderContext::StateBindFlags);
+
+#ifdef FALCOR_D3D12
+    struct BlitData
+    {
+        FullScreenPass::UniquePtr pPass;
+        GraphicsVars::SharedPtr pVars;
+        GraphicsState::SharedPtr pState;
+
+        Sampler::SharedPtr pLinearSampler;
+        Sampler::SharedPtr pPointSampler;
+
+        ConstantBuffer::SharedPtr pSrcRectBuffer;
+        vec2 prevSrcRectOffset = vec2(0,0);
+        vec2 prevSrcReftScale = vec2(0,0);
+
+        // Variable offsets in constant buffer
+        size_t offsetVarOffset = ConstantBuffer::kInvalidOffset;
+        size_t scaleVarOffset = ConstantBuffer::kInvalidOffset;;
+
+        ProgramReflection::BindLocation texBindLoc;
+        ProgramReflection::BindLocation samplerBindLoc;
+    };
+
+    dlldecl BlitData gBlitData;
+#endif
+    dlldecl CommandSignatureHandle gpDrawCommandSig;
+    dlldecl CommandSignatureHandle gpDrawIndexCommandSig;
 }

@@ -39,8 +39,9 @@
 #pragma warning (disable : 4756) // overflow in constant arithmetic caused by calculating the setFloat*() functions (when calculating the step and min/max are +/- INF)
 namespace Falcor
 {
-    void Gui::init()
+    void Gui::init(float scaleFactor)
     {
+        mScaleFactor = scaleFactor;
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
@@ -72,6 +73,7 @@ namespace Falcor
         style.ScrollbarSize *= 0.7f;
 
         style.Colors[ImGuiCol_MenuBarBg] = style.Colors[ImGuiCol_WindowBg];
+        style.ScaleAllSizes(scaleFactor);
 
         // Create the pipeline state cache
         mpPipelineState = GraphicsState::create();
@@ -81,17 +83,9 @@ namespace Falcor
         mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 
-        // Create and set the texture
-        uint8_t* pFontData;
-        int32_t width, height;
-        std::string fontFile;
-        if(findFileInDataDirectories("Framework/Fonts/consolab.ttf", fontFile))
-        {
-            io.Fonts->AddFontFromFileTTF(fontFile.c_str(), 14);
-        }
-        io.Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
-        Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
-        mpProgramVars->setTexture("gFont", pTexture);
+        // Add the default font
+        addFont("", "Framework/Fonts/trebucbd.ttf");
+        setActiveFont("");
 
         // Create the blend state
         BlendState::Desc blendDesc;
@@ -124,10 +118,10 @@ namespace Falcor
         ImGui::DestroyContext();
     }
 
-    Gui::UniquePtr Gui::create(uint32_t width, uint32_t height)
+    Gui::UniquePtr Gui::create(uint32_t width, uint32_t height, float scaleFactor)
     {
         UniquePtr pGui = UniquePtr(new Gui);
-        pGui->init();
+        pGui->init(scaleFactor);
         pGui->onWindowResize(width, height);
         return pGui;
     }
@@ -670,12 +664,15 @@ namespace Falcor
         }
     }
 
-    void Gui::addImage(const char label[], const Texture::SharedPtr& pTex, const glm::vec2& size, bool sameLine)
+    void Gui::addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
     {
+        if (size == vec2(0)) size = getCurrentWindowSize();
+
         ImGui::PushID(label);
         if (sameLine) ImGui::SameLine();
         mpImages.push_back(pTex);
-        ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, size.y });
+        float aspectRatio = maintainRatio ? (static_cast<float>(pTex->getHeight()) / static_cast<float>(pTex->getWidth())) : 1.0f;
+        ImGui::Image(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, maintainRatio ? size.x  * aspectRatio : size.y });
         ImGui::PopID();
     }
 
@@ -731,10 +728,12 @@ namespace Falcor
         }
 
         ImGui::Begin(label, nullptr, flags);
+        ImGui::PushFont(mpActiveFont);
     }
 
     void Gui::popWindow()
     {
+        ImGui::PopFont();
         ImGui::End();
     }
 
@@ -805,10 +804,11 @@ namespace Falcor
         return b && prevItem != curItem;
     }
 
-    void Gui::setGlobalFontScaling(float scale)
+    void Gui::setGlobalGuiScaling(float scale)
     {
         ImGuiIO& io = ImGui::GetIO();
         io.FontGlobalScale = scale;
+        ImGui::GetStyle().ScaleAllSizes(scale);
     }
 
     bool Gui::addTextBox(const char label[], char buf[], size_t bufSize, uint32_t lineCount)
@@ -886,5 +886,42 @@ namespace Falcor
         bool b = addFloat3Var(label, dir, -1, 1);
         direction = glm::normalize(dir);
         return b;
+    }
+
+    void Gui::compileFonts()
+    {
+        uint8_t* pFontData;
+        int32_t width, height;
+
+        // Initialize font data
+        ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
+        Texture::SharedPtr pTexture = Texture::create2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
+        mpProgramVars->setTexture("gFont", pTexture);
+    }
+
+    void Gui::addFont(const std::string& name, const std::string& filename)
+    {
+        std::string fullpath;
+        if (findFileInDataDirectories(filename, fullpath) == false)
+        {
+            logWarning("Can't find font file `" + filename + "`");
+            return;
+        }
+
+        float size = 14.0f * mScaleFactor;
+        ImFont* pFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(fullpath.c_str(), size);
+        mFontMap[name] = pFont;
+        compileFonts();
+    }
+
+    void Gui::setActiveFont(const std::string& font)
+    {
+        const auto& it = mFontMap.find(font);
+        if (it == mFontMap.end())
+        {
+            logWarning("Can't find a font named `" + font + "`");
+            mpActiveFont = nullptr;
+        }
+        mpActiveFont = it->second;
     }
 }

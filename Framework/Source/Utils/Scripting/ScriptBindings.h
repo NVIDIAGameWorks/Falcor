@@ -26,21 +26,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "RenderPassReflection.h"
-#include "Utils/Dictionary.h"
+
+namespace pybind11
+{
+    class module;
+};
 
 namespace Falcor
 {
-    class RenderPass;
-    
-    class RenderPassLibrary
+    class ScriptBindings
     {
     public:
-        using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
-        static void addPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createPass(const char* className, const Dictionary& dict = {});
-        static size_t getClassCount();
-        static const std::string& getPassDesc(size_t pass);
-        static const std::string& getClassName(size_t pass);
+        static void registerScriptingObjects(pybind11::module& m);
+
+        static const char* kLoadScene;
+        static const char* kLoadRtScene;
     };
 }

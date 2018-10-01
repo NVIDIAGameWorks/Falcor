@@ -296,16 +296,16 @@ namespace ImGui {
 
         // some constants
 #   ifndef IMGUINODE_MAX_NAME_LENGTH
-#   define IMGUINODE_MAX_NAME_LENGTH 32
+#   define IMGUINODE_MAX_NAME_LENGTH 64
 #   endif //IMGUINODE_MAX_NAME_LENGTH
 #   ifndef IMGUINODE_MAX_INPUT_SLOTS
-#   define IMGUINODE_MAX_INPUT_SLOTS 8
+#   define IMGUINODE_MAX_INPUT_SLOTS 64
 #   endif //IMGUINODE_MAX_INPUT_SLOTS
 #   ifndef IMGUINODE_MAX_OUTPUT_SLOTS
-#   define IMGUINODE_MAX_OUTPUT_SLOTS 8
+#   define IMGUINODE_MAX_OUTPUT_SLOTS 64
 #   endif //IMGUINODE_MAX_OUTPUT_SLOTS
 #   ifndef IMGUINODE_MAX_SLOT_NAME_LENGTH
-#   define IMGUINODE_MAX_SLOT_NAME_LENGTH 12
+#   define IMGUINODE_MAX_SLOT_NAME_LENGTH 64
 #   endif //IMGUINODE_MAX_SLOT_NAME_LENGTH
     // ---------------
 
@@ -314,6 +314,8 @@ namespace ImGui {
         int     InputsCount, OutputsCount;
         char    InputNames[IMGUINODE_MAX_INPUT_SLOTS][IMGUINODE_MAX_SLOT_NAME_LENGTH];
         char    OutputNames[IMGUINODE_MAX_OUTPUT_SLOTS][IMGUINODE_MAX_SLOT_NAME_LENGTH];
+        ImU32   inputColors[IMGUINODE_MAX_INPUT_SLOTS];
+        ImU32   outputColors[IMGUINODE_MAX_OUTPUT_SLOTS];
         mutable double startEditingTime; // used for Node Editing Callbacks
         mutable bool isOpen;
         mutable bool isSelected;

@@ -103,7 +103,7 @@ namespace Falcor
         */
         void setNoiseTexture(uint32_t width, uint32_t height);
 
-        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual RenderPassReflection reflect() const override;
 
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 

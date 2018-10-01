@@ -161,7 +161,7 @@ namespace Falcor
 
         /** Reflect the render-pass
         */
-        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual RenderPassReflection reflect() const override;
 
         /** Execute the render-pass
         */

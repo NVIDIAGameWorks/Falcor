@@ -188,7 +188,7 @@ namespace Falcor
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
     
-    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
     {
         (void)filePath; (void)callback;
         should_not_get_here();
@@ -200,7 +200,7 @@ namespace Falcor
         should_not_get_here();
     }
 
-    std::string createTemperaryFile()
+    std::string getTempFilename()
     {
         std::string filePath = std::experimental::filesystem::temp_directory_path();
         filePath += "/fileXXXXXX";
@@ -334,6 +334,11 @@ namespace Falcor
     {
         // #TODO Not yet implemented
         return int(200);
+    }
+
+    float getDisplayScaleFactor()
+    {
+        return 1;
     }
 
     bool isDebuggerPresent()

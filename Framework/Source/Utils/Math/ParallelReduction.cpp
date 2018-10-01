@@ -35,12 +35,6 @@ namespace Falcor
 {
     const char* fsFilename = "Framework/Shaders/ParallelReduction.ps.slang";
 
-    static struct  
-    {
-        ProgramReflection::BindLocation inputSrv;
-        ProgramReflection::BindLocation sampler;
-    } gBindLocations;
-
     ParallelReduction::ParallelReduction(ParallelReduction::Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount) : mReductionType(reductionType)
     {
         ResourceFormat texFormat;
@@ -90,13 +84,6 @@ namespace Falcor
                 mpTmpResultFbo.push_back(FboHelper::create2D(width, height, fboDesc));
             }
         }
-
-        if (gBindLocations.inputSrv.rangeIndex == ProgramReflection::BindLocation::kInvalidLocation)
-        {
-            const auto& pDefaultBlock = mpFirstIterProg->getProgram()->getReflector()->getDefaultParameterBlock();
-            gBindLocations.inputSrv = pDefaultBlock->getResourceBinding("gInputTex");
-            gBindLocations.sampler = pDefaultBlock->getResourceBinding("gSampler");
-        }
     }
 
     ParallelReduction::UniquePtr ParallelReduction::create(Type reductionType, uint32_t readbackLatency, uint32_t width, uint32_t height, uint32_t sampleCount)
@@ -108,8 +95,8 @@ namespace Falcor
     {
         GraphicsState::SharedPtr pState = pRenderCtx->getGraphicsState();
         auto pDefaultBlock = pVars->getDefaultBlock().get();
-        pDefaultBlock->setSrv(gBindLocations.inputSrv, 0, pInput->getSRV());
-        pDefaultBlock->setSampler(gBindLocations.sampler, 0, pPointSampler);
+        pDefaultBlock->setTexture("gInputTex", pInput);
+        pDefaultBlock->setSampler("gSampler", pPointSampler);
 
         //Set draw params
         pState->pushFbo(pDst);

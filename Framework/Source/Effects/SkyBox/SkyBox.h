@@ -98,7 +98,7 @@ namespace Falcor
         /** Called once before compilation. Describes I/O requirements of the pass.
         The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
         */
-        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual RenderPassReflection reflect() const override;
 
         /** Executes the pass.
         */

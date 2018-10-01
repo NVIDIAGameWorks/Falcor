@@ -39,9 +39,12 @@
 #include "Graphics/FboHelper.h"
 #include <sstream>
 #include <iomanip>
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 
 namespace Falcor
 {
+    static std::string kMonospaceFont = "monospace";
+
     void Sample::handleWindowSizeChange()
     {
         if (!gpDevice) return;
@@ -173,6 +176,7 @@ namespace Falcor
 
         VRSystem::cleanup();
 
+        RenderPassLibrary::instance().shutdown();
         Scripting::shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
@@ -384,12 +388,14 @@ namespace Falcor
 
             if (gProfileEnabled)
             {
+                mpGui->setActiveFont(kMonospaceFont);
                 mpGui->pushWindow("Profiler", 650, 200, 10, 300);
                 // Stop the timer
                 Profiler::endEvent("renderGUI");
                 mpGui->addText(Profiler::getEventsString().c_str());
                 Profiler::startEvent("renderGUI");
                 mpGui->popWindow();
+                mpGui->setActiveFont("");
             }
 
             mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
@@ -528,7 +534,11 @@ namespace Falcor
 
     void Sample::initUI()
     {
-        mpGui = Gui::create(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight());
+        float scaling = getDisplayScaleFactor();
+        mpGui = Gui::create(uint32_t(mpBackBufferFBO->getWidth()), uint32_t(mpBackBufferFBO->getHeight()), scaling);
+        mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
+        mSampleGuiHeight = (uint32_t)(mSampleGuiHeight * scaling);
+        mSampleGuiWidth = (uint32_t)(mSampleGuiWidth * scaling);
         mpTextRenderer = TextRenderer::create();
     }
 

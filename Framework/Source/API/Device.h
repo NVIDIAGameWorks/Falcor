@@ -202,5 +202,5 @@ namespace Falcor
         void toggleFullScreen(bool fullscreen);
     };
 
-    extern Device::SharedPtr gpDevice;
+    dlldecl Device::SharedPtr gpDevice;
 }

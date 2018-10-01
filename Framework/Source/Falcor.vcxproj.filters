@@ -345,7 +345,6 @@
     <ClCompile Include="Effects\TAA\TAA.cpp">
       <Filter>Effects\TAA</Filter>
     </ClCompile>
-    <ClCompile Include="MultiRendererSample.cpp" />
     <ClCompile Include="Utils\PythonEmbedding.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
@@ -547,9 +546,6 @@
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderPassesLibrary.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\PatternGenerators\DxSamplePattern.cpp">
       <Filter>Utils\PatternGenerators</Filter>
     </ClCompile>
@@ -571,9 +567,6 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Utils\Scripting\EnumsScriptBindings.cpp">
-      <Filter>Utils\Scripting</Filter>
-    </ClCompile>
     <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
       <Filter>Externals\dear_imgui_addons</Filter>
     </ClCompile>
@@ -589,6 +582,10 @@
     <ClCompile Include="..\Externals\GLM\glm\detail\glm.cpp">
       <Filter>Externals\GLM\detail</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RenderGraph\RenderPassLibrary.cpp">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Scripting\ScriptBindings.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1262,7 +1259,6 @@
     <ClInclude Include="Utils\ThreadPool.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="MultiRendererSample.h" />
     <ClInclude Include="Utils\PythonEmbedding.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -1414,9 +1410,6 @@
     <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassesLibrary.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h">
       <Filter>Utils\PatternGenerators</Filter>
     </ClInclude>
@@ -1446,9 +1439,6 @@
     </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
       <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Scripting\EnumsScriptBindings.h">
-      <Filter>Utils\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h">
       <Filter>Externals\dear_imgui_addons</Filter>
@@ -2173,6 +2163,10 @@
     <ClInclude Include="..\Externals\GLM\glm\vector_relational.hpp">
       <Filter>Externals\GLM</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\RenderGraph\RenderPassLibrary.h">
+      <Filter>Graphics\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

@@ -35,12 +35,9 @@
 
 namespace Falcor
 {
-    CommandSignatureHandle RenderContext::spDrawCommandSig = nullptr;
-    CommandSignatureHandle RenderContext::spDrawIndexCommandSig = nullptr;
-
     RenderContext::RenderContext()
     {
-        if (spDrawCommandSig == nullptr)
+        if (gpDrawCommandSig == nullptr)
         {
             initDrawCommandSignatures();
         }

@@ -30,20 +30,17 @@
 
 namespace Falcor
 {
-    uint32_t Sampler::sObjectCount = 0;
-    Sampler::SharedPtr Sampler::spDefaultSampler;
-
     Sampler::Sampler(const Desc& desc) : mDesc(desc)
     {
-        sObjectCount++;
+        gSamplerData.objectCount++;
     }
     
     Sampler::~Sampler()
     {
-        sObjectCount--;
-        if (sObjectCount == 1 && spDefaultSampler)
+        gSamplerData.objectCount--;
+        if (gSamplerData.objectCount == 1 && gSamplerData.pDefaultSampler)
         {
-            spDefaultSampler = nullptr;
+            gSamplerData.pDefaultSampler = nullptr;
         }
     }
 
@@ -91,10 +88,10 @@ namespace Falcor
 
     Sampler::SharedPtr Sampler::getDefault()
     {
-        if (spDefaultSampler == nullptr)
+        if (gSamplerData.pDefaultSampler == nullptr)
         {
-            spDefaultSampler = create(Desc());
+            gSamplerData.pDefaultSampler = create(Desc());
         }
-        return spDefaultSampler;
+        return gSamplerData.pDefaultSampler;
     }
 }

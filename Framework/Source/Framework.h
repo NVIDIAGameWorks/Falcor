@@ -38,6 +38,12 @@
 #include "glm/glm.hpp"
 using namespace glm;
 
+#ifdef BUILDING_SHARED_DLL
+#define dlldecl __declspec(dllexport)
+#else
+#define dlldecl __declspec(dllimport)
+#endif
+
 #ifndef arraysize
 #define arraysize(a) (sizeof(a)/sizeof(a[0]))
 #endif

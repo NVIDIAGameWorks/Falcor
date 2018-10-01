@@ -25,45 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#pragma once
-#include "Falcor.h"
-#include <vector>
+#include <Falcor.h>
 
-using namespace Falcor;
-
-class RenderGraphEditor : public Renderer
+namespace Falcor
 {
-public:
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
-
-    RenderGraphEditor();
-    ~RenderGraphEditor();
-
-private:
-    void createRenderGraph(const std::string& renderGraphName);
-    void loadGraphsFromFile(const std::string& fileName, const std::string& graphName = "");
-    void serializeRenderGraph(const std::string& fileName);
-    void deserializeRenderGraph(const std::string& fileName);
-    void renderLogWindow(Gui* pGui);
-
-    std::vector<RenderGraph::SharedPtr> mpGraphs;
-    std::vector<RenderGraphUI> mRenderGraphUIs;
-    std::unordered_map<std::string, uint32_t> mGraphNamesToIndex;
-    size_t mCurrentGraphIndex;
-    glm::uvec2 mWindowSize;
-    std::string mCurrentLog;
-    std::string mNextGraphString;
-    std::string mCurrentGraphOutput;
-    std::string mGraphOutputEditString;
-    std::string mFilePath;
-
-    Gui::DropdownList mOpenGraphNames;
-    bool mShowCreateGraphWindow = false;
-    bool mViewerRunning = false;
-    size_t mViewerProcess = 0;
-    bool mCanPreview = false;
-    bool mResetGuiWindows = false;
-};
+}

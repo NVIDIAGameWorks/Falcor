@@ -238,12 +238,14 @@ namespace Falcor
     static const std::string kDepth = "depth";
     static const std::string kNormals = "normals";
 
-    void SSAO::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection  SSAO::reflect() const
     {
+        RenderPassReflection reflector;
         reflector.addInput(kColorIn);
         reflector.addOutput(kColorOut);
         reflector.addInput(kDepth);
         reflector.addInput(kNormals).setFlags(RenderPassReflection::Field::Flags::Optional);
+        return reflector;
     }
 
     void SSAO::execute(RenderContext* pContext, const Camera* pCamera, const Texture::SharedPtr& pColorIn, const Texture::SharedPtr& pColorOut, const Texture::SharedPtr& pDepthTexture, const Texture::SharedPtr& pNormalTexture)
