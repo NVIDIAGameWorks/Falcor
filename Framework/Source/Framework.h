@@ -283,16 +283,18 @@ namespace Falcor
 #undef compare_str
 }
 
-#include "Utils/Platform/OS.h"
-#include "Utils/Profiler.h"
-
 #if defined(_MSC_VER)
 #define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
 #define forceinline __forceinline
+using DllHandle = HMODULE;
 #else
 #define deprecate(_ver_, _msg_) 
 #define forceinline __attribute__((always_inline))
+using DllHandle = void*;
 #endif
+
+#include "Utils/Platform/OS.h"
+#include "Utils/Profiler.h"
 
 #if (_ENABLE_NVAPI == true)
 #include "nvapi.h"

@@ -152,9 +152,9 @@ namespace Falcor
         // Copy the library to a temp file
         copyDllFile(fullpath);
 
-        HMODULE l = LoadLibraryA((fullpath + kDllPrefix).c_str());
+        HMODULE l = loadDll((fullpath + kDllPrefix).c_str());
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
-        auto func = (LibraryFunc)GetProcAddress(l, "getPasses");
+        auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
 
         RenderPassLibrary lib;
         func(lib);
@@ -181,7 +181,7 @@ namespace Falcor
             else ++it;
         }
 
-        FreeLibrary(module);
+        releaseDll(module);
         std::remove((filename + kDllPrefix).c_str());
         mLibs.erase(libIt);
     }
