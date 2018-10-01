@@ -57,7 +57,7 @@ namespace Falcor
 
     RenderGraph::~RenderGraph()
     {
-        auto& it = std::find(gRenderGraphs.begin(), gRenderGraphs.end(), this);
+        auto it = std::find(gRenderGraphs.begin(), gRenderGraphs.end(), this);
         assert(it != gRenderGraphs.end());
         gRenderGraphs.erase(it);
     }

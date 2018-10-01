@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <algorithm>
 #include <experimental/filesystem>
+#include <dlfcn.h>
 namespace fs = std::experimental::filesystem;
 
 namespace Falcor
