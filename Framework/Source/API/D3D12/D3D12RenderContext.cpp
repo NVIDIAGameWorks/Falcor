@@ -35,28 +35,6 @@
 
 namespace Falcor
 {
-    struct BlitData
-    {
-        FullScreenPass::UniquePtr pPass;
-        GraphicsVars::SharedPtr pVars;
-        GraphicsState::SharedPtr pState;
-
-        Sampler::SharedPtr pLinearSampler;
-        Sampler::SharedPtr pPointSampler;
-
-        ConstantBuffer::SharedPtr pSrcRectBuffer;
-        vec2 prevSrcRectOffset;
-        vec2 prevSrcReftScale;
-
-        // Variable offsets in constant buffer
-        size_t offsetVarOffset;
-        size_t scaleVarOffset;
-
-        ProgramReflection::BindLocation texBindLoc;
-        ProgramReflection::BindLocation samplerBindLoc;
-    };
-
-    static BlitData gBlitData;
     static void initBlitData()
     {
         if (gBlitData.pVars == nullptr)
@@ -350,14 +328,14 @@ namespace Falcor
     {
         prepareForDraw();
         resourceBarrier(argBuffer, Resource::State::IndirectArg);
-        mpLowLevelData->getCommandList()->ExecuteIndirect(spDrawCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
+        mpLowLevelData->getCommandList()->ExecuteIndirect(gpDrawCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
     }
 
     void RenderContext::drawIndexedIndirect(const Buffer* argBuffer, uint64_t argBufferOffset)
     {
         prepareForDraw();
         resourceBarrier(argBuffer, Resource::State::IndirectArg);
-        mpLowLevelData->getCommandList()->ExecuteIndirect(spDrawIndexCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
+        mpLowLevelData->getCommandList()->ExecuteIndirect(gpDrawIndexCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
     }
 
     void RenderContext::initDrawCommandSignatures()
@@ -372,13 +350,13 @@ namespace Falcor
         sigDesc.ByteStride = sizeof(D3D12_DRAW_ARGUMENTS);
         argDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
         sigDesc.pArgumentDescs = &argDesc;
-        gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&spDrawCommandSig));
+        gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&gpDrawCommandSig));
 
         //Draw index
         sigDesc.ByteStride = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
         argDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
         sigDesc.pArgumentDescs = &argDesc;
-        gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&spDrawIndexCommandSig));
+        gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&gpDrawIndexCommandSig));
     }
 
     void RenderContext::blit(ShaderResourceView::SharedPtr pSrc, RenderTargetView::SharedPtr pDst, const uvec4& srcRect, const uvec4& dstRect, Sampler::Filter filter)

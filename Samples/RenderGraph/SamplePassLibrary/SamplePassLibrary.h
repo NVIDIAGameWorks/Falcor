@@ -26,21 +26,26 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "RenderPassReflection.h"
-#include "Utils/Dictionary.h"
+#include "Falcor.h"
 
-namespace Falcor
+using namespace Falcor;
+
+class MyBlitPass : public RenderPass, inherit_shared_from_this<RenderPass, MyBlitPass>
 {
-    class RenderPass;
-    
-    class RenderPassLibrary
-    {
-    public:
-        using CreateFunc = std::function<std::shared_ptr<RenderPass>(const Dictionary&)>;
-        static void addPassClass(const char* className, const char* desc, CreateFunc func);
-        static std::shared_ptr<RenderPass> createPass(const char* className, const Dictionary& dict = {});
-        static size_t getClassCount();
-        static const std::string& getPassDesc(size_t pass);
-        static const std::string& getClassName(size_t pass);
-    };
-}
+public:
+    using SharedPtr = std::shared_ptr<MyBlitPass>;
+
+    /** Create a new object
+    */
+    static SharedPtr create(const Dictionary& dict = {});
+
+    virtual RenderPassReflection reflect() const override;
+    virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+    virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+    virtual Dictionary getScriptingDictionary() const override;
+
+    void setFilter(Sampler::Filter filter) { mFilter = filter; }
+private:
+    MyBlitPass();
+    Sampler::Filter mFilter = Sampler::Filter::Linear;
+};

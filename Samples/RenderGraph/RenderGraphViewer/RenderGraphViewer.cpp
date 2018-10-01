@@ -29,12 +29,13 @@
 
 size_t RenderGraphViewer::DebugWindow::index = 0;
 
-const std::string gkDefaultScene = "Arcade/Arcade.fscene";
+const std::string gkDefaultScene = "alphatest/alpha_test.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
 void RenderGraphViewer::onShutdown(SampleCallbacks* pSample)
 {
     resetEditor();
+    mGraphs.clear();
 }
 
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
@@ -162,6 +163,11 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     // Display a list with all the graphs
     if (mGraphs.size())
     {
+        if(pGui->addButton("Reload libraries"))
+        {
+            RenderPassLibrary::instance().reloadLibraries();
+        }
+
         Gui::DropdownList graphList;
         for (size_t i = 0; i < mGraphs.size(); i++) graphList.push_back({ (int32_t)i, mGraphs[i].pGraph->getName() });
         if(mEditorProcess == 0) 
@@ -243,6 +249,7 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
 
     data.name = name;
     data.filename = filename;
+    data.fileModifiedTime = getFileModifiedTime(filename);
     data.pGraph = pGraph;
     if(data.pGraph->getScene() == nullptr)
     {
@@ -422,13 +429,19 @@ void RenderGraphViewer::onDataReload(SampleCallbacks* pSample)
         return;
     }
 
+    // Reload all DLLs
+    RenderPassLibrary::instance().reloadLibraries();
+
     // Reload all graphs, while maintaining state
     for (const auto& g : mGraphs)
     {
-        RenderGraph::SharedPtr pGraph = g.pGraph;
-        RenderGraph::SharedPtr pNewGraph;
-        pNewGraph = RenderGraphImporter::import(g.name, g.filename);
-        pGraph->update(pNewGraph);
+        if(g.fileModifiedTime != getFileModifiedTime(g.filename))
+        {
+            RenderGraph::SharedPtr pGraph = g.pGraph;
+            RenderGraph::SharedPtr pNewGraph;
+            pNewGraph = RenderGraphImporter::import(g.name, g.filename);
+            pGraph->update(pNewGraph);
+        }
     }
 }
 

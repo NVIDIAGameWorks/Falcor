@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphEditor.h"
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include <fstream>
 #include "RenderGraphEditor.h"
 
@@ -101,6 +101,15 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
             }
 
+            if (pGui->addMenuItem("Load Pass Library"))
+            {
+                std::string passLib;
+                if(openFileDialog("*.dll", passLib))
+                {
+                    RenderPassLibrary::instance().loadLibrary(passLib);
+                }
+            }
+
             pGui->endDropDownMenu();
         }
 
@@ -115,16 +124,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         pGui->setCurrentWindowPos(screenWidth / 4, screenHeight * 3 / 4 + 20);
     }
 
-    size_t numRenderPasses = RenderPassLibrary::getClassCount();
     pGui->beginColumns(5);
-    for (size_t i = 0; i < numRenderPasses; ++i)
+    auto renderPasses = RenderPassLibrary::instance().enumerateClasses();
+    for (size_t i = 0 ; i < renderPasses.size() ; i++)
     {
-        std::string renderPassClassName = RenderPassLibrary::getClassName(i);
-        pGui->addRect({ 148.0f, 64.0f }, pGui->pickUniqueColor(renderPassClassName), false);
+        const auto& pass = renderPasses[i];
+        pGui->addRect({ 148.0f, 64.0f }, pGui->pickUniqueColor(pass.className), false);
         pGui->addDummyItem((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 44.0f });
-        pGui->dragDropSource(renderPassClassName.c_str(), "RenderPassType", renderPassClassName);
-        pGui->addText(RenderPassLibrary::getClassName(i).c_str());
-        pGui->addTooltip(RenderPassLibrary::getPassDesc(i).c_str(), false);
+        pGui->dragDropSource(pass.className, "RenderPassType", pass.className);
+        pGui->addText(pass.className);
+        pGui->addTooltip(pass.desc, false);
         pGui->nextColumn();
     }
 

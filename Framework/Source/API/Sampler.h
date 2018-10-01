@@ -185,9 +185,14 @@ namespace Falcor
         Desc mDesc;
         ApiHandle mApiHandle = {};
         static uint32_t getApiMaxAnisotropy();
-        static Sampler::SharedPtr spDefaultSampler;
-        static uint32_t sObjectCount;
     };
+
+    struct SamplerData
+    {
+        uint32_t objectCount = 0;
+        Sampler::SharedPtr pDefaultSampler;
+    };
+    dlldecl SamplerData gSamplerData;
 
 #define filter_str(a) case Sampler::Filter::a: return #a
     inline std::string to_string(Sampler::Filter f)

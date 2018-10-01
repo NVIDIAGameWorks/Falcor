@@ -62,6 +62,7 @@ private:
 
     struct GraphData
     {
+        time_t fileModifiedTime;
         std::string filename;
         std::string name;
         RenderGraph::SharedPtr pGraph;

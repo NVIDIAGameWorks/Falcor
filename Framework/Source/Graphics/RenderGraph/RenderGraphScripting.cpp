@@ -30,7 +30,7 @@
 #include "Utils/Scripting/Scripting.h"
 #include <fstream>
 #include <sstream>
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include "pybind11/operators.h"
 #include "Graphics/Scene/Scene.h"
 #include "Raytracing/RtScene.h"
@@ -49,6 +49,7 @@ namespace Falcor
     const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
     const char* RenderGraphScripting::kUpdatePass = "updatePass";
+    const char* RenderGraphScripting::kLoadPassLibrary = "loadRenderPassLibrary";
     const char* RenderGraphScripting::kSetName = "setName";
     const char* RenderGraphScripting::kSetScene = "setScene";
 
@@ -72,10 +73,16 @@ namespace Falcor
         // RenderPassLibrary
         const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})->RenderPass::SharedPtr
         {
-            return RenderPassLibrary::createPass(passName.c_str(), Dictionary(d));
+            return RenderPassLibrary::instance().createPass(passName.c_str(), Dictionary(d));
         };
         m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
-        
+
+        const auto& loadPassLibrary = [](const std::string& library)
+        {
+            return RenderPassLibrary::instance().loadLibrary(library);
+        };
+        m.def(kLoadPassLibrary, loadPassLibrary);
+
         const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d )
         {
             pGraph->updatePass(passName, Dictionary(d));

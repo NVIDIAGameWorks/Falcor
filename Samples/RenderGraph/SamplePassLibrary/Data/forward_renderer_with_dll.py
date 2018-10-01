@@ -1,11 +1,13 @@
 def render_graph_forward_renderer():
     skyBox = createRenderPass("SkyBox")
 
-    forward_renderer = createRenderGraph("Forward Renderer2")
+    loadRenderPassLibrary("SamplePassLibrary.Dll")
+    
+    forward_renderer = createRenderGraph()
     forward_renderer.addPass(createRenderPass("DepthPass"), "DepthPrePass")
     forward_renderer.addPass(createRenderPass("ForwardLightingPass"), "LightingPass")
     forward_renderer.addPass(createRenderPass("CascadedShadowMaps"), "ShadowPass")
-    forward_renderer.addPass(createRenderPass("BlitPass"), "BlitPass")
+    forward_renderer.addPass(createRenderPass("MyBlitPass"), "MyBlitPass")
     forward_renderer.addPass(createRenderPass("ToneMapping"), "ToneMapping")
     forward_renderer.addPass(createRenderPass("SSAO"), "SSAO")
     forward_renderer.addPass(createRenderPass("FXAA"), "FXAA")
@@ -22,13 +24,9 @@ def render_graph_forward_renderer():
     forward_renderer.addEdge("LightingPass.normals", "SSAO.normals");
     forward_renderer.addEdge("LightingPass.depth", "SSAO.depth");
     forward_renderer.addEdge("SSAO.colorOut", "FXAA.src");
-    forward_renderer.addEdge("FXAA.dst", "BlitPass.src");
+    forward_renderer.addEdge("FXAA.dst", "MyBlitPass.src");
 
-    forward_renderer.markOutput("BlitPass.dst")
-
-    scene = loadScene("SunTemple/SunTemple.fscene");
-    forward_renderer.setScene(scene);
-
+    forward_renderer.markOutput("MyBlitPass.dst")
     return forward_renderer
 
-forward_renderer2 = render_graph_forward_renderer()
+forward_renderer = render_graph_forward_renderer()

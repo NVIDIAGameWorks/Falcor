@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="SamplePassLibrary.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SamplePassLibrary.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Data">
+      <UniqueIdentifier>{af379eba-da22-4554-b098-3b5a60dd6590}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\forward_renderer_with_dll.py">
+      <Filter>Data</Filter>
+    </None>
+  </ItemGroup>
+</Project>

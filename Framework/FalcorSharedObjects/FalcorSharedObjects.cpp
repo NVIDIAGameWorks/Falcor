@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,56 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "ResourceViews.h"
+#include <Falcor.h>
 
 namespace Falcor
 {
-    ResourceWeakPtr getEmptyTexture();
-
-    ShaderResourceView::SharedPtr ShaderResourceView::getNullView()
-    {
-        if (!gNullSrv)
-        {
-            gNullSrv = create(getEmptyTexture(), 0, 1, 0, 1);
-        }
-        return gNullSrv;
-    }
-
-    DepthStencilView::SharedPtr DepthStencilView::getNullView()
-    {
-        if (!gNullDsv)
-        {
-            gNullDsv = create(getEmptyTexture(), 0, 0, 1);
-        }
-        return gNullDsv;
-    }
-
-    UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView()
-    {
-        if (!gNullUav)
-        {
-            gNullUav = create(getEmptyTexture(), 0, 0, 1);
-        }
-        return gNullUav;
-    }
-
-    RenderTargetView::SharedPtr RenderTargetView::getNullView()
-    {
-        if (!gNullRtv)
-        {
-            gNullRtv = create(getEmptyTexture(), 0, 0, 1);
-        }
-        return gNullRtv;
-    }
-
-
-    ConstantBufferView::SharedPtr ConstantBufferView::getNullView()
-    {
-        if (!gNullCbv)
-        {
-            create(ResourceWeakPtr());
-        }
-        return gNullCbv;
-    }
 }

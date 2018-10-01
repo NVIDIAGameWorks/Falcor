@@ -30,7 +30,7 @@
 #include "API/FBO.h"
 #include "Utils/DirectedGraphTraversal.h"
 #include "Utils/Gui.h"
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include "RenderPasses/ResolvePass.h"
 
 namespace Falcor
@@ -52,6 +52,14 @@ namespace Falcor
         mpGraph = DirectedGraph::create();
         mpResourcesCache = ResourceCache::create();
         mpPassDictionary = Dictionary::create();
+        gRenderGraphs.push_back(this);
+    }
+
+    RenderGraph::~RenderGraph()
+    {
+        auto& it = std::find(gRenderGraphs.begin(), gRenderGraphs.end(), this);
+        assert(it != gRenderGraphs.end());
+        gRenderGraphs.erase(it);
     }
 
     uint32_t RenderGraph::getPassIndex(const std::string& name) const
@@ -72,20 +80,23 @@ namespace Falcor
     uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
     {
         assert(pPass);
-        if (getPassIndex(passName) != kInvalidIndex)
+        uint32_t passIndex = getPassIndex(passName);
+        if (passIndex != kInvalidIndex)
         {
-            logWarning("Pass named `" + passName + "' already exists. Pass names must be unique");
-            return kInvalidIndex;
+            logWarning("Pass named `" + passName + "' already exists. Replacing existing pass");
+        }
+        else
+        {
+            passIndex = mpGraph->addNode();
+            mNameToIndex[passName] = passIndex;
         }
 
         auto passChangedCB = [this]() {mRecompile = true; };
         pPass->setPassChangedCB(passChangedCB);
         pPass->setScene(mpScene);
-        uint32_t node = mpGraph->addNode();
-        mNameToIndex[passName] = node;
-        mNodeData[node] = { passName, pPass };
+        mNodeData[passIndex] = { passName, pPass };
         mRecompile = true;
-        return node;
+        return passIndex;
     }
 
     void RenderGraph::removePass(const std::string& name)
@@ -137,7 +148,7 @@ namespace Falcor
         // recreate pass without changing graph using new dictionary
         auto pOldPass = pPassIt->second.pPass;
         std::string passTypeName = pOldPass->getName();
-        auto pPass = RenderPassLibrary::createPass(passTypeName.c_str(), dict);
+        auto pPass = RenderPassLibrary::instance().createPass(passTypeName.c_str(), dict);
         pPassIt->second.pPass = pPass;
 
         auto passChangedCB = [this]() {mRecompile = true; };
@@ -462,7 +473,7 @@ namespace Falcor
                 if (dstFieldNames.size() > 0)
                 {
                     // One resolve pass is made for every output that requires it
-                    auto pResolvePass = std::static_pointer_cast<ResolvePass>(RenderPassLibrary::createPass("ResolvePass"));
+                    auto pResolvePass = std::static_pointer_cast<ResolvePass>(RenderPassLibrary::instance().createPass("ResolvePass"));
                     pResolvePass->setFormat(srcField.getFormat()); // Match input texture format
 
                     // Create pass and attach src to it
