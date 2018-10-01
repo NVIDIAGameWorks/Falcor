@@ -38,11 +38,20 @@
 #include "glm/glm.hpp"
 using namespace glm;
 
+// Define DLL export/import
+#ifdef _MSC_VER
+#define falcorexport __declspec(dllexport)
+#define falcorimport __declspec(dllimport)
+#else  // _MSC_VER
+#define falcorexport __attribute__ ((visibility ("default")))
+#define falcorimport __attribute__ ((visibility ("default")))
+#endif // _MSC_VER
+
 #ifdef BUILDING_SHARED_DLL
-#define dlldecl __declspec(dllexport)
-#else
-#define dlldecl __declspec(dllimport)
-#endif
+#define dlldecl falcorexport
+#else   // BUILDING_SHARED_DLL
+#define dlldecl falcorimport
+#endif // BUILDING_SHARED_DLL
 
 #ifndef arraysize
 #define arraysize(a) (sizeof(a)/sizeof(a[0]))
