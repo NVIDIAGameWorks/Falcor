@@ -35,11 +35,11 @@
 
 namespace Falcor
 {
-    RenderGraph::SharedPtr RenderGraph::create()
+    RenderGraph::SharedPtr RenderGraph::create(const std::string& name)
     {
         try
         {
-            return SharedPtr(new RenderGraph);
+            return SharedPtr(new RenderGraph(name));
         }
         catch (const std::exception&)
         {
@@ -47,7 +47,7 @@ namespace Falcor
         }
     }
 
-    RenderGraph::RenderGraph()
+    RenderGraph::RenderGraph(const std::string& name) : mName(name)
     {
         mpGraph = DirectedGraph::create();
         mpResourcesCache = ResourceCache::create();
@@ -753,7 +753,7 @@ namespace Falcor
         return mNodeData.find(graphOut.nodeId)->second.nodeName + "." + graphOut.field;
     }
 
-    void RenderGraph::onResizeSwapChain(const Fbo* pTargetFbo)
+    void RenderGraph::onResize(const Fbo* pTargetFbo)
     {
         // Store the back-buffer values
         const Texture* pColor = pTargetFbo->getColorTexture(0).get();

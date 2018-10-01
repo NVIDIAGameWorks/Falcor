@@ -361,4 +361,9 @@ namespace Falcor
             model[0]->getObject()->attachSkinningCache(pSkinningCache);
         }
     }
+
+    void Scene::setCamerasAspectRatio(float ratio)
+    {
+        for (auto& c : mCameras) c->setAspectRatio(ratio);
+    }
 }

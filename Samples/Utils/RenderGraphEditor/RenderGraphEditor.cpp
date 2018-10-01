@@ -77,7 +77,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                     if (openFileDialog("", renderGraphFilePath))
                     {
                         loadGraphsFromFile(renderGraphFilePath);
-                        mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+                        mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
                     }
                 }
             }
@@ -220,13 +220,12 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (openViewer)
         {
-            mFilePath = createTemperaryFile();
+            mFilePath = getTempFilename();
             RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mFilePath);
             
             // load application for the editor given it the name of the mapped file
-            std::string commandLine = std::string("-tempFile ") + mFilePath + "-graphname" + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
+            std::string commandLine = std::string("-tempFile ") + mFilePath + " -graphname " + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
             mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
-            
             assert(mViewerProcess);
             mViewerRunning = true;
         }
@@ -253,7 +252,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (pGui->addButton("Create Graph") && mNextGraphString[0])
         {
             createNewGraph(mNextGraphString);
-            mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+            mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
             mNextGraphString.clear();
             mNextGraphString.resize(255, '0');
             mShowCreateGraphWindow = false;
@@ -402,7 +401,7 @@ void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderCont
 
 void RenderGraphEditor::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height)
 {
-    mpGraphs[mCurrentGraphIndex]->onResizeSwapChain(pSample->getCurrentFbo().get());
+    mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
     mWindowSize = {width, height};
     mResetGuiWindows = true;
 }

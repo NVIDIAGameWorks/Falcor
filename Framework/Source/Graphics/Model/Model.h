@@ -289,4 +289,24 @@ namespace Falcor
     };
 
     enum_class_operators(Model::LoadFlags);
+
+#define flag_str(a) case Model::LoadFlags::a: return #a
+    inline std::string to_string(Model::LoadFlags f)
+    {
+        switch (f)
+        {
+            flag_str(None);
+            flag_str(DontGenerateTangentSpace);
+            flag_str(FindDegeneratePrimitives);
+            flag_str(AssumeLinearSpaceTextures);
+            flag_str(DontMergeMeshes);
+            flag_str(BuffersAsShaderResource);
+            flag_str(RemoveInstancing);            
+            flag_str(UseSpecGlossMaterials);
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
+#undef flag_str
 }

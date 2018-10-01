@@ -32,8 +32,6 @@ namespace Falcor
 {
     const ReflectionResourceType::SharedPtr RenderPassReflection::Field::kpTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
 
-    const RenderPassReflection::Field RenderPassReflection::Field::kEmptyField;
-
     RenderPassReflection::Field::Field(const std::string& name, Type type) : mName(name), mType(type)
     {
         mBindFlags = Resource::BindFlags::None;
@@ -86,7 +84,8 @@ namespace Falcor
                 return field;
             }
         }
-        return Field::kEmptyField;
+        std::string error = "Can't find a field named `" + name + "` in RenderPassReflection";
+        throw std::runtime_error(error.c_str());
     }
 
 }
