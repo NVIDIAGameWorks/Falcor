@@ -314,6 +314,8 @@ namespace ImGui {
         int     InputsCount, OutputsCount;
         char    InputNames[IMGUINODE_MAX_INPUT_SLOTS][IMGUINODE_MAX_SLOT_NAME_LENGTH];
         char    OutputNames[IMGUINODE_MAX_OUTPUT_SLOTS][IMGUINODE_MAX_SLOT_NAME_LENGTH];
+        ImU32   inputColors[IMGUINODE_MAX_INPUT_SLOTS];
+        ImU32   outputColors[IMGUINODE_MAX_OUTPUT_SLOTS];
         mutable double startEditingTime; // used for Node Editing Callbacks
         mutable bool isOpen;
         mutable bool isSelected;
