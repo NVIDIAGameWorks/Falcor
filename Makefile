@@ -85,11 +85,11 @@ ADDITIONAL_LIB_DIRS = -L "Bin/" \
 -L "Framework/Externals/Slang/bin/linux-x86_64/release" \
 -L "$(VULKAN_SDK)/lib"
 
-LIBS = -lfalcor \
+LIBS = -lfalcorshared -lfalcor \
 -lfreeimage -lslang -lslang-glslang -lopenvr_api \
 $(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11 python3) \
 $(shell pkg-config --libs libavcodec libavdevice libavformat libswscale libavutil) \
--lvulkan -lstdc++fs -lpthread -lrt -lm -ldl -lz -LBin/FalcorSharedObjects.so
+-lvulkan -lstdc++fs -lpthread -lrt -lm -ldl -lz
 
 # Compiler Flags
 DEBUG_FLAGS:=-O0 -g -Wno-unused-variable
@@ -158,18 +158,18 @@ define MoveProjectData
 endef
 
 # Builds Falcor library in Release
-Release : PreBuild ReleaseConfig $(OUT_DIR)libfalcor.a
+Release : PreBuild ReleaseConfig FalcorSharedObjects $(OUT_DIR)libfalcor.a
 
 # Builds Falcor library in Debug
-Debug : PreBuild DebugConfig  $(OUT_DIR)libfalcor.a
+Debug : PreBuild DebugConfig FalcorSharedObjects $(OUT_DIR)libfalcor.a
 
-FalcorSharedObjects : 
-	$(call CompileSharedLibrary,Framework/FalcorSharedObjects/,FalcorSharedObjects.cpp,FalcorSharedObjects.so)
+FalcorSharedObjects :
+	$(call CompileSharedLibrary,Framework/FalcorSharedObjects/,FalcorSharedObjects.cpp,libfalcorshared.so)
 
 define CompileSharedLibrary
 	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
 	@echo $(2)
-	@$(CC) -fpic $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE)
+	@$(CC) -fpic $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE) -D BUILDING_SHARED_DLL
 	@echo Linking $(3)
 	@$(CC) -shared -o $(OUT_DIR)$(3) $(1)$(O_FILE)
 endef
