@@ -233,7 +233,7 @@ namespace Falcor
         static uint32_t getShaderDataSize() 
         {
             static const size_t dataSize = sizeof(CameraData);
-            static_assert(dataSize % sizeof(float) * 4 == 0, "Camera::CameraData size should be a multiple of 16");
+            static_assert(dataSize % (sizeof(vec4)) == 0, "Camera::CameraData size should be a multiple of 16");
             return dataSize;
         }
 

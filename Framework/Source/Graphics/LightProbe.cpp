@@ -246,7 +246,7 @@ namespace Falcor
         // Set the data into the constant buffer
         check_offset(posW);
         check_offset(intensity);
-        static_assert(kDataSize % sizeof(float) * 4 == 0, "LightProbeData size should be a multiple of 16");
+        static_assert(kDataSize % sizeof(vec4) == 0, "LightProbeData size should be a multiple of 16");
 
         if (offset == ConstantBuffer::kInvalidOffset)
         {

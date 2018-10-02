@@ -67,7 +67,7 @@ namespace Falcor
 
     void Light::setIntoProgramVars(ProgramVars* pVars, ConstantBuffer* pCb, size_t offset)
     {
-        static_assert(kDataSize % sizeof(float) * 4 == 0, "LightData size should be a multiple of 16");
+        static_assert(kDataSize % sizeof(vec4) == 0, "LightData size should be a multiple of 16");
         assert(offset + kDataSize <= pCb->getSize());
 
         // Set everything except for the material
@@ -297,7 +297,7 @@ namespace Falcor
     {
         // Set data except for material and mesh buffers
         size_t offset = pCb->getVariableOffset(varName);
-        static_assert(kDataSize % sizeof(float) * 4 == 0, "AreaLightData size should be a multiple of 16");
+        static_assert(kDataSize % sizeof(vec4) == 0, "AreaLightData size should be a multiple of 16");
         assert(offset + kAreaLightDataSize <= pCb->getSize());
         pCb->setBlob(&mData, offset, kAreaLightDataSize);
 
