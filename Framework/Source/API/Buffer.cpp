@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     size_t getBufferDataAlignment(const Buffer* pBuffer);
     void* mapBufferApi(const Buffer::ApiHandle& apiHandle, size_t size);
 

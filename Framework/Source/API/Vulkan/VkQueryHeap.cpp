@@ -31,6 +31,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     static VkQueryType getVkPoolType(QueryHeap::Type t)
     {
         switch (t)

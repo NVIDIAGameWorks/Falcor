@@ -35,6 +35,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
 #ifdef FALCOR_D3D12
     static vr::D3D12TextureData_t prepareSubmitData(const Texture::SharedConstPtr& pTex, RenderContext* pRenderCtx)
     {

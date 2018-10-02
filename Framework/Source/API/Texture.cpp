@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     uint32_t Texture::tempDefaultUint = 0;
 
     Texture::BindFlags updateBindFlags(Texture::BindFlags flags, bool hasInitData, uint32_t mipLevels)

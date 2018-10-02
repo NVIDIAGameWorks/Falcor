@@ -30,6 +30,14 @@
 
 namespace Falcor
 {
+#ifndef _WIN32
+    ShaderResourceView::SharedPtr gNullSrv;
+    ConstantBufferView::SharedPtr gNullCbv;
+    RenderTargetView::SharedPtr   gNullRtv;
+    UnorderedAccessView::SharedPtr gNullUav;
+    DepthStencilView::SharedPtr gNullDsv;
+#endif
+
     ResourceWeakPtr getEmptyTexture();
 
     ShaderResourceView::SharedPtr ShaderResourceView::getNullView()

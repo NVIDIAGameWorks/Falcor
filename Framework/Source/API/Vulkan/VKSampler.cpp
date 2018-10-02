@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     uint32_t Sampler::getApiMaxAnisotropy()
     {
         return (uint32_t)gpDevice->getPhysicalDeviceLimits().maxSamplerAnisotropy;

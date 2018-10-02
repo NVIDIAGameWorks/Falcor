@@ -356,8 +356,6 @@ namespace Falcor
     {
         if (state == ImGui::NodeGraphEditor::LinkState::LS_ADDED)
         {
-            RenderGraphNode* outputNode = static_cast<RenderGraphNode*>(link.OutputNode);
-
             bool addStatus = false;
 
             // immediately remove link if it is not a legal edge in the render graph

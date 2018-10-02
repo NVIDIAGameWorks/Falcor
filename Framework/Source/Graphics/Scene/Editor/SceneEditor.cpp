@@ -41,6 +41,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     namespace
     {
         const char* kSelectedModelStr = "Selected Model";

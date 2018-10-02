@@ -31,6 +31,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        Device::SharedPtr gpDevice;
+    #endif
+
     Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc)
     {
         if (gpDevice)

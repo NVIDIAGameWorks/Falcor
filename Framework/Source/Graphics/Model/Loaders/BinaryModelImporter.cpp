@@ -44,6 +44,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     struct TextureData
     {
         uint32_t width  = 0;

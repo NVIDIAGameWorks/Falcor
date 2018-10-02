@@ -31,6 +31,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     template<> VkHandle<VkSwapchainKHR>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySwapchainKHR(gpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkCommandPool>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroyCommandPool(gpDevice->getApiHandle(), mApiHandle, nullptr); }
     template<> VkHandle<VkSemaphore>::~VkHandle() { if(mApiHandle != VK_NULL_HANDLE) vkDestroySemaphore(gpDevice->getApiHandle(), mApiHandle, nullptr); }

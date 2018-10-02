@@ -37,6 +37,10 @@
 // #define VK_REPORT_PERF_WARNINGS // Uncomment this to see performance warnings
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
 #ifdef DEFAULT_ENABLE_DEBUG_LAYER
     VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
         VkDebugReportFlagsEXT       flags,

@@ -33,6 +33,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     BlendState::SharedPtr GraphicsStateObject::spDefaultBlendState;
     RasterizerState::SharedPtr GraphicsStateObject::spDefaultRasterizerState;
     DepthStencilState::SharedPtr GraphicsStateObject::spDefaultDepthStencilState;

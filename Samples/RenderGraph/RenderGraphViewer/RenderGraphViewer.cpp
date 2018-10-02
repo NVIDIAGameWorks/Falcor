@@ -130,7 +130,7 @@ void RenderGraphViewer::graphOutputsGui(Gui* pGui)
     pGui->addTooltip("If there's a debug window open, you won't be able to uncheck this");
     if (mGraphs[mActiveGraph].debugWindows.size()) mGraphs[mActiveGraph].showAllOutputs = true;
 
-    auto& strVec = mGraphs[mActiveGraph].showAllOutputs ? pGraph->getAvailableOutputs() : mGraphs[mActiveGraph].originalOutputs;
+    auto strVec = mGraphs[mActiveGraph].showAllOutputs ? pGraph->getAvailableOutputs() : mGraphs[mActiveGraph].originalOutputs;
     Gui::DropdownList graphOuts = createDropdownFromVec(strVec, mGraphs[mActiveGraph].mainOutput);
 
     if (graphOuts.size())

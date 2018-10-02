@@ -36,6 +36,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     const Bitmap* genError(const std::string& errMsg, const std::string& filename)
     {
         std::string err = "Error when loading image file " + filename + '\n' + errMsg + '.';

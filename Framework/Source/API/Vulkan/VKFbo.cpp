@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     Fbo::Fbo()
     {
         mColorAttachments.resize(getMaxColorTargetCount());

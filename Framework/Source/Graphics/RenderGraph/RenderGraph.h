@@ -254,5 +254,7 @@ namespace Falcor
         Dictionary::SharedPtr mpPassDictionary;
     };
 
+#ifdef _WIN32
     dlldecl std::vector<RenderGraph*> gRenderGraphs;
+#endif
 }

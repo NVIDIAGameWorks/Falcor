@@ -33,6 +33,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     Texture::SharedPtr LeanMap::createFromNormalMap(const Falcor::Texture* pNormalMap)
     {
         uint32_t texW = pNormalMap->getWidth();

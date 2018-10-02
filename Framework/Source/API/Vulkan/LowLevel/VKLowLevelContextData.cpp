@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     struct LowLevelContextApiData
     {
         FencedPool<VkCommandBuffer>::SharedPtr pCmdBufferAllocator;

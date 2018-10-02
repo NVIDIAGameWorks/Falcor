@@ -35,6 +35,11 @@
 
 namespace Falcor
 {
+#ifndef _WIN32
+    CommandSignatureHandle gpDrawCommandSig;
+    CommandSignatureHandle gpDrawIndexCommandSig;
+#endif
+
     RenderContext::RenderContext()
     {
         if (gpDrawCommandSig == nullptr)

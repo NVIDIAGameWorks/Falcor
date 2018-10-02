@@ -43,10 +43,6 @@ namespace Falcor
         VkDescriptorPool pool;
         VkDescriptorSet set;
 
-        ~DescriptorSetApiData()
-        {
-            vkFreeDescriptorSets(gpDevice->getApiHandle(), pool, 1, &set);
-            vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), layout, nullptr);
-        }
+        ~DescriptorSetApiData();
     };
 }

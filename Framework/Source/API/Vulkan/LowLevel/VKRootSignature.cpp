@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     VkDescriptorType falcorToVkDescType(DescriptorPool::Type type);
 
     VkShaderStageFlags getShaderVisibility(ShaderVisibility visibility)

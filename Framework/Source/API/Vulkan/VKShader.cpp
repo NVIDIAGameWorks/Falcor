@@ -31,6 +31,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     Shader::Shader(ShaderType type) : mType(type) {}
 
     Shader::~Shader() = default;

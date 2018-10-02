@@ -32,6 +32,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+
     // #VKTODO This entire class seems overly complicated. Need to make sure that there are no performance issues
     VkFence createFence()
     {

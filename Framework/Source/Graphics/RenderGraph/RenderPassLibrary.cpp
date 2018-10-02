@@ -43,6 +43,11 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+        std::vector<RenderGraph*> gRenderGraphs;
+    #endif
+
     static const std::string kDllPrefix = ".falcor";
 
     RenderPassLibrary* RenderPassLibrary::spInstance = nullptr;

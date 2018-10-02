@@ -31,6 +31,10 @@
 
 namespace Falcor
 {
+    #ifndef _WIN32
+        extern Device::SharedPtr gpDevice;
+    #endif
+    
     GpuTimer::SharedPtr GpuTimer::create()
     {
         return SharedPtr(new GpuTimer());
