@@ -32,10 +32,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     bool verifyResourceVar(const ReflectionVar* pVar, ReflectionResourceType::Type type, ReflectionResourceType::ShaderAccess access, bool expectBuffer, const std::string& varName, const std::string& funcName)
     {
         if (pVar == nullptr)

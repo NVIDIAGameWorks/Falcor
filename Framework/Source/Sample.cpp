@@ -45,10 +45,6 @@ namespace Falcor
 {
     static std::string kMonospaceFont = "monospace";
 
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     void Sample::handleWindowSizeChange()
     {
         if (!gpDevice) return;
@@ -559,24 +555,6 @@ namespace Falcor
         }
         return s;
     }
-
-    void Sample::toggleText(bool showText) 
-    { 
-        mShowText = showText && gpDevice; 
-    }
-    
-    void Sample::toggleUI(bool showUI) 
-    { 
-        if (!gpDevice || showUI) mShowUI = UIStatus::HideAll; 
-        else mShowUI = UIStatus::ShowAll; 
-    }
-    
-    void Sample::toggleGlobalUI(bool showGlobalUI) 
-    { 
-        if (!gpDevice || !showGlobalUI) mShowUI = UIStatus::HideGlobal; 
-        else mShowUI = UIStatus::ShowAll; 
-    }
-
 
     void Sample::resizeSwapChain(uint32_t width, uint32_t height)
     {

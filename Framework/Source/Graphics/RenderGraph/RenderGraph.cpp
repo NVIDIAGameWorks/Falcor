@@ -35,10 +35,6 @@
 
 namespace Falcor
 {
-#ifndef _WIN32
-    extern std::vector<RenderGraph*> gRenderGraphs;
-#endif
-
     RenderGraph::SharedPtr RenderGraph::create(const std::string& name)
     {
         try

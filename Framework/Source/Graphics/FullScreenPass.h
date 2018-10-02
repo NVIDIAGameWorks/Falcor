@@ -46,9 +46,7 @@ namespace Falcor
         uint64_t objectCount = 0;
     };
 
-#ifdef _WIN32
     dlldecl FullScreenPassData gFullScreenData;
-#endif 
 
     /** Helper class to simplify full-screen passes
     */
@@ -58,7 +56,18 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<FullScreenPass>;
         using UniqueConstPtr = std::unique_ptr<const FullScreenPass>;
 
-        ~FullScreenPass();
+        ~FullScreenPass()
+        {
+            assert(gFullScreenData.objectCount > 0);
+
+            gFullScreenData.objectCount--;
+            if (gFullScreenData.objectCount == 0)
+            {
+                gFullScreenData.pVao = nullptr;
+                gFullScreenData.pVertexBuffer = nullptr;
+            }
+        }
+
 
         /** Create a new object.
             \param[in] psFile Pixel shader filename. Can also be an absolute path or a relative path from a data directory.
@@ -93,7 +102,7 @@ namespace Falcor
         Program::SharedPtr getProgram() { return mpProgram; }
 
     protected:
-        FullScreenPass();
+        FullScreenPass() { gFullScreenData.objectCount++; }
         void init(const std::string& vsFile, const std::string & psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags);
 
     private:

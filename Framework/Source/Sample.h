@@ -101,9 +101,9 @@ namespace Falcor
         uint64_t getFrameID() override { return mFrameRate.getFrameCount(); }
         void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = vec2(1)) override;
         std::string getFpsMsg() override;
-        void toggleText(bool showText) override;
-        void toggleUI(bool showUI) override;
-        void toggleGlobalUI(bool showGlobalUI) override;
+        void toggleText(bool showText) override { mShowText = showText && gpDevice; }
+        void toggleUI(bool showUI) override { if (!gpDevice || showUI) mShowUI = UIStatus::HideAll; else mShowUI = UIStatus::ShowAll; }
+        void toggleGlobalUI(bool showGlobalUI) override { if (!gpDevice || !showGlobalUI) mShowUI = UIStatus::HideGlobal; else mShowUI = UIStatus::ShowAll; }
         void setDefaultGuiSize(uint32_t width, uint32_t height) override;
         void setDefaultGuiPosition(uint32_t x, uint32_t y) override;
         void setCurrentTime(float time) override { mCurrentTime = time; }

@@ -33,10 +33,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     VkDeviceMemory allocateDeviceMemory(Device::MemoryType memType, uint32_t memoryTypeBits, size_t size);
 
     struct TextureApiData

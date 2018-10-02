@@ -34,10 +34,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     uint32_t LightProbe::sLightProbeCount = 0;
     LightProbeSharedResources LightProbe::sSharedData;
 

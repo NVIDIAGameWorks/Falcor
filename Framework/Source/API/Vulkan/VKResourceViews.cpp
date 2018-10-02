@@ -32,18 +32,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-    
-#ifndef _WIN32
-    extern ShaderResourceView::SharedPtr gNullSrv;
-    extern ConstantBufferView::SharedPtr gNullCbv;
-    extern RenderTargetView::SharedPtr   gNullRtv;
-    extern UnorderedAccessView::SharedPtr gNullUav;
-    extern DepthStencilView::SharedPtr gNullDsv;
-#endif
-
     VkImageAspectFlags getAspectFlagsFromFormat(ResourceFormat format, bool ignoreStencil = false);
 
     template<typename ApiHandleType>

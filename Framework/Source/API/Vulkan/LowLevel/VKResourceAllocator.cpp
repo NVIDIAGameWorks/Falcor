@@ -32,10 +32,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     Buffer::ApiHandle createBuffer(size_t size, Buffer::BindFlags bindFlags, Device::MemoryType memType);
 
     void ResourceAllocator::initBasePageData(BaseData& data, size_t size)

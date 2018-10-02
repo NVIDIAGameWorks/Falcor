@@ -34,10 +34,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     bool GraphicsStateObject::apiInit()
     {
         // Shader Stages

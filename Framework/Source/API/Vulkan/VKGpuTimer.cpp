@@ -31,10 +31,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     void GpuTimer::apiBegin()
    {
         vkCmdResetQueryPool(mpLowLevelData->getCommandList(), mpHeap, mStart, 2);

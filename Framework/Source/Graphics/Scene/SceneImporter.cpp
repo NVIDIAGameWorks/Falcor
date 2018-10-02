@@ -42,10 +42,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     bool SceneImporter::error(const std::string& msg)
     {
         std::string err = "Error when parsing scene file \"" + mFilename + "\".\n" + msg;

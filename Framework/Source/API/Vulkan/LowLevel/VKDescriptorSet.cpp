@@ -33,18 +33,8 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-    
     VkDescriptorSetLayout createDescriptorSetLayout(const DescriptorSet::Layout& layout);
     VkDescriptorType falcorToVkDescType(DescriptorPool::Type type);
-
-    DescriptorSetApiData::~DescriptorSetApiData()
-    {
-        vkFreeDescriptorSets(gpDevice->getApiHandle(), pool, 1, &set);
-        vkDestroyDescriptorSetLayout(gpDevice->getApiHandle(), layout, nullptr);
-    }
 
     bool DescriptorSet::apiInit()
     {

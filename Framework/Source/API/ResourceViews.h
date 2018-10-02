@@ -143,11 +143,9 @@ namespace Falcor
             ResourceView(pResource, handle, 0, 1, 0, 1) {}        
     };
 
-#ifdef _WIN32
     dlldecl ShaderResourceView::SharedPtr gNullSrv;
     dlldecl ConstantBufferView::SharedPtr gNullCbv;
     dlldecl RenderTargetView::SharedPtr   gNullRtv;
     dlldecl UnorderedAccessView::SharedPtr gNullUav;
     dlldecl DepthStencilView::SharedPtr gNullDsv;
-#endif
 }

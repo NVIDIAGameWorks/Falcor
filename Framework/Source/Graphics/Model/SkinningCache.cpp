@@ -33,10 +33,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     static const char* kShaderFilenameSkinning = "Data/Framework/Shaders/ComputeSkinning.cs.slang";
     static const char* kPerModelCbName = "PerModelCB";
     static const char* kPerMeshCbName = "PerMeshCB";

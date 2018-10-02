@@ -46,10 +46,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     static_assert(Mesh::kMaxBonesPerVertex == 4, "Fix the weights and IDs container below");
     using VertexWeightsVec = std::vector<float4>;
     struct uvec8_4

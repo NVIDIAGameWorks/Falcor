@@ -43,8 +43,8 @@ using namespace glm;
 #define falcorexport __declspec(dllexport)
 #define falcorimport __declspec(dllimport)
 #else  // _MSC_VER
-#define falcorexport 
-#define falcorimport 
+#define falcorexport __attribute__ ((visibility ("default")))
+#define falcorimport __attribute__ ((visibility ("default")))
 #endif // _MSC_VER
 
 #ifdef BUILDING_SHARED_DLL

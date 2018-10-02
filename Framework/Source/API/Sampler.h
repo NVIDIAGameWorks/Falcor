@@ -192,9 +192,7 @@ namespace Falcor
         uint32_t objectCount = 0;
         Sampler::SharedPtr pDefaultSampler;
     };
-#ifdef _WIN32
     dlldecl SamplerData gSamplerData;
-#endif
 
 #define filter_str(a) case Sampler::Filter::a: return #a
     inline std::string to_string(Sampler::Filter f)

@@ -32,10 +32,6 @@
 
 namespace Falcor
 {
-    #ifndef _WIN32
-        extern Device::SharedPtr gpDevice;
-    #endif
-
     bool ComputeStateObject::apiInit()
     {
         std::vector<VkPipelineShaderStageCreateInfo> shaderStageInfos;

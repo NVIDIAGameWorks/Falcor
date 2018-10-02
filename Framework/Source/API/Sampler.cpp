@@ -30,10 +30,6 @@
 
 namespace Falcor
 {
-#ifndef _WIN32
-    SamplerData gSamplerData;
-#endif
-
     Sampler::Sampler(const Desc& desc) : mDesc(desc)
     {
         gSamplerData.objectCount++;

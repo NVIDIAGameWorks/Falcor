@@ -36,10 +36,6 @@
 
 namespace Falcor
 {
-#ifndef _WIN32
-    FullScreenPassData gFullScreenData;
-#endif
-
     bool checkForViewportArray2Support()
     {
 #ifdef FALCOR_D3D12
@@ -98,22 +94,6 @@ namespace Falcor
         UniquePtr pPass = UniquePtr(new FullScreenPass());
         pPass->init(vsFile, psFile, programDefines, disableDepth, disableStencil, viewportMask, enableSPS, compilerFlags);
         return pPass;
-    }
-
-    FullScreenPass::FullScreenPass() 
-    { 
-        gFullScreenData.objectCount++; 
-    }
-
-    FullScreenPass::~FullScreenPass()
-    {
-        assert(gFullScreenData.objectCount > 0);
-        gFullScreenData.objectCount--;
-        if (gFullScreenData.objectCount == 0)
-        {
-            gFullScreenData.pVao = nullptr;
-            gFullScreenData.pVertexBuffer = nullptr;
-        }
     }
 
     void FullScreenPass::init(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags)
