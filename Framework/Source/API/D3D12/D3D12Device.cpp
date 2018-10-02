@@ -126,7 +126,6 @@ namespace Falcor
 
     ID3D12DevicePtr createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, const std::vector<UUID>& experimentalFeatures, bool& rgb32FSupported)
     {
-        featureLevel = D3D_FEATURE_LEVEL_11_0;
         // Find the HW adapter
         IDXGIAdapter1Ptr pAdapter;
         ID3D12DevicePtr pDevice;
