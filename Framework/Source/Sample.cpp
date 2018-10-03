@@ -187,8 +187,9 @@ namespace Falcor
         mpTextRenderer.reset();
         mpPixelZoom.reset();
         mpRenderContext.reset();
-        if(gpDevice) gpDevice->cleanup();
         releaseSharedObjects();
+        if(gpDevice) gpDevice->cleanup();
+        gpDevice.reset();
     }
 
     void Sample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer)
