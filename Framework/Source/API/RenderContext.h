@@ -226,7 +226,7 @@ namespace Falcor
 
     enum_class_operators(RenderContext::StateBindFlags);
 
-#ifdef FALCOR_D3D12
+#ifndef FALCOR_VK
     struct BlitData
     {
         FullScreenPass::UniquePtr pPass;
