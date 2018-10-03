@@ -33,9 +33,9 @@ namespace Falcor
     {
 #ifndef FALCOR_VK
         gBlitData = {};
+#endif
         gpDrawCommandSig = nullptr;
         gpDrawIndexCommandSig = nullptr;
-#endif
         gNullSrv = nullptr;
         gNullCbv = nullptr;
         gNullRtv = nullptr;
