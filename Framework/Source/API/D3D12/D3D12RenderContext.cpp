@@ -60,17 +60,19 @@ namespace Falcor
         }
     }
 
-    void releaseBlitData()
+    void releaseApiData()
     {
         gBlitData.pSrcRectBuffer = nullptr;
         gBlitData.pVars = nullptr;
         gBlitData.pPass = nullptr;
         gBlitData.pState = nullptr;
+        gpDrawCommandSig = nullptr;
+        gpDrawIndexCommandSig = nullptr;
     }
 
     RenderContext::~RenderContext()
     {
-        releaseBlitData();
+        releaseApiData();
     }
 
 

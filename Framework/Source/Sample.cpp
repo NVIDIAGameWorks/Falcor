@@ -166,6 +166,8 @@ namespace Falcor
         }
     }
 
+    dlldecl void releaseSharedObjects();
+
     // Sample functions
     Sample::~Sample()
     {
@@ -186,7 +188,7 @@ namespace Falcor
         mpPixelZoom.reset();
         mpRenderContext.reset();
         if(gpDevice) gpDevice->cleanup();
-        gpDevice.reset();
+        releaseSharedObjects();
     }
 
     void Sample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer)

@@ -29,4 +29,21 @@
 
 namespace Falcor
 {
+    dlldecl void releaseSharedObjects()
+    {
+#ifndef FALCOR_VK
+        gBlitData = {};
+        gpDrawCommandSig = nullptr;
+        gpDrawIndexCommandSig = nullptr;
+#endif
+        gNullSrv = nullptr;
+        gNullCbv = nullptr;
+        gNullRtv = nullptr;
+        gNullUav = nullptr;
+        gNullDsv = nullptr;
+        gSamplerData = {};
+        gRenderGraphs.clear();
+        gFullScreenData = {};
+        gpDevice = nullptr;        
+    }
 }
