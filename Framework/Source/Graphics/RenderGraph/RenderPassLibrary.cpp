@@ -95,7 +95,7 @@ namespace Falcor
         return *this;
     }
 
-    void RenderPassLibrary::registerInternal(const char* className, const char* desc, CreateFunc func, HMODULE module)
+    void RenderPassLibrary::registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle module)
     {
         if (mPasses.find(className) != mPasses.end())
         {
@@ -152,7 +152,7 @@ namespace Falcor
         // Copy the library to a temp file
         copyDllFile(fullpath);
 
-        HMODULE l = loadDll((fullpath + kDllPrefix).c_str());
+        DllHandle l = loadDll((fullpath + kDllPrefix).c_str());
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
 
@@ -164,7 +164,7 @@ namespace Falcor
 
     void RenderPassLibrary::releaseLibrary(const std::string& filename)
     {
-        auto& libIt = mLibs.find(filename);
+        auto libIt = mLibs.find(filename);
         if (libIt == mLibs.end())
         {
             logWarning("Can't unload render-pass library `" + filename + "`. The library wasn't loaded");
@@ -174,8 +174,8 @@ namespace Falcor
         gpDevice->flushAndSync();
 
         // Delete all the classes that were owned by the module
-        HMODULE module = libIt->second.module;
-        for (auto& it = mPasses.begin(); it != mPasses.end();)
+        DllHandle module = libIt->second.module;
+        for (auto it = mPasses.begin(); it != mPasses.end();)
         {
             if (it->second.module == module) it = mPasses.erase(it);
             else ++it;
@@ -191,7 +191,7 @@ namespace Falcor
         auto lastTime = getFileModifiedTime(name);
         if ((lastTime == mLibs[name].lastModified) || (lastTime == 0)) return;
 
-        HMODULE module = mLibs[name].module;
+        DllHandle module = mLibs[name].module;
 
         struct PassesToReplace
         {

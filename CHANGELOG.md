@@ -1,4 +1,4 @@
-v3.1.0
+v3.0.9
 ------
 - Added deprecation system
 - Added support for StructuredBuffers with VariableBuffer::renderUI
@@ -9,11 +9,21 @@ v3.1.0
 - Added the option to pass CompilerFlags to many objects
 - Added Logger::Level::Fatal
 - Better abstraction of the alpha-test
-- Fixed VideoCapture UI
 - Added `env_map` attribute and environment texture to the scene
 - Added `Scene::setCamerasAspectRatio()` which will set all the scene's cameras aspect ratio at once
 - Gui class supports multiple fonts. Default font is trebuchet, profiler font is consolas-bold
 - Added support for high-DPI displays (GUI only)
+
+Bug Fixes:
+- Fixed VideoCapture UI
+- Fixed debug visualization in Shadows sample
+
+Dependencies:
+- Added pybind11 2.2.4
+- Updated GLM to 0.9.9.2
+- Updated Vulkan SDK to 1.1.82.1
+- Updated Slang to 0.10.33
+- Updated imgui to 1.65
 
 v3.0.7
 ------

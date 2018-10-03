@@ -95,16 +95,16 @@ namespace Falcor
         struct ExtendeDesc : RenderPassDesc
         {
             ExtendeDesc() = default;
-            ExtendeDesc(const char* name, const char* desc_, CreateFunc func_, HMODULE module_) : RenderPassDesc(name, desc, func_), module(module_) {}
+            ExtendeDesc(const char* name, const char* desc_, CreateFunc func_, DllHandle module_) : RenderPassDesc(name, desc, func_), module(module_) {}
 
-            HMODULE module = nullptr;
+            DllHandle module = nullptr;
         };
 
-        void registerInternal(const char* className, const char* desc, CreateFunc func, HMODULE hmodule);
+        void registerInternal(const char* className, const char* desc, CreateFunc func, DllHandle hmodule);
 
         struct LibDesc
         {
-            HMODULE module;
+            DllHandle module;
             time_t lastModified;
         };
         std::unordered_map<std::string, LibDesc> mLibs;

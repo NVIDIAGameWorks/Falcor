@@ -532,4 +532,24 @@ namespace Falcor
     {
         return __popcnt(a);
     }
+
+
+    DllHandle loadDll(const std::string& libPath)
+    {
+        return LoadLibraryA(libPath.c_str());
+    }
+
+    /** Release a shared-library
+    */
+    void releaseDll(DllHandle dll)
+    {
+        FreeLibrary(dll);
+    }
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
+    {
+        return GetProcAddress(dll, funcName.c_str());
+    }
 }

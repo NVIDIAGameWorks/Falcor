@@ -204,23 +204,4 @@ namespace Falcor
         str.assign(std::istreambuf_iterator<char>(filestream), std::istreambuf_iterator<char>());
         return str;
     }
-
-    DllHandle loadDll(const std::string& libPath)
-    {
-        return LoadLibraryA(libPath.c_str());
-    }
-
-    /** Release a shared-library
-    */
-    void releaseDll(DllHandle dll)
-    {
-        FreeLibrary(dll);
-    }
-
-    /** Get a function pointer from a library
-    */
-    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
-    {
-        return GetProcAddress(dll, funcName.c_str());
-    }
 }
