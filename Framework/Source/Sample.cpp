@@ -189,7 +189,7 @@ namespace Falcor
         mpRenderContext.reset();
         releaseSharedObjects();
         if(gpDevice) gpDevice->cleanup();
-        gpDevice = nullptr;
+        gpDevice.reset();
     }
 
     void Sample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer)

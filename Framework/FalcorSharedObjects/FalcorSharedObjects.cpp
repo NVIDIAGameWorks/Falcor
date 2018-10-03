@@ -44,5 +44,6 @@ namespace Falcor
         gSamplerData = {};
         gRenderGraphs.clear();
         gFullScreenData = {};
+        // Don't release gpDevice, the sample still needs it
     }
 }
