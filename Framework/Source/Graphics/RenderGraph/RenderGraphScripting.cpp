@@ -48,7 +48,7 @@ namespace Falcor
     const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
     const char* RenderGraphScripting::kUpdatePass = "updatePass";
-
+    const char* RenderGraphScripting::kLoadDefaultScene = "loadDefaultScene";
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {

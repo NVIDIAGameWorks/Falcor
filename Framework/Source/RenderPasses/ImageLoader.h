@@ -26,49 +26,30 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/RenderGraph/RenderGraph.h"
-
-namespace pybind11
-{
-    class module;
-};
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "API/Texture.h"
 
 namespace Falcor
 {
-    class RenderGraphScripting
+    class ImageLoader : public RenderPass, inherit_shared_from_this<RenderPass, ImageLoader>
     {
     public:
-        using SharedPtr = std::shared_ptr<RenderGraphScripting>;
-        using GraphDesc = Scripting::Context::ObjectDesc<RenderGraph::SharedPtr>;
+        using SharedPtr = std::shared_ptr<ImageLoader>;
 
-        using GraphVec = std::vector<GraphDesc>;
+        /** Create a new object
+        */
+        static SharedPtr create(const Dictionary& dict = {});
 
-        static SharedPtr create();
-        static SharedPtr create(const std::string& filename);
+        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+        virtual Dictionary getScriptingDictionary() const override;
+        virtual void setScriptingDictionary(const Dictionary& dict) override;
 
-        // Python to C++
-        static void registerScriptingObjects(pybind11::module& m);
-        bool runScript(const std::string& script);
-        const GraphVec& getGraphs() const { return mGraphVec; }
-        RenderGraph::SharedPtr getGraph(const std::string& name) const;
-        void addGraph(const std::string& name, const RenderGraph::SharedPtr& pGraph);
-
-        static const char* kAddPass;
-        static const char* kRemovePass;
-        static const char* kAddEdge;
-        static const char* kRemoveEdge;
-        static const char* kMarkOutput;
-        static const char* kUnmarkOutput;
-        static const char* kAutoGenEdges;
-        static const char* kCreatePass;
-        static const char* kCreateGraph;
-        static const char* kUpdatePass;
-        static const char* kLoadDefaultScene;
-
+        void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:
-        RenderGraphScripting() = default;
-        Scripting::Context mContext;
-        GraphVec mGraphVec;
-        std::string mFilename;
+        ImageLoader();
+        std::string mImageName;
+
     };
 }

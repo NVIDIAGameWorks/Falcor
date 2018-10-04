@@ -31,7 +31,7 @@
 
         "ForwardRendererTest":
         {
-            "Enabled" : false,
+            "Enabled" : true,
             "Project Name" : "ForwardRenderer",
             "Test Config" : {
                 "Type" : "Image Compare",
@@ -53,7 +53,7 @@
         "AnimationTest":
         {
             "Enabled" : true,
-            "Project Name" : "RenderGraphViewer",
+            "Project Name" : "ForwardRenderer",
             "Project Tests Args" :
             [
                 "-test -fixedtimedelta 0.03333 -loadscene Cerberus/Standard/Cerberus.fscene -sstimes 1 2 -shutdowntime 3"
@@ -62,7 +62,7 @@
 
         "RenderGraphViewerTest":
         {
-            "Enabled" : true,
+            "Enabled" : false,
             "Project Name" : "RenderGraphViewer",
             "Test Config" : {
                 "Type" : "Image Compare",
