@@ -29,4 +29,21 @@
 
 namespace Falcor
 {
+    dlldecl void releaseSharedObjects()
+    {
+#ifndef FALCOR_VK
+        gBlitData = {};
+#endif
+        gpDrawCommandSig = nullptr;
+        gpDrawIndexCommandSig = nullptr;
+        gNullSrv = nullptr;
+        gNullCbv = nullptr;
+        gNullRtv = nullptr;
+        gNullUav = nullptr;
+        gNullDsv = nullptr;
+        gSamplerData = {};
+        gRenderGraphs.clear();
+        gFullScreenData = {};
+        // Don't release gpDevice, the sample still needs it
+    }
 }

@@ -45,7 +45,7 @@ Falcor is tested on Ubuntu 17.10, but may also work with other versions and dist
 To build and run Falcor on Linux:
 - Install the Vulkan SDK following the instructions [HERE](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html)
 - Install additional dependencies:
-    - `sudo apt-get install python libassimp-dev libglfw3-dev libgtk-3-dev libfreeimage-dev libavcodec-dev libavdevice-dev libavformat-dev libswscale-dev libavutil-dev`
+    - `sudo apt-get install python python3-dev libassimp-dev libglfw3-dev libgtk-3-dev libfreeimage-dev libavcodec-dev libavdevice-dev libavformat-dev libswscale-dev libavutil-dev`
 - Run the `Makefile`
     - To only build the library, run `make Debug` or `make Release` depending on the desired configuration
     - To build samples, run `make` using the target for the sample(s) you want to build. Config can be changed by setting `SAMPLE_CONFIG` to `Debug` or `Release`
@@ -58,8 +58,9 @@ follow the instructions below.
 Creating a New Project
 ------------------------
 - If you haven't done so already, create a Visual Studio solution and project for your code. Falcor only supports 64-bit builds, so make sure you have a 64-bit build configuration
-- Add Falcor.props to your project (Property Manager -> Right click your project -> Add existing property sheet)
-- Add Falcor.vcxproj to your solution
+- Add `Falcor.props` to your project (Property Manager -> Right click your project -> Add existing property sheet)
+- Add `FalcorSharedObjects.vcxproj` to your solution (Located at `Framework/FalcorSharedObjects/FalcorSharedObjects.vcxproj`)
+- Add `Falcor.vcxproj` to your solution (Located at `Framework/Source/Falcor.vcxproj`)
 - Add a reference to Falcor in your project (Solution Explorer -> Your Project -> Right Click `References` -> Click `Add Reference...` -> Choose Falcor)
 
 *Sample* Class
