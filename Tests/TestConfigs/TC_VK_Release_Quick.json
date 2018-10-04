@@ -6,7 +6,7 @@
         "VK_Release_Quick" :
         {
             "Repository Target" : "https://github.com/NVIDIAGameWorks/Falcor.git",
-            "Source Branch Target" : "dev-3.0.2",
+            "Source Branch Target" : "dev-3.0.9",
             "Compare Branch Target" : "master",
             "Tests Configs Target" : "TestConfigs/",
             

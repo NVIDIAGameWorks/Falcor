@@ -43,7 +43,6 @@
                 "-test -fixedtimedelta 0.03333 -loadscene pink_room/pink_room.fscene -sstimes 10 -shutdowntime 11",
                 "-test -fixedtimedelta 0.03333 -loadscene grey_and_white_room/grey_and_white_room.fscene -sstimes 10 20 32 -shutdowntime 33",
                 "-test -fixedtimedelta 0.03333 -loadscene bathroom2/bathroom.fscene -sstimes 10 20 30 -shutdowntime 31",
-                "-test -fixedtimedelta 0.03333 -loadscene living_room/living_room.fscene -sstimes 10 20 30 -shutdowntime 31",
                 "-test -fixedtimedelta 0.03333 -loadscene SunTemple/SunTemple.fscene -sstimes 10 27 50 -shutdowntime 51",
                 "-test -fixedtimedelta 0.03333 -loadscene Bistro/Bistro_Interior.fscene -sstimes 5 10 18 -shutdowntime 19",
                 "-test -fixedtimedelta 0.03333 -loadscene Bistro/Bistro_Exterior.fscene -sstimes 3 28 36 65 -shutdowntime 66"
@@ -53,7 +52,7 @@
         "AnimationTest":
         {
             "Enabled" : true,
-            "Project Name" : "RenderGraphViewer",
+            "Project Name" : "ForwardRenderer",
             "Project Tests Args" :
             [
                 "-test -fixedtimedelta 0.03333 -loadscene Cerberus/Standard/Cerberus.fscene -sstimes 1 2 -shutdowntime 3"

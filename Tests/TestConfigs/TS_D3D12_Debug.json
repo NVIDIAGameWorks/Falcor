@@ -43,14 +43,13 @@
                 "-test -fixedtimedelta 0.03333 -loadscene pink_room\\pink_room.fscene -sstimes 10 -shutdowntime 15",
                 "-test -fixedtimedelta 0.03333 -loadscene grey_and_white_room\\grey_and_white_room.fscene -sstimes 10 20 32 -shutdowntime 37",
                 "-test -fixedtimedelta 0.03333 -loadscene bathroom2\\bathroom.fscene -sstimes 10 20 30 -shutdowntime 35",
-                "-test -fixedtimedelta 0.03333 -loadscene living_room\\living_room.fscene -sstimes 10 20 30 -shutdowntime 35",
                 "-test -fixedtimedelta 0.03333 -loadscene UE4\\SunTemple\\SunTemple.fscene -sstimes 10 27 50 -shutdowntime 55"
             ]
         },
 
         "RenderGraphViewerTest":
         {
-            "Enabled" : true,
+            "Enabled" : false,
             "Project Name" : "RenderGraphViewer",
             "Test Config" : {
                 "Type" : "Image Compare",
