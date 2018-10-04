@@ -72,16 +72,21 @@ namespace Falcor
 
     bool ConstantBuffer::uploadToGPU(size_t offset, size_t size)
     {
-        if (mDirty) mpCbv = nullptr;
-        return VariablesBuffer::uploadToGPU(offset, size);
+		EnterCriticalSection(&ghMutex);
+        if (mDirty) mpCbv = nullptr; //cinetec mod:dx12
+		bool res= VariablesBuffer::uploadToGPU(offset, size);
+		LeaveCriticalSection(&ghMutex);
+		return res;
     }
 
     ConstantBufferView::SharedPtr ConstantBuffer::getCbv() const
     {
+		EnterCriticalSection(&ghMutex);
         if (mpCbv == nullptr)
         {
             mpCbv = ConstantBufferView::create(Resource::shared_from_this());
         }
+		LeaveCriticalSection(&ghMutex);
         return mpCbv;
     }
 }
