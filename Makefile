@@ -85,7 +85,7 @@ ADDITIONAL_LIB_DIRS = -L "Bin/" \
 -L "Framework/Externals/Slang/bin/linux-x86_64/release" \
 -L "$(VULKAN_SDK)/lib"
 
-LIBS = -lfalcorshared -lfalcor \
+LIBS = -lfalcor -lfalcorshared \
 -lfreeimage -lslang -lslang-glslang -lopenvr_api \
 $(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11 python3) \
 $(shell pkg-config --libs libavcodec libavdevice libavformat libswscale libavutil) \
@@ -158,12 +158,12 @@ define MoveProjectData
 endef
 
 # Builds Falcor library in Release
-Release : PreBuild ReleaseConfig FalcorSharedObjects $(OUT_DIR)libfalcor.a
+Release : PreBuild ReleaseConfig $(OUT_DIR)libfalcorshared.so $(OUT_DIR)libfalcor.a
 
 # Builds Falcor library in Debug
-Debug : PreBuild DebugConfig FalcorSharedObjects $(OUT_DIR)libfalcor.a
+Debug : PreBuild DebugConfig $(OUT_DIR)libfalcorshared.so $(OUT_DIR)libfalcor.a
 
-FalcorSharedObjects :
+$(OUT_DIR)libfalcorshared.so : $(OUT_DIR)libfalcor.a
 	$(call CompileSharedLibrary,Framework/FalcorSharedObjects/,FalcorSharedObjects.cpp,libfalcorshared.so)
 
 define CompileSharedLibrary
