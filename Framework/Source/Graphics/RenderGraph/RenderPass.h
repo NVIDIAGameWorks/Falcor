@@ -41,13 +41,16 @@ namespace Falcor
     class RenderData
     {
     public:
-        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict) : mName(passName), mpResources(pResourceCache), mpDictionary(pDict) {}
+        RenderData(const std::string& passName, const ResourceCache::SharedPtr& pResourceCache, const Dictionary::SharedPtr& pDict) : mName(passName), mpResources(pResourceCache), mpDictionary(pDict) 
+        {
+            if (!mpDictionary) mpDictionary = Dictionary::create();
+        }
         std::shared_ptr<Texture> getTexture(const std::string& name) const
         {
             return std::dynamic_pointer_cast<Texture>(mpResources->getResource(mName + '.' + name));
         }
 
-        const Dictionary::SharedPtr& getDictionary() const { return mpDictionary; }
+        Dictionary& getDictionary() const { return (*mpDictionary); }
     protected:
         const std::string& mName;
         ResourceCache::SharedPtr mpResources;

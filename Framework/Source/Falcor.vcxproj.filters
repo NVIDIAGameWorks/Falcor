@@ -172,15 +172,6 @@
     <ClCompile Include="API\ConstantBuffer.cpp">
       <Filter>API</Filter>
     </ClCompile>
-    <ClCompile Include="..\Externals\dear_imgui\imgui.cpp">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Externals\dear_imgui\imgui_demo.cpp">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Externals\dear_imgui\imgui_draw.cpp">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClCompile>
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="API\Resource.cpp">
       <Filter>API</Filter>
@@ -567,12 +558,6 @@
     <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
-    <ClCompile Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.cpp">
-      <Filter>Externals\dear_imgui_addons</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Externals\dear_imgui\imgui_widgets.cpp">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp">
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
@@ -833,24 +818,6 @@
     </ClInclude>
     <ClInclude Include="API\LowLevel\ResourceAllocator.h">
       <Filter>API\LowLevel</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\dear_imgui\imconfig.h">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\dear_imgui\imgui.h">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\dear_imgui\imgui_internal.h">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\dear_imgui\stb_rect_pack.h">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\dear_imgui\stb_textedit.h">
-      <Filter>Externals\dear_imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\dear_imgui\stb_truetype.h">
-      <Filter>Externals\dear_imgui</Filter>
     </ClInclude>
     <ClInclude Include="..\Externals\FFMpeg\include\libavcodec\avcodec.h">
       <Filter>Externals\FFMpeg\libavcodec</Filter>
@@ -1439,9 +1406,6 @@
     </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
       <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Externals\dear_imgui_addons\imguinodegrapheditor\imguinodegrapheditor.h">
-      <Filter>Externals\dear_imgui_addons</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h">
       <Filter>Graphics\RenderGraph</Filter>
@@ -2283,9 +2247,6 @@
     <Filter Include="API\LowLevel">
       <UniqueIdentifier>{8bb5d38b-eb7d-40a8-a5aa-c934669015b5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Externals\dear_imgui">
-      <UniqueIdentifier>{fd48defe-6e2a-4ea0-a9e0-b7a8b7cbe222}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Utils\Picking">
       <UniqueIdentifier>{db06632d-289e-4e1c-85b4-7d6f5e41c73b}</UniqueIdentifier>
     </Filter>
@@ -2361,9 +2322,6 @@
     <Filter Include="Utils\Scripting">
       <UniqueIdentifier>{0193cc13-996d-498d-a32e-8990117f264d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Externals\dear_imgui_addons">
-      <UniqueIdentifier>{69cc9fe7-63a0-4493-bce3-789892d9df23}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Externals\GLM\detail">
       <UniqueIdentifier>{17bed071-6e42-4df7-8389-70de86f01a8c}</UniqueIdentifier>
     </Filter>
@@ -2381,12 +2339,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Externals\dear_imgui\LICENSE">
-      <Filter>Externals\dear_imgui</Filter>
-    </None>
-    <None Include="..\Externals\dear_imgui\README.md">
-      <Filter>Externals\dear_imgui</Filter>
-    </None>
     <None Include="Data\Framework\Shaders\Blit.ps.slang">
       <Filter>Data\Framework\Shaders</Filter>
     </None>

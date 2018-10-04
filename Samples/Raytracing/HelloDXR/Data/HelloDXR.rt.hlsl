@@ -114,7 +114,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttri
     float3 posW = rayOrigW + hitT * rayDirW;
     // prepare the shading data
     VertexOut v = getVertexAttributes(triangleIndex, attribs);
-    ShadingData sd = prepareShadingData(v, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData(v, gMaterial, rayOrigW);
 
     // Shoot a reflection ray
     float3 reflectColor = getReflectionColor(posW, v, rayDirW, hitData.depth.r);
