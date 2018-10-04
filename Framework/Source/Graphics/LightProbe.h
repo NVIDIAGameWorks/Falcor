@@ -37,7 +37,7 @@ namespace Falcor
     class ConstantBuffer;
     class Gui;
 
-    class LightProbe : public IMovableObject, inherit_shared_from_this<IMovableObject, LightProbe>
+    class LightProbe : public IMovableObject, public inherit_shared_from_this<IMovableObject, LightProbe>
     {
     public:
         using SharedPtr = std::shared_ptr<LightProbe>;

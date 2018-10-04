@@ -43,7 +43,7 @@ namespace Falcor
 
     /** Base class for light sources. All light sources should inherit from this.
     */
-    class Light : public IMovableObject, inherit_shared_from_this<IMovableObject, Light>
+    class Light : public IMovableObject, public inherit_shared_from_this<IMovableObject, Light>
     {
     public:
         using SharedPtr = std::shared_ptr<Light>;
