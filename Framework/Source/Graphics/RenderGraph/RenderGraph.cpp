@@ -933,7 +933,7 @@ namespace Falcor
 
     void RenderGraph::renderUI(Gui* pGui, const char* uiGroup)
     {
-        if (!uiGroup || pGui->beginGroup(uiGroup))
+        if (!uiGroup || pGui->beginGroup(uiGroup, true))
         {
             pGui->addCheckBox("Profile Passes", mProfileGraph);
             pGui->addTooltip("Profile the render-passes. The results will be shown in the profiler window. If you can't see it, click 'P'");
@@ -945,7 +945,15 @@ namespace Falcor
                 // If you are thinking about displaying the profiler results next to the group label, it won't work. Since the times change every frame, IMGUI thinks it's a different group and will not expand it
                 if (pGui->beginGroup(pass.nodeName))
                 {
+                    uint32_t w = (uint32_t)(mSwapChainData.width * 0.25f);
+                    uint32_t h = (uint32_t)(mSwapChainData.height * 0.4f);
+                    uint32_t y = 20;
+                    uint32_t x = mSwapChainData.width - w - 20;
+
+                    pGui->pushWindow(pass.nodeName.c_str(), w, h, x, y);
+
                     pass.pPass->renderUI(pGui, nullptr);
+                    pGui->popWindow();
                     pGui->endGroup();
                 }
             }

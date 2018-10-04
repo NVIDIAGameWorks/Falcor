@@ -32,6 +32,7 @@
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Graphics/Scene/Scene.h"
 #include "Raytracing/RtScene.h"
+#include "Graphics/RenderGraph/RenderGraph.h"
 
 using namespace pybind11::literals;
 
@@ -100,9 +101,52 @@ namespace Falcor
 #endif
     }
 
+    static void coreClasses(pybind11::module& m)
+    {
+#define reg_class(c_) pybind11::class_<c_, c_::SharedPtr>(m, #c_);
+
+        // API
+        reg_class(BlendState);
+        reg_class(Buffer);
+//        reg_class(ConstantBuffer); Doesn't work since it uses user-defined SharedPtr
+        reg_class(DepthStencilState);
+        reg_class(Fbo);
+        reg_class(GpuTimer);
+        reg_class(RasterizerState);
+        reg_class(Resource);
+        reg_class(ShaderResourceView);
+        reg_class(DepthStencilView);
+        reg_class(RenderTargetView);
+        reg_class(ConstantBufferView);
+        reg_class(UnorderedAccessView);
+        reg_class(Sampler);
+//        reg_class(StructuredBuffer); Doesn't work since it uses user-defined SharedPtr
+        reg_class(Texture);
+//        reg_class(TypedBuffer); Doesn't work since it uses user-defined SharedPtr
+        reg_class(Vao);
+        reg_class(VertexLayout);
+
+        // Graphics
+        reg_class(Camera);
+        reg_class(Material);
+        reg_class(Model);
+        reg_class(Mesh);
+        reg_class(ObjectPath);
+        reg_class(Program);
+//         reg_class(GraphicsVars); Doesn't work since it uses user-defined SharedPtr
+//         reg_class(ComputeVars); Doesn't work since it uses user-defined SharedPtr
+        reg_class(GraphicsState);
+        reg_class(ComputeState);
+        reg_class(Light);
+        reg_class(LightProbe);
+
+#undef reg_class
+    }
+
     void ScriptBindings::registerScriptingObjects(pybind11::module& m)
     {
         globalEnums(m);
+        coreClasses(m);
         samplerState(m);
         toneMapping(m);
         scene(m);

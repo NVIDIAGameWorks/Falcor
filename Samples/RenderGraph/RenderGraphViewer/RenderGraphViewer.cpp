@@ -54,6 +54,13 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
         }
         else msgBox("No path to temporary file provided");
     }
+
+    const auto& pFbo = pSample->getCurrentFbo();
+    uint32_t w = pFbo->getWidth();
+    uint32_t h = pFbo->getHeight();
+    w = (uint32_t)(w * 0.25f);
+    h = (uint32_t)(h * 0.6f);
+    pSample->setDefaultGuiSize(w, h);
 }
 
 bool isInVector(const std::vector<std::string>& strVec, const std::string& str)
@@ -102,14 +109,18 @@ void RenderGraphViewer::renderOutputUI(Gui* pGui, const Gui::DropdownList& dropd
     }
 }
 
-bool RenderGraphViewer::renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data)
+bool RenderGraphViewer::renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data, const uvec2& winSize)
 {
     // Get the current output, in case `renderOutputUI()` unmarks it
     Texture::SharedPtr pTex = std::dynamic_pointer_cast<Texture>(mGraphs[mActiveGraph].pGraph->getOutput(data.currentOutput));
     std::string label = data.currentOutput + "##" + mGraphs[mActiveGraph].name;
 
+    uvec2 debugSize = (uvec2)(vec2(winSize) * vec2(0.4f, 0.55f));
+    uvec2 debugPos = winSize - debugSize;
+    debugPos -= 10;
+
     // Display the dropdown
-    pGui->pushWindow(data.windowName.c_str(), 330, 268);
+    pGui->pushWindow(data.windowName.c_str(), debugSize.x, debugSize.y, debugPos.x, debugPos.y);
     bool close = pGui->addButton("Close");
     if (pGui->addButton("Save To File", true)) Bitmap::saveImageDialog(pTex);
     renderOutputUI(pGui, dropdown, data.currentOutput);
@@ -123,7 +134,7 @@ bool RenderGraphViewer::renderDebugWindow(Gui* pGui, const Gui::DropdownList& dr
     return close;
 }
 
-void RenderGraphViewer::graphOutputsGui(Gui* pGui)
+void RenderGraphViewer::graphOutputsGui(Gui* pGui, SampleCallbacks* pSample)
 {
     RenderGraph::SharedPtr pGraph = mGraphs[mActiveGraph].pGraph;
     pGui->addCheckBox("Show All Outputs", mGraphs[mActiveGraph].showAllOutputs);
@@ -135,10 +146,12 @@ void RenderGraphViewer::graphOutputsGui(Gui* pGui)
 
     if (graphOuts.size())
     {
+        uvec2 dims(pSample->getCurrentFbo()->getWidth(), pSample->getCurrentFbo()->getHeight());
+
         renderOutputUI(pGui, graphOuts, mGraphs[mActiveGraph].mainOutput);
         for (size_t i = 0; i < mGraphs[mActiveGraph].debugWindows.size();)
         {
-            if (renderDebugWindow(pGui, graphOuts, mGraphs[mActiveGraph].debugWindows[i]))
+            if (renderDebugWindow(pGui, graphOuts, mGraphs[mActiveGraph].debugWindows[i], dims))
             {
                 mGraphs[mActiveGraph].debugWindows.erase(mGraphs[mActiveGraph].debugWindows.begin() + i);
             }
@@ -156,8 +169,8 @@ void RenderGraphViewer::graphOutputsGui(Gui* pGui)
 
 void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    if (pGui->addButton("Load Scene")) loadScene(pSample);
     if (pGui->addButton("Add Graphs")) addGraphDialog(pSample);
+    if (pGui->addButton("Load Scene", true)) loadScene(pSample);
     pGui->addSeparator();
 
     // Display a list with all the graphs
@@ -173,13 +186,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if(mEditorProcess == 0) 
         {
             pGui->addDropdown("Active Graph", graphList, mActiveGraph);
-            if (pGui->addButton("Remove Graph")) removeActiveGraph();
-            if (pGui->addButton("Edit Graph")) openEditor();
+            if (pGui->addButton("Edit")) openEditor();
+            if (pGui->addButton("Remove", true)) removeActiveGraph();
             pGui->addSeparator();
         }
 
         // Active graph output
-        graphOutputsGui(pGui);
+        graphOutputsGui(pGui, pSample);
 
         // Graph UI
         pGui->addSeparator();

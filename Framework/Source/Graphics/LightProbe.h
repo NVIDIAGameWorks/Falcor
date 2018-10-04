@@ -37,11 +37,12 @@ namespace Falcor
     class ConstantBuffer;
     class Gui;
 
-    class LightProbe : public IMovableObject, std::enable_shared_from_this<LightProbe>
+    class LightProbe : public IMovableObject, inherit_shared_from_this<IMovableObject, LightProbe>
     {
     public:
         using SharedPtr = std::shared_ptr<LightProbe>;
         using SharedConstPtr = std::shared_ptr<const LightProbe>;
+        SharedPtr shared_from_this() { return inherit_shared_from_this<IMovableObject, LightProbe>::shared_from_this(); }
 
         static const uint32_t kDataSize = sizeof(LightProbeData) - sizeof(LightProbeResources);
         static const uint32_t kDefaultDiffSamples = 4096;

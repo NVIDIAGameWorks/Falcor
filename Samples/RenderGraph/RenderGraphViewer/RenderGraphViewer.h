@@ -74,8 +74,8 @@ private:
 
     void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, SampleCallbacks* pCallbacks, GraphData& data);
     std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
-    void graphOutputsGui(Gui* pGui);
-    bool renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data); // Returns true if we need to close the window
+    void graphOutputsGui(Gui* pGui, SampleCallbacks* pSample);
+    bool renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data, const uvec2& winSize); // Returns true if we need to close the window
     void renderOutputUI(Gui* pGui, const Gui::DropdownList& dropdown, std::string& selectedOutput);
     void addDebugWindow();
 

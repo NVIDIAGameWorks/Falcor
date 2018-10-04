@@ -182,7 +182,7 @@ namespace Falcor
         Scripting::shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
-        mpBackBufferFBO.reset();
+        mpBackBufferFBO.reset();    
         mpTargetFBO.reset();
         mpTextRenderer.reset();
         mpPixelZoom.reset();
@@ -391,8 +391,10 @@ namespace Falcor
 
             if (gProfileEnabled)
             {
+                uint32_t y = mpBackBufferFBO->getHeight() - 360;
+
                 mpGui->setActiveFont(kMonospaceFont);
-                mpGui->pushWindow("Profiler", 650, 200, 10, 300);
+                mpGui->pushWindow("Profiler", 650, 350, 10, y);
                 // Stop the timer
                 Profiler::endEvent("renderGUI");
                 mpGui->addText(Profiler::getEventsString().c_str());
