@@ -33,13 +33,12 @@
 namespace Falcor
 {
     static const std::string kDst = "dst";
-    static const std::string kSrc = "src";
     static const std::string kImage = "image";
 
     void ImageLoader::reflect(RenderPassReflection& reflector) const
     {
         reflector.addOutput(kDst);
-        reflector.addInput(kSrc);
+        reflector.addInternal(kImage);
     }
 
     ImageLoader::SharedPtr ImageLoader::create(const Dictionary& dict)
@@ -82,8 +81,11 @@ namespace Falcor
 
     void ImageLoader::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        const auto& pSrcTex = pRenderData->getTexture(kSrc);
         const auto& pDstTex = pRenderData->getTexture(kDst);
+        const auto& pImage = pRenderData->getTexture(mImageName);
+
+        if()
+        pRenderData->mpResources->registerExternalInput(kImage, );
 
         if (pSrcTex && pDstTex)
         {
@@ -93,11 +95,6 @@ namespace Falcor
         {
             logWarning("ImageLoader::execute() - missing an input or output resource");
         }
-    }
-
-    void ImageLoader::loadImage()
-    {
-
     }
 
     void ImageLoader::renderUI(Gui* pGui, const char* uiGroup)
