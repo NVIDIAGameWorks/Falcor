@@ -40,16 +40,17 @@ namespace Falcor
         */
         static SharedPtr create(const Dictionary& dict = {});
 
-        virtual void reflect(RenderPassReflection& reflector) const override;
+        virtual RenderPassReflection reflect() const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
         virtual Dictionary getScriptingDictionary() const override;
-        virtual void setScriptingDictionary(const Dictionary& dict) override;
-
-        void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:
         ImageLoader();
-        std::string mImageName;
+        void loadImage();
 
+        Texture::SharedPtr mpTex;
+        std::string mImageName;
+        bool mGenerateMips = true;
+        bool mLoadSRGB = true;
     };
 }

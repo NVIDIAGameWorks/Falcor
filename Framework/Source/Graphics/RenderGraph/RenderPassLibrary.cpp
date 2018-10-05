@@ -37,6 +37,7 @@
 #include "Effects/AmbientOcclusion/SSAO.h"
 #include "Effects/TAA/TAA.h"
 #include "RenderPasses/ResolvePass.h"
+#include "RenderPasses/ImageLoader.h"
 #include "API/Device.h"
 #include "RenderGraph.h"
 #include <fstream>
@@ -83,6 +84,7 @@ namespace Falcor
         lib.addClass(TemporalAA, "Temporal Anti-Aliasing");
         lib.addClass(SkyBox, "Sky Box pass");
         lib.addClass(ResolvePass, "MSAA Resolve");
+        lib.addClass(ImageLoader, "Pass loads image from file to give as output");
 
         return true;
     };

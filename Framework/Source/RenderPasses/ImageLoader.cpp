@@ -27,6 +27,7 @@
 ***************************************************************************/
 #include "Framework.h"
 #include "ImageLoader.h"
+#include "Graphics/TextureHelper.h"
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
 
@@ -34,11 +35,21 @@ namespace Falcor
 {
     static const std::string kDst = "dst";
     static const std::string kImage = "image";
+    static const std::string kMips = "mips";
+    static const std::string kSrgb = "srgb";
 
-    void ImageLoader::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection ImageLoader::reflect() const
     {
+        RenderPassReflection reflector;
+
+        // Must be force exec for graph to be valid since no explicit input
+        reflector.setFlags(RenderPassReflection::Flags::ForceExecution);
         reflector.addOutput(kDst);
-        reflector.addInternal(kImage);
+
+        // TODO -- use internal resource for image
+        // reflector.addInternal(kImage);
+
+        return reflector;
     }
 
     ImageLoader::SharedPtr ImageLoader::create(const Dictionary& dict)
@@ -49,7 +60,15 @@ namespace Falcor
         {
             if (v.key() == kImage)
             {
-                mImageName = v.str();
+                pPass->mImageName = v.val().operator std::string();
+            }
+            else if(v.key() == kSrgb)
+            {
+                pPass->mLoadSRGB = v.val();
+            }
+            else if (v.key() == kMips)
+            {
+                pPass->mGenerateMips = v.val();
             }
             else
             {
@@ -57,22 +76,16 @@ namespace Falcor
             }
         }
 
-        return parseDictionary(pPass.get(), dict) ? pPass : nullptr;
+        return pPass;
     }
 
     Dictionary ImageLoader::getScriptingDictionary() const
     {
         Dictionary dict;
-        dict[kFilter] = mFilter;
+        dict[kImage] = mImageName;
+        dict[kMips] = mGenerateMips;
+        dict[kSrgb] = mLoadSRGB;
         return dict;
-    }
-
-    void ImageLoader::setScriptingDictionary(const Dictionary& dict)
-    {
-        if (static_cast<Sampler::Filter>(dict[kFilter]) != mFilter)
-        {
-            setFilter(dict[kFilter]);
-        }
     }
 
     ImageLoader::ImageLoader() : RenderPass("ImageLoader")
@@ -82,14 +95,15 @@ namespace Falcor
     void ImageLoader::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
         const auto& pDstTex = pRenderData->getTexture(kDst);
-        const auto& pImage = pRenderData->getTexture(mImageName);
-
-        if()
-        pRenderData->mpResources->registerExternalInput(kImage, );
-
-        if (pSrcTex && pDstTex)
+        
+        if (!mpTex)
         {
-            pContext->blit(pSrcTex->getSRV(), pDstTex->getRTV(), uvec4(-1), uvec4(-1), mFilter);
+            loadImage();
+        }
+        
+        if (pDstTex)
+        {
+            pContext->blit(mpTex->getSRV(), pDstTex->getRTV());
         }
         else
         {
@@ -97,18 +111,26 @@ namespace Falcor
         }
     }
 
+    void ImageLoader::loadImage()
+    {
+        mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
+    }
+
     void ImageLoader::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
-            static const Gui::DropdownList kFilterList =
-            {
-                { (uint32_t)Sampler::Filter::Linear, "Linear" },
-            { (uint32_t)Sampler::Filter::Point, "Point" },
-            };
+            bool reloadImage = false;
 
-            uint32_t f = (uint32_t)mFilter;
-            if (pGui->addDropdown("Filter", kFilterList, f)) setFilter((Sampler::Filter)f);
+            reloadImage |= pGui->addTextBox("Image File", mImageName);
+
+            reloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
+            
+            reloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
+
+            if (reloadImage) loadImage();
+
+            pGui->addCheckBox("Load SRGB", mLoadSRGB);
 
             if (uiGroup) pGui->endGroup();
         }

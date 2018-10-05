@@ -518,6 +518,7 @@
     </ClCompile>
     <ClCompile Include="RenderPasses\BlitPass.cpp" />
     <ClCompile Include="RenderPasses\DepthPass.cpp" />
+    <ClCompile Include="RenderPasses\ImageLoader.cpp" />
     <ClCompile Include="RenderPasses\ResolvePass.cpp" />
     <ClCompile Include="RenderPasses\ForwardLightingPass.cpp" />
     <ClCompile Include="Sample.cpp" />
@@ -1226,6 +1227,7 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPasses\BlitPass.h" />
     <ClInclude Include="RenderPasses\DepthPass.h" />
+    <ClInclude Include="RenderPasses\ImageLoader.h" />
     <ClInclude Include="RenderPasses\ResolvePass.h" />
     <ClInclude Include="RenderPasses\ForwardLightingPass.h" />
     <ClInclude Include="Sample.h" />

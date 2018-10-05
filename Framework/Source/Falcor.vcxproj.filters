@@ -571,6 +571,9 @@
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Scripting\ScriptBindings.cpp" />
+    <ClCompile Include="RenderPasses\ImageLoader.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -2131,6 +2134,9 @@
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
+    <ClInclude Include="RenderPasses\ImageLoader.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
