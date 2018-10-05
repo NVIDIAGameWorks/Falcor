@@ -95,6 +95,11 @@ namespace Falcor
         }
     }
 
+    void ImageLoader::loadImage()
+    {
+
+    }
+
     void ImageLoader::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))

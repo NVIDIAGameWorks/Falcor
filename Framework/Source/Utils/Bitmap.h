@@ -30,6 +30,8 @@
 
 namespace Falcor
 {
+    class Texture;
+
     /** A class representing a memory bitmap
     */
     class Bitmap : public std::enable_shared_from_this<Bitmap>
@@ -51,6 +53,7 @@ namespace Falcor
             BmpFile,    //< BMP file for lossless uncompressed 8-bits images with optional alpha
             PfmFile,    //< PFM file for floating point HDR images with 32-bit float per channel
             ExrFile,    //< EXR file for floating point HDR images with 16-bit float per channel
+            AutoDetect  //< Detect format from texture parameters
         };
 
         using UniquePtr = std::unique_ptr<Bitmap>;
@@ -74,6 +77,12 @@ namespace Falcor
             \param[in] pData Pointer to the buffer containing the image
         */
         static void saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData);
+
+        /**  Open dialog to save image to a file
+            \param[in] pTexture Texture to save to file
+             
+        */
+        static void saveImageDialog(const std::shared_ptr<Texture>& pTexture);
 
         ~Bitmap();
 

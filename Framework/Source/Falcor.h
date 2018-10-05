@@ -119,7 +119,7 @@
 #include "RenderPasses/ForwardLightingPass.h"
 #include "RenderPasses/BlitPass.h"
 #include "RenderPasses/DepthPass.h"
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include "Graphics/RenderGraph/RenderGraphImportExport.h"
 
 // Utils
@@ -174,7 +174,7 @@
 #endif
 
 #define FALCOR_MAJOR_VERSION 3
-#define FALCOR_MINOR_VERSION 1
+#define FALCOR_MINOR_VERSION 0
 #define FALCOR_DEV_STAGE ""
-#define FALCOR_DEV_REVISION 0
-#define FALCOR_VERSION_STRING "3.1.0"
+#define FALCOR_DEV_REVISION 9
+#define FALCOR_VERSION_STRING "3.0.9"

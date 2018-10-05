@@ -38,6 +38,7 @@
 #include "psapi.h"
 #include "Utils/ThreadPool.h"
 #include <future>
+#include <shellscalingapi.h>
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -107,7 +108,7 @@ namespace Falcor
         return res == TRUE;
     }
 
-    std::string createTemperaryFile()
+    std::string getTempFilename()
     {
         char* error = nullptr;
         return std::tmpnam(error);
@@ -220,6 +221,42 @@ namespace Falcor
         return int((hPixelsPerInch + vPixelsPerInch) * 0.5);
     }
 
+    float getDisplayScaleFactor()
+    {
+        float dpi = (float)getDisplayDpi();
+        float scale = dpi / 96.0f;
+        return scale;
+
+        ::SetProcessDPIAware();
+        DEVICE_SCALE_FACTOR factor;
+        if (GetScaleFactorForMonitor(nullptr, &factor) == S_OK)
+        {
+            switch (factor)
+            {
+            case SCALE_100_PERCENT: return 1.0f;
+            case SCALE_120_PERCENT: return 1.2f;
+            case SCALE_125_PERCENT: return 1.25f;
+            case SCALE_140_PERCENT: return 1.40f;
+            case SCALE_150_PERCENT: return 1.50f;
+            case SCALE_160_PERCENT: return 1.60f;
+            case SCALE_175_PERCENT: return 1.70f;
+            case SCALE_180_PERCENT: return 1.80f;
+            case SCALE_200_PERCENT: return 2.00f;
+            case SCALE_225_PERCENT: return 2.25f;
+            case SCALE_250_PERCENT: return 2.50f;
+            case SCALE_300_PERCENT: return 3.00f;
+            case SCALE_350_PERCENT: return 3.50f;
+            case SCALE_400_PERCENT: return 4.00f;
+            case SCALE_450_PERCENT: return 4.50f;
+            case SCALE_500_PERCENT: return 4.60f;
+            default:
+                should_not_get_here();
+                return 1.0f;
+            }
+        }
+        return 1.0f;
+    }
+
     bool isDebuggerPresent()
     {
 #ifdef _DEBUG
@@ -274,10 +311,10 @@ namespace Falcor
 
     static std::unordered_map<std::string, std::pair<std::thread, bool> > fileThreads;
 
-    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void()>& callback)
     {
         std::string fileName = getFilenameFromPath(filePath);
-        std::string dir = filePath.substr(0, filePath.find_last_of('\\'));
+        std::string dir = getDirectoryFromFile(filePath);
         
         HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
@@ -326,7 +363,7 @@ namespace Falcor
 
                 if (currentFileName == fileName && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
                 {
-                    callback(filePath);
+                    callback();
                     break;
                 }
 
@@ -338,7 +375,7 @@ namespace Falcor
         CloseHandle(hFile);
     }
 
-    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
     {
         const auto& fileThreadsIt = fileThreads.find(filePath);
 
@@ -494,5 +531,25 @@ namespace Falcor
     uint32_t popcount(uint32_t a)
     {
         return __popcnt(a);
+    }
+
+
+    DllHandle loadDll(const std::string& libPath)
+    {
+        return LoadLibraryA(libPath.c_str());
+    }
+
+    /** Release a shared-library
+    */
+    void releaseDll(DllHandle dll)
+    {
+        FreeLibrary(dll);
+    }
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
+    {
+        return GetProcAddress(dll, funcName.c_str());
     }
 }

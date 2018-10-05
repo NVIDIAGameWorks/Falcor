@@ -41,11 +41,12 @@ namespace Falcor
 
     /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
     */
-    class Camera : public IMovableObject, public std::enable_shared_from_this<Camera>
+    class Camera : public IMovableObject, public inherit_shared_from_this<IMovableObject, Camera>
     {
     public:
         using SharedPtr = std::shared_ptr<Camera>;
         using SharedConstPtr = std::shared_ptr<const Camera>;
+        SharedPtr shared_from_this() { return inherit_shared_from_this<IMovableObject, Camera>::shared_from_this(); }
 
         // Default dimensions of full frame cameras and 35mm film
         static const float kDefaultFrameHeight;
@@ -233,7 +234,7 @@ namespace Falcor
         static uint32_t getShaderDataSize() 
         {
             static const size_t dataSize = sizeof(CameraData);
-            static_assert(dataSize % sizeof(float) * 4 == 0, "Camera::CameraData size should be a multiple of 16");
+            static_assert(dataSize % (sizeof(vec4)) == 0, "Camera::CameraData size should be a multiple of 16");
             return dataSize;
         }
 

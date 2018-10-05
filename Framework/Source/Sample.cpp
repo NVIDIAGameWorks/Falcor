@@ -39,9 +39,12 @@
 #include "Graphics/FboHelper.h"
 #include <sstream>
 #include <iomanip>
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 
 namespace Falcor
 {
+    static std::string kMonospaceFont = "monospace";
+
     void Sample::handleWindowSizeChange()
     {
         if (!gpDevice) return;
@@ -163,6 +166,8 @@ namespace Falcor
         }
     }
 
+    dlldecl void releaseSharedObjects();
+
     // Sample functions
     Sample::~Sample()
     {
@@ -173,14 +178,16 @@ namespace Falcor
 
         VRSystem::cleanup();
 
+        RenderPassLibrary::instance().shutdown();
         Scripting::shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
-        mpBackBufferFBO.reset();
+        mpBackBufferFBO.reset();    
         mpTargetFBO.reset();
         mpTextRenderer.reset();
         mpPixelZoom.reset();
         mpRenderContext.reset();
+        releaseSharedObjects();
         if(gpDevice) gpDevice->cleanup();
         gpDevice.reset();
     }
@@ -274,7 +281,7 @@ namespace Falcor
         mpWindow->msgLoop();
 
         mpRenderer->onShutdown(this);
-        gpDevice->flushAndSync();
+        if (gpDevice) gpDevice->flushAndSync();
         mpRenderer = nullptr;
         Logger::shutdown();
     }
@@ -384,12 +391,16 @@ namespace Falcor
 
             if (gProfileEnabled)
             {
-                mpGui->pushWindow("Profiler", 650, 200, 10, 300);
+                uint32_t y = mpBackBufferFBO->getHeight() - 360;
+
+                mpGui->setActiveFont(kMonospaceFont);
+                mpGui->pushWindow("Profiler", 650, 350, 10, y);
                 // Stop the timer
                 Profiler::endEvent("renderGUI");
                 mpGui->addText(Profiler::getEventsString().c_str());
                 Profiler::startEvent("renderGUI");
                 mpGui->popWindow();
+                mpGui->setActiveFont("");
             }
 
             mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
@@ -528,7 +539,11 @@ namespace Falcor
 
     void Sample::initUI()
     {
-        mpGui = Gui::create(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight());
+        float scaling = getDisplayScaleFactor();
+        mpGui = Gui::create(uint32_t(mpBackBufferFBO->getWidth()), uint32_t(mpBackBufferFBO->getHeight()), scaling);
+        mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
+        mSampleGuiHeight = (uint32_t)(mSampleGuiHeight * scaling);
+        mSampleGuiWidth = (uint32_t)(mSampleGuiWidth * scaling);
         mpTextRenderer = TextRenderer::create();
     }
 

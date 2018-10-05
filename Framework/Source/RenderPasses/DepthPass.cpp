@@ -57,14 +57,6 @@ namespace Falcor
         return d;
     }
 
-    void DepthPass::setScriptingDictionary(const Dictionary& dict)
-    {
-        if (mDepthFormat != static_cast<ResourceFormat>(dict[kDepthFormat]))
-        {
-            setDepthBufferFormat(dict[kDepthFormat]);
-        }
-    }
-
     DepthPass::SharedPtr DepthPass::create(const Dictionary& dict)
     {
         DepthPass* pThis = new DepthPass;
@@ -80,9 +72,11 @@ namespace Falcor
         mpFbo = Fbo::create();
     }
 
-    void DepthPass::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection DepthPass::reflect() const
     {
+        RenderPassReflection reflector;
         reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(mDepthFormat).setSampleCount(0);
+        return reflector;
     }
 
     void DepthPass::setScene(const Scene::SharedPtr& pScene)

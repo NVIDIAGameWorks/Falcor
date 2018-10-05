@@ -36,6 +36,7 @@ namespace Falcor
     class Texture;
     class Fbo;
     class RenderGraphExporter;
+    class RenderPassLibrary;
 
     class RenderGraph
     {
@@ -44,9 +45,11 @@ namespace Falcor
 
         static const uint32_t kInvalidIndex = -1;
 
+        ~RenderGraph();
+
         /** Create a new object
         */
-        static SharedPtr create();
+        static SharedPtr create(const std::string& name = "");
 
         /** Set a scene
         */
@@ -124,7 +127,7 @@ namespace Falcor
 
         /** Call this when the swap-chain was resized
         */
-        void onResizeSwapChain(const Fbo* pTargetFbo);
+        void onResize(const Fbo* pTargetFbo);
 
         /** Get the attached scene
         */
@@ -168,11 +171,21 @@ namespace Falcor
         /** Get the dictionary objects used to communicate app data to the render-passes
         */
         const Dictionary::SharedPtr& getPassesDictionary() const { return mpPassDictionary; }
+
+        /** Get the name
+        */
+        const std::string& getName() const { return mName; }
+
+        /** Get the name
+        */
+        void setName(const std::string& name) { mName = name; }
     private:
         friend class RenderGraphUI;
         friend class RenderGraphExporter;
+        friend class RenderPassLibrary;
 
-        RenderGraph();
+        RenderGraph(const std::string& name);
+        std::string mName;
 
         bool compile(std::string& log);
         bool resolveExecutionOrder();
@@ -228,7 +241,6 @@ namespace Falcor
 
         ResourceCache::DefaultProperties mSwapChainData;
 
-        std::unordered_map<RenderPass*, RenderPassReflection> mPassReflectionMap;
         std::vector<uint32_t> mExecutionList;
         ResourceCache::SharedPtr mpResourcesCache;
 
@@ -241,4 +253,6 @@ namespace Falcor
         bool mProfileGraph = true;
         Dictionary::SharedPtr mpPassDictionary;
     };
+
+    dlldecl std::vector<RenderGraph*> gRenderGraphs;
 }

@@ -35,10 +35,12 @@ namespace Falcor
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
 
-    void ResolvePass::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection ResolvePass::reflect() const
     {
+        RenderPassReflection reflector;
         reflector.addInput(kSrc).setFormat(mFormat).setSampleCount(0);
         reflector.addOutput(kDst).setFormat(mFormat).setSampleCount(1);
+        return reflector;
     }
 
     ResolvePass::SharedPtr ResolvePass::create(const Dictionary& dictionary)

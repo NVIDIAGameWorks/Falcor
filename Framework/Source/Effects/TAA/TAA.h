@@ -73,7 +73,7 @@ namespace Falcor
 
         // Render-pass stuff
         virtual void execute(RenderContext* pContext, const RenderData* pData) override;
-        virtual void reflect(RenderPassReflection& reflection) const override;
+        virtual RenderPassReflection reflect() const override;
 
     private:
         TemporalAA();

@@ -49,6 +49,11 @@ namespace Falcor
             mpLowLevelData->flush();
             mCommandsPending = false;
         }
+        else 
+        {
+            // We need to signal even if there are no commands to execute. We need this because some resources may have been released since the last flush(), and unless we signal they will not be released
+            mpLowLevelData->getFence()->gpuSignal(mpLowLevelData->getCommandQueue());
+        }
 
         bindDescriptorHeaps();
 

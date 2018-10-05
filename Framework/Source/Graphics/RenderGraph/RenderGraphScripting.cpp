@@ -25,15 +25,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "RenderGraphScripting.h"
 #include "Framework.h"
+#include "RenderGraphScripting.h"
 #include "Utils/Scripting/Scripting.h"
 #include <fstream>
 #include <sstream>
-#include "Graphics/RenderGraph/RenderPassesLibrary.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include "pybind11/operators.h"
+#include "Graphics/Scene/Scene.h"
+#include "Raytracing/RtScene.h"
 
-// TODO Matt
 using namespace pybind11::literals;
 
 namespace Falcor
@@ -49,11 +50,14 @@ namespace Falcor
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
     const char* RenderGraphScripting::kUpdatePass = "updatePass";
     const char* RenderGraphScripting::kLoadDefaultScene = "loadDefaultScene";
+    const char* RenderGraphScripting::kLoadPassLibrary = "loadRenderPassLibrary";
+    const char* RenderGraphScripting::kSetName = "setName";
+    const char* RenderGraphScripting::kSetScene = "setScene";
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {
         // RenderGraph
-        m.def(kCreateGraph, &RenderGraph::create);
+        m.def(kCreateGraph, &RenderGraph::create, "name"_a = "");
 
         void(RenderGraph::*renderGraphRemoveEdge)(const std::string&, const std::string&)(&RenderGraph::removeEdge);
         auto graphClass = pybind11::class_<RenderGraph, RenderGraph::SharedPtr>(m, "Graph");
@@ -61,17 +65,25 @@ namespace Falcor
         graphClass.def(kAddEdge, &RenderGraph::addEdge).def(kRemoveEdge, renderGraphRemoveEdge);
         graphClass.def(kMarkOutput, &RenderGraph::markOutput).def(kUnmarkOutput, &RenderGraph::unmarkOutput);
         graphClass.def(kAutoGenEdges, &RenderGraph::autoGenEdges);
-        
+        graphClass.def(kSetName, &RenderGraph::setName);
+        graphClass.def(kSetScene, &RenderGraph::setScene);
+
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
 
         // RenderPassLibrary
         const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})->RenderPass::SharedPtr
         {
-            return RenderPassLibrary::createPass(passName.c_str(), Dictionary(d));
+            return RenderPassLibrary::instance().createPass(passName.c_str(), Dictionary(d));
         };
         m.def(kCreatePass, createRenderPass, "passName"_a, "dict"_a = pybind11::dict());
-        
+
+        const auto& loadPassLibrary = [](const std::string& library)
+        {
+            return RenderPassLibrary::instance().loadLibrary(library);
+        };
+        m.def(kLoadPassLibrary, loadPassLibrary);
+
         const auto& updateRenderPass = [](const RenderGraph::SharedPtr& pGraph, const std::string& passName, pybind11::dict d )
         {
             pGraph->updatePass(passName, Dictionary(d));

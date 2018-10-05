@@ -84,11 +84,13 @@ namespace Falcor
     static const std::string& kColorIn = "colorIn";
     static const std::string& kColorOut = "colorOut";
 
-    void TemporalAA::reflect(RenderPassReflection& reflection) const
+    RenderPassReflection TemporalAA::reflect() const
     {
+        RenderPassReflection reflection;
         reflection.addInput(kMotionVec);
         reflection.addInput(kColorIn);
         reflection.addOutput(kColorOut);
+        return reflection;
     }
 
     void TemporalAA::allocatePrevColor(const Texture* pColorOut)

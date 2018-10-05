@@ -83,14 +83,6 @@ namespace Falcor
         return d;
     }
 
-    void ToneMapping::setScriptingDictionary(const Dictionary& dict)
-    {
-        if (static_cast<Operator>(dict[kOperator]) != mOperator)
-        {
-            setOperator(dict[kOperator]);
-        }
-    }
-
     void ToneMapping::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     {
         bool createFbo = mpLuminanceFbo == nullptr;
@@ -261,10 +253,12 @@ namespace Falcor
     static const std::string kSrc = "src";
     static const std::string kDst = "dst";
 
-    void ToneMapping::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection ToneMapping::reflect() const
     {
+        RenderPassReflection reflector;
         reflector.addInput(kSrc);
         reflector.addOutput(kDst);
+        return reflector;
     }
 
     void ToneMapping::execute(RenderContext* pRenderContext, const RenderData* pData)

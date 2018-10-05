@@ -38,6 +38,21 @@
 #include "glm/glm.hpp"
 using namespace glm;
 
+// Define DLL export/import
+#ifdef _MSC_VER
+#define falcorexport __declspec(dllexport)
+#define falcorimport __declspec(dllimport)
+#else  // _MSC_VER
+#define falcorexport __attribute__ ((visibility ("default")))
+#define falcorimport extern
+#endif // _MSC_VER
+
+#ifdef BUILDING_SHARED_DLL
+#define dlldecl falcorexport
+#else   // BUILDING_SHARED_DLL
+#define dlldecl falcorimport
+#endif // BUILDING_SHARED_DLL
+
 #ifndef arraysize
 #define arraysize(a) (sizeof(a)/sizeof(a[0]))
 #endif
@@ -277,16 +292,18 @@ namespace Falcor
 #undef compare_str
 }
 
-#include "Utils/Platform/OS.h"
-#include "Utils/Profiler.h"
-
 #if defined(_MSC_VER)
 #define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
 #define forceinline __forceinline
+using DllHandle = HMODULE;
 #else
 #define deprecate(_ver_, _msg_) 
 #define forceinline __attribute__((always_inline))
+using DllHandle = void*;
 #endif
+
+#include "Utils/Platform/OS.h"
+#include "Utils/Profiler.h"
 
 #if (_ENABLE_NVAPI == true)
 #include "nvapi.h"

@@ -36,31 +36,36 @@
 
 namespace Falcor
 {
+    class RenderGraphUI;
+
     class RenderPassUI
     {
     public:
 
         // wrapper around inserting new pin for a given pass
         void addUIPin(const std::string& fieldName, uint32_t guiPinID, bool isInput, const std::string& connectedPinName = "", const std::string& connectedNodeName = "", bool isGraphOutput = false);        
-        void renderPinUI(Gui* pGui, uint32_t pinIndex, bool isInput = true);
+        void renderPinUI(Gui* pGui, const std::string& passName, RenderGraphUI* pGraphUI, uint32_t index = 0, bool input = false);
 
         friend class RenderGraphUI;
 
     private:
-        struct PinUIData
+        class PinUI
         {
+        public:
+
             std::string mPinName;
             uint32_t mGuiPinID;
-            bool mIsInput;
             std::string mConnectedPinName;
             std::string mConnectedNodeName;
             bool mIsGraphOutput;
+
+            void renderUI(Gui* pGui, const RenderPassReflection::Field& field, RenderGraphUI* graphUI, const std::string& passName);
         };
 
-        std::vector<PinUIData> mInputPins;
+        std::vector<PinUI> mInputPins;
         std::unordered_map<std::string, uint32_t> mNameToIndexInput;
 
-        std::vector<PinUIData> mOutputPins;
+        std::vector<PinUI> mOutputPins;
         std::unordered_map<std::string, uint32_t> mNameToIndexOutput;
 
         uint32_t mGuiNodeID;
@@ -177,11 +182,6 @@ namespace Falcor
         RenderGraph::SharedPtr mpRenderGraph;
 
         RenderGraphIR::SharedPtr mpIr;
-
-        uint32_t mEdgesColor = 0xFFFFFFFF;
-        uint32_t mAutoGenEdgesColor = 0xFFFF0400;
-        uint32_t mAutoResolveEdgesColor = 0xFF0104FF;
-        glm::vec4 mGraphOutputsColor = { 0.0f, 1.0f, 0.0f, 0.71f };
 
         glm::vec2 mNewNodeStartPosition{ -40.0f, 100.0f };
         float mMaxNodePositionX = 0.0f;

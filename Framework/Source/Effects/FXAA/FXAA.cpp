@@ -71,10 +71,12 @@ namespace Falcor
     static const std::string kSrc = "src";
     static const std::string kDst = "dst";
 
-    void FXAA::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection FXAA::reflect() const
     {
+        RenderPassReflection reflector;
         reflector.addInput(kSrc);
         reflector.addOutput(kDst);
+        return reflector;
     }
 
     void FXAA::execute(RenderContext* pContext, const RenderData* pData)

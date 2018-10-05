@@ -52,10 +52,6 @@ namespace Falcor
         glm::vec2 texCoord;
     };
 
-    Buffer::SharedPtr FullScreenPass::spVertexBuffer;
-    Vao::SharedPtr FullScreenPass::spVao;
-    uint64_t FullScreenPass::sObjectCount = 0;
-
 #ifdef FALCOR_VK
 #define ADJUST_Y(a) (-(a))
 #else
@@ -86,19 +82,6 @@ namespace Falcor
 
         Vao::BufferVec buffers{ pVB };
         pVao = Vao::create(Vao::Topology::TriangleStrip, pLayout, buffers);
-    }
-
-    FullScreenPass::~FullScreenPass() 
-    {
-#ifndef _AUTOTESTING
-        assert(sObjectCount > 0);
-#endif
-        sObjectCount--;
-        if (sObjectCount == 0)
-        {
-            spVao = nullptr;
-            spVertexBuffer = nullptr;
-        }
     }
 
     FullScreenPass::UniquePtr FullScreenPass::create(const std::string& psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags)
@@ -151,11 +134,11 @@ namespace Falcor
         mpProgram = GraphicsProgram::create(d, defs);
         mpPipelineState->setProgram(mpProgram);
 
-        if (FullScreenPass::spVertexBuffer == nullptr)
+        if (gFullScreenData.pVertexBuffer == nullptr)
         {
-            initStaticObjects(spVertexBuffer, spVao);
+            initStaticObjects(gFullScreenData.pVertexBuffer, gFullScreenData.pVao);
         }
-        mpPipelineState->setVao(FullScreenPass::spVao);
+        mpPipelineState->setVao(gFullScreenData.pVao);
     }
 
     void FullScreenPass::execute(RenderContext* pRenderContext, DepthStencilState::SharedPtr pDsState) const
@@ -164,7 +147,7 @@ namespace Falcor
         mpPipelineState->setViewport(0, pRenderContext->getGraphicsState()->getViewport(0), false);
         mpPipelineState->setScissors(0, pRenderContext->getGraphicsState()->getScissors(0));
 
-        mpPipelineState->setVao(spVao);
+        mpPipelineState->setVao(gFullScreenData.pVao);
         mpPipelineState->setDepthStencilState(pDsState ? pDsState : mpDepthStencilState);
         pRenderContext->pushGraphicsState(mpPipelineState);
         pRenderContext->draw(arraysize(kVertices), 0);

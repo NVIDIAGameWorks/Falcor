@@ -36,10 +36,14 @@ namespace Falcor
     static const std::string kSrc = "src";
     static const std::string kFilter = "filter";
 
-    void BlitPass::reflect(RenderPassReflection& reflector) const
+    RenderPassReflection BlitPass::reflect() const
     {
+        RenderPassReflection reflector;
+
         reflector.addOutput(kDst);
         reflector.addInput(kSrc);
+
+        return reflector;
     }
 
     static bool parseDictionary(BlitPass* pPass, const Dictionary& dict)
@@ -70,14 +74,6 @@ namespace Falcor
         Dictionary dict;
         dict[kFilter] = mFilter;
         return dict;
-    }
-
-    void BlitPass::setScriptingDictionary(const Dictionary& dict)
-    {
-        if (static_cast<Sampler::Filter>(dict[kFilter]) != mFilter)
-        {
-            setFilter(dict[kFilter]);
-        }
     }
 
     BlitPass::BlitPass() : RenderPass("BlitPass")

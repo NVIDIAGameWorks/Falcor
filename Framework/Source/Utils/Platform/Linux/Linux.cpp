@@ -41,6 +41,7 @@
 #include <errno.h>
 #include <algorithm>
 #include <experimental/filesystem>
+#include <dlfcn.h>
 namespace fs = std::experimental::filesystem;
 
 namespace Falcor
@@ -188,7 +189,7 @@ namespace Falcor
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
     
-    void openSharedFile(const std::string& filePath, const std::function<void(const std::string&)>& callback)
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
     {
         (void)filePath; (void)callback;
         should_not_get_here();
@@ -200,7 +201,7 @@ namespace Falcor
         should_not_get_here();
     }
 
-    std::string createTemperaryFile()
+    std::string getTempFilename()
     {
         std::string filePath = std::experimental::filesystem::temp_directory_path();
         filePath += "/fileXXXXXX";
@@ -334,6 +335,11 @@ namespace Falcor
     {
         // #TODO Not yet implemented
         return int(200);
+    }
+
+    float getDisplayScaleFactor()
+    {
+        return 1;
     }
 
     bool isDebuggerPresent()
@@ -491,4 +497,20 @@ namespace Falcor
         return (uint32_t)__builtin_popcount(a);
     }
 
+    DllHandle loadDll(const std::string& libPath)
+    {
+        return dlopen(libPath.c_str(), RTLD_LAZY);
+    }
+
+    void releaseDll(DllHandle dll)
+    {
+        dlclose(dll);
+    }
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
+    {
+        return dlsym(dll, funcName.c_str());
+    }
 }

@@ -194,7 +194,7 @@ namespace Falcor
         template<bool removeSrc>
         void findEdgesToRemove(std::vector<uint32_t>& edges, uint32_t nodeToRemove, std::unordered_set<uint32_t>& removedEdges)
         {
-            for (size_t i = 0; i < edges.size();)
+            for (size_t i = 0; i < edges.size(); i++)
             {
                 uint32_t edgeId = edges[i];
                 const auto& edge = mEdges[edgeId];
@@ -203,7 +203,6 @@ namespace Falcor
                 {
                     removedEdges.insert(edges[i]);
                 }
-                else i++;
             }
         }
 

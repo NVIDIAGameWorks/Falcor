@@ -222,7 +222,13 @@ namespace Falcor
         */
         const Texture::SharedPtr& getEnvironmentMap() const { return mpEnvMap; }
 
-        std::string mFileName;
+        /** Get the filename
+        */
+        const std::string& getFilename() const { return mFilename; }
+
+        /** Set a new aspect ratio for all the cameras in the scene
+        */
+        void setCamerasAspectRatio(float ratio);
     protected:
 
         Scene();
@@ -254,10 +260,26 @@ namespace Falcor
 
         bool mExtentsDirty = true;
 
+        std::string mFilename;
+
         using string_uservar_map = std::map<const std::string, UserVariable>;
         string_uservar_map mUserVars;
         static const UserVariable kInvalidVar;
     };
 
     enum_class_operators(Scene::LoadFlags);
+
+#define flag_str(a) case Scene::LoadFlags::a: return #a
+    inline std::string to_string(Scene::LoadFlags f)
+    {
+        switch (f)
+        {
+            flag_str(None);
+            flag_str(GenerateAreaLights);
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
+#undef flag_str
 }

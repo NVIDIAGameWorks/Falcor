@@ -35,12 +35,13 @@ namespace Falcor
 {
     static void updateGraphStrings(const std::string& graph, std::string& file, std::string& func)
     {
-        file = file.empty() ? graph + ".graph" : file;
+        file = file.empty() ? graph + ".py" : file;
         func = func.empty() ? "render_graph_" + graph : func;
     }
 
-    RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName)
+    RenderGraph::SharedPtr RenderGraphImporter::import(std::string graphName, std::string filename, std::string funcName, const Fbo* pDstFbo)
     {
+        bool gotFuncName = funcName.size();
         updateGraphStrings(graphName, filename, funcName);
 
         std::string fullpath;
@@ -50,13 +51,24 @@ namespace Falcor
             return nullptr;
         }
 
+        // Run the script and try to get the graph
         RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(fullpath);
-        if (pScripting->runScript(graphName + '=' + funcName + "()") == false) return nullptr;
+        RenderGraph::SharedPtr pGraph;
+        if(gotFuncName) pGraph = pScripting->getGraph(graphName);
 
-        return pScripting->getGraph(graphName);
+        if(pGraph == nullptr)
+        {
+            // If we didn't succeed or got a custom function name, try and call the graph function explicitly
+            if (pScripting->runScript(graphName + '=' + funcName + "()") == false) return nullptr;
+            pGraph = pScripting->getGraph(graphName);
+        }
+
+        if (pGraph && pDstFbo) pGraph->onResize(pDstFbo);
+
+        return pGraph;
     }
 
-    std::vector<RenderGraphImporter::GraphData> RenderGraphImporter::importAllGraphs(const std::string& filename)
+    std::vector<RenderGraphImporter::GraphData> RenderGraphImporter::importAllGraphs(const std::string& filename, const Fbo* pDstFbo)
     {
         RenderGraphScripting::SharedPtr pScripting = RenderGraphScripting::create(filename);
         if (!pScripting) return {};
@@ -67,6 +79,7 @@ namespace Falcor
 
         for (const auto& s : scriptVec)
         {
+            if(pDstFbo) s.obj->onResize(pDstFbo);
             res.push_back({ s.name, s.obj });
         }
 
@@ -105,7 +118,8 @@ namespace Falcor
 
         // Save it to file
         std::ofstream f(filename);
-        f << pIR->getIR();
+        f << pIR->getIR() << std::endl;
+        f << graphName << " = " << funcName + "()";
         return true;
     }
 }
