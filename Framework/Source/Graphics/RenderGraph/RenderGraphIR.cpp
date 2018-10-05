@@ -128,6 +128,11 @@ namespace Falcor
         mIR += mGraphPrefix + funcCall(RenderGraphScripting::kUnmarkOutput, addQuotes(name));
     }
 
+    void RenderGraphIR::loadPassLibrary(const std::string& name)
+    {
+        mIR += mIndentation + funcCall(RenderGraphScripting::kLoadPassLibrary, addQuotes(name));
+    }
+
     void RenderGraphIR::autoGenEdges()
     {
         mIR += mGraphPrefix + funcCall(RenderGraphScripting::kAutoGenEdges);

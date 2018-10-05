@@ -89,13 +89,19 @@ namespace Falcor
         */
         using LibraryFunc = void(*)(RenderPassLibrary& lib);
 
+        using StrVec = std::vector<std::string>;
+
+        /** Get list of registered libraries
+        */
+        static StrVec enumerateLibraries();
+
     private:
         static RenderPassLibrary* spInstance;
 
         struct ExtendeDesc : RenderPassDesc
         {
             ExtendeDesc() = default;
-            ExtendeDesc(const char* name, const char* desc_, CreateFunc func_, DllHandle module_) : RenderPassDesc(name, desc, func_), module(module_) {}
+            ExtendeDesc(const char* name, const char* desc_, CreateFunc func_, DllHandle module_) : RenderPassDesc(name, desc_, func_), module(module_) {}
 
             DllHandle module = nullptr;
         };

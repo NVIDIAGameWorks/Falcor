@@ -127,6 +127,16 @@ namespace Falcor
         return v;
     }
 
+    RenderPassLibrary::StrVec RenderPassLibrary::enumerateLibraries()
+    {
+        StrVec libNames;
+        for (const auto& lib : spInstance->mLibs)
+        {
+            libNames.push_back(lib.first);
+        }
+        return libNames;
+    }
+
     void copyDllFile(const std::string& fullpath)
     {
         std::ifstream src(fullpath, std::ios::binary);

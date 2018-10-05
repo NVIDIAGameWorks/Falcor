@@ -28,6 +28,7 @@
 #include "Framework.h"
 #include "RenderGraphImportExport.h"
 #include "RenderGraphScripting.h"
+#include "RenderPassLibrary.h"
 #include "RenderGraphIR.h"
 #include <fstream>
 
@@ -90,6 +91,13 @@ namespace Falcor
     {
         updateGraphStrings(graphName, filename, funcName);
         RenderGraphIR::SharedPtr pIR = RenderGraphIR::create(graphName);
+
+        // Register passes that are loaded from dlls
+        auto libNames = RenderPassLibrary::enumerateLibraries();
+        for (const auto& libName : libNames)
+        {
+            pIR->loadPassLibrary(getFilenameFromPath(libName));
+        }
 
         // Add the passes
         for (const auto& node : pGraph->mNodeData)
