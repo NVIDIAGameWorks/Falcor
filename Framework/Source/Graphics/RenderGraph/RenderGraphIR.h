@@ -47,6 +47,7 @@ namespace Falcor
         void removeEdge(const std::string& src, const std::string& dst);
         void markOutput(const std::string& name);
         void unmarkOutput(const std::string& name);
+        void loadPassLibrary(const std::string& name);
         void autoGenEdges();
 
         std::string getIR() { return mIR + mIndentation + (mIndentation.size() ? ("return " + mName + '\n') : "\n"); }
