@@ -8,7 +8,6 @@ import sys
 import json
 import pprint
 
-import CloneRepo as cloneRepo
 import Helpers as helpers
 import WriteTestResultsToHTML as write_test_results_to_html
 import MachineConfigs as machine_configs

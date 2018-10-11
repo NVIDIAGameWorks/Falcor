@@ -32,6 +32,12 @@ size_t RenderGraphViewer::DebugWindow::index = 0;
 const std::string gkDefaultScene = "alphatest/alpha_test.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
 
+const char* kDefaultSceneSwitch = "defaultScene";
+const char* kDefaultImageSwitch = "defaultImage";
+const char* kGraphFileSwitch = "graphFile";
+const char* kGraphNameSwitch = "graphname";
+const char* kSharedFileSwitch = "tempFile";
+
 void RenderGraphViewer::onShutdown(SampleCallbacks* pSample)
 {
     resetEditor();
@@ -41,18 +47,56 @@ void RenderGraphViewer::onShutdown(SampleCallbacks* pSample)
 void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
     // if editor opened from running render graph, get the name of the file to read
-    std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
-   
+    mDefaultSceneName = gkDefaultScene;
+
+    // there has to be a better way to format this
+    const auto& argList = pSample->getArgList();
+    std::vector<ArgList::Arg> commandArgs = argList.getValues(kDefaultSceneSwitch);
+    if (commandArgs.size())
+    {
+        std::string filename = commandArgs.front().asString();
+        if (filename.size()) { mDefaultSceneName = filename; }
+        else msgBox("No path to default scene provided.");
+    }
+    commandArgs = argList.getValues(kDefaultImageSwitch);
+    if (commandArgs.size())
+    {
+        std::string filename = commandArgs.front().asString();
+        if (filename.size()) { mDefaultImageName = filename; }
+        else msgBox("No path to default scene provided.");
+    }
+    commandArgs = argList.getValues(kGraphFileSwitch);
     if (commandArgs.size())
     {
         std::string filename = commandArgs.front().asString();
         if (filename.size())
         {
-            addGraphsFromFile(filename, pSample);
-            monitorFileUpdates(filename, std::bind(&RenderGraphViewer::editorFileChangeCB, this));
-            mEditorProcess = kInvalidProcessId;
+            commandArgs = argList.getValues(kGraphNameSwitch);
+            if (commandArgs.size())
+            {
+                std::string graphName = commandArgs.front().asString();
+                auto pGraph = RenderGraphImporter::import(graphName, filename);
+                mGraphs.push_back({});
+                initGraph(pGraph, graphName, filename, pSample, mGraphs.back());
+            }
+            else addGraphsFromFile(filename, pSample);
         }
-        else msgBox("No path to temporary file provided");
+        else msgBox("No file path provided for input graph file");
+    }
+    else
+    {
+        commandArgs = pSample->getArgList().getValues(kSharedFileSwitch);
+        if (commandArgs.size())
+        {
+            std::string filename = commandArgs.front().asString();
+            if (filename.size())
+            {
+                addGraphsFromFile(filename, pSample);
+                monitorFileUpdates(filename, std::bind(&RenderGraphViewer::editorFileChangeCB, this));
+                mEditorProcess = kInvalidProcessId;
+            }
+            else msgBox("No path to temporary file provided");
+        }
     }
 
     const auto& pFbo = pSample->getCurrentFbo();
@@ -95,7 +139,7 @@ void RenderGraphViewer::renderOutputUI(Gui* pGui, const Gui::DropdownList& dropd
         }
     }
 
-    // This can happen when `showAllOutputs` changes to false, and the chosen output is not an original output. We will force an ouptut change
+    // This can happen when `showAllOutputs` changes to false, and the chosen output is not an original output. We will force an output change
     bool forceOutputChange = activeOut == -1;
     if (forceOutputChange) activeOut = 0;
 
@@ -260,13 +304,16 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
 {
     if (pGraph->getName().empty()) pGraph->setName(name);
 
+    // Set input image if it exists
+    if(mDefaultImageName.size())    (*data.pGraph->getPassesDictionary())[kDefaultImageSwitch] = mDefaultImageName;
+
     data.name = name;
     data.filename = filename;
     data.fileModifiedTime = getFileModifiedTime(filename);
     data.pGraph = pGraph;
     if(data.pGraph->getScene() == nullptr)
     {
-        if (!mpDefaultScene) loadSceneFromFile(gkDefaultScene, pCallbacks);
+        if (!mpDefaultScene) loadSceneFromFile(mDefaultSceneName, pCallbacks);
         data.pGraph->setScene(mpDefaultScene);
     }
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
@@ -285,7 +332,7 @@ void RenderGraphViewer::addGraphsFromFile(const std::string& filename, SampleCal
 {
     const auto& pTargetFbo = pCallbacks->getCurrentFbo().get();
     auto graphs = RenderGraphImporter::importAllGraphs(filename, pTargetFbo);
-
+    
     for (auto& newG : graphs)
     {
         bool found = false;

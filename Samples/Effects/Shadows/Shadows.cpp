@@ -153,10 +153,7 @@ void Shadows::runMainPass(RenderContext* pContext)
 
 void Shadows::displayShadowMap(RenderContext* pContext)
 {
-<<<<<<< HEAD
-=======
     ParameterBlock::SharedPtr pDefaultBlock = mShadowVisualizer.pShadowMapProgramVars->getDefaultBlock();
->>>>>>> origin/dev-3.0.9
     mShadowVisualizer.pShadowMapProgramVars->setTexture("gTexture", mpCsmTech[mControls.lightIndex]->getShadowMap());
     if (mControls.cascadeCount > 1)
     {

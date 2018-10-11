@@ -952,7 +952,7 @@ namespace Falcor
         mRebuildDisplayData = true;
     }
 
-    std::vector<uint32_t> RenderGraphUI::getExecutionOrder()
+    std::vector<uint32_t> RenderGraphUI::getPassOrder()
     {
         std::vector<uint32_t> executionOrder;
         std::map<float, uint32_t> posToIndex;

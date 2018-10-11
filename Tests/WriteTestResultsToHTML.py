@@ -120,7 +120,11 @@ def get_image_comparison_table_code(tests_sets_results):
         image_comparison_table_code += '</table>\n'
         return [image_comparison_table_code, image_comparison_errors_code]
 
-
+def write_pass_test_to_html(results):
+        
+        return html_code
+        
+        
 # Write the provided Tests Set Results to HTML and Return them.
 def write_test_set_results_to_html(tests_set_results):
 

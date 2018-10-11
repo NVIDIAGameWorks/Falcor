@@ -67,6 +67,7 @@ namespace Falcor
         static const char* kSetName;
         static const char* kSetScene;
         static const char* kLoadPassLibrary;
+        static const char* kLoadDefaultImages;
 
     private:
         RenderGraphScripting() = default;

@@ -49,7 +49,6 @@ namespace Falcor
     const char* RenderGraphScripting::kCreateGraph = "createRenderGraph";
     const char* RenderGraphScripting::kCreatePass = "createRenderPass";
     const char* RenderGraphScripting::kUpdatePass = "updatePass";
-    const char* RenderGraphScripting::kLoadDefaultScene = "loadDefaultScene";
     const char* RenderGraphScripting::kLoadPassLibrary = "loadRenderPassLibrary";
     const char* RenderGraphScripting::kSetName = "setName";
     const char* RenderGraphScripting::kSetScene = "setScene";
@@ -67,7 +66,7 @@ namespace Falcor
         graphClass.def(kAutoGenEdges, &RenderGraph::autoGenEdges);
         graphClass.def(kSetName, &RenderGraph::setName);
         graphClass.def(kSetScene, &RenderGraph::setScene);
-
+        
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");
 

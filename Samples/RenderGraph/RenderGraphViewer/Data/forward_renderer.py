@@ -22,7 +22,7 @@ def render_graph_forward_renderer():
     forward_renderer.addEdge("LightingPass.normals", "SSAO.normals");
     forward_renderer.addEdge("LightingPass.depth", "SSAO.depth");
     forward_renderer.addEdge("SSAO.colorOut", "FXAA.src");
-    forward_renderer.addEdge("FXAA.dst", "MyBlitPass.src");
+    forward_renderer.addEdge("FXAA.dst", "BlitPass.src");
 
     forward_renderer.markOutput("BlitPass.dst")
 

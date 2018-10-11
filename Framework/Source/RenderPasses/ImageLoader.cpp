@@ -34,16 +34,15 @@
 namespace Falcor
 {
     static const std::string kDst = "dst";
-    static const std::string kImage = "image";
+    static const std::string kImage = "fileName";
     static const std::string kMips = "mips";
     static const std::string kSrgb = "srgb";
+    static const std::string kDefaultImageSwitch = "defaultImage";
 
     RenderPassReflection ImageLoader::reflect() const
     {
         RenderPassReflection reflector;
 
-        // Must be force exec for graph to be valid since no explicit input
-        reflector.setFlags(RenderPassReflection::Flags::ForceExecution);
         reflector.addOutput(kDst);
 
         // TODO -- use internal resource for image
@@ -55,6 +54,7 @@ namespace Falcor
     ImageLoader::SharedPtr ImageLoader::create(const Dictionary& dict)
     {
         SharedPtr pPass = SharedPtr(new ImageLoader);
+        std::string defaultImageName;
 
         for (const auto& v : dict)
         {
@@ -70,12 +70,18 @@ namespace Falcor
             {
                 pPass->mGenerateMips = v.val();
             }
+            else if (v.key() == kDefaultImageSwitch)
+            {
+                defaultImageName = v.val().operator std::string();
+            }
             else
             {
                 logWarning("Unknown field `" + v.key() + "` in a ImageLoader dictionary");
             }
         }
-
+        
+        if (!pPass->mImageName.size() && defaultImageName.size()) pPass->mImageName = defaultImageName;
+    
         return pPass;
     }
 
@@ -94,8 +100,13 @@ namespace Falcor
 
     void ImageLoader::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
+        if (!mImageName.size())
+        {
+            logWarning("No image loaded! Not able to execute image loader pass.", true);
+        }
+
         const auto& pDstTex = pRenderData->getTexture(kDst);
-        
+
         if (!mpTex)
         {
             loadImage();
@@ -114,23 +125,27 @@ namespace Falcor
     void ImageLoader::loadImage()
     {
         mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
+        if (!mpTex)
+        {
+            logWarning("Failed to load image for image loader pass.");
+        }
+        mReloadImage = false;
     }
 
     void ImageLoader::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
-            bool reloadImage = false;
+            mReloadImage |= pGui->addTextBox("Image File", mImageName);
+            mReloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
+            mReloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
 
-            reloadImage |= pGui->addTextBox("Image File", mImageName);
+            if (mReloadImage && mImageName.size()) loadImage();
 
-            reloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
-            
-            reloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
-
-            if (reloadImage) loadImage();
-
-            pGui->addCheckBox("Load SRGB", mLoadSRGB);
+            if (mpTex)
+            {
+                pGui->addImage(mImageName.c_str(), mpTex, {320, 320});
+            }
 
             if (uiGroup) pGui->endGroup();
         }

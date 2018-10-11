@@ -196,7 +196,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     if (pGui->addButton("Auto-Generate Edges"))
     {
-        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getExecutionOrder();
+        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getPassOrder();
         mpGraphs[mCurrentGraphIndex]->autoGenEdges(executionOrder);
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
     }
@@ -288,7 +288,7 @@ void RenderGraphEditor::renderLogWindow(Gui* pGui)
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
-    RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), fileName);
+    RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), fileName, {}, mRenderGraphUIs[mCurrentGraphIndex].getPassOrder());
 }
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)

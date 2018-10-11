@@ -92,4 +92,6 @@ private:
     size_t mEditorProcess = 0;
     std::string mEditorTempFile;
     std::string mEditorScript;
+    std::string mDefaultSceneName;
+    std::string mDefaultImageName;
 };
