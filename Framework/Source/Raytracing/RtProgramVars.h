@@ -76,7 +76,6 @@ namespace Falcor
         RtProgram::SharedPtr mpProgram;
         RtScene::SharedPtr mpScene;
         uint32_t mRecordSize;
-        uint32_t mProgramIdentifierSize;
         Buffer::SharedPtr mpShaderTable;
 
         uint8_t* getRayGenRecordPtr();

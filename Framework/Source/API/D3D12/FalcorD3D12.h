@@ -27,11 +27,8 @@
 ***************************************************************************/
 #pragma once
 #define NOMINMAX
-#ifdef FALCOR_DXR
-#include "../../../Externals/DXR/include/d3d12_1.h"
-#else
+
 #include <d3d12.h>
-#endif
 #include <d3dcompiler.h>
 #include "API/Formats.h"
 #include <comdef.h>
@@ -122,16 +119,22 @@ namespace Falcor
     }
 
     // Device
+#ifdef FALCOR_DXR
+    MAKE_SMART_COM_PTR(ID3D12Device5);
+    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList4);
+    MAKE_SMART_COM_PTR(ID3D12StateObject);
+#else
     MAKE_SMART_COM_PTR(ID3D12Device);
+    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
+#endif
     MAKE_SMART_COM_PTR(ID3D12Debug);
     MAKE_SMART_COM_PTR(ID3D12CommandQueue);
     MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
-    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
     MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
     MAKE_SMART_COM_PTR(ID3D12Resource);
     MAKE_SMART_COM_PTR(ID3D12Fence);
     MAKE_SMART_COM_PTR(ID3D12PipelineState);
-    MAKE_SMART_COM_PTR(ID3D12ShaderReflection);
+    //MAKE_SMART_COM_PTR(ID3D12ShaderReflection);
     MAKE_SMART_COM_PTR(ID3D12RootSignature);
     MAKE_SMART_COM_PTR(ID3D12QueryHeap);
     MAKE_SMART_COM_PTR(ID3D12CommandSignature);
@@ -145,8 +148,13 @@ namespace Falcor
     class DescriptorHeapEntry;
 
 	using WindowHandle = HWND;
-	using DeviceHandle = ID3D12DevicePtr;
-	using CommandListHandle = ID3D12GraphicsCommandListPtr;
+#ifdef FALCOR_DXR
+	using DeviceHandle = ID3D12Device5Ptr;
+	using CommandListHandle = ID3D12GraphicsCommandList4Ptr;
+#else
+    using DeviceHandle = ID3D12DevicePtr;
+    using CommandListHandle = ID3D12GraphicsCommandListPtr;
+#endif
 	using CommandQueueHandle = ID3D12CommandQueuePtr;
     using ApiCommandQueueType = D3D12_COMMAND_LIST_TYPE;
     using CommandAllocatorHandle = ID3D12CommandAllocatorPtr;

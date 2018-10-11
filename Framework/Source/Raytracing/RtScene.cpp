@@ -36,7 +36,7 @@ namespace Falcor
     RtScene::SharedPtr RtScene::loadFromFile(const std::string& filename, RtBuildFlags rtFlags, Model::LoadFlags modelLoadFlags, Scene::LoadFlags sceneLoadFlags)
     {
         RtScene::SharedPtr pRtScene = create(rtFlags);
-        if (SceneImporter::loadScene(*pRtScene, filename, modelLoadFlags, sceneLoadFlags) == false)
+        if (SceneImporter::loadScene(*pRtScene, filename, modelLoadFlags | Model::LoadFlags::BuffersAsShaderResource, sceneLoadFlags) == false)
         {
             pRtScene = nullptr;
         }
@@ -239,8 +239,8 @@ namespace Falcor
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS dxrFlags = getDxrBuildFlags(mRtFlags);
         RenderContext* pContext = gpDevice->getRenderContext().get();
-        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pContext->getLowLevelData()->getCommandList();
-        ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
+        auto pCmdList = pContext->getLowLevelData()->getCommandList();
+        DeviceHandle pRtDevice = gpDevice->getApiHandle();
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDesc = createInstanceDesc(this, hitProgCount);
 
         // todo: improve this check - make sure things have not changed much and update was enabled last time
@@ -249,14 +249,14 @@ namespace Falcor
         mInstanceCount = (uint32_t)instanceDesc.size();
 
         // Create the top-level acceleration buffers
-        D3D12_GET_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO_DESC prebuildDesc = {};
-        prebuildDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        prebuildDesc.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
-        prebuildDesc.NumDescs = mInstanceCount;
-        prebuildDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
+        inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        inputs.NumDescs = mInstanceCount;
+        inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-        pRtDevice->GetRaytracingAccelerationStructurePrebuildInfo(&prebuildDesc, &info);
+        pRtDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
         Buffer::SharedPtr pScratchBuffer = Buffer::create(align_to(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, info.ScratchDataSizeInBytes), Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
 
@@ -272,23 +272,21 @@ namespace Falcor
 
         assert((mInstanceCount != 0) && pInstanceData->getApiHandle() && mpTopLevelAS->getApiHandle() && pScratchBuffer->getApiHandle());
 
-        if (isRefitPossible) dxrFlags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
-
         // Create the TLAS
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
-        asDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        asDesc.DestAccelerationStructureData.StartAddress = mpTopLevelAS->getGpuAddress();
-        asDesc.DestAccelerationStructureData.SizeInBytes = mpTopLevelAS->getSize();
-        asDesc.Flags = dxrFlags;
-        asDesc.InstanceDescs = pInstanceData->getGpuAddress();
-        asDesc.NumDescs = mInstanceCount;
-        asDesc.ScratchAccelerationStructureData.StartAddress = pScratchBuffer->getGpuAddress();
-        asDesc.ScratchAccelerationStructureData.SizeInBytes = pScratchBuffer->getSize();
-        asDesc.SourceAccelerationStructureData = isRefitPossible ? asDesc.DestAccelerationStructureData.StartAddress : 0;
+        asDesc.Inputs = inputs;
+        asDesc.Inputs.InstanceDescs = pInstanceData->getGpuAddress();
+        asDesc.DestAccelerationStructureData = mpTopLevelAS->getGpuAddress();
+        asDesc.ScratchAccelerationStructureData = pScratchBuffer->getGpuAddress();
+
+        if (isRefitPossible)
+        {
+            asDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+            asDesc.SourceAccelerationStructureData = asDesc.DestAccelerationStructureData;
+        }
 
         pContext->resourceBarrier(pInstanceData.get(), Resource::State::NonPixelShader);
-        asDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-        pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc);
+        pCmdList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
         pContext->uavBarrier(mpTopLevelAS.get());
 
         // Create the SRV

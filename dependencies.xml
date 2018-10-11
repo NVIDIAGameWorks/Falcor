@@ -29,8 +29,8 @@
         <package name="rapidjson" version="1.1.0" />
     </dependency>
     <dependency name="slang" linkPath="Framework/Externals/Slang">
-        <package name="slang" version="0.10.33" remotes="github-slang" />
-        <package name="slang" version="0.10.33" remotes="github-slang-linux" platforms="linux" />
+        <package name="slang" version="0.11.1" remotes="github-slang" />
+        <package name="slang" version="0.11.1" remotes="github-slang-linux" platforms="linux" />
     </dependency>
     <dependency name="glfw" linkPath="Framework/Externals/GLFW">
         <package name="glfw" version="3.2.1" platforms="win" />
@@ -38,11 +38,8 @@
     <dependency name="falcor_media" linkPath="Media">
         <package name="falcor_media" version="2.2" />
     </dependency>
-    <dependency name="DXR" linkPath="Framework/Externals/DXR">
-        <package name="DXR" version="0.09.01" />
-    </dependency>
     <dependency name="dxcompiler" linkPath="Framework/Externals/dxcompiler">
-        <package name="dxcompiler" version="10.0.17134.0" />
+        <package name="dxcompiler" version="10.0.17763.0" />
     </dependency>
     <dependency name="python" linkPath="Framework/Externals/Python">
         <package name="python" version="3.7.0-windows-x64" platforms="win" />

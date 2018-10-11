@@ -31,7 +31,7 @@
     <ProjectGuid>{9D80D89D-D029-4E3E-BCA8-424ECC1F1DF5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>MaterialExplorer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <ProjectName>LightProbeViewer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

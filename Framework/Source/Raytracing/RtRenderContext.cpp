@@ -43,6 +43,7 @@ namespace Falcor
         D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
         raytraceDesc.Width = width;
         raytraceDesc.Height = height;
+        raytraceDesc.Depth = 1;
 
         // RayGen is the first entry in the shader-table
         raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress + pVars->getRayGenRecordIndex() * recordSize;
@@ -59,14 +60,15 @@ namespace Falcor
         assert(pVars->getShaderTable()->getSize() >= (pVars->getFirstHitRecordIndex() * recordSize) + raytraceDesc.HitGroupTable.SizeInBytes);  // Check that the buffer is sufficiently large to hold the shader table
 
         // Currently, we need to set an empty root-signature. Some wizardry is required to make sure we restore the state
-        const auto& pComputeVars = getComputeVars();
+        auto pComputeVars = getComputeVars();
         setComputeVars(nullptr);
-        ID3D12GraphicsCommandListPtr pCmdList = getLowLevelData()->getCommandList();
+
+        auto pCmdList = getLowLevelData()->getCommandList();
         pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
-        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pCmdList;
-        pRtCmdList->DispatchRays(pState->getRtso()->getApiHandle().GetInterfacePtr(), &raytraceDesc);
+        pCmdList->SetPipelineState1(pState->getRtso()->getApiHandle().GetInterfacePtr());
+        pCmdList->DispatchRays(&raytraceDesc);
 
         // Restore the vars
         setComputeVars(pComputeVars);

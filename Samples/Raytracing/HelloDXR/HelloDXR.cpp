@@ -132,7 +132,8 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
-    mpRtVars->getRayGenVars()->setUav(0, 1, 0, mpRtOut->getUAV(0, 0, 1));
+    //mpRtVars->getRayGenVars()->setUav("gOutput", mpRtOut->getUAV(0, 0, 1));
+    mpRtVars->getGlobalVars()->setTexture("gOutput", mpRtOut);
 
     mpRtRenderer->renderScene(pContext, mpRtVars, mpRtState, uvec2(pTargetFbo->getWidth(), pTargetFbo->getHeight()), mpCamera.get());
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
@@ -186,7 +187,7 @@ void HelloDXR::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint3
     float aspectRatio = (w / h);
     mpCamera->setAspectRatio(aspectRatio);
 
-    mpRtOut = Texture::create2D(width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
+    mpRtOut = Texture::create2D(width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

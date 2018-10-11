@@ -235,7 +235,7 @@ namespace Falcor
             {
                 pSignature = pRootSig;
                 subobject.pDesc = &pSignature;
-                subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
+                subobject.Type = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
             }
             ID3D12RootSignature* pSignature;
         };

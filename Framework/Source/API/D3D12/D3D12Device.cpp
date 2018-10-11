@@ -124,11 +124,11 @@ namespace Falcor
         return pSwapChain3;
     }
 
-    ID3D12DevicePtr createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, const std::vector<UUID>& experimentalFeatures, bool& rgb32FSupported)
+    DeviceHandle createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, const std::vector<UUID>& experimentalFeatures, bool& rgb32FSupported)
     {
         // Find the HW adapter
         IDXGIAdapter1Ptr pAdapter;
-        ID3D12DevicePtr pDevice;
+        DeviceHandle pDevice;
 
         for (uint32_t i = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(i, &pAdapter); i++)
         {
@@ -141,14 +141,17 @@ namespace Falcor
                 continue;
             }
 
-            // Try and create a D3D12 device
-            if (experimentalFeatures.size())
-            {
-                d3d_call(D3D12EnableExperimentalFeatures((uint32_t)experimentalFeatures.size(), experimentalFeatures.data(), nullptr, nullptr));
-            }
-            if (D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice)) == S_OK)
+            if (SUCCEEDED(D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice)) == S_OK))
             {
                 rgb32FSupported = (desc.VendorId != 0x1002); // The AMD cards I tried can't handle 96-bits textures correctly
+
+                D3D12_FEATURE_DATA_D3D12_OPTIONS5 features;
+                d3d_call(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
+                if (features.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+                {
+                    logInfo("Raytracing is not supported on this device.");
+                }
+
                 return pDevice;
             }
         }

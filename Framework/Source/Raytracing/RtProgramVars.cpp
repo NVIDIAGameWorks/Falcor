@@ -106,8 +106,7 @@ namespace Falcor
 
 
         // Get the program identifier size
-        ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
-        mProgramIdentifierSize = pRtDevice->GetShaderIdentifierSize();
+        DeviceHandle pRtDevice = gpDevice->getApiHandle();
 
         // Create the shader-table buffer
         uint32_t hitEntries = recordCountPerHit * mHitProgCount;
@@ -115,7 +114,7 @@ namespace Falcor
         mHitRecordCount = hitEntries;
 
         // Calculate the record size
-        mRecordSize = mProgramIdentifierSize + maxRootSigSize;
+        mRecordSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + maxRootSigSize;
         mRecordSize = align_to(D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT, mRecordSize);
         assert(mRecordSize != 0);
 
@@ -165,12 +164,12 @@ namespace Falcor
         return mShaderTableData.data() + (recordIndex * mRecordSize);
     }
 
-    bool applyRtProgramVars(uint8_t* pRecord, const RtProgramVersion* pProgVersion, const RtStateObject* pRtso, uint32_t progIdSize, ProgramVars* pVars, RtVarsContext* pContext)
+    bool applyRtProgramVars(uint8_t* pRecord, const RtProgramVersion* pProgVersion, const RtStateObject* pRtso, ProgramVars* pVars, RtVarsContext* pContext)
     {
-        MAKE_SMART_COM_PTR(ID3D12StateObjectPropertiesPrototype);
-        ID3D12StateObjectPropertiesPrototypePtr pRtsoPtr = pRtso->getApiHandle();
-        memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pProgVersion->getExportName().c_str()), progIdSize);
-        pRecord += progIdSize;
+        MAKE_SMART_COM_PTR(ID3D12StateObjectProperties);
+        ID3D12StateObjectPropertiesPtr pRtsoPtr = pRtso->getApiHandle();
+        memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pProgVersion->getExportName().c_str()), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        pRecord += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
         pContext->getRtVarsCmdList()->setRootParams(pProgVersion->getLocalRootSignature(), pRecord);
         return pVars->applyProgramVarsCommon<true>(pContext, true);
     }
@@ -179,7 +178,7 @@ namespace Falcor
     {
         // We always have a ray-gen program, apply it first
         uint8_t* pRayGenRecord = getRayGenRecordPtr();
-        if (!applyRtProgramVars(pRayGenRecord, mpProgram->getRayGenProgram()->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getRayGenVars().get(), mpRtVarsHelper.get()))
+        if (!applyRtProgramVars(pRayGenRecord, mpProgram->getRayGenProgram()->getActiveVersion().get(), pRtso, getRayGenVars().get(), mpRtVarsHelper.get()))
         {
             return false;
         }
@@ -193,7 +192,7 @@ namespace Falcor
                 for (uint32_t i = 0; i < mpScene->getGeometryCount(hitCount); i++)
                 {
                     uint8_t* pHitRecord = getHitRecordPtr(h, i);
-                    if (!applyRtProgramVars(pHitRecord, mpProgram->getHitProgram(h)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getHitVars(h)[i].get(), mpRtVarsHelper.get()))
+                    if (!applyRtProgramVars(pHitRecord, mpProgram->getHitProgram(h)->getActiveVersion().get(), pRtso, getHitVars(h)[i].get(), mpRtVarsHelper.get()))
                     {
                         return false;
                     }
@@ -206,7 +205,7 @@ namespace Falcor
             if(mpProgram->getMissProgram(m))
             {
                 uint8_t* pMissRecord = getMissRecordPtr(m);
-                if (!applyRtProgramVars(pMissRecord, mpProgram->getMissProgram(m)->getActiveVersion().get(), pRtso, mProgramIdentifierSize, getMissVars(m).get(), mpRtVarsHelper.get()))
+                if (!applyRtProgramVars(pMissRecord, mpProgram->getMissProgram(m)->getActiveVersion().get(), pRtso, getMissVars(m).get(), mpRtVarsHelper.get()))
                 {
                     return false;
                 }

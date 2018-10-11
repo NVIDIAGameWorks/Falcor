@@ -27,10 +27,6 @@
 ***************************************************************************/
 #pragma once
 
-MAKE_SMART_COM_PTR(ID3D12DeviceRaytracingPrototype);
-MAKE_SMART_COM_PTR(ID3D12CommandListRaytracingPrototype);
-MAKE_SMART_COM_PTR(ID3D12StateObjectPrototype);
-
 namespace Falcor
 {
     enum class RtBuildFlags

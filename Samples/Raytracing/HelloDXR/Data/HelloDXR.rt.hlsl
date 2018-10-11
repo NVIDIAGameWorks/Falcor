@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-RWTexture2D<float4> gOutput : register(u1);
+shared RWTexture2D<float4> gOutput : register(u0);
 __import Raytracing;
 
 shared cbuffer PerFrameCB : register(b0)
@@ -141,7 +141,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttri
 [shader("raygeneration")]
 void rayGen()
 {
-    uint2 launchIndex = DispatchRaysIndex();
+    uint3 launchIndex = DispatchRaysIndex();
     float2 d = (((launchIndex.xy + 0.5) / viewportDims) * 2.f - 1.f);
     float aspectRatio = viewportDims.x / viewportDims.y;
 
