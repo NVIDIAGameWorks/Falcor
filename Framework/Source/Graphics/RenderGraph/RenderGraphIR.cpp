@@ -29,7 +29,9 @@
 #include "RenderGraphIR.h"
 #include "RenderGraph.h"
 #include "RenderGraphScripting.h"
+#include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/Dictionary.h"
+#include "Utils/StringUtils.h"
 
 namespace Falcor
 {
@@ -126,6 +128,21 @@ namespace Falcor
     void RenderGraphIR::unmarkOutput(const std::string& name)
     {
         mIR += mGraphPrefix + funcCall(RenderGraphScripting::kUnmarkOutput, addQuotes(name));
+    }
+
+    void RenderGraphIR::setScene(const std::string& sceneFile)
+    {
+        std::string scenePath = replaceSubstring(sceneFile, "\\", "/");
+        std::string sceneName = getFilenameFromPath(scenePath);
+        auto extPos = sceneName.find_last_of('.');
+        if (extPos != std::string::npos) sceneName = sceneName.substr(0, extPos);
+        mIR += mIndentation + sceneName + " = " + funcCall(ScriptBindings::kLoadScene, addQuotes(scenePath));
+        mIR += mGraphPrefix + funcCall(RenderGraphScripting::kSetScene, sceneName);
+    }
+
+    void RenderGraphIR::disableLoadDefaultScene()
+    {
+        mIR += mGraphPrefix + funcCall(RenderGraphScripting::kSetNoDefaultScene);
     }
 
     void RenderGraphIR::loadPassLibrary(const std::string& name)

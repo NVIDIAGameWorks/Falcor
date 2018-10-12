@@ -225,6 +225,10 @@ namespace Falcor
         /** Get the filename
         */
         const std::string& getFilename() const { return mFilename; }
+        
+        /** Set the filename
+        */
+        void setFilename(const std::string& filename) { mFilename = filename; }
 
         /** Set a new aspect ratio for all the cameras in the scene
         */

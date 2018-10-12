@@ -61,6 +61,9 @@ def run_pass_test(executable_filepath, file_path, output_directory):
 
     graph_names = []
     num_image_loader_passes = [] # number of image nodes per graph in file
+    scenes_loaded = [] # if there is a graph loaded 
+    images_loaded = [] # if there is a graph loaded 
+    no_default_scenes = [] # if disableLoadDefaultScene is called in graph
     
     #parse render graph file for graphs. 
     graph_file = open( file_path ).read()
@@ -70,14 +73,33 @@ def run_pass_test(executable_filepath, file_path, output_directory):
     # grab the name of each create function from syntax tree
     for func in file_ast.body:
         num_img_loaders = 0
+        graph_loads_scene = False
+        graph_loads_image = False
+        no_default_scene = False
+        
         if(isinstance(func, ast.FunctionDef)):
-            # check all statements in the tree to find calls to create an image loader node
+            # check all statements in the tree to find calls to create an image loader node.
             for expr in ast.walk(func):
-                    if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name) and expr.func.id == "createRenderPass":
+                if isinstance(expr, ast.Call): 
+                    # print(ast.dump(expr)) # this is useful for debugging this
+                    if isinstance(expr.func, ast.Name):
+                        if expr.func.id == "createRenderPass":
                             if expr.args[0].s == "ImageLoader":
                                 num_img_loaders = num_img_loaders + 1
+                                if len(expr.args) > 1 and isinstance(expr.args[1], dict) and ('fileName' in expr.args[1].keys()):
+                                    graph_loads_image = len(expr.args[1]['filename']) > 0
+                    else:
+                        # member functions so its a bit differently
+                        if isinstance(expr.func, ast.Attribute):
+                            if expr.func.attr == "setScene":
+                                graph_loads_scene = True
+                            if expr.func.attr == 'disableLoadDefaultScene':
+                                no_default_scene = True
             
             num_image_loader_passes.append(num_img_loaders)
+            scenes_loaded.append(graph_loads_scene)
+            images_loaded.append(graph_loads_image)
+            no_default_scenes.append(no_default_scene)
             
             # function must fit definition of 'render_graph_' + graph_name
             if(func.name.startswith(graph_func_prefix)):
@@ -87,31 +109,53 @@ def run_pass_test(executable_filepath, file_path, output_directory):
     index = 0
     for graph_name in graph_names:
         print('Running tests with \'' + graph_name + '\' in ' + file_path)
-        viewer_args = iConfig.test_arguments + ' -graphFile ' + file_path + ' -graphname ' + graph_name
+        start_viewer_args = iConfig.test_arguments + ' -graphFile ' + file_path + ' -graphname ' + graph_name + ' '
+        
         run_image_tests = num_image_loader_passes[index] > 0
+        run_scene_tests = not (no_default_scenes[index] and (not scenes_loaded[index]))
+        run_all_scenes = (not scenes_loaded[index]) and run_scene_tests
+        run_all_images = not images_loaded[index]
         
-        if not run_image_tests:
-            print('Note: No image loader nodes in graph. Will only input scenes')
+        if run_all_scenes:
+            num_scenes = iConfig.num_scenes
+        else:
+            num_scenes = 1
         
-        print('Num loaders: ' + str(num_image_loader_passes[index]))
-        test_index = 0
-        test_viewer_args = iConfig.get_next_arguments(run_image_tests, test_index)
+        if run_all_images:
+            num_images = iConfig.num_images
+        else:
+            num_images = 1
         
-        while len(test_viewer_args) > 0:
-            viewer_args = test_viewer_args + viewer_args
-            input_arg = test_viewer_args.split()[1]
-            print('Running test for ' + graph_name + ' with ' + input_arg)
-            output_file_base_name = graph_name + '_' + os.path.splitext(os.path.basename(input_arg))[0] + '_'
-            run_test_run(executable_filepath, viewer_args, output_file_base_name, output_directory)
-            test_index = test_index + 1
-            test_viewer_args = iConfig.get_next_arguments(run_image_tests, test_index)
+        for test_scene_index in range(0, num_scenes):
+            viewer_args = start_viewer_args
+            output_file_base_name = graph_name + '_'
+            
+            if run_scene_tests:
+                scene_viewer_args = iConfig.get_next_scene_args(test_scene_index)
+                viewer_args = scene_viewer_args + viewer_args
+                input_arg = scene_viewer_args.split()[1]
+                output_file_base_name = output_file_base_name + os.path.splitext(os.path.basename(input_arg))[0] + '_'
+            
+            if run_image_tests:
+                for test_images_index in range(0, num_images):
+                    image_viewer_args = iConfig.get_next_image_args(test_images_index)
+                    viewer_args = image_viewer_args + viewer_args
+                    input_arg = image_viewer_args.split()[1]
+                    output_image_file_base_name = output_file_base_name + os.path.splitext(os.path.basename(input_arg))[0] + '_'
+                    
+                    viewer_args_with_images = viewer_args + image_viewer_args
+                    print(test_scene_index)
+                    print(test_images_index)
+                    run_test_run(executable_filepath, viewer_args_with_images, output_image_file_base_name, output_directory)
+            else:
+                run_test_run(executable_filepath, viewer_args, output_file_base_name, output_directory)
             
         print('\n')
         index = index + 1
     
     return 
 
-def run_graph_pass_test(executable_filepath, path_to_tests, output_directory):
+def run_graph_pass_test(executable_filepath, path_to_tests, graph_file_name, output_directory):
     renderGraphFiles = []
     
     print('Attempting to run tests for ' + executable_filepath)
@@ -127,6 +171,9 @@ def run_graph_pass_test(executable_filepath, path_to_tests, output_directory):
                 renderGraphFiles.append(path)
     
     for graphFile in renderGraphFiles:
+        if (graph_file_name and (not graphFile.endswith(graph_file_name)) ):
+            continue;
+        
         print('\n')
         graph_output_directory = os.path.join(output_directory, os.path.splitext(os.path.basename(graphFile))[0])
         print(graph_output_directory)
@@ -144,6 +191,13 @@ def main():
     
     # Add argument for specifing build configuration for the test
     parser.add_argument('-bc', '--build_configuration', action='store', help='Build configuration for test. ReleaseD3D12 by default')
+    
+    # Add argument for only using a specified graph file in the directory
+    parser.add_argument('-gf', '--graph_file', action='store', help='Specify graph file to use within the tests directory')
+    
+    # Add argument for only using a specified graph within the directory
+    parser.add_argument('-gn', '--graph_name', action='store', help='Specify graph name to use within the tests directory')
+    
     
     # Parse the Arguments.
     args = parser.parse_args()
@@ -167,28 +221,29 @@ def main():
     references_dir = os.path.join(references_dir, target_configuration)
     
     # Display this before building so user has time to respond during build if unintended
-    print('No path specified. Will run full tests for all passes.')
+    if not args.tests_directory:
+        print('No path specified. Will run full tests for all passes.')
     
     # Build the falcor solution. Run build target on render pass project.
     helpers.build_solution(root_dir, os.path.join(root_dir, 'Falcor.sln'), target_configuration, False)
     
     if args.tests_directory:
-        run_graph_pass_test(executable_filepath, args.tests_directory, results_dir)
+        run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, results_dir)
     else:
         for subdir, dirs, files in os.walk(root_dir):
             if subdir.lower().endswith('testing'):
-                run_graph_pass_test(executable_filepath, subdir, results_dir)
+                run_graph_pass_test(executable_filepath, subdir, args.graph_file, results_dir)
     
     # compare tests to references 
     results_data = compareOutput.compare_all_images(results_dir, references_dir, compareOutput.default_compare)
     
     # write comparison to html file
-    html_file_content = writeTestResultsToHTML.write_test_set_results_to_html(results_data)
-    
-    html_file_path = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, helpers.build_html_filename(tests_set_data))
-    html_file = open(html_file_path, 'w')
-    html_file.write(html_file_content)
-    html_file.close()
+    # html_file_content = writeTestResultsToHTML.write_test_set_results_to_html(results_data)
+    # 
+    # html_file_path = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, helpers.build_html_filename(tests_set_data))
+    # html_file = open(html_file_path, 'w')
+    # html_file.write(html_file_content)
+    # html_file.close()
     
 
 if __name__ == '__main__':

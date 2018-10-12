@@ -31,6 +31,12 @@ def main():
     
     parser.add_argument('-l', '--local_only', action='store_true', help='Do not upload generated references to server')
     
+    # Add argument for only using a specified graph file in the directory
+    parser.add_argument('-gf', '--graph_file', action='store', help='Specify graph file to use within the tests directory')
+    
+    # Add argument for only using a specified graph within the directory
+    parser.add_argument('-gn', '--graph_name', action='store', help='Specify graph name to use within the tests directory')
+    
     # Parse the Arguments.
     args = parser.parse_args()
     
@@ -52,17 +58,18 @@ def main():
     helpers.directory_clean_or_make(references_dir)
     
     # Display this before building so user has time to respond during build if unintended
-    print('No path specified. Will generate reference images for all passes.')
+    if not args.tests_directory:
+        print('No path specified. Will generate reference images for all passes.')
     
     # Build the falcor solution. Run build target on render pass project.
     helpers.build_solution(root_dir, os.path.join(root_dir, 'Falcor.sln'), target_configuration, False)
     
     if args.tests_directory:
-        rPT.run_graph_pass_test(executable_filepath, args.tests_directory, references_dir)
+        rPT.run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, references_dir)
     else:
         for subdir, dirs, files in os.walk(root_dir):
             if subdir.lower().endswith(iConfig.TestConfig['LocalTestingDir']):
-                rPT.run_graph_pass_test(executable_filepath, subdir, references_dir)
+                rPT.run_graph_pass_test(executable_filepath, subdir, args.graph_file, references_dir)
     
     # copy top level reference directory to netapp 
     if (not args.local_only):

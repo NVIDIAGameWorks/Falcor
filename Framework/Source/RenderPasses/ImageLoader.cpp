@@ -37,16 +37,12 @@ namespace Falcor
     static const std::string kImage = "fileName";
     static const std::string kMips = "mips";
     static const std::string kSrgb = "srgb";
-    static const std::string kDefaultImageSwitch = "defaultImage";
+    static const std::string kDefaultImage = "defaultImage";
 
     RenderPassReflection ImageLoader::reflect() const
     {
         RenderPassReflection reflector;
-
         reflector.addOutput(kDst);
-
-        // TODO -- use internal resource for image
-        // reflector.addInternal(kImage);
 
         return reflector;
     }
@@ -70,17 +66,13 @@ namespace Falcor
             {
                 pPass->mGenerateMips = v.val();
             }
-            else if (v.key() == kDefaultImageSwitch)
-            {
-                defaultImageName = v.val().operator std::string();
-            }
             else
             {
                 logWarning("Unknown field `" + v.key() + "` in a ImageLoader dictionary");
             }
         }
         
-        if (!pPass->mImageName.size() && defaultImageName.size()) pPass->mImageName = defaultImageName;
+        if (!pPass->mImageName.size()) pPass->mImageName = defaultImageName;
     
         return pPass;
     }
@@ -100,18 +92,21 @@ namespace Falcor
 
     void ImageLoader::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        if (!mImageName.size())
+        if (!mpTex)
         {
-            logWarning("No image loaded! Not able to execute image loader pass.", true);
+            // attempt to load default image
+            auto& dict = pRenderData->getDictionary();
+            if (dict.keyExists(kDefaultImage))
+            {
+                std::string defaultImageName = dict[kDefaultImage].operator std::string();
+                mImageName = defaultImageName;
+            }
+            if (mImageName.size()) loadImage();
+            if (!mpTex) logWarning("No image loaded! Not able to execute image loader pass.");
+            return;
         }
 
         const auto& pDstTex = pRenderData->getTexture(kDst);
-
-        if (!mpTex)
-        {
-            loadImage();
-        }
-        
         if (pDstTex)
         {
             pContext->blit(mpTex->getSRV(), pDstTex->getRTV());
@@ -129,18 +124,22 @@ namespace Falcor
         {
             logWarning("Failed to load image for image loader pass.");
         }
-        mReloadImage = false;
     }
 
     void ImageLoader::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
-            mReloadImage |= pGui->addTextBox("Image File", mImageName);
-            mReloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
-            mReloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
+            bool reloadImage = reloadImage |= pGui->addTextBox("Image File", mImageName); ;
+            reloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
+            reloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
+            if (pGui->addButton("loadFile")) { reloadImage |= openFileDialog("", mImageName); }
+            if (pGui->addButton("clear"))
+            {
+                mpTex = nullptr; mImageName.clear(); reloadImage = false;
+            }
 
-            if (mReloadImage && mImageName.size()) loadImage();
+            if (reloadImage && mImageName.size()) loadImage();
 
             if (mpTex)
             {

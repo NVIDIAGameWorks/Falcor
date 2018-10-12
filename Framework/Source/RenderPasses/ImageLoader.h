@@ -52,6 +52,5 @@ namespace Falcor
         std::string mImageName;
         bool mGenerateMips = true;
         bool mLoadSRGB = true;
-        bool mReloadImage = true;
     };
 }

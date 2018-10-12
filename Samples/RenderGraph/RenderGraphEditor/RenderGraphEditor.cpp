@@ -96,8 +96,8 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
                 if (saveGraph)
                 {
-                    std::string renderGraphFileName;
-                    if (saveFileDialog("", renderGraphFileName)) serializeRenderGraph(renderGraphFileName);
+                    std::string renderGraphFileName = mOpenGraphNames[mCurrentGraphIndex].label + ".py";
+                    if (saveFileDialog("PY(.py)\0*.py", renderGraphFileName)) serializeRenderGraph(renderGraphFileName);
                 }
             }
 
@@ -201,6 +201,32 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
     }
 
+    if (pGui->addButton("Set Scene"))
+    {
+        // display warning when setting scene so that there is no confusion for overwriting default scene
+        MsgBoxButton setSceneMsg = msgBox("Note: Setting scene in graph will overwrite default scene from viewer.");
+        if (setSceneMsg == MsgBoxButton::Ok)
+        {
+            std::string filename;
+            if (openFileDialog("*.fscene", filename))
+            {
+                auto pDummyScene = Scene::create();
+                pDummyScene->setFilename(filename);
+                mpGraphs[mCurrentGraphIndex]->setScene(pDummyScene);
+            }
+        }
+    }
+
+    bool& graphLoadsScene = mGraphIndexToLoadScene[mCurrentGraphIndex];
+    const char* buttonText = graphLoadsScene ? "DisableAllowDefaultGraph" : "EnableAllowDefaultGraph";
+    if (pGui->addButton(buttonText, true))
+    {
+        auto pGraph = mpGraphs[mCurrentGraphIndex];
+        auto& dict = *pGraph->getPassesDictionary();
+        dict[RenderGraphScripting::kSetNoDefaultScene] = !graphLoadsScene;
+        graphLoadsScene = !graphLoadsScene;
+    }
+    
     std::vector<std::string> graphOutputString{mGraphOutputEditString};
     if (pGui->addMultiTextBox("Add Output", {"GraphOutput"}, graphOutputString))
     {
@@ -263,14 +289,14 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             createNewGraph(mNextGraphString);
             mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
             mNextGraphString.clear();
-            mNextGraphString.resize(255, '0');
+            mNextGraphString.resize(255, 0);
             mShowCreateGraphWindow = false;
         }
 
         if (pGui->addButton("Cancel", true))
         {
             mNextGraphString.clear();
-            mNextGraphString.resize(255, '0');
+            mNextGraphString.resize(255, 0);
             mShowCreateGraphWindow = false;
         }
 
@@ -345,6 +371,7 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const st
             nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
             nextGraphID.label = name;
             mOpenGraphNames.push_back(nextGraphID);
+            mGraphIndexToLoadScene[nextGraphID.value] = true;
         }
     }
 }
@@ -371,6 +398,8 @@ void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
     nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
     nextGraphID.label = graphName;
     mOpenGraphNames.push_back(nextGraphID);
+
+    mGraphIndexToLoadScene[mCurrentGraphIndex] = true;
 }
 
 void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)

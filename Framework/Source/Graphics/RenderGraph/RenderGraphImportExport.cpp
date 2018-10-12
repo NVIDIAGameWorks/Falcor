@@ -30,6 +30,7 @@
 #include "RenderGraphScripting.h"
 #include "RenderPassLibrary.h"
 #include "RenderGraphIR.h"
+#include "Graphics/Scene/Scene.h"
 #include <fstream>
 
 namespace Falcor
@@ -133,6 +134,21 @@ namespace Falcor
         {
             std::string str = pGraph->mNodeData[out.nodeId].nodeName + '.' + out.field;
             pIR->markOutput(str);
+        }
+
+        // if set, add the scene
+        auto pScene = pGraph->getScene();
+        if (pScene != nullptr)
+        {
+            pIR->setScene(pScene->getFilename());
+        }
+
+        if (pGraph->getPassesDictionary()->keyExists(RenderGraphScripting::kSetNoDefaultScene))
+        {
+            if (!static_cast<bool>((*pGraph->getPassesDictionary())[RenderGraphScripting::kSetNoDefaultScene]))
+            {
+                pIR->disableLoadDefaultScene();
+            }
         }
 
         // Save it to file

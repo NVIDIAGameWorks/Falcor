@@ -48,6 +48,8 @@ namespace Falcor
         void markOutput(const std::string& name);
         void unmarkOutput(const std::string& name);
         void loadPassLibrary(const std::string& name);
+        void setScene(const std::string& sceneFile);
+        void disableLoadDefaultScene();
         void autoGenEdges();
 
         std::string getIR() { return mIR + mIndentation + (mIndentation.size() ? ("return " + mName + '\n') : "\n"); }

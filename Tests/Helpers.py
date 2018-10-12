@@ -105,6 +105,10 @@ def get_git_branch_name(base_dir):
         
     return machine_configs.default_reference_branch_name
 
+# Error if we failed to build the solution.
+class BuildSolutionError(Exception):
+    pass
+    
 def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuild):
     if os.name == 'nt':
         windows_build_script = "BuildSolution.bat"
@@ -119,10 +123,10 @@ def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuil
             if subprocess.call(batch_args) == 0:
                 return 0
             else:
-                raise TestsSetError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+                raise BuildSolutionError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
 
         except subprocess.CalledProcessError as subprocess_error:
-            raise TestsSetError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+            raise BuildSolutionError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
     else:
         prevDir = os.getcwd()
         #Call Makefile

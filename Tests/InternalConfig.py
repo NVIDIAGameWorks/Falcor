@@ -7,6 +7,9 @@ TestConfig['DefaultConfiguration'] = 'ReleaseD3D12'
 TestConfig['LocalTestingDir'] = 'testing'
 TestConfig['Tolerance'] = 0.0
 
+##if 'FixedTimeDelta' in TestConfig:
+##    args = '-fixedtimedelta ' +  TestConfig['FixedTimeDelta'] + ' ';
+
 # get 'static' part of the arguments
 def get_config_arguments():
     current_args =  "-test "
@@ -22,26 +25,16 @@ def get_config_arguments():
     return current_args
     
 # get the arguments that change for each test
-def get_next_arguments(run_image_tests, test_index):
-    args = ""
-    num_scenes = len(TestConfig["Scenes"])
-    num_images = len(TestConfig["Images"])
-    
-    if (not run_image_tests and (test_index >= num_scenes)) or (test_index >= (num_scenes + num_images)):
-            return ''
-    
-    if 'FixedTimeDelta' in TestConfig:
-        args = '-fixedtimedelta ' +  TestConfig['FixedTimeDelta'] + ' ';
-    
-    if (num_scenes > test_index):
-        args = args + '-defaultScene '+ TestConfig["Scenes"][test_index] + ' '
-    else:
-        image_test_index = test_index - num_scenes
-        if (num_images > image_test_index):
-            args = args + '-defaultImage ' + TestConfig['Images'][image_test_index] + ' '
-            
+def get_next_scene_args(scene_index):
+    args = '-defaultScene ' + TestConfig["Scenes"][scene_index] + ' '
     return args
 
+def get_next_image_args(image_index):
+    args = '-defaultImage ' + TestConfig['Images'][image_index] + ' '
+    return args
     
+
 test_arguments = get_config_arguments()
 viewer_executable = 'RenderGraphViewer.exe'
+num_scenes = len(TestConfig["Scenes"])
+num_images = len(TestConfig["Images"])

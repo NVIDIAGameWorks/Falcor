@@ -49,7 +49,6 @@ void RenderGraphViewer::onLoad(SampleCallbacks* pSample, const RenderContext::Sh
     // if editor opened from running render graph, get the name of the file to read
     mDefaultSceneName = gkDefaultScene;
 
-    // there has to be a better way to format this
     const auto& argList = pSample->getArgList();
     std::vector<ArgList::Arg> commandArgs = argList.getValues(kDefaultSceneSwitch);
     if (commandArgs.size())
@@ -305,7 +304,7 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
     if (pGraph->getName().empty()) pGraph->setName(name);
 
     // Set input image if it exists
-    if(mDefaultImageName.size())    (*data.pGraph->getPassesDictionary())[kDefaultImageSwitch] = mDefaultImageName;
+    if(mDefaultImageName.size())    (*pGraph->getPassesDictionary())[kDefaultImageSwitch] = mDefaultImageName;
 
     data.name = name;
     data.filename = filename;
@@ -313,7 +312,12 @@ void RenderGraphViewer::initGraph(const RenderGraph::SharedPtr& pGraph, const st
     data.pGraph = pGraph;
     if(data.pGraph->getScene() == nullptr)
     {
-        if (!mpDefaultScene) loadSceneFromFile(mDefaultSceneName, pCallbacks);
+        bool loadDefaultScene = !mpDefaultScene;
+        if (data.pGraph->getPassesDictionary()->keyExists(RenderGraphScripting::kSetNoDefaultScene))
+        {
+            loadDefaultScene &= !static_cast<bool>((*data.pGraph->getPassesDictionary())[RenderGraphScripting::kSetNoDefaultScene]);
+        }
+        if (loadDefaultScene) loadSceneFromFile(mDefaultSceneName, pCallbacks);
         data.pGraph->setScene(mpDefaultScene);
     }
     if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
@@ -410,7 +414,7 @@ void RenderGraphViewer::onFrameRender(SampleCallbacks* pSample, const RenderCont
     if (mGraphs.size())
     {
         auto& pGraph = mGraphs[mActiveGraph].pGraph;
-        pGraph->getScene()->update(pSample->getCurrentTime(), &mCamController);
+        if (pGraph->getScene()) pGraph->getScene()->update(pSample->getCurrentTime(), &mCamController);
 
         pGraph->execute(pRenderContext.get());
         if(mGraphs[mActiveGraph].mainOutput.size())
