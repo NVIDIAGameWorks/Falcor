@@ -128,7 +128,7 @@ def run_tests_set(main_directory, rebuild, json_filepath, results_directory, ref
 
                 # Try running the test.
                 try:
-                    executable_file = os.path.join(executable_directory, current_tests_group['Project Name'])                    
+                    executable_file = os.path.join(executable_directory, current_tests_group['Project Name']) 
                     if os.name == 'nt':
                         executable_file += '.exe'
                     current_test_run_result = run_test_run(executable_file, current_test_args, current_tests_group_name + str(index), current_results_directory)

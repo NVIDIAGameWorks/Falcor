@@ -55,7 +55,7 @@ def run_test_run(executable_filepath, current_arguments, output_file_base_name, 
         raise TestsSetError('Error when trying to run ' + executable_filepath + ' ' + current_arguments + ' ' + 'with outputfilename ' + output_file_base_name + ' and outputdir ' + output_directory)
 
 
-def run_pass_test(executable_filepath, file_path, output_directory):
+def run_pass_test(executable_filepath, file_path, graph_name, output_directory):
     print('Running tests for graphs in: ' + file_path)
     print('Output directory set to' + output_directory)
 
@@ -64,6 +64,7 @@ def run_pass_test(executable_filepath, file_path, output_directory):
     scenes_loaded = [] # if there is a graph loaded 
     images_loaded = [] # if there is a graph loaded 
     no_default_scenes = [] # if disableLoadDefaultScene is called in graph
+    errors = []
     
     #parse render graph file for graphs. 
     graph_file = open( file_path ).read()
@@ -107,9 +108,12 @@ def run_pass_test(executable_filepath, file_path, output_directory):
         
     # run a test on each graph in the file.
     index = 0
-    for graph_name in graph_names:
-        print('Running tests with \'' + graph_name + '\' in ' + file_path)
-        start_viewer_args = iConfig.test_arguments + ' -graphFile ' + file_path + ' -graphname ' + graph_name + ' '
+    for graphName in graph_names:
+        if graph_name and graph_name != graphName:
+            continue
+            
+        print('Running tests with \'' + graphName + '\' in ' + file_path)
+        start_viewer_args = iConfig.test_arguments + ' -graphFile ' + file_path + ' -graphname ' + graphName + ' '
         
         run_image_tests = num_image_loader_passes[index] > 0
         run_scene_tests = not (no_default_scenes[index] and (not scenes_loaded[index]))
@@ -128,7 +132,7 @@ def run_pass_test(executable_filepath, file_path, output_directory):
         
         for test_scene_index in range(0, num_scenes):
             viewer_args = start_viewer_args
-            output_file_base_name = graph_name + '_'
+            output_file_base_name = graphName + '_'
             
             if run_scene_tests:
                 scene_viewer_args = iConfig.get_next_scene_args(test_scene_index)
@@ -144,19 +148,20 @@ def run_pass_test(executable_filepath, file_path, output_directory):
                     output_image_file_base_name = output_file_base_name + os.path.splitext(os.path.basename(input_arg))[0] + '_'
                     
                     viewer_args_with_images = viewer_args + image_viewer_args
-                    print(test_scene_index)
-                    print(test_images_index)
-                    run_test_run(executable_filepath, viewer_args_with_images, output_image_file_base_name, output_directory)
+                    output_results = run_test_run(executable_filepath, viewer_args_with_images, output_image_file_base_name, output_directory)
+                    errors.append(output_results);
             else:
-                run_test_run(executable_filepath, viewer_args, output_file_base_name, output_directory)
+                output_results = run_test_run(executable_filepath, viewer_args, output_file_base_name, output_directory)
+                errors.append(output_results);
             
         print('\n')
         index = index + 1
     
-    return 
+    return errors
 
-def run_graph_pass_test(executable_filepath, path_to_tests, graph_file_name, output_directory):
+def run_graph_pass_test(executable_filepath, path_to_tests, graph_file_name, graph_name, output_directory):
     renderGraphFiles = []
+    errors = {}
     
     print('Attempting to run tests for ' + executable_filepath)
     
@@ -178,8 +183,10 @@ def run_graph_pass_test(executable_filepath, path_to_tests, graph_file_name, out
         graph_output_directory = os.path.join(output_directory, os.path.splitext(os.path.basename(graphFile))[0])
         print(graph_output_directory)
         helpers.directory_clean_or_make(graph_output_directory)
-        run_pass_test(executable_filepath, graphFile, graph_output_directory)
+        errors[graphFile] = []
+        errors[graphFile] = run_pass_test(executable_filepath, graphFile, graph_name, graph_output_directory)
         
+    return errors
 
 def main():
     
@@ -197,7 +204,6 @@ def main():
     
     # Add argument for only using a specified graph within the directory
     parser.add_argument('-gn', '--graph_name', action='store', help='Specify graph name to use within the tests directory')
-    
     
     # Parse the Arguments.
     args = parser.parse_args()
@@ -228,22 +234,22 @@ def main():
     helpers.build_solution(root_dir, os.path.join(root_dir, 'Falcor.sln'), target_configuration, False)
     
     if args.tests_directory:
-        run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, results_dir)
+        errors = run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, args.graph_name, results_dir)
     else:
         for subdir, dirs, files in os.walk(root_dir):
             if subdir.lower().endswith('testing'):
-                run_graph_pass_test(executable_filepath, subdir, args.graph_file, results_dir)
+                errors = run_graph_pass_test(executable_filepath, subdir, args.graph_file, args.graph_name, results_dir)
     
     # compare tests to references 
     results_data = compareOutput.compare_all_images(results_dir, references_dir, compareOutput.default_compare)
     
     # write comparison to html file
-    # html_file_content = writeTestResultsToHTML.write_test_set_results_to_html(results_data)
-    # 
-    # html_file_path = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, helpers.build_html_filename(tests_set_data))
-    # html_file = open(html_file_path, 'w')
-    # html_file.write(html_file_content)
-    # html_file.close()
+    html_file_content = writeTestResultsToHTML.write_test_set_results_to_html(results_data, errors)
+    
+    html_file_path = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, helpers.build_html_filename(results_data, target_configuration))
+    html_file = open(html_file_path, 'w')
+    html_file.write(html_file_content)
+    html_file.close()
     
 
 if __name__ == '__main__':

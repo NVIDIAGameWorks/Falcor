@@ -162,11 +162,11 @@ def directory_copy(fromDirectory, toDirectory):
                 print('Failed to copy reference files to server. Please check local directory.')
                 return
 
-def build_html_filename(tests_set):
+def build_html_filename(tests_set, configuration):
     if tests_set['Success'] is True:
         header = "[SUCCESS]"
     else:
         header = "[FAILED]"
 
-    return header + tests_set['Name'] + "_Results.html"
+    return header + configuration + "_Results.html"
 

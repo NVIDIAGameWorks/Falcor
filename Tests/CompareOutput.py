@@ -35,8 +35,8 @@ def default_comparison(result_image, result_image_dir, reference_image, screen_c
         result['Compare Result'] = result_str
         result['Test Passed'] = float(result_str) <= iConfig.TestConfig['Tolerance']
     
-        if result['Test Passed'] == False:
-            print('[FAILED] Comparision above tolerance. Difference was ' + result_str + ' on image ' + result_image)
+        # if result['Test Passed'] == False:
+        #     print('[FAILED] Comparision above tolerance. Difference was ' + result_str + ' on image ' + result_image)
         
     # Error
     else:
@@ -50,8 +50,8 @@ def default_comparison(result_image, result_image_dir, reference_image, screen_c
     
     screen_captures_results['Success'] &= result['Test Passed']
     if not result_image in screen_captures_results.keys():
-        screen_captures_results[result_image] = []
-    screen_captures_results[result_image].append(result)
+        screen_captures_results[result_image_dir] = []
+    screen_captures_results[result_image_dir].append(result)
     
     return screen_captures_results['Success']
 
@@ -72,7 +72,7 @@ def compare_all_images(results_dir, reference_dir, comparison_func):
                 continue
                 
             result_file = os.path.join( subdir, file )
-            # make sure there is a subsequenct file to reference_dir
+            # make sure there is a subsequent file to reference_dir
             relative_file_path = result_file[len(results_dir) + 1 : len(result_file)]
             reference_file = os.path.join(reference_dir, relative_file_path)
             if (not os.path.exists(reference_file)):

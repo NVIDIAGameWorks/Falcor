@@ -29,6 +29,7 @@ def main():
     # Add argument for specifing build configuration for the test
     parser.add_argument('-bc', '--build_configuration', action='store', help='Build configuration for test. ReleaseD3D12 by default')
     
+    # Add argument for choosing if we upload to the source server or not
     parser.add_argument('-l', '--local_only', action='store_true', help='Do not upload generated references to server')
     
     # Add argument for only using a specified graph file in the directory
@@ -65,11 +66,11 @@ def main():
     helpers.build_solution(root_dir, os.path.join(root_dir, 'Falcor.sln'), target_configuration, False)
     
     if args.tests_directory:
-        rPT.run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, references_dir)
+        rPT.run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, args.graph_name, references_dir)
     else:
         for subdir, dirs, files in os.walk(root_dir):
             if subdir.lower().endswith(iConfig.TestConfig['LocalTestingDir']):
-                rPT.run_graph_pass_test(executable_filepath, subdir, args.graph_file, references_dir)
+                rPT.run_graph_pass_test(executable_filepath, subdir, args.graph_file, args.graph_name, references_dir)
     
     # copy top level reference directory to netapp 
     if (not args.local_only):

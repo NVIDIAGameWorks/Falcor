@@ -96,7 +96,7 @@ namespace Falcor
         {
             // attempt to load default image
             auto& dict = pRenderData->getDictionary();
-            if (dict.keyExists(kDefaultImage))
+            if (!mImageName.size() && dict.keyExists(kDefaultImage))
             {
                 std::string defaultImageName = dict[kDefaultImage].operator std::string();
                 mImageName = defaultImageName;
@@ -119,9 +119,15 @@ namespace Falcor
 
     void ImageLoader::loadImage()
     {
+        std::string fullPath;
+        std::string fileName = getFilenameFromPath(mImageName);
+        if (findFileInDataDirectories(fileName, fullPath))
+            mImageName = fileName;
+
         mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
         if (!mpTex)
         {
+            mImageName.clear();
             logWarning("Failed to load image for image loader pass.");
         }
     }
