@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class RtVarsCmdList : public ID3D12GraphicsCommandList
+    class RtVarsCmdList : public ID3D12GraphicsCommandList4
     {
     public:
         using SharedPtr = std::shared_ptr<RtVarsCmdList>;
@@ -102,7 +102,31 @@ namespace Falcor
         void BeginEvent(UINT Metadata, const void *pData, UINT Size) { should_not_get_here(); };
         void EndEvent() { should_not_get_here(); }
         void ExecuteIndirect(ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset) { should_not_get_here(); }
-        ID3D12GraphicsCommandList* AsID3D12GraphicsCommandList() { should_not_get_here(); return this; }
+
+        // ID3D12GraphicsCommandList1
+        void AtomicCopyBufferUINT(ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT Dependencies, ID3D12Resource *const *ppDependentResources, const D3D12_SUBRESOURCE_RANGE_UINT64 *pDependentSubresourceRanges) { should_not_get_here(); }
+        void AtomicCopyBufferUINT64(ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT Dependencies, ID3D12Resource *const *ppDependentResources, const D3D12_SUBRESOURCE_RANGE_UINT64 *pDependentSubresourceRanges) { should_not_get_here(); }
+        void OMSetDepthBounds(FLOAT Min, FLOAT Max) { should_not_get_here(); }
+        void SetSamplePositions(UINT NumSamplesPerPixel, UINT NumPixels, D3D12_SAMPLE_POSITION *pSamplePositions) { should_not_get_here(); }
+        void ResolveSubresourceRegion(ID3D12Resource *pDstResource, UINT DstSubresource, UINT DstX, UINT DstY, ID3D12Resource *pSrcResource, UINT SrcSubresource, D3D12_RECT *pSrcRect, DXGI_FORMAT Format, D3D12_RESOLVE_MODE ResolveMode) { should_not_get_here(); }
+        void SetViewInstanceMask(UINT Mask) { should_not_get_here(); }
+
+        // ID3D12GraphicsCommandList2
+        void WriteBufferImmediate(UINT Count, const D3D12_WRITEBUFFERIMMEDIATE_PARAMETER *pParams, const D3D12_WRITEBUFFERIMMEDIATE_MODE *pModes) { should_not_get_here(); }
+
+        // ID3D12GraphicsCommandList3
+        void SetProtectedResourceSession(ID3D12ProtectedResourceSession *pProtectedResourceSession) { should_not_get_here(); }
+
+        // ID3D12GraphicsCommandList4
+        void BeginRenderPass(UINT NumRenderTargets, const D3D12_RENDER_PASS_RENDER_TARGET_DESC *pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC *pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags) { should_not_get_here(); }
+        void EndRenderPass(void) { should_not_get_here(); }
+        void InitializeMetaCommand(ID3D12MetaCommand *pMetaCommand, const void *pInitializationParametersData, SIZE_T InitializationParametersDataSizeInBytes) { should_not_get_here(); }
+        void ExecuteMetaCommand(ID3D12MetaCommand *pMetaCommand, const void *pExecutionParametersData, SIZE_T ExecutionParametersDataSizeInBytes) { should_not_get_here(); }
+        void BuildRaytracingAccelerationStructure(const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC *pDesc, UINT NumPostbuildInfoDescs, const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC *pPostbuildInfoDescs) { should_not_get_here(); }
+        void EmitRaytracingAccelerationStructurePostbuildInfo(const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC *pDesc, UINT NumSourceAccelerationStructures, const D3D12_GPU_VIRTUAL_ADDRESS *pSourceAccelerationStructureData) { should_not_get_here(); }
+        void CopyRaytracingAccelerationStructure(D3D12_GPU_VIRTUAL_ADDRESS DestAccelerationStructureData, D3D12_GPU_VIRTUAL_ADDRESS SourceAccelerationStructureData, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE Mode) { should_not_get_here(); }
+        void SetPipelineState1(ID3D12StateObject *pStateObject) { should_not_get_here(); }
+        void DispatchRays(const D3D12_DISPATCH_RAYS_DESC *pDesc) { should_not_get_here(); }
 
     private:
         RtVarsCmdList() = default;
