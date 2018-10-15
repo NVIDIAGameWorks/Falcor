@@ -262,10 +262,6 @@ namespace Falcor
 
     void CopyContext::uavBarrier(const Resource* pResource)
     {
-        // If the resource is a buffer with CPU access, no need to do anything
-        const Buffer* pBuffer = dynamic_cast<const Buffer*>(pResource);
-        if (pBuffer && pBuffer->getCpuAccess() != Buffer::CpuAccess::None) return;
-
         D3D12_RESOURCE_BARRIER barrier;
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
