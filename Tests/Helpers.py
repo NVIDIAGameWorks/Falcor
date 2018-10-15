@@ -21,7 +21,7 @@ def get_executable_directory(configuration, test_set, runAsCollection):
         return os.path.join(exe_dir, config)
     else:
         return exe_dir
-
+        
 # Error if we failed to clean or make the correct directory.
 class CloneRepoCleanOrMakeError(Exception):
     pass

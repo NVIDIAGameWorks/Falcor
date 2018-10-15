@@ -45,15 +45,15 @@ def default_comparison(result_image, result_image_dir, reference_image, screen_c
         result['Test Passed'] = False
     
     result['Return Code'] = image_compare_process.returncode
-    result['Source Filename'] = result_image
-    result['Reference Filename'] = reference_image
+    result['Source Filename'] = os.path.basename(result_image)
+    result['Reference Filename'] = os.path.basename(reference_image)
     
     screen_captures_results['Success'] &= result['Test Passed']
-    if not result_image in screen_captures_results.keys():
+    if not result_image_dir in screen_captures_results.keys():
         screen_captures_results[result_image_dir] = []
     screen_captures_results[result_image_dir].append(result)
     
-    return screen_captures_results['Success']
+    return result['Test Passed']
 
 
 # default image comparison
@@ -66,23 +66,23 @@ def compare_all_images(results_dir, reference_dir, comparison_func):
     screen_captures_results = {}
     screen_captures_results['Success'] = True
     
-    for subdir, dirs, files in os.walk(results_dir):
+    for subdir, dirs, files in os.walk(reference_dir):
         for file in files:
             if not file.endswith('.png'):
                 continue
                 
-            result_file = os.path.join( subdir, file )
-            # make sure there is a subsequent file to reference_dir
-            relative_file_path = result_file[len(results_dir) + 1 : len(result_file)]
-            reference_file = os.path.join(reference_dir, relative_file_path)
-            if (not os.path.exists(reference_file)):
-                print('Reference file: ' + reference_file + ' does not exist')
-                
-            status = comparison_func(result_file, subdir, reference_file, screen_captures_results)
+            reference_file = os.path.join( subdir, file )
+            # make sure there is a subsequent file in results_dir
+            relative_file_path = reference_file[len(reference_dir) + 1 : len(reference_file)]
+            results_file = os.path.join(results_dir, relative_file_path)
+            if (not os.path.exists(results_file)):
+                print('Result file: ' + results_file + ' does not exist')
+            status = comparison_func(results_file, os.path.split(results_file)[0], reference_file, screen_captures_results)
             if not status:
                 # add early out option?
-                print('Test failed on comparison between ' +  result_file + ' and reference ' + reference_file)
+                print('Test failed on comparison between ' +  results_file + ' and reference ' + reference_file)
     
     return screen_captures_results
+    
     
     

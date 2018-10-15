@@ -53,8 +53,7 @@ def get_image_comparison_table_code(screen_capture_results, errors):
 
         image_comparison_errors_code = ""
 
-        for i in range (0, max_comparison_count):
-            image_comparison_table_code += '<th>SS' + str(i) + '</th>\n'
+        image_comparison_table_code += '<th>SS0' + '</th>\n'
 
         for screen_capture_result_key in screen_capture_results.keys():
             if (screen_capture_result_key == 'Success'):
@@ -85,13 +84,16 @@ def get_image_comparison_table_code(screen_capture_results, errors):
                         image_comparison_errors_code += "<p><b>" + test_name + " failed to compare screen capture " + "</b><br> \n"
                         image_comparison_errors_code += "<b>Source</b> : " + test_result["Source Filename"] + " <br>  <b>Reference</b> : " + test_result["Reference Filename"] + " <br> \n"
                         image_comparison_errors_code += "Please check whether the images are output correctly, whether the reference exists and whether they are the same size. <br></p>"
-                        image_comparison_table_code += '<td bgcolor="red"><font color="white">Error</font></td>\n'
+                        image_comparison_table_code += '<td bgcolor="red"><font color="white">Error</font></td><br>\n'
                         continue
-    
+                    
                     if not test_result['Test Passed']:
                         image_comparison_table_code += '<td bgcolor="red"><font color="white">' + str(result_value) + '</font></td>\n'
                     else:
-                        image_comparison_table_code += '<td>' + str(result_value) + '</td>\n'
+                        if float(result_value) > 0:
+                            image_comparison_table_code += '<td bgcolor="yellow"><font color="black">' + str(result_value) + '</font></td>\n'
+                        else:
+                            image_comparison_table_code += '<td>' + str(result_value) + '</td>\n'
     
                 image_comparison_table_code += '</tr>\n'
 

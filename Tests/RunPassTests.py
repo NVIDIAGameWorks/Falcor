@@ -205,6 +205,9 @@ def main():
     # Add argument for only using a specified graph within the directory
     parser.add_argument('-gn', '--graph_name', action='store', help='Specify graph name to use within the tests directory')
     
+    #Add the argument for only doing comparisons with the last generated references
+    parser.add_argument('-cmp', '--compare_only', action='store_true', help='Do not generate local images. Only compare last generated.');
+    
     # Parse the Arguments.
     args = parser.parse_args()
     
@@ -221,7 +224,8 @@ def main():
     
     results_dir = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, branch_name)
     results_dir = os.path.join(results_dir, target_configuration);
-    helpers.directory_clean_or_make(results_dir)
+    if not args.compare_only:
+        helpers.directory_clean_or_make(results_dir)
     
     references_dir = os.path.join(machine_configs.machine_reference_directory, branch_name)
     references_dir = os.path.join(references_dir, target_configuration)
@@ -230,15 +234,23 @@ def main():
     if not args.tests_directory:
         print('No path specified. Will run full tests for all passes.')
     
-    # Build the falcor solution. Run build target on render pass project.
-    helpers.build_solution(root_dir, os.path.join(root_dir, 'Falcor.sln'), target_configuration, False)
+    errors = {}
     
-    if args.tests_directory:
-        errors = run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, args.graph_name, results_dir)
-    else:
-        for subdir, dirs, files in os.walk(root_dir):
-            if subdir.lower().endswith('testing'):
-                errors = run_graph_pass_test(executable_filepath, subdir, args.graph_file, args.graph_name, results_dir)
+    if not args.compare_only:
+        # Build the falcor solution. Run build target on render pass project.
+        helpers.build_solution(root_dir, os.path.join(root_dir, 'Falcor.sln'), target_configuration, False)
+        
+        if args.tests_directory:
+            errors = run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, args.graph_name, results_dir)
+        else:
+            for subdir, dirs, files in os.walk(root_dir):
+                if subdir.lower().endswith('testing'):
+                    new_errors = run_graph_pass_test(executable_filepath, subdir, args.graph_file, args.graph_name, results_dir)
+                    for error_key in new_errors.keys():
+                        errors[error_key] = new_errors[error_key]
+                        
+    
+    print('Running comparisons for all images: \n')
     
     # compare tests to references 
     results_data = compareOutput.compare_all_images(results_dir, references_dir, compareOutput.default_compare)
@@ -248,9 +260,18 @@ def main():
     
     html_file_path = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, helpers.build_html_filename(results_data, target_configuration))
     html_file = open(html_file_path, 'w')
-    html_file.write(html_file_content)
+    html_file.write(html_file_content)#str(results_data))
     html_file.close()
     
+    print('Writing comparison file to ' + html_file_path)
+    
+    # Open it up.
+    if os.name == 'nt':
+        os.system("start " + html_file_path)
+    else:
+        webbrowser.open('file://' + os.path.abspath(html_file_path))
+    
+    print('Done')
 
 if __name__ == '__main__':
     main()
