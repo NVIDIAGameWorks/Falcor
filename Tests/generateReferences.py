@@ -38,6 +38,9 @@ def main():
     # Add argument for only using a specified graph within the directory
     parser.add_argument('-gn', '--graph_name', action='store', help='Specify graph name to use within the tests directory')
     
+    #
+    parser.add_argument('-rsf', '--reference_sub_folder', action='store', help='Optional sub folder name within references directory');
+    
     # Parse the Arguments.
     args = parser.parse_args()
     
@@ -51,7 +54,6 @@ def main():
     branch_name = helpers.get_git_branch_name(root_dir);
     executable_filepath = helpers.get_executable_directory(target_configuration, '', False);
     executable_filepath = os.path.join(os.path.join(root_dir, executable_filepath), iConfig.viewer_executable)
-    destination_dir = os.path.join(machine_configs.machine_results_summary_target, machine_configs.machine_name)
 
     references_dir = os.path.join('TestsResults', branch_name)
     helpers.directory_clean_or_make(references_dir)
@@ -74,7 +76,12 @@ def main():
     
     # copy top level reference directory to netapp 
     if (not args.local_only):
-        target_dir = os.path.join(machine_configs.machine_reference_directory, branch_name)
+        if args.reference_sub_folder:
+            target_dir = os.path.join(machine_configs.machine_reference_directory, args.reference_sub_folder)
+            target_dir = os.path.join(target_dir, branch_name)
+        else:
+            target_dir = os.path.join(machine_configs.machine_reference_directory, branch_name)
+        
         target_dir = os.path.join(target_dir, target_configuration)
         helpers.directory_clean_or_make(target_dir)
         helpers.directory_copy(references_dir, target_dir)

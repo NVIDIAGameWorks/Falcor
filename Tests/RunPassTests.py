@@ -208,6 +208,9 @@ def main():
     #Add the argument for only doing comparisons with the last generated references
     parser.add_argument('-cmp', '--compare_only', action='store_true', help='Do not generate local images. Only compare last generated.');
     
+    #
+    parser.add_argument('-rsf', '--reference_sub_folder', action='store', help='Optional sub folder name within references directory');
+    
     # Parse the Arguments.
     args = parser.parse_args()
     
@@ -222,12 +225,23 @@ def main():
     executable_filepath = helpers.get_executable_directory(target_configuration, '', False);
     executable_filepath = os.path.join(os.path.join(root_dir, executable_filepath), iConfig.viewer_executable)
     
-    results_dir = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, branch_name)
-    results_dir = os.path.join(results_dir, target_configuration);
+    if args.reference_sub_folder:
+        results_dir = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, args.reference_sub_folder)
+        results_dir = os.path.join(results_dir, branch_name)
+    else:
+        results_dir = os.path.join(machine_configs.machine_relative_checkin_local_results_directory, branch_name)
+    
+    results_dir = os.path.join(results_dir, target_configuration)
+    
     if not args.compare_only:
         helpers.directory_clean_or_make(results_dir)
     
-    references_dir = os.path.join(machine_configs.machine_reference_directory, branch_name)
+    if args.reference_sub_folder:
+        references_dir = os.path.join(machine_configs.machine_reference_directory, args.reference_sub_folder)
+        references_dir = os.path.join(references_dir, branch_name)
+    else:
+        references_dir = os.path.join(machine_configs.machine_reference_directory, branch_name)
+    
     references_dir = os.path.join(references_dir, target_configuration)
     
     # Display this before building so user has time to respond during build if unintended
