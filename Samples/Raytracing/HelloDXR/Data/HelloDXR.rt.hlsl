@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-shared RWTexture2D<float4> gOutput : register(u0);
+RWTexture2D<float4> gOutput : register(u0);
 __import Raytracing;
 
 shared cbuffer PerFrameCB : register(b0)
@@ -39,7 +39,7 @@ shared cbuffer PerFrameCB : register(b0)
 struct PrimaryRayData
 {
     float4 color;
-    uint4 depth;
+    uint depth;
     float hitT;
 };
 
@@ -114,7 +114,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttri
     float3 posW = rayOrigW + hitT * rayDirW;
     // prepare the shading data
     VertexOut v = getVertexAttributes(triangleIndex, attribs);
-    ShadingData sd = prepareShadingData(v, gMaterial, rayOrigW);
+    ShadingData sd = prepareShadingData(v, gMaterial, rayOrigW, 0);
 
     // Shoot a reflection ray
     float3 reflectColor = getReflectionColor(posW, v, rayDirW, hitData.depth.r);

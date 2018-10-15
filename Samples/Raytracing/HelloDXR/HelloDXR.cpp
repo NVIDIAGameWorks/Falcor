@@ -102,7 +102,7 @@ void HelloDXR::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& 
 
     mpRtState = RtState::create();
     mpRtState->setProgram(mpRaytraceProgram);
-    mpRtState->setMaxTraceRecursionDepth(2); // 1 for calling rtTrace from RayGen, 1 for calling it from the primary-ray ClosestHitShader
+    mpRtState->setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray ClosestHitShader for reflections, 1 for reflection ray tracing a shadow ray
 }
 
 void HelloDXR::renderRaster(RenderContext* pContext)
@@ -119,7 +119,7 @@ void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 {
     PROFILE(setPerFrameVars);
     GraphicsVars* pVars = mpRtVars->getGlobalVars().get();
-    ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer(0, 0, 0);
+    ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
     pCB["invView"] = glm::inverse(mpCamera->getViewMatrix());
     pCB["viewportDims"] = vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     float fovY = focalLengthToFovY(mpCamera->getFocalLength(), Camera::kDefaultFrameHeight);
@@ -132,8 +132,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
-    //mpRtVars->getRayGenVars()->setUav("gOutput", mpRtOut->getUAV(0, 0, 1));
-    mpRtVars->getGlobalVars()->setTexture("gOutput", mpRtOut);
+    mpRtVars->getRayGenVars()->setTexture("gOutput", mpRtOut);
 
     mpRtRenderer->renderScene(pContext, mpRtVars, mpRtState, uvec2(pTargetFbo->getWidth(), pTargetFbo->getHeight()), mpCamera.get());
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
