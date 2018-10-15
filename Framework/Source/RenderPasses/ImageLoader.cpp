@@ -136,7 +136,7 @@ namespace Falcor
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
-            bool reloadImage = reloadImage |= pGui->addTextBox("Image File", mImageName); ;
+            bool reloadImage = reloadImage | pGui->addTextBox("Image File", mImageName); ;
             reloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
             reloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
             if (pGui->addButton("loadFile")) { reloadImage |= openFileDialog("", mImageName); }
