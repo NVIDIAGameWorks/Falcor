@@ -87,8 +87,12 @@ def run_pass_test(executable_filepath, file_path, graph_name, output_directory):
                         if expr.func.id == "createRenderPass":
                             if expr.args[0].s == "ImageLoader":
                                 num_img_loaders = num_img_loaders + 1
-                                if len(expr.args) > 1 and isinstance(expr.args[1], dict) and ('fileName' in expr.args[1].keys()):
-                                    graph_loads_image = len(expr.args[1]['filename']) > 0
+                                if len(expr.args) >= 1:
+                                    passDictionary = ast.dump(expr.args[1])
+                                    print(passDictionary)
+                                    if (isinstance(passDictionary, dict)):# and ('fileName' in passDictionary.keys()):
+                                        print('well this works??')
+                                        graph_loads_image = len(passDictionary['fileName'].s) > 0
                     else:
                         # member functions so its a bit differently
                         if isinstance(expr.func, ast.Attribute):

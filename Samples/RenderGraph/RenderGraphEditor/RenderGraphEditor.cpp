@@ -218,7 +218,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     bool& graphLoadsScene = mGraphIndexToLoadScene[mCurrentGraphIndex];
-    const char* buttonText = graphLoadsScene ? "DisableAllowDefaultGraph" : "EnableAllowDefaultGraph";
+    const char* buttonText = graphLoadsScene ? "DisableAllowDefaultScene" : "EnableAllowDefaultScene";
     if (pGui->addButton(buttonText, true))
     {
         auto pGraph = mpGraphs[mCurrentGraphIndex];
