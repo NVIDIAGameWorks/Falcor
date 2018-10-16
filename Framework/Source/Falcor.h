@@ -170,7 +170,6 @@
 #include "Raytracing/RtProgramVars.h"
 #include "Raytracing/RtState.h"
 #include "Raytracing/RtStateObject.h"
-#include "Raytracing/RtSample.h"
 #include "Raytracing/RtSceneRenderer.h"
 #endif
 

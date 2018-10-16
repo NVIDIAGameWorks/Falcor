@@ -480,9 +480,6 @@
     <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
-    <ClCompile Include="Raytracing\RtSample.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
     <ClCompile Include="Raytracing\RtScene.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
@@ -1300,9 +1297,6 @@
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="Raytracing\RtProgramVarsHelper.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtSample.h">
       <Filter>Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="Raytracing\RtScene.h">

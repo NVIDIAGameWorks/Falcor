@@ -196,5 +196,5 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     config.windowDesc.title = "HelloDXR";
     config.windowDesc.resizableWindow = true;
 
-    RtSample::run(config, pRenderer);
+    Sample::run(config, pRenderer);
 }
