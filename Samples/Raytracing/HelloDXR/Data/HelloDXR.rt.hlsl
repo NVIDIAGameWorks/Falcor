@@ -25,10 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-RWTexture2D<float4> gOutput : register(u0);
+RWTexture2D<float4> gOutput;
 __import Raytracing;
 
-shared cbuffer PerFrameCB : register(b0)
+shared cbuffer PerFrameCB
 {
     float4x4 invView;
     float4x4 invModel;

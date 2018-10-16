@@ -186,7 +186,7 @@ void HelloDXR::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint3
     float aspectRatio = (w / h);
     mpCamera->setAspectRatio(aspectRatio);
 
-    mpRtOut = Texture::create2D(width, height, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
+    mpRtOut = Texture::create2D(width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
 }
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
