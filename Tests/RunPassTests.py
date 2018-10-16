@@ -89,12 +89,10 @@ def run_pass_test(executable_filepath, file_path, graph_name, output_directory):
                                 num_img_loaders = num_img_loaders + 1
                                 if len(expr.args) >= 1:
                                     passDictionary = expr.args[1]
-                                    print(passDictionary)
-                                    print(ast.dump(passDictionary))
                                     if isinstance(passDictionary, ast.Dict):
                                         for key in passDictionary.keys:
                                             if(key.s == 'fileName'):
-                                                print('well this works??')
+                                                # note: the ast's 'dictionary' is not the same as a dictionary
                                                 graph_loads_image = len(passDictionary.values[0].s) > 0
                     else:
                         # member functions so its a bit differently

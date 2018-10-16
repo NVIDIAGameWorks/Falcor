@@ -30,6 +30,9 @@
 #include "Graphics/TextureHelper.h"
 #include "API/RenderContext.h"
 #include "Utils/Gui.h"
+#include <experimental/filesystem>
+
+namespace fs = std::experimental::filesystem;
 
 namespace Falcor
 {
@@ -101,11 +104,23 @@ namespace Falcor
                 std::string defaultImageName = dict[kDefaultImage].operator std::string();
                 mImageName = defaultImageName;
             }
-            if (mImageName.size()) loadImage();
-            if (!mpTex) logWarning("No image loaded! Not able to execute image loader pass.");
-            return;
+            if (mImageName.size())
+            {
+                if (dict.keyExists(mImageName))
+                {
+                    mpTex = dict[mImageName];
+                }
+                else
+                {
+                    loadImage();
+                    // if updatePass is called, the image will be unloaded
+                    // save the image pointer in the shared dictionary to avoid this
+                    dict[mImageName] = mpTex;
+                }
+            }
+            if (!mpTex) { logWarning("No image loaded! Not able to execute image loader pass."); return; }
         }
-
+       
         const auto& pDstTex = pRenderData->getTexture(kDst);
         if (pDstTex)
         {
@@ -121,8 +136,18 @@ namespace Falcor
     {
         std::string fullPath;
         std::string fileName = getFilenameFromPath(mImageName);
-        if (findFileInDataDirectories(fileName, fullPath))
-            mImageName = fileName;
+        std::string fileDir = getDirectoryFromFile(mImageName);
+        auto dataDirs = getDataDirectoriesList();
+        
+        std::string commonDirectory;
+        for (const auto& dataDir : dataDirs)
+        {
+            commonDirectory = getRelativeSubDirectory(fileDir, dataDir);
+            if (commonDirectory.size()) {   break; }
+        }
+
+        if (commonDirectory.size()) mImageName = commonDirectory + fileName;
+        else if (findFileInDataDirectories(fileName, fullPath)) mImageName = fileName;
 
         mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
         if (!mpTex)
@@ -136,7 +161,7 @@ namespace Falcor
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
-            bool reloadImage = reloadImage |= pGui->addTextBox("Image File", mImageName); ;
+            bool reloadImage =  pGui->addTextBox("Image File", mImageName); ;
             reloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
             reloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
             if (pGui->addButton("loadFile")) { reloadImage |= openFileDialog("", mImageName); }

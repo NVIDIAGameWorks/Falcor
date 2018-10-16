@@ -1,6 +1,6 @@
 def render_graph_testToneMapping():
 	testToneMapping = createRenderGraph()
-	ImageLoader = createRenderPass("ImageLoader", {'fileName': 'C:\\Users\\moakes\\Documents\\P4_Workspace\\graphics\\media\\Main\\Cerberus\\HDR.hdr', 'mips': False, 'srgb': False})
+	ImageLoader = createRenderPass("ImageLoader", {'fileName': 'Cerberus/HDR.hdr', 'mips': False, 'srgb': False})
 	testToneMapping.addPass(ImageLoader, "ImageLoader")
 	ToneMapping = createRenderPass("ToneMapping", {'operator': ToneMapOp.Clamp})
 	testToneMapping.addPass(ToneMapping, "ToneMapping")

@@ -1,6 +1,6 @@
 TestConfig = {}
 TestConfig['Scenes'] = [ "Arcade/arcade.fscene", "SunTemple/sunTemple.fscene", "Bistro/Bistro_Interior.fscene" ]
-TestConfig['Images'] = [ "StockImage.jpg", "Cerberus/HDR.hdr" ]
+TestConfig['Images'] = [ "StockImage.jpg" ]
 TestConfig['Duration'] = 5
 TestConfig['Times'] = [ 1, 2, 3, 4]
 TestConfig['DefaultConfiguration'] = 'ReleaseD3D12'

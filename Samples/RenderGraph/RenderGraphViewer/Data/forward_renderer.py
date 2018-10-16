@@ -25,10 +25,7 @@ def render_graph_forward_renderer():
     forward_renderer.addEdge("FXAA.dst", "BlitPass.src");
 
     forward_renderer.markOutput("BlitPass.dst")
-
-    scene = loadScene("SunTemple/SunTemple.fscene");
-    forward_renderer.setScene(scene);
-
+    
     return forward_renderer
 
 forward_renderer2 = render_graph_forward_renderer()
