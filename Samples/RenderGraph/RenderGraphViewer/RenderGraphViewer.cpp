@@ -522,6 +522,8 @@ int main(int argc, char** argv)
 #ifdef FALCOR_DXR
     RtSample::run(config, pRenderer);
 #else
+    config.argc = argc;
+    config.argv = argv;
     Sample::run(config, pRenderer);
 #endif
     return 0;

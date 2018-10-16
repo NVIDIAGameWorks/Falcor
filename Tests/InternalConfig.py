@@ -1,5 +1,7 @@
+import os
+
 TestConfig = {}
-TestConfig['Scenes'] = [ "Arcade/arcade.fscene", "SunTemple/sunTemple.fscene", "Bistro/Bistro_Interior.fscene" ]
+TestConfig['Scenes'] = [ "Arcade/Arcade.fscene", "SunTemple/SunTemple.fscene", "Bistro/Bistro_Interior.fscene" ]
 TestConfig['Images'] = [ "StockImage.jpg" ]
 TestConfig['Duration'] = 5
 TestConfig['Times'] = [ 1, 2, 3, 4]
@@ -35,6 +37,9 @@ def get_next_image_args(image_index):
     
 
 test_arguments = get_config_arguments()
-viewer_executable = 'RenderGraphViewer.exe'
+if os.name == 'nt':
+	viewer_executable = 'RenderGraphViewer.exe'
+else:
+	viewer_executable = 'RenderGraphViewer'
 num_scenes = len(TestConfig["Scenes"])
 num_images = len(TestConfig["Images"])
