@@ -314,7 +314,7 @@ void RenderGraphEditor::renderLogWindow(Gui* pGui)
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
-    RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), fileName, {}, mRenderGraphUIs[mCurrentGraphIndex].getPassOrder());
+    RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), fileName, {});
 }
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)

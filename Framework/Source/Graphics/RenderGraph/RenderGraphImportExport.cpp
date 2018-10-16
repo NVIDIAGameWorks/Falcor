@@ -88,7 +88,7 @@ namespace Falcor
         return res;
     }
 
-    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename, std::string funcName, const std::vector<uint32_t>& passOrder)
+    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename, std::string funcName)
     {
         updateGraphStrings(graphName, filename, funcName);
         RenderGraphIR::SharedPtr pIR = RenderGraphIR::create(graphName);
@@ -100,24 +100,12 @@ namespace Falcor
             pIR->loadPassLibrary(getFilenameFromPath(libName));
         }
 
-        // Add the passes
-        if (passOrder.size())
+        for (const auto& node : pGraph->mNodeData)
         {
-            for (const uint32_t& nodeID : passOrder)
-            {
-                const auto& data = pGraph->mNodeData[nodeID];
-                pIR->addPass(data.pPass->getName(), data.nodeName, data.pPass->getScriptingDictionary());
-            }
+            const auto& data = node.second;
+            pIR->addPass(data.pPass->getName(), data.nodeName, data.pPass->getScriptingDictionary());
         }
-        else
-        {
-            for (const auto& node : pGraph->mNodeData)
-            {
-                const auto& data = node.second;
-                pIR->addPass(data.pPass->getName(), data.nodeName, data.pPass->getScriptingDictionary());
-            }
-        }
-
+        
         // Add the edges
         for (const auto& edge : pGraph->mEdgeData)
         {
