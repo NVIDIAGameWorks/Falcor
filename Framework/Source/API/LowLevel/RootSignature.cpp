@@ -113,10 +113,10 @@ namespace Falcor
         {
             addParamBlockSets(pReflector->getParameterBlock(i).get(), d);
         }
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         d.setLocal(isLocal);
 #else
-        if (isLocal) logWarning("local root-signatures are only supported when DXR is enabled. Make sure you are using the correct build configuration.");
+        if (isLocal) logWarning("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
 #endif
         return d;
     }

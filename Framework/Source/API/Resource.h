@@ -51,7 +51,7 @@ namespace Falcor
             RenderTarget = 0x40,    ///< The resource will be bound as a render-target
             DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
             IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
             AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
 #endif
         };
@@ -92,7 +92,7 @@ namespace Falcor
             GenericRead,
             Predication,
             NonPixelShader,
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
             AccelerationStructure,
 #endif
         };

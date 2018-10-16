@@ -198,7 +198,7 @@ namespace Falcor
         */
         void resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource);
 
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same
         */
         deprecate("3.2", "Ray dispatch now accepts depth as a parameter. Using the deprecated version will assume depth = 1.")

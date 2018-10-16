@@ -32,11 +32,8 @@
 #include "D3D12Resource.h"
 #include "API/D3D12/D3D12State.h"
 #include "API/DescriptorSet.h"
-
-#ifdef FALCOR_DXR
 #include "Raytracing/RtProgramVars.h"
 #include "Raytracing/RtState.h"
-#endif
 
 namespace Falcor
 {
@@ -345,7 +342,6 @@ namespace Falcor
         mpLowLevelData->getCommandList()->ExecuteIndirect(gpDrawIndexCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
     }
 
-#ifdef FALCOR_DXR
     void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
     {
         raytrace(pVars, pState, width, height, 1);
@@ -385,7 +381,6 @@ namespace Falcor
         pCmdList->SetPipelineState1(pState->getRtso()->getApiHandle().GetInterfacePtr());
         pCmdList->DispatchRays(&raytraceDesc);
     }
-#endif
 
     void RenderContext::initDrawCommandSignatures()
     {

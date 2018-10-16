@@ -120,7 +120,7 @@ namespace Falcor
         Domain,         ///< Domain shader (AKA Tessellation evaluation shader)
         Compute,        ///< Compute shader
 
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         RayGeneration,  ///< Ray generation shader
         Intersection,   ///< Intersection shader
         AnyHit,         ///< Any hit shader
@@ -217,10 +217,6 @@ namespace Falcor
     };
 }
 
-#ifdef FALCOR_DXR
-#define FALCOR_D3D12
-#endif
-
 #if defined(FALCOR_D3D12)
 #include "API/D3D12/FalcorD3D12.h"
 #elif defined(FALCOR_VK)
@@ -251,7 +247,7 @@ namespace Falcor
             return "geometry";
         case ShaderType::Compute:
             return "compute";
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         case ShaderType::RayGeneration:
             return "raygeneration";
         case ShaderType::Intersection:

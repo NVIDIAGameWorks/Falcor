@@ -267,13 +267,8 @@ namespace Falcor
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
         barrier.UAV.pResource = pResource->getApiHandle();
 
-		// Check that resource has required bind flags for UAV barrier to be supported
-        static const Resource::BindFlags reqFlags = Resource::BindFlags::UnorderedAccess |
-#ifdef FALCOR_DXR
-            Resource::BindFlags::AccelerationStructure;
-#else
-            Resource::BindFlags::None;
-#endif
+        // Check that resource has required bind flags for UAV barrier to be supported
+        static const Resource::BindFlags reqFlags = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::AccelerationStructure;
         assert(is_set(pResource->getBindFlags(), reqFlags));
         mpLowLevelData->getCommandList()->ResourceBarrier(1, &barrier);
         mCommandsPending = true;

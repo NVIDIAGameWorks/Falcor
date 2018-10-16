@@ -119,14 +119,9 @@ namespace Falcor
     }
 
     // Device
-#ifdef FALCOR_DXR
+    MAKE_SMART_COM_PTR(ID3D12StateObject);
     MAKE_SMART_COM_PTR(ID3D12Device5);
     MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList4);
-    MAKE_SMART_COM_PTR(ID3D12StateObject);
-#else
-    MAKE_SMART_COM_PTR(ID3D12Device);
-    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
-#endif
     MAKE_SMART_COM_PTR(ID3D12Debug);
     MAKE_SMART_COM_PTR(ID3D12CommandQueue);
     MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
@@ -134,7 +129,6 @@ namespace Falcor
     MAKE_SMART_COM_PTR(ID3D12Resource);
     MAKE_SMART_COM_PTR(ID3D12Fence);
     MAKE_SMART_COM_PTR(ID3D12PipelineState);
-    //MAKE_SMART_COM_PTR(ID3D12ShaderReflection);
     MAKE_SMART_COM_PTR(ID3D12RootSignature);
     MAKE_SMART_COM_PTR(ID3D12QueryHeap);
     MAKE_SMART_COM_PTR(ID3D12CommandSignature);
@@ -148,13 +142,8 @@ namespace Falcor
     class DescriptorHeapEntry;
 
 	using WindowHandle = HWND;
-#ifdef FALCOR_DXR
-	using DeviceHandle = ID3D12Device5Ptr;
-	using CommandListHandle = ID3D12GraphicsCommandList4Ptr;
-#else
-    using DeviceHandle = ID3D12DevicePtr;
-    using CommandListHandle = ID3D12GraphicsCommandListPtr;
-#endif
+    using DeviceHandle = ID3D12Device5Ptr;
+    using CommandListHandle = ID3D12GraphicsCommandList4Ptr;
 	using CommandQueueHandle = ID3D12CommandQueuePtr;
     using ApiCommandQueueType = D3D12_COMMAND_LIST_TYPE;
     using CommandAllocatorHandle = ID3D12CommandAllocatorPtr;
@@ -201,6 +190,4 @@ namespace Falcor
 
 #define UNSUPPORTED_IN_D3D12(msg_) {Falcor::logWarning(msg_ + std::string(" is not supported in D3D12. Ignoring call."));}
 
-#ifdef FALCOR_DXR
-#include "../../Raytracing/DXR.h"
-#endif
+#include "Raytracing/DXR.h"

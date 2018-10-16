@@ -44,11 +44,7 @@ namespace Falcor
 #ifdef FALCOR_VK
     const std::string kSupportedShaderModels[] = { "400", "410", "420", "430", "440", "450" };
 #elif defined FALCOR_D3D12
-    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", 
-#ifdef FALCOR_DXR
-        "6_3" 
-#endif
-    };
+    const std::string kSupportedShaderModels[] = { "4_0", "4_1", "5_0", "5_1", "6_0", "6_1", "6_2", "6_3" };
 #endif
 
     static Shader::SharedPtr createShaderFromBlob(const Shader::Blob& shaderBlob, ShaderType shaderType, const std::string& entryPointName, Shader::CompilerFlags flags, std::string& log)
@@ -396,7 +392,7 @@ namespace Falcor
         case ShaderType::Hull:          return SLANG_STAGE_HULL;
         case ShaderType::Domain:        return SLANG_STAGE_DOMAIN;
         case ShaderType::Compute:       return SLANG_STAGE_COMPUTE;
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         case ShaderType::RayGeneration: return SLANG_STAGE_RAY_GENERATION;
         case ShaderType::Intersection:  return SLANG_STAGE_INTERSECTION;
         case ShaderType::AnyHit:        return SLANG_STAGE_ANY_HIT;

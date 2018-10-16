@@ -158,7 +158,8 @@
 #include "Effects/TAA/TAA.h"
 #include "Effects/FXAA/FXAA.h"
 
-#ifdef FALCOR_DXR
+// Raytracing
+#ifdef FALCOR_D3D12
 #include "Raytracing/RtModel.h"
 #include "Raytracing/RtScene.h"
 #include "Raytracing/RtShader.h"
