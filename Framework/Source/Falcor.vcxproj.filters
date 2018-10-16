@@ -1293,9 +1293,6 @@
     <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h">
       <Filter>Utils\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Raytracing\dxcapi.use.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
     <ClInclude Include="Raytracing\DXR.h">
       <Filter>Raytracing</Filter>
     </ClInclude>

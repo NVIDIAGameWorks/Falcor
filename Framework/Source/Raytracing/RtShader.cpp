@@ -28,20 +28,11 @@
 #include "Framework.h"
 #include "RtShader.h"
 #include "Utils/StringUtils.h"
-#include "dxcapi.use.h"
-
-static dxc::DxcDllSupport gDxrDllHelper;
 
 namespace Falcor
 {
-    RtShader::~RtShader() = default;
-    MAKE_SMART_COM_PTR(IDxcCompiler);
-    MAKE_SMART_COM_PTR(IDxcLibrary);
-    MAKE_SMART_COM_PTR(IDxcBlobEncoding);
-    MAKE_SMART_COM_PTR(IDxcOperationResult);
-    MAKE_SMART_COM_PTR(IDxcContainerReflection);
-
     RtShader::RtShader(ShaderType type, const std::string& entryPointName) : Shader(type), mEntryPoint(entryPointName) {}
+    RtShader::~RtShader() = default;
 
     RtShader::SharedPtr RtShader::create(const Blob& shaderBlob, const std::string& entryPointName, ShaderType type, Shader::CompilerFlags flags, std::string& log)
     {

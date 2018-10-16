@@ -27,13 +27,10 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/Program/Program.h"
-#include "../../Externals/DXR/include/dxcapi.h"
 #include "API/Shader.h"
 
 namespace Falcor
 {
-    MAKE_SMART_COM_PTR(IDxcBlob);
-
     class RtShader : public Shader, inherit_shared_from_this<Shader, RtShader>
     {
     public:
