@@ -134,7 +134,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
     mpRtVars->getRayGenVars()->setTexture("gOutput", mpRtOut);
 
-    mpRtRenderer->renderScene(pContext, mpRtVars, mpRtState, uvec2(pTargetFbo->getWidth(), pTargetFbo->getHeight()), mpCamera.get());
+    mpRtRenderer->renderScene(pContext, mpRtVars, mpRtState, uvec3(pTargetFbo->getWidth(), pTargetFbo->getHeight(), 1), mpCamera.get());
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 

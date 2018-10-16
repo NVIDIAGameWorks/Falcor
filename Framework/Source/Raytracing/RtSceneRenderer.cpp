@@ -158,6 +158,11 @@ namespace Falcor
 
     void RtSceneRenderer::renderScene(RenderContext* pContext, RtProgramVars::SharedPtr pRtVars, RtState::SharedPtr pState, uvec2 targetDim, Camera* pCamera)
     {
+        renderScene(pContext, pRtVars, pState, uvec3(targetDim, 1), pCamera);
+    }
+
+    void RtSceneRenderer::renderScene(RenderContext* pContext, RtProgramVars::SharedPtr pRtVars, RtState::SharedPtr pState, uvec3 targetDim, Camera* pCamera)
+    {
         InstanceData data;
         data.currentData.pCamera = pCamera;
         uint32_t hitCount = pRtVars->getHitProgramsCount();
@@ -206,6 +211,6 @@ namespace Falcor
             logError("RtSceneRenderer::renderScene() - applying RtProgramVars failed, most likely because we ran out of descriptors.", true);
             assert(false);
         }
-        pContext->raytrace(pRtVars, pState, targetDim.x, targetDim.y);
+        pContext->raytrace(pRtVars, pState, targetDim.x, targetDim.y, targetDim.z);
     }
 }

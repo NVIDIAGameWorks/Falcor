@@ -33,6 +33,11 @@
 #include "API/D3D12/D3D12State.h"
 #include "API/DescriptorSet.h"
 
+#ifdef FALCOR_DXR
+#include "Raytracing/RtProgramVars.h"
+#include "Raytracing/RtState.h"
+#endif
+
 namespace Falcor
 {
     static void initBlitData()
@@ -339,6 +344,48 @@ namespace Falcor
         resourceBarrier(argBuffer, Resource::State::IndirectArg);
         mpLowLevelData->getCommandList()->ExecuteIndirect(gpDrawIndexCommandSig, 1, argBuffer->getApiHandle(), argBufferOffset, nullptr, 0);
     }
+
+#ifdef FALCOR_DXR
+    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
+    {
+        raytrace(pVars, pState, width, height, 1);
+    }
+
+    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height, uint32_t depth)
+    {
+        resourceBarrier(pVars->getShaderTable().get(), Resource::State::NonPixelShader);
+
+        Buffer* pShaderTable = pVars->getShaderTable().get();
+        uint32_t recordSize = pVars->getRecordSize();
+        D3D12_GPU_VIRTUAL_ADDRESS startAddress = pShaderTable->getGpuAddress();
+
+        D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
+        raytraceDesc.Width = width;
+        raytraceDesc.Height = height;
+        raytraceDesc.Depth = depth;
+
+        // RayGen is the first entry in the shader-table
+        raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress + pVars->getRayGenRecordIndex() * recordSize;
+        raytraceDesc.RayGenerationShaderRecord.SizeInBytes = recordSize;
+
+        // Miss is the second entry in the shader-table
+        raytraceDesc.MissShaderTable.StartAddress = startAddress + pVars->getFirstMissRecordIndex() * recordSize;
+        raytraceDesc.MissShaderTable.StrideInBytes = recordSize;
+        raytraceDesc.MissShaderTable.SizeInBytes = recordSize * pVars->getMissProgramsCount();
+
+        raytraceDesc.HitGroupTable.StartAddress = startAddress + pVars->getFirstHitRecordIndex() * recordSize;
+        raytraceDesc.HitGroupTable.StrideInBytes = recordSize;
+        raytraceDesc.HitGroupTable.SizeInBytes = recordSize * pVars->getHitRecordsCount();
+        assert(pVars->getShaderTable()->getSize() >= (pVars->getFirstHitRecordIndex() * recordSize) + raytraceDesc.HitGroupTable.SizeInBytes);  // Check that the buffer is sufficiently large to hold the shader table
+
+        auto pCmdList = getLowLevelData()->getCommandList();
+        pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
+
+        // Dispatch
+        pCmdList->SetPipelineState1(pState->getRtso()->getApiHandle().GetInterfacePtr());
+        pCmdList->DispatchRays(&raytraceDesc);
+    }
+#endif
 
     void RenderContext::initDrawCommandSignatures()
     {

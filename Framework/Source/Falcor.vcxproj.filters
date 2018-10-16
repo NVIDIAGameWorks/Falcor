@@ -507,9 +507,6 @@
     <ClCompile Include="Raytracing\RtShader.cpp">
       <Filter>Raytracing</Filter>
     </ClCompile>
-    <ClCompile Include="Raytracing\RtRenderContext.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp">
       <Filter>Graphics\Program</Filter>
     </ClCompile>
