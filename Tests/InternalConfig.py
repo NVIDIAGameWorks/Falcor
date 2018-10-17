@@ -26,20 +26,26 @@ def get_config_arguments():
         
     return current_args
     
-# get the arguments that change for each test
-def get_next_scene_args(scene_index):
-    args = '-defaultScene ' + TestConfig["Scenes"][scene_index] + ' '
-    return args
-
-def get_next_image_args(image_index):
-    args = '-defaultImage ' + TestConfig['Images'][image_index] + ' '
-    return args
-    
 
 test_arguments = get_config_arguments()
 if os.name == 'nt':
-	viewer_executable = 'RenderGraphViewer.exe'
+    viewer_executable = 'RenderGraphViewer.exe'
 else:
-	viewer_executable = 'RenderGraphViewer'
+    viewer_executable = 'RenderGraphViewer'
 num_scenes = len(TestConfig["Scenes"])
 num_images = len(TestConfig["Images"])
+
+# get the arguments that change for each test
+def get_next_scene_args(scene_index):
+    if scene_index >= num_scenes : 
+       scene_index =  num_scenes - 1
+    
+    args = '-scene ' + TestConfig["Scenes"][scene_index] + ' '
+    return args
+
+def get_next_image_args(image_index):
+    if image_index >= num_images : 
+       image_index =  num_images - 1
+
+    args = '-image ' + TestConfig['Images'][image_index] + ' '
+    return args

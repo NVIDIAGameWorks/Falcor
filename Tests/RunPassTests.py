@@ -127,27 +127,28 @@ def run_pass_test(executable_filepath, file_path, graph_name, output_directory):
         
         if run_all_scenes:
             num_scenes = iConfig.num_scenes
+            num_tests = num_scenes
         else:
             num_scenes = 1
         
         if run_all_images:
             num_images = iConfig.num_images
+            num_tests = num_images
         else:
             num_images = 1
         
-        for test_scene_index in range(0, num_scenes):
+        for test_index in range(0, num_scenes):
             viewer_args = start_viewer_args
             output_file_base_name = graphName + '_'
             
             if run_scene_tests:
-                scene_viewer_args = iConfig.get_next_scene_args(test_scene_index)
+                scene_viewer_args = iConfig.get_next_scene_args(test_index)
                 viewer_args = scene_viewer_args + viewer_args
                 input_arg = scene_viewer_args.split()[1]
                 output_file_base_name = output_file_base_name + os.path.splitext(os.path.basename(input_arg))[0] + '_'
             
             if run_image_tests:
-                for test_images_index in range(0, num_images):
-                    image_viewer_args = iConfig.get_next_image_args(test_images_index)
+                    image_viewer_args = iConfig.get_next_image_args(test_index)
                     viewer_args = image_viewer_args + viewer_args
                     input_arg = image_viewer_args.split()[1]
                     output_image_file_base_name = output_file_base_name + os.path.splitext(os.path.basename(input_arg))[0] + '_'

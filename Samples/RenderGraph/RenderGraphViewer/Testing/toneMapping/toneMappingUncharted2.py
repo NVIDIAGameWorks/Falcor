@@ -1,6 +1,6 @@
 def render_graph_testToneMapping():
 	testToneMapping = createRenderGraph()
-	ImageLoader = createRenderPass("ImageLoader", {'fileName': 'Cerberus/HDR.hdr', 'mips': True, 'srgb': False})
+	ImageLoader = createRenderPass("ImageLoader", {'fileName': 'Cerberus/HDR.hdr', 'mips': False, 'srgb': False})
 	testToneMapping.addPass(ImageLoader, "ImageLoader")
 	ToneMapping = createRenderPass("ToneMapping", {'operator': ToneMapOp.HableUc2})
 	testToneMapping.addPass(ToneMapping, "ToneMapping")

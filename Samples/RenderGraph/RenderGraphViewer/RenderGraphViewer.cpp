@@ -70,7 +70,7 @@ void RenderGraphViewer::parseArguments(SampleCallbacks* pSample, const ArgList& 
     {
         std::string filename = argList[kImageSwitch].asString();
         if (filename.size()) { mDefaultImageName = filename; }
-        else msgBox("No path to default scene provided.");
+        else msgBox("No path to default image provided.");
     }
     if (argList.argExists(kGraphFileSwitch))
     {

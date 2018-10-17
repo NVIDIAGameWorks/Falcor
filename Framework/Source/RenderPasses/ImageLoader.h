@@ -50,6 +50,6 @@ namespace Falcor
         Texture::SharedPtr mpTex;
         std::string mImageName;
         bool mGenerateMips = true;
-        bool mLoadSRGB = true;
+        bool mLoadSRGB = false;
     };
 }

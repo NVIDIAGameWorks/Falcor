@@ -40,7 +40,7 @@ namespace Falcor
     static const std::string kImage = "fileName";
     static const std::string kMips = "mips";
     static const std::string kSrgb = "srgb";
-    static const std::string kDefaultImage = "defaultImage";
+    static const std::string kDefaultImage = "image";
 
     RenderPassReflection ImageLoader::reflect() const
     {
