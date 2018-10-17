@@ -145,6 +145,11 @@ namespace Falcor
         }
     }
 
+    bool Device::isFeatureSupported(SupportedFeatures flags) const
+    {
+        return is_set(mSupportedFeatures, flags);
+    }
+
     void Device::executeDeferredReleases()
     {
         mpResourceAllocator->executeDeferredReleases();

@@ -179,16 +179,23 @@ namespace Falcor
         if (!pFbo) return;
         ID3D12GraphicsCommandList1* pList1;
         pList->QueryInterface(IID_PPV_ARGS(&pList1));
+
+        bool featureSupported = gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly) ||
+                                gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsFull);
+
         const auto& samplePos = pFbo->getSamplePositions();
 
-        if (!pList1)
+#if _LOG_ENABLED
+        if (featureSupported == false && samplePos.size() > 0)
         {
-            if (samplePos.size())
-            {
-                logError("The FBO specifies programmable sample positions, but the hardware doesn't support it");
-            }
+            logError("The FBO specifies programmable sample positions, but the hardware does not support it");
         }
-        else
+        else if (gpDevice->isFeatureSupported(Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly) && samplePos.size() > 1)
+        {
+            logError("The FBO specifies multiple programmable sample positions, but the hardware only supports one");
+        }
+#endif
+        if(featureSupported)
         {
             static_assert(offsetof(Fbo::SamplePosition, xOffset) == offsetof(D3D12_SAMPLE_POSITION, X), "SamplePosition.X");
             static_assert(offsetof(Fbo::SamplePosition, yOffset) == offsetof(D3D12_SAMPLE_POSITION, Y), "SamplePosition.Y");
@@ -285,13 +292,6 @@ namespace Falcor
         if (is_set(StateBindFlags::PipelineState, mBindFlags))
         {
             pList->SetPipelineState(mpGraphicsState->getGSO(mpGraphicsVars.get())->getApiHandle());
-        }
-        if (is_set(StateBindFlags::SamplePositions, mBindFlags))
-        {
-            if (mpGraphicsState->getFbo() && mpGraphicsState->getFbo()->getSamplePositions().size())
-            {
-                logWarning("The Vulkan backend doesn't support programmable sample positions");
-            }
         }
 
         BlendState::SharedPtr blendState = mpGraphicsState->getBlendState();
