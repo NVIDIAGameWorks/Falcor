@@ -146,8 +146,8 @@ namespace Falcor
                 rgb32FSupported = (desc.VendorId != 0x1002); // The AMD cards I tried can't handle 96-bits textures correctly
 
                 D3D12_FEATURE_DATA_D3D12_OPTIONS5 features;
-                d3d_call(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
-                if (features.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+                HRESULT hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
+                if (FAILED(hr) || features.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
                 {
                     logInfo("Raytracing is not supported on this device.");
                 }
