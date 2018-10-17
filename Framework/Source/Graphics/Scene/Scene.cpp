@@ -41,21 +41,20 @@ namespace Falcor
 
     Scene::SharedPtr Scene::loadFromFile(const std::string& filename, Model::LoadFlags modelLoadFlags, Scene::LoadFlags sceneLoadFlags)
     {
-        Scene::SharedPtr pScene = create();
+        Scene::SharedPtr pScene = create(filename);
         if (SceneImporter::loadScene(*pScene, filename, modelLoadFlags, sceneLoadFlags) == false)
         {
             pScene = nullptr;
         }
-        pScene->mFilename = filename;
         return pScene;
     }
 
-    Scene::SharedPtr Scene::create()
+    Scene::SharedPtr Scene::create(const std::string& filename)
     {
-        return SharedPtr(new Scene());
+        return SharedPtr(new Scene(filename));
     }
 
-    Scene::Scene() : mId(sSceneCounter++)
+    Scene::Scene(const std::string& filename) : mId(sSceneCounter++), mFilename(filename)
     {
         // Reset all global id counters recursively
         Model::resetGlobalIdCounter();

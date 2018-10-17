@@ -103,7 +103,7 @@ namespace Falcor
         };
 
         static Scene::SharedPtr loadFromFile(const std::string& filename, Model::LoadFlags modelLoadFlags = Model::LoadFlags::None, Scene::LoadFlags sceneLoadFlags = LoadFlags::None);
-        static Scene::SharedPtr create();
+        static Scene::SharedPtr create(const std::string& filename = "");
 
         virtual ~Scene();
 
@@ -226,16 +226,12 @@ namespace Falcor
         */
         const std::string& getFilename() const { return mFilename; }
         
-        /** Set the filename
-        */
-        void setFilename(const std::string& filename) { mFilename = filename; }
-
         /** Set a new aspect ratio for all the cameras in the scene
         */
         void setCamerasAspectRatio(float ratio);
     protected:
 
-        Scene();
+        Scene(const std::string& filename = "");
         /**
             Update changed scene extents (radius and center).
         */

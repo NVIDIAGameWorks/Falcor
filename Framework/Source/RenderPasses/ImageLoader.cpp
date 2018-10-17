@@ -150,11 +150,6 @@ namespace Falcor
         else if (findFileInDataDirectories(fileName, fullPath)) mImageName = fileName;
 
         mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
-        if (!mpTex)
-        {
-            mImageName.clear();
-            logWarning("Failed to load image for image loader pass.");
-        }
     }
 
     void ImageLoader::renderUI(Gui* pGui, const char* uiGroup)

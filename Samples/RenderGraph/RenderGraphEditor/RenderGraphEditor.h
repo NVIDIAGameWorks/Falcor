@@ -52,14 +52,13 @@ private:
     std::vector<RenderGraph::SharedPtr> mpGraphs;
     std::vector<RenderGraphUI> mRenderGraphUIs;
     std::unordered_map<std::string, uint32_t> mGraphNamesToIndex;
-    std::unordered_map<size_t, bool> mGraphIndexToLoadScene; // move this
     size_t mCurrentGraphIndex;
     glm::uvec2 mWindowSize;
     std::string mCurrentLog;
     std::string mNextGraphString;
     std::string mCurrentGraphOutput;
     std::string mGraphOutputEditString;
-    std::string mFilePath;
+    std::string mUpdateFilePath;
      
 
     Gui::DropdownList mOpenGraphNames;

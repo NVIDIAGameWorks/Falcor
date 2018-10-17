@@ -65,7 +65,6 @@ namespace Falcor
         static const char* kUpdatePass;
         static const char* kSetName;
         static const char* kSetScene;
-        static const char* kSetNoDefaultScene;
         static const char* kLoadPassLibrary;
 
     private:

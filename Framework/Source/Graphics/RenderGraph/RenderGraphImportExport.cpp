@@ -88,7 +88,7 @@ namespace Falcor
         return res;
     }
 
-    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename, std::string funcName)
+    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename, std::string funcName, ExportFlags exportFlags)
     {
         updateGraphStrings(graphName, filename, funcName);
         RenderGraphIR::SharedPtr pIR = RenderGraphIR::create(graphName);
@@ -100,12 +100,13 @@ namespace Falcor
             pIR->loadPassLibrary(getFilenameFromPath(libName));
         }
 
+        //Add the passes
         for (const auto& node : pGraph->mNodeData)
         {
             const auto& data = node.second;
             pIR->addPass(data.pPass->getName(), data.nodeName, data.pPass->getScriptingDictionary());
         }
-        
+
         // Add the edges
         for (const auto& edge : pGraph->mEdgeData)
         {
@@ -125,18 +126,10 @@ namespace Falcor
         }
 
         // if set, add the scene
-        auto pScene = pGraph->getScene();
-        if (pScene != nullptr)
+        if (exportFlags == ExportFlags::SetScene)
         {
-            pIR->setScene(pScene->getFilename());
-        }
-
-        if (pGraph->getPassesDictionary()->keyExists(RenderGraphScripting::kSetNoDefaultScene))
-        {
-            if (!static_cast<bool>((*pGraph->getPassesDictionary())[RenderGraphScripting::kSetNoDefaultScene]))
-            {
-                pIR->disableLoadDefaultScene();
-            }
+            auto pScene = pGraph->getScene();
+            if (pScene != nullptr)  { pIR->setScene(pScene->getFilename()); }
         }
 
         // Save it to file

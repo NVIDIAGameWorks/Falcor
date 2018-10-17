@@ -140,11 +140,6 @@ namespace Falcor
         mIR += mGraphPrefix + funcCall(RenderGraphScripting::kSetScene, sceneName);
     }
 
-    void RenderGraphIR::disableLoadDefaultScene()
-    {
-        mIR += mGraphPrefix + funcCall(RenderGraphScripting::kSetNoDefaultScene);
-    }
-
     void RenderGraphIR::loadPassLibrary(const std::string& name)
     {
         mIR += mIndentation + funcCall(RenderGraphScripting::kLoadPassLibrary, addQuotes(name));

@@ -13,7 +13,7 @@ def render_graph_testAnimation():
 	testAnimation.addEdge("DepthPass.depth", "SkyBox.depth")
 	testAnimation.addEdge("SkyBox.target", "ForwardLightingPass.color")
 	testAnimation.markOutput("BlitPass.dst")
-	Cerberus = loadScene("C:/Users/moakes/Documents/P4_Workspace/graphics/media/Main/Cerberus/Standard/Cerberus.fscene")
+	Cerberus = loadScene("Cerberus/Standard/Cerberus.fscene")
 	testAnimation.setScene(Cerberus)
 	return testAnimation
 

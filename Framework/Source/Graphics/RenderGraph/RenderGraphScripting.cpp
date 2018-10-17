@@ -52,7 +52,6 @@ namespace Falcor
     const char* RenderGraphScripting::kLoadPassLibrary = "loadRenderPassLibrary";
     const char* RenderGraphScripting::kSetName = "setName";
     const char* RenderGraphScripting::kSetScene = "setScene";
-    const char* RenderGraphScripting::kSetNoDefaultScene = "disableLoadDefaultScene";
 
     void RenderGraphScripting::registerScriptingObjects(pybind11::module& m)
     {
@@ -67,12 +66,6 @@ namespace Falcor
         graphClass.def(kAutoGenEdges, &RenderGraph::autoGenEdges);
         graphClass.def(kSetName, &RenderGraph::setName);
         graphClass.def(kSetScene, &RenderGraph::setScene);
-        // mark in dictionary that the default scene will not be loaded
-        const auto& setNoScene = [](const RenderGraph::SharedPtr& pGraph)
-        {
-            (*pGraph->getPassesDictionary())[kSetNoDefaultScene] = true;
-        };
-        graphClass.def(kSetNoDefaultScene, setNoScene);
 
         // RenderPass
         pybind11::class_<RenderPass, RenderPass::SharedPtr>(m, "RenderPass");

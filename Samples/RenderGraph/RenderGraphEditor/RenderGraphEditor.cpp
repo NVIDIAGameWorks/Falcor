@@ -31,6 +31,9 @@
 #include "RenderGraphEditor.h"
 
 const char* kViewerExecutableName = "RenderGraphViewer";
+const char* kGraphFileSwitch = "graphFile";
+const char* kGraphNameSwitch = "graphname";
+const char* kEditorSwitch = "editor";
 
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0)
@@ -47,6 +50,34 @@ RenderGraphEditor::~RenderGraphEditor()
     {
         terminateProcess(mViewerProcess);
         mViewerProcess = 0;
+    }
+}
+
+void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+{
+    const auto& argList = pSample->getArgList();
+    std::string filePath;
+    if (argList.argExists(kGraphFileSwitch))
+    {
+        filePath = argList[kGraphFileSwitch].asString();
+    }
+
+    pSample->toggleText(false);
+    pSample->toggleGlobalUI(false);
+
+    if (filePath.size())
+    {
+        std::string graphName;
+        if (argList.argExists(kGraphNameSwitch)) graphName = argList[kGraphNameSwitch].asString();
+
+        mViewerRunning = true;
+        loadGraphsFromFile(filePath, graphName);
+
+        if (argList.argExists(kEditorSwitch)) mUpdateFilePath = filePath;
+    }
+    else
+    {
+        createNewGraph("DefaultRenderGraph");
     }
 }
 
@@ -169,9 +200,9 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mCurrentGraphIndex = selection;
     }
 
-    if (mFilePath.size())
+    if (mUpdateFilePath.size())
     {
-        mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath, pSample->getLastFrameTime());
+        mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mUpdateFilePath, pSample->getLastFrameTime());
     }
 
     if (mViewerRunning && mViewerProcess)
@@ -181,7 +212,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             terminateProcess(mViewerProcess);
             mViewerProcess = 0;
             mViewerRunning = false;
-            mFilePath.clear();
+            mUpdateFilePath.clear();
         }
     }
     
@@ -210,23 +241,12 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             std::string filename;
             if (openFileDialog("*.fscene", filename))
             {
-                auto pDummyScene = Scene::create();
-                pDummyScene->setFilename(filename);
+                auto pDummyScene = Scene::create(filename);
                 mpGraphs[mCurrentGraphIndex]->setScene(pDummyScene);
             }
         }
     }
 
-    bool& graphLoadsScene = mGraphIndexToLoadScene[mCurrentGraphIndex];
-    const char* buttonText = graphLoadsScene ? "DisableAllowDefaultScene" : "EnableAllowDefaultScene";
-    if (pGui->addButton(buttonText, true))
-    {
-        auto pGraph = mpGraphs[mCurrentGraphIndex];
-        auto& dict = *pGraph->getPassesDictionary();
-        dict[RenderGraphScripting::kSetNoDefaultScene] = !graphLoadsScene;
-        graphLoadsScene = !graphLoadsScene;
-    }
-    
     std::vector<std::string> graphOutputString{mGraphOutputEditString};
     if (pGui->addMultiTextBox("Add Output", {"GraphOutput"}, graphOutputString))
     {
@@ -255,12 +275,13 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (openViewer)
         {
-            mFilePath = getTempFilename();
-            RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mFilePath);
+            mUpdateFilePath = getTempFilename();
+            RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mUpdateFilePath);
             
             // load application for the editor given it the name of the mapped file
-            std::string commandLine = std::string("-tempFile ") + mFilePath + " -graphname " + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
-            mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+            std::string commandLineArgs = "-" + std::string(kEditorSwitch) + " -" + std::string(kGraphFileSwitch) + ' ' + mUpdateFilePath;
+            commandLineArgs += " -" + std::string(kGraphNameSwitch) + ' ' + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
+            mViewerProcess = executeProcess(kViewerExecutableName, commandLineArgs);
             assert(mViewerProcess);
             mViewerRunning = true;
         }
@@ -351,7 +372,6 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const st
         if (nameToIndexIt != mGraphNamesToIndex.end())
         {
              MsgBoxButton button = msgBox("Warning! Graph is already open. Update graph from file?", MsgBoxType::OkCancel);
-            
             if (button == MsgBoxButton::Ok)
             {
                 mCurrentGraphIndex = nameToIndexIt->second;
@@ -371,7 +391,6 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const st
             nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
             nextGraphID.label = name;
             mOpenGraphNames.push_back(nextGraphID);
-            mGraphIndexToLoadScene[nextGraphID.value] = true;
         }
     }
 }
@@ -398,35 +417,6 @@ void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
     nextGraphID.value = static_cast<int32_t>(mOpenGraphNames.size());
     nextGraphID.label = graphName;
     mOpenGraphNames.push_back(nextGraphID);
-
-    mGraphIndexToLoadScene[mCurrentGraphIndex] = true;
-}
-
-void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
-{
-    std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
-    
-    if (commandArgs.size())
-    {
-        mFilePath = commandArgs.front().asString();
-    }
-
-    pSample->toggleText(false);
-    pSample->toggleGlobalUI(false);
-    
-    if (mFilePath.size())
-    {
-        std::vector<ArgList::Arg> graphArgs = pSample->getArgList().getValues("graphname");
-        std::string graphName;
-        if (graphArgs.size()) graphName = graphArgs[0].asString();
-
-        mViewerRunning = true;
-        loadGraphsFromFile(mFilePath, graphName);
-    }
-    else
-    {
-        createNewGraph("DefaultRenderGraph");
-    }
 }
 
 void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
