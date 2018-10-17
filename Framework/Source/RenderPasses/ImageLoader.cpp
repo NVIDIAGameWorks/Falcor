@@ -53,7 +53,6 @@ namespace Falcor
     ImageLoader::SharedPtr ImageLoader::create(const Dictionary& dict)
     {
         SharedPtr pPass = SharedPtr(new ImageLoader);
-        std::string defaultImageName;
 
         for (const auto& v : dict)
         {
@@ -74,8 +73,6 @@ namespace Falcor
                 logWarning("Unknown field `" + v.key() + "` in a ImageLoader dictionary");
             }
         }
-        
-        if (!pPass->mImageName.size()) pPass->mImageName = defaultImageName;
     
         return pPass;
     }
@@ -106,13 +103,11 @@ namespace Falcor
             }
             if (mImageName.size())
             {
-                if (dict.keyExists(mImageName))
-                {
-                    mpTex = dict[mImageName];
-                }
+                if (dict.keyExists(mImageName)) { mpTex = dict[mImageName]; }
                 else
                 {
-                    loadImage();
+                    mImageName = stripDataDirectories(mImageName);
+                    mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
                     // if updatePass is called, the image will be unloaded
                     // save the image pointer in the shared dictionary to avoid this
                     dict[mImageName] = mpTex;
@@ -132,44 +127,28 @@ namespace Falcor
         }
     }
 
-    void ImageLoader::loadImage()
-    {
-        std::string fullPath;
-        std::string fileName = getFilenameFromPath(mImageName);
-        std::string fileDir = getDirectoryFromFile(mImageName);
-        auto dataDirs = getDataDirectoriesList();
-        
-        std::string commonDirectory;
-        for (const auto& dataDir : dataDirs)
-        {
-            commonDirectory = getRelativeSubDirectory(fileDir, dataDir);
-            if (commonDirectory.size()) {   break; }
-        }
-
-        if (commonDirectory.size()) mImageName = commonDirectory + fileName;
-        else if (findFileInDataDirectories(fileName, fullPath)) mImageName = fileName;
-
-        mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
-    }
-
     void ImageLoader::renderUI(Gui* pGui, const char* uiGroup)
     {
         if (!uiGroup || pGui->beginGroup(uiGroup))
         {
             bool reloadImage =  pGui->addTextBox("Image File", mImageName); ;
-            reloadImage |= pGui->addCheckBox("Load SRGB", mLoadSRGB);
+            reloadImage |= pGui->addCheckBox("Load As SRGB", mLoadSRGB);
             reloadImage |= pGui->addCheckBox("Generate Mipmaps", mGenerateMips);
             if (pGui->addButton("loadFile")) { reloadImage |= openFileDialog("", mImageName); }
             if (pGui->addButton("clear"))
             {
-                mpTex = nullptr; mImageName.clear(); reloadImage = false;
+                mpTex = nullptr; mImageName.clear();
             }
-
-            if (reloadImage && mImageName.size()) loadImage();
-
+            
             if (mpTex)
             {
-                pGui->addImage(mImageName.c_str(), mpTex, {320, 320});
+                pGui->addImage(mImageName.c_str(), mpTex, { 320, 320 });
+            }
+
+            if (reloadImage && mImageName.size())
+            {
+                mImageName = stripDataDirectories(mImageName);
+                mpTex = createTextureFromFile(mImageName, mGenerateMips, mLoadSRGB);
             }
 
             if (uiGroup) pGui->endGroup();

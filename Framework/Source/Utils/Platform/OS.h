@@ -204,10 +204,6 @@ namespace Falcor
     */
     std::string canonicalizeFilename(const std::string& filename);
 
-    /** 
-    */
-    std::string getRelativeSubDirectory(const std::string& dirPath, const std::string& relativeTo);
-
     /** Breaks in debugger (int 3 functionality)
     */
     void debugBreak();

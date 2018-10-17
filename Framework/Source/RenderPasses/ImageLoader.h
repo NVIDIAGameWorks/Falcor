@@ -46,7 +46,6 @@ namespace Falcor
         virtual Dictionary getScriptingDictionary() const override;
     private:
         ImageLoader();
-        void loadImage();
 
         Texture::SharedPtr mpTex;
         std::string mImageName;

@@ -59,7 +59,7 @@ private:
     std::string mCurrentGraphOutput;
     std::string mGraphOutputEditString;
     std::string mUpdateFilePath;
-     
+    bool mSceneSet = false;
 
     Gui::DropdownList mOpenGraphNames;
     bool mShowCreateGraphWindow = false;

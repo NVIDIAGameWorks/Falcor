@@ -241,8 +241,10 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             std::string filename;
             if (openFileDialog("*.fscene", filename))
             {
+                filename = stripDataDirectories(filename);
                 auto pDummyScene = Scene::create(filename);
                 mpGraphs[mCurrentGraphIndex]->setScene(pDummyScene);
+                mSceneSet = true;
             }
         }
     }
@@ -276,7 +278,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (openViewer)
         {
             mUpdateFilePath = getTempFilename();
-            RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mUpdateFilePath);
+            RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mUpdateFilePath, {}, static_cast<RenderGraphExporter::ExportFlags>(mSceneSet));
             
             // load application for the editor given it the name of the mapped file
             std::string commandLineArgs = "-" + std::string(kEditorSwitch) + " -" + std::string(kGraphFileSwitch) + ' ' + mUpdateFilePath;

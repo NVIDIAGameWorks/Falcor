@@ -90,36 +90,6 @@ namespace Falcor
         return fs::exists(path) ? fs::canonical(path).string() : "";
     }
 
-    std::string getRelativeSubDirectory(const std::string& dirPath, const std::string& relativeTo)
-    {
-        std::string dir = canonicalizeFilename(fs::absolute(dirPath).string());
-        std::string relativeDir = canonicalizeFilename(fs::absolute(relativeTo).string());
-        auto dirVec = splitString(dir, "\\/");
-        auto relativeDirVec = splitString(relativeDir, "\\/");
-        size_t dirVecSize  = dirVec.size();
-        size_t relativeDirVecSize = relativeDirVec.size();
-
-        if (!dirVecSize || !relativeDirVecSize) return "";
-
-        std::string commonDir = "";
-        uint32_t index = 0;
-        size_t vecSize = (dirVecSize < relativeDirVecSize) ? dirVecSize : relativeDirVecSize;
-        for (uint32_t i = 0; i < vecSize; ++i)
-        {
-            if (relativeDirVec[i] == dirVec[i]) { index++; }
-        }
-
-        if (index == static_cast<uint32_t>(relativeDirVecSize))
-        {
-            for (uint32_t i = static_cast<uint32_t>(relativeDirVecSize); i < dirVec.size(); ++i)
-            {
-                commonDir += dirVec[i] + '/';
-            }
-        }
-
-        return commonDir;
-    }
-
     bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)
     {
         static bool bInit = false;
