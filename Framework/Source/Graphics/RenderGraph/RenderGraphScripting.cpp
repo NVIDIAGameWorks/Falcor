@@ -33,7 +33,6 @@
 #include "Graphics/RenderGraph/RenderPassLibrary.h"
 #include "pybind11/operators.h"
 #include "Graphics/Scene/Scene.h"
-#include "Raytracing/RtScene.h"
 
 using namespace pybind11::literals;
 

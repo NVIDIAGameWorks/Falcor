@@ -25,7 +25,7 @@
     <ProjectGuid>{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>FeatureDemo</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <ProjectName>RenderGraphViewer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

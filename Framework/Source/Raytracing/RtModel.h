@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Graphics/Model/Model.h"
 
 namespace Falcor
@@ -62,4 +61,3 @@ namespace Falcor
         void createBottomLevelData();
     };
 }
-#endif // FALCOR_DXR

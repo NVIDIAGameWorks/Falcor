@@ -31,8 +31,11 @@
 #include "API/Sampler.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Graphics/Scene/Scene.h"
-#include "Raytracing/RtScene.h"
 #include "Graphics/RenderGraph/RenderGraph.h"
+
+#ifdef FALCOR_D3D12
+#include "Raytracing/RtScene.h"
+#endif
 
 using namespace pybind11::literals;
 
@@ -90,7 +93,7 @@ namespace Falcor
         auto sceneClass = pybind11::class_<Scene, Scene::SharedPtr>(m, "Scene");
 
         // RtScene
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         // RtSceneFlags
         auto rtScene = pybind11::enum_<RtBuildFlags>(m, "RtBuildFlags");
         rtScene.val(RtBuildFlags::None).val(RtBuildFlags::AllowUpdate).val(RtBuildFlags::AllowCompaction).val(RtBuildFlags::FastTrace).val(RtBuildFlags::FastBuild);

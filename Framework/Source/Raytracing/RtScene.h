@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#ifdef FALCOR_DXR
 #include "Graphics/Scene/Scene.h"
 #include "RtModel.h"
 #include <map>
@@ -91,4 +90,3 @@ namespace Falcor
         bool mRefit = false;
     };
 }
-#endif // FALCOR_DXR

@@ -28,7 +28,7 @@
     <ProjectGuid>{232CBBB4-33D9-4445-BB62-08A7E7700147}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>FeatureDemo</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <ProjectName>SamplePassLibrary</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
