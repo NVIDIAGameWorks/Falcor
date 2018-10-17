@@ -181,8 +181,6 @@ namespace Falcor
     void RtModel::buildAccelerationStructure()
     {
         RenderContext* pContext = gpDevice->getRenderContext().get();
-        CommandListHandle pRtCmdList = pContext->getLowLevelData()->getCommandList();
-        DeviceHandle pRtDevice = gpDevice->getApiHandle();
 
         auto dxrFlags = getDxrBuildFlags(mBuildFlags);
 
@@ -235,7 +233,8 @@ namespace Falcor
             inputs.pGeometryDescs = geomDesc.data();
 
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-            pRtDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+            GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
+            pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
             Buffer::SharedPtr pScratchBuffer = Buffer::create(info.ScratchDataSizeInBytes, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
             blasData.pBlas = Buffer::create(info.ResultDataMaxSizeInBytes, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
@@ -246,7 +245,8 @@ namespace Falcor
             asDesc.DestAccelerationStructureData = blasData.pBlas->getGpuAddress();
             asDesc.ScratchAccelerationStructureData = pScratchBuffer->getGpuAddress();
 
-            pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
+            GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
+            pList4->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
 
             // Insert a UAV barrier
             pContext->uavBarrier(blasData.pBlas.get());

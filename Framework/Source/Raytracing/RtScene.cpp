@@ -239,8 +239,6 @@ namespace Falcor
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS dxrFlags = getDxrBuildFlags(mRtFlags);
         RenderContext* pContext = gpDevice->getRenderContext().get();
-        auto pCmdList = pContext->getLowLevelData()->getCommandList();
-        DeviceHandle pRtDevice = gpDevice->getApiHandle();
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDesc = createInstanceDesc(this, hitProgCount);
 
         // todo: improve this check - make sure things have not changed much and update was enabled last time
@@ -256,7 +254,8 @@ namespace Falcor
         inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-        pRtDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+        GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
+        pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
         Buffer::SharedPtr pScratchBuffer = Buffer::create(align_to(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, info.ScratchDataSizeInBytes), Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
 
@@ -268,8 +267,8 @@ namespace Falcor
         {
             pContext->uavBarrier(mpTopLevelAS.get());
         }
-        Buffer::SharedPtr pInstanceData = Buffer::create(mInstanceCount * sizeof(D3D12_RAYTRACING_INSTANCE_DESC), Buffer::BindFlags::None, Buffer::CpuAccess::None, instanceDesc.data());
 
+        Buffer::SharedPtr pInstanceData = Buffer::create(mInstanceCount * sizeof(D3D12_RAYTRACING_INSTANCE_DESC), Buffer::BindFlags::None, Buffer::CpuAccess::None, instanceDesc.data());
         assert((mInstanceCount != 0) && pInstanceData->getApiHandle() && mpTopLevelAS->getApiHandle() && pScratchBuffer->getApiHandle());
 
         // Create the TLAS
@@ -285,8 +284,9 @@ namespace Falcor
             asDesc.SourceAccelerationStructureData = asDesc.DestAccelerationStructureData;
         }
 
+        GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
         pContext->resourceBarrier(pInstanceData.get(), Resource::State::NonPixelShader);
-        pCmdList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
+        pList4->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
         pContext->uavBarrier(mpTopLevelAS.get());
 
         // Create the SRV

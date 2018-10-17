@@ -141,7 +141,7 @@ namespace Falcor
                 continue;
             }
 
-            if (SUCCEEDED(D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice)) == S_OK))
+            if (SUCCEEDED(D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice))))
             {
                 rgb32FSupported = (desc.VendorId != 0x1002); // The AMD cards I tried can't handle 96-bits textures correctly
 

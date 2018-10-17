@@ -45,6 +45,8 @@ __forceinline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }
 #define d3d_call(a) a
 #endif
 
+#define GET_COM_INTERFACE(base, type, var) MAKE_SMART_COM_PTR(type); concat_strings(type, Ptr) var; d3d_call(base->QueryInterface(IID_PPV_ARGS(&var)));
+
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3d12.lib")
@@ -120,8 +122,8 @@ namespace Falcor
 
     // Device
     MAKE_SMART_COM_PTR(ID3D12StateObject);
-    MAKE_SMART_COM_PTR(ID3D12Device5);
-    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList4);
+    MAKE_SMART_COM_PTR(ID3D12Device);
+    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
     MAKE_SMART_COM_PTR(ID3D12Debug);
     MAKE_SMART_COM_PTR(ID3D12CommandQueue);
     MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
@@ -142,8 +144,8 @@ namespace Falcor
     class DescriptorHeapEntry;
 
 	using WindowHandle = HWND;
-    using DeviceHandle = ID3D12Device5Ptr;
-    using CommandListHandle = ID3D12GraphicsCommandList4Ptr;
+    using DeviceHandle = ID3D12DevicePtr;
+    using CommandListHandle = ID3D12GraphicsCommandListPtr;
 	using CommandQueueHandle = ID3D12CommandQueuePtr;
     using ApiCommandQueueType = D3D12_COMMAND_LIST_TYPE;
     using CommandAllocatorHandle = ID3D12CommandAllocatorPtr;

@@ -378,8 +378,9 @@ namespace Falcor
         pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
-        pCmdList->SetPipelineState1(pState->getRtso()->getApiHandle().GetInterfacePtr());
-        pCmdList->DispatchRays(&raytraceDesc);
+        GET_COM_INTERFACE(pCmdList, ID3D12GraphicsCommandList4, pList4);
+        pList4->SetPipelineState1(pState->getRtso()->getApiHandle().GetInterfacePtr());
+        pList4->DispatchRays(&raytraceDesc);
     }
 
     void RenderContext::initDrawCommandSignatures()

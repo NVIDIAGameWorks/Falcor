@@ -115,7 +115,8 @@ namespace Falcor
 
         // Create the state
         D3D12_STATE_OBJECT_DESC objectDesc = rtsoHelper.getDesc();
-        d3d_call(gpDevice->getApiHandle()->CreateStateObject(&objectDesc, IID_PPV_ARGS(&pState->mApiHandle)));
+        GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
+        d3d_call(pDevice5->CreateStateObject(&objectDesc, IID_PPV_ARGS(&pState->mApiHandle)));
 
         return pState;
     }
