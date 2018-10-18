@@ -55,7 +55,7 @@ void shadowMiss(inout ShadowRayData hitData)
 }
 
 [shader("anyhit")]
-void shadowAnyHit(inout ShadowRayData hitData, in BuiltinIntersectionAttribs attribs)
+void shadowAnyHit(inout ShadowRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
     hitData.hit = true;
 }
@@ -103,7 +103,7 @@ float3 getReflectionColor(float3 worldOrigin, VertexOut v, float3 worldRayDir, u
 }
 
 [shader("closesthit")]
-void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttribs attribs)
+void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
     // Get the hit-point data
     float3 rayOrigW = WorldRayOrigin();

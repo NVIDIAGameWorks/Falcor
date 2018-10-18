@@ -45,11 +45,6 @@ shared RaytracingAccelerationStructure gRtScene : register(t57);
 // Unfortunately, interpolating the position incurs the extra cost of fetching 3x12B positions and one matrix multiply.
 #define USE_INTERPOLATED_POSITION
 
-struct BuiltinIntersectionAttribs
-{
-    float2 baryCrd;
-};
-
 shared cbuffer DxrPerFrame : register(b13)
 {
     uint hitProgramCount;
@@ -104,9 +99,9 @@ VertexOut getVertexAttributes(uint triangleIndex, float3 barycentrics)
     return v;
 }
 
-VertexOut getVertexAttributes(uint triangleIndex, BuiltinIntersectionAttribs attribs)
+VertexOut getVertexAttributes(uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)
 {
-    float3 barycentrics = float3(1.0 - attribs.baryCrd.x - attribs.baryCrd.y, attribs.baryCrd.x, attribs.baryCrd.y);
+    float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
     return getVertexAttributes(triangleIndex, barycentrics);
 }
 
@@ -170,9 +165,9 @@ float3 getPrevPosW(uint triangleIndex, float3 barycentrics)
     return mul(float4(prevPos, 1.f), gPrevWorldMat[0]).xyz;
 }
 
-float3 getPrevPosW(uint triangleIndex, BuiltinIntersectionAttribs attribs)
+float3 getPrevPosW(uint triangleIndex, BuiltInTriangleIntersectionAttributes attribs)
 {
-    float3 barycentrics = float3(1.0 - attribs.baryCrd.x - attribs.baryCrd.y, attribs.baryCrd.x, attribs.baryCrd.y);
+    float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
     return getPrevPosW(triangleIndex, barycentrics);
 }
 
