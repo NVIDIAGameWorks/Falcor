@@ -17,11 +17,6 @@ ForwardRenderer : $(SAMPLE_CONFIG)
 	$(call MoveProjectData,$(DIR), $(OUT_DIR))
 	@echo Built $@
 
-# Render Graph Viewer project
-
-RenderGraphViewer : RenderGraphEditor $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/RenderGraph/RenderGraphViewer/,RenderGraphViewer.cpp,RenderGraphViewer)
-
 # Core Samples
 
 ComputeShader : $(SAMPLE_CONFIG)
@@ -63,9 +58,6 @@ ModelViewer : $(SAMPLE_CONFIG)
 
 SceneEditor : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorApp.cpp,SceneEditor)
-
-RenderGraphEditor : $(SAMPLE_CONFIG)
-	$(call CompileSample,Samples/RenderGraph/RenderGraphEditor/,RenderGraphEditor.cpp,RenderGraphEditor)
 
 CC:=g++
 
