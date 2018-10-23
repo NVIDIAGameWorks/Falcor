@@ -1,29 +1,24 @@
 v3.1
 ------
-Important Changes
 - Falcor now requires Windows 10 SDK version 1809 (10.0.17763.0)
 - `DebugDXR` and `ReleaseDXR` build configs have been removed, raytracing features are officially a part of DirectX 12 on Windows 10 RS5
-
-Deprecations
 - `RtSceneRenderer::renderScene()` and `RenderContext::raytrace()` have been updated as DXR ray dispatch now takes 3 parameters (width, height, depth) instead of two
-
-Other Changes
 - Added deprecation system
-- Added support for StructuredBuffers with VariableBuffer::renderUI
 - Added a ProgramBase base class for better Program/RtProgram abstraction
-- Use a priority_queue to help optimize descriptor-heap allocations
-- Added debug checks when binding compute/graphics vars
-- Added debug checks in resourceBarrier() to make sure the resource has the correct flags 
 - Added the option to pass CompilerFlags to many objects
 - Added Logger::Level::Fatal
-- Better abstraction of the alpha-test
-- Added `env_map` attribute and environment texture to the scene
+- Added `env_map` attribute and environment texture to scenes
 - Added `Scene::setCamerasAspectRatio()` which will set all the scene's cameras aspect ratio at once
 - Gui class supports multiple fonts. Default font is trebuchet, profiler font is consolas-bold
 - Added support for high-DPI displays (GUI only)
 - Added a way to query for device feature support (see `Device::isFeatureSupported()`)
 
-Bug Fixes:
+Bug Fixes and Improvements:
+- Added debug checks when binding compute/graphics vars
+- Added debug checks in resourceBarrier() to make sure the resource has the correct flags 
+- Added support for StructuredBuffers with VariableBuffer::renderUI
+- Better abstraction of the alpha-test
+- Use a priority_queue to help optimize descriptor-heap allocations
 - Fixed VideoCapture UI
 - Fixed debug visualization in Shadows sample
 - No longer call SetSamplePositions when device doesn't support it
@@ -32,7 +27,7 @@ Dependencies:
 - Added pybind11 2.2.4
 - Updated GLM to 0.9.9.2
 - Updated Vulkan SDK to 1.1.82.1
-- Updated Slang to 0.11.2
+- Updated Slang to 0.11.4
 - Updated imgui to 1.65
 
 v3.0.7
