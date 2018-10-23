@@ -154,7 +154,7 @@ namespace Falcor
 
     Device::SupportedFeatures getSupportedFeatures(DeviceHandle pDevice)
     {
-        Device::SupportedFeatures supported;
+        Device::SupportedFeatures supported = Device::SupportedFeatures::None;
 
         D3D12_FEATURE_DATA_D3D12_OPTIONS2 features2;
         HRESULT hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &features2, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS2));

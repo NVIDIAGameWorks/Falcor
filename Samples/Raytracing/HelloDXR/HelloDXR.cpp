@@ -85,6 +85,11 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
 
 void HelloDXR::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
+    if (gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing) == false)
+    {
+        logErrorAndExit("Device does not support raytracing!", true);
+    }
+
     RtProgram::Desc rtProgDesc;
     rtProgDesc.addShaderLibrary("HelloDXR.rt.hlsl").setRayGen("rayGen");
     rtProgDesc.addHitGroup(0, "primaryClosestHit", "").addMiss(0, "primaryMiss");
