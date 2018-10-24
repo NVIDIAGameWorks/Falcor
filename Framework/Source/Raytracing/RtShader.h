@@ -27,13 +27,10 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/Program/Program.h"
-#include "../../Externals/DXR/include/dxcapi.h"
 #include "API/Shader.h"
 
 namespace Falcor
 {
-    MAKE_SMART_COM_PTR(IDxcBlob);
-
     class RtShader : public Shader, inherit_shared_from_this<Shader, RtShader>
     {
     public:
@@ -47,7 +44,6 @@ namespace Falcor
     private:
         RtShader(ShaderType type, const std::string& entryPointName);
         std::string mEntryPoint;
-        ID3DBlobPtr compile(const Blob& blob, const std::string&  entryPointName, Shader::CompilerFlags flags, std::string& errorLog) override;
     };
 
     RtShader::SharedPtr createRtShaderFromBlob(

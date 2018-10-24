@@ -25,7 +25,7 @@
     <ProjectGuid>{0C3483E0-B6C1-41BC-B8F9-306F9BA5F287}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>EnvMap</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <ProjectName>SkyBoxRenderer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

@@ -41,9 +41,9 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const RtSingleShaderProgram>;
         ~RtSingleShaderProgram() = default;
 
-        static SharedPtr createFromFile(const char* filename, const char* entryPoint, const DefineList& programDefines = DefineList(), uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES)
+        static SharedPtr createFromFile(const char* filename, const char* entryPoint, const DefineList& programDefines = DefineList(), uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES, Shader::CompilerFlags flags = Shader::CompilerFlags::None)
         {
-            return createCommon(filename, entryPoint, programDefines, maxPayloadSize, maxAttributesSize);
+            return createCommon(filename, entryPoint, programDefines, maxPayloadSize, maxAttributesSize, flags);
         }
 
         RtProgramVersion::SharedConstPtr getActiveVersion() const { return std::dynamic_pointer_cast<const RtProgramVersion>(Program::getActiveVersion()); }
@@ -54,10 +54,11 @@ namespace Falcor
         uint32_t mMaxPayloadSize;
         uint32_t mMaxAttributesSize;
 
-        static SharedPtr createCommon(const char* str, const char* entryPoint, const DefineList& programDefines, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
+        static SharedPtr createCommon(const char* str, const char* entryPoint, const DefineList& programDefines, uint32_t maxPayloadSize, uint32_t maxAttributesSize, Shader::CompilerFlags flags)
         {
             SharedPtr pProg = SharedPtr(new RtSingleShaderProgram(maxPayloadSize, maxAttributesSize));
             Desc d(str);
+            d.setCompilerFlags(flags);
             d.entryPoint((ShaderType)shaderType, entryPoint);
             d.setShaderModel("6_3");
             pProg->init(d, programDefines);

@@ -67,8 +67,9 @@ INCLUDES = \
 -I "Framework/Externals/GLM" \
 -I "Framework/Externals/OpenVR/headers" \
 -I "Framework/Externals/RapidJson/include" \
+-I "Framework/Externals/pybind11/include" \
 -I "$(VULKAN_SDK)/include" \
-$(shell pkg-config --cflags assimp gtk+-3.0 glfw3) \
+$(shell pkg-config --cflags assimp gtk+-3.0 glfw3 python3) \
 $(shell pkg-config --cflags libavcodec libavdevice libavformat libswscale libavutil)
 
 ADDITIONAL_LIB_DIRS = -L "Bin/" \
@@ -76,9 +77,9 @@ ADDITIONAL_LIB_DIRS = -L "Bin/" \
 -L "Framework/Externals/Slang/bin/linux-x86_64/release" \
 -L "$(VULKAN_SDK)/lib"
 
-LIBS = -lfalcor \
+LIBS = -lfalcor -lfalcorshared \
 -lfreeimage -lslang -lslang-glslang -lopenvr_api \
-$(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11) \
+$(shell pkg-config --libs assimp gtk+-3.0 glfw3 x11 python3) \
 $(shell pkg-config --libs libavcodec libavdevice libavformat libswscale libavutil) \
 -lvulkan -lstdc++fs -lpthread -lrt -lm -ldl -lz
 
@@ -102,10 +103,10 @@ SOURCE_DIR:=Framework/Source/
 RELATIVE_DIRS:=/ \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/FXAA/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
-Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Picking/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ \
+Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/RenderGraph/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
+Utils/ Utils/Math/ Utils/Scripting/ Utils/Picking/ Utils/PatternGenerators/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ RenderPasses/ \
 VR/ VR/OpenVR/ \
-../Externals/dear_imgui/
+../Externals/dear_imgui/ ../Externals/dear_imgui_addons/imguinodegrapheditor/
 
 # RELATIVE_DIRS, but now with paths relative to Makefile
 SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
@@ -113,7 +114,7 @@ SOURCE_DIRS = $(addprefix $(SOURCE_DIR), $(RELATIVE_DIRS))
 # All source files enumerated with paths relative to Makefile (base repo)
 # TODO: Fix VKGSO.
 # Filter out VKGraphicsStateObject from rest of config because it currently cannot be compiled with optimizations.
-ALL_SOURCE_FILES = $(filter-out %VKGraphicsStateObject.cpp,$(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS))))
+ALL_SOURCE_FILES = $(filter-out %FalcorSharedObjects.cpp %VKGraphicsStateObject.cpp,$(wildcard $(addsuffix *.cpp,$(SOURCE_DIRS))))
 
 # All expected .o files with the same path as their corresponding .cpp.
 ALL_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_SOURCE_FILES))
@@ -149,10 +150,21 @@ define MoveProjectData
 endef
 
 # Builds Falcor library in Release
-Release : PreBuild ReleaseConfig $(OUT_DIR)libfalcor.a
+Release : PreBuild ReleaseConfig $(OUT_DIR)libfalcorshared.so $(OUT_DIR)libfalcor.a
 
 # Builds Falcor library in Debug
-Debug : PreBuild DebugConfig $(OUT_DIR)libfalcor.a
+Debug : PreBuild DebugConfig $(OUT_DIR)libfalcorshared.so $(OUT_DIR)libfalcor.a
+
+$(OUT_DIR)libfalcorshared.so : $(OUT_DIR)libfalcor.a
+	$(call CompileSharedLibrary,Framework/FalcorSharedObjects/,FalcorSharedObjects.cpp,libfalcorshared.so)
+
+define CompileSharedLibrary
+	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
+	@echo $(2)
+	@$(CC) -fpic $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE) -D BUILDING_SHARED_DLL
+	@echo Linking $(3)
+	@$(CC) -shared -o $(OUT_DIR)$(3) $(1)$(O_FILE)
+endef
 
 # Creates the lib
 $(OUT_DIR)libfalcor.a : $(ALL_OBJ_FILES) $(SOURCE_DIR)API/Vulkan/VKGraphicsStateObject.o

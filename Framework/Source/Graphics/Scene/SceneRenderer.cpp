@@ -51,7 +51,6 @@ namespace Falcor
     size_t SceneRenderer::sLightCountOffset = ConstantBuffer::kInvalidOffset;
     size_t SceneRenderer::sLightArrayOffset = ConstantBuffer::kInvalidOffset;
 
-    const char* SceneRenderer::kPerMaterialCbName = "InternalPerMaterialCB";
     const char* SceneRenderer::kPerFrameCbName = "InternalPerFrameCB";
     const char* SceneRenderer::kPerMeshCbName = "InternalPerMeshCB";
     const char* SceneRenderer::kBoneCbName = "InternalBoneCB";
@@ -127,7 +126,7 @@ namespace Falcor
             if (sLightArrayOffset != ConstantBuffer::kInvalidOffset)
             {
                 assert(mpScene->getLightCount() <= MAX_LIGHT_SOURCES);  // Max array size in the shader
-                for (uint_t i = 0; i < mpScene->getLightCount(); i++)
+                for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
                 {
                     mpScene->getLight(i)->setIntoProgramVars(currentData.pVars, pCB, sLightArrayOffset + (i * Light::getShaderStructSize()));
                 }

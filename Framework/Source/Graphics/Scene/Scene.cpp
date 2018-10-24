@@ -46,6 +46,7 @@ namespace Falcor
         {
             pScene = nullptr;
         }
+        pScene->mFilename = filename;
         return pScene;
     }
 
@@ -85,10 +86,10 @@ namespace Falcor
                         sceneAABB = BoundingBox::fromUnion(sceneAABB, pInst->getBoundingBox());
                     }
                 }
-
-                mCenter = sceneAABB.center;
-                mRadius = length(sceneAABB.extent);
             }
+
+            mCenter = sceneAABB.center;
+            mRadius = length(sceneAABB.extent) * 0.5f;
 
             // Update light extents
             for (auto& pLight : mpLights)
@@ -333,6 +334,7 @@ namespace Falcor
             const Model::SharedPtr& pModel = getModel(modelId);
             if (pModel)
             {
+                // TODO: Create area lights per model instance
                 std::vector<AreaLight::SharedPtr> areaLights = createAreaLightsForModel(pModel.get());
                 mpAreaLights.insert(mpAreaLights.end(), areaLights.begin(), areaLights.end());
             }
@@ -358,5 +360,10 @@ namespace Falcor
         {
             model[0]->getObject()->attachSkinningCache(pSkinningCache);
         }
+    }
+
+    void Scene::setCamerasAspectRatio(float ratio)
+    {
+        for (auto& c : mCameras) c->setAspectRatio(ratio);
     }
 }

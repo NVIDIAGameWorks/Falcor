@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
@@ -13,12 +13,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY);$(FALCOR_CORE_DIRECTORY)\Source\;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals\RapidJson\include;$(FALCOR_CORE_DIRECTORY)\Externals\pybind11\include;$(FALCOR_CORE_DIRECTORY)\Externals\Python\include;$(FALCOR_CORE_DIRECTORY)\Externals</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\FreeImage;$(FALCOR_CORE_DIRECTORY)\Externals\Assimp\lib\$(PlatformName)\;$(FALCOR_CORE_DIRECTORY)\Externals\FFMpeg\lib\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\openvr\lib\win64;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi\amd64;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Lib;$(FALCOR_CORE_DIRECTORY)\Externals\Slang\bin\windows-x64\release;$(FALCOR_CORE_DIRECTORY)\Externals\GLFW\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\FreeImage;$(FALCOR_CORE_DIRECTORY)\Externals\Assimp\lib\$(PlatformName)\;$(FALCOR_CORE_DIRECTORY)\Externals\FFMpeg\lib\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\openvr\lib\win64;$(FALCOR_CORE_DIRECTORY)\Externals\nvapi\amd64;$(FALCOR_CORE_DIRECTORY)\Externals\VulkanSDK\Lib;$(FALCOR_CORE_DIRECTORY)\Externals\Slang\bin\windows-x64\release;$(FALCOR_CORE_DIRECTORY)\Externals\GLFW\lib;$(FALCOR_CORE_DIRECTORY)\Externals\Python\libs</AdditionalLibraryDirectories>
+      <AdditionalDependencies>glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>call $(FALCOR_CORE_DIRECTORY)\BuildScripts\postbuild.bat $(FALCOR_CORE_DIRECTORY)\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir) $(FALCOR_BACKEND)</Command>

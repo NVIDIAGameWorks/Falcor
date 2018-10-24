@@ -29,11 +29,29 @@
 #include "FalcorConfig.h"
 #include <stdint.h>
 #include <memory>
-#include "glm/glm.hpp"
 #include <iostream>
 #include "Utils/Logger.h"
+#include "Utils/Scripting/Scripting.h"
 
+#define GLM_FORCE_CTOR_INIT
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/glm.hpp"
 using namespace glm;
+
+// Define DLL export/import
+#ifdef _MSC_VER
+#define falcorexport __declspec(dllexport)
+#define falcorimport __declspec(dllimport)
+#else  // _MSC_VER
+#define falcorexport __attribute__ ((visibility ("default")))
+#define falcorimport extern
+#endif // _MSC_VER
+
+#ifdef BUILDING_SHARED_DLL
+#define dlldecl falcorexport
+#else   // BUILDING_SHARED_DLL
+#define dlldecl falcorimport
+#endif // BUILDING_SHARED_DLL
 
 #ifndef arraysize
 #define arraysize(a) (sizeof(a)/sizeof(a[0]))
@@ -77,15 +95,6 @@ using namespace glm;
 #define concat_strings_(a, b) a##b
 #define concat_strings(a, b) concat_strings_(a, b)
 
-#if defined(_MSC_VER)
-#define FALCOR_DEPRECATED(MESSAGE) __declspec(deprecated(MESSAGE))
-#define forceinline __forceinline
-#else
-// TODO: add cases for clang/gcc when/if needed
-#define FALCOR_DEPRECATED(MESSAGE) /* emtpy */
-#define forceinline __attribute__((always_inline))
-#endif
-
 namespace Falcor
 {
 #define enum_class_operators(e_) inline e_ operator& (e_ a, e_ b){return static_cast<e_>(static_cast<int>(a)& static_cast<int>(b));}  \
@@ -111,7 +120,7 @@ namespace Falcor
         Domain,         ///< Domain shader (AKA Tessellation evaluation shader)
         Compute,        ///< Compute shader
 
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         RayGeneration,  ///< Ray generation shader
         Intersection,   ///< Intersection shader
         AnyHit,         ///< Any hit shader
@@ -147,6 +156,20 @@ namespace Falcor
     };
 
     enum_class_operators(FboAttachmentType);
+
+
+    enum class ComparisonFunc
+    {
+        Disabled,       ///< Comparison is disabled
+        Never,          ///< Comparison always fails
+        Always,         ///< Comparison always succeeds
+        Less,           ///< Passes if source is less than the destination
+        Equal,          ///< Passes if source is equal to the destination
+        NotEqual,       ///< Passes if source is not equal to the destination
+        LessEqual,      ///< Passes if source is less than or equal to the destination
+        Greater,        ///< Passes if source is greater than to the destination
+        GreaterEqual,   ///< Passes if source is greater than or equal to the destination
+    };
 
     /** Clamps a value within a range.
         \param[in] val Value to clamp
@@ -194,10 +217,6 @@ namespace Falcor
     };
 }
 
-#ifdef FALCOR_DXR
-#define FALCOR_D3D12
-#endif
-
 #if defined(FALCOR_D3D12)
 #include "API/D3D12/FalcorD3D12.h"
 #elif defined(FALCOR_VK)
@@ -228,7 +247,7 @@ namespace Falcor
             return "geometry";
         case ShaderType::Compute:
             return "compute";
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         case ShaderType::RayGeneration:
             return "raygeneration";
         case ShaderType::Intersection:
@@ -247,7 +266,37 @@ namespace Falcor
             return "";
         }
     }
+
+
+#define compare_str(a) case ComparisonFunc::a: return #a
+    inline std::string to_string(ComparisonFunc f)
+    {
+        switch (f)
+        {
+            compare_str(Disabled);
+            compare_str(LessEqual);
+            compare_str(GreaterEqual);
+            compare_str(Less);
+            compare_str(Greater);
+            compare_str(Equal);
+            compare_str(NotEqual);
+            compare_str(Always);
+            compare_str(Never);
+        default: should_not_get_here(); return "";
+        }
+    }
+#undef compare_str
 }
+
+#if defined(_MSC_VER)
+#define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
+#define forceinline __forceinline
+using DllHandle = HMODULE;
+#else
+#define deprecate(_ver_, _msg_) 
+#define forceinline __attribute__((always_inline))
+using DllHandle = void*;
+#endif
 
 #include "Utils/Platform/OS.h"
 #include "Utils/Profiler.h"

@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "glm/glm.hpp"
 #include <set>
 #include <string>
 #include <stdint.h>
@@ -98,12 +97,13 @@ namespace Falcor
         void resizeSwapChain(uint32_t width, uint32_t height) override;
         bool isKeyPressed(const KeyboardEvent::Key& key) override;
         float getFrameRate() override { return mFrameRate.getAverageFrameTime(); }
-        float getLastFrameTime() override { return mFrameRate.getLastFrameTime();  }
+        float getLastFrameTime() override { return mFrameRate.getLastFrameTime(); }
         uint64_t getFrameID() override { return mFrameRate.getFrameCount(); }
         void renderText(const std::string& str, const glm::vec2& position, glm::vec2 shadowOffset = vec2(1)) override;
         std::string getFpsMsg() override;
         void toggleText(bool showText) override { mShowText = showText && gpDevice; }
-        void toggleUI(bool showUI) override { mShowUI = showUI && gpDevice; }
+        void toggleUI(bool showUI) override { if (!gpDevice || showUI) mShowUI = UIStatus::HideAll; else mShowUI = UIStatus::ShowAll; }
+        void toggleGlobalUI(bool showGlobalUI) override { if (!gpDevice || !showGlobalUI) mShowUI = UIStatus::HideGlobal; else mShowUI = UIStatus::ShowAll; }
         void setDefaultGuiSize(uint32_t width, uint32_t height) override;
         void setDefaultGuiPosition(uint32_t x, uint32_t y) override;
         void setCurrentTime(float time) override { mCurrentTime = time; }
@@ -146,7 +146,6 @@ namespace Falcor
 
         // Private functions
         void initUI();
-        void printProfileData();
         void calculateTime();
 
         void startVideoCapture();
@@ -159,7 +158,13 @@ namespace Falcor
 
         bool mVsyncOn = false;
         bool mShowText = true;
-        bool mShowUI = true;
+        enum class UIStatus
+        {
+            HideAll = 0,
+            HideGlobal,
+            ShowAll
+        };
+        UIStatus mShowUI = UIStatus::ShowAll;
         bool mCaptureScreen = false;
 
         Renderer::UniquePtr mpRenderer;

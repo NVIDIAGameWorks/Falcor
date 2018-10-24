@@ -31,8 +31,6 @@
 
 namespace Falcor
 {
-    Device::SharedPtr gpDevice;
-    
     Device::SharedPtr Device::create(Window::SharedPtr& pWindow, const Device::Desc& desc)
     {
         if (gpDevice)
@@ -145,6 +143,11 @@ namespace Falcor
                 mDeferredReleases.push({ mpFrameFence->getCpuValue(), pResource });
             }
         }
+    }
+
+    bool Device::isFeatureSupported(SupportedFeatures flags) const
+    {
+        return is_set(mSupportedFeatures, flags);
     }
 
     void Device::executeDeferredReleases()

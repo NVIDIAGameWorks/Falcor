@@ -28,20 +28,11 @@
 #include "Framework.h"
 #include "RtShader.h"
 #include "Utils/StringUtils.h"
-#include "dxcapi.use.h"
-
-static dxc::DxcDllSupport gDxrDllHelper;
 
 namespace Falcor
 {
-    RtShader::~RtShader() = default;
-    MAKE_SMART_COM_PTR(IDxcCompiler);
-    MAKE_SMART_COM_PTR(IDxcLibrary);
-    MAKE_SMART_COM_PTR(IDxcBlobEncoding);
-    MAKE_SMART_COM_PTR(IDxcOperationResult);
-    MAKE_SMART_COM_PTR(IDxcContainerReflection);
-
     RtShader::RtShader(ShaderType type, const std::string& entryPointName) : Shader(type), mEntryPoint(entryPointName) {}
+    RtShader::~RtShader() = default;
 
     RtShader::SharedPtr RtShader::create(const Blob& shaderBlob, const std::string& entryPointName, ShaderType type, Shader::CompilerFlags flags, std::string& log)
     {
@@ -49,48 +40,8 @@ namespace Falcor
         return pShader->init(shaderBlob, entryPointName, flags, log) ? pShader : nullptr;
     }
 
-    ID3DBlobPtr RtShader::compile(const Blob& blob, const std::string&  entryPointName, Shader::CompilerFlags flags, std::string& log)
-    {
-        d3d_call(gDxrDllHelper.Initialize());
-        IDxcCompilerPtr pCompiler;
-        IDxcLibraryPtr pLibrary;
-        d3d_call(gDxrDllHelper.CreateInstance(CLSID_DxcCompiler, &pCompiler));
-        d3d_call(gDxrDllHelper.CreateInstance(CLSID_DxcLibrary, &pLibrary));
-
-        // Create blob from the string
-        IDxcBlobEncodingPtr pTextBlob;
-        d3d_call(pLibrary->CreateBlobWithEncodingFromPinned((LPBYTE)blob.data.data(), (uint32_t)blob.data.size(), 0, &pTextBlob));
-
-        // Compile
-        std::vector<const WCHAR*> argv;
-        argv.push_back(L"-Zpr");
-        if (is_set(flags, Shader::CompilerFlags::TreatWarningsAsErrors))
-        {
-            argv.push_back(L"-WX");
-        }
-        IDxcOperationResultPtr pResult;
-        std::wstring entryPoint = string_2_wstring(entryPointName);
-        d3d_call(pCompiler->Compile(pTextBlob, L"RT Shader", L"", L"lib_6_3", argv.size() ? argv.data() : nullptr, (uint32_t)argv.size(), nullptr, 0, nullptr, &pResult));
-
-        // Verify the result
-        HRESULT resultCode;
-        d3d_call(pResult->GetStatus(&resultCode));
-        if (FAILED(resultCode))
-        {
-            IDxcBlobEncodingPtr pError;
-            d3d_call(pResult->GetErrorBuffer(&pError));
-            log += convertBlobToString(pError.GetInterfacePtr());
-            return nullptr;
-        }
-
-        IDxcBlobPtr pBlob;
-        d3d_call(pResult->GetResult(&pBlob));
-        return pBlob;
-    }
-
     RtShader::SharedPtr createRtShaderFromBlob(const std::string& filename, const std::string& entryPoint, const Shader::Blob& blob, Shader::CompilerFlags flags, ShaderType shaderType, std::string& log)
     {
-        assert(blob.type == Shader::Blob::Type::String);
         std::string msg;
         RtShader::SharedPtr pShader = RtShader::create(blob, entryPoint, shaderType, flags, msg);
 

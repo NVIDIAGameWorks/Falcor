@@ -39,6 +39,15 @@ namespace Falcor
 {
     class RenderContext;
 
+    struct FullScreenPassData
+    {
+        Buffer::SharedPtr pVertexBuffer;
+        Vao::SharedPtr    pVao;
+        uint64_t objectCount = 0;
+    };
+
+    dlldecl FullScreenPassData gFullScreenData;
+
     /** Helper class to simplify full-screen passes
     */
     class FullScreenPass
@@ -47,7 +56,18 @@ namespace Falcor
         using UniquePtr = std::unique_ptr<FullScreenPass>;
         using UniqueConstPtr = std::unique_ptr<const FullScreenPass>;
 
-        ~FullScreenPass();
+        ~FullScreenPass()
+        {
+            assert(gFullScreenData.objectCount > 0);
+
+            gFullScreenData.objectCount--;
+            if (gFullScreenData.objectCount == 0)
+            {
+                gFullScreenData.pVao = nullptr;
+                gFullScreenData.pVertexBuffer = nullptr;
+            }
+        }
+
 
         /** Create a new object.
             \param[in] psFile Pixel shader filename. Can also be an absolute path or a relative path from a data directory.
@@ -57,7 +77,7 @@ namespace Falcor
             \param[in] viewportMask Optional. Value to initialize viewport mask with. Useful for multi-projection passes
             \param[in] enableSPS Optional. If true, use Single-Pass Stereo when executing this pass.
         */
-        static UniquePtr create(const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false);
+        static UniquePtr create(const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None);
         
         /** Create a new object
             \param[in] vsFile Vertex shader filename. Can also be an absolute path or a relative path from a data directory.
@@ -68,7 +88,7 @@ namespace Falcor
             \param[in] viewportMask Optional. Value to initialize viewport mask with. Useful for multi-projection passes
             \param[in] enableSPS Optional. If true, use Single-Pass Stereo when executing this pass.
         */
-        static UniquePtr create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false);
+        static UniquePtr create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None);
 
         /** Execute the pass.
             \param[in] pRenderContext The render context.
@@ -82,16 +102,12 @@ namespace Falcor
         Program::SharedPtr getProgram() { return mpProgram; }
 
     protected:
-        FullScreenPass() { sObjectCount++; }
-        void init(const std::string& vsFile, const std::string & psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS = false);
+        FullScreenPass() { gFullScreenData.objectCount++; }
+        void init(const std::string& vsFile, const std::string & psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags);
 
     private:
         GraphicsProgram::SharedPtr mpProgram;
         GraphicsState::SharedPtr mpPipelineState;
         DepthStencilState::SharedPtr mpDepthStencilState;
-        // Static
-        static Buffer::SharedPtr spVertexBuffer;
-        static Vao::SharedPtr    spVao;
-        static uint64_t sObjectCount;
     };
 }

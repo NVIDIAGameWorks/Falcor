@@ -46,7 +46,7 @@ namespace Falcor
 
             Note that this call merely creates a program object. The actual compilation and link happens when calling Program#getActiveVersion().
         */
-        static SharedPtr createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines = DefineList());
+        static SharedPtr createFromFile(const std::string& filename, const std::string& csEntry, const DefineList& programDefines = DefineList(), Shader::CompilerFlags flags = Shader::CompilerFlags::None);
     private:
         ComputeProgram() = default;
     };

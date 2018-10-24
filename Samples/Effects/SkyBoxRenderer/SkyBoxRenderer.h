@@ -34,8 +34,8 @@ using namespace Falcor;
 class SkyBoxRenderer : public Renderer
 {
 public:
-    void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
     void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
@@ -46,7 +46,7 @@ private:
     
     Camera::SharedPtr mpCamera;
     SixDoFCameraController::SharedPtr mpCameraController;
-    SkyBox::UniquePtr mpSkybox;  
+    SkyBox::SharedPtr mpSkybox;  
     Sampler::SharedPtr mpTriLinearSampler;
 
     static const std::string skDefaultSkyBoxTexture;

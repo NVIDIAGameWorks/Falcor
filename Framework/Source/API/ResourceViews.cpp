@@ -30,57 +30,51 @@
 
 namespace Falcor
 {
-    DepthStencilView::SharedPtr DepthStencilView::sNullView;
-    RenderTargetView::SharedPtr RenderTargetView::sNullView;
-    UnorderedAccessView::SharedPtr UnorderedAccessView::sNullView;
-    ShaderResourceView::SharedPtr ShaderResourceView::sNullView;
-    ConstantBufferView::SharedPtr ConstantBufferView::sNullView;
-
     ResourceWeakPtr getEmptyTexture();
 
     ShaderResourceView::SharedPtr ShaderResourceView::getNullView()
     {
-        if (!sNullView)
+        if (!gNullSrv)
         {
-            sNullView = create(getEmptyTexture(), 0, 1, 0, 1);
+            gNullSrv = create(getEmptyTexture(), 0, 1, 0, 1);
         }
-        return sNullView;
+        return gNullSrv;
     }
 
     DepthStencilView::SharedPtr DepthStencilView::getNullView()
     {
-        if (!sNullView)
+        if (!gNullDsv)
         {
-            sNullView = create(getEmptyTexture(), 0, 0, 1);
+            gNullDsv = create(getEmptyTexture(), 0, 0, 1);
         }
-        return sNullView;
+        return gNullDsv;
     }
 
     UnorderedAccessView::SharedPtr UnorderedAccessView::getNullView()
     {
-        if (!sNullView)
+        if (!gNullUav)
         {
-            sNullView = create(getEmptyTexture(), 0, 0, 1);
+            gNullUav = create(getEmptyTexture(), 0, 0, 1);
         }
-        return sNullView;
+        return gNullUav;
     }
 
     RenderTargetView::SharedPtr RenderTargetView::getNullView()
     {
-        if (!sNullView)
+        if (!gNullRtv)
         {
-            create(getEmptyTexture(), 0, 0, 1);
+            gNullRtv = create(getEmptyTexture(), 0, 0, 1);
         }
-        return sNullView;
+        return gNullRtv;
     }
 
 
     ConstantBufferView::SharedPtr ConstantBufferView::getNullView()
     {
-        if (!sNullView)
+        if (!gNullCbv)
         {
             create(ResourceWeakPtr());
         }
-        return sNullView;
+        return gNullCbv;
     }
 }

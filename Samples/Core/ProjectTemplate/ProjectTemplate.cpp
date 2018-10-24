@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "ProjectTemplate.h"
-#include "glm/gtc/epsilon.hpp"
 
 void ProjectTemplate::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
@@ -37,11 +36,11 @@ void ProjectTemplate::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void ProjectTemplate::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void ProjectTemplate::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
 {
 }
 
-void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

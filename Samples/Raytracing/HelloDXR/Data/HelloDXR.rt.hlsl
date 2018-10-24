@@ -25,10 +25,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-RWTexture2D<float4> gOutput : register(u1);
+RWTexture2D<float4> gOutput;
 __import Raytracing;
 
-shared cbuffer PerFrameCB : register(b0)
+shared cbuffer PerFrameCB
 {
     float4x4 invView;
     float4x4 invModel;
@@ -39,7 +39,7 @@ shared cbuffer PerFrameCB : register(b0)
 struct PrimaryRayData
 {
     float4 color;
-    uint4 depth;
+    uint depth;
     float hitT;
 };
 
@@ -55,7 +55,7 @@ void shadowMiss(inout ShadowRayData hitData)
 }
 
 [shader("anyhit")]
-void shadowAnyHit(inout ShadowRayData hitData, in BuiltinIntersectionAttribs attribs)
+void shadowAnyHit(inout ShadowRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
     hitData.hit = true;
 }
@@ -103,7 +103,7 @@ float3 getReflectionColor(float3 worldOrigin, VertexOut v, float3 worldRayDir, u
 }
 
 [shader("closesthit")]
-void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttribs attribs)
+void primaryClosestHit(inout PrimaryRayData hitData, in BuiltInTriangleIntersectionAttributes attribs)
 {
     // Get the hit-point data
     float3 rayOrigW = WorldRayOrigin();
@@ -114,7 +114,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttri
     float3 posW = rayOrigW + hitT * rayDirW;
     // prepare the shading data
     VertexOut v = getVertexAttributes(triangleIndex, attribs);
-    ShadingData sd = prepareShadingData(v, gMaterial, gCamera.posW);
+    ShadingData sd = prepareShadingData(v, gMaterial, rayOrigW, 0);
 
     // Shoot a reflection ray
     float3 reflectColor = getReflectionColor(posW, v, rayDirW, hitData.depth.r);
@@ -141,7 +141,7 @@ void primaryClosestHit(inout PrimaryRayData hitData, in BuiltinIntersectionAttri
 [shader("raygeneration")]
 void rayGen()
 {
-    uint2 launchIndex = DispatchRaysIndex();
+    uint3 launchIndex = DispatchRaysIndex();
     float2 d = (((launchIndex.xy + 0.5) / viewportDims) * 2.f - 1.f);
     float aspectRatio = viewportDims.x / viewportDims.y;
 

@@ -56,7 +56,41 @@ namespace Falcor
 
     HRESULT RtVarsCmdList::QueryInterface(REFIID riid, void **ppvObject)
     {
-        return gpDevice->getRenderContext()->getLowLevelData()->getCommandList()->QueryInterface(riid, ppvObject);
+        if (riid == __uuidof(ID3D12CommandList))
+        {
+             *ppvObject = dynamic_cast<ID3D12CommandList*>(this);
+             return S_OK;
+        }
+        else if (riid == __uuidof(ID3D12GraphicsCommandList4))
+        {
+            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList4*>(this);
+            return S_OK;
+        }
+        else if (riid == __uuidof(ID3D12GraphicsCommandList3))
+        {
+            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList3*>(this);
+            return S_OK;
+        }
+        else if (riid == __uuidof(ID3D12GraphicsCommandList2))
+        {
+            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList2*>(this);
+            return S_OK;
+        }
+        else if (riid == __uuidof(ID3D12GraphicsCommandList1))
+        {
+            *ppvObject = dynamic_cast<ID3D12GraphicsCommandList1*>(this);
+            return S_OK;
+        }
+        else if (riid == __uuidof(ID3D12GraphicsCommandList))
+        {
+             *ppvObject = dynamic_cast<ID3D12GraphicsCommandList*>(this);
+             return S_OK;
+        }
+        else
+        {
+            *ppvObject = nullptr;
+            return E_NOINTERFACE;
+        }
     }
 
     void RtVarsCmdList::SetGraphicsRootDescriptorTable(UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)

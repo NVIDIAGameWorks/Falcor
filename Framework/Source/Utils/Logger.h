@@ -45,13 +45,9 @@ namespace Falcor
             Info = 0,       ///< Informative messages
             Warning = 1,    ///< Warning messages
             Error = 2,      ///< Error messages. Application might be able to continue running, but incorrectly.
-
+            Fatal = 3,      ///< Unrecoverable error. Will assert in debug builds
             Disabled = -1
         };
-
-        /** Initialize the logger. Has to be called once before logging is possible. This function will create the log file.
-        */
-        static void init();
 
         /** Shutdown the logger and close the log file.
         */
@@ -88,6 +84,7 @@ namespace Falcor
         static FILE* sLogFile;
         static bool sInit;
         static Level sVerbosity;
+        static bool init();
     };
 
     inline void logInfo(const std::string& msg, bool forceMsgBox = false) { Logger::log(Logger::Level::Info, msg, forceMsgBox); }

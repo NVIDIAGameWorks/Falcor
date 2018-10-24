@@ -43,9 +43,11 @@ namespace Falcor
     { (uint32_t)ToneMapping::Operator::Aces, "ACES" }
     };
 
+    static const std::string kOperator = "operator";
+
     ToneMapping::~ToneMapping() = default;
 
-    ToneMapping::ToneMapping(ToneMapping::Operator op)
+    ToneMapping::ToneMapping(ToneMapping::Operator op) : RenderPass("ToneMapping")
     {
         createLuminancePass();
         createToneMapPass(op);
@@ -57,22 +59,40 @@ namespace Falcor
         mpLinearSampler = Sampler::create(samplerDesc);
     }
 
-    ToneMapping::UniquePtr ToneMapping::create(Operator op)
+    ToneMapping::SharedPtr ToneMapping::create(Operator op)
     {
         ToneMapping* pTM = new ToneMapping(op);
-        return ToneMapping::UniquePtr(pTM);
+        return ToneMapping::SharedPtr(pTM);
     }
 
-    void ToneMapping::createLuminanceFbo(Fbo::SharedPtr pSrcFbo)
+    ToneMapping::SharedPtr ToneMapping::create(const Dictionary& dict)
+    {
+        Operator op = Operator::Aces;
+        for (const auto& v : dict)
+        {
+            if (v.key() == kOperator) op = v.val();
+            else logWarning("Unknown field `" + v.key() + "` in a ToneMapping dictionary");
+        }
+        return create(op);
+    }
+
+    Dictionary ToneMapping::getScriptingDictionary() const
+    {
+        Dictionary d;
+        d[kOperator] = mOperator;
+        return d;
+    }
+
+    void ToneMapping::createLuminanceFbo(const Texture::SharedPtr& pSrc)
     {
         bool createFbo = mpLuminanceFbo == nullptr;
-        ResourceFormat srcFormat = pSrcFbo->getColorTexture(0)->getFormat();
+        ResourceFormat srcFormat = pSrc->getFormat();
         uint32_t bytesPerChannel = getFormatBytesPerBlock(srcFormat) / getFormatChannelCount(srcFormat);
         
         // Find the required texture size and format
         ResourceFormat luminanceFormat = (bytesPerChannel == 32) ? ResourceFormat::R32Float : ResourceFormat::R16Float;
-        uint32_t requiredHeight = getLowerPowerOf2(pSrcFbo->getHeight());
-        uint32_t requiredWidth = getLowerPowerOf2(pSrcFbo->getWidth());
+        uint32_t requiredHeight = getLowerPowerOf2(pSrc->getHeight());
+        uint32_t requiredWidth = getLowerPowerOf2(pSrc->getWidth());
 
         if(createFbo == false)
         {
@@ -89,14 +109,19 @@ namespace Falcor
         }
     }
 
-    void ToneMapping::execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrc, Fbo::SharedPtr pDst)
+    void ToneMapping::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
+    {
+        return execute(pRenderContext, pSrc->getColorTexture(0), pDst);
+    }
+
+    void ToneMapping::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
     {
         GraphicsState::SharedPtr pState = pRenderContext->getGraphicsState();
         createLuminanceFbo(pSrc);
 
         //Set shared vars
-        mpToneMapVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getColorTexture(0)->getSRV());
-        mpLuminanceVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getColorTexture(0)->getSRV());
+        mpToneMapVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
+        mpLuminanceVars->getDefaultBlock()->setSrv(mBindLocations.colorTex, 0, pSrc->getSRV());
         mpToneMapVars->getDefaultBlock()->setSampler(mBindLocations.colorSampler, 0, mpPointSampler);
         mpLuminanceVars->getDefaultBlock()->setSampler(mBindLocations.colorSampler, 0, mpLinearSampler);
 
@@ -223,5 +248,24 @@ namespace Falcor
     void ToneMapping::setWhiteScale(float whiteScale)
     {
         mConstBufferData.whiteScale = max(0.001f, whiteScale);
+    }
+
+    static const std::string kSrc = "src";
+    static const std::string kDst = "dst";
+
+    RenderPassReflection ToneMapping::reflect() const
+    {
+        RenderPassReflection reflector;
+        reflector.addInput(kSrc);
+        reflector.addOutput(kDst);
+        return reflector;
+    }
+
+    void ToneMapping::execute(RenderContext* pRenderContext, const RenderData* pData)
+    {
+        Fbo::SharedPtr pFbo = Fbo::create();
+        pFbo->attachColorTarget(pData->getTexture(kDst), 0);
+
+        execute(pRenderContext, pData->getTexture(kSrc), pFbo);
     }
 }

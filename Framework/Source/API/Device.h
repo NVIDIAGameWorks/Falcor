@@ -74,6 +74,14 @@ namespace Falcor
 #endif
         };
 
+        enum class SupportedFeatures
+        {
+            None = 0x0,
+            ProgrammableSamplePositionsPartialOnly = 0x1, // On D3D12, this means tier 1 support. Allows one sample position to be set.
+            ProgrammableSamplePositionsFull = 0x2,        // On D3D12, this means tier 2 support. Allows up to 4 sample positions to be set.
+            Raytracing = 0x4                              // On D3D12, DirectX Raytracing is supported. It is up to the user to not use raytracing functions when not supported.
+        };
+
         /** Create a new device.
             \param[in] pWindow a previously-created window object
             \param[in] desc Device configuration descriptor.
@@ -143,7 +151,13 @@ namespace Falcor
         const QueryHeap::SharedPtr& getTimestampQueryHeap() const { return mTimestampQueryHeap; }
         void releaseResource(ApiObjectHandle pResource);
         double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
+
+        // This was originally a workaround for an issue found with AMD GPUs/Drivers so it is not a part of isFeatureSupported
         bool isRgb32FloatSupported() const { return mRgb32FloatSupported; }
+
+        /** Check if features are supported by the device
+        */
+        bool isFeatureSupported(SupportedFeatures flags) const;
 
 #ifdef FALCOR_VK
         enum class MemoryType
@@ -192,6 +206,8 @@ namespace Falcor
         bool mRgb32FloatSupported = true;
         std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
+        SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
+
         // API specific functions
         bool getApiFboData(uint32_t width, uint32_t height, ResourceFormat colorFormat, ResourceFormat depthFormat, std::vector<ResourceHandle>& apiHandles, uint32_t& currentBackBufferIndex);
         void destroyApiObjects();
@@ -202,5 +218,7 @@ namespace Falcor
         void toggleFullScreen(bool fullscreen);
     };
 
-    extern Device::SharedPtr gpDevice;
+    dlldecl Device::SharedPtr gpDevice;
+
+    enum_class_operators(Device::SupportedFeatures);
 }

@@ -36,6 +36,9 @@
 #include <sys/types.h>
 #include "API/Window.h"
 #include "psapi.h"
+#include "Utils/ThreadPool.h"
+#include <future>
+#include <shellscalingapi.h>
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -103,6 +106,12 @@ namespace Falcor
         DWORD res = CreateDirectoryA(path.c_str(), NULL);
 
         return res == TRUE;
+    }
+
+    std::string getTempFilename()
+    {
+        char* error = nullptr;
+        return std::tmpnam(error);
     }
 
     const std::string& getExecutableDirectory()
@@ -212,6 +221,42 @@ namespace Falcor
         return int((hPixelsPerInch + vPixelsPerInch) * 0.5);
     }
 
+    float getDisplayScaleFactor()
+    {
+        float dpi = (float)getDisplayDpi();
+        float scale = dpi / 96.0f;
+        return scale;
+
+        ::SetProcessDPIAware();
+        DEVICE_SCALE_FACTOR factor;
+        if (GetScaleFactorForMonitor(nullptr, &factor) == S_OK)
+        {
+            switch (factor)
+            {
+            case SCALE_100_PERCENT: return 1.0f;
+            case SCALE_120_PERCENT: return 1.2f;
+            case SCALE_125_PERCENT: return 1.25f;
+            case SCALE_140_PERCENT: return 1.40f;
+            case SCALE_150_PERCENT: return 1.50f;
+            case SCALE_160_PERCENT: return 1.60f;
+            case SCALE_175_PERCENT: return 1.70f;
+            case SCALE_180_PERCENT: return 1.80f;
+            case SCALE_200_PERCENT: return 2.00f;
+            case SCALE_225_PERCENT: return 2.25f;
+            case SCALE_250_PERCENT: return 2.50f;
+            case SCALE_300_PERCENT: return 3.00f;
+            case SCALE_350_PERCENT: return 3.50f;
+            case SCALE_400_PERCENT: return 4.00f;
+            case SCALE_450_PERCENT: return 4.50f;
+            case SCALE_500_PERCENT: return 4.60f;
+            default:
+                should_not_get_here();
+                return 1.0f;
+            }
+        }
+        return 1.0f;
+    }
+
     bool isDebuggerPresent()
     {
 #ifdef _DEBUG
@@ -229,6 +274,135 @@ namespace Falcor
     void debugBreak()
     {
         __debugbreak();
+    }
+
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs)
+    {
+        std::string commandLine = appName + ".exe " + commandLineArgs;
+        STARTUPINFOA startupInfo{}; PROCESS_INFORMATION processInformation{};
+        if (!CreateProcessA(nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo, &processInformation))
+        {
+            logError("Unable to execute the render graph editor");
+            return 0;
+        }
+
+        return reinterpret_cast<size_t>(processInformation.hProcess);
+    }
+
+    bool isProcessRunning(size_t processID)
+    {
+        uint32_t exitCode = 0;
+        if (GetExitCodeProcess((HANDLE)processID, (LPDWORD)&exitCode))
+        {
+            if (exitCode != STILL_ACTIVE)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void terminateProcess(size_t processID)
+    {
+        TerminateProcess((HANDLE)processID, 0);
+        CloseHandle((HANDLE)processID);
+    }
+
+    static std::unordered_map<std::string, std::pair<std::thread, bool> > fileThreads;
+
+    static void checkFileModifiedStatus(const std::string& filePath, const std::function<void()>& callback)
+    {
+        std::string fileName = getFilenameFromPath(filePath);
+        std::string dir = getDirectoryFromFile(filePath);
+        
+        HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
+        assert(hFile != INVALID_HANDLE_VALUE);
+
+        // overlapped struct requires unique event handle to be valid
+        OVERLAPPED overlapped{};
+
+        while (true)
+        {
+            size_t offset = 0;
+            uint32_t bytesReturned = 0;
+            std::vector<uint32_t> buffer;
+            buffer.resize(1024);
+
+            if (!ReadDirectoryChangesW(hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE,
+                FILE_NOTIFY_CHANGE_LAST_WRITE, 0, &overlapped, nullptr))
+            {
+                logError("Failed to read directory changes for shared file.");
+                CloseHandle(hFile);
+                return;
+            }
+
+            if (!GetOverlappedResult(hFile, &overlapped, (LPDWORD)&bytesReturned, true))
+            {
+                logError("Failed to read directory changes for shared file.");
+                CloseHandle(hFile);
+                return;
+                
+            }
+
+            // don't check for another overlapped result if main thread is closed
+            if (!fileThreads.at(filePath).second)
+            {
+                break;
+            }
+
+            if (!bytesReturned) continue;
+
+            while (offset < buffer.size())
+            {
+                _FILE_NOTIFY_INFORMATION* pNotifyInformation = reinterpret_cast<_FILE_NOTIFY_INFORMATION*>(buffer.data());
+                std::string currentFileName;
+                currentFileName.resize(pNotifyInformation->FileNameLength / 2);
+                wcstombs(&currentFileName.front(), pNotifyInformation->FileName, pNotifyInformation->FileNameLength);
+
+                if (currentFileName == fileName && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
+                {
+                    callback();
+                    break;
+                }
+
+                if (!pNotifyInformation->NextEntryOffset) break;
+                offset += pNotifyInformation->NextEntryOffset;
+            }
+        }
+
+        CloseHandle(hFile);
+    }
+
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
+    {
+        const auto& fileThreadsIt = fileThreads.find(filePath);
+
+        // only have one thread waiting on file write
+        if(fileThreadsIt != fileThreads.end())
+        {
+            if (fileThreadsIt->second.first.joinable())
+            {
+                fileThreadsIt->second.first.join();
+            }
+        }
+        
+        fileThreads[filePath].first = std::thread(checkFileModifiedStatus, filePath, callback);
+        fileThreads[filePath].second = true;
+    }
+
+    void closeSharedFile(const std::string& filePath)
+    {
+        const auto& fileThreadsIt = fileThreads.find(filePath);
+
+        // only have one thread waiting on file write
+        if (fileThreadsIt != fileThreads.end())
+        {
+            fileThreadsIt->second.second = false;
+
+            fileThreadsIt->second.first.detach();
+        }
     }
 
     void enumerateFiles(std::string searchString, std::vector<std::string>& filenames)
@@ -357,5 +531,25 @@ namespace Falcor
     uint32_t popcount(uint32_t a)
     {
         return __popcnt(a);
+    }
+
+
+    DllHandle loadDll(const std::string& libPath)
+    {
+        return LoadLibraryA(libPath.c_str());
+    }
+
+    /** Release a shared-library
+    */
+    void releaseDll(DllHandle dll)
+    {
+        FreeLibrary(dll);
+    }
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName)
+    {
+        return GetProcAddress(dll, funcName.c_str());
     }
 }

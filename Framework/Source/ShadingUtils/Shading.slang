@@ -28,30 +28,71 @@
 #ifndef _FALCOR_SHADING_SLANG_
 #define _FALCOR_SHADING_SLANG_
 #include "HostDeviceData.h"
-__import DefaultVS;
+__exported __import DefaultVS;
 __exported __import ShaderCommon;
 __import Lights;
 __import BRDF;
 __import Helpers;
 
-/** Load data from a texture
+
+/** Interface for texture sampling techniques.
+    Types implementing this interface support sampling using different LOD computation techniques
 */
-float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint mode)
+interface ITextureSampler
 {
-    if(mode == ChannelTypeUnused) return 0;
-    if(mode == ChannelTypeConst) return factor;
-    // else mode == ChannelTypeTexture
-    return t.Sample(s, uv);
-}
+    /** Sample from a 2D texture using the level of detail computed
+    by this method
+    */
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv);
+};
+
+/** Texture sampling using implicit fragment-quad finite differences
+*/
+struct ImplicitLodTextureSampler : ITextureSampler
+{
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
+    {
+        return t.Sample(s, uv);
+    }
+};
+
+/** Texture sampling using an explicit scalar level of detail
+*/
+struct ExplicitLodTextureSampler : ITextureSampler
+{
+    float lod; ///< The explicit level of detail to use
+
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
+    {
+        return t.SampleLevel(s, uv, lod);
+    }
+};
+
+/** Texture sampling using explicit screen-space gradients
+*/
+struct ExplicitGradientTextureSampler : ITextureSampler
+{
+    float2 gradX; ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY; ///< Gradient of texture coordiante in teh screen-space Y direction
+
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
+    {
+        return t.SampleGrad(s, uv, gradX, gradY);
+    }
+};
+
 
 /** Load data from a texture
+
+The `lod` parameter represents the method to use for computing
+texture level of detail, and must implement the `ITextureSampler` interface.
 */
-float4 sampleTexture(Texture2D t, SamplerState s, float2 uv, float4 factor, uint mode, float lod)
+float4 sampleTexture<L:ITextureSampler>(Texture2D t, SamplerState s, float2 uv, float4 factor, uint mode, L lod)
 {
     if(mode == ChannelTypeUnused) return 0;
     if(mode == ChannelTypeConst) return factor;
     // else mode == ChannelTypeTexture
-    return t.SampleLevel(s, uv, lod);
+    return lod.sampleTexture(t, s, uv);
 }
 
 /** Shading result struct
@@ -87,13 +128,16 @@ float3 RgToNormal(float2 rg)
 }
 
 /** Apply normal map
+
+The `lod` parameter represents the method to use for computing
+texture level of detail, and must implement the `ITextureSampler` interface.
 */
-void applyNormalMap(MaterialData m, inout ShadingData sd)
+void applyNormalMap<L:ITextureSampler>(MaterialData m, inout ShadingData sd, L lod)
 {
     uint mapType = EXTRACT_NORMAL_MAP_TYPE(m.flags);
     if(mapType == NormalMapUnused) return;
 
-    float3 mapN = m.resources.normalMap.Sample(m.resources.samplerState, sd.uv).rgb;
+    float3 mapN = lod.sampleTexture(m.resources.normalMap, m.resources.samplerState, sd.uv).xyz;
     switch(mapType)
     {
     case NormalMapRGB:
@@ -137,9 +181,12 @@ ShadingData initShadingData()
     return sd;
 }
 
-/** Prepare the hit-point data
+/** Internal implementation of `prepareShadingData`
+
+The `lod` parameter represents the method to use for computing
+texture level of detail, and must implement the `ITextureSampler` interface.
 */
-ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
+ShadingData _prepareShadingData<L:ITextureSampler>(VertexOut v, MaterialData m, float3 camPosW, L lod)
 {
     ShadingData sd = initShadingData();
 
@@ -148,7 +195,7 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 #endif
 
     // Sample the diffuse texture and apply the alpha test
-    float4 baseColor = sampleTexture(m.resources.baseColor, m.resources.samplerState, v.texC, m.baseColor, EXTRACT_DIFFUSE_TYPE(m.flags));
+    float4 baseColor = sampleTexture(m.resources.baseColor, m.resources.samplerState, v.texC, m.baseColor, EXTRACT_DIFFUSE_TYPE(m.flags), lod);
     sd.opacity = m.baseColor.a;
     alphaTest(m.flags, baseColor.a, m.alphaThreshold, v.posW);
 
@@ -162,7 +209,7 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 
     // Sample the spec texture
     bool sampleOcclusion = EXTRACT_OCCLUSION_MAP(m.flags) > 0;
-    float4 spec = sampleTexture(m.resources.specular, m.resources.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags));
+    float4 spec = sampleTexture(m.resources.specular, m.resources.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags), lod);
     if(EXTRACT_SHADING_MODEL(m.flags) == ShadingModelMetalRough)
     {
         // R - Occlusion; G - Roughness; B - Metalness
@@ -182,23 +229,23 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
 
         if(sampleOcclusion)
         {
-            sd.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, ChannelTypeTexture);
+            sd.occlusion = sampleTexture(m.resources.occlusionMap, m.resources.samplerState, v.texC, 1, ChannelTypeTexture, lod);
         }
     }
 
     sd.linearRoughness = max(0.08, sd.linearRoughness); // Clamp the roughness so that the BRDF won't explode
     sd.roughness = sd.linearRoughness * sd.linearRoughness;
-    sd.emissive = sampleTexture(m.resources.emissive, m.resources.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags)).rgb;
+    sd.emissive = sampleTexture(m.resources.emissive, m.resources.samplerState, v.texC, float4(m.emissive, 1), EXTRACT_EMISSIVE_TYPE(m.flags), lod).rgb;
     sd.IoR = m.IoR;
     sd.doubleSidedMaterial = EXTRACT_DOUBLE_SIDED(m.flags);
 
 #define channel_type(extract) (extract(m.flags) ? ChannelTypeTexture : ChannelTypeUnused)
-    sd.lightMap = sampleTexture(m.resources.lightMap, m.resources.samplerState, v.lightmapC, 1, channel_type(EXTRACT_LIGHT_MAP)).rgb;
-    sd.height = sampleTexture(m.resources.heightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP)).xy;
+    sd.lightMap = sampleTexture(m.resources.lightMap, m.resources.samplerState, v.lightmapC, 1, channel_type(EXTRACT_LIGHT_MAP), lod).rgb;
+    sd.height = sampleTexture(m.resources.heightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP), lod).xy;
     sd.height = sd.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
 #undef channel_type
     
-    applyNormalMap(m, sd);
+    applyNormalMap(m, sd, lod);
     sd.NdotV = dot(sd.N, sd.V);
 
     // Flip the normal if it's backfacing
@@ -209,6 +256,37 @@ ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
     }
 
     return sd;
+}
+
+/** Prepare the hit-point data
+*/
+ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW)
+{
+    ImplicitLodTextureSampler lod = { };
+    return _prepareShadingData(v, m, camPosW, lod);
+}
+
+/** Prepare the hit-point data
+
+The `lod` parameter represents the level of detail to use for all material
+texture fetches.
+*/
+ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW, float lod)
+{
+    ExplicitLodTextureSampler explicitLOD = { lod };
+    return _prepareShadingData(v, m, camPosW, explicitLOD);
+}
+
+/** Prepare the hit-point data
+
+The `gradX` and `gradY` parameters should be the screen-space gradients of
+`v.texC` with respect to screen-space X and Y, respectively. These gradient
+values will be used for all material texture fetches.
+*/
+ShadingData prepareShadingData(VertexOut v, MaterialData m, float3 camPosW, float2 gradX, float2 gradY)
+{
+    ExplicitGradientTextureSampler lod = { gradX, gradY };
+    return _prepareShadingData(v, m, camPosW, lod);
 }
 
 ShadingResult initShadingResult()

@@ -177,25 +177,31 @@ namespace Falcor
         }
     }
 
-    bool readFileToString(const std::string& fullpath, std::string& str)
-    {
-        std::ifstream t(fullpath.c_str());
-        if ((t.rdstate() & std::ifstream::failbit) == 0)
-        {
-            str = std::string((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
-            return true;
-        }
-        return false;
-    }
-    
     std::string getDirectoryFromFile(const std::string& filename)
     {
         fs::path path = filename;
         return path.has_filename() ? path.parent_path().string() : filename;
     }
 
+    std::string getExtensionFromFile(const std::string& filename)
+    {
+        fs::path path = filename;
+        return path.has_extension() ? path.extension().string() : "";
+    }
+
     std::string getFilenameFromPath(const std::string& filename)
     {
         return fs::path(filename).filename().string();
+    }
+
+    std::string readFile(const std::string& filename)
+    {
+        std::ifstream filestream(filename);
+        std::string str;
+        filestream.seekg(0, std::ios::end);
+        str.reserve(filestream.tellg());
+        filestream.seekg(0, std::ios::beg);
+        str.assign(std::istreambuf_iterator<char>(filestream), std::istreambuf_iterator<char>());
+        return str;
     }
 }

@@ -36,7 +36,7 @@ namespace Falcor
     RtScene::SharedPtr RtScene::loadFromFile(const std::string& filename, RtBuildFlags rtFlags, Model::LoadFlags modelLoadFlags, Scene::LoadFlags sceneLoadFlags)
     {
         RtScene::SharedPtr pRtScene = create(rtFlags);
-        if (SceneImporter::loadScene(*pRtScene, filename, modelLoadFlags, sceneLoadFlags) == false)
+        if (SceneImporter::loadScene(*pRtScene, filename, modelLoadFlags | Model::LoadFlags::BuffersAsShaderResource, sceneLoadFlags) == false)
         {
             pRtScene = nullptr;
         }
@@ -170,6 +170,8 @@ namespace Falcor
                         idesc.InstanceMask = 0xff;
                         const auto& pMaterial = pModel->getMeshInstance(blasData.meshBaseIndex, meshInstance)->getObject()->getMaterial();
                         idesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+
+                        // TODO: This code is incorrect since a BLAS can have multiple meshes with different materials and hence different doubleSided flags.
                         if (pMaterial->getDoubleSided())
                         {
                             idesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
@@ -179,7 +181,7 @@ namespace Falcor
                         mat4 transform = pModelInstance->getTransformMatrix();
                         if (blasData.isStatic)
                         {
-                            transform = transform * pModel->getMeshInstance(blasData.meshBaseIndex, meshInstance)->getTransformMatrix();    // PETRIK: If there are multiple meshes in a BLAS, they all have the same transform so this is OK.
+                            transform = transform * pModel->getMeshInstance(blasData.meshBaseIndex, meshInstance)->getTransformMatrix();    // If there are multiple meshes in a BLAS, they all have the same transform
                         }
                         transform = transpose(transform);
                         memcpy(idesc.Transform, &transform, sizeof(idesc.Transform));
@@ -214,18 +216,29 @@ namespace Falcor
         return instanceDesc;
     }
 
+    // TODO: Cache TLAS per hitProgCount, as some render pipelines need multiple TLAS:es with different #hit progs in same frame, currently that trigger rebuild every frame. See issue #365.
     void RtScene::createTlas(uint32_t hitProgCount)
     {
         if (mTlasHitProgCount == hitProgCount) return;
         mTlasHitProgCount = hitProgCount;
+
+        // Early out if hit program count is zero or if scene is empty.
+        if (hitProgCount == 0 || getModelCount() == 0)
+        {
+            mModelInstanceData.clear();
+            mpTopLevelAS = nullptr;
+            mTlasSrv = nullptr;
+            mGeometryCount = 0;
+            mInstanceCount = 0;
+            mRefit = false;
+            return;
+        }
 
         // todo: move this somewhere fair.
         mRtFlags |= RtBuildFlags::AllowUpdate;
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS dxrFlags = getDxrBuildFlags(mRtFlags);
         RenderContext* pContext = gpDevice->getRenderContext().get();
-        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pContext->getLowLevelData()->getCommandList();
-        ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDesc = createInstanceDesc(this, hitProgCount);
 
         // todo: improve this check - make sure things have not changed much and update was enabled last time
@@ -234,14 +247,15 @@ namespace Falcor
         mInstanceCount = (uint32_t)instanceDesc.size();
 
         // Create the top-level acceleration buffers
-        D3D12_GET_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO_DESC prebuildDesc = {};
-        prebuildDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        prebuildDesc.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
-        prebuildDesc.NumDescs = mInstanceCount;
-        prebuildDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
+        inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
+        inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+        inputs.NumDescs = mInstanceCount;
+        inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-        pRtDevice->GetRaytracingAccelerationStructurePrebuildInfo(&prebuildDesc, &info);
+        GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
+        pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
         Buffer::SharedPtr pScratchBuffer = Buffer::create(align_to(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT, info.ScratchDataSizeInBytes), Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
 
@@ -253,27 +267,26 @@ namespace Falcor
         {
             pContext->uavBarrier(mpTopLevelAS.get());
         }
+
         Buffer::SharedPtr pInstanceData = Buffer::create(mInstanceCount * sizeof(D3D12_RAYTRACING_INSTANCE_DESC), Buffer::BindFlags::None, Buffer::CpuAccess::None, instanceDesc.data());
-
         assert((mInstanceCount != 0) && pInstanceData->getApiHandle() && mpTopLevelAS->getApiHandle() && pScratchBuffer->getApiHandle());
-
-        if (isRefitPossible) dxrFlags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
 
         // Create the TLAS
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
-        asDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        asDesc.DestAccelerationStructureData.StartAddress = mpTopLevelAS->getGpuAddress();
-        asDesc.DestAccelerationStructureData.SizeInBytes = mpTopLevelAS->getSize();
-        asDesc.Flags = dxrFlags;
-        asDesc.InstanceDescs = pInstanceData->getGpuAddress();
-        asDesc.NumDescs = mInstanceCount;
-        asDesc.ScratchAccelerationStructureData.StartAddress = pScratchBuffer->getGpuAddress();
-        asDesc.ScratchAccelerationStructureData.SizeInBytes = pScratchBuffer->getSize();
-        asDesc.SourceAccelerationStructureData = isRefitPossible ? asDesc.DestAccelerationStructureData.StartAddress : 0;
+        asDesc.Inputs = inputs;
+        asDesc.Inputs.InstanceDescs = pInstanceData->getGpuAddress();
+        asDesc.DestAccelerationStructureData = mpTopLevelAS->getGpuAddress();
+        asDesc.ScratchAccelerationStructureData = pScratchBuffer->getGpuAddress();
 
+        if (isRefitPossible)
+        {
+            asDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+            asDesc.SourceAccelerationStructureData = asDesc.DestAccelerationStructureData;
+        }
+
+        GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
         pContext->resourceBarrier(pInstanceData.get(), Resource::State::NonPixelShader);
-        asDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
-        pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc);
+        pList4->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
         pContext->uavBarrier(mpTopLevelAS.get());
 
         // Create the SRV
@@ -285,6 +298,7 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
         DescriptorSet::SharedPtr pSet = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
+        assert(pSet);
         gpDevice->getApiHandle()->CreateShaderResourceView(nullptr, &srvDesc, pSet->getCpuHandle(0));
 
         ResourceWeakPtr pWeak = mpTopLevelAS;

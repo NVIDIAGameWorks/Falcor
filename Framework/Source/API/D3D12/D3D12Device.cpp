@@ -124,12 +124,11 @@ namespace Falcor
         return pSwapChain3;
     }
 
-    ID3D12DevicePtr createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, const std::vector<UUID>& experimentalFeatures, bool& rgb32FSupported)
+    DeviceHandle createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, const std::vector<UUID>& experimentalFeatures, bool& rgb32FSupported)
     {
-        featureLevel = D3D_FEATURE_LEVEL_11_0;
         // Find the HW adapter
         IDXGIAdapter1Ptr pAdapter;
-        ID3D12DevicePtr pDevice;
+        DeviceHandle pDevice;
 
         for (uint32_t i = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(i, &pAdapter); i++)
         {
@@ -142,12 +141,7 @@ namespace Falcor
                 continue;
             }
 
-            // Try and create a D3D12 device
-            if (experimentalFeatures.size())
-            {
-                d3d_call(D3D12EnableExperimentalFeatures((uint32_t)experimentalFeatures.size(), experimentalFeatures.data(), nullptr, nullptr));
-            }
-            if (D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice)) == S_OK)
+            if (SUCCEEDED(D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice))))
             {
                 rgb32FSupported = (desc.VendorId != 0x1002); // The AMD cards I tried can't handle 96-bits textures correctly
                 return pDevice;
@@ -156,6 +150,36 @@ namespace Falcor
 
         logErrorAndExit("Could not find a GPU that supports D3D12 device");
         return nullptr;
+    }
+
+    Device::SupportedFeatures getSupportedFeatures(DeviceHandle pDevice)
+    {
+        Device::SupportedFeatures supported = Device::SupportedFeatures::None;
+
+        D3D12_FEATURE_DATA_D3D12_OPTIONS2 features2;
+        HRESULT hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2, &features2, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS2));
+        if (FAILED(hr) || features2.ProgrammableSamplePositionsTier == D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED)
+        {
+            logInfo("Programmable sample positions is not supported on this device.");
+        }
+        else
+        {
+            if (features2.ProgrammableSamplePositionsTier == D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_1) supported |= Device::SupportedFeatures::ProgrammableSamplePositionsPartialOnly;
+            else if (features2.ProgrammableSamplePositionsTier == D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_2) supported |= Device::SupportedFeatures::ProgrammableSamplePositionsFull;
+        }
+
+        D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5;
+        hr = pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5));
+        if (FAILED(hr) || features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+        {
+            logInfo("Raytracing is not supported on this device.");
+        }
+        else
+        {
+            supported |= Device::SupportedFeatures::Raytracing;
+        }
+
+        return supported;
     }
 
     CommandQueueHandle Device::getCommandQueueHandle(LowLevelContextData::CommandQueueType type, uint32_t index) const
@@ -233,6 +257,24 @@ namespace Falcor
         if (mApiHandle == nullptr)
         {
             return false;
+        }
+
+        mSupportedFeatures = getSupportedFeatures(mApiHandle);
+
+        if (desc.enableDebugLayer)
+        {
+            MAKE_SMART_COM_PTR(ID3D12InfoQueue);
+            ID3D12InfoQueuePtr pInfoQueue;
+            mApiHandle->QueryInterface(IID_PPV_ARGS(&pInfoQueue));
+            D3D12_MESSAGE_ID hideMessages[] =
+            {
+                D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+                D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
+            };
+            D3D12_INFO_QUEUE_FILTER f = {};
+            f.DenyList.NumIDs = arraysize(hideMessages);
+            f.DenyList.pIDList = hideMessages;
+            pInfoQueue->AddStorageFilterEntries(&f);
         }
 
         for (uint32_t i = 0; i < kQueueTypeCount; i++)

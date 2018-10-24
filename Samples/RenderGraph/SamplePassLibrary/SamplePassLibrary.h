@@ -26,13 +26,26 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Sample.h"
+#include "Falcor.h"
 
-namespace Falcor
+using namespace Falcor;
+
+class MyBlitPass : public RenderPass, inherit_shared_from_this<RenderPass, MyBlitPass>
 {
-    class RtSample
-    {
-    public:
-        static void run(const SampleConfig& config, Renderer::UniquePtr& pRenderer);
-    };
-}
+public:
+    using SharedPtr = std::shared_ptr<MyBlitPass>;
+
+    /** Create a new object
+    */
+    static SharedPtr create(const Dictionary& dict = {});
+
+    virtual RenderPassReflection reflect() const override;
+    virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+    virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+    virtual Dictionary getScriptingDictionary() const override;
+
+    void setFilter(Sampler::Filter filter) { mFilter = filter; }
+private:
+    MyBlitPass();
+    Sampler::Filter mFilter = Sampler::Filter::Linear;
+};

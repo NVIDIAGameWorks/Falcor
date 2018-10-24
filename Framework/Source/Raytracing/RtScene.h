@@ -37,6 +37,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<RtScene>;
         using SharedConstPtr = std::shared_ptr<const RtScene>;
+        SharedPtr shared_from_this() { return inherit_shared_from_this<Scene, RtScene>::shared_from_this(); }
 
         static RtScene::SharedPtr loadFromFile(const std::string& filename, RtBuildFlags rtFlags = RtBuildFlags::None, Model::LoadFlags modelLoadFlags = Model::LoadFlags::None, Scene::LoadFlags sceneLoadFlags = LoadFlags::None);
         static RtScene::SharedPtr create(RtBuildFlags rtFlags);
@@ -49,6 +50,7 @@ namespace Falcor
         uint32_t getInstanceCount(uint32_t rayCount) { createTlas(rayCount); return mInstanceCount; }
         uint32_t getInstanceId(uint32_t model, uint32_t modelInstance, uint32_t mesh, uint32_t meshInstance) const 
         {
+            assert(model < mModelInstanceData.size() && mesh < mModelInstanceData[model].meshBase.size());
             uint32_t modelBase = mModelInstanceData[model].modelBase + mModelInstanceData[model].meshInstancesPerModelInstance * modelInstance;
             modelBase += mModelInstanceData[model].meshBase[mesh] + meshInstance;
             assert(modelBase < mGeometryCount);

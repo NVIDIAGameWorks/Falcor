@@ -160,7 +160,7 @@ namespace Falcor
     {
         // Create the programs
         const std::string raygenFile = desc.mShaderLibraries[desc.mRayGen.libraryIndex]->getFilename();
-        mpRayGenProgram = RayGenProgram::createFromFile(raygenFile.c_str(), desc.mRayGen.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);
+        mpRayGenProgram = RayGenProgram::createFromFile(raygenFile.c_str(), desc.mRayGen.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize, desc.getCompilerFlags());
 
         mMissProgs.resize(desc.mMiss.size());
         for (size_t i = 0 ; i < desc.mMiss.size() ; i++)
@@ -170,7 +170,7 @@ namespace Falcor
             if (m.libraryIndex != -1)
             {
                 const std::string missFile = desc.mShaderLibraries[m.libraryIndex]->getFilename();
-                mMissProgs[i] = MissProgram::createFromFile(missFile.c_str(), m.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize);
+                mMissProgs[i] = MissProgram::createFromFile(missFile.c_str(), m.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize, desc.getCompilerFlags());
             }
         }
 
@@ -181,48 +181,103 @@ namespace Falcor
             if(h.libraryIndex != -1)
             {
                 const std::string hitFile = desc.mShaderLibraries[h.libraryIndex]->getFilename();
-                mHitProgs[i] = HitProgram::createFromFile(hitFile.c_str(), h.closestHit, h.anyHit, h.intersection, desc.mDefineList, maxPayloadSize, maxAttributesSize);
+                mHitProgs[i] = HitProgram::createFromFile(hitFile.c_str(), h.closestHit, h.anyHit, h.intersection, desc.mDefineList, maxPayloadSize, maxAttributesSize, desc.getCompilerFlags());
             }
         }
     }
 
-    void RtProgram::addDefine(const std::string& name, const std::string& value /*= ""*/)
+    bool RtProgram::addDefine(const std::string& name, const std::string& value /*= ""*/)
     {
-        if(mpRayGenProgram)
-        {
-            mpRayGenProgram->addDefine(name, value);
-        }
+        bool changed = false;
+        if(mpRayGenProgram && mpRayGenProgram->addDefine(name, value)) changed = true;
 
         for (auto& pHit : mHitProgs)
         {
-            if(pHit) pHit->addDefine(name, value);
+            if (pHit && pHit->addDefine(name, value)) changed = true;
         }
 
         for (auto& pMiss : mMissProgs)
         {
-            if(pMiss) pMiss->addDefine(name, value);
+            if (pMiss && pMiss->addDefine(name, value)) changed = true;
         }
 
-        mReflectionDirty = true;
+        mReflectionDirty = changed;
+        return changed;
     }
 
-    void RtProgram::removeDefine(const std::string& name)
+    bool RtProgram::addDefines(const DefineList& dl)
     {
-        if (mpRayGenProgram)
-        {
-            mpRayGenProgram->removeDefine(name);
-        }
+        bool changed = false;
+        if (mpRayGenProgram && mpRayGenProgram->addDefines(dl)) changed = true;
 
         for (auto& pHit : mHitProgs)
         {
-            if(pHit) pHit->removeDefine(name);
+            if (pHit && pHit->addDefines(dl)) changed = true;
         }
 
         for (auto& pMiss : mMissProgs)
         {
-            if(pMiss) pMiss->removeDefine(name);
+            if (pMiss && pMiss->addDefines(dl)) changed = true;
         }
 
-        mReflectionDirty = true;
+        mReflectionDirty = changed;
+        return changed;
+    }
+
+    bool RtProgram::removeDefine(const std::string& name)
+    {
+        bool changed = false;
+        if (mpRayGenProgram && mpRayGenProgram->removeDefine(name)) changed = true;
+
+        for (auto& pHit : mHitProgs)
+        {
+            if (pHit && pHit->removeDefine(name)) changed = true;
+        }
+
+        for (auto& pMiss : mMissProgs)
+        {
+            if (pMiss && pMiss->removeDefine(name)) changed = true;
+        }
+
+        mReflectionDirty = changed;
+        return changed;
+    }
+
+    bool RtProgram::removeDefines(size_t pos, size_t len, const std::string& str)
+    {
+        bool changed = false;
+        if (mpRayGenProgram && mpRayGenProgram->removeDefines(pos, len, str)) changed = true;
+
+        for (auto& pHit : mHitProgs)
+        {
+            if (pHit && pHit->removeDefines(pos, len, str)) changed = true;
+        }
+
+        for (auto& pMiss : mMissProgs)
+        {
+            if (pMiss && pMiss->removeDefines(pos, len, str)) changed = true;
+        }
+
+        mReflectionDirty = changed;
+        return changed;
+    }
+
+    bool RtProgram::setDefines(const DefineList& dl)
+    {
+        bool changed = false;
+        if (mpRayGenProgram && mpRayGenProgram->setDefines(dl)) changed = true;
+
+        for (auto& pHit : mHitProgs)
+        {
+            if (pHit && pHit->setDefines(dl)) changed = true;
+        }
+
+        for (auto& pMiss : mMissProgs)
+        {
+            if (pMiss && pMiss->setDefines(dl)) changed = true;
+        }
+
+        mReflectionDirty = changed;
+        return changed;
     }
 }

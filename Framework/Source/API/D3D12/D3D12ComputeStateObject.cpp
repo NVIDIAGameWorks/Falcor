@@ -53,7 +53,8 @@ namespace Falcor
 
     ComputeStateObject::ApiHandle getNvApiComputePsoHandle(const std::vector<NvApiPsoExDesc>& nvDescVec, const D3D12_COMPUTE_PIPELINE_STATE_DESC& desc)
     {
-        const NVAPI_D3D12_PSO_EXTENSION_DESC* ppPSOExtensionsDesc[1];
+        assert(nvDescVec.size() <= 1);
+        const NVAPI_D3D12_PSO_EXTENSION_DESC* ppPSOExtensionsDesc[1] = {};
 
         for (uint32_t ex = 0; ex < nvDescVec.size(); ex++)
         {

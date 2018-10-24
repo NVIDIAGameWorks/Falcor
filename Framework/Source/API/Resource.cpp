@@ -69,7 +69,7 @@ namespace Falcor
         flag_to_str(UnorderedAccess);
         flag_to_str(RenderTarget);
         flag_to_str(DepthStencil);
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         flag_to_str(AccelerationStructure);
 #endif
 #undef flag_to_str
@@ -103,7 +103,7 @@ namespace Falcor
         state_to_str(Present);
         state_to_str(Predication);
         state_to_str(NonPixelShader);
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         state_to_str(AccelerationStructure);
 #endif
 #undef state_to_str

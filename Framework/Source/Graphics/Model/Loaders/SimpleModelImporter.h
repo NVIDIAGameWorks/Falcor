@@ -38,15 +38,12 @@ namespace Falcor
 {
     class Texture;
 
-    /** 
-        DEPRECATED
-    */
-
     // Prior Falcor classes load models from disk via some format.  Chris wanted some way to create
     //     models on the fly from memory resources.  This class is a start at doing this.
     //     Note 1:  this is pretty simplistic and may not correctly integrate with fancy materials, etc.
     //     Note 2:  this may not correctly setup model to interact with DirectX shaders.  In particular,
     //              vertex attribute names are required, and these may not all be set correctly!
+    deprecate("3.2", "")
     class SimpleModelImporter : public ModelImporter
     {
     public:

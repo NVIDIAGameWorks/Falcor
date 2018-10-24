@@ -27,11 +27,8 @@
 ***************************************************************************/
 #pragma once
 #define NOMINMAX
-#ifdef FALCOR_DXR
-#include "../../../Externals/DXR/include/d3d12_1.h"
-#else
+
 #include <d3d12.h>
-#endif
 #include <d3dcompiler.h>
 #include "API/Formats.h"
 #include <comdef.h>
@@ -47,6 +44,8 @@ __forceinline BOOL dxBool(bool b) { return b ? TRUE : FALSE; }
 #else
 #define d3d_call(a) a
 #endif
+
+#define GET_COM_INTERFACE(base, type, var) MAKE_SMART_COM_PTR(type); concat_strings(type, Ptr) var; d3d_call(base->QueryInterface(IID_PPV_ARGS(&var)));
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -122,16 +121,16 @@ namespace Falcor
     }
 
     // Device
+    MAKE_SMART_COM_PTR(ID3D12StateObject);
     MAKE_SMART_COM_PTR(ID3D12Device);
+    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
     MAKE_SMART_COM_PTR(ID3D12Debug);
     MAKE_SMART_COM_PTR(ID3D12CommandQueue);
     MAKE_SMART_COM_PTR(ID3D12CommandAllocator);
-    MAKE_SMART_COM_PTR(ID3D12GraphicsCommandList);
     MAKE_SMART_COM_PTR(ID3D12DescriptorHeap);
     MAKE_SMART_COM_PTR(ID3D12Resource);
     MAKE_SMART_COM_PTR(ID3D12Fence);
     MAKE_SMART_COM_PTR(ID3D12PipelineState);
-    MAKE_SMART_COM_PTR(ID3D12ShaderReflection);
     MAKE_SMART_COM_PTR(ID3D12RootSignature);
     MAKE_SMART_COM_PTR(ID3D12QueryHeap);
     MAKE_SMART_COM_PTR(ID3D12CommandSignature);
@@ -145,8 +144,8 @@ namespace Falcor
     class DescriptorHeapEntry;
 
 	using WindowHandle = HWND;
-	using DeviceHandle = ID3D12DevicePtr;
-	using CommandListHandle = ID3D12GraphicsCommandListPtr;
+    using DeviceHandle = ID3D12DevicePtr;
+    using CommandListHandle = ID3D12GraphicsCommandListPtr;
 	using CommandQueueHandle = ID3D12CommandQueuePtr;
     using ApiCommandQueueType = D3D12_COMMAND_LIST_TYPE;
     using CommandAllocatorHandle = ID3D12CommandAllocatorPtr;
@@ -193,6 +192,4 @@ namespace Falcor
 
 #define UNSUPPORTED_IN_D3D12(msg_) {Falcor::logWarning(msg_ + std::string(" is not supported in D3D12. Ignoring call."));}
 
-#ifdef FALCOR_DXR
-#include "../../Raytracing/DXR.h"
-#endif
+#include "Raytracing/DXR.h"

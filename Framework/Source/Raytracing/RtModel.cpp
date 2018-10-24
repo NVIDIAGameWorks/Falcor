@@ -38,6 +38,7 @@ namespace Falcor
     {
     }
 
+    // TODO: Static meshes with materials that differ with respect to the doubleSided flag should not be grouped.
     void RtModel::createBottomLevelData()
     {
         // The logic works as follows:
@@ -180,8 +181,6 @@ namespace Falcor
     void RtModel::buildAccelerationStructure()
     {
         RenderContext* pContext = gpDevice->getRenderContext().get();
-        ID3D12CommandListRaytracingPrototypePtr pRtCmdList = pContext->getLowLevelData()->getCommandList();
-        ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
 
         auto dxrFlags = getDxrBuildFlags(mBuildFlags);
 
@@ -189,13 +188,15 @@ namespace Falcor
         for (auto& blasData : mBottomLevelData)
         {
             std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geomDesc(blasData.meshCount);
-            for (size_t meshIndex = blasData.meshBaseIndex; meshIndex < blasData.meshBaseIndex + blasData.meshCount; meshIndex++)   // PETRIK: Fixed loop to loop over range [meshIndex...meshIndex + meshCount)
+            for (size_t meshIndex = blasData.meshBaseIndex; meshIndex < blasData.meshBaseIndex + blasData.meshCount; meshIndex++)
             {
                 assert(meshIndex < mMeshes.size());
                 const Mesh* pMesh = getMesh((uint32_t)meshIndex).get();
 
                 D3D12_RAYTRACING_GEOMETRY_DESC& desc = geomDesc[meshIndex - blasData.meshBaseIndex];
                 desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+                desc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+                desc.Triangles.Transform3x4 = 0;
 
                 // Get the position VB
                 const Vao* pVao = getMeshVao(pMesh).get();
@@ -224,32 +225,28 @@ namespace Falcor
             }
 
             // Create the acceleration and aux buffers
-            D3D12_GET_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO_DESC prebuildDesc;
-            prebuildDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-            prebuildDesc.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
-            prebuildDesc.NumDescs = (uint32_t)geomDesc.size();
-            prebuildDesc.pGeometryDescs = geomDesc.data();
-            prebuildDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+            D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
+            inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+            inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
+            inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+            inputs.NumDescs = (uint32_t)geomDesc.size();
+            inputs.pGeometryDescs = geomDesc.data();
 
             D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-            pRtDevice->GetRaytracingAccelerationStructurePrebuildInfo(&prebuildDesc, &info);
+            GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
+            pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
             Buffer::SharedPtr pScratchBuffer = Buffer::create(info.ScratchDataSizeInBytes, Buffer::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
             blasData.pBlas = Buffer::create(info.ResultDataMaxSizeInBytes, Buffer::BindFlags::AccelerationStructure, Buffer::CpuAccess::None);
 
             // Build the AS
             D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
-            asDesc.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-            asDesc.NumDescs = prebuildDesc.NumDescs;
-            asDesc.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
-            asDesc.pGeometryDescs = prebuildDesc.pGeometryDescs;
-            asDesc.DestAccelerationStructureData.StartAddress = blasData.pBlas->getGpuAddress();
-            asDesc.DestAccelerationStructureData.SizeInBytes = info.ResultDataMaxSizeInBytes;
-            asDesc.ScratchAccelerationStructureData.StartAddress = pScratchBuffer->getGpuAddress();
-            asDesc.ScratchAccelerationStructureData.SizeInBytes = info.ScratchDataSizeInBytes;
-            asDesc.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+            asDesc.Inputs = inputs;
+            asDesc.DestAccelerationStructureData = blasData.pBlas->getGpuAddress();
+            asDesc.ScratchAccelerationStructureData = pScratchBuffer->getGpuAddress();
 
-            pRtCmdList->BuildRaytracingAccelerationStructure(&asDesc);
+            GET_COM_INTERFACE(pContext->getLowLevelData()->getCommandList(), ID3D12GraphicsCommandList4, pList4);
+            pList4->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
 
             // Insert a UAV barrier
             pContext->uavBarrier(blasData.pBlas.get());

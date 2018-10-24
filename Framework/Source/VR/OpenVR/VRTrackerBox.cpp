@@ -29,8 +29,6 @@
 #include "FalcorConfig.h"
 #include "VRSystem.h"
 #include "openvr.h"
-#include "glm/glm.hpp"
-#include "glm/gtx/transform.hpp"
 #include "VRController.h"
 #include "VRTrackerBox.h"
 

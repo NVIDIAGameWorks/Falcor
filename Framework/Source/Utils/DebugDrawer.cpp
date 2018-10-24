@@ -31,7 +31,6 @@
 #include "Graphics/Camera/Camera.h"
 #include "Utils/AABB.h"
 #include <array>
-#include "glm/gtc/constants.hpp"
 
 namespace Falcor
 {

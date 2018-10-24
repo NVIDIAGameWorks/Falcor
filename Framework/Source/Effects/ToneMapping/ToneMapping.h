@@ -31,15 +31,17 @@
 #include "API/FBO.h"
 #include "API/Sampler.h"
 #include "Utils/Gui.h"
+#include "Graphics/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
     /** Tone-mapping effect
     */
-    class ToneMapping
+    class ToneMapping : public RenderPass, public inherit_shared_from_this<RenderPass, ToneMapping>
     {
     public:
-        using UniquePtr = std::unique_ptr<ToneMapping>;
+        using SharedPtr = std::shared_ptr<ToneMapping>;
+
         /** Destructor
         */
         ~ToneMapping();
@@ -59,20 +61,29 @@ namespace Falcor
 
         /** Create a new object
         */
-        static UniquePtr create(Operator op);
+        static SharedPtr create(Operator op = Operator::Aces);       
+        static SharedPtr create(const Dictionary& dict);
 
         /** Render UI elements
             \param[in] pGui GUI instance to render UI with
             \param[in] uiGroup Name for the group to render UI elements within
         */
-        void renderUI(Gui* pGui, const char* uiGroup);
+        void renderUI(Gui* pGui, const char* uiGroup) override;
+
+        /** Run the tone-mapping program
+        \param pRenderContext Render-context to use
+        \param pSrc The source FBO. Only color-texture 0 will be tone-mapped
+        \param pDst The destination FBO
+        */
+        deprecate("3.2", "Use the other execute() method, which accepts a single texture as the source")
+        void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
 
         /** Run the tone-mapping program
             \param pRenderContext Render-context to use
-            \param pSrc The source FBO
+            \param pSrc The source texture
             \param pDst The destination FBO
         */
-        void execute(RenderContext* pRenderContext, Fbo::SharedPtr pSrc, Fbo::SharedPtr pDst);
+        void execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
 
         /** Set a new operator. Triggers shader recompilation if operator has not been set on this instance before.
         */
@@ -99,9 +110,41 @@ namespace Falcor
         */
         void setWhiteScale(float whiteScale);
 
+        /** Called once before compilation. Describes I/O requirements of the pass.
+        The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+        */
+        virtual RenderPassReflection reflect() const override;
+
+        /** Executes the pass.
+        */
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
+        
+        /** Get the tonemapping operator type.
+		*/
+        Operator getOperator() const { return mOperator; }
+        
+        /** Get tonemapper exposure key value.
+		*/
+        float getExposureKey() const { return mConstBufferData.exposureKey; }
+        
+        /** Gets the maximal luminance to be consider as pure white. 
+		*/
+        float getWhiteMaxLuminance() const { return mConstBufferData.whiteMaxLuminance; }
+        
+        /** Gets the luminance texture LOD to use when fetching average luminance values. 
+		*/
+        float getLuminanceLod() const { return mConstBufferData.luminanceLod; }
+        
+        /** Gets the white-scale used in Uncharted 2 tone mapping. 
+		*/
+        float getWhiteScale() const { return mConstBufferData.whiteScale; }
+
+        /** Get the scripting dictionary
+        */
+        Dictionary getScriptingDictionary() const override;
     private:
         ToneMapping(Operator op);
-        void createLuminanceFbo(Fbo::SharedPtr pSrcFbo);
+        void createLuminanceFbo(const Texture::SharedPtr& pSrc);
 
         Operator mOperator;
         FullScreenPass::UniquePtr mpToneMapPass;
@@ -132,4 +175,23 @@ namespace Falcor
         void createToneMapPass(Operator op);
         void createLuminancePass();
     };
+
+#define tonemap_op(a) case ToneMapping::Operator::a: return #a
+    inline std::string to_string(ToneMapping::Operator op)
+    {
+        switch (op)
+        {
+            tonemap_op(Clamp);
+            tonemap_op(Linear);
+            tonemap_op(Reinhard);
+            tonemap_op(ReinhardModified);
+            tonemap_op(HejiHableAlu);
+            tonemap_op(HableUc2);
+            tonemap_op(Aces);
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
+#undef tonemap_op
 }

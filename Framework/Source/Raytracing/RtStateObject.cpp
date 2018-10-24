@@ -77,18 +77,36 @@ namespace Falcor
                 const std::wstring& chsExport = pChs ? string_2_wstring(pChs->getEntryPoint()) : L"";
 
                 rtsoHelper.addHitProgramDesc(pAhsBlob, ahsExport, pChsBlob, chsExport, pIntersectionBlob, intersectionExport, exportName);
+
+                if (intersectionExport.size())
+                {
+                    rtsoHelper.addLocalRootSignature(&intersectionExport, 1, pProg->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
+                    rtsoHelper.addShaderConfig(&intersectionExport, 1, pProg->getMaxPayloadSize(), pProg->getMaxAttributesSize());
+                }
+
+                if (ahsExport.size())
+                {
+                    rtsoHelper.addLocalRootSignature(&ahsExport, 1, pProg->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
+                    rtsoHelper.addShaderConfig(&ahsExport, 1, pProg->getMaxPayloadSize(), pProg->getMaxAttributesSize());
+                }
+
+                if (chsExport.size())
+                {
+                    rtsoHelper.addLocalRootSignature(&chsExport, 1, pProg->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
+                    rtsoHelper.addShaderConfig(&chsExport, 1, pProg->getMaxPayloadSize(), pProg->getMaxAttributesSize());
+                }
             }
             else
             {
                 const RtShader* pShader = pProg->getShader(pProg->getType() == RtProgramVersion::Type::Miss ? ShaderType::Miss : ShaderType::RayGeneration).get();
                 rtsoHelper.addProgramDesc(pShader->getD3DBlob(), pProg->getExportName());
-            }
 
-            // Root signature
-            const std::wstring& exportName = pProg->getExportName();
-            rtsoHelper.addLocalRootSignature(&exportName, 1, pProg->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
-            // Payload size
-            rtsoHelper.addShaderConfig(&exportName, 1, pProg->getMaxPayloadSize(), pProg->getMaxAttributesSize());
+                // Root signature
+                const std::wstring& exportName = pProg->getExportName();
+                rtsoHelper.addLocalRootSignature(&exportName, 1, pProg->getLocalRootSignature()->getApiHandle().GetInterfacePtr());
+                // Payload size
+                rtsoHelper.addShaderConfig(&exportName, 1, pProg->getMaxPayloadSize(), pProg->getMaxAttributesSize());
+            }
         }
 
         // Add an empty global root-signature
@@ -97,8 +115,8 @@ namespace Falcor
 
         // Create the state
         D3D12_STATE_OBJECT_DESC objectDesc = rtsoHelper.getDesc();
-        ID3D12DeviceRaytracingPrototypePtr pRtDevice = gpDevice->getApiHandle();
-        d3d_call(pRtDevice->CreateStateObject(&objectDesc, IID_PPV_ARGS(&pState->mApiHandle)));
+        GET_COM_INTERFACE(gpDevice->getApiHandle(), ID3D12Device5, pDevice5);
+        d3d_call(pDevice5->CreateStateObject(&objectDesc, IID_PPV_ARGS(&pState->mApiHandle)));
 
         return pState;
     }

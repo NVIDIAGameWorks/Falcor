@@ -108,6 +108,20 @@
 #include "Utils/Math/CubicSpline.h"
 #include "Utils/Math/ParallelReduction.h"
 
+// RenderGraph
+#include "Graphics/RenderGraph/RenderGraph.h"
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "Graphics/RenderGraph/RenderGraphIR.h"
+#include "Graphics/RenderGraph/RenderGraphImportExport.h"
+#include "Graphics/RenderGraph/RenderGraphUI.h"
+
+// Render passes
+#include "RenderPasses/ForwardLightingPass.h"
+#include "RenderPasses/BlitPass.h"
+#include "RenderPasses/DepthPass.h"
+#include "Graphics/RenderGraph/RenderPassLibrary.h"
+#include "Graphics/RenderGraph/RenderGraphImportExport.h"
+
 // Utils
 #include "Utils/Bitmap.h"
 #include "Utils/DDSHeader.h"
@@ -126,6 +140,8 @@
 #include "Utils/Platform/OS.h"
 #include "Utils/Platform/ProgressBar.h"
 #include "Utils/ThreadPool.h"
+#include "Utils/PatternGenerators/DxSamplePattern.h"
+#include "Utils/PatternGenerators/HaltonSamplePattern.h"
 
 // VR
 #include "VR/OpenVR/VRSystem.h"
@@ -142,7 +158,8 @@
 #include "Effects/TAA/TAA.h"
 #include "Effects/FXAA/FXAA.h"
 
-#ifdef FALCOR_DXR
+// Raytracing
+#ifdef FALCOR_D3D12
 #include "Raytracing/RtModel.h"
 #include "Raytracing/RtScene.h"
 #include "Raytracing/RtShader.h"
@@ -153,12 +170,11 @@
 #include "Raytracing/RtProgramVars.h"
 #include "Raytracing/RtState.h"
 #include "Raytracing/RtStateObject.h"
-#include "Raytracing/RtSample.h"
 #include "Raytracing/RtSceneRenderer.h"
 #endif
 
 #define FALCOR_MAJOR_VERSION 3
-#define FALCOR_MINOR_VERSION 0
+#define FALCOR_MINOR_VERSION 1
 #define FALCOR_DEV_STAGE ""
-#define FALCOR_DEV_REVISION 7
-#define FALCOR_VERSION_STRING "3.0.7"
+#define FALCOR_DEV_REVISION 0
+#define FALCOR_VERSION_STRING "3.1.0"

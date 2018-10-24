@@ -33,7 +33,7 @@ namespace Falcor
     void RtSample::run(const SampleConfig& config, Renderer::UniquePtr& pRenderer)
     {
         SampleConfig rtConfig = config;
-        rtConfig.deviceDesc.experimentalFeatures.push_back(D3D12RaytracingPrototype);
+        //rtConfig.deviceDesc.experimentalFeatures.push_back(D3D12RaytracingPrototype);
         Sample::run(rtConfig, pRenderer);
     }
 }

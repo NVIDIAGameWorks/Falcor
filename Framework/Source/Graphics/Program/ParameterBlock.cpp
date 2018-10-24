@@ -608,7 +608,7 @@ namespace Falcor
         }
         
         bool insertBarrier = true;
-#ifdef FALCOR_DXR
+#ifdef FALCOR_D3D12
         insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);
 #endif
         if (insertBarrier)

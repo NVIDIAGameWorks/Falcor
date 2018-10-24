@@ -35,36 +35,46 @@
 #include "API/DepthStencilState.h"
 #include "API/RasterizerState.h"
 #include "API/BlendState.h"
+#include "Graphics/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
     class RenderContext;
 
-    class SkyBox
+    class SkyBox : public RenderPass, inherit_shared_from_this<RenderPass, SkyBox>
     {
     public:
-        using UniquePtr = std::unique_ptr<SkyBox>;
+        using UniquePtr = std::shared_ptr<SkyBox>;
+        using SharedPtr = std::shared_ptr<SkyBox>;
 
         /** Create a sky box using an existing texture
             \param[in] pTexture Sky box texture
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        static UniquePtr create(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
-
+        static SharedPtr create(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler = nullptr, bool renderStereo = false);
+        static SharedPtr create(const Dictionary& dict);
+        
         /** Load a texture and create a sky box using it.
             \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
             \param[in] loadAsSrgb Whether to load the texture into an sRGB format
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
+        deprecate("3.2", "Use create() instead. Note that it returns a SharedPtr and not a UniquePtr.")
         static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
-
+        static SharedPtr create(const std::string& textureFile, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         /** Render the sky box.
             \param[in] pRenderCtx Render context
             \param[in] pCamera Camera to use when rendering
+            \param[in, optional] The target FBO. If this is nullptr, the currently bound FBO will be used
         */
-        void render(RenderContext* pRenderCtx, Camera* pCamera);
+        void render(RenderContext* pRenderCtx, Camera* pCamera, const Fbo::SharedPtr& pTarget = nullptr);
+
+        /* Save out data for sky box into serializer
+            \param[in] pRenderPass SkyBoxPass to serialize data from
+        */
+        virtual Dictionary getScriptingDictionary() const override;
 
         /** Set the sampler used to render the sky box.
         */
@@ -74,6 +84,10 @@ namespace Falcor
         */
         Texture::SharedPtr getTexture() const;
 
+        /** Set a new texture
+        */
+        void setTexture(const Texture::SharedPtr& pTexture);
+
         /** Get the sampler used to render the sky box.
         */
         Sampler::SharedPtr getSampler() const;
@@ -81,9 +95,19 @@ namespace Falcor
         void setScale(float scale) { mScale = scale; }
         float getScale() const { return mScale; }
 
+        /** Called once before compilation. Describes I/O requirements of the pass.
+        The requirements can't change after the graph is compiled. If the IO requests are dynamic, you'll need to trigger compilation of the render-graph yourself.
+        */
+        virtual RenderPassReflection reflect() const override;
+
+        /** Executes the pass.
+        */
+        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
+
+        virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
     private:
-        SkyBox() = default;
-        bool createResources(Texture::SharedPtr& pTexture, Sampler::SharedPtr pSampler, bool renderStereo);
+        SkyBox();
+        bool createResources(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, bool renderStereo);
 
         size_t mMatOffset;
         size_t mScaleOffset;
@@ -95,6 +119,11 @@ namespace Falcor
         GraphicsProgram::SharedPtr mpProgram;
         GraphicsVars::SharedPtr mpVars;
         GraphicsState::SharedPtr mpState;
+        Fbo::SharedPtr mpFbo;
+        std::shared_ptr<Scene> mpScene;
+        Sampler::SharedPtr mpSampler;
+        bool mLoadSrgb = true;
+        bool mRenderStereo = false;
 
         struct
         {

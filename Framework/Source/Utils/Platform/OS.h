@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <functional>
 #include "API/Window.h"
 
 namespace Falcor
@@ -50,6 +51,10 @@ namespace Falcor
         \return integer value of number of pixels per inch.
     */
     int getDisplayDpi();
+
+    /** Get the requested display scale factor
+    */
+    float getDisplayScaleFactor();
 
     /** Type of message box to display
     */
@@ -119,14 +124,43 @@ namespace Falcor
     */
     bool isDirectoryExists(const std::string& filename);
     
+    /** Open watch thread for file changes and call callback when the file is written to.
+        \param[in] full path to the file to watch for changes
+        \param[in] callback function
+    */
+    void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback = {});
+
+    /** Close watch thread for file changes
+        \param[in] full path to the file that was being watched for changes
+    */
+    void closeSharedFile(const std::string& filePath);
+
+    /** Creates a file in the temperary directory and returns the path.
+        \return pathName Absolute path to unique temp file.  
+    */
+    std::string getTempFilename();
+
     /** Create a directory from path.
     */
     bool createDirectory(const std::string& path);
+
+    /** Given the app name and full command line arguments, begin the process
+    */
+    size_t executeProcess(const std::string& appName, const std::string& commandLineArgs);
+
+    /** Check if the given process is still active
+     */
+    bool isProcessRunning(size_t processID);
+
+    /** Terminate process
+     */
+    void terminateProcess(size_t processID);
 
     /** Get the current executable directory
         \return The full path of the application directory
     */
     const std::string& getExecutableDirectory();
+
     /** Get the current executable name
         \return The name of the executable
     */
@@ -146,13 +180,6 @@ namespace Falcor
     /** Get a list of all recorded data directories.
     */
     const std::vector<std::string>& getDataDirectoriesList();
-
-    /** Read a file into a string. The function expects a full path to the file, and will not look in the common directories.
-        \param[in] fullpath The path to the requested file
-        \param[in] str On successful return, the content of the file
-        \return true if the was read successfully, false if an error occurred (usually file not found)
-    */
-    bool readFileToString(const std::string& fullpath, std::string& str);
 
     /** Adds a folder into the search directory. Once added, calls to FindFileInCommonDirs() will seach that directory as well
         \param[in] dir The new directory to add to the common directories.
@@ -191,6 +218,12 @@ namespace Falcor
         \return Stripped directory path
     */
     std::string getDirectoryFromFile(const std::string& filename);
+
+    /** Get  extension tag from filename.
+        \param[in] filename File path to strip extension name from
+        \return Stripped extension name.
+    */
+    std::string getExtensionFromFile(const std::string& filename);
 
     /** Strip path from a full filename
         \param[in] filename File path
@@ -268,6 +301,22 @@ namespace Falcor
     /** Gets the number of set bits.
     */
     uint32_t popcount(uint32_t a);
+
+    /** Load the content of a file into a string
+    */
+    std::string readFile(const std::string& filename);
+
+    /** Load a shared-library
+    */
+    DllHandle loadDll(const std::string& libPath);
+
+    /** Release a shared-library
+    */
+    void releaseDll(DllHandle dll);
+
+    /** Get a function pointer from a library
+    */
+    void* getDllProcAddress(DllHandle dll, const std::string& funcName);
 
     /*! @} */
 };

@@ -60,6 +60,7 @@ namespace Falcor
         static const char* kLightingScale = "lighting_scale";
 
         static const char* kName = "name";
+        static const char* kEnvMap = "env_map";
 
         static const char* kModels = "models";
         static const char* kFilename = "file";
@@ -84,6 +85,9 @@ namespace Falcor
         static const char* kType = "type";
         static const char* kDirLight = "dir_light";
         static const char* kPointLight = "point_light";
+        static const char* kAreaLightRect = "area_light_rect";
+        static const char* kAreaLightSphere = "area_light_sphere";
+        static const char* kAreaLightDisc = "area_light_disc";
         static const char* kLightIntensity = "intensity";
         static const char* kLightOpeningAngle = "opening_angle";
         static const char* kLightPenumbraAngle = "penumbra_angle";

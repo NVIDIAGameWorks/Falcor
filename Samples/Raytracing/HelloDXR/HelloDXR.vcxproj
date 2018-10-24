@@ -35,7 +35,7 @@
     <ProjectGuid>{71B60B71-89A2-4196-BFB9-4A848CF6C541}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>DXRT</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <ProjectName>HelloDXR</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

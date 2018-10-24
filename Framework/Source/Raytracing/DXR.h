@@ -27,10 +27,6 @@
 ***************************************************************************/
 #pragma once
 
-MAKE_SMART_COM_PTR(ID3D12DeviceRaytracingPrototype);
-MAKE_SMART_COM_PTR(ID3D12CommandListRaytracingPrototype);
-MAKE_SMART_COM_PTR(ID3D12StateObjectPrototype);
-
 namespace Falcor
 {
     enum class RtBuildFlags
@@ -44,6 +40,25 @@ namespace Falcor
         PerformUpdate       = 0x20,
     };
     enum_class_operators(RtBuildFlags);
+
+#define rt_flags(a) case RtBuildFlags::a: return #a
+    inline std::string to_string(RtBuildFlags flags)
+    {
+        switch (flags)
+        {
+            rt_flags(None);
+            rt_flags(AllowUpdate);
+            rt_flags(AllowCompaction);
+            rt_flags(FastTrace);
+            rt_flags(FastBuild);
+            rt_flags(MinimizeMemory);
+            rt_flags(PerformUpdate);
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
+#undef rt_flags
 
     inline D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS getDxrBuildFlags(RtBuildFlags buildFlags)
     {
