@@ -45,6 +45,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<SSAO>;
+        static const char* kDesc;
 
         enum class SampleDistribution
         {
@@ -103,11 +104,11 @@ namespace Falcor
         */
         void setNoiseTexture(uint32_t width, uint32_t height);
 
-        virtual RenderPassReflection reflect() const override;
-
-        virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
-
-        virtual void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
+        // Render-pass functions
+        RenderPassReflection reflect() const override;
+        void execute(RenderContext* pRenderContext, const RenderData* pData) override;
+        void setScene(const std::shared_ptr<Scene>& pScene) override { mpScene = pScene; }
+        std::string getDesc() override { return kDesc; }
     private:
 
         SSAO(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution);

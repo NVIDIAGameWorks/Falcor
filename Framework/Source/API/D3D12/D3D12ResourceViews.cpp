@@ -207,7 +207,7 @@ namespace Falcor
         Resource::ApiHandle resHandle = nullptr;
         if (pSharedPtr)
         {
-            ConstantBuffer* pBuffer = dynamic_cast<ConstantBuffer*>(const_cast<Resource*>(pSharedPtr.get()));
+            ConstantBuffer::SharedConstPtr pBuffer = std::dynamic_pointer_cast<const ConstantBuffer>(pSharedPtr);
             desc.BufferLocation = pBuffer->getGpuAddress();
             desc.SizeInBytes = (uint32_t)pBuffer->getSize();
             resHandle = pSharedPtr->getApiHandle();

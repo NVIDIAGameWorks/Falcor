@@ -61,6 +61,12 @@ namespace Falcor
         return extIt->second;
     }
 
+    const RenderPassReflection::Field& ResourceCache::getResourceReflection(const std::string& name) const
+    {
+        uint32_t i = mNameToIndex.at(name);
+        return mResourceData[i].field;
+    }
+
     void ResourceCache::registerExternalInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
     {
         mExternalInputs[name] = pResource;
@@ -78,6 +84,16 @@ namespace Falcor
         mExternalInputs.erase(it);
     }
 
+    static ResourceBindFlags getBindFlagsFromFormat(Resource::BindFlags flags, ResourceFormat format, RenderPassReflection::Field::Visibility vis)
+    {
+        auto mask = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
+        if (is_set(vis, RenderPassReflection::Field::Visibility::Output)) mask |= Resource::BindFlags::DepthStencil | Resource::BindFlags::RenderTarget;
+
+        auto formatFlags = getFormatBindFlags(format);
+        formatFlags = formatFlags & mask;
+        return flags | formatFlags;
+    }
+
     /** Overwrite previously unknown/unspecified fields with specified ones.
 
         If a field property is specified both in the existing cache, as well as the input properties,
@@ -85,7 +101,14 @@ namespace Falcor
     */
     bool mergeFields(RenderPassReflection::Field& base, const RenderPassReflection::Field& newField, const std::string& newFieldName)
     {
-        std::string warningMsg;
+        auto warn = [&](const std::string& msg) -> bool
+        {
+            const std::string warningMsg = "Can't merge RenderPassReflection::Fields. base(" + base.getName() + "), newField(" + newField.getName() + "). ";
+            logWarning(warningMsg + msg);
+            return false;
+        };
+
+        if (base.getType() != newField.getType()) return warn("mismatching types");
 
         // Default to base dimension
         // If newField property is not 0, retrieve value from newField
@@ -94,36 +117,73 @@ namespace Falcor
     var = base.get##dim(); \
     if (newField.get##dim() != 0) { \
         if (base.get##dim() == 0) var = newField.get##dim(); \
-        else if(base.get##dim() != newField.get##dim()) warningMsg += " " + std::string(#dim) + " already specified. "; }
+        else if(base.get##dim() != newField.get##dim()) return warn(std::string(#dim) + " already specified. "); }
 
         uint32_t w = 0, h = 0, d = 0;
         get_dim(w, Width);
         get_dim(h, Height);
         get_dim(d, Depth);
-        base.setDimensions(w, h, d);
 #undef get_dim
 
-        if (newField.getFormat() != ResourceFormat::Unknown)
-        {
-            if (base.getFormat() == ResourceFormat::Unknown) base.setFormat(newField.getFormat());
-            else if (base.getFormat() != newField.getFormat()) warningMsg += " Format already specified. ";
-        }
-
         // Merge sample counts
+        uint32_t sampleCount = base.getSampleCount();
         if (newField.getSampleCount() != 0)
         {
             // if base field doesn't have anything specified, apply new property
             if (base.getSampleCount() == 0)
             {
-                base.setSampleCount(newField.getSampleCount());
+                sampleCount = newField.getSampleCount();
             }
             // if they differ in any other way, that is invalid
             else if (base.getSampleCount() != newField.getSampleCount())
             {
-                warningMsg += " Cannot merge sample count specified by " + newFieldName + ". ";
-                warningMsg += newFieldName + " has sample count " + std::to_string(newField.getSampleCount()) + ", existing merged properties has sample count " + std::to_string(base.getSampleCount());
+                return warn("Cannot merge sample count. Base has " + std::to_string(base.getSampleCount()) + ", new-field has " + std::to_string(newField.getSampleCount()));
             }
         }
+
+        switch (base.getType())
+        {
+        case RenderPassReflection::Field::Type::Texture1D:
+            base.texture1D(w);
+            break;
+        case RenderPassReflection::Field::Type::Texture2D:
+            base.texture2D(w, h, sampleCount);
+            break;
+        case RenderPassReflection::Field::Type::Texture3D:
+            base.texture3D(w, h, d);
+            break;
+        case RenderPassReflection::Field::Type::TextureCube:
+            base.textureCube(w, h);
+        default:
+            should_not_get_here();
+            break;
+        }
+
+        // merge array-size
+        if (newField.getArraySize() != 0)
+        {
+            if (base.getArraySize() == 0) base.arraySize(newField.getArraySize());
+            else if (base.getArraySize() != newField.getArraySize()) return warn("Mismatching array-sizes");
+        }
+
+        // merge mip-levels
+        if (newField.getMipLevels() != 0)
+        {
+            if (base.getMipLevels() == 0) base.mipLevels(newField.getMipLevels());
+            else if (base.getMipLevels() != newField.getMipLevels()) return warn("Mismatching mip-levels");
+        }
+
+        // Format
+        if (newField.getFormat() != ResourceFormat::Unknown)
+        {
+            if (base.getFormat() == ResourceFormat::Unknown) base.format(newField.getFormat());
+            else if (base.getFormat() != newField.getFormat()) return warn("Format already specified");
+        }
+
+        // Visibility
+        assert(is_set(newField.getVisibility(), RenderPassReflection::Field::Visibility::Internal) == false); // We can't alias/merge internal fields
+        assert(is_set(base.getVisibility(), RenderPassReflection::Field::Visibility::Internal) == false); // We can't alias/merge internal fields
+        base.visibility(base.getVisibility() | newField.getVisibility());
 
         Resource::BindFlags baseFlags = base.getBindFlags();
         Resource::BindFlags newFlags = newField.getBindFlags();
@@ -131,20 +191,13 @@ namespace Falcor
         if ((is_set(baseFlags, Resource::BindFlags::RenderTarget) && is_set(newFlags, Resource::BindFlags::DepthStencil)) ||
             (is_set(baseFlags, Resource::BindFlags::DepthStencil) && is_set(newFlags, Resource::BindFlags::RenderTarget)))
         {
-            warningMsg += " Usage contained both RenderTarget and DepthStencil bind flags.";
-            return false;
+            return warn("Usage contained both RenderTarget and DepthStencil bind flags");
         }
         else
         {
-            base.setBindFlags(baseFlags | newFlags);
+            base.bindFlags(baseFlags | newFlags);
         }
-
-        if (warningMsg.empty() == false)
-        {
-            logWarning("ResourceCache: Cannot merge field " + newFieldName + ":" + warningMsg);
-            return false;
-        }
-
+        
         return true;
     }
 
@@ -154,10 +207,11 @@ namespace Falcor
         maxTime = max(maxTime, newTime);
     }
 
-    void ResourceCache::registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias)
+    void ResourceCache::registerField(const std::string& name, RenderPassReflection::Field field, uint32_t timePoint, const std::string& alias)
     {
         auto nameIt = mNameToIndex.find(name);
         auto aliasIt = mNameToIndex.find(alias);
+
         // If two fields were registered separately before, but are now aliased together, merge the fields, with alias field being the base
         if ((nameIt != mNameToIndex.end()) && (aliasIt != mNameToIndex.end()) && (nameIt->second != aliasIt->second))
         {
@@ -218,26 +272,28 @@ namespace Falcor
         uint32_t sampleCount = field.getSampleCount() ? field.getSampleCount() : 1;
         ResourceFormat format = field.getFormat() == ResourceFormat::Unknown ? params.format : field.getFormat();
 
+        auto bindFlags = getBindFlagsFromFormat(field.getBindFlags(), format, field.getVisibility());
+
         Texture::SharedPtr pTexture;
         if (depth > 1)
         {
             assert(sampleCount == 1);
-            pTexture = Texture::create3D(width, height, depth, format, 1, nullptr, field.getBindFlags() | Resource::BindFlags::ShaderResource);
+            pTexture = Texture::create3D(width, height, depth, format, 1, nullptr, bindFlags);
         }
         else if (height > 1 || sampleCount > 1)
         {
             if (sampleCount > 1)
             {
-                pTexture = Texture::create2DMS(width, height, format, sampleCount, 1, field.getBindFlags() | Resource::BindFlags::ShaderResource);
+                pTexture = Texture::create2DMS(width, height, format, sampleCount, 1, bindFlags);
             }
             else
             {
-                pTexture = Texture::create2D(width, height, format, 1, 1, nullptr, field.getBindFlags() | Resource::BindFlags::ShaderResource);
+                pTexture = Texture::create2D(width, height, format, 1, 1, nullptr, bindFlags);
             }
         }
         else
         {
-            pTexture = Texture::create1D(width, format, 1, 1, nullptr, field.getBindFlags() | Resource::BindFlags::ShaderResource);
+            pTexture = Texture::create1D(width, format, 1, 1, nullptr, bindFlags);
         }
 
         return pTexture;

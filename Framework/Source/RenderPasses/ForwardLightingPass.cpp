@@ -30,6 +30,9 @@
 
 namespace Falcor
 {
+    const char* ForwardLightingPass::kDesc =  "The pass computes the lighting results for the current scene. It will compute direct-illumination, indirect illumination from the light-probe and apply shadows (if a visibility map is provided).\n"
+        "The pass can output the world-space normals and screen-space motion vectors, both are optional";
+
     static std::string kDepth = "depth";
     static std::string kColor = "color";
     static std::string kMotionVecs = "motionVecs";
@@ -83,20 +86,20 @@ namespace Falcor
     {
         RenderPassReflection reflector;
 
-        reflector.addInput(kVisBuffer).setFlags(RenderPassReflection::Field::Flags::Optional);
-        reflector.addInputOutput(kColor).setFormat(mColorFormat).setSampleCount(mSampleCount);
+        reflector.addInput(kVisBuffer, "Visibility buffer used for shadowing. Range is [0,1] where 0 means the pixel is fully-shadowed and 1 means the pixel is not shadowed at all").flags(RenderPassReflection::Field::Flags::Optional);
+        reflector.addInputOutput(kColor, "Color texture").format(mColorFormat).texture2D(0, 0, mSampleCount);
 
-        auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth) : reflector.addOutput(kDepth);
-        depthField.setBindFlags(Resource::BindFlags::DepthStencil).setSampleCount(mSampleCount);
+        auto& depthField = mUsePreGenDepth ? reflector.addInputOutput(kDepth, "Pre-initialized depth-buffer") : reflector.addOutput(kDepth, "Depth buffer");
+        depthField.bindFlags(Resource::BindFlags::DepthStencil).texture2D(0, 0, mSampleCount);
         
         if(mNormalMapFormat != ResourceFormat::Unknown)
         {
-            reflector.addOutput(kNormals).setFormat(mNormalMapFormat).setSampleCount(mSampleCount);
+            reflector.addOutput(kNormals, "World-space normal, [0,1] range. Don't forget to transform it to [-1, 1] range").format(mNormalMapFormat).texture2D(0, 0, mSampleCount);
         }
 
         if (mMotionVecFormat != ResourceFormat::Unknown)
         {
-            reflector.addOutput(kMotionVecs).setFormat(mMotionVecFormat).setSampleCount(mSampleCount);
+            reflector.addOutput(kMotionVecs, "Screen-space motion vectors").format(mMotionVecFormat).texture2D(0, 0, mSampleCount);
         }
 
         return reflector;

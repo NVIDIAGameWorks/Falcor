@@ -46,6 +46,7 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<CascadedShadowMaps>;
         using UniquePtr = std::unique_ptr<CascadedShadowMaps>;
+        static const char* kDesc;
 
         enum class PartitionMode
         {
@@ -166,6 +167,10 @@ namespace Falcor
         /** Execute the render-pass
         */
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+
+        /** Get a description of the pass
+        */
+        virtual std::string getDesc() override { return kDesc; }
 
         /** Set the scene
         */

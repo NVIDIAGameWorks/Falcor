@@ -36,7 +36,7 @@ struct LightSample
     float3 diffuse;   // The light intensity at the surface location used for the diffuse term
     float3 specular;  // The light intensity at the surface location used for the specular term. For light probes, the diffuse and specular components are different
     float3 L;         // The direction from the surface to the light source
-    float3 posW;      // The world-space position of the light 
+    float3 posW;      // The world-space position of the light
     float NdotH;      // Unclamped, can be negative
     float NdotL;      // Unclamped, can be negative
     float LdotH;      // Unclamped, can be negative
@@ -113,7 +113,7 @@ LightSample evalAreaLight(in AreaLightData light, in float3 surfacePosW)
     ls.L = (distSquared > 1e-5f) ? normalize(ls.L) : 0;
 
     // Calculate the falloff
-    float cosTheta = -dot(ls.L, light.dirW); // cos of angle of light orientation 
+    float cosTheta = -dot(ls.L, light.dirW); // cos of angle of light orientation
     float falloff = max(0.f, cosTheta) * light.surfaceArea;
     falloff *= getDistanceFalloff(distSquared);
     ls.diffuse = falloff * light.intensity;
@@ -167,13 +167,16 @@ float3 evalLightProbeDiffuse(LightProbeData probe, ShadingData sd)
     {
         float3 intersectPosW;
         intersectRaySphere(sd.posW, N, probe.posW, probe.radius, intersectPosW);
-        uv = dirToSphericalCrd(normalize(intersectPosW));
+        uv = dirToSphericalCrd(normalize(intersectPosW - probe.posW));
     }
 
-    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
-    float diffF = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(sd.NdotV, sd.roughness), 0).z;
+    float width, height, mipCount;
+    probe.resources.diffuseTexture.GetDimensions(0, width, height, mipCount);
 
-    return diffuseLighting * diffF;
+    float3 diffuseLighting = probe.resources.diffuseTexture.SampleLevel(probe.resources.sampler, uv, 0).rgb;
+    float preintegratedDisneyBRDF = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(sd.NdotV, sd.roughness), 0).z;
+
+    return diffuseLighting * preintegratedDisneyBRDF * sd.diffuse.rgb;
 }
 
 float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
@@ -185,16 +188,24 @@ float3 evalLightProbeSpecular(LightProbeData probe, ShadingData sd, float3 L)
     probe.resources.specularTexture.GetDimensions(0, width, height, mipCount);
 
     float3 dominantDir = getSpecularDominantDir(sd.N, L, sd.roughness);
-    float NdotV = max(sd.NdotV, 0.5 / dfgWidth);
-
-    // #TODO This looks a lot closer to reference when passing in roughness instead of linearRoughness. Why?
     float mipLevel = linearRoughnessToLod(sd.roughness, mipCount);
 
-    float2 uv = dirToSphericalCrd(dominantDir);
+    float2 uv;
+    if (probe.radius < 0.0f)
+    {
+        uv = dirToSphericalCrd(dominantDir);
+    }
+    else
+    {
+        float3 intersectPosW;
+        intersectRaySphere(sd.posW, dominantDir, probe.posW, probe.radius, intersectPosW);
+        uv = dirToSphericalCrd(normalize(intersectPosW - probe.posW));
+    }
+
     float3 ld = probe.resources.specularTexture.SampleLevel(probe.resources.sampler, uv, mipLevel).rgb;
 
-    float2 dfg = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(NdotV, sd.roughness), 0).xy;
-    
+    float2 dfg = gProbeShared.dfgTexture.SampleLevel(gProbeShared.dfgSampler, float2(sd.NdotV, sd.roughness), 0).xy;
+
     // ld * (f0 * Gv * (1 - Fc)) + (f90 * Gv * Fc)
     return ld * (sd.specular * dfg.x + dfg.y);
 }

@@ -47,8 +47,6 @@ namespace Falcor
         void setMaxTraceRecursionDepth(uint32_t maxDepth);
         uint32_t getMaxTraceRecursionDepth() const { return mMaxTraceRecursionDepth; }
 
-        void setProgramStackSize(uint32_t stackSize);
-
         RtStateObject::SharedPtr getRtso();
     private:
         RtState();

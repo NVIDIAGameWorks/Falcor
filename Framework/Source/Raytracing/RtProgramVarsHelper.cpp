@@ -34,12 +34,12 @@
 
 namespace Falcor
 {
-    RtVarsContext::SharedPtr RtVarsContext::create(CopyContext::SharedPtr pRtContext)
+    RtVarsContext::SharedPtr RtVarsContext::create()
     {
-        return SharedPtr(new RtVarsContext(pRtContext));
+        return SharedPtr(new RtVarsContext());
     }
 
-    RtVarsContext::RtVarsContext(CopyContext::SharedPtr pRtContext) : mpRayTraceContext(pRtContext)
+    RtVarsContext::RtVarsContext()
     {
         mpLowLevelData = LowLevelContextData::create(LowLevelContextData::CommandQueueType::Direct, nullptr);
         mpList = RtVarsCmdList::create();
@@ -52,6 +52,11 @@ namespace Falcor
         // Release the low-level data before the list
         mpLowLevelData = nullptr;
         mpList = nullptr;
+    }
+
+    void RtVarsContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
+    {
+        gpDevice->getRenderContext()->resourceBarrier(pResource, newState, pViewInfo);
     }
 
     HRESULT RtVarsCmdList::QueryInterface(REFIID riid, void **ppvObject)

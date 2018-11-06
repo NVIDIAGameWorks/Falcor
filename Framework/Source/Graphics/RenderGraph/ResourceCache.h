@@ -60,11 +60,15 @@ namespace Falcor
             \param[in] alias Optional. Another field name described in the same way as 'name'.
                 If specified, and the field exists in the cache, the resource will be aliased with 'name' and field properties will be merged.
         */
-        void registerField(const std::string& name, const RenderPassReflection::Field& field, uint32_t timePoint, const std::string& alias = "");
+        void registerField(const std::string& name, RenderPassReflection::Field field, uint32_t timePoint, const std::string& alias = "");
 
         /** Get a resource by name. Includes external resources known by the cache.
         */
         const std::shared_ptr<Resource>& getResource(const std::string& name) const;
+
+        /** Get the field-reflection of a resource
+        */
+        const RenderPassReflection::Field& getResourceReflection(const std::string& name) const;
 
         /** Allocate all resources that need to be created/updated. 
             This includes new resources, resources whose properties have been updated since last allocation call.

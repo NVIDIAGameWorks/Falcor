@@ -38,6 +38,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<DepthPass>;
+        static const char* kDesc;
 
         /** Create a new object
         */
@@ -47,7 +48,8 @@ namespace Falcor
         virtual void execute(RenderContext* pContext, const RenderData* pData) override;
         virtual void setScene(const Scene::SharedPtr& pScene);
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
-        virtual Dictionary getScriptingDictionary() const;
+        virtual Dictionary getScriptingDictionary() const override;
+        virtual std::string getDesc() { return kDesc; }
 
         DepthPass& setDepthBufferFormat(ResourceFormat format);
         DepthPass& setDepthStencilState(const DepthStencilState::SharedPtr& pDsState);

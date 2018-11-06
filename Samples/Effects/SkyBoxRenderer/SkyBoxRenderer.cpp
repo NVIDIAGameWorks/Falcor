@@ -42,7 +42,7 @@ void SkyBoxRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     mpCamera = Camera::create();
     mpCameraController = SixDoFCameraController::SharedPtr(new SixDoFCameraController);
@@ -57,13 +57,13 @@ void SkyBoxRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::Share
 void SkyBoxRenderer::loadTexture()
 {
     std::string filename;
-    if(openFileDialog("DDS files\0*.dds\0\0", filename))
+    if (openFileDialog({ {"dds"} }, filename))
     {
         mpSkybox = SkyBox::create(filename, true, mpTriLinearSampler);
     }
 }
 
-void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
@@ -71,7 +71,7 @@ void SkyBoxRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext
     if(mpSkybox)
     {
         mpCameraController->update();
-        mpSkybox->render(pRenderContext.get(), mpCamera.get());
+        mpSkybox->render(pRenderContext, mpCamera.get());
     }
 }
 

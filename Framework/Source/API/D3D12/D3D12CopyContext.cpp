@@ -143,7 +143,7 @@ namespace Falcor
         pBuffer->unmap();
     }
 
-    CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext::SharedPtr pCtx, const Texture* pTexture, uint32_t subresourceIndex)
+    CopyContext::ReadTextureTask::SharedPtr CopyContext::ReadTextureTask::create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex)
     {
         SharedPtr pThis = SharedPtr(new ReadTextureTask);
         pThis->mpContext = pCtx;

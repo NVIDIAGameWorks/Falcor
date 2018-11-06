@@ -468,6 +468,8 @@ namespace Falcor
 #endif
         spSetCodeGenTarget(slangRequest, slangTarget);
         spAddPreprocessorDefine(slangRequest, preprocessorDefine, "1");
+        std::string sm = "__SM_" + mDesc.mShaderModel + "__";
+        spAddPreprocessorDefine(slangRequest, sm.c_str(), "1");
 
         spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString(mDesc.mShaderModel).c_str()));
 
@@ -503,7 +505,11 @@ namespace Falcor
                     logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
                 }
                 std::string fullpath;
-                findFileInDataDirectories(src.pLibrary->getFilename(), fullpath);
+                if (!findFileInDataDirectories(src.pLibrary->getFilename(), fullpath))
+                {
+                    logError(std::string("Can't find file ") + src.pLibrary->getFilename(), true);
+                    return VersionData();
+                }
                 spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
             }
             else

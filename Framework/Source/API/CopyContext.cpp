@@ -65,7 +65,7 @@ namespace Falcor
 
     CopyContext::ReadTextureTask::SharedPtr CopyContext::asyncReadTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)
     {
-        return CopyContext::ReadTextureTask::create(shared_from_this(), pTexture, subresourceIndex);
+        return CopyContext::ReadTextureTask::create(this, pTexture, subresourceIndex);
     }
 
     std::vector<uint8> CopyContext::readTextureSubresource(const Texture* pTexture, uint32_t subresourceIndex)

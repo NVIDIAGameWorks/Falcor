@@ -442,6 +442,7 @@
     </ClCompile>
     <ClCompile Include="RenderPasses\BlitPass.cpp" />
     <ClCompile Include="RenderPasses\DepthPass.cpp" />
+    <ClCompile Include="RenderPasses\ImageLoader.cpp" />
     <ClCompile Include="RenderPasses\ResolvePass.cpp" />
     <ClCompile Include="RenderPasses\ForwardLightingPass.cpp" />
     <ClCompile Include="Sample.cpp" />
@@ -1112,6 +1113,7 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPasses\BlitPass.h" />
     <ClInclude Include="RenderPasses\DepthPass.h" />
+    <ClInclude Include="RenderPasses\ImageLoader.h" />
     <ClInclude Include="RenderPasses\ResolvePass.h" />
     <ClInclude Include="RenderPasses\ForwardLightingPass.h" />
     <ClInclude Include="Sample.h" />
@@ -1146,7 +1148,6 @@
     <ClInclude Include="Utils\Psychophysics\Experiment.h" />
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
     <ClInclude Include="Utils\PythonEmbedding.h" />
-    <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
     <ClInclude Include="Utils\Scripting\Scripting.h" />
     <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
     <ClInclude Include="Utils\StringUtils.h" />
@@ -1473,7 +1474,6 @@
       </AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
-
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">
     <ClCompile>
       <PrecompiledHeader>

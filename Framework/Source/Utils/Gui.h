@@ -55,7 +55,7 @@ namespace Falcor
         */
         struct DropdownValue
         {
-            int32_t value;      ///< User defined index. Should be unique between different options.
+            uint32_t value;      ///< User defined index. Should be unique between different options.
             std::string label;  ///< Label of the dropdown option.
         };
 
@@ -63,7 +63,7 @@ namespace Falcor
 
         struct RadioButton
         {
-            int32_t buttonID;  ///< User defined index. Should be unique between different options in the same group.
+            uint32_t buttonID;  ///< User defined index. Should be unique between different options in the same group.
             std::string label; ///< Label of the radio button.
             bool sameLine;     ///< Whether the button should appear on the same line as the previous widget/button.
         };
@@ -134,7 +134,7 @@ namespace Falcor
             \param[out] activeID If a button was clicked, activeID will be set to the ID of the clicked button.
             \return Whether activeID changed.
         */
-        bool addRadioButtons(const RadioButtonGroup& buttons, int32_t& activeID);
+        bool addRadioButtons(const RadioButtonGroup& buttons, uint32_t& activeID);
 
         /** Begin a collapsible group block
             \param[in] label Display name of the group
@@ -350,7 +350,7 @@ namespace Falcor
 
         /** Create a new window on the stack
         */
-        void pushWindow(const char label[], uint32_t width = 0, uint32_t height = 0, uint32_t x = 0, uint32_t y = 0, bool showTitleBar = true, bool allowMove = true);
+        void pushWindow(const char label[], uint32_t width = 0, uint32_t height = 0, uint32_t x = 0, uint32_t y = 0, bool showTitleBar = true, bool allowMove = true, bool focus = true);
 
         /** End a window block
         */

@@ -34,15 +34,17 @@ class MyBlitPass : public RenderPass, inherit_shared_from_this<RenderPass, MyBli
 {
 public:
     using SharedPtr = std::shared_ptr<MyBlitPass>;
+    static const char* kDesc;
 
     /** Create a new object
     */
     static SharedPtr create(const Dictionary& dict = {});
 
-    virtual RenderPassReflection reflect() const override;
-    virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
-    virtual void renderUI(Gui* pGui, const char* uiGroup) override;
-    virtual Dictionary getScriptingDictionary() const override;
+    RenderPassReflection reflect() const override;
+    void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+    void renderUI(Gui* pGui, const char* uiGroup) override;
+    Dictionary getScriptingDictionary() const override;
+    std::string getDesc() override { return kDesc; }
 
     void setFilter(Sampler::Filter filter) { mFilter = filter; }
 private:

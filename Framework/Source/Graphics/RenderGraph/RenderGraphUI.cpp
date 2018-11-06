@@ -612,7 +612,7 @@ namespace Falcor
         
         // only render ui if is input or output
         const RenderPassReflection::Field& field = mReflection.getField(fieldIndex);
-        if (is_set(field.getType(), RenderPassReflection::Field::Type::Input) || is_set(field.getType(), RenderPassReflection::Field::Type::Output))
+        if (is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Input) || is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Output))
         {
             pinUI.renderUI(pGui, field, pGraphUI, passName);
         }
@@ -620,13 +620,14 @@ namespace Falcor
 
     void RenderPassUI::PinUI::renderUI(Gui* pGui, const RenderPassReflection::Field& field, RenderGraphUI* pGraphUI, const std::string& passName)
     {
-        RenderPassReflection::Field::Type type = field.getType();
-        uint32_t isInput = is_set(type, RenderPassReflection::Field::Type::Input);
-        uint32_t isOutput = is_set(type, RenderPassReflection::Field::Type::Output);
+        RenderPassReflection::Field::Visibility type = field.getVisibility();
+        uint32_t isInput = is_set(type, RenderPassReflection::Field::Visibility::Input);
+        uint32_t isOutput = is_set(type, RenderPassReflection::Field::Visibility::Output);
         std::string displayName = mIsGraphOutput ? std::string("Graph Output : ") + mPinName : mPinName;
 
         pGui->addText(displayName.c_str());
         ImGui::Separator();
+        pGui->addText((field.getDesc() + "\n\n").c_str());
 
         pGui->addText("ResourceFlags : ");
 
@@ -635,7 +636,7 @@ namespace Falcor
         else if (isOutput)  pGui->addText("Output", true);
 
         pGui->addText("ResourceType : ");
-        pGui->addText(to_string(field.getResourceType()->getType()).c_str(), true);
+        pGui->addText(to_string(field.getType()).c_str(), true);
 
         pGui->addText("Width: ");
         pGui->addText(std::to_string(field.getWidth()).c_str(), true);
@@ -952,7 +953,7 @@ namespace Falcor
         mRebuildDisplayData = true;
     }
 
-    std::vector<uint32_t> RenderGraphUI::getExecutionOrder()
+    std::vector<uint32_t> RenderGraphUI::getPassOrder()
     {
         std::vector<uint32_t> executionOrder;
         std::map<float, uint32_t> posToIndex;
@@ -1200,7 +1201,7 @@ namespace Falcor
 
                 while (pinIndex < renderPassUI.mReflection.getFieldCount())
                 {
-                    bool isInput = is_set(renderPassUI.mReflection.getField(pinIndex).getType(),RenderPassReflection::Field::Type::Input);
+                    bool isInput = is_set(renderPassUI.mReflection.getField(pinIndex).getVisibility(),RenderPassReflection::Field::Visibility::Input);
                     if (isInput) 
                     { 
                         if (renderPassUI.mReflection.getField(pinIndex).getName() == currentEdge.dstField) { break;  }
@@ -1243,7 +1244,7 @@ namespace Falcor
 
                 while (pinIndex < renderPassUI.mReflection.getFieldCount())
                 {
-                    bool isOutput = (static_cast<uint32_t>(renderPassUI.mReflection.getField(pinIndex).getType() & RenderPassReflection::Field::Type::Output) != 0);
+                    bool isOutput = (static_cast<uint32_t>(renderPassUI.mReflection.getField(pinIndex).getVisibility() & RenderPassReflection::Field::Visibility::Output) != 0);
                     if (isOutput)
                     {
                         if (renderPassUI.mReflection.getField(pinIndex).getName() == currentEdge.srcField) { break; }
@@ -1268,7 +1269,7 @@ namespace Falcor
             {
                 const auto& currentField = renderPassUI.mReflection.getField(i);
 
-                if (is_set(currentField.getType(), RenderPassReflection::Field::Type::Input))
+                if (is_set(currentField.getVisibility(), RenderPassReflection::Field::Visibility::Input))
                 {
                     if (nodeConnectedInput.find(nameToIndex.first + "." + currentField.getName()) == nodeConnectedInput.end())
                     {
@@ -1278,7 +1279,7 @@ namespace Falcor
                     inputPinIndex++;
                 }
                 
-                if (is_set(currentField.getType(), RenderPassReflection::Field::Type::Output))
+                if (is_set(currentField.getVisibility(), RenderPassReflection::Field::Visibility::Output))
                 {
                     if (nodeConnectedOutput.find(nameToIndex.first + "." + currentField.getName()) == nodeConnectedOutput.end())
                     {

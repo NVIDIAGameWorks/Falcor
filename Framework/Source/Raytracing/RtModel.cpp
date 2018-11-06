@@ -180,7 +180,7 @@ namespace Falcor
 
     void RtModel::buildAccelerationStructure()
     {
-        RenderContext* pContext = gpDevice->getRenderContext().get();
+        RenderContext* pContext = gpDevice->getRenderContext();
 
         auto dxrFlags = getDxrBuildFlags(mBuildFlags);
 

@@ -208,10 +208,10 @@ namespace Falcor
         // Picking
         //
 
-        void select(const Scene::ModelInstance::SharedPtr& pModelInstance, const Model::MeshInstance::SharedPtr& pMeshInstance = nullptr);
+        void select(const Scene::ModelInstance::SharedConstPtr& pModelInstance, const Model::MeshInstance::SharedConstPtr& pMeshInstance = nullptr);
         void deselect();
 
-        void setActiveModelInstance(const Scene::ModelInstance::SharedPtr& pModelInstance);
+        void setActiveModelInstance(const Scene::ModelInstance::SharedConstPtr& pModelInstance);
 
         // ID's in master scene
         uint32_t mSelectedModel = 0;
@@ -222,7 +222,7 @@ namespace Falcor
 
         Picking::UniquePtr mpScenePicker;
 
-        std::set<Scene::ModelInstance*> mSelectedInstances;
+        std::set<const Scene::ModelInstance*> mSelectedInstances;
         ObjectType mSelectedObjectType = ObjectType::None;
 
         CpuTimer mMouseHoldTimer;
@@ -244,7 +244,7 @@ namespace Falcor
         //
 
         // Find instance ID of a model instance in the editor scene. Returns uint -1 if not found.
-        uint32_t findEditorModelInstanceID(uint32_t modelID, const Scene::ModelInstance::SharedPtr& pInstance) const;
+        uint32_t findEditorModelInstanceID(uint32_t modelID, const Scene::ModelInstance::SharedConstPtr& pInstance) const;
         // Update Camera, Lightbulb, and Keyframe model ID's in the Editor Objects Scene
         void updateEditorModelIDs();
 

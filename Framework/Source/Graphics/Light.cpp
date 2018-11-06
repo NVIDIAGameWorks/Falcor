@@ -519,7 +519,7 @@ namespace Falcor
                 const Material::SharedPtr& pMaterial = pMesh->getMaterial();
                 if (pMaterial)
                 {
-                    if (EXTRACT_EMISSIVE_TYPE(pMaterial->getFlags()) != ChannelTypeUnused)
+                    if (pMaterial->isEmissive())
                     {
                         // TODO: Create one area light per model instance, pass it the model instance transform
                         areaLights.push_back(createAreaLight(pModel->getMeshInstance(meshId, instanceId)));

@@ -1,5 +1,5 @@
 /***************************************************************************
-# Copyright (c) 2015, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,19 +26,32 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "TestBase.h"
+#include "Graphics/RenderGraph/RenderPass.h"
+#include "API/Texture.h"
 
-class SamplerTest : public TestBase
+namespace Falcor
 {
-private:
-    class TestDesc : public Sampler::Desc
+    class ImageLoader : public RenderPass, inherit_shared_from_this<RenderPass, ImageLoader>
     {
-        friend class SamplerTest;
+    public:
+        using SharedPtr = std::shared_ptr<ImageLoader>;
+        static const char* kDesc;
+
+        /** Create a new object
+        */
+        static SharedPtr create(const Dictionary& dict = {});
+
+        virtual RenderPassReflection reflect() const override;
+        virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+        virtual void renderUI(Gui* pGui, const char* uiGroup) override;
+        virtual Dictionary getScriptingDictionary() const override;
+        virtual std::string getDesc() override { return kDesc; }
+    private:
+        ImageLoader();
+
+        Texture::SharedPtr mpTex;
+        std::string mImageName;
+        bool mGenerateMips = true;
+        bool mLoadSRGB = false;
     };
-
-    void addTests() override;
-    void onInit() override {};
-    register_testing_func(TestCreate);
-
-    static bool doStatesMatch(Sampler::SharedPtr sampler, TestDesc desc);
-};
+}

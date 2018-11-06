@@ -484,14 +484,14 @@ namespace Falcor
         popGraphicsVars();
     }
 
-    void RenderContext::resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource)
+    void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource)
     {
         DXGI_FORMAT format = getDxgiFormat(pDst->getFormat());
         mpLowLevelData->getCommandList()->ResolveSubresource(pDst->getApiHandle(), dstSubresource, pSrc->getApiHandle(), srcSubresource, format);
         mCommandsPending = true;
     }
 
-    void RenderContext::resolveResource(const Texture* pSrc, const Texture* pDst)
+    void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
     {
         bool match = true;
         match = match && (pSrc->getMipCount() == pDst->getMipCount());
@@ -501,8 +501,8 @@ namespace Falcor
             logWarning("Can't resolve a resource. The src and dst textures have a different array-size or mip-count");
         }
 
-        resourceBarrier(pSrc, Resource::State::ResolveSource);
-        resourceBarrier(pDst, Resource::State::ResolveDest);
+        resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
+        resourceBarrier(pDst.get(), Resource::State::ResolveDest);
 
         uint32_t subresourceCount = pSrc->getMipCount() * pSrc->getArraySize();
         for (uint32_t s = 0; s < subresourceCount; s++)

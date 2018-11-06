@@ -35,6 +35,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<ResolvePass>;
+        static const char* kDesc;
 
         /** Create a new object
         */
@@ -43,7 +44,7 @@ namespace Falcor
         void setFormat(ResourceFormat format) { mFormat = format; }
         virtual RenderPassReflection reflect() const override;
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
-
+        virtual std::string getDesc() override { return kDesc; }
     private:
         ResolvePass();
         ResourceFormat mFormat;

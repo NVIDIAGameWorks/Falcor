@@ -38,6 +38,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<ForwardLightingPass>;
+        static const char* kDesc;
 
         /** Create a new object
         */
@@ -78,6 +79,9 @@ namespace Falcor
         */
         ForwardLightingPass& setSampler(const std::shared_ptr<Sampler>& pSampler);
 
+        /** Get a description of the pass
+        */
+        std::string getDesc() override { return kDesc; }
     private:
         ForwardLightingPass();
         void initDepth(const RenderData* pRenderData);

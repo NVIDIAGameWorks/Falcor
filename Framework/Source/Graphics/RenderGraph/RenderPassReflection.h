@@ -26,32 +26,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/Program/ProgramReflection.h"
 
 namespace Falcor
 {
     class RenderPassReflection
     {
     public:
-        /** Global render-pass flags
-        */
-        enum class Flags
-        {
-            None = 0x0,
-            ForceExecution = 0x1,  ///< Will force the execution of the pass even if no edges are connected to it
-        };
-
         class Field
         {
         public:
-            enum class Type
+            /** The type of visibility the field has
+            */
+            enum class Visibility
             {
-                None        = 0x0,
-                Input       = 0x1,  // Input field
-                Output      = 0x2,  // Output field
-                Internal    = 0x4,  // Internal field. You can use this value to ask the resource-cache for any required internal resource
+                Undefined = 0x0,
+                Input = 0x1,  ///< Input field
+                Output = 0x2,  ///< Output field
+                Internal = 0x4,  ///< Internal field. You can use this value to ask the resource-cache for any required internal resource
             };
 
+            /** Miscellaneous flags to control allocation and lifetime policy
+            */
             enum class Flags
             {
                 None = 0x0,         ///< None
@@ -59,36 +54,53 @@ namespace Falcor
                 Persistent = 0x2,   ///< The resource bound to this field must not change between execute() calls (not the pointer nor the data). It can change only during the RenderGraph recompilation.
             };
 
-            Field();
-            Field(const std::string& name, Type type);
+            /** Field type
+            */
+            enum class Type
+            {
+                Texture1D,
+                Texture2D,
+                Texture3D,
+                TextureCube
+            };
+            
+            Field(const std::string& name, const std::string& desc, Visibility v);
+            Field() = default;
 
             bool isValid() const;
 
-            Field& setResourceType(const ReflectionResourceType::SharedConstPtr& pType) { mpType = pType; return *this; }
-            Field& setDimensions(uint32_t w, uint32_t h, uint32_t d) { mWidth = w; mHeight = h; mDepth = d; return *this; }
-            Field& setSampleCount(uint32_t count) { mSampleCount = count; return *this; }
-            Field& setFormat(ResourceFormat format) { mFormat = format; return *this; }
-            Field& setBindFlags(Resource::BindFlags flags) { mBindFlags = flags; return *this; }
-            Field& setFlags(Flags flags) { mFlags = flags; return *this; }
-            Field& setArraySize(uint32_t arraySize) { mArraySize = arraySize; return *this; }
+            Field& texture1D(uint32_t width = 0);
+            Field& texture2D(uint32_t width = 0, uint32_t height = 0, uint32_t sampleCount = 1);
+            Field& texture3D(uint32_t width = 0, uint32_t height = 0, uint32_t depth = 0);
+            Field& textureCube(uint32_t width = 0, uint32_t height = 0);
+
+            Field& arraySize(uint32_t a);
+            Field& mipLevels(uint32_t m);
+            Field& format(ResourceFormat f);
+            Field& bindFlags(Resource::BindFlags flags);
+            Field& flags(Flags flags);
+            Field& visibility(Visibility vis);
 
             const std::string& getName() const { return mName; }
-            const ReflectionResourceType::SharedConstPtr& getResourceType() const { return mpType; }
+            const std::string& getDesc() const { return mDesc; }
             uint32_t getWidth() const { return mWidth; }
             uint32_t getHeight() const { return mHeight; }
             uint32_t getDepth() const { return mDepth; }
             uint32_t getSampleCount() const { return mSampleCount; }
             uint32_t getArraySize() const { return mArraySize; }
+            uint32_t getMipLevels() const { return mMipLevels; }
             ResourceFormat getFormat() const { return mFormat; }
             Resource::BindFlags getBindFlags() const { return mBindFlags; }
             Flags getFlags() const { return mFlags; }
             Type getType() const { return mType; }
+            Visibility getVisibility() const { return mVisibility; }
 
         private:
-            static const ReflectionResourceType::SharedPtr kpTex2DType;
+            friend class RenderPassReflection;
 
+            Type mType = Type::Texture2D;
             std::string mName;                             ///< The field's name
-            ReflectionResourceType::SharedConstPtr mpType = kpTex2DType; ///< The resource type. The default is a 2D texture
+            std::string mDesc;                             ///< A description of the field
             uint32_t mWidth = 0;                           ///< For texture, the width. For buffers, the size in bytes. 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mHeight = 0;                          ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
             uint32_t mDepth = 0;                           ///< 0 means don't care - the pass will use whatever is bound (the RenderGraph will use the window size if this field is 0)
@@ -98,26 +110,38 @@ namespace Falcor
             ResourceFormat mFormat = ResourceFormat::Unknown; ///< Unknown means use the back-buffer format for output resources, don't care for input resources
             Resource::BindFlags mBindFlags = Resource::BindFlags::None;  ///< The required bind flags. The default for outputs is RenderTarget, for inputs is ShaderResource and for InOut (RenderTarget | ShaderResource)
             Flags mFlags = Flags::None;                    ///< The field flags
-            Type mType;
+            Visibility mVisibility = Visibility::Undefined;
         };
 
-        Field& addInput(const std::string& name);
-        Field& addOutput(const std::string& name);
-        Field& addInputOutput(const std::string& name);
-        Field& addInternal(const std::string& name);
-        RenderPassReflection& setFlags(RenderPassReflection::Flags flags) { mFlags = flags; return *this; }
+        Field& addInput(const std::string& name, const std::string& desc);
+        Field& addOutput(const std::string& name, const std::string& desc);
+        Field& addInputOutput(const std::string& name, const std::string& desc);
+        Field& addInternal(const std::string& name, const std::string& desc);
 
         size_t getFieldCount() const { return mFields.size(); }
         const Field& getField(size_t f) const { return mFields[f]; }
-        const Field& getField(const std::string& name, Field::Type type = Field::Type::None) const;
-        Flags getFlags() const { return mFlags; }
+        const Field& getField(const std::string& name) const;
     private:
-        Field& addField(const std::string& name, Field::Type type);
-        RenderPassReflection::Flags mFlags = Flags::None;
+        Field& addField(const std::string& name, const std::string& desc, Field::Visibility visibility);
         std::vector<Field> mFields;
     };
 
-    enum_class_operators(RenderPassReflection::Field::Type);
+    enum_class_operators(RenderPassReflection::Field::Visibility);
     enum_class_operators(RenderPassReflection::Field::Flags);
-    enum_class_operators(RenderPassReflection::Flags);
+
+    inline std::string to_string(RenderPassReflection::Field::Type t)
+    {
+#define t2s(ft) case RenderPassReflection::Field::Type::ft: return #ft;
+        switch (t)
+        {
+            t2s(Texture1D);
+            t2s(Texture2D);
+            t2s(Texture3D);
+            t2s(TextureCube);
+        default:
+            should_not_get_here();
+            return "";
+        }
+#undef t2s
+    }
 }

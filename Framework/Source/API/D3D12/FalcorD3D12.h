@@ -95,6 +95,25 @@ namespace Falcor
         }
     }
 
+#define to_string_case(a) case a: return #a;
+    inline std::string to_string(D3D_FEATURE_LEVEL featureLevel)
+    {
+        switch (featureLevel)
+        {
+            to_string_case(D3D_FEATURE_LEVEL_9_1)
+            to_string_case(D3D_FEATURE_LEVEL_9_2)
+            to_string_case(D3D_FEATURE_LEVEL_9_3)
+            to_string_case(D3D_FEATURE_LEVEL_10_0)
+            to_string_case(D3D_FEATURE_LEVEL_10_1)
+            to_string_case(D3D_FEATURE_LEVEL_11_0)
+            to_string_case(D3D_FEATURE_LEVEL_11_1)
+            to_string_case(D3D_FEATURE_LEVEL_12_0)
+            to_string_case(D3D_FEATURE_LEVEL_12_1)
+        default: should_not_get_here(); return "";
+        }
+    }
+#undef to_string_case
+
     /** Get D3D_FEATURE_LEVEL
     */
     D3D_FEATURE_LEVEL getD3DFeatureLevel(uint32_t majorVersion, uint32_t minorVersion);
@@ -186,9 +205,6 @@ namespace Falcor
     inline constexpr uint32_t getMaxViewportCount() { return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; }
     /*! @} */
 }
-
-#define DEFAULT_API_MAJOR_VERSION 12
-#define DEFAULT_API_MINOR_VERSION 0
 
 #define UNSUPPORTED_IN_D3D12(msg_) {Falcor::logWarning(msg_ + std::string(" is not supported in D3D12. Ignoring call."));}
 

@@ -14,7 +14,7 @@
         <package name="dear_imgui" version="1.65" />
     </dependency>
     <dependency name="glm" linkPath="Framework/Externals/GLM">
-        <package name="glm" version="0.9.9.2.falcor" />
+        <package name="glm" version="0.9.9.2" />
     </dependency>
     <dependency name="ffmpeg" linkPath="Framework/Externals/FFMPEG">
         <package name="ffmpeg" version="3.4.2" platforms="win" />
@@ -29,14 +29,14 @@
         <package name="rapidjson" version="1.1.0" />
     </dependency>
     <dependency name="slang" linkPath="Framework/Externals/Slang">
-        <package name="slang" version="0.11.4" remotes="github-slang" />
-        <package name="slang" version="0.11.4" remotes="github-slang-linux" platforms="linux" />
+        <package name="slang" version="0.11.7" remotes="github-slang" />
+        <package name="slang" version="0.11.7" remotes="github-slang-linux" platforms="linux" />
     </dependency>
     <dependency name="glfw" linkPath="Framework/Externals/GLFW">
         <package name="glfw" version="3.2.1" platforms="win" />
     </dependency>
     <dependency name="falcor_media" linkPath="Media">
-        <package name="falcor_media" version="2.2" />
+        <package name="falcor_media" version="2.2.1" />
     </dependency>
     <dependency name="dxcompiler" linkPath="Framework/Externals/dxcompiler">
         <package name="dxcompiler" version="10.0.17763.0" />

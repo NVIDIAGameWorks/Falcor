@@ -90,21 +90,19 @@ namespace Falcor
         }
 
         uint32_t bpp = FreeImage_GetBPP(pDib);
-        bool rgb32FloatSupported = gpDevice->isRgb32FloatSupported();
-
         switch(bpp)
         {
         case 128:
-            pBmp->mFormat = ResourceFormat::RGBA32Float;  // 4xfloat32 HDR format
+            pBmp->mFormat = ResourceFormat::RGBA32Float;    // 4xfloat32 HDR format
             break;
         case 96:
-            pBmp->mFormat = rgb32FloatSupported ? ResourceFormat::RGB32Float : ResourceFormat::RGBA32Float;  // 4xfloat32 HDR format
+            pBmp->mFormat = ResourceFormat::RGB32Float;     // 3xfloat32 HDR format
             break;
         case 64:
-            pBmp->mFormat = ResourceFormat::RGBA16Float;  // 4xfloat16 HDR format
+            pBmp->mFormat = ResourceFormat::RGBA16Float;    // 4xfloat16 HDR format
             break;
         case 48:
-            pBmp->mFormat = ResourceFormat::RGB16Float;  // 3xfloat16 HDR format
+            pBmp->mFormat = ResourceFormat::RGB16Float;     // 3xfloat16 HDR format
             break;
         case 32:
             pBmp->mFormat = ResourceFormat::BGRA8Unorm;
@@ -129,15 +127,6 @@ namespace Falcor
             logWarning("Converting 24-bit texture to 32-bit");
             bpp = 32;
             auto pNew = FreeImage_ConvertTo32Bits(pDib);
-            FreeImage_Unload(pDib);
-            pDib = pNew;
-        }
-
-        if (!rgb32FloatSupported && bpp == 96)
-        {
-            logWarning("Converting 96-bit texture to 128-bit");
-            bpp = 128;
-            auto pNew = FreeImage_ConvertToRGBAF(pDib);
             FreeImage_Unload(pDib);
             pDib = pNew;
         }
@@ -195,65 +184,67 @@ namespace Falcor
         return FIT_BITMAP;
     }
     
-    const char* kSaveFileFilter = "Auto(.)\0.;\0PNG(.png)\0*.png;\0BMP(.bmp)\0*.bmp;\
-        \0JPG(.jpg)\0*.jpg;\0HDR(.hdr)\0*.hdr;\0TGA(.tga)\0*.tga;\0";
-
-    static const char* kExtensions[] = {
-        /* PngFile */ ".png",
-        /*JpegFile */ ".jpg",
-        /* TgaFile */ ".tga",
-        /* BmpFile */ ".bmp",
-        /* PfmFile */ ".hdr",
-        /* ExrFile */ ".hdr"
-    };
-
-    static Bitmap::FileFormat detectFileFormat(const Texture::SharedPtr& pTex)
+    Bitmap::FileFormat getFormatFromFileExtension(const std::string& ext)
     {
-        auto format = pTex->getFormat();
-        
-        // if is floating point
-        if (getFormatType(format) == FormatType::Float && getFormatChannelCount(format) >= 3)
+        // This array is in the order of the enum
+        static const char* kExtensions[] = {
+            /* PngFile */ ".png",
+            /*JpegFile */ ".jpg",
+            /* TgaFile */ ".tga",
+            /* BmpFile */ ".bmp",
+            /* PfmFile */ ".pfm",
+            /* ExrFile */ ".exr"
+        };
+
+        for (uint32_t i = 0 ; i < arraysize(kExtensions) ; i++)
         {
-            if ((getFormatBytesPerBlock(format) / getFormatChannelCount(format)) == 4)
-            {
-                return Bitmap::FileFormat::PfmFile;
-            }
-            else
-            {
-                return Bitmap::FileFormat::ExrFile;
-            }
+            if (kExtensions[i] == ext) return Bitmap::FileFormat(i);
         }
-        
-        // default to png for 8-bit images
-        return Bitmap::FileFormat::PngFile;
+        logError("Can't find a matching format for file extension `" + ext + "`");
+        return Bitmap::FileFormat(-1);
+    }
+
+    FileDialogFilterVec Bitmap::getFileDialogFilters(ResourceFormat format)
+    {
+        FileDialogFilterVec filters;
+        bool showHdr = true;
+        bool showLdr = true;
+
+        if(format != ResourceFormat::Unknown)
+        {
+            FormatType type = getFormatType(format);
+            uint32_t bitsPerTexel = getFormatBytesPerBlock(format);
+
+            showHdr = type == FormatType::Float && (bitsPerTexel == 16 || bitsPerTexel == 12);
+            showLdr = !showHdr;
+        }
+
+        if (showHdr)
+        {
+            filters.push_back({"exr", "High Dynamic Range"});
+            filters.push_back({"pfm", "Portable Float Map"});
+        }
+
+        if(showLdr)
+        {
+            filters.push_back({ "png", "Portable Network Graphics" });
+            filters.push_back({ "jpg", "JPEG" });
+            filters.push_back({ "bmp", "Bitmap Image File" });
+            filters.push_back({ "tga", "Truevision Graphics Adapter" });
+        }
+        return filters;
     }
 
     void Bitmap::saveImageDialog(const Texture::SharedPtr& pTexture)
     {
         std::string filePath;
-        if (saveFileDialog(kSaveFileFilter, filePath))
+        auto supportExtensions = getFileDialogFilters(pTexture->getFormat());
+
+        if (saveFileDialog(supportExtensions, filePath))
         {
-            std::string extensionString = getExtensionFromFile(filePath);
-            FileFormat fileFormat;
-
-            if (extensionString.size())
-            {
-                for (uint32_t i = 0; i < static_cast<uint32_t>(FileFormat::AutoDetect); ++i)
-                {
-                    if (extensionString == kExtensions[i])
-                    {
-                        fileFormat = static_cast<FileFormat>(i);
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                fileFormat = detectFileFormat(pTexture);
-                filePath.append(kExtensions[static_cast<uint32_t>(fileFormat)]);
-            }
-
-            pTexture->captureToFile(0, 0, filePath, fileFormat);
+            std::string ext = getExtensionFromFile(filePath);
+            auto format = getFormatFromFileExtension(ext);
+            pTexture->captureToFile(0, 0, filePath, format);
         }
     }
 

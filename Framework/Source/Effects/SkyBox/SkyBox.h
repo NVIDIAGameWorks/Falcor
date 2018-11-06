@@ -46,6 +46,7 @@ namespace Falcor
     public:
         using UniquePtr = std::shared_ptr<SkyBox>;
         using SharedPtr = std::shared_ptr<SkyBox>;
+        static const char* kDesc;
 
         /** Create a sky box using an existing texture
             \param[in] pTexture Sky box texture
@@ -104,7 +105,13 @@ namespace Falcor
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
+        /** Set a scene. The pass will use the environment from the scene if one exists
+        */
         virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
+
+        /** Get a description of the scene
+        */
+        std::string getDesc() override { return kDesc; }
     private:
         SkyBox();
         bool createResources(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, bool renderStereo);

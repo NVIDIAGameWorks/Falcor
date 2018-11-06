@@ -11,7 +11,7 @@
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile ^
 -File "%~dp0win-bootstrap\generate_temp_file_name.ps1"') do @set PM_VAR_PATH=%%a
 
-@"%PM_PYTHON%" -u "%PM_MODULE%" %* --var-path="%PM_VAR_PATH%"
+@"%PM_PYTHON%" -s -u -E "%PM_MODULE%" %* --var-path="%PM_VAR_PATH%"
 @if errorlevel 1 goto :eof
 
 :: Marshall environment variables into the current environment if they have been generated and remove temporary file

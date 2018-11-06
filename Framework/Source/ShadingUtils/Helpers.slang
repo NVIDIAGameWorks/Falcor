@@ -241,13 +241,6 @@ bool evalAlphaTest(uint matFlags, float alpha, float threshold, float3 posW)
 #endif
 }
 
-void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
-{
-#ifndef _MS_DISABLE_ALPHA_TEST
-    if (evalAlphaTest(matFlags, alpha, threshold, posW)) discard;
-#endif
-}
-
 /*******************************************************************
    	Random numbers based on Mersenne Twister
 *******************************************************************/  

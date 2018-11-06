@@ -31,7 +31,7 @@
 namespace Falcor
 {
     class Resource;
-    using ResourceWeakPtr = std::weak_ptr<const Resource>;
+    using ResourceWeakPtr = std::weak_ptr<Resource>;
 
     struct ResourceViewInfo
     {
@@ -72,7 +72,7 @@ namespace Falcor
 
         /** Get the resource referenced by the view.
         */
-        const Resource* getResource() const { return mpResource.lock().get(); }
+        Resource* getResource() const { return mpResource.lock().get(); }
     protected:
         ApiHandle mApiHandle;
         ResourceViewInfo mViewInfo;

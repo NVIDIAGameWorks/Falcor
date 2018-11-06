@@ -140,14 +140,13 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<RtVarsContext>;
         ~RtVarsContext();
 
-        static SharedPtr create(CopyContext::SharedPtr pRtContext);
+        static SharedPtr create();
 
         const LowLevelContextData::SharedPtr& getLowLevelData() const override { return mpLowLevelData; }
-        void resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo = nullptr) override { return mpRayTraceContext->resourceBarrier(pResource, newState, pViewInfo); }
+        void resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo = nullptr) override;
         RtVarsCmdList::SharedPtr getRtVarsCmdList() const { return mpList; }
     private:
-        RtVarsContext(CopyContext::SharedPtr pRtContext);
+        RtVarsContext();
         RtVarsCmdList::SharedPtr mpList;
-        CopyContext::SharedPtr mpRayTraceContext;
     };
 }

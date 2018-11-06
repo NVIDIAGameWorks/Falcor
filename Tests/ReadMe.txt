@@ -10,3 +10,5 @@ Uses the Compare Reference Target\\(name of the local machine)\\Compare Branch T
 RunGenerateReferences.py runs a TestCollection file from the configs folder.
 Pulls from the Repository Target + Source Branch Target to the local Destination Target.
 Uses the Generate Reference Target\\(name of the local machine)\\Source Branch Target\\(Folder for each Test Set (in the array!))\\
+
+TODO UPDATE README FOR NEW TESTING STUFFS

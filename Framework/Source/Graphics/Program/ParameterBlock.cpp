@@ -526,7 +526,7 @@ namespace Falcor
     template<typename ViewType>
     Resource::SharedPtr getResourceFromView(const ViewType* pView)
     {
-        return (pView) ? const_cast<Resource*>(pView->getResource())->shared_from_this() : nullptr;
+        return (pView) ? pView->getResource()->shared_from_this() : nullptr;
     }
 
     bool ParameterBlock::setSrv(const BindLocation& bindLocation, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv)

@@ -1,10 +1,10 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
 SAMPLE_CONFIG:=Release
 
-All : ForwardRenderer AllCore AllEffects AllUtils
+All : ForwardRenderer RenderGraphViewer AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
 AllEffects : AmbientOcclusion SkyBoxRenderer HashedAlpha HDRToneMapping Shadows
-AllUtils : ModelViewer SceneEditor
+AllUtils : ModelViewer SceneEditor RenderGraphEditor
 
 # A sample demonstrating Falcor's effects library
 ForwardRenderer : $(SAMPLE_CONFIG)
@@ -16,6 +16,11 @@ ForwardRenderer : $(SAMPLE_CONFIG)
 	$(call MoveFalcorData,$(OUT_DIR))
 	$(call MoveProjectData,$(DIR), $(OUT_DIR))
 	@echo Built $@
+
+# Render Graph Viewer project
+
+RenderGraphViewer : RenderGraphEditor $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/RenderGraph/RenderGraphViewer/,RenderGraphViewer.cpp,RenderGraphViewer)
 
 # Core Samples
 
@@ -58,6 +63,9 @@ ModelViewer : $(SAMPLE_CONFIG)
 
 SceneEditor : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorApp.cpp,SceneEditor)
+
+RenderGraphEditor : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/RenderGraph/RenderGraphEditor/,RenderGraphEditor.cpp,RenderGraphEditor)
 
 CC:=g++
 

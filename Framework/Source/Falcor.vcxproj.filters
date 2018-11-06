@@ -565,6 +565,9 @@
       <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Scripting\ScriptBindings.cpp" />
+    <ClCompile Include="RenderPasses\ImageLoader.cpp">
+      <Filter>RenderPasses</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -1283,9 +1286,6 @@
     </ClInclude>
     <ClInclude Include="Graphics\LightProbe.h">
       <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h">
-      <Filter>Utils\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="Raytracing\DXR.h">
       <Filter>Raytracing</Filter>
@@ -2119,6 +2119,9 @@
       <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
+    <ClInclude Include="RenderPasses\ImageLoader.h">
+      <Filter>RenderPasses</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

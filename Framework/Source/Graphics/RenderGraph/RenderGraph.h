@@ -42,6 +42,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<RenderGraph>;
+        static const FileDialogFilterVec kFileExtensionFilters;
 
         static const uint32_t kInvalidIndex = -1;
 
@@ -73,7 +74,13 @@ namespace Falcor
 
         /** Insert an edge from a render-pass' output into a different render-pass input.
             The render passes must be different, the graph must be a DAG.
-            The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `setRenderPass()` and the `resourceName` is the resource-name as described by the render-pass object
+            There are 2 types of edges:
+            - Data dependency edge - Connecting as pass` output resource to another pass` input resource.
+                                     The src/dst strings have the format `renderPassName.resourceName`, where the `renderPassName` is the name used in `addPass()` and the `resourceName` is the resource-name as described by the render-pass object
+            - Execution dependency edge - As the name implies, it creates an execution dependency between 2 passes, even if there's no data dependency. You can use it to control the execution order of the graph, or to force execution of passes which have no inputs/outputs.
+                                          The src/dst string are `srcPass` and `dstPass` as used in `addPass()`
+
+            Note that data-dependency edges may be optimized out of the execution, if they are determined not to influence the requested graph-output. Execution-dependency edges are never optimized and will always execute
         */
         uint32_t addEdge(const std::string& src, const std::string& dst);
 

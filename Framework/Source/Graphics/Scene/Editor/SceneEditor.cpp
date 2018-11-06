@@ -68,15 +68,15 @@ namespace Falcor
 
     const Gui::RadioButtonGroup SceneEditor::kGizmoSelectionButtons
     {
-        { (int32_t)Gizmo::Type::Translate, "Translation", false },
-        { (int32_t)Gizmo::Type::Rotate, "Rotation", true },
-        { (int32_t)Gizmo::Type::Scale, "Scaling", true }
+        { (uint32_t)Gizmo::Type::Translate, "Translation", false },
+        { (uint32_t)Gizmo::Type::Rotate, "Rotation", true },
+        { (uint32_t)Gizmo::Type::Scale, "Scaling", true }
     };
 
     Gui::DropdownList getPathDropdownList(const Scene* pScene, bool includeDefault)
     {
         Gui::DropdownList pathList;
-        static const Gui::DropdownValue kNoPathValue{ (int32_t)Scene::kNoPath, "None" };
+        static const Gui::DropdownValue kNoPathValue{ Scene::kNoPath, "None" };
 
         if (includeDefault)
         {
@@ -418,7 +418,7 @@ namespace Falcor
     void SceneEditor::saveScene()
     {
         std::string filename;
-        if (saveFileDialog(Scene::kFileFormatString, filename))
+        if (saveFileDialog(Scene::kFileExtensionFilters, filename))
         {
             SceneExporter::saveScene(filename, mpScene);
             mSceneDirty = false;
@@ -928,7 +928,7 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::setActiveModelInstance(const Scene::ModelInstance::SharedPtr& pModelInstance)
+    void SceneEditor::setActiveModelInstance(const Scene::ModelInstance::SharedConstPtr& pModelInstance)
     {
         for (uint32_t modelID = 0; modelID < mpScene->getModelCount(); modelID++)
         {
@@ -1102,7 +1102,7 @@ namespace Falcor
         }
 
         // Gizmo Selection
-        int32_t selectedGizmo = (int32_t)mActiveGizmoType;
+        uint32_t selectedGizmo = (uint32_t)mActiveGizmoType;
         pGui->addRadioButtons(kGizmoSelectionButtons, selectedGizmo);
         setActiveGizmo((Gizmo::Type)selectedGizmo, mSelectedInstances.size() > 0 && mHideWireframe == false);
 
@@ -1145,7 +1145,7 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::select(const Scene::ModelInstance::SharedPtr& pModelInstance, const Model::MeshInstance::SharedPtr& pMeshInstance)
+    void SceneEditor::select(const Scene::ModelInstance::SharedConstPtr& pModelInstance, const Model::MeshInstance::SharedConstPtr& pMeshInstance)
     {
         // If instance has already been picked, ignore it
         if (mSelectedInstances.count(pModelInstance.get()) > 0)
@@ -1155,7 +1155,7 @@ namespace Falcor
 
         deselect();
 
-        mpSelectionScene->addModelInstance(pModelInstance);
+        mpSelectionScene->addModelInstance(std::const_pointer_cast<Scene::ModelInstance>(pModelInstance));
 
         setActiveGizmo(mActiveGizmoType, mHideWireframe == false);
 
@@ -1245,7 +1245,7 @@ namespace Falcor
         mActiveGizmoType = type;
     }
 
-    uint32_t SceneEditor::findEditorModelInstanceID(uint32_t modelID, const Scene::ModelInstance::SharedPtr& pInstance) const
+    uint32_t SceneEditor::findEditorModelInstanceID(uint32_t modelID, const Scene::ModelInstance::SharedConstPtr& pInstance) const
     {
         for (uint32_t i = 0; i < mpEditorScene->getModelInstanceCount(modelID); i++)
         {
@@ -1291,7 +1291,7 @@ namespace Falcor
             if (pGui->addButton("Add Model"))
             {
                 std::string filename;
-                if (openFileDialog(Model::kSupportedFileFormatsStr, filename))
+                if (openFileDialog(Model::kFileExtensionFilters, filename))
                 {
                     auto pModel = Model::createFromFile(filename.c_str(), mModelLoadFlags);
                     if (pModel == nullptr)

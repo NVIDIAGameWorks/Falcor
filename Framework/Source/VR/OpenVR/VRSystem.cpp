@@ -171,10 +171,8 @@ namespace Falcor
         return spVrSystem;
     }
 
-    void VRSystem::initDisplayAndController(RenderContext::SharedPtr pRenderContext)
+    void VRSystem::initDisplayAndController()
     {
-        mpContext = pRenderContext;
-
         // Create a display/hmd object for our system
         spVrSystem->mDisplay = VRDisplay::create(spVrSystem->mpHMD, spVrSystem->mpModels);
         spVrSystem->mpHMDModel = spVrSystem->mDisplay->getRenderableModel();

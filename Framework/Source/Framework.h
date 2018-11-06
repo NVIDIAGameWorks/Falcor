@@ -42,7 +42,7 @@ using namespace glm;
 #ifdef _MSC_VER
 #define falcorexport __declspec(dllexport)
 #define falcorimport __declspec(dllimport)
-#else  // _MSC_VER
+#elif defined(__GNUC__) // _MSC_VER
 #define falcorexport __attribute__ ((visibility ("default")))
 #define falcorimport extern
 #endif // _MSC_VER
@@ -92,6 +92,7 @@ using namespace glm;
 #define safe_delete(_a) {delete _a; _a = nullptr;}
 #define safe_delete_array(_a) {delete[] _a; _a = nullptr;}
 #define align_to(_alignment, _val) (((_val + _alignment - 1) / _alignment) * _alignment)
+#define stringize(a) #a
 #define concat_strings_(a, b) a##b
 #define concat_strings(a, b) concat_strings_(a, b)
 
@@ -292,10 +293,12 @@ namespace Falcor
 #define deprecate(_ver_, _msg_) __declspec(deprecated("This function is deprecated and will be removed in Falcor " ##  _ver_ ## ". " ## _msg_))
 #define forceinline __forceinline
 using DllHandle = HMODULE;
-#else
-#define deprecate(_ver_, _msg_) 
+#define suppress_deprecation __pragma(warning(suppress : 4996));
+#elif defined(__GNUC__)
+#define deprecate(_ver_, _msg_) __attribute__ ((deprecated("This function is deprecated and will be removed in Falcor " _ver_ ". " _msg_)))
 #define forceinline __attribute__((always_inline))
 using DllHandle = void*;
+#define suppress_deprecation _Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"")
 #endif
 
 #include "Utils/Platform/OS.h"

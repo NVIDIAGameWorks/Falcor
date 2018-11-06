@@ -172,7 +172,7 @@ namespace Falcor
                         idesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 
                         // TODO: This code is incorrect since a BLAS can have multiple meshes with different materials and hence different doubleSided flags.
-                        if (pMaterial->getDoubleSided())
+                        if (pMaterial->isDoubleSided())
                         {
                             idesc.Flags |= D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_CULL_DISABLE;
                         }
@@ -238,7 +238,7 @@ namespace Falcor
         mRtFlags |= RtBuildFlags::AllowUpdate;
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS dxrFlags = getDxrBuildFlags(mRtFlags);
-        RenderContext* pContext = gpDevice->getRenderContext().get();
+        RenderContext* pContext = gpDevice->getRenderContext();
         std::vector<D3D12_RAYTRACING_INSTANCE_DESC> instanceDesc = createInstanceDesc(this, hitProgCount);
 
         // todo: improve this check - make sure things have not changed much and update was enabled last time

@@ -59,7 +59,7 @@ void SceneEditorApp::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width,
     }
 }
 
-void SceneEditorApp::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void SceneEditorApp::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
 }
 
@@ -89,7 +89,7 @@ void SceneEditorApp::initShader()
 void SceneEditorApp::loadScene()
 {
     std::string Filename;
-    if(openFileDialog(Scene::kFileFormatString, Filename))
+    if(openFileDialog(Scene::kFileExtensionFilters, Filename))
     {
         reset();
 
@@ -105,7 +105,7 @@ void SceneEditorApp::createScene()
     initNewScene();
 }
 
-void SceneEditorApp::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void SceneEditorApp::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
@@ -123,12 +123,12 @@ void SceneEditorApp::onFrameRender(SampleCallbacks* pSample, const RenderContext
         mpRenderer->update(currentTime);
 
         const auto& pCamera = mCameraLiveViewMode ? mpScene->getActiveCamera() : mpEditor->getEditorCamera();
-        mpRenderer->renderScene(pRenderContext.get(), pCamera.get());
+        mpRenderer->renderScene(pRenderContext, pCamera.get());
     }
 
     if (mpEditor && mCameraLiveViewMode == false)
     {
-        mpEditor->render(pRenderContext.get());
+        mpEditor->render(pRenderContext);
     }
 }
 
@@ -154,7 +154,7 @@ bool SceneEditorApp::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mo
         return mpRenderer->onMouseEvent(mouseEvent);
     }
 
-    return mpEditor ? mpEditor->onMouseEvent(pSample->getRenderContext().get(), mouseEvent) : false;
+    return mpEditor ? mpEditor->onMouseEvent(pSample->getRenderContext(), mouseEvent) : false;
 }
 
 #ifdef _WIN32

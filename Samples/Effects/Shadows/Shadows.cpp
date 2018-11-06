@@ -80,7 +80,7 @@ void Shadows::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 void Shadows::displayLoadSceneDialog()
 {
     std::string filename;
-    if(openFileDialog(Scene::kFileFormatString, filename))
+    if(openFileDialog(Scene::kFileExtensionFilters, filename))
     {
         createScene(filename);
     }
@@ -127,7 +127,7 @@ void Shadows::createScene(const std::string& filename)
     ConstantBuffer::SharedPtr pCB = mLightingPass.pProgramVars->getConstantBuffer(0, 0, 0);
 }
 
-void Shadows::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void Shadows::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     auto pTargetFbo = pRenderContext->getGraphicsState()->getFbo();
     mWindowDimensions.x = pTargetFbo->getWidth();
@@ -173,7 +173,7 @@ void Shadows::displayVisibilityBuffer(RenderContext* pContext)
     pContext->popGraphicsVars();
 }
 
-void Shadows::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void Shadows::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
@@ -189,7 +189,7 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, const RenderContext::Share
             mPerFrameCBData.camVpAtLastCsmUpdate = mpScene->getActiveCamera()->getViewProjMatrix();
             for(uint32_t i = 0; i < mpCsmTech.size(); i++)
             {
-                mpVisibilityBuffers[i] = mpCsmTech[i]->generateVisibilityBuffer(pRenderContext.get(), mpScene->getActiveCamera().get(), nullptr);
+                mpVisibilityBuffers[i] = mpCsmTech[i]->generateVisibilityBuffer(pRenderContext, mpScene->getActiveCamera().get(), nullptr);
             }
         }
 
@@ -202,15 +202,15 @@ void Shadows::onFrameRender(SampleCallbacks* pSample, const RenderContext::Share
 
         if(mControls.debugMode == (uint32_t)DebugMode::ShadowMap)
         {
-            displayShadowMap(pRenderContext.get());
+            displayShadowMap(pRenderContext);
         }
         else if (mControls.debugMode == (uint32_t)DebugMode::VisibilityBuffer)
         {
-            displayVisibilityBuffer(pRenderContext.get());
+            displayVisibilityBuffer(pRenderContext);
         }
         else
         {
-            runMainPass(pRenderContext.get());
+            runMainPass(pRenderContext);
         }
     }
 

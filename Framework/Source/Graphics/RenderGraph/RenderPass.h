@@ -75,6 +75,10 @@ namespace Falcor
         */
         virtual Dictionary getScriptingDictionary() const { return {}; }
 
+        /** Get a string describing what the pass is doing
+        */
+        virtual std::string getDesc() = 0;
+
         /** Render the pass's UI
         */
         virtual void renderUI(Gui* pGui, const char* uiGroup) {}
@@ -107,7 +111,7 @@ namespace Falcor
         */
         void setPassChangedCB(PassChangedCallback cb) { mPassChangedCB = cb; }
     protected:
-        RenderPass(const std::string& name) : mName(name) 
+        RenderPass(const std::string& className) : mName(className)
         {
             auto cb = [] {};
             mPassChangedCB = cb;

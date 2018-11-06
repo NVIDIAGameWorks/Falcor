@@ -44,7 +44,7 @@ namespace Falcor
 {
     /** The rendering context. Use it to bind state and dispatch calls to the GPU
     */
-    class RenderContext : public ComputeContext, public inherit_shared_from_this<ComputeContext, RenderContext>
+    class RenderContext : public ComputeContext
     {
     public:
         using SharedPtr = std::shared_ptr<RenderContext>;
@@ -189,14 +189,18 @@ namespace Falcor
         */
         void setBindFlags(StateBindFlags flags) { mBindFlags = flags; }
 
+        /** Get the render context bind flags so the user can restore the state after setBindFlags()
+        */
+        StateBindFlags getBindFlags() const { return mBindFlags; }
+
         /** Resolve an entire multi-sampled resource. The dst and src resources must have the same dimensions, array-size, mip-count and format.
             If any of these properties don't match, you'll have to use `resolveSubresource`
         */
-        void resolveResource(const Texture* pSrc, const Texture* pDst);
+        void resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst);
 
         /** Resolve a multi-sampled sub-resource
         */
-        void resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource);
+        void resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource);
 
 #ifdef FALCOR_D3D12
         /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same

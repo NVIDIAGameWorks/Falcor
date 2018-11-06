@@ -377,14 +377,14 @@ namespace Falcor
         return ImGui::Button(label);
     }
 
-    bool Gui::addRadioButtons(const RadioButtonGroup& buttons, int32_t& activeID)
+    bool Gui::addRadioButtons(const RadioButtonGroup& buttons, uint32_t& activeID)
     {
         int32_t oldValue = activeID;
 
         for (const auto& button : buttons)
         {
             if (button.sameLine) ImGui::SameLine();
-            ImGui::RadioButton(button.label.c_str(), &activeID, button.buttonID);
+            ImGui::RadioButton(button.label.c_str(), (int*)&activeID, button.buttonID);
         }
 
         return oldValue != activeID;
@@ -711,21 +711,16 @@ namespace Falcor
         return io.WantCaptureMouse;
     }
 
-    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar, bool allowMove)
+    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar, bool allowMove, bool focus)
     {
         ImVec2 pos{ float(x), float(y) };
         ImVec2 size{ float(width), float(height) };
         ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowPos(pos, ImGuiCond_FirstUseEver);
         int flags = 0;
-        if (!showTitleBar)
-        {
-            flags |= ImGuiWindowFlags_NoTitleBar;
-        }
-        if (!allowMove)
-        {
-            flags |= ImGuiWindowFlags_NoMove;
-        }
+        if (!showTitleBar) flags |= ImGuiWindowFlags_NoTitleBar;
+        if (!allowMove)  flags |= ImGuiWindowFlags_NoMove;
+        if (!focus) flags |= ImGuiWindowFlags_NoFocusOnAppearing;
 
         ImGui::Begin(label, nullptr, flags);
         ImGui::PushFont(mpActiveFont);

@@ -138,16 +138,16 @@ namespace Falcor
         {
             // Create the global reflector and root-signature
             mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
-            mpGlobalReflector->merge(mpRayGenProgram->getGlobalReflector().get());
+            mpGlobalReflector = ProgramReflection::merge(*mpGlobalReflector, *mpRayGenProgram->getGlobalReflector());
 
             for (const auto m : mMissProgs)
             {
-                if (m) mpGlobalReflector->merge(m->getGlobalReflector().get());
+                if (m) mpGlobalReflector = ProgramReflection::merge(*mpGlobalReflector, *m->getGlobalReflector());
             }
 
             for (const auto& h : mHitProgs)
             {
-                if (h) mpGlobalReflector->merge(h->getGlobalReflector().get());
+                if (h) mpGlobalReflector = ProgramReflection::merge(*mpGlobalReflector, *h->getGlobalReflector());
             }
 
             mpGlobalRootSignature = RootSignature::create(mpGlobalReflector.get(), false);
@@ -201,7 +201,7 @@ namespace Falcor
             if (pMiss && pMiss->addDefine(name, value)) changed = true;
         }
 
-        mReflectionDirty = changed;
+        if (changed) mReflectionDirty = true;
         return changed;
     }
 
@@ -220,7 +220,7 @@ namespace Falcor
             if (pMiss && pMiss->addDefines(dl)) changed = true;
         }
 
-        mReflectionDirty = changed;
+        if (changed) mReflectionDirty = true;
         return changed;
     }
 
@@ -239,7 +239,7 @@ namespace Falcor
             if (pMiss && pMiss->removeDefine(name)) changed = true;
         }
 
-        mReflectionDirty = changed;
+        if (changed) mReflectionDirty = true;
         return changed;
     }
 
@@ -258,7 +258,7 @@ namespace Falcor
             if (pMiss && pMiss->removeDefines(pos, len, str)) changed = true;
         }
 
-        mReflectionDirty = changed;
+        if (changed) mReflectionDirty = true;
         return changed;
     }
 
@@ -277,7 +277,7 @@ namespace Falcor
             if (pMiss && pMiss->setDefines(dl)) changed = true;
         }
 
-        mReflectionDirty = changed;
+        if (changed) mReflectionDirty = true;
         return changed;
     }
 }

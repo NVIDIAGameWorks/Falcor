@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
+#include "API/Device.h"
 
 namespace Falcor
 {
@@ -111,4 +112,32 @@ namespace Falcor
     };
 
     static_assert(arraysize(kDxgiFormatDesc) == (uint32_t)ResourceFormat::BC7UnormSrgb + 1, "DXGI format desc table has a wrong size");
+
+    ResourceBindFlags getFormatBindFlags(ResourceFormat format)
+    {
+        D3D12_FEATURE_DATA_FORMAT_SUPPORT support;
+        support.Format = getDxgiFormat(format);
+        d3d_call(gpDevice->getApiHandle()->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support)));
+
+        ResourceBindFlags flags = ResourceBindFlags::None;
+        auto dxgi1 = support.Support1;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_BUFFER) flags |= ResourceBindFlags::Constant;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_IA_VERTEX_BUFFER) flags |= ResourceBindFlags::Vertex;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_IA_INDEX_BUFFER) flags |= ResourceBindFlags::Index;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_SO_BUFFER) flags |= ResourceBindFlags::StreamOutput;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_TEXTURE1D) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_TEXTURE2D) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_TEXTURE3D) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_TEXTURECUBE) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_SHADER_LOAD) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE_COMPARISON) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_SHADER_GATHER) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_SHADER_GATHER_COMPARISON) flags |= ResourceBindFlags::ShaderResource;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) flags |= ResourceBindFlags::RenderTarget;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL) flags |= ResourceBindFlags::DepthStencil;
+        if (dxgi1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) flags |= ResourceBindFlags::UnorderedAccess;
+        
+        return flags;
+    }
 }

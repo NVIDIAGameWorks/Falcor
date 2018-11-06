@@ -98,8 +98,8 @@ namespace Falcor
         {
             sRunning = true;
 #ifdef _WIN32
-            static const std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python");
-            Py_SetPythonHome(const_cast<wchar_t*>(pythonHome.c_str()));
+            static std::wstring pythonHome = string_2_wstring(std::string(_PROJECT_DIR_) + "/../Externals/Python");
+            Py_SetPythonHome(pythonHome.c_str());
 #endif
 
             try

@@ -41,6 +41,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<ToneMapping>;
+        static const char* kDesc;
 
         /** Destructor
         */
@@ -142,6 +143,10 @@ namespace Falcor
         /** Get the scripting dictionary
         */
         Dictionary getScriptingDictionary() const override;
+        
+        /** Get a description of the pass
+        */ 
+        std::string getDesc() override { return kDesc; }
     private:
         ToneMapping(Operator op);
         void createLuminanceFbo(const Texture::SharedPtr& pSrc);

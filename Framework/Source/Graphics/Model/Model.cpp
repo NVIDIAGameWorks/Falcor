@@ -46,7 +46,40 @@ namespace Falcor
 {
 
     uint32_t Model::sModelCounter = 0;
-    const char* Model::kSupportedFileFormatsStr = "Supported Formats\0*.obj;*.bin;*.dae;*.x;*.md5mesh;*.ply;*.fbx;*.3ds;*.blend;*.ase;*.ifc;*.xgl;*.zgl;*.dxf;*.lwo;*.lws;*.lxo;*.stl;*.x;*.ac;*.ms3d;*.cob;*.scn;*.3d;*.mdl;*.mdl2;*.pk3;*.smd;*.vta;*.raw;*.ter\0\0";
+    const FileDialogFilterVec Model::kFileExtensionFilters = 
+    {
+        {"obj"},
+        {"bin"},
+        {"dae"},
+        {"x"},
+        {"md5mesh"},
+        {"ply"},
+        {"fbx"},
+        {"3ds"},
+        {"blend"},
+        {"ase"},
+        {"ifc"},
+        {"xgl"},
+        {"zgl"},
+        {"dxf"},
+        {"lwo"},
+        {"lws"},
+        {"lxo"},
+        {"stl"},
+        {"x"},
+        {"ac"},
+        {"ms3d"},
+        {"cob"},
+        {"scn"},
+        {"3d"},
+        {"mdl"},
+        {"mdl2"},
+        {"pk3"},
+        {"smd"},
+        {"vta"},
+        {"raw"},
+        {"ter"},
+    };
 
     // Method to sort meshes
     bool compareMeshes(const Mesh::SharedPtr& p1, const Mesh::SharedPtr& p2)

@@ -33,6 +33,9 @@
 
 namespace Falcor
 {
+    const char* CascadedShadowMaps::kDesc = "The pass generates a visibility-map using the CSM technique. The map is for a single light-source.\n"
+        "It supports common filtering modes, including EVSM. It also supports PSSM and SDSM";
+
     const char* kDepthPassFile = "Effects/DepthPass.slang";
     const char* kShadowPassfile = "Effects/ShadowPass.slang";
     const char* kVisibilityPassFile = "Effects/VisibilityPass.ps.slang";
@@ -256,7 +259,7 @@ namespace Falcor
 
     CascadedShadowMaps::SharedPtr CascadedShadowMaps::create(const Light::SharedConstPtr& pLight, uint32_t shadowMapWidth, uint32_t shadowMapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, const Scene::SharedPtr& pScene, uint32_t cascadeCount, uint32_t visMapBitsPerChannel)
     {
-#pragma warning(suppress : 4996)
+        suppress_deprecation
         auto pUnique = create(shadowMapWidth, shadowMapHeight, visibilityBufferWidth, visibilityBufferHeight, pLight, pScene, cascadeCount, visMapBitsPerChannel);
         SharedPtr pShared = std::move(pUnique);
         return pShared;
@@ -761,7 +764,7 @@ namespace Falcor
         pCtx->clearFbo(pFbo.get(), glm::vec4(), 1, 0, FboAttachmentType::Depth);
         pCtx->pushGraphicsState(mDepthPass.pState);
         pCtx->pushGraphicsVars(mDepthPass.pGraphicsVars);
-        mpCsmSceneRenderer->renderScene(pCtx, const_cast<Camera*>(pCamera));
+        mpCsmSceneRenderer->renderScene(pCtx, pCamera);
         pCtx->popGraphicsVars();
         pCtx->popGraphicsState();
     }
@@ -1016,11 +1019,11 @@ namespace Falcor
     {
         RenderPassReflection reflector;
 
-        reflector.addOutput(kVisibility)
-            .setFormat(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades))
-            .setDimensions(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y, 1);
+        reflector.addOutput(kVisibility, "Visibility map. Values are [0,1] where 0 means the pixel is completely shadowed and 1 means it's not shadowed at all")
+            .format(getVisBufferFormat(mVisibilityPassData.mapBitsPerChannel, mVisibilityPassData.shouldVisualizeCascades))
+            .texture2D(mVisibilityPassData.screenDim.x, mVisibilityPassData.screenDim.y);
 
-        reflector.addInput(kDepth).setFlags(RenderPassReflection::Field::Flags::Optional);
+        reflector.addInput(kDepth, "Pre-initialized scene depth buffer used for SDSM.\nIf not provided, the pass will run a depth-pass internally").flags(RenderPassReflection::Field::Flags::Optional);
 
         return reflector;
     }

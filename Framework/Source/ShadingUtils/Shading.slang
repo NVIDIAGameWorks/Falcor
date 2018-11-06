@@ -40,8 +40,7 @@ __import Helpers;
 */
 interface ITextureSampler
 {
-    /** Sample from a 2D texture using the level of detail computed
-    by this method
+    /** Sample from a 2D texture using the level of detail computed by this method
     */
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv);
 };
@@ -84,8 +83,8 @@ struct ExplicitGradientTextureSampler : ITextureSampler
 
 /** Load data from a texture
 
-The `lod` parameter represents the method to use for computing
-texture level of detail, and must implement the `ITextureSampler` interface.
+    The `lod` parameter represents the method to use for computing
+    texture level of detail, and must implement the `ITextureSampler` interface.
 */
 float4 sampleTexture<L:ITextureSampler>(Texture2D t, SamplerState s, float2 uv, float4 factor, uint mode, L lod)
 {
@@ -129,8 +128,8 @@ float3 RgToNormal(float2 rg)
 
 /** Apply normal map
 
-The `lod` parameter represents the method to use for computing
-texture level of detail, and must implement the `ITextureSampler` interface.
+    The `lod` parameter represents the method to use for computing
+    texture level of detail, and must implement the `ITextureSampler` interface.
 */
 void applyNormalMap<L:ITextureSampler>(MaterialData m, inout ShadingData sd, L lod)
 {
@@ -154,6 +153,53 @@ void applyNormalMap<L:ITextureSampler>(MaterialData m, inout ShadingData sd, L l
     sd.N = sd.T * mapN.x + sd.B * mapN.y + sd.N * mapN.z;
     sd.B = normalize(sd.B - sd.N * dot(sd.B, sd.N));
     sd.T = normalize(cross(sd.B, sd.N));
+}
+
+/** Internal implementation of `applyAlphaTest`.
+    The `lod` parameter represents the method to use for computing texture level of detail, and must implement the `ITextureSampler` interface.
+*/
+bool _alphaTest<L:ITextureSampler>(VertexOut v, MaterialData m, L lod)
+{
+    if (EXTRACT_ALPHA_MODE(m.flags) != AlphaModeMask) return false;
+
+    // Load opacity from the alpha channel of the diffuse texture.
+    float alpha = sampleTexture(m.resources.baseColor, m.resources.samplerState, v.texC, m.baseColor, EXTRACT_DIFFUSE_TYPE(m.flags), lod).a;
+    return evalAlphaTest(m.flags, alpha, m.alphaThreshold, v.posW);
+}
+
+/** Apply alpha test and return the result.
+    This version samples alpha using implicit gradients and only works in pixel shaders.
+*/
+bool alphaTest(VertexOut v, MaterialData m)
+{
+    ImplicitLodTextureSampler lod = {};
+    return _alphaTest(v, m, lod);
+}
+
+/** Apply alpha test and return the result.
+    This version samples alpha at a level of detail specified by the `lod` parameter.
+*/
+bool alphaTest(VertexOut v, MaterialData m, float lod)
+{
+    ExplicitLodTextureSampler explicitLOD = { lod };
+    return _alphaTest(v, m, explicitLOD);
+}
+
+/** Apply alpha test and return the result.
+    This version samples alpha at a level of detail computed from screen-space gradients `gradX` and `gradY`.
+*/
+bool alphaTest(VertexOut v, MaterialData m, float2 gradX, float2 gradY)
+{
+    ExplicitGradientTextureSampler lod = { gradX, gradY };
+    return _alphaTest(v, m, lod);
+}
+
+void applyAlphaTest(uint matFlags, float alpha, float threshold, float3 posW)
+{
+#ifndef _MS_DISABLE_ALPHA_TEST
+    if (evalAlphaTest(matFlags, alpha, threshold, posW))
+        discard;
+#endif
 }
 
 ShadingData initShadingData()
@@ -197,7 +243,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexOut v, MaterialData m, 
     // Sample the diffuse texture and apply the alpha test
     float4 baseColor = sampleTexture(m.resources.baseColor, m.resources.samplerState, v.texC, m.baseColor, EXTRACT_DIFFUSE_TYPE(m.flags), lod);
     sd.opacity = m.baseColor.a;
-    alphaTest(m.flags, baseColor.a, m.alphaThreshold, v.posW);
+    applyAlphaTest(m.flags, baseColor.a, m.alphaThreshold, v.posW);
 
     sd.posW = v.posW;
     sd.uv = v.texC;
@@ -210,7 +256,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexOut v, MaterialData m, 
     // Sample the spec texture
     bool sampleOcclusion = EXTRACT_OCCLUSION_MAP(m.flags) > 0;
     float4 spec = sampleTexture(m.resources.specular, m.resources.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags), lod);
-    if(EXTRACT_SHADING_MODEL(m.flags) == ShadingModelMetalRough)
+    if (EXTRACT_SHADING_MODEL(m.flags) == ShadingModelMetalRough)
     {
         // R - Occlusion; G - Roughness; B - Metalness
         sd.diffuse = lerp(baseColor.rgb, float3(0), spec.b);
@@ -219,7 +265,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexOut v, MaterialData m, 
         sd.specular = lerp(float3(0.04f), baseColor.rgb, spec.b);
         sd.linearRoughness = spec.g;
 
-        if(sampleOcclusion) sd.occlusion = spec.r;
+        if (sampleOcclusion) sd.occlusion = spec.r;
     }
     else // if (EXTRACT_SHADING_MODEL(m.flags) == ShadingModelSpecGloss)
     {
@@ -244,7 +290,7 @@ ShadingData _prepareShadingData<L:ITextureSampler>(VertexOut v, MaterialData m, 
     sd.height = sampleTexture(m.resources.heightMap, m.resources.samplerState, v.texC, 1, channel_type(EXTRACT_HEIGHT_MAP), lod).xy;
     sd.height = sd.height * m.heightScaleOffset.x + m.heightScaleOffset.y;
 #undef channel_type
-    
+
     applyNormalMap(m, sd, lod);
     sd.NdotV = dot(sd.N, sd.V);
 
@@ -332,9 +378,9 @@ ShadingResult evalMaterial(ShadingData sd, LightProbeData probe)
     ShadingResult sr = initShadingResult();
     LightSample ls = evalLightProbe(probe, sd);
 
-    sr.diffuse = sd.diffuse.rgb * ls.diffuse;
+    sr.diffuse = ls.diffuse;
     sr.color.rgb = sr.diffuse;
-    sr.specular = saturate(evalGGX(sd.roughness, ls.NdotH)) * ls.specular * sd.specular;
+    sr.specular = ls.specular;
     sr.color.rgb += sr.specular;
     return sr;
 }

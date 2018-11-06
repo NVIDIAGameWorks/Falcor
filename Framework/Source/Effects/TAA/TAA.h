@@ -41,6 +41,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<TemporalAA>;
+        static const char* kDesc;
 
         /** Destructor
         */
@@ -74,7 +75,7 @@ namespace Falcor
         // Render-pass stuff
         virtual void execute(RenderContext* pContext, const RenderData* pData) override;
         virtual RenderPassReflection reflect() const override;
-
+        std::string getDesc() override { return kDesc; }
     private:
         TemporalAA();
 

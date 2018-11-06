@@ -127,7 +127,7 @@ namespace Falcor
 
         /** Get an execution order for graph based on the visual layout of the graph
         */
-        std::vector<uint32_t> getExecutionOrder();
+        std::vector<uint32_t> getPassOrder();
 
         /** Returns the current log from the events in the editor
         */

@@ -34,11 +34,11 @@ namespace Falcor
 {
     static const Gui::DropdownList kCodecID = 
     {
-        { (int32_t)VideoEncoder::CodecID::RawVideo, std::string("Uncompressed") },
-        { (int32_t)VideoEncoder::CodecID::H264, std::string("H.264") },
-        { (int32_t)VideoEncoder::CodecID::HEVC, std::string("HEVC(H.265)") },
-        { (int32_t)VideoEncoder::CodecID::MPEG2, std::string("MPEG2") },
-        { (int32_t)VideoEncoder::CodecID::MPEG4, std::string("MPEG4") }
+        { (uint32_t)VideoEncoder::CodecID::RawVideo, std::string("Uncompressed") },
+        { (uint32_t)VideoEncoder::CodecID::H264, std::string("H.264") },
+        { (uint32_t)VideoEncoder::CodecID::HEVC, std::string("HEVC(H.265)") },
+        { (uint32_t)VideoEncoder::CodecID::MPEG2, std::string("MPEG2") },
+        { (uint32_t)VideoEncoder::CodecID::MPEG4, std::string("MPEG4") }
     };
 
     VideoEncoderUI::UniquePtr VideoEncoderUI::create(uint32_t topLeftX, uint32_t topLeftY, uint32_t width, uint32_t height, Callback startCaptureCB, Callback endCaptureCB)
@@ -66,6 +66,11 @@ namespace Falcor
         }
     }
 
+    void VideoEncoderUI::setCaptureState(bool state)
+    {
+        mCapturing = state;
+    }
+
     void VideoEncoderUI::startCaptureUI(Gui* pGui)
     {
         pGui->pushWindow("Video Capture", mWindowDims.width, mWindowDims.height, mWindowDims.x, mWindowDims.y);
@@ -81,6 +86,8 @@ namespace Falcor
 
         pGui->addCheckBox("Capture UI", mCaptureUI);
         pGui->addTooltip("Check this box if you want the GUI recorded");
+        pGui->addCheckBox("Reset rendering", mResetOnFirstFrame);
+        pGui->addTooltip("Check this box if you want the rendering to be reset for the first frame, for example to reset temporal accumulation");
         pGui->addCheckBox("Use Time-Range", mUseTimeRange);
         if(mUseTimeRange)
         {
@@ -107,7 +114,7 @@ namespace Falcor
 
     void VideoEncoderUI::startCapture()
     {
-        if(saveFileDialog(VideoEncoder::getSupportedContainerForCodec(mCodec).c_str(), mFilename))
+        if(saveFileDialog(VideoEncoder::getSupportedContainerForCodec(mCodec), mFilename))
         {
             mCapturing = true;
 

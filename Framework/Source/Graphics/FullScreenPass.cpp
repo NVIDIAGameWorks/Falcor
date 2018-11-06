@@ -141,7 +141,7 @@ namespace Falcor
         mpPipelineState->setVao(gFullScreenData.pVao);
     }
 
-    void FullScreenPass::execute(RenderContext* pRenderContext, DepthStencilState::SharedPtr pDsState) const
+    void FullScreenPass::execute(RenderContext* pRenderContext, DepthStencilState::SharedPtr pDsState, BlendState::SharedPtr pBlendState) const
     {
         mpPipelineState->pushFbo(pRenderContext->getGraphicsState()->getFbo(), false);
         mpPipelineState->setViewport(0, pRenderContext->getGraphicsState()->getViewport(0), false);
@@ -149,6 +149,7 @@ namespace Falcor
 
         mpPipelineState->setVao(gFullScreenData.pVao);
         mpPipelineState->setDepthStencilState(pDsState ? pDsState : mpDepthStencilState);
+        mpPipelineState->setBlendState(pBlendState);
         pRenderContext->pushGraphicsState(mpPipelineState);
         pRenderContext->draw(arraysize(kVertices), 0);
         pRenderContext->popGraphicsState();

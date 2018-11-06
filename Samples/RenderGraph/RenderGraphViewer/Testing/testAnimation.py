@@ -1,0 +1,20 @@
+def render_graph_testAnimation():
+	testAnimation = createRenderGraph()
+	DepthPass = createRenderPass("DepthPass", {'depthFormat': Format.D32Float})
+	testAnimation.addPass(DepthPass, "DepthPass")
+	SkyBox = createRenderPass("SkyBox")
+	testAnimation.addPass(SkyBox, "SkyBox")
+	ForwardLightingPass = createRenderPass("ForwardLightingPass", {'sampleCount': 1, 'enableSuperSampling': False})
+	testAnimation.addPass(ForwardLightingPass, "ForwardLightingPass")
+	BlitPass = createRenderPass("BlitPass", {'filter': Filter.Linear})
+	testAnimation.addPass(BlitPass, "BlitPass")
+	testAnimation.addEdge("ForwardLightingPass.color", "BlitPass.src")
+	testAnimation.addEdge("DepthPass.depth", "ForwardLightingPass.depth")
+	testAnimation.addEdge("DepthPass.depth", "SkyBox.depth")
+	testAnimation.addEdge("SkyBox.target", "ForwardLightingPass.color")
+	testAnimation.markOutput("BlitPass.dst")
+	Cerberus = loadScene("Cerberus/Standard/Cerberus.fscene")
+	testAnimation.setScene(Cerberus)
+	return testAnimation
+
+testAnimation = render_graph_testAnimation()

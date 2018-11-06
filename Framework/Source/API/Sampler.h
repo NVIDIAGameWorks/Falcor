@@ -176,6 +176,10 @@ namespace Falcor
         */
         const glm::vec4& getBorderColor() const { return mDesc.mBorderColor; }
 
+        /** Get the descriptor that was used to create the sampler.
+        */
+        const Desc& getDesc() const { return mDesc; }
+
         /** Get an object that represents a default sampler
         */
         static Sampler::SharedPtr getDefault();

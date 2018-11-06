@@ -28,7 +28,9 @@
 #include "Framework.h"
 #include "RenderGraphImportExport.h"
 #include "RenderGraphScripting.h"
+#include "RenderPassLibrary.h"
 #include "RenderGraphIR.h"
+#include "Graphics/Scene/Scene.h"
 #include <fstream>
 
 namespace Falcor
@@ -86,12 +88,19 @@ namespace Falcor
         return res;
     }
 
-    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename, std::string funcName)
+    bool RenderGraphExporter::save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename, std::string funcName, ExportFlags exportFlags)
     {
         updateGraphStrings(graphName, filename, funcName);
         RenderGraphIR::SharedPtr pIR = RenderGraphIR::create(graphName);
 
-        // Add the passes
+        // Register passes that are loaded from dlls
+        auto libNames = RenderPassLibrary::enumerateLibraries();
+        for (const auto& libName : libNames)
+        {
+            pIR->loadPassLibrary(getFilenameFromPath(libName));
+        }
+
+        //Add the passes
         for (const auto& node : pGraph->mNodeData)
         {
             const auto& data = node.second;
@@ -114,6 +123,13 @@ namespace Falcor
         {
             std::string str = pGraph->mNodeData[out.nodeId].nodeName + '.' + out.field;
             pIR->markOutput(str);
+        }
+
+        // if set, add the scene
+        if (exportFlags == ExportFlags::SetScene)
+        {
+            auto pScene = pGraph->getScene();
+            if (pScene != nullptr)  { pIR->setScene(pScene.get()); }
         }
 
         // Save it to file

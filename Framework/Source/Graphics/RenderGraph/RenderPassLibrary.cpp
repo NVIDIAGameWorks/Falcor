@@ -37,6 +37,7 @@
 #include "Effects/AmbientOcclusion/SSAO.h"
 #include "Effects/TAA/TAA.h"
 #include "RenderPasses/ResolvePass.h"
+#include "RenderPasses/ImageLoader.h"
 #include "API/Device.h"
 #include "RenderGraph.h"
 #include <fstream>
@@ -73,16 +74,17 @@ namespace Falcor
     {
         auto& lib = RenderPassLibrary::instance();
 
-        lib.addClass(BlitPass, "Blit one texture into another");
-        lib.addClass(ForwardLightingPass, "Forward-rendering lighting pass");
-        lib.addClass(DepthPass, "Depth pass");
-        lib.addClass(CascadedShadowMaps, "Cascaded shadow maps");
-        lib.addClass(ToneMapping, "Tone-Mapping");
-        lib.addClass(FXAA, "Fast Approximate Anti-Aliasing");
-        lib.addClass(SSAO, "Screen Space Ambient Occlusion");
-        lib.addClass(TemporalAA, "Temporal Anti-Aliasing");
-        lib.addClass(SkyBox, "Sky Box pass");
-        lib.addClass(ResolvePass, "MSAA Resolve");
+        lib.addClass(BlitPass, BlitPass::kDesc);
+        lib.addClass(ForwardLightingPass, ForwardLightingPass::kDesc);
+        lib.addClass(DepthPass, DepthPass::kDesc);
+        lib.addClass(CascadedShadowMaps, CascadedShadowMaps::kDesc);
+        lib.addClass(ToneMapping, ToneMapping::kDesc);
+        lib.addClass(FXAA, FXAA::kDesc);
+        lib.addClass(SSAO, SSAO::kDesc);
+        lib.addClass(TemporalAA, TemporalAA::kDesc);
+        lib.addClass(SkyBox, SkyBox::kDesc);
+        lib.addClass(ResolvePass, ResolvePass::kDesc);
+        lib.addClass(ImageLoader, ImageLoader::kDesc);
 
         return true;
     };
@@ -103,16 +105,30 @@ namespace Falcor
         }
         else
         {
-            mPasses[className] = ExtendeDesc(className, desc, func, module);
+            mPasses[className] = ExtendedDesc(className, desc, func, module);
         }
     }
 
     std::shared_ptr<RenderPass> RenderPassLibrary::createPass(const char* className, const Dictionary& dict)
     {
+#ifdef _MSC_VER
+        static const std::string kDllType = ".dll";
+#else
+        static const std::string kDllType = ".so";
+#endif
+
         if (mPasses.find(className) == mPasses.end())
         {
-            logWarning(std::string("Trying to create a render-pass named `") + className + "`, but no such class exists in the library");
-            return nullptr;
+            // See if we can load a DLL with the class's name and retry
+            std::string libName = className + kDllType;
+            logInfo(std::string("Can't find a render-pass named `") + className + "`. Trying to load a render-pass library `" + libName + '`');
+            loadLibrary(libName);
+
+            if (mPasses.find(className) == mPasses.end())
+            {
+                logWarning(std::string("Trying to create a render-pass named `") + className + "`, but no such class exists in the library");
+                return nullptr;
+            }
         }
 
         auto& renderPass = mPasses[className];
@@ -125,6 +141,16 @@ namespace Falcor
         v.reserve(mPasses.size());
         for (const auto& p : mPasses) v.push_back(p.second);
         return v;
+    }
+
+    RenderPassLibrary::StrVec RenderPassLibrary::enumerateLibraries()
+    {
+        StrVec libNames;
+        for (const auto& lib : spInstance->mLibs)
+        {
+            libNames.push_back(lib.first);
+        }
+        return libNames;
     }
 
     void copyDllFile(const std::string& fullpath)
@@ -156,6 +182,14 @@ namespace Falcor
         mLibs[fullpath] = { l, getFileModifiedTime(fullpath) };
         auto func = (LibraryFunc)getDllProcAddress(l, "getPasses");
 
+        // Add the DLL project directory to the search paths
+        auto libProjPath = (const char*(*)(void))getDllProcAddress(l, "getProjDir");
+        if (libProjPath)
+        {
+            const char* projDir = libProjPath();
+            addDataDirectory(std::string(projDir) + "/Data/");
+        }
+
         RenderPassLibrary lib;
         func(lib);
 
@@ -179,6 +213,14 @@ namespace Falcor
         {
             if (it->second.module == module) it = mPasses.erase(it);
             else ++it;
+        }
+
+        // Remove the DLL project directory to the search paths
+        auto libProjPath = (const char*(*)(void))getDllProcAddress(module, "getProjDir");
+        if (libProjPath)
+        {
+            const char* projDir = libProjPath();
+            removeDataDirectory(std::string(projDir) + "/Data/");
         }
 
         releaseDll(module);

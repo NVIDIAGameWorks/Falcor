@@ -53,7 +53,6 @@ namespace Falcor
             BmpFile,    //< BMP file for lossless uncompressed 8-bits images with optional alpha
             PfmFile,    //< PFM file for floating point HDR images with 32-bit float per channel
             ExrFile,    //< EXR file for floating point HDR images with 16-bit float per channel
-            AutoDetect  //< Detect format from texture parameters
         };
 
         using UniquePtr = std::unique_ptr<Bitmap>;
@@ -102,6 +101,10 @@ namespace Falcor
         */
         ResourceFormat getFormat() const { return mFormat; }
 
+        /** Get the file dialog filter vec for images.
+            \param[in] format If set to ResourceFormat::Unknown, will return all the supported image file formats. If set to something else, will only return file types which support this format.
+        */
+        static FileDialogFilterVec getFileDialogFilters(ResourceFormat format = ResourceFormat::Unknown);
     private:
         Bitmap() = default;
         uint8_t* mpData = nullptr;

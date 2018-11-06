@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/RenderGraph/RenderPass.h"
-#include "API/Texture.h"
+#include "API/Sampler.h"
 
 namespace Falcor
 {
@@ -35,6 +35,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<BlitPass>;
+        static const char* kDesc;
 
         /** Create a new object
         */
@@ -44,6 +45,7 @@ namespace Falcor
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
         virtual void renderUI(Gui* pGui, const char* uiGroup) override;
         virtual Dictionary getScriptingDictionary() const override;
+        virtual std::string getDesc() override { return kDesc; }
 
         void setFilter(Sampler::Filter filter) { mFilter = filter; }
     private:

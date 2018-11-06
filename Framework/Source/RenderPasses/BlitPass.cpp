@@ -32,6 +32,8 @@
 
 namespace Falcor
 {
+    const char* BlitPass::kDesc = "Blit a texture into a different texture";
+
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
     static const std::string kFilter = "filter";
@@ -40,8 +42,8 @@ namespace Falcor
     {
         RenderPassReflection reflector;
 
-        reflector.addOutput(kDst);
-        reflector.addInput(kSrc);
+        reflector.addOutput(kDst, "The destination texture");
+        reflector.addInput(kSrc, "The source texture");
 
         return reflector;
     }

@@ -94,7 +94,7 @@ namespace Falcor
             \param[in] pRenderContext The render context.
             \param[in] pDsState Optional. Use it to make the pass use a different DS state then the one created during initialization
         */
-        void execute(RenderContext* pRenderContext, DepthStencilState::SharedPtr pDsState = nullptr) const;
+        void execute(RenderContext* pRenderContext, DepthStencilState::SharedPtr pDsState = nullptr, BlendState::SharedPtr pBlendState = nullptr) const;
 
         /** Get the program.
         */

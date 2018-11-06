@@ -208,7 +208,9 @@ namespace Falcor
 
         /** Returns true if the material is double-sided
         */
+        deprecate("3.2", "Use isDoubleSided()")
         bool getDoubleSided() const { return EXTRACT_DOUBLE_SIDED(mData.flags); }
+        bool isDoubleSided() const { return EXTRACT_DOUBLE_SIDED(mData.flags); }
 
         /** Set the alpha threshold. The threshold is only used if the alpha mode is `AlphaModeMask`
         */
@@ -242,6 +244,10 @@ namespace Falcor
         */
         float getIndexOfRefraction() const { return mData.IoR; }
 
+        /** Returns true if material is emissive.
+        */
+        bool isEmissive() const { return EXTRACT_EMISSIVE_TYPE(mData.flags) != ChannelTypeUnused; }
+        
         /** Comparison operator
         */
         bool operator==(const Material& other) const;

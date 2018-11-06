@@ -32,6 +32,7 @@ namespace Falcor
 {
     static const std::string kDepth = "depth";
     static const std::string kDepthFormat = "depthFormat";
+    const char* DepthPass::kDesc = "Creates a depth-buffer using the scene's active camera";
 
     static bool parseDictionary(DepthPass* pPass, const Dictionary& dict)
     {
@@ -75,7 +76,7 @@ namespace Falcor
     RenderPassReflection DepthPass::reflect() const
     {
         RenderPassReflection reflector;
-        reflector.addOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil).setFormat(mDepthFormat).setSampleCount(0);
+        reflector.addOutput(kDepth, "Depth-buffer").bindFlags(Resource::BindFlags::DepthStencil).format(mDepthFormat).texture2D(0, 0, 0);
         return reflector;
     }
 

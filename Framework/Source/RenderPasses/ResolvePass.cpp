@@ -32,14 +32,16 @@
 
 namespace Falcor
 {
+    const char* ResolvePass::kDesc = "Resolve a multi-sampled texture";
+
     static const std::string kDst = "dst";
     static const std::string kSrc = "src";
 
     RenderPassReflection ResolvePass::reflect() const
     {
         RenderPassReflection reflector;
-        reflector.addInput(kSrc).setFormat(mFormat).setSampleCount(0);
-        reflector.addOutput(kDst).setFormat(mFormat).setSampleCount(1);
+        reflector.addInput(kSrc, "Multi-sampled texture").format(mFormat).texture2D(0, 0, 0);
+        reflector.addOutput(kDst, "Destination texture. Must have a single sample").format(mFormat).texture2D(0, 0, 1);
         return reflector;
     }
 
@@ -59,8 +61,8 @@ namespace Falcor
 
     void ResolvePass::execute(RenderContext* pContext, const RenderData* pRenderData)
     {
-        const auto& pSrcTex = pRenderData->getTexture(kSrc);
-        const auto& pDstTex = pRenderData->getTexture(kDst);
+        auto pSrcTex = pRenderData->getTexture(kSrc);
+        auto pDstTex = pRenderData->getTexture(kDst);
 
         if (pSrcTex && pDstTex)
         {
@@ -70,7 +72,7 @@ namespace Falcor
                 return;
             }
 
-            pContext->resolveResource(pSrcTex.get(), pDstTex.get());
+            pContext->resolveResource(pSrcTex, pDstTex);
         }
         else
         {

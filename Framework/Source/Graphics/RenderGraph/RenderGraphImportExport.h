@@ -57,6 +57,12 @@ namespace Falcor
     class RenderGraphExporter
     {
     public:
-        static bool save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename = {}, std::string funcName = {});
+        enum class ExportFlags
+        {
+            None,
+            SetScene
+        };
+
+        static bool save(const std::shared_ptr<RenderGraph>& pGraph, std::string graphName, std::string filename = {}, std::string funcName = {}, ExportFlags exportFlags = ExportFlags::None);
     };
 }

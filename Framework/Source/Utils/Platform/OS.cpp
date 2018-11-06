@@ -35,16 +35,16 @@ namespace fs = std::experimental::filesystem;
 namespace Falcor
 {
     template<bool bOpen>
-    bool fileDialogCommon(const char* pFilters, std::string& filename);
+    bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename);
 
-    bool openFileDialog(const char* pFilters, std::string& filename)
+    bool openFileDialog(const FileDialogFilterVec& filters, std::string& filename)
     {
-        return fileDialogCommon<true>(pFilters, filename);
+        return fileDialogCommon<true>(filters, filename);
     }
 
-    bool saveFileDialog(const char* pFilters, std::string& filename)
+    bool saveFileDialog(const FileDialogFilterVec& filters, std::string& filename)
     {
-        return fileDialogCommon<false>(pFilters, filename);
+        return fileDialogCommon<false>(filters, filename);
     }
 
     uint32_t getLowerPowerOf2(uint32_t a)
@@ -81,6 +81,16 @@ namespace Falcor
         if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dataDir) == gDataDirectories.end())
         {
             gDataDirectories.push_back(dataDir);
+        }
+    }
+
+    void removeDataDirectory(const std::string& dataDir)
+    {
+        //Insert unique elements
+        auto it = std::find(gDataDirectories.begin(), gDataDirectories.end(), dataDir);
+        if (it != gDataDirectories.end())
+        {
+            gDataDirectories.erase(it);
         }
     }
 

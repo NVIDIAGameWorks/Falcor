@@ -30,59 +30,122 @@
 
 namespace Falcor
 {
-    const ReflectionResourceType::SharedPtr RenderPassReflection::Field::kpTex2DType = ReflectionResourceType::create(ReflectionResourceType::Type::Texture, ReflectionResourceType::Dimensions::Texture2D);
-
-    RenderPassReflection::Field::Field(const std::string& name, Type type) : mName(name), mType(type)
-    {
-        mBindFlags = Resource::BindFlags::None;
-        if (is_set(type, Type::Input)) mBindFlags |= Resource::BindFlags::ShaderResource;
-        if (is_set(type, Type::Output)) mBindFlags |= Resource::BindFlags::RenderTarget;
-    }
-
-    RenderPassReflection::Field::Field()
-        : Field("", Type::None)
+    RenderPassReflection::Field::Field(const std::string& name, const std::string& desc, Visibility v) : mName(name), mVisibility(v), mDesc(desc)
     {
     }
+
+    RenderPassReflection::Field& RenderPassReflection::Field::texture1D(uint32_t width)
+    {
+        mType = Type::Texture1D;
+        mWidth = width;
+        mHeight = 1;
+        mDepth = 1;
+        return *this;
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::Field::texture2D(uint32_t width, uint32_t height, uint32_t sampleCount)
+    {
+        mType = Type::Texture2D;
+        mWidth = width;
+        mHeight = height;
+        mSampleCount = sampleCount;
+        mDepth = 1;
+        return *this;
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::Field::texture3D(uint32_t width, uint32_t height, uint32_t depth)
+    {
+        mType = Type::Texture3D;
+        mWidth = width;
+        mHeight = height;
+        mDepth = depth;
+        return *this;
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::Field::textureCube(uint32_t width, uint32_t height)
+    {
+        mType = Type::TextureCube;
+        mWidth = width;
+        mHeight = height;
+        mDepth = 1;
+        return *this;
+    }
+
+    RenderPassReflection::Field& RenderPassReflection::Field::arraySize(uint32_t a) { mArraySize = a; return *this; }
+    RenderPassReflection::Field& RenderPassReflection::Field::mipLevels(uint32_t m) { mMipLevels = m; return *this; }
+    RenderPassReflection::Field& RenderPassReflection::Field::format(ResourceFormat f) { mFormat = f; return *this; }
+    RenderPassReflection::Field& RenderPassReflection::Field::bindFlags(Resource::BindFlags flags) { mBindFlags = flags; return *this; }
+    RenderPassReflection::Field& RenderPassReflection::Field::flags(Flags flags) { mFlags = flags; return *this; }
+    RenderPassReflection::Field& RenderPassReflection::Field::visibility(Visibility vis) { mVisibility = vis; return *this; }
 
     bool RenderPassReflection::Field::isValid() const
     {
-        return (mType != Type::None) && (mName.empty() == false);
+        if (mType == Type::Texture3D && mArraySize > 1)
+        {
+            logWarning("Trying to create a Texture3D RenderPassReflection::Field `" + mName + "` with array-size larger than 1. This is illegal.");
+            return false;
+        }
+
+        if (mSampleCount > 1 && mMipLevels > 1)
+        {
+            logWarning("Trying to create a multisampled RenderPassReflection::Field `" + mName + "` with mip-count larger than 1. This is illegal.");
+            return false;
+        }
+
+        return true;
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, Field::Type type)
+    RenderPassReflection::Field& RenderPassReflection::addField(const std::string& name, const std::string& desc, Field::Visibility visibility)
     {
-        mFields.push_back(Field(name, type));
+        // See if the field already exists
+        for (auto& f : mFields)
+        {
+            if (f.getName() == name)
+            {
+                // We can only merge input and output fields, otherwise override the previous field
+                bool ioField = is_set(f.getVisibility(), Field::Visibility::Input | Field::Visibility::Output);
+                bool ioRequest = is_set(visibility, Field::Visibility::Input | Field::Visibility::Output);
+                if (ioField && ioRequest)
+                {
+                    f.mVisibility |= visibility;
+                }
+                else if((f.getVisibility() & visibility) != visibility)
+                {
+                    logError("Trying to add an existing field `" + name + "` to RenderPassReflection, but the visibility flags mismatch. Overriding the previous definition");
+                }
+                return f;
+            }
+        }
+
+        mFields.push_back(Field(name, desc, visibility));
         return mFields.back();
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addInput(const std::string& name)
+    RenderPassReflection::Field& RenderPassReflection::addInput(const std::string& name, const std::string& desc)
     {
-        return addField(name, Field::Type::Input);
+        return addField(name, desc, Field::Visibility::Input);
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addOutput(const std::string& name)
+    RenderPassReflection::Field& RenderPassReflection::addOutput(const std::string& name, const std::string& desc)
     {
-        return addField(name, Field::Type::Output);
+        return addField(name, desc, Field::Visibility::Output);
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addInputOutput(const std::string& name)
+    RenderPassReflection::Field& RenderPassReflection::addInputOutput(const std::string& name, const std::string& desc)
     {
-        return addField(name, Field::Type::Input | Field::Type::Output);
+        return addField(name, desc, Field::Visibility::Input | Field::Visibility::Output);
     }
 
-    RenderPassReflection::Field& RenderPassReflection::addInternal(const std::string& name)
+    RenderPassReflection::Field& RenderPassReflection::addInternal(const std::string& name, const std::string& desc)
     {
-        return addField(name, Field::Type::Internal);
+        return addField(name, desc, Field::Visibility::Internal);
     }
 
-    const RenderPassReflection::Field& RenderPassReflection::getField(const std::string& name, Field::Type type) const
+    const RenderPassReflection::Field& RenderPassReflection::getField(const std::string& name) const
     {
-        for (const auto& field : mFields)
+         for (const auto& field : mFields)
         {
-            if (field.getName() == name && (is_set(field.getType(), type) || type == Field::Type::None))
-            {
-                return field;
-            }
+            if (field.getName() == name) return field;
         }
         std::string error = "Can't find a field named `" + name + "` in RenderPassReflection";
         throw std::runtime_error(error.c_str());

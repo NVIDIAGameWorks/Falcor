@@ -159,11 +159,12 @@ void ForwardRenderer::applyAaMode(SampleCallbacks* pSample)
 
 void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    static const char* kImageFileString = "Image files\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga;*.hdr;*.exr\0\0";
+    static const FileDialogFilterVec kImageFilesFilter = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"} };
+
     if (pGui->addButton("Load Model"))
     {
         std::string filename;
-        if (openFileDialog(Model::kSupportedFileFormatsStr, filename))
+        if (openFileDialog(Model::kFileExtensionFilters, filename))
         {
             loadModel(pSample, filename, true);
         }
@@ -172,7 +173,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Load Scene"))
     {
         std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename))
+        if (openFileDialog(Scene::kFileExtensionFilters, filename))
         {
             loadScene(pSample, filename, true);
         }
@@ -183,7 +184,7 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         if (pGui->addButton("Load SkyBox Texture"))
         {
             std::string filename;
-            if (openFileDialog(kImageFileString, filename))
+            if (openFileDialog(kImageFilesFilter, filename))
             {
                 initSkyBox(filename);
             }
@@ -299,9 +300,9 @@ void ForwardRenderer::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             if (pGui->addButton("Add/Change Light Probe"))
             {
                 std::string filename;
-                if (openFileDialog(kImageFileString, filename))
+                if (openFileDialog(kImageFilesFilter, filename))
                 {
-                    updateLightProbe(LightProbe::create(pSample->getRenderContext().get(), filename, true, ResourceFormat::RGBA16Float));
+                    updateLightProbe(LightProbe::create(pSample->getRenderContext(), filename, true, ResourceFormat::RGBA16Float));
                 }
             }
 

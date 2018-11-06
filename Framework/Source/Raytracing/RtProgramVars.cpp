@@ -50,7 +50,7 @@ namespace Falcor
     
     RtProgramVars::RtProgramVars(RtProgram::SharedPtr pProgram, RtScene::SharedPtr pScene) : mpProgram(pProgram), mpScene(pScene)
     {
-        mpRtVarsHelper = RtVarsContext::create(gpDevice->getRenderContext());
+        mpRtVarsHelper = RtVarsContext::create();
     }
 
     RtProgramVars::SharedPtr RtProgramVars::create(RtProgram::SharedPtr pProgram, RtScene::SharedPtr pScene)

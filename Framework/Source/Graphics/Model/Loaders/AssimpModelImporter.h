@@ -85,7 +85,7 @@ namespace Falcor
 
         Animation::UniquePtr createAnimation(const aiAnimation* pAiAnim);
 
-        Mesh::SharedPtr createMesh(const aiMesh* pAiMesh);
+        Mesh::SharedPtr createMesh(aiMesh* pAiMesh);
         VertexLayout::SharedPtr createVertexLayout(const aiMesh* pAiMesh);
         Buffer::SharedPtr createIndexBuffer(const aiMesh* pAiMesh);
         Buffer::SharedPtr createVertexBuffer(const aiMesh* pAiMesh, const VertexBufferLayout* pLayout, const uint8_t* pBoneIds, const vec4* pBoneWeights);
