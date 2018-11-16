@@ -5,18 +5,21 @@ json_data = {
     'Windows':
     {   
         'Destination Target' : 'C:\\Falcor\\GitHub\\',
-        'Reference Target' : '\\\\netapp-wa02\\public\\Falcor\\GitHub\\References\\',
+        'Reference Target' : '\\\\netapp-wa02\\public\\Falcor\\References\\',
         'Email List' : '\\\\netapp-wa02\\public\\Falcor\\email.txt',
         'Results Summary Target' : '\\\\netapp-wa02\\public\\Falcor\\GitHub\\Results\\',
-        'Default Main Directory' : '..\\'
+        'Default Main Directory' : '..\\',
+        'Results Cache Directory' : '\\\\netapp-wa02\\public\\Falcor\\ResultsCache\\'
+        
     },
     'Linux':
     {   
         'Destination Target' : '/home/nvrgfxtest/Desktop/FalcorGitHub/',
-        'Reference Target' : '/media/netapp/Falcor/GitHub/References/',
+        'Reference Target' : '/media/netapp/Falcor/References/',
         'Email List' : '/media/netapp/Falcor/email.txt',
         'Results Summary Target' : '/media/netapp/Falcor/GitHub/Results/',
-        'Default Main Directory' : '../'
+        'Default Main Directory' : '../',
+        'Results Cache Directory' : '/media/netapp/Falcor/ResultsCache/'
     }
 }
 
@@ -31,6 +34,8 @@ else:
     machine_name = socket.gethostname()
     platform_data = json_data['Linux']
 
+results_cache_directory = platform_data['Results Cache Directory'];
+default_reference_url = 'https://github.com/NVIDIAGameWorks/Falcor'
 machine_name = machine_name.lower()
 machine_reference_directory = platform_data['Reference Target']
 destination_target = platform_data['Destination Target']
