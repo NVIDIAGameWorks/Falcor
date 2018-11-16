@@ -69,6 +69,9 @@ def main():
     # Add argument for specifying to only build local instead of dispatching to teamcity
     parser.add_argument('-lo', '--local_only', action='store_true', help='Generate local references instead of teamcity machines generating references')
     
+    # Add argument for specifying  dispatching to teamcity instead of only building locally
+    parser.add_argument('-rb', '--remote', action='store_true', help='Generate references on all teamcity test machines')
+    
     # Add argument to specify to upload resources to the data server
     parser.add_argument('-u', '--upload', action='store_true', help='Upload the references to netapp, if tests are local')
     
@@ -95,6 +98,9 @@ def main():
     
     # Parse the Arguments.
     args = parser.parse_args()
+    
+    if not args.remote and not args.local_only:
+        raise(PassTestsError("Please specify 'upload' or 'remote' within the script arguments."))
     
     if args.build_configuration:
         target_configuration = args.build_configuration

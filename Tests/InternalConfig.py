@@ -3,13 +3,13 @@ import os
 TestConfig = {}
 TestConfig['Scenes'] = [ "Arcade/Arcade.fscene", "SunTemple/SunTemple.fscene", "Bistro/Bistro_Interior.fscene" ]
 TestConfig['Images'] = [ "StockImage.jpg" ]
-TestConfig['Duration'] = 10
+TestConfig['Duration'] = 60
 TestConfig['Times'] = [ 1, 2, 3, 4]
 TestConfig['DefaultConfiguration'] = 'ReleaseD3D12'
 TestConfig['LocalTestingDir'] = 'testing'
 TestConfig['Tolerance'] = 200.0
 TestConfig['Tolerance_Lower'] = 0.1
-TestConfig['FixedTimeDelta'] = 0.03333
+TestConfig['FixedTimeDelta'] = 0.01666
 
 
 # get 'static' part of the arguments
@@ -35,6 +35,11 @@ if os.name == 'nt':
     viewer_executable = 'RenderGraphViewer.exe'
 else:
     viewer_executable = 'RenderGraphViewer'
+    
+if os.name == 'nt':
+    unit_tests_executable = 'FalcorTest.exe'
+else:
+    unit_tests_executable = 'FalcorTest'
 num_scenes = len(TestConfig["Scenes"])
 num_images = len(TestConfig["Images"])
 

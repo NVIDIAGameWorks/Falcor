@@ -41,42 +41,45 @@ def directory_make(destination):
         except OSError:
             print("Error trying to Create Directory : " + destination)
             return None
+
+def directory_clean(destination):
+    try:
+        remove_directory_return_code = 0
+        if os.name == 'nt':
+            # Create the arguments.
+            batch_args = ["RemoveDirectoryTree.bat ", destination]
+            # Clean the Directory.
+            remove_directory_return_code = subprocess.call(batch_args)
     
-# CLean the directory if it exists, or make it if it does not.
+            # Check if it was success.
+            if remove_directory_return_code != 0:
+                print("Error trying to clean Directory : " + destination + str(remove_directory_return_code))
+        else:
+            # Clean the Directory.
+            shutil.rmtree(destination)
+        if not os.path.exists(destination):
+            os.makedirs(destination)
+        return remove_directory_return_code
+        
+    # Exception Handling.
+    except subprocess.CalledProcessError:
+        print("Error trying to clean Directory : " + destination)
+        # Return failure.
+        return None
+    
+
+# Clean the directory if it exists, or make it if it does not.
 def directory_clean_or_make(destination):
     # Check if the Directory exists, and make it if it does not.
     if not os.path.isdir(destination):
         try:
             os.makedirs(destination)
             return 0
-
         except OSError:
             print("Error trying to Create Directory : " + destination)
             return None
-
     else:
-        try:
-            remove_directory_return_code = 0
-            if os.name == 'nt':
-                # Create the arguments.
-                batch_args = ["RemoveDirectoryTree.bat ", destination]
-                # Clean the Directory.
-                remove_directory_return_code = subprocess.call(batch_args)
-
-                # Check if it was success.
-                if remove_directory_return_code != 0:
-                    print("Error trying to clean Directory : " + destination)
-            else:
-                # Clean the Directory.
-                shutil.rmtree(destination)
-            os.makedirs(destination)
-            return remove_directory_return_code
-            
-        # Exception Handling.
-        except subprocess.CalledProcessError:
-            print("Error trying to clean Directory : " + destination)
-            # Return failure.
-            return None
+        directory_clean(destination)
 
 # Clone the Repository with the specified Arguments.
 def clone(repository, branch, destination):
@@ -161,14 +164,7 @@ def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuil
             # Build Solution.
             if subprocess.call(batch_args) == 0:
                 return 0
-            else:
-                print('build failed. Retrying build.')
-                sleep(2)
-                if subprocess.call(batch_args) == 0:
-                    return 0
-                else:
-                    raise BuildSolutionError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
-
+            
         except subprocess.CalledProcessError as subprocess_error:
             raise BuildSolutionError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
     else:
@@ -176,7 +172,7 @@ def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuil
         #Call Makefile
         os.chdir(cloned_dir)
         subprocess.call(['make', 'PreBuild', '-j8', '-k'])
-        subprocess.call(['make', 'All', '-j8', '-k'])
+        subprocess.call(['make', 'All', '-j24', '-k'])
         os.chdir(prevDir)
             
             

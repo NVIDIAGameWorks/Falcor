@@ -3,7 +3,7 @@
     <buildType id="Falcor_GenerateReferencesGtx"/>
     <properties>
         <property name="branchname" value="render-graph-testing"/>
-        <property name="vcsRoot" value="Falcor_HttpsGithubComNVIDIAGameWorksFalcorGit"/>
+        <property name="vcsRoot" value="Falcor_GitlabMaster"/>
         <property name="tests_directory" value=""/>
     </properties>
 </build>

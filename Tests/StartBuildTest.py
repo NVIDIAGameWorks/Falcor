@@ -38,7 +38,7 @@ def start_build(username, password, xml_file_path, branch_name, git_path, tests_
     # insert branch name into 
     xml = ET.fromstring(data)
     
-    print(buildTypeId)
+    print('Starting remote build with id: ' + buildTypeId)
     
     # insert branch name into correct location
     for data in xml.iter():
@@ -72,7 +72,6 @@ def start_build(username, password, xml_file_path, branch_name, git_path, tests_
     
     # convert back to string to be sent in post request
     xml_data = ET.tostring(xml)
-    print(xml_data)
     start_build_internal(username, password, xml_data)
 
 def main():

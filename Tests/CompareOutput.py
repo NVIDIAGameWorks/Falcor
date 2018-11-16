@@ -11,7 +11,7 @@ def default_comparison(result_image, result_image_dir, reference_image, screen_c
     # Run ImageMagick
     image_compare_command = ['magick', 'compare', '-metric', 'MSE', '-compose', 'Src', '-highlight-color', 'White', '-lowlight-color', 'Black', result_image, reference_image, test_compare_image_filepath]
     
-    print(image_compare_command)
+    print('Comparison Test: Source Image: ' + result_image + '\nReference Image: ' + reference_image + '\nOutput Image: ' + test_compare_image_filepath + '\n')
     
     if os.name == 'nt':
         image_compare_process = subprocess.Popen(image_compare_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
@@ -69,24 +69,44 @@ def compare_all_images(results_dir, reference_dir, comparison_func):
     screen_captures_results = {}
     screen_captures_results['Success'] = True
     
-    for subdir, dirs, files in os.walk(reference_dir):
+    num_tests = len(iConfig.TestConfig['Times'])
+    
+    # make sure that expected references exist for the run tests
+    for subdir, dirs, files in os.walk(results_dir):
         for file in files:
             if not file.endswith('.png'):
                 continue
                 
-            reference_file = os.path.join( subdir, file )
-            # make sure there is a subsequent file in results_dir
-            relative_file_path = reference_file[len(reference_dir) + 1 : len(reference_file)]
-            results_file = os.path.join(results_dir, relative_file_path)
-            if (not os.path.exists(results_file)):
-                print('Result file: ' + results_file + ' does not exist')
-            status = comparison_func(results_file, os.path.split(results_file)[0], reference_file, screen_captures_results)
-            if not status:
-                # add early out option?
-                print('Test failed on comparison between ' +  results_file + ' and reference ' + reference_file)
+            result_file = os.path.join( subdir, file)
+            relative_file_path = result_file[len(results_dir) + 1 : len(result_file)]
+            reference_file = os.path.join(reference_dir, relative_file_path)
+            
+            if (not os.path.exists(reference_file)):
+                print('Error: Expecting reference' + str(reference_file) + '. refererence file is missing! \n')
+
+    for subdir, dirs, files in os.walk(reference_dir):
+        for file in files:
+            if not file.endswith('.png'):
+                continue
+            
+            reference_file = os.path.join( subdir, file)
+            
+            # test if we have more references than what the test will produce
+            splitFile = file.split('.')
+            if (num_tests <= int(splitFile[len(splitFile) - 2])):
+                print('Error: Incorrect number of reference files: More than ' + str(num_tests) + ' reference files for this test exist! \n')
+            else:
+                # make sure there is a subsequent file in results_dir
+                relative_file_path = reference_file[len(reference_dir) + 1 : len(reference_file)]
+                results_file = os.path.join(results_dir, relative_file_path)
+                if (not os.path.exists(results_file)):
+                    print('Result file: ' + results_file + ' does not exist')
+                status = comparison_func(results_file, os.path.split(results_file)[0], reference_file, screen_captures_results)
+                if not status:
+                    # add early out option?
+                    print('Error: Test failed on comparison between ' +  results_file + ' and reference ' + reference_file)
         
     
     return screen_captures_results
-    
     
     

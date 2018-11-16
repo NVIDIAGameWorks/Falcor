@@ -121,7 +121,7 @@ def get_image_comparison_table_code(screen_capture_results, errors):
                             image_table_data += "<p><b> Error running test " + test_key + "</b>: " + str(error_code) + "<br></p>\n"
                             
                     # reference, local
-                    if str(result_value) != 'Error' and float(result_value) > iConfig.TestConfig['Tolerance_Lower']:
+                    if str(result_value) != 'Error':
                         image_table_data += '<a href= \'' + 'file:' + test_result["Source Filename"] +  '\'><img src=\'' + test_result['Source Filename'] + '\' title=\'source\' alt=\'source\' style=\'width:240px\'>' + ' </a>  '
                         image_table_data += '<a href= \'' + 'file:' + test_result["Reference Filename"] +  '\'><img src=\'' + test_result['Reference Filename'] + '\' title=\'reference\' alt=\'reference\' style=\'width:240px\'>' + ' </a>  '
                         image_table_data += '<a href= \'' + 'file:' + test_result['Comparison Filename'] +  '\'><img src=\'' + test_result['Comparison Filename'] + '\' title=\'comparison\' alt=\'comparison\' style=\'width:240px\'>' + ' </a>  '
