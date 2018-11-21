@@ -73,7 +73,7 @@ namespace Falcor
         return VariablesBuffer::uploadToGPU(offset, size);
     }
 
-    ConstantBufferView::SharedPtr ConstantBuffer::getCbv() const
+    ConstantBufferView::SharedPtr ConstantBuffer::getCbv()
     {
         if (mpCbv == nullptr)
         {

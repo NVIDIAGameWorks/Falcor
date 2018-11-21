@@ -35,7 +35,7 @@
 #include "API/DepthStencilState.h"
 #include "API/RasterizerState.h"
 #include "API/BlendState.h"
-#include "Graphics/RenderGraph/RenderPass.h"
+#include "Experimental/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
@@ -44,8 +44,8 @@ namespace Falcor
     class SkyBox : public RenderPass, inherit_shared_from_this<RenderPass, SkyBox>
     {
     public:
-        using UniquePtr = std::shared_ptr<SkyBox>;
         using SharedPtr = std::shared_ptr<SkyBox>;
+        static const char* kDesc;
 
         /** Create a sky box using an existing texture
             \param[in] pTexture Sky box texture
@@ -56,14 +56,13 @@ namespace Falcor
         static SharedPtr create(const Dictionary& dict);
         
         /** Load a texture and create a sky box using it.
-            \param[in] textureName Filename of texture. Can include a full or relative path from a data directory
+            \param[in] textureFile Filename of texture. Can include a full or relative path from a data directory
             \param[in] loadAsSrgb Whether to load the texture into an sRGB format
             \param[in] pSampler Sampler to use when rendering this sky box
             \param[in] renderStereo Whether to render in stereo mode using Single Pass Stereo
         */
-        deprecate("3.2", "Use create() instead. Note that it returns a SharedPtr and not a UniquePtr.")
-        static UniquePtr createFromTexture(const std::string& textureName, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
         static SharedPtr create(const std::string& textureFile, bool loadAsSrgb = true, Sampler::SharedPtr pSampler = nullptr, bool renderStereo = false);
+
         /** Render the sky box.
             \param[in] pRenderCtx Render context
             \param[in] pCamera Camera to use when rendering
@@ -104,7 +103,13 @@ namespace Falcor
         */
         virtual void execute(RenderContext* pRenderContext, const RenderData* pData) override;
 
+        /** Set a scene. The pass will use the environment from the scene if one exists
+        */
         virtual void setScene(const std::shared_ptr<Scene>& pScene) override;
+
+        /** Get a description of the scene
+        */
+        std::string getDesc() override { return kDesc; }
     private:
         SkyBox();
         bool createResources(const Texture::SharedPtr& pTexture, const Sampler::SharedPtr& pSampler, bool renderStereo);

@@ -68,15 +68,15 @@ namespace Falcor
 
     const Gui::RadioButtonGroup SceneEditor::kGizmoSelectionButtons
     {
-        { (int32_t)Gizmo::Type::Translate, "Translation", false },
-        { (int32_t)Gizmo::Type::Rotate, "Rotation", true },
-        { (int32_t)Gizmo::Type::Scale, "Scaling", true }
+        { (uint32_t)Gizmo::Type::Translate, "Translation", false },
+        { (uint32_t)Gizmo::Type::Rotate, "Rotation", true },
+        { (uint32_t)Gizmo::Type::Scale, "Scaling", true }
     };
 
     Gui::DropdownList getPathDropdownList(const Scene* pScene, bool includeDefault)
     {
         Gui::DropdownList pathList;
-        static const Gui::DropdownValue kNoPathValue{ (int32_t)Scene::kNoPath, "None" };
+        static const Gui::DropdownValue kNoPathValue{ Scene::kNoPath, "None" };
 
         if (includeDefault)
         {
@@ -151,43 +151,6 @@ namespace Falcor
         {
             instance->setVisible(visible);
             mSceneDirty = true;
-        }
-    }
-
-    void SceneEditor::setCameraFocalLength(Gui* pGui)
-    {
-        float focalLength = mpScene->getActiveCamera()->getFocalLength();
-        if (pGui->addFloatVar("Focal Length", focalLength, 0.0f, FLT_MAX, 0.5f))
-        {
-            mpScene->getActiveCamera()->setFocalLength(focalLength);
-            mSceneDirty = true;
-        }
-    }
-
-    void SceneEditor::setCameraAspectRatio(Gui* pGui)
-    {
-        float aspectRatio = mpScene->getActiveCamera()->getAspectRatio();
-        if (pGui->addFloatVar("Aspect Ratio", aspectRatio, 0, FLT_MAX, 0.001f))
-        {
-            auto pCamera = mpScene->getActiveCamera();
-            pCamera->setAspectRatio(aspectRatio);
-            mSceneDirty = true;
-        }
-    }
-
-    void SceneEditor::setCameraDepthRange(Gui* pGui)
-    {
-        if (pGui->beginGroup("Depth Range"))
-        {
-            auto pCamera = mpScene->getActiveCamera();
-            float nearPlane = pCamera->getNearPlane();
-            float farPlane = pCamera->getFarPlane();
-            if (pGui->addFloatVar("Near Plane", nearPlane, 0, FLT_MAX, 0.1f) || (pGui->addFloatVar("Far Plane", farPlane, 0, FLT_MAX, 0.1f)))
-            {
-                pCamera->setDepthRange(nearPlane, farPlane);
-                mSceneDirty = true;
-            }
-            pGui->endGroup();
         }
     }
 
@@ -301,39 +264,6 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::setCameraPosition(Gui* pGui)
-    {
-        auto& pCamera = mpScene->getActiveCamera();
-        glm::vec3 position = pCamera->getPosition();
-        if (pGui->addFloat3Var("Position", position, -FLT_MAX, FLT_MAX))
-        {
-            pCamera->setPosition(position);
-            mSceneDirty = true;
-        }
-    }
-
-    void SceneEditor::setCameraTarget(Gui* pGui)
-    {
-        auto& pCamera = mpScene->getActiveCamera();
-        glm::vec3 target = pCamera->getTarget();
-        if (pGui->addFloat3Var("Target", target, -FLT_MAX, FLT_MAX))
-        {
-            pCamera->setTarget(target);
-            mSceneDirty = true;
-        }
-    }
-
-    void SceneEditor::setCameraUp(Gui* pGui)
-    {
-        auto& pCamera = mpScene->getActiveCamera();
-        glm::vec3 up = pCamera->getUpVector();
-        if (pGui->addFloat3Var("Up", up, -FLT_MAX, FLT_MAX))
-        {
-            pCamera->setUpVector(up);
-            mSceneDirty = true;
-        }
-    }
-
     void SceneEditor::deleteLight(uint32_t id)
     {
         detachObjectFromPaths(mpScene->getLight(id));
@@ -418,7 +348,7 @@ namespace Falcor
     void SceneEditor::saveScene()
     {
         std::string filename;
-        if (saveFileDialog(Scene::kFileFormatString, filename))
+        if (saveFileDialog(Scene::kFileExtensionFilters, filename))
         {
             SceneExporter::saveScene(filename, mpScene);
             mSceneDirty = false;
@@ -928,7 +858,7 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::setActiveModelInstance(const Scene::ModelInstance::SharedPtr& pModelInstance)
+    void SceneEditor::setActiveModelInstance(const Scene::ModelInstance::SharedConstPtr& pModelInstance)
     {
         for (uint32_t modelID = 0; modelID < mpScene->getModelCount(); modelID++)
         {
@@ -1035,14 +965,7 @@ namespace Falcor
                 if (mpScene->getCameraCount() > 0)
                 {
                     pGui->addSeparator();
-                    setCameraFocalLength(pGui);
-                    setCameraAspectRatio(pGui);
-                    setCameraDepthRange(pGui);
-
-                    setCameraPosition(pGui);
-                    setCameraTarget(pGui);
-                    setCameraUp(pGui);
-
+                    mpScene->getActiveCamera()->renderUI(pGui);
                     setObjectPath(pGui, mpScene->getActiveCamera(), "Camera");
                 }
             }
@@ -1102,7 +1025,7 @@ namespace Falcor
         }
 
         // Gizmo Selection
-        int32_t selectedGizmo = (int32_t)mActiveGizmoType;
+        uint32_t selectedGizmo = (uint32_t)mActiveGizmoType;
         pGui->addRadioButtons(kGizmoSelectionButtons, selectedGizmo);
         setActiveGizmo((Gizmo::Type)selectedGizmo, mSelectedInstances.size() > 0 && mHideWireframe == false);
 
@@ -1145,7 +1068,7 @@ namespace Falcor
         }
     }
 
-    void SceneEditor::select(const Scene::ModelInstance::SharedPtr& pModelInstance, const Model::MeshInstance::SharedPtr& pMeshInstance)
+    void SceneEditor::select(const Scene::ModelInstance::SharedConstPtr& pModelInstance, const Model::MeshInstance::SharedConstPtr& pMeshInstance)
     {
         // If instance has already been picked, ignore it
         if (mSelectedInstances.count(pModelInstance.get()) > 0)
@@ -1155,7 +1078,7 @@ namespace Falcor
 
         deselect();
 
-        mpSelectionScene->addModelInstance(pModelInstance);
+        mpSelectionScene->addModelInstance(std::const_pointer_cast<Scene::ModelInstance>(pModelInstance));
 
         setActiveGizmo(mActiveGizmoType, mHideWireframe == false);
 
@@ -1245,7 +1168,7 @@ namespace Falcor
         mActiveGizmoType = type;
     }
 
-    uint32_t SceneEditor::findEditorModelInstanceID(uint32_t modelID, const Scene::ModelInstance::SharedPtr& pInstance) const
+    uint32_t SceneEditor::findEditorModelInstanceID(uint32_t modelID, const Scene::ModelInstance::SharedConstPtr& pInstance) const
     {
         for (uint32_t i = 0; i < mpEditorScene->getModelInstanceCount(modelID); i++)
         {
@@ -1291,7 +1214,7 @@ namespace Falcor
             if (pGui->addButton("Add Model"))
             {
                 std::string filename;
-                if (openFileDialog(Model::kSupportedFileFormatsStr, filename))
+                if (openFileDialog(Model::kFileExtensionFilters, filename))
                 {
                     auto pModel = Model::createFromFile(filename.c_str(), mModelLoadFlags);
                     if (pModel == nullptr)

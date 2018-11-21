@@ -36,11 +36,11 @@ void ProjectTemplate::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void ProjectTemplate::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void ProjectTemplate::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
 }
 
-void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void ProjectTemplate::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

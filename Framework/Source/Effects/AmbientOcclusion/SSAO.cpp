@@ -38,11 +38,13 @@
 
 namespace Falcor
 {
+    const char* SSAO::kDesc = "Screen-space ambient occlusion. Can be used with and without a normal-map";
+
     const Gui::DropdownList SSAO::kDistributionDropdown = 
     {
-        { (int32_t)SampleDistribution::Random, "Random" },
-        { (int32_t)SampleDistribution::UniformHammersley, "Uniform Hammersley" },
-        { (int32_t)SampleDistribution::CosineHammersley, "Cosine Hammersley" }
+        { (uint32_t)SampleDistribution::Random, "Random" },
+        { (uint32_t)SampleDistribution::UniformHammersley, "Uniform Hammersley" },
+        { (uint32_t)SampleDistribution::CosineHammersley, "Cosine Hammersley" }
     };
 
     SSAO::SharedPtr SSAO::create(const uvec2& aoMapSize, uint32_t kernelSize, uint32_t blurSize, float blurSigma, const uvec2& noiseSize, SampleDistribution distribution)
@@ -241,10 +243,10 @@ namespace Falcor
     RenderPassReflection  SSAO::reflect() const
     {
         RenderPassReflection reflector;
-        reflector.addInput(kColorIn);
-        reflector.addOutput(kColorOut);
-        reflector.addInput(kDepth);
-        reflector.addInput(kNormals).setFlags(RenderPassReflection::Field::Flags::Optional);
+        reflector.addInput(kColorIn, "Color buffer");
+        reflector.addOutput(kColorOut, "Color-buffer with AO applied to it");
+        reflector.addInput(kDepth, "Depth-buffer");
+        reflector.addInput(kNormals, "World space normals, [0, 1] range").flags(RenderPassReflection::Field::Flags::Optional);
         return reflector;
     }
 

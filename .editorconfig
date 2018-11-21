@@ -1,0 +1,19 @@
+# Topmost EditorConfig file; do not look at files higher up in the directory tree
+root = true
+
+# Set default editor config for all files:
+# - 4 spaces, no trailing whitespaces
+# - final newline for slightly cleaner diffs when changing the last line
+# - native end-of-line in case we want to open a file elsewhere, git converts to LF for non-Windows
+# - use utf-8 as default
+[*]
+indent_size = 4
+indent_style = space
+trim_trailing_whitespace = true
+insert_final_newline = true
+end_of_line = crlf
+charset = utf-8
+
+# Override trailing whitespace setting for Markdown since there it's actually useful
+[*.{md}]
+trim_trailing_whitespace = false

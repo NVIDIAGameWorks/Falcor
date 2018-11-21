@@ -89,7 +89,7 @@ namespace Falcor
         /************************************************************************/
         /* Callback inherited from SampleCallbacks                                 */
         /************************************************************************/
-        RenderContext::SharedPtr getRenderContext() override { return mpRenderContext; }
+        RenderContext* getRenderContext() override { return gpDevice ? gpDevice->getRenderContext() : nullptr; }
         Fbo::SharedPtr getCurrentFbo() override { return mpTargetFBO; }
         Window* getWindow() override { return mpWindow.get(); }
         Gui* getGui() override { return mpGui.get(); }
@@ -112,6 +112,7 @@ namespace Falcor
         float getFixedTimeDelta() override  { return mFixedTimeDelta; }
         void freezeTime(bool timeFrozen) override { mFreezeTime = timeFrozen; }
         bool isTimeFrozen() override { return mFreezeTime; }
+        bool shouldResetRendering() override { return mShouldResetRendering; }
         std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
         void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
         
@@ -126,7 +127,6 @@ namespace Falcor
         /** Internal data structures
         */
         Gui::UniquePtr mpGui;                               ///< Main sample GUI
-        RenderContext::SharedPtr mpRenderContext;           ///< The rendering context
         GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline 
         Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
         bool mFreezeTime;                                   ///< Whether global time is frozen
@@ -175,9 +175,11 @@ namespace Falcor
             VideoEncoder::UniquePtr pVideoCapture;
             uint8_t* pFrame = nullptr;
             float sampleTimeDelta; // Saves the sample's fixed time delta because video capture overwrites it while recording
+            bool displayUI = false;
         };
 
         VideoCaptureData mVideoCapture;
+        bool mShouldResetRendering = false;     ///< Flag to indicate if app should reset temporally accumulated data at start of video capture (UI option).
 
         FrameRate mFrameRate;
         
@@ -194,7 +196,6 @@ namespace Falcor
         Sample(Renderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
         Sample(const Sample&) = delete;
         Sample& operator=(const Sample&) = delete;
-        Fbo::SharedPtr mpBackBufferFBO;     ///< The FBO for the back buffer
         //Testing
         SampleTest::UniquePtr mpSampleTest = nullptr;
     };

@@ -21,6 +21,9 @@
       <Project>{3b602f0e-3834-4f73-b97d-7dfc91597a98}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\forward_renderer.py" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

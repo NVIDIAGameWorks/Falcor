@@ -61,12 +61,12 @@ namespace Falcor
         /** Gets the picked mesh instance.
             \return Pointer to the picked mesh instance, otherwise nullptr if nothing was picked.
         */
-        Model::MeshInstance::SharedPtr getPickedMeshInstance() const;
+        Model::MeshInstance::SharedConstPtr getPickedMeshInstance() const;
 
         /** Gets the picked model instance.
             \return Pointer to the picked model instance, otherwise nullptr if nothing was picked.
         */
-        Scene::ModelInstance::SharedPtr getPickedModelInstance() const;
+        Scene::ModelInstance::SharedConstPtr getPickedModelInstance() const;
 
         /** Resize the internal FBO used for picking.
             \param[in] width Width of the FBO.
@@ -93,12 +93,12 @@ namespace Falcor
 
         struct Instance
         {
-            Scene::ModelInstance::SharedPtr pModelInstance;
-            Model::MeshInstance::SharedPtr pMeshInstance;
+            Scene::ModelInstance::SharedConstPtr pModelInstance;
+            Model::MeshInstance::SharedConstPtr pMeshInstance;
 
             Instance() {}
 
-            Instance(Scene::ModelInstance::SharedPtr pModelInstance, Model::MeshInstance::SharedPtr pMeshInstance)
+            Instance(Scene::ModelInstance::SharedConstPtr pModelInstance, Model::MeshInstance::SharedConstPtr pMeshInstance)
                 : pModelInstance(pModelInstance), pMeshInstance(pMeshInstance) {}
         };
 

@@ -11,4 +11,9 @@
       <UniqueIdentifier>{392d281b-8330-4036-9268-e190dc6c5dc0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\forward_renderer.py">
+      <Filter>Data</Filter>
+    </None>
+  </ItemGroup>
 </Project>

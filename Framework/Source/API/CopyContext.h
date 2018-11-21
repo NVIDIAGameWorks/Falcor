@@ -34,7 +34,7 @@ namespace Falcor
     class Texture;
     class Buffer;
 
-    class CopyContext : public std::enable_shared_from_this<CopyContext>
+    class CopyContext
     {
     public:
         using SharedPtr = std::shared_ptr<CopyContext>;
@@ -45,13 +45,13 @@ namespace Falcor
         {
         public:
             using SharedPtr = std::shared_ptr<ReadTextureTask>;
-            static SharedPtr create(CopyContext::SharedPtr pCtx, const Texture* pTexture, uint32_t subresourceIndex);
+            static SharedPtr create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex);
             std::vector<uint8> getData();
         private:
             ReadTextureTask() = default;
             GpuFence::SharedPtr mpFence;
             Buffer::SharedPtr mpBuffer;
-            CopyContext::SharedPtr mpContext;
+            CopyContext* mpContext;
 #ifdef FALCOR_D3D12
             uint32_t mRowCount;
             ResourceFormat mTextureFormat;

@@ -77,7 +77,7 @@ void ForwardRenderer::initSSAO()
 
 void ForwardRenderer::setSceneSampler(uint32_t maxAniso)
 {
-    Scene* pScene = const_cast<Scene*>(mpSceneRenderer->getScene().get());
+    Scene* pScene = mpSceneRenderer->getScene().get();
     Sampler::Desc samplerDesc;
     samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap).setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(maxAniso);
     mpSceneSampler = Sampler::create(samplerDesc);
@@ -239,7 +239,7 @@ void ForwardRenderer::initPostProcess()
     mpToneMapper = ToneMapping::create(ToneMapping::Operator::Aces);
 }
 
-void ForwardRenderer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void ForwardRenderer::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     mpState = GraphicsState::create();    
     initPostProcess();
@@ -250,7 +250,7 @@ void ForwardRenderer::renderSkyBox(RenderContext* pContext)
 {
     if (mSkyBox.pEffect)
     {
-        PROFILE(skyBox);
+        PROFILE("skyBox");
         mpState->setDepthStencilState(mSkyBox.pDS);
         mSkyBox.pEffect->render(pContext, mpSceneRenderer->getScene()->getActiveCamera().get());
         mpState->setDepthStencilState(nullptr);
@@ -279,13 +279,13 @@ void ForwardRenderer::endFrame(RenderContext* pContext)
 
 void ForwardRenderer::postProcess(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
-    PROFILE(postProcess);    
+    PROFILE("postProcess");    
     mpToneMapper->execute(pContext, mpResolveFbo->getColorTexture(0), pTargetFbo);
 }
 
 void ForwardRenderer::depthPass(RenderContext* pContext)
 {
-    PROFILE(depthPass);
+    PROFILE("depthPass");
     if (mEnableDepthPass == false) 
     {
         return;
@@ -302,7 +302,7 @@ void ForwardRenderer::depthPass(RenderContext* pContext)
 
 void ForwardRenderer::lightingPass(RenderContext* pContext, Fbo* pTargetFbo)
 {
-    PROFILE(lightingPass);
+    PROFILE("lightingPass");
     mpState->setProgram(mLightingPass.pProgram);
     mpState->setDepthStencilState(mEnableDepthPass ? mLightingPass.pDsState : nullptr);
     pContext->setGraphicsVars(mLightingPass.pVars);
@@ -355,7 +355,7 @@ void ForwardRenderer::resolveDepthMSAA(RenderContext* pContext)
 {
     if (mAAMode == AAMode::MSAA)
     {
-        pContext->resolveResource(mpMainFbo->getDepthStencilTexture().get(), mpResolveFbo->getColorTexture(2).get());
+        pContext->resolveResource(mpMainFbo->getDepthStencilTexture(), mpResolveFbo->getColorTexture(2));
     }
 }
 
@@ -363,15 +363,15 @@ void ForwardRenderer::resolveMSAA(RenderContext* pContext)
 {
     if(mAAMode == AAMode::MSAA)
     {
-        PROFILE(resolveMSAA);
-        pContext->resolveResource(mpMainFbo->getColorTexture(0).get(), mpResolveFbo->getColorTexture(0).get());
-        pContext->resolveResource(mpMainFbo->getColorTexture(1).get(), mpResolveFbo->getColorTexture(1).get());
+        PROFILE("resolveMSAA");
+        pContext->resolveResource(mpMainFbo->getColorTexture(0), mpResolveFbo->getColorTexture(0));
+        pContext->resolveResource(mpMainFbo->getColorTexture(1), mpResolveFbo->getColorTexture(1));
     }
 }
 
 void ForwardRenderer::shadowPass(RenderContext* pContext)
 {
-    PROFILE(shadowPass);
+    PROFILE("shadowPass");
     if (mControls[EnableShadows].enabled && mShadowPass.updateShadowMap)
     {
         mShadowPass.camVpAtLastCsmUpdate = mpSceneRenderer->getScene()->getActiveCamera()->getViewProjMatrix();
@@ -393,7 +393,7 @@ void ForwardRenderer::runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo)
 {
     if(mAAMode == AAMode::TAA)
     {
-        PROFILE(runTAA);
+        PROFILE("runTAA");
         //  Get the Current Color and Motion Vectors
         const Texture::SharedPtr pCurColor = pColorFbo->getColorTexture(0);
         const Texture::SharedPtr pMotionVec = mpMainFbo->getColorTexture(2);
@@ -416,7 +416,7 @@ void ForwardRenderer::runTAA(RenderContext* pContext, Fbo::SharedPtr pColorFbo)
 
 void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
-    PROFILE(ssao);
+    PROFILE("ssao");
     if (mControls[EnableSSAO].enabled)
     {
         Texture::SharedPtr pDepth = (mAAMode == AAMode::MSAA) ? mpResolveFbo->getColorTexture(2) : mpResolveFbo->getDepthStencilTexture();
@@ -433,7 +433,7 @@ void ForwardRenderer::ambientOcclusion(RenderContext* pContext, Fbo::SharedPtr p
 
 void ForwardRenderer::executeFXAA(RenderContext* pContext, Fbo::SharedPtr pTargetFbo)
 {
-    PROFILE(fxaa);
+    PROFILE("fxaa");
     if(mAAMode == AAMode::FXAA)
     {
         pContext->blit(pTargetFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
@@ -452,31 +452,31 @@ void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
     }
 }
 
-void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     if (mpSceneRenderer)
     {
-        beginFrame(pRenderContext.get(), pTargetFbo.get(), pSample->getFrameID());
+        beginFrame(pRenderContext, pTargetFbo.get(), pSample->getFrameID());
         {
-            PROFILE(updateScene);
+            PROFILE("updateScene");
             mpSceneRenderer->update(pSample->getCurrentTime());
         }
 
-        depthPass(pRenderContext.get());
-        resolveDepthMSAA(pRenderContext.get()); // Only runs in MSAA mode
-        shadowPass(pRenderContext.get());
+        depthPass(pRenderContext);
+        resolveDepthMSAA(pRenderContext); // Only runs in MSAA mode
+        shadowPass(pRenderContext);
         mpState->setFbo(mpMainFbo);
-        renderSkyBox(pRenderContext.get());
-        lightingPass(pRenderContext.get(), pTargetFbo.get());
-        resolveMSAA(pRenderContext.get());      // This will only run if we are in MSAA mode
+        renderSkyBox(pRenderContext);
+        lightingPass(pRenderContext, pTargetFbo.get());
+        resolveMSAA(pRenderContext);      // This will only run if we are in MSAA mode
 
         Fbo::SharedPtr pPostProcessDst = mControls[EnableSSAO].enabled ? mpPostProcessFbo : pTargetFbo;
-        postProcess(pRenderContext.get(), pPostProcessDst);
-        runTAA(pRenderContext.get(), pPostProcessDst); // This will only run if we are in TAA mode
-        ambientOcclusion(pRenderContext.get(), pTargetFbo);
-        executeFXAA(pRenderContext.get(), pTargetFbo);
+        postProcess(pRenderContext, pPostProcessDst);
+        runTAA(pRenderContext, pPostProcessDst); // This will only run if we are in TAA mode
+        ambientOcclusion(pRenderContext, pTargetFbo);
+        executeFXAA(pRenderContext, pTargetFbo);
 
-        endFrame(pRenderContext.get());
+        endFrame(pRenderContext);
     }
     else
     {

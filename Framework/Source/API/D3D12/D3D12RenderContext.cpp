@@ -32,8 +32,8 @@
 #include "D3D12Resource.h"
 #include "API/D3D12/D3D12State.h"
 #include "API/DescriptorSet.h"
-#include "Raytracing/RtProgramVars.h"
-#include "Raytracing/RtState.h"
+#include "Experimental/Raytracing/RtProgramVars.h"
+#include "Experimental/Raytracing/RtState.h"
 
 namespace Falcor
 {
@@ -363,16 +363,32 @@ namespace Falcor
         // RayGen is the first entry in the shader-table
         raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress + pVars->getRayGenRecordIndex() * recordSize;
         raytraceDesc.RayGenerationShaderRecord.SizeInBytes = recordSize;
+        size_t tableSize = raytraceDesc.RayGenerationShaderRecord.SizeInBytes;
 
         // Miss is the second entry in the shader-table
-        raytraceDesc.MissShaderTable.StartAddress = startAddress + pVars->getFirstMissRecordIndex() * recordSize;
-        raytraceDesc.MissShaderTable.StrideInBytes = recordSize;
-        raytraceDesc.MissShaderTable.SizeInBytes = recordSize * pVars->getMissProgramsCount();
+        // If there are no entries, leave the start address as nullptr. The runtime validates that it's valid or null.
+        if (pVars->getMissProgramsCount() > 0)
+        {
+            raytraceDesc.MissShaderTable.StartAddress = startAddress + pVars->getFirstMissRecordIndex() * recordSize;
+            raytraceDesc.MissShaderTable.StrideInBytes = recordSize;
+            raytraceDesc.MissShaderTable.SizeInBytes = recordSize * pVars->getMissProgramsCount();
+            assert(raytraceDesc.MissShaderTable.StartAddress >= startAddress + tableSize);
+            tableSize += raytraceDesc.MissShaderTable.SizeInBytes;
+        }
 
-        raytraceDesc.HitGroupTable.StartAddress = startAddress + pVars->getFirstHitRecordIndex() * recordSize;
-        raytraceDesc.HitGroupTable.StrideInBytes = recordSize;
-        raytraceDesc.HitGroupTable.SizeInBytes = recordSize * pVars->getHitRecordsCount();
-        assert(pVars->getShaderTable()->getSize() >= (pVars->getFirstHitRecordIndex() * recordSize) + raytraceDesc.HitGroupTable.SizeInBytes);  // Check that the buffer is sufficiently large to hold the shader table
+        // Hit groups is the third entry in the shader-table
+        // If there are no entries, we leave the start address as nullptr. The runtime validates that it's valid or null.
+        if (pVars->getHitRecordsCount() > 0)
+        {
+            raytraceDesc.HitGroupTable.StartAddress = startAddress + pVars->getFirstHitRecordIndex() * recordSize;
+            raytraceDesc.HitGroupTable.StrideInBytes = recordSize;
+            raytraceDesc.HitGroupTable.SizeInBytes = recordSize * pVars->getHitRecordsCount();
+            assert(raytraceDesc.HitGroupTable.StartAddress >= startAddress + tableSize);
+            tableSize += raytraceDesc.HitGroupTable.SizeInBytes;
+        }
+
+        // Check that the buffer is large enough.
+        assert(pVars->getShaderTable()->getSize() >= tableSize);
 
         auto pCmdList = getLowLevelData()->getCommandList();
         pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
@@ -484,14 +500,14 @@ namespace Falcor
         popGraphicsVars();
     }
 
-    void RenderContext::resolveSubresource(const Texture* pSrc, uint32_t srcSubresource, const Texture* pDst, uint32_t dstSubresource)
+    void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource)
     {
         DXGI_FORMAT format = getDxgiFormat(pDst->getFormat());
         mpLowLevelData->getCommandList()->ResolveSubresource(pDst->getApiHandle(), dstSubresource, pSrc->getApiHandle(), srcSubresource, format);
         mCommandsPending = true;
     }
 
-    void RenderContext::resolveResource(const Texture* pSrc, const Texture* pDst)
+    void RenderContext::resolveResource(const Texture::SharedPtr& pSrc, const Texture::SharedPtr& pDst)
     {
         bool match = true;
         match = match && (pSrc->getMipCount() == pDst->getMipCount());
@@ -501,8 +517,8 @@ namespace Falcor
             logWarning("Can't resolve a resource. The src and dst textures have a different array-size or mip-count");
         }
 
-        resourceBarrier(pSrc, Resource::State::ResolveSource);
-        resourceBarrier(pDst, Resource::State::ResolveDest);
+        resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
+        resourceBarrier(pDst.get(), Resource::State::ResolveDest);
 
         uint32_t subresourceCount = pSrc->getMipCount() * pSrc->getArraySize();
         for (uint32_t s = 0; s < subresourceCount; s++)

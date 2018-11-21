@@ -92,7 +92,7 @@ void StereoRendering::initVR(Fbo* pTargetFbo)
 
 void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pTargetFbo, bool singlePassStereo)
 {
-    PROFILE(STEREO);
+    PROFILE("submitStereo");
     VRSystem::instance()->refresh();
 
     // Clear the FBO
@@ -160,7 +160,7 @@ void StereoRendering::setRenderMode()
 void StereoRendering::loadScene()
 {
     std::string filename;
-    if(openFileDialog("Scene files\0*.fscene\0\0", filename))
+    if(openFileDialog(Scene::kFileExtensionFilters, filename))
     {
         loadScene(filename);
     }
@@ -185,8 +185,9 @@ void StereoRendering::loadScene(const std::string& filename)
     }
 }
 
-void StereoRendering::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void StereoRendering::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
+    suppress_deprecation
     mSPSSupported = gpDevice->isExtensionSupported("VK_NVX_multiview_per_view_attributes");
 
     initVR(pSample->getCurrentFbo().get());
@@ -214,7 +215,7 @@ void StereoRendering::blitTexture(RenderContext* pContext, Fbo* pTargetFbo, Text
     }
 }
 
-void StereoRendering::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void StereoRendering::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     static uint32_t frameCount = 0u;
 
@@ -227,13 +228,13 @@ void StereoRendering::onFrameRender(SampleCallbacks* pSample, const RenderContex
         switch(mRenderMode)
         {
         case RenderMode::Mono:
-            submitToScreen(pRenderContext.get(), pTargetFbo);
+            submitToScreen(pRenderContext, pTargetFbo);
             break;
         case RenderMode::SinglePassStereo:
-            submitStereo(pRenderContext.get(), pTargetFbo, true);
+            submitStereo(pRenderContext, pTargetFbo, true);
             break;
         case RenderMode::Stereo:
-            submitStereo(pRenderContext.get(), pTargetFbo, false);
+            submitStereo(pRenderContext, pTargetFbo, false);
             break;
         default:
             should_not_get_here();

@@ -62,7 +62,7 @@ void AmbientOcclusion::resetCamera()
     }
 }
 
-void AmbientOcclusion::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void AmbientOcclusion::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     //
     // "GBuffer" rendering
@@ -110,7 +110,7 @@ void AmbientOcclusion::onLoad(SampleCallbacks* pSample, const RenderContext::Sha
     resetCamera();
 }
 
-void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     mpCamera->setDepthRange(mNearZ, mFarZ);
     mCameraController.update();
@@ -124,10 +124,10 @@ void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, const RenderConte
 
     pRenderContext->setGraphicsState(mpPrePassState);
     pRenderContext->setGraphicsVars(mpPrePassVars);
-    ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
+    ModelRenderer::render(pRenderContext, mpModel, mpCamera.get());
 
     // Generate AO Map
-    Texture::SharedPtr pAOMap = mpSSAO->generateAOMap(pRenderContext.get(), mpCamera.get(), mpGBufferFbo->getDepthStencilTexture(), mpGBufferFbo->getColorTexture(1));
+    Texture::SharedPtr pAOMap = mpSSAO->generateAOMap(pRenderContext, mpCamera.get(), mpGBufferFbo->getDepthStencilTexture(), mpGBufferFbo->getColorTexture(1));
 
     // Apply AO Map to scene
     mpCopyVars->setSampler("gSampler", mpLinearSampler);
@@ -135,7 +135,7 @@ void AmbientOcclusion::onFrameRender(SampleCallbacks* pSample, const RenderConte
     mpCopyVars->setTexture("gAOMap", pAOMap);
     pRenderContext->setGraphicsVars(mpCopyVars);
     pRenderContext->getGraphicsState()->setFbo(pTargetFbo);
-    mpCopyPass->execute(pRenderContext.get());
+    mpCopyPass->execute(pRenderContext);
 }
 
 bool AmbientOcclusion::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

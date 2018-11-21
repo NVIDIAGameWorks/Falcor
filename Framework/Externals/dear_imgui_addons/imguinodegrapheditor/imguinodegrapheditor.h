@@ -513,7 +513,8 @@ namespace ImGui {
         bool show_node_copy_paste_buttons;
         static bool UseSlidersInsteadOfDragControls;
         mutable void* user_ptr;
-        static Style& GetStyle() { static Style style; return style; }
+        //FALCOR_FIX modified from static function. It is now a non-static to avoid initializing a new style from outside of the dll
+        Style& GetStyle() { return style; }
         /*mutable ImGuiColorEditMode colorEditMode;*/
         float nodesBaseWidth;
         enum class DragEnum {
@@ -783,7 +784,8 @@ namespace ImGui {
                         }
                         return -1;
                     }
-                    static Style style;
+                    // FALCOR_FIX -- changed from static style to member to avoid static initialization creating a new one 
+                    Style style;
 
 
                     private:

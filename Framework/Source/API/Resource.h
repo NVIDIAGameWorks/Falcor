@@ -37,24 +37,7 @@ namespace Falcor
     {
     public:
         using ApiHandle = ResourceHandle;
-        /** These flags are hints the driver to what pipeline stages the resource will be bound to.
-        */
-        enum class BindFlags : uint32_t
-        {
-            None = 0x0,             ///< The resource will not be bound the pipeline. Use this to create a staging resource
-            Vertex = 0x1,           ///< The resource will be bound as a vertex-buffer
-            Index = 0x2,            ///< The resource will be bound as a index-buffer
-            Constant = 0x4,         ///< The resource will be bound as a constant-buffer
-            StreamOutput = 0x8,     ///< The resource will be bound to the stream-output stage as an output buffer
-            ShaderResource = 0x10,  ///< The resource will be bound as a shader-resource
-            UnorderedAccess = 0x20, ///< The resource will be bound as an UAV
-            RenderTarget = 0x40,    ///< The resource will be bound as a render-target
-            DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
-            IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
-#ifdef FALCOR_D3D12
-            AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
-#endif
-        };
+        using BindFlags = ResourceBindFlags;
 
         /** Resource types. Notice there are no array types. Array are controlled using the array size parameter on texture creation.
         */
@@ -134,28 +117,28 @@ namespace Falcor
             \param[in] firstArraySlice The first array slice of the view
             \param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the texture's array size
         */
-        ShaderResourceView::SharedPtr getSRV(uint32_t mostDetailedMip = 0, uint32_t mipCount = kMaxPossible, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible) const;
+        ShaderResourceView::SharedPtr getSRV(uint32_t mostDetailedMip = 0, uint32_t mipCount = kMaxPossible, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
         /** Get a render-target view.
             \param[in] mipLevel The requested mip-level
             \param[in] firstArraySlice The first array slice of the view
             \param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the texture's array size
         */
-        RenderTargetView::SharedPtr getRTV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible) const;
+        RenderTargetView::SharedPtr getRTV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
         /** Get a depth stencil view.
             \param[in] mipLevel The requested mip-level
             \param[in] firstArraySlice The first array slice of the view
             \param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the texture's array size
         */
-        DepthStencilView::SharedPtr getDSV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible) const;
+        DepthStencilView::SharedPtr getDSV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
         /** Get an unordered access view.
             \param[in] mipLevel The requested mip-level
             \param[in] firstArraySlice The first array slice of the view
             \param[in] arraySize The array size. If this is equal to Texture#kMaxPossible, will create a view ranging from firstArraySlice to the texture's array size
         */
-        UnorderedAccessView::SharedPtr getUAV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible) const;
+        UnorderedAccessView::SharedPtr getUAV(uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
         struct ViewInfoHashFunc
         {

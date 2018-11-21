@@ -140,7 +140,7 @@ namespace Falcor
 
     void Texture::uploadInitData(const void* pData, bool autoGenMips)
     {
-        auto& pRenderContext = gpDevice->getRenderContext();
+        auto pRenderContext = gpDevice->getRenderContext();
         if (autoGenMips)
         {
             // Upload just the first mip-level
@@ -161,7 +161,7 @@ namespace Falcor
 
         if (autoGenMips)
         {
-            generateMips(gpDevice->getRenderContext().get());
+            generateMips(gpDevice->getRenderContext());
             invalidateViews();
         }
     }

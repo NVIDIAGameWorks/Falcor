@@ -294,14 +294,8 @@ namespace Falcor
             appendVrExtensions(requiredExtensions, vrExt, supportedExtensions);
         }
 
-        VkApplicationInfo appInfo = {};
-        appInfo.pEngineName = "Falcor";
-        appInfo.engineVersion = VK_MAKE_VERSION(FALCOR_MAJOR_VERSION, FALCOR_MINOR_VERSION, 0);
-        appInfo.apiVersion = VK_MAKE_VERSION(desc.apiMajorVersion, desc.apiMinorVersion, 0);
-
         VkInstanceCreateInfo instanceCreateInfo = {};
         instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-        instanceCreateInfo.pApplicationInfo = &appInfo;
         instanceCreateInfo.enabledLayerCount = (uint32_t)requiredLayers.size();
         instanceCreateInfo.ppEnabledLayerNames = requiredLayers.data();
         instanceCreateInfo.enabledExtensionCount = (uint32_t)requiredExtensions.size();
@@ -362,7 +356,7 @@ namespace Falcor
         return bestDevice;
     }
 
-    VkPhysicalDevice initPhysicalDevice(VkInstance instance, DeviceApiData* pData)
+    VkPhysicalDevice initPhysicalDevice(VkInstance instance, DeviceApiData* pData, const Device::Desc& desc)
     {
         // Enumerate devices
         uint32_t count = 0;
@@ -376,6 +370,16 @@ namespace Falcor
         VkPhysicalDevice physicalDevice = selectPhysicalDevice(devices);
         vkGetPhysicalDeviceProperties(physicalDevice, &pData->properties);
         pData->deviceLimits = pData->properties.limits;
+
+        // Check that the device/driver supports the requested API version
+        uint32_t vkApiVersion = VK_MAKE_VERSION(desc.apiMajorVersion, desc.apiMinorVersion, 0);
+        if (vkApiVersion != 0 && pData->properties.apiVersion < vkApiVersion)
+        {
+            std::string reqVerStr = std::to_string(desc.apiMajorVersion) + "." + std::to_string(desc.apiMinorVersion);
+            std::string supportedStr = std::to_string(VK_VERSION_MAJOR(pData->properties.apiVersion)) + "." + std::to_string(VK_VERSION_MINOR(pData->properties.apiVersion));
+            logError("Vulkan device does not support requested API version. Requested version: " + reqVerStr + ", Highest supported: " + supportedStr);
+            return nullptr;
+        }
 
         // Get queue families and match them to what type they are
         uint32_t queueFamilyCount = 0;
@@ -662,12 +666,10 @@ namespace Falcor
 
     bool Device::apiInit(const Desc& desc)
     {
-        mRgb32FloatSupported = false;
-
         mpApiData = new DeviceApiData;
         VkInstance instance = createInstance(mpApiData, desc);
         if (!instance) return false;
-        VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mpApiData);
+        VkPhysicalDevice physicalDevice = initPhysicalDevice(instance, mpApiData, desc);
         if (!physicalDevice) return false;
         VkSurfaceKHR surface = createSurface(instance, physicalDevice, mpApiData, mpWindow.get());
         if (!surface) return false;

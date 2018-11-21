@@ -57,7 +57,7 @@ float3 importanceSampleCosDir(float2 u, float3 N)
     float phi = u2 * M_PI2;
 
     float3 L = float3(r * cos(phi),
-                      r * sin(phi), 
+                      r * sin(phi),
                       sqrt(max(0.0f, 1.0f - u1)));
 
     return normalize(right * L.y + forward * L.x + N * L.z);
@@ -95,6 +95,8 @@ float smithGGX(float NdotL, float NdotV, float roughness)
 float4 integrateDiffuseLD(float3 N)
 {
     float3 accumulation = 0;
+    float accBrdf = 0;
+    float3 V = N;
     for (uint i = 0; i < gSampleCount; i++)
     {
         float2 u = getHammersley(i, gSampleCount);
@@ -103,11 +105,15 @@ float4 integrateDiffuseLD(float3 N)
         if (NdotL > 0)
         {
             float2 uv = dirToSphericalCrd(L);
-            accumulation += gInputTex.Sample(gSampler, uv).rgb;
+            float LdotH = saturate(dot(L, normalize(V + L)));
+            float NdotV = saturate(dot(N, V));
+            float brdf = disneyDiffuseFresnel(NdotV, NdotL, LdotH, 0);
+            accumulation += gInputTex.Sample(gSampler, uv).rgb * brdf;
+            accBrdf += brdf;
         }
     }
 
-    return float4(accumulation / float(gSampleCount), 1.0f);
+    return float4(accumulation / accBrdf, 1.0f);
 }
 
 float4 integrateSpecularLD(float3 V, float3 N, float roughness)
@@ -122,6 +128,7 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
 
     float3 accBrdf = 0;
     float accBrdfWeight = 0;
+    float NdotV = saturate(dot(N, V));
     for (uint i = 0; i < gSampleCount; i++)
     {
         float2 u = getHammersley(i, gSampleCount);
@@ -143,9 +150,13 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
 
             float2 uv = dirToSphericalCrd(L);
             float3 Li = gInputTex.SampleLevel(gSampler, uv, mipLevel).rgb;
+            float weight = NdotL;
+            weight *= evalSmithGGX(NdotL, NdotV, roughness);
+            weight *= LdotH / NdotH; // this is likely 1
+            weight *= saturate(1 - saturate(pow(1 - LdotH, 5))); // neglecting bias
 
-            accBrdf += Li * NdotL;
-            accBrdfWeight += NdotL;
+            accBrdf += Li * weight;
+            accBrdfWeight += weight;
         }
     }
 

@@ -73,7 +73,7 @@ void SimpleDeferred::loadModelFromFile(const std::string& filename, Fbo* pTarget
 void SimpleDeferred::loadModel(Fbo* pTargetFbo)
 {
     std::string filename;
-    if(openFileDialog("Supported Formats\0*.obj;*.bin;*.dae;*.x;*.md5mesh\0\0", filename))
+    if(openFileDialog(Model::kFileExtensionFilters, filename))
     {
         loadModelFromFile(filename, pTargetFbo);
     }
@@ -173,7 +173,7 @@ void SimpleDeferred::renderModelUiElements(Gui* pGui)
     }
 }
 
-void SimpleDeferred::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void SimpleDeferred::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     mpCamera = Camera::create();
 
@@ -218,7 +218,7 @@ void SimpleDeferred::onLoad(SampleCallbacks* pSample, const RenderContext::Share
     loadModelFromFile(skDefaultModel, pSample->getCurrentFbo().get());
 }
 
-void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     GraphicsState* pState = pRenderContext->getGraphicsState().get();
 
@@ -237,7 +237,7 @@ void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, const RenderContext
         // Animate
         if(mAnimate)
         {
-            PROFILE(Animate);
+            PROFILE("animate");
             mpModel->animate(pSample->getCurrentTime());
         }
 
@@ -249,7 +249,7 @@ void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, const RenderContext
         mpModel->bindSamplerToMaterials(mpLinearSampler);
         pRenderContext->setGraphicsVars(mpDeferredVars);
         pState->setProgram(mpDeferredPassProgram);
-        ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
+        ModelRenderer::render(pRenderContext, mpModel, mpCamera.get());
     }
 
     // Lighting pass (fullscreen quad)
@@ -278,7 +278,7 @@ void SimpleDeferred::onFrameRender(SampleCallbacks* pSample, const RenderContext
 
         // Kick it off
         pRenderContext->setGraphicsVars(mpLightingVars);
-        mpLightingPass->execute(pRenderContext.get());
+        mpLightingPass->execute(pRenderContext);
     }
 }
 

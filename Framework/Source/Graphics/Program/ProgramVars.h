@@ -53,7 +53,8 @@ namespace Falcor
         {
         public:
             SharedPtrT() : std::shared_ptr<T>() {}
-            SharedPtrT(T* pProgVars) : std::shared_ptr<T>(pProgVars) {}
+            explicit SharedPtrT(T* pProgVars) : std::shared_ptr<T>(pProgVars) {}
+            constexpr SharedPtrT(nullptr_t) : std::shared_ptr<T>(nullptr) {}
             SharedPtrT(const std::shared_ptr<T>& other) : std::shared_ptr<T>(other) {}
             ConstantBuffer::SharedPtr operator[](const std::string& cbName) { return std::shared_ptr<T>::get()->getConstantBuffer(cbName); }
             ConstantBuffer::SharedPtr operator[](uint32_t index) = delete; // No set by index. This is here because if we didn't explicitly delete it, the compiler will try to convert to int into a string, resulting in runtime error

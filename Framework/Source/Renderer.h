@@ -40,7 +40,7 @@ namespace Falcor
     {
     public:
         /** Get the render-context for the current frame. This might change each frame*/
-        virtual std::shared_ptr<RenderContext> getRenderContext() = 0;
+        virtual RenderContext* getRenderContext() = 0;
 
         /** Get the current FBO*/
         virtual std::shared_ptr<Fbo> getCurrentFbo() = 0;
@@ -122,6 +122,11 @@ namespace Falcor
         /** Check if the clock is ticking
         */
         virtual bool isTimeFrozen() = 0;
+
+        /** Check if the rendering should be reset.
+            This can be useful for reseting the temporal accumulation at the beginning of recording a video, for example.
+        */
+        virtual bool shouldResetRendering() = 0;
     };
 
     class Renderer : std::enable_shared_from_this<Renderer>
@@ -133,49 +138,49 @@ namespace Falcor
 
         /** Called once right after context creation.
         */
-        virtual void onLoad(SampleCallbacks* pSample, const std::shared_ptr<RenderContext>& pRenderContext) {}
+        virtual void onLoad(SampleCallbacks* pCallbacks, RenderContext* pRenderContext) {}
 
         /** Called on each frame render.
         */
-        virtual void onFrameRender(SampleCallbacks* pSample, const std::shared_ptr<RenderContext>&  pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
+        virtual void onFrameRender(SampleCallbacks* pCallbacks, RenderContext* pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
 
         /** Called right before the context is destroyed.
         */
-        virtual void onShutdown(SampleCallbacks* pSample) {}
+        virtual void onShutdown(SampleCallbacks* pCallbacks) {}
 
         /** Called every time the swap-chain is resized. You can query the default FBO for the new size and sample count of the window.
         */
-        virtual void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) {}
+        virtual void onResizeSwapChain(SampleCallbacks* pCallbacks, uint32_t width, uint32_t height) {}
 
         /** Called every time the user requests shader recompilation (by pressing F5)
         */
-        virtual void onDataReload(SampleCallbacks* pSample) {}
+        virtual void onDataReload(SampleCallbacks* pCallbacks) {}
 
         /** Called every time a key event occurred.
         \param[in] keyEvent The keyboard event
         \return true if the event was consumed by the callback, otherwise false
         */
-        virtual bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) { return false; }
+        virtual bool onKeyEvent(SampleCallbacks* pCallbacks, const KeyboardEvent& keyEvent) { return false; }
 
         /** Called every time a mouse event occurred.
         \param[in] mouseEvent The mouse event
         \return true if the event was consumed by the callback, otherwise false
         */
-        virtual bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) { return false; }
+        virtual bool onMouseEvent(SampleCallbacks* pCallbacks, const MouseEvent& mouseEvent) { return false; }
 
         /** Called after onFrameRender().
         It is highly recommended to use onGuiRender() exclusively for GUI handling. onGuiRender() will not be called when the GUI is hidden, which should help reduce CPU overhead.
         You could also ignore this and render the GUI directly in your onFrameRender() function, but that is discouraged.
         */
-        virtual void onGuiRender(SampleCallbacks* pSample, Gui* pGui) {};
+        virtual void onGuiRender(SampleCallbacks* pCallbacks, Gui* pGui) {};
 
         /** Called when a file is dropped into the window
         */
-        virtual void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) {}
+        virtual void onDroppedFile(SampleCallbacks* pCallbacks, const std::string& filename) {}
 
         /** Callback for anything the tested renderer needs to do to initialize testing 
         */
-        virtual void onInitializeTesting(SampleCallbacks* pSample) {};
+        virtual void onInitializeTesting(SampleCallbacks* pCallbacks) {};
 
         /** Callback for anything the tested renderer wants to do before the frame renders
         */
@@ -183,7 +188,7 @@ namespace Falcor
 
         /** Callback for anything the tested renderer wants to do after the frame renders
         */
-        virtual void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) {};
+        virtual void onEndTestFrame(SampleCallbacks* pCallbacks, SampleTest* pSampleTest) {};
 
         /** Callback for anything the tested renderer wants to do right before shutdown
         */

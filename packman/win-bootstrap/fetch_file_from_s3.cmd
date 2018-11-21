@@ -3,7 +3,7 @@
 @set PACKAGE_NAME=%1
 @set TARGET_PATH=%2
 
-@echo Fetching %PACKAGE_NAME% from S3 ...
+@echo Fetching %PACKAGE_NAME% from packman-bootstrap over HTTP ...
 
 @powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0fetch_file_from_s3.ps1" -sourceName %PACKAGE_NAME% ^
     -output %TARGET_PATH%

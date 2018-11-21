@@ -32,7 +32,7 @@
 #include "Graphics/Light.h"
 #include "Graphics/Scene/Scene.h"
 #include "Utils/Math/ParallelReduction.h"
-#include "Graphics/RenderGraph/RenderPass.h"
+#include "Experimental/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
@@ -45,7 +45,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<CascadedShadowMaps>;
-        using UniquePtr = std::unique_ptr<CascadedShadowMaps>;
+        static const char* kDesc;
 
         enum class PartitionMode
         {
@@ -59,17 +59,15 @@ namespace Falcor
         ~CascadedShadowMaps();
 
         /** Create a new instance.
+            \param[in] pLight Light to generate shadows for
             \param[in] mapWidth Shadow map width
             \param[in] mapHeight Shadow map height
             \param[in] visibilityBufferWidth Visibility buffer width
             \param[in] visibilityBufferHeight Visibility buffer height
-            \param[in] pLight Light to generate shadows for
             \param[in] pScene Scene to render when generating shadow maps
             \param[in] cascadeCount Number of cascades
-            \param[in] shadowMapFormat Shadow map texture format
+            \param[in] visMapBitsPerChannel Bits per channel of the visibility buffer
         */
-        deprecate("3.2", "Use the other create() methods. Note that they now return a SharedPtr, and not UniquePtr")
-        static UniquePtr create(uint32_t mapWidth, uint32_t mapHeight, uint32_t visibilityBufferWidth, uint32_t visibilityBufferHeight, Light::SharedConstPtr pLight, Scene::SharedPtr pScene, uint32_t cascadeCount = 4, uint32_t visMapBitsPerChannel = 16);
         static SharedPtr create(const Light::SharedConstPtr& pLight, uint32_t shadowMapWidth = 2048, uint32_t shadowMapHeight = 2048, uint32_t visibilityBufferWidth = 0, uint32_t visibilityBufferHeight = 0, const Scene::SharedPtr& pScene = nullptr, uint32_t cascadeCount = 4, uint32_t visMapBitsPerChannel = 16);
         static SharedPtr create(const Dictionary& dict = {});
         
@@ -150,11 +148,6 @@ namespace Falcor
         */
         void toggleCascadeVisualization(bool shouldVisualze);
 
-        /** Resize the visibility buffer
-        */
-        deprecate("3.2", "Use `onResize()` instead")
-        void resizeVisibilityBuffer(uint32_t width, uint32_t height);
-
         /** Set the visibility's buffer bits-per-channel
         */
         void setVisibilityBufferBitsPerChannel(uint32_t bitsPerChannel);
@@ -166,6 +159,10 @@ namespace Falcor
         /** Execute the render-pass
         */
         virtual void execute(RenderContext* pContext, const RenderData* pRenderData) override;
+
+        /** Get a description of the pass
+        */
+        virtual std::string getDesc() override { return kDesc; }
 
         /** Set the scene
         */

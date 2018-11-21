@@ -1,12 +1,15 @@
 /***************************************************************************
 * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 ***************************************************************************/
+#include "Framework.h"
 #include "FXAA.h"
 #include "Utils/Gui.h"
 #include "API/RenderContext.h"
 
 namespace Falcor
 {
+    const char* FXAA::kDesc = "Fast Approximate Anti-Aliasing";
+
     static const char* kShaderFilename = "Effects/FXAA.slang";
 
     FXAA::~FXAA() = default;
@@ -74,8 +77,8 @@ namespace Falcor
     RenderPassReflection FXAA::reflect() const
     {
         RenderPassReflection reflector;
-        reflector.addInput(kSrc);
-        reflector.addOutput(kDst);
+        reflector.addInput(kSrc, "Source color-buffer");
+        reflector.addOutput(kDst, "Destination color-buffer");
         return reflector;
     }
 

@@ -50,7 +50,7 @@ namespace Falcor
         bool changed = false;
         if (pModel->hasBones())
         {
-            RenderContext::SharedPtr pRenderContext = gpDevice->getRenderContext();
+            RenderContext* pRenderContext = gpDevice->getRenderContext();
             pRenderContext->pushComputeState(mSkinningPass.pState);
             pRenderContext->pushComputeVars(mSkinningPass.pVars);
 
@@ -121,8 +121,8 @@ namespace Falcor
                 assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
                 const ReflectionType* pType = pVar->getType().get();
 
-                assert(pType->findMember("gBoneMat[0]")->getType()->asBasicType()->isRowMajor() == false); // We copy into CBs as column-major
-                assert(pType->findMember("gInvTransposeBoneMat[0]")->getType()->asBasicType()->isRowMajor() == false);
+                assert(pType->findMember("gBoneMat[0]")->getType()->asBasicType()->isRowMajor() == true); // We copy into CBs as row-major
+                assert(pType->findMember("gInvTransposeBoneMat[0]")->getType()->asBasicType()->isRowMajor() == true);
                 assert(pType->findMember("gBoneMat")->getType()->getTotalArraySize() >= MAX_BONES);
                 assert(pType->findMember("gInvTransposeBoneMat")->getType()->getTotalArraySize() >= MAX_BONES);
 

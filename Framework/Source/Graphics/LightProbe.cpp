@@ -177,7 +177,7 @@ namespace Falcor
             pTexture = Texture::create2D(pOrigTex->getWidth(), pOrigTex->getHeight(), overrideFormat, 1, Texture::kMaxPossible, nullptr, Resource::BindFlags::RenderTarget | Resource::BindFlags::ShaderResource);
             pTexture->setSourceFilename(pOrigTex->getSourceFilename());
             gpDevice->getRenderContext()->blit(pOrigTex->getSRV(0, 1, 0, 1), pTexture->getRTV(0, 0, 1));
-            pTexture->generateMips(gpDevice->getRenderContext().get());
+            pTexture->generateMips(gpDevice->getRenderContext());
         }
         else
         {

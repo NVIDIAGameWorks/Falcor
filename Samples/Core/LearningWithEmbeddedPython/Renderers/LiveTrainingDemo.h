@@ -54,8 +54,8 @@ public:
 
     /** Callbacks overridden from Renderer base class
         */
-    virtual void onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext) override;
-    virtual void onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo) override;
+    virtual void onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext) override;
+    virtual void onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, Fbo::SharedPtr pTargetFbo) override;
     virtual void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
     virtual bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     virtual bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
@@ -63,8 +63,8 @@ public:
 
     /** Methods to handle/encapsulate basic Falcor scene rendering
      */
-    void msaaResolvePass(RenderContext::SharedPtr context);
-    void lightingPass(RenderContext::SharedPtr context);
+    void msaaResolvePass(RenderContext* context);
+    void lightingPass(RenderContext* context);
     void initLightingPass();
 
     /** Methods to encapsulate basic training/inference features

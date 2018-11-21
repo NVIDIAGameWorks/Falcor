@@ -35,6 +35,8 @@
 
 namespace Falcor
 {
+    const char* SkyBox::kDesc = "Render an environment-map. The map can be provided by the user or taken from a scene";
+
     // Dictionary keys
     static const std::string& kSkyboxFile = "file";
 
@@ -50,10 +52,10 @@ namespace Falcor
         return pSkyBox;
     }
 
-    SkyBox::UniquePtr SkyBox::createFromTexture(const std::string& textureName, bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
+    SkyBox::SharedPtr SkyBox::create(const std::string& textureName, bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
     {
         Texture::SharedPtr pTexture;
-        if(textureName.size())
+        if (textureName.size())
         {
             pTexture = createTextureFromFile(textureName, false, loadAsSrgb);
             if (pTexture == nullptr)
@@ -62,15 +64,9 @@ namespace Falcor
             }
         }
 
-        UniquePtr pSkyBox = UniquePtr(new SkyBox());
+        SharedPtr pSkyBox = SharedPtr(new SkyBox());
         if (pSkyBox->createResources(pTexture, pSampler, renderStereo) == false) return nullptr;
         return pSkyBox;
-    }
-
-    SkyBox::SharedPtr SkyBox::create(const std::string& textureName, bool loadAsSrgb, Sampler::SharedPtr pSampler, bool renderStereo)
-    {
-#pragma warning (suppress : 4996)
-        return createFromTexture(textureName, loadAsSrgb, pSampler, renderStereo);
     }
 
     SkyBox::SharedPtr SkyBox::create(const Dictionary& dict)
@@ -192,8 +188,8 @@ namespace Falcor
     {
         RenderPassReflection reflector;
 
-        reflector.addOutput(kTarget).setFormat(ResourceFormat::RGBA32Float);
-        reflector.addInputOutput(kDepth).setBindFlags(Resource::BindFlags::DepthStencil);
+        reflector.addOutput(kTarget, "Color buffer").format(ResourceFormat::RGBA32Float);
+        reflector.addInputOutput(kDepth, "Depth-buffer. Should be pre-initialized or cleared before calling the pass").bindFlags(Resource::BindFlags::DepthStencil);
         return reflector;
     }
 
@@ -212,7 +208,7 @@ namespace Falcor
     }
 
     void SkyBox::setScene(const std::shared_ptr<Scene>& pScene)
-    {
+{
         mpScene = pScene;
         if (mpScene && mpScene->getEnvironmentMap()) setTexture(mpScene->getEnvironmentMap());
     }

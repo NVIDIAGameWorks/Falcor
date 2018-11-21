@@ -40,12 +40,14 @@
 
 namespace Falcor
 {
+    class Gui;
+
     class Scene : public std::enable_shared_from_this<Scene>
     {
     public:
         using SharedPtr = std::shared_ptr<Scene>;
         using SharedConstPtr = std::shared_ptr<const Scene>;
-        static const char* kFileFormatString;
+        static const FileDialogFilterVec kFileExtensionFilters;
 
         struct UserVariable
         {
@@ -103,7 +105,7 @@ namespace Falcor
         };
 
         static Scene::SharedPtr loadFromFile(const std::string& filename, Model::LoadFlags modelLoadFlags = Model::LoadFlags::None, Scene::LoadFlags sceneLoadFlags = LoadFlags::None);
-        static Scene::SharedPtr create();
+        static Scene::SharedPtr create(const std::string& filename = "");
 
         virtual ~Scene();
 
@@ -200,6 +202,11 @@ namespace Falcor
         const vec3& getCenter() { updateExtents(); return mCenter; }
         const float getRadius() { updateExtents(); return mRadius; }
 
+        /** Returns the scene bounding box.
+            \return Bounding box in scene units.
+        */
+        const BoundingBox& getBoundingBox() { updateExtents(); return mBoundingBox; }
+
         /**
             This routine creates area light(s) in the scene. All meshes that
             have emissive material are treated as area lights.
@@ -225,13 +232,17 @@ namespace Falcor
         /** Get the filename
         */
         const std::string& getFilename() const { return mFilename; }
-
+        
         /** Set a new aspect ratio for all the cameras in the scene
         */
         void setCamerasAspectRatio(float ratio);
+
+        /** Render the scene's UI
+        */
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
     protected:
 
-        Scene();
+        Scene(const std::string& filename = "");
         /**
             Update changed scene extents (radius and center).
         */
@@ -250,6 +261,7 @@ namespace Falcor
         Texture::SharedPtr mpEnvMap;
 
         uint32_t mActiveCameraID = 0;
+        uint32_t mSelectedPath = 0;
         float mCameraSpeed = 1;
         float mLightingScale = 1.0f;
         uint32_t mVersion = 1;
@@ -257,6 +269,7 @@ namespace Falcor
 
         float mRadius = -1.f;
         vec3 mCenter = vec3(0, 0, 0);
+        BoundingBox mBoundingBox;           ///< Scene bounding box in scene units.
 
         bool mExtentsDirty = true;
 

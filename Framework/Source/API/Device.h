@@ -58,8 +58,8 @@ namespace Falcor
         {
             ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;    ///< The color buffer format
             ResourceFormat depthFormat = ResourceFormat::D32Float;          ///< The depth buffer format
-            int apiMajorVersion = DEFAULT_API_MAJOR_VERSION;                ///< Requested API major version. Context creation fails if this version is not supported.
-            int apiMinorVersion = DEFAULT_API_MINOR_VERSION;                ///< Requested API minor version. Context creation fails if this version is not supported.
+            uint32_t apiMajorVersion = 0;                                   ///< Requested API major version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
+            uint32_t apiMinorVersion = 0;                                   ///< Requested API minor version. If specified, device creation will fail if not supported. Otherwise, the highest supported version will be automatically selected.
             std::vector<std::string> requiredExtensions;                    ///< Extensions required by the sample
             bool enableVsync = false;                                       ///< Controls vertical-sync
             bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
@@ -104,6 +104,7 @@ namespace Falcor
 
         /** Check if the device support an extension
         */
+        deprecate("3.3", "This no longer does anything. Use isFeatureSupported() for extension and feature support queries.")
         bool isExtensionSupported(const std::string & name) const;
 
         /** Get the FBO object associated with the swap-chain.
@@ -114,7 +115,7 @@ namespace Falcor
         /** Get the default render-context.
             The default render-context is managed completely by the device. The user should just queue commands into it, the device will take care of allocation, submission and synchronization
         */
-        const RenderContext::SharedPtr& getRenderContext() const { return mpRenderContext; }
+        RenderContext* getRenderContext() const { return mpRenderContext.get(); }
 
         /** Get the command queue handle
         */
@@ -151,9 +152,6 @@ namespace Falcor
         const QueryHeap::SharedPtr& getTimestampQueryHeap() const { return mTimestampQueryHeap; }
         void releaseResource(ApiObjectHandle pResource);
         double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
-
-        // This was originally a workaround for an issue found with AMD GPUs/Drivers so it is not a part of isFeatureSupported
-        bool isRgb32FloatSupported() const { return mRgb32FloatSupported; }
 
         /** Check if features are supported by the device
         */
@@ -203,7 +201,6 @@ namespace Falcor
         size_t mFrameID = 0;
         QueryHeap::SharedPtr mTimestampQueryHeap;
         double mGpuTimestampFrequency;
-        bool mRgb32FloatSupported = true;
         std::vector<CommandQueueHandle> mCmdQueues[kQueueTypeCount];
 
         SupportedFeatures mSupportedFeatures = SupportedFeatures::None;

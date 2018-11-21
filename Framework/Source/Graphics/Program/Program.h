@@ -266,15 +266,6 @@ namespace Falcor
         */
         static void reloadAllPrograms();
 
-        deprecate("3.2", "Use setDefines({}) instead")
-        bool clearDefines();
-
-        deprecate("3.2", "Use setDefines() instead")
-        bool replaceAllDefines(const DefineList& dl);
-
-        deprecate("3.2", "Use getDefines() instead")
-        const DefineList& getActiveDefinesList() const { return mDefineList; }
-
         const ProgramReflection::SharedConstPtr getReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pReflector; }
         const ProgramReflection::SharedConstPtr getLocalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pLocalReflector; }
         const ProgramReflection::SharedConstPtr getGlobalReflector() const { getActiveVersion(); return mActiveProgram.reflectors.pGlobalReflector; }

@@ -96,21 +96,30 @@ namespace Falcor
     */
     std::string stripDataDirectories(const std::string& filename);
 
+    /** Structure to help with file dialog file-extension filters
+    */
+    struct FileDialogFilter
+    {
+        FileDialogFilter(const std::string& ext_, const std::string& desc_ = {}) : ext(ext_), desc(desc_) {}
+        std::string desc;   // The description ("Portable Network Graphics")
+        std::string ext;    // The extension, without the `.` ("png")
+    };
+
+    using FileDialogFilterVec = std::vector<FileDialogFilter>;
+
     /** Creates a 'open file' dialog box.
-        \param[in] pFilters A string containing pairs of null terminating strings. The first string in each pair is the name of the filter, the second string in a pair is a semicolon separated list of file extensions
-                   (for example, "*.TXT;*.DOC;*.BAK"). The last pair in the filter list has to end with a 2 null characters.
+        \param[in] filters The file extensions filters
         \param[in] filename On successful return, the name of the file selected by the user.
         \return true if a file was selected, otherwise false (if the user clicked 'Cancel').
     */
-    bool openFileDialog(const char* pFilters, std::string& filename);
+    bool openFileDialog(const FileDialogFilterVec& filters, std::string& filename);
 
     /** Creates a 'save file' dialog box.
-        \param[in] pFilters A string containing pairs of null terminating strings. The first string in each pair is the name of the filter, the second string in a pair is a semicolon separated list of file extensions
-                   (for example, "*.TXT;*.DOC;*.BAK"). The last pair in the filter list has to end with a 2 null characters.
+        \param[in] filters The file extensions filters
         \param[in] filename On successful return, the name of the file selected by the user.
         \return true if a file was selected, otherwise false (if the user clicked 'Cancel').
     */
-    bool saveFileDialog(const char* pFilters, std::string& filename);
+    bool saveFileDialog(const FileDialogFilterVec& filters, std::string& filename);
 
     /** Checks if a file exists in the file system. This function doesn't look in the common directories.
         \param[in] filename The file to look for
@@ -185,6 +194,11 @@ namespace Falcor
         \param[in] dir The new directory to add to the common directories.
     */
     void addDataDirectory(const std::string& dir);
+
+    /** Removes a folder from the search directories
+        \param[in] dir The directory name to remove from the common directories.
+    */
+    void removeDataDirectory(const std::string& dataDir);
 
     /** Find a new filename based on the supplied parameters. This function doesn't actually create the file, just find an available file name.
         \param[in] prefix Requested file prefix.

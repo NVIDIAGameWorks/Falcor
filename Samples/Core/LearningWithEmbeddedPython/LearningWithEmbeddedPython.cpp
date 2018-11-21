@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#include "Utils/Renderer/MultiSampleRenderer.h"
 #include "Renderers/LiveTrainingDemo.h"
 
 #ifdef _WIN32

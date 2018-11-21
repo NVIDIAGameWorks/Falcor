@@ -42,12 +42,12 @@ const std::string kDefaultTexture = "smoke-puff.png";
 
 void Particles::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 {
-    createSystemGui(pSample->getRenderContext().get(), pGui);
+    createSystemGui(pSample->getRenderContext(), pGui);
     pGui->addSeparator();
     editPropertiesGui(pGui);
 }
 
-void Particles::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void Particles::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     mpCamera = Camera::create();
     mpCamera->setPosition(mpCamera->getPosition() + glm::vec3(0, 5, 10));
@@ -62,7 +62,7 @@ void Particles::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr&
     pRenderContext->getGraphicsState()->setBlendState(pBlend);
 }
 
-void Particles::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void Particles::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
@@ -70,8 +70,8 @@ void Particles::onFrameRender(SampleCallbacks* pSample, const RenderContext::Sha
 
     for (auto it = mpParticleSystems.begin(); it != mpParticleSystems.end(); ++it)
     {
-        (*it)->update(pRenderContext.get(), pSample->getLastFrameTime(), mpCamera->getViewMatrix());
-        (*it)->render(pRenderContext.get(), mpCamera->getViewMatrix(), mpCamera->getProjMatrix());
+        (*it)->update(pRenderContext, pSample->getLastFrameTime(), mpCamera->getViewMatrix());
+        (*it)->render(pRenderContext, mpCamera->getViewMatrix(), mpCamera->getProjMatrix());
     }
 }
 
@@ -192,9 +192,10 @@ void Particles::editPropertiesGui(Gui* pGui)
             if (pGui->addButton("Add Texture"))
             {
                 std::string filename;
-                openFileDialog("Supported Formats\0*.png;*.dds;*.jpg;\0\0", filename);
+                FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"} };                
+                openFileDialog(filters, filename);
                 mpTextures.push_back(createTextureFromFile(filename, true, false));
-                mGuiData.mTexDropdown.push_back({ (int32_t)mGuiData.mTexDropdown.size(), filename });
+                mGuiData.mTexDropdown.push_back({ (uint32_t)mGuiData.mTexDropdown.size(), filename });
             }
 
             uint32_t texIndex = mPsData[mGuiData.mSystemIndex].texIndex;

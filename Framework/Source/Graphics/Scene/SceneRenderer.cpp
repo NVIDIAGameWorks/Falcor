@@ -81,8 +81,8 @@ namespace Falcor
             {
                 const ReflectionType* pType = pVar->getType().get();
 
-                assert(pType->findMember("gWorldMat[0]")->getType()->asBasicType()->isRowMajor() == false); // We copy into CBs as column-major
-                assert(pType->findMember("gWorldInvTransposeMat[0]")->getType()->asBasicType()->isRowMajor() == false);
+                assert(pType->findMember("gWorldMat[0]")->getType()->asBasicType()->isRowMajor() == true); // We copy into CBs as row-major
+                assert(pType->findMember("gWorldInvTransposeMat[0]")->getType()->asBasicType()->isRowMajor() == true);
                 assert(pType->findMember("gWorldMat")->getType()->getTotalArraySize() == pType->findMember("gWorldInvTransposeMat")->getType()->getTotalArraySize());
 
                 sWorldMatArraySize = pType->findMember("gWorldMat")->getType()->getTotalArraySize();

@@ -78,7 +78,7 @@ namespace Falcor
             return false;
         }
 
-        if (desc.enableVR && VRSystem::instance()) VRSystem::instance()->initDisplayAndController(mpRenderContext);
+        if (desc.enableVR && VRSystem::instance()) VRSystem::instance()->initDisplayAndController();
         gpDevice->mTimestampQueryHeap = QueryHeap::create(QueryHeap::Type::Timestamp, 128 * 1024 * 1024);
         
         return true;

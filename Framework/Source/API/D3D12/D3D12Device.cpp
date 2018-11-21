@@ -124,11 +124,40 @@ namespace Falcor
         return pSwapChain3;
     }
 
-    DeviceHandle createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL featureLevel, const std::vector<UUID>& experimentalFeatures, bool& rgb32FSupported)
+    DeviceHandle createDevice(IDXGIFactory4* pFactory, D3D_FEATURE_LEVEL requestedFeatureLevel, const std::vector<UUID>& experimentalFeatures)
     {
+        // Feature levels to try creating devices. Listed in descending order so the highest supported level is used.
+        const static D3D_FEATURE_LEVEL kFeatureLevels[] =
+        {
+            D3D_FEATURE_LEVEL_12_1,
+            D3D_FEATURE_LEVEL_12_0,
+            D3D_FEATURE_LEVEL_11_1,
+            D3D_FEATURE_LEVEL_11_0,
+            D3D_FEATURE_LEVEL_10_1,
+            D3D_FEATURE_LEVEL_10_0,
+            D3D_FEATURE_LEVEL_9_3,
+            D3D_FEATURE_LEVEL_9_2,
+            D3D_FEATURE_LEVEL_9_1
+        };
+
         // Find the HW adapter
         IDXGIAdapter1Ptr pAdapter;
         DeviceHandle pDevice;
+        D3D_FEATURE_LEVEL deviceFeatureLevel;
+
+        auto createMaxFeatureLevel = [&](const D3D_FEATURE_LEVEL* pFeatureLevels, uint32_t featureLevelCount) -> bool
+        {
+            for (uint32_t i = 0; i < featureLevelCount; i++)
+            {
+                if (SUCCEEDED(D3D12CreateDevice(pAdapter, pFeatureLevels[i], IID_PPV_ARGS(&pDevice))))
+                {
+                    deviceFeatureLevel = pFeatureLevels[i];
+                    return true;
+                }
+            }
+
+            return false;
+        };
 
         for (uint32_t i = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(i, &pAdapter); i++)
         {
@@ -136,14 +165,14 @@ namespace Falcor
             pAdapter->GetDesc1(&desc);
 
             // Skip SW adapters
-            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
-            {
-                continue;
-            }
+            if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
 
-            if (SUCCEEDED(D3D12CreateDevice(pAdapter, featureLevel, IID_PPV_ARGS(&pDevice))))
+            if (requestedFeatureLevel == 0) createMaxFeatureLevel(kFeatureLevels, arraysize(kFeatureLevels));
+            else createMaxFeatureLevel(&requestedFeatureLevel, 1);
+
+            if (pDevice != nullptr)
             {
-                rgb32FSupported = (desc.VendorId != 0x1002); // The AMD cards I tried can't handle 96-bits textures correctly
+                logInfo("Successfully created device with feature level: " + to_string(deviceFeatureLevel));
                 return pDevice;
             }
         }
@@ -253,7 +282,7 @@ namespace Falcor
         // Create the DXGI factory
         d3d_call(CreateDXGIFactory2(dxgiFlags, IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
 
-        mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(desc.apiMajorVersion, desc.apiMinorVersion), desc.experimentalFeatures, mRgb32FloatSupported);
+        mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(desc.apiMajorVersion, desc.apiMinorVersion), desc.experimentalFeatures);
         if (mApiHandle == nullptr)
         {
             return false;

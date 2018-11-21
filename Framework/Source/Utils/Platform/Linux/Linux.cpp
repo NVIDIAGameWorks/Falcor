@@ -254,7 +254,7 @@ namespace Falcor
     }
 
     template<bool bOpen>
-    bool fileDialogCommon(const char* pFilters, std::string& filename)
+    bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename)
     {
         if (!gtk_init_check(0, nullptr))
         {
@@ -323,8 +323,8 @@ namespace Falcor
         return success;
     }
 
-    template bool fileDialogCommon<true>(const char* pFilters, std::string& filename);
-    template bool fileDialogCommon<false>(const char* pFilters, std::string& filename);
+    template bool fileDialogCommon<true>(const FileDialogFilterVec& filters, std::string& filename);
+    template bool fileDialogCommon<false>(const FileDialogFilterVec& filters, std::string& filename);
 
     void setActiveWindowIcon(const std::string& iconFile)
     {

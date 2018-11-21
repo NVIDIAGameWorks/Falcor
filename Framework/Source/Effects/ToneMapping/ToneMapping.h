@@ -31,7 +31,7 @@
 #include "API/FBO.h"
 #include "API/Sampler.h"
 #include "Utils/Gui.h"
-#include "Graphics/RenderGraph/RenderPass.h"
+#include "Experimental/RenderGraph/RenderPass.h"
 
 namespace Falcor
 {
@@ -41,6 +41,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<ToneMapping>;
+        static const char* kDesc;
 
         /** Destructor
         */
@@ -69,14 +70,6 @@ namespace Falcor
             \param[in] uiGroup Name for the group to render UI elements within
         */
         void renderUI(Gui* pGui, const char* uiGroup) override;
-
-        /** Run the tone-mapping program
-        \param pRenderContext Render-context to use
-        \param pSrc The source FBO. Only color-texture 0 will be tone-mapped
-        \param pDst The destination FBO
-        */
-        deprecate("3.2", "Use the other execute() method, which accepts a single texture as the source")
-        void execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst);
 
         /** Run the tone-mapping program
             \param pRenderContext Render-context to use
@@ -142,6 +135,10 @@ namespace Falcor
         /** Get the scripting dictionary
         */
         Dictionary getScriptingDictionary() const override;
+        
+        /** Get a description of the pass
+        */ 
+        std::string getDesc() override { return kDesc; }
     private:
         ToneMapping(Operator op);
         void createLuminanceFbo(const Texture::SharedPtr& pSrc);

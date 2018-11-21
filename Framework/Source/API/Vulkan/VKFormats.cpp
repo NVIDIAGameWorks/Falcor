@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
+#include "API/Device.h"
 
 namespace Falcor
 {
@@ -109,4 +110,43 @@ namespace Falcor
         { ResourceFormat::BC7Unorm,                      VK_FORMAT_BC7_UNORM_BLOCK },
         { ResourceFormat::BC7UnormSrgb,                  VK_FORMAT_BC7_SRGB_BLOCK },
     };
+
+    ResourceBindFlags getFormatBindFlags(ResourceFormat format)
+    {
+        VkFormatProperties p;
+        vkGetPhysicalDeviceFormatProperties(gpDevice->getApiHandle(), getVkFormat(format), &p);
+
+        auto convertFlags = [](VkFormatFeatureFlags vk) -> ResourceBindFlags
+        {
+            ResourceBindFlags f = ResourceBindFlags::None;
+            if (vk & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) f |= ResourceBindFlags::ShaderResource;
+            if (vk & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT) f |= ResourceBindFlags::ShaderResource;
+            if (vk & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) f |= ResourceBindFlags::ShaderResource;
+            if (vk & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) f |= ResourceBindFlags::UnorderedAccess;
+            if (vk & VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT) f |= ResourceBindFlags::UnorderedAccess;
+            if (vk & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT) f |= ResourceBindFlags::UnorderedAccess;
+            if (vk & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT) f |= ResourceBindFlags::UnorderedAccess;
+            if (vk & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT) f |= ResourceBindFlags::Vertex;
+            if (vk & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) f |= ResourceBindFlags::RenderTarget;
+            if (vk & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT) f |= ResourceBindFlags::RenderTarget;
+            if (vk & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) f |= ResourceBindFlags::DepthStencil;
+
+            return f;
+        };
+        
+        ResourceBindFlags flags = ResourceBindFlags::None;
+        flags |= convertFlags(p.bufferFeatures);
+        flags |= convertFlags(p.linearTilingFeatures);
+        flags |= convertFlags(p.optimalTilingFeatures);
+
+
+        switch (format)
+        {
+        case ResourceFormat::R16Uint:
+        case ResourceFormat::R32Uint:
+            flags |= ResourceBindFlags::Index;
+        }
+
+        return flags;
+    }
 }

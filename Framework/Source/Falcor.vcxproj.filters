@@ -471,39 +471,6 @@
     <ClCompile Include="Graphics\LightProbe.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Raytracing\RtModel.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgramVars.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtScene.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtSceneRenderer.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtState.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtStateObject.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\HitProgram.cpp">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\RtProgramVersion.cpp">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtShader.cpp">
-      <Filter>Raytracing</Filter>
-    </ClCompile>
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp">
       <Filter>Graphics\Program</Filter>
     </ClCompile>
@@ -512,21 +479,6 @@
     </ClCompile>
     <ClCompile Include="Effects\FXAA\FXAA.cpp">
       <Filter>Effects\FXAA</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderPasses\BlitPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderPasses\DepthPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
     <ClCompile Include="Utils\VariablesBufferUI.cpp">
       <Filter>Utils</Filter>
@@ -537,34 +489,89 @@
     <ClCompile Include="Utils\PatternGenerators\HaltonSamplePattern.cpp">
       <Filter>Utils\PatternGenerators</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPasses\ResolvePass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderPasses\ForwardLightingPass.cpp">
-      <Filter>RenderPasses</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphScripting.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\Scripting\Scripting.cpp">
       <Filter>Utils\Scripting</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
     </ClCompile>
     <ClCompile Include="..\Externals\GLM\glm\detail\glm.cpp">
       <Filter>Externals\GLM\detail</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\RenderGraph\RenderPassLibrary.cpp">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\Scripting\ScriptBindings.cpp" />
+    <ClCompile Include="Experimental\Raytracing\RtModel.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgramVars.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgramVarsHelper.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtScene.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtSceneRenderer.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtShader.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtState.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtStateObject.cpp">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgram\HitProgram.cpp">
+      <Filter>Experimental\Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgram\RtProgram.cpp">
+      <Filter>Experimental\Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgram\RtProgramVersion.cpp">
+      <Filter>Experimental\Raytracing\RtProgram</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderPasses\BlitPass.cpp">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderPasses\DepthPass.cpp">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderPasses\ForwardLightingPass.cpp">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderPasses\ImageLoader.cpp">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderPasses\ResolvePass.cpp">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderGraph.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphImportExport.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphIR.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphScripting.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphUI.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderPassLibrary.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderPassReflection.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\ResourceCache.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderPass.cpp">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="UnitTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -677,9 +684,6 @@
     </ClInclude>
     <ClInclude Include="Graphics\Paths\PathEditor.h">
       <Filter>Graphics\Paths</Filter>
-    </ClInclude>
-    <ClInclude Include="Data\HlslGlslCommon.h">
-      <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Material\Material.h">
       <Filter>Graphics\Material</Filter>
@@ -1284,51 +1288,6 @@
     <ClInclude Include="Graphics\LightProbe.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h">
-      <Filter>Utils\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\DXR.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtModel.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgramVars.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgramVarsHelper.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtScene.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtSceneRenderer.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtState.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtStateObject.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtStateObjectHelper.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\HitProgram.h">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\RtProgram.h">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\RtProgramVersion.h">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\SingleShaderProgram.h">
-      <Filter>Raytracing\RtProgram</Filter>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtShader.h">
-      <Filter>Raytracing</Filter>
-    </ClInclude>
     <ClInclude Include="Graphics\Program\ShaderLibrary.h">
       <Filter>Graphics\Program</Filter>
     </ClInclude>
@@ -1341,29 +1300,11 @@
     <ClInclude Include="Effects\FXAA\FXAA.h">
       <Filter>Effects\FXAA</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraph.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPass.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderPasses\BlitPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\DirectedGraph.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="Utils\VariablesBufferUI.h">
       <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderPasses\DepthPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h">
-      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
     <ClInclude Include="Utils\PatternGenerators\PatternGenerator.h">
       <Filter>Utils\PatternGenerators</Filter>
@@ -1380,26 +1321,8 @@
     <ClInclude Include="Utils\Dictionary.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPasses\ResolvePass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderPasses\ForwardLightingPass.h">
-      <Filter>RenderPasses</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphScripting.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Scripting\Scripting.h">
       <Filter>Utils\Scripting</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h">
-      <Filter>Graphics\RenderGraph</Filter>
     </ClInclude>
     <ClInclude Include="..\Externals\GLM\glm\detail\_features.hpp">
       <Filter>Externals\GLM\detail</Filter>
@@ -2115,10 +2038,90 @@
     <ClInclude Include="..\Externals\GLM\glm\vector_relational.hpp">
       <Filter>Externals\GLM</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\RenderGraph\RenderPassLibrary.h">
-      <Filter>Graphics\RenderGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
+    <ClInclude Include="FalcorExperimental.h" />
+    <ClInclude Include="Experimental\Raytracing\RtModel.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgramVars.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgramVarsHelper.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtScene.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtSceneRenderer.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtShader.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtState.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtStateObject.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtStateObjectHelper.h">
+      <Filter>Experimental\Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\HitProgram.h">
+      <Filter>Experimental\Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\RtProgram.h">
+      <Filter>Experimental\Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\RtProgramVersion.h">
+      <Filter>Experimental\Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\SingleShaderProgram.h">
+      <Filter>Experimental\Raytracing\RtProgram</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderPasses\BlitPass.h">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderPasses\DepthPass.h">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderPasses\ForwardLightingPass.h">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderPasses\ImageLoader.h">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="UnitTest.h" />
+    <ClInclude Include="Experimental\RenderPasses\ResolvePass.h">
+      <Filter>Experimental\RenderPasses</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderGraph.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphImportExport.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphIR.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphScripting.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphUI.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderPass.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderPassLibrary.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderPassReflection.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\ResourceCache.h">
+      <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">
@@ -2286,20 +2289,8 @@
     <Filter Include="Graphics\Program">
       <UniqueIdentifier>{a2a4ca1c-043f-4b99-8d25-5f413799c4c8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Raytracing">
-      <UniqueIdentifier>{fd5e4329-273b-4802-ad4b-9720a882996e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Raytracing\RtProgram">
-      <UniqueIdentifier>{e3b76813-257a-4b19-8517-03302aa9fe98}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Effects\FXAA">
       <UniqueIdentifier>{51b693f1-34da-4d5e-a6d5-925944c92c79}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Graphics\RenderGraph">
-      <UniqueIdentifier>{60443751-4f7a-4361-adb2-d3e6edabecf8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="RenderPasses">
-      <UniqueIdentifier>{c211a7c2-a22a-4745-9a23-42e98dbff40c}</UniqueIdentifier>
     </Filter>
     <Filter Include="Data\RenderPasses">
       <UniqueIdentifier>{6fb02568-1f63-46b7-baee-85e961051a76}</UniqueIdentifier>
@@ -2324,6 +2315,21 @@
     </Filter>
     <Filter Include="Externals\GLM\simd">
       <UniqueIdentifier>{06fa6d05-49c9-43d3-8741-a6f1b441a43a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Experimental">
+      <UniqueIdentifier>{ed4fb26d-a218-4279-a55d-3f4053f09c4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Experimental\Raytracing">
+      <UniqueIdentifier>{fd5e4329-273b-4802-ad4b-9720a882996e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Experimental\Raytracing\RtProgram">
+      <UniqueIdentifier>{e3b76813-257a-4b19-8517-03302aa9fe98}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Experimental\RenderPasses">
+      <UniqueIdentifier>{c211a7c2-a22a-4745-9a23-42e98dbff40c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Experimental\RenderGraph">
+      <UniqueIdentifier>{60443751-4f7a-4361-adb2-d3e6edabecf8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

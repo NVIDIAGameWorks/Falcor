@@ -31,11 +31,10 @@
 #include "API/Sampler.h"
 #include "Effects/ToneMapping/ToneMapping.h"
 #include "Graphics/Scene/Scene.h"
-#include "Graphics/RenderGraph/RenderGraph.h"
-
 #ifdef FALCOR_D3D12
-#include "Raytracing/RtScene.h"
+#include "Experimental/Raytracing/RtScene.h"
 #endif
+#include "Experimental/RenderGraph/RenderGraph.h"
 
 using namespace pybind11::literals;
 

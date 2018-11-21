@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #pragma once
-#include "Graphics/RenderGraph/RenderPass.h"
+#include "Experimental/RenderGraph/RenderPass.h"
 #include "Graphics/FullScreenPass.h"
 #include "Graphics/Program/ProgramVars.h"
 
@@ -42,6 +42,7 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<FXAA>;
+        static const char* kDesc;
 
         /** Destructor
         */
@@ -64,7 +65,16 @@ namespace Falcor
         */
         void execute(RenderContext* pRenderContext, const std::shared_ptr<Texture>& pSrcTex, const std::shared_ptr<Fbo>& pDstFbo);
 
+        /** Get a description of the pass
+        */
+        std::string getDesc() override { return kDesc; }
+
+        /** Reflect the pass
+        */
         virtual RenderPassReflection reflect() const override;
+
+        /** execute the pass
+        */
         virtual void execute(RenderContext* pContext, const RenderData* pData) override;
     private:
         FXAA();

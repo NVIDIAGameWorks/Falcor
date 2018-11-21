@@ -1,10 +1,10 @@
 # Controls what config to build samples with. Valid values are "Debug" and "Release"
 SAMPLE_CONFIG:=Release
 
-All : ForwardRenderer AllCore AllEffects AllUtils
+All : ForwardRenderer RenderGraphViewer AllCore AllEffects AllUtils
 AllCore : ComputeShader MultiPassPostProcess ShaderToy SimpleDeferred StereoRendering
 AllEffects : AmbientOcclusion SkyBoxRenderer HashedAlpha HDRToneMapping Shadows
-AllUtils : ModelViewer SceneEditor
+AllUtils : FalcorTest ModelViewer SceneEditor RenderGraphEditor
 
 # A sample demonstrating Falcor's effects library
 ForwardRenderer : $(SAMPLE_CONFIG)
@@ -16,6 +16,11 @@ ForwardRenderer : $(SAMPLE_CONFIG)
 	$(call MoveFalcorData,$(OUT_DIR))
 	$(call MoveProjectData,$(DIR), $(OUT_DIR))
 	@echo Built $@
+
+# Render Graph Viewer project
+
+RenderGraphViewer : RenderGraphEditor $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/RenderGraph/RenderGraphViewer/,RenderGraphViewer.cpp,RenderGraphViewer)
 
 # Core Samples
 
@@ -53,11 +58,24 @@ Shadows : $(SAMPLE_CONFIG)
 
 # Utilities
 
+ALL_TEST_SOURCE_FILES = $(wildcard $(addsuffix *.cpp,Samples/Utils/FalcorTest/Tests/))
+ALL_TEST_OBJ_FILES = $(patsubst %.cpp,%.o,$(ALL_TEST_SOURCE_FILES))
+
+$(ALL_TEST_OBJ_FILES) : %.o : %.cpp
+	@echo $^
+	@$(CC) $(CXXFLAGS) $^ -o $@
+
+FalcorTest : $(SAMPLE_CONFIG) $(ALL_TEST_OBJ_FILES)
+	$(call CompileSample, Samples/Utils/FalcorTest/,FalcorTest.cpp ,FalcorTest, $(ALL_TEST_OBJ_FILES))
+
 ModelViewer : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/ModelViewer/,ModelViewer.cpp,ModelViewer)
 
 SceneEditor : $(SAMPLE_CONFIG)
 	$(call CompileSample,Samples/Utils/SceneEditor/,SceneEditorApp.cpp,SceneEditor)
+
+RenderGraphEditor : $(SAMPLE_CONFIG)
+	$(call CompileSample,Samples/RenderGraph/RenderGraphEditor/,RenderGraphEditor.cpp,RenderGraphEditor)
 
 CC:=g++
 
@@ -103,8 +121,9 @@ SOURCE_DIR:=Framework/Source/
 RELATIVE_DIRS:=/ \
 API/ API/LowLevel/ API/Vulkan/ API/Vulkan/LowLevel/ \
 Effects/AmbientOcclusion/ Effects/FXAA/ Effects/NormalMap/ Effects/ParticleSystem/ Effects/Shadows/ Effects/SkyBox/ Effects/TAA/ Effects/ToneMapping/ Effects/Utils/ \
-Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/RenderGraph/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
-Utils/ Utils/Math/ Utils/Scripting/ Utils/Picking/ Utils/PatternGenerators/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ RenderPasses/ \
+Graphics/ Graphics/Camera/ Graphics/Material/ Graphics/Model/ Graphics/Model/Loaders/ Graphics/Paths/ Graphics/Program/ Graphics/Scene/  Graphics/Scene/Editor/ \
+Utils/ Utils/Math/ Utils/Scripting/ Utils/Picking/ Utils/PatternGenerators/ Utils/Psychophysics/ Utils/Platform/ Utils/Platform/Linux/ Utils/Video/ \
+Experimental/ Experimental/RenderGraph/ Experimental/RenderPasses/ \
 VR/ VR/OpenVR/ \
 ../Externals/dear_imgui/ ../Externals/dear_imgui_addons/imguinodegrapheditor/
 
@@ -125,11 +144,13 @@ RELATIVE_RPATH:="-Wl,-rpath,"'$$'"ORIGIN/"
 
 # Args: (1) Relative Directory, (2) Cpp filename, (3) Executable name
 define CompileSample
-	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))
+	$(eval O_FILE=$(patsubst %.cpp,%.o,$(2)))	
 	@echo $(2)
 	@$(CC) $(CXXFLAGS) $(1)$(2) -o $(1)$(O_FILE)
 	@echo Linking $(3)
-	@$(CC) -o $(OUT_DIR)$(3) $(1)$(O_FILE) $(ADDITIONAL_LIB_DIRS) $(LIBS) $(RELATIVE_RPATH)
+	$(eval O_FILE=$(1)$(O_FILE))
+	$(eval O_FILE+=$(4))
+	@$(CC) -o $(OUT_DIR)$(3) $(O_FILE) $(ADDITIONAL_LIB_DIRS) $(LIBS) $(RELATIVE_RPATH)
 	$(call MoveFalcorData,$(OUT_DIR))
 	$(call MoveProjectData,$(1), $(OUT_DIR))
 	@echo Built $(3)

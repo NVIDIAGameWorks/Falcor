@@ -39,55 +39,46 @@ namespace Falcor
 {
     bool gProfileEnabled = false;
 
-    std::map<size_t, Profiler::EventData*> Profiler::sProfilerEvents;
+    std::map<std::string, Profiler::EventData*> Profiler::sProfilerEvents;
     uint32_t Profiler::sCurrentLevel = 0;
     uint32_t Profiler::sGpuTimerIndex = 0;
     std::vector<Profiler::EventData*> Profiler::sProfilerVector;
 
-    std::hash<std::string> HashedString::hashFunc;
-
-    void Profiler::initNewEvent(EventData *pEvent, const HashedString& name)
+    void Profiler::initNewEvent(EventData *pEvent, const std::string& name)
     {
-        pEvent->name = name.str;
-        sProfilerEvents[name.hash] = pEvent;
+        pEvent->name = name;
+        sProfilerEvents[name] = pEvent;
     }
 
-    Profiler::EventData* Profiler::createNewEvent(const HashedString& name)
+    Profiler::EventData* Profiler::createNewEvent(const std::string& name)
     {
         EventData *pData = new EventData;
         initNewEvent(pData, name);
         return pData;
     }
 
-    Profiler::EventData* Profiler::isEventRegistered(const HashedString& name)
+    Profiler::EventData* Profiler::isEventRegistered(const std::string& name)
     {
-        auto event = sProfilerEvents.find(name.hash);
-        if (event == sProfilerEvents.end())
-        {
-            return nullptr;
-        }
-        else
-        {
-            return event->second;
-        }
+        auto event = sProfilerEvents.find(name);
+        return (event == sProfilerEvents.end()) ? nullptr : event->second;
     }
 
-    Profiler::EventData* Profiler::getEvent(const HashedString& name)
+    Profiler::EventData* Profiler::getEvent(const std::string& name)
     {
         auto event = isEventRegistered(name);
-        if (event)
-        {
-            return event;
-        }
-        else
-        {
-            return createNewEvent(name);
-        }
+        return event ? event : createNewEvent(name);
     }
 
-    void Profiler::startEvent(const HashedString& name, bool showInMsg)
+    void Profiler::startEvent(const std::string& name, bool showInMsg)
     {
         EventData* pData = getEvent(name);
+        pData->triggered++;
+        if (pData->triggered > 1)
+        {
+            logWarning("Profiler event `" + name + "` was triggered while it is already running. Nesting profiler events with the same name is disallowed and you should probably fix that. Ignoring the new call");
+            return;
+        }
+
         sProfilerVector.push_back(pData);
         pData->showInMsg = showInMsg;
         pData->level = sCurrentLevel;
@@ -103,9 +94,12 @@ namespace Falcor
         sCurrentLevel++;
     }
 
-    void Profiler::endEvent(const HashedString& name)
+    void Profiler::endEvent(const std::string& name)
     {
         EventData* pData = getEvent(name);
+        pData->triggered--;
+        if (pData->triggered != 0) return;
+
         pData->cpuEnd = CpuTimer::getCurrentTimePoint();
         pData->cpuTotal += CpuTimer::calcDuration(pData->cpuStart, pData->cpuEnd);
 
@@ -115,13 +109,13 @@ namespace Falcor
         sCurrentLevel--;
     }
 
-    double Profiler::getEventGpuTime(const HashedString& name)
+    double Profiler::getEventGpuTime(const std::string& name)
     {
         const auto& pEvent = getEvent(name);
         return pEvent ? getGpuTime(pEvent) : 0;
     }
 
-    double Profiler::getEventCpuTime(const HashedString& name)
+    double Profiler::getEventCpuTime(const std::string& name)
     {
         const auto& pEvent = getEvent(name);
         return pEvent ? getCpuTime(pEvent) : 0;
@@ -148,6 +142,7 @@ namespace Falcor
 
         for (EventData* pData : sProfilerVector)
         {
+            assert(pData->triggered == 0);
             if(pData->showInMsg == false) continue;
 
             double gpuTime = getGpuTime(pData);
@@ -187,6 +182,7 @@ namespace Falcor
         {
             pData->showInMsg = false;
             pData->cpuTotal = 0;
+            pData->triggered = 0; 
             pData->frameData[1 - sGpuTimerIndex].currentTimer = 0;
         }
         sProfilerVector.clear();

@@ -1,4 +1,4 @@
-@set PM_PACKMAN_VERSION=5.3.1
+@set PM_PACKMAN_VERSION=5.7.1
 
 :: Specify where packman command is rooted
 @set PM_INSTALL_PATH=%~dp0..
@@ -53,15 +53,15 @@
 @if exist "%PM_PYTHON%" goto PACKMAN
 @if not exist "%PM_PYTHON_BASE_DIR%" call :CREATE_PYTHON_BASE_DIR
 
-@set PM_PYTHON_PACKAGE=python@%PM_PYTHON_VERSION%.zip
+@set PM_PYTHON_PACKAGE=python@%PM_PYTHON_VERSION%.cab
 @for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do @set TEMP_FILE_NAME=%%a
 @set TARGET=%TEMP_FILE_NAME%.zip
 @call "%~dp0fetch_file_from_s3.cmd" %PM_PYTHON_PACKAGE% "%TARGET%"
 @if errorlevel 1 goto ERROR
 
-@for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_folder.ps1" -parentPath "%PM_PACKAGES_ROOT%"') do @set TEMP_FOLDER_NAME=%%a
+@for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_folder.ps1" -parentPath "%PM_PYTHON_BASE_DIR%"') do @set TEMP_FOLDER_NAME=%%a
 @echo Unpacking Python interpreter ...
-@powershell -Command "Expand-Archive '%TARGET%' -DestinationPath '%TEMP_FOLDER_NAME%' -Force"
+@expand -F:* "%TARGET%" "%TEMP_FOLDER_NAME%" 1> nul
 @del "%TARGET%"
 :: Failure during extraction to temp folder name, need to clean up and abort
 @if errorlevel 1 (
@@ -73,10 +73,12 @@
 @if exist "%PM_PYTHON%" (
     @call :CLEAN_UP_TEMP_FOLDER
     @goto PACKMAN
+) else (
+    @if exist "%PM_PYTHON_DIR%" ( @rd /s /q "%PM_PYTHON_DIR%" > nul )
 )
 
 :: Perform atomic rename
-@move /Y "%TEMP_FOLDER_NAME%" "%PM_PYTHON_DIR%" 1> nul
+@rename "%TEMP_FOLDER_NAME%" "%PM_PYTHON_VERSION%" 1> nul
 :: Failure during move, need to clean up and abort
 @if errorlevel 1 (
     @call :CLEAN_UP_TEMP_FOLDER
@@ -85,12 +87,12 @@
 
 :PACKMAN
 :: The packman module may already be externally configured
-@if defined PM_MODULE_EXT (
-	@set PM_MODULE=%PM_MODULE_EXT%
-	@goto ENSURE_7za
+@if defined PM_MODULE_DIR_EXT (
+	@set PM_MODULE_DIR=%PM_MODULE_DIR_EXT%
+) else (
+    @set PM_MODULE_DIR=%PM_PACKAGES_ROOT%\packman-common\%PM_PACKMAN_VERSION%
 )
 
-@set PM_MODULE_DIR=%PM_PACKAGES_ROOT%\packman-common\%PM_PACKMAN_VERSION%
 @set PM_MODULE=%PM_MODULE_DIR%\packman.py
 
 @if exist "%PM_MODULE%" goto ENSURE_7ZA
@@ -102,19 +104,19 @@
 @if errorlevel 1 goto ERROR
 
 @echo Unpacking ...
-@"%PM_PYTHON%" "%~dp0\install_package.py" "%TARGET%" "%PM_MODULE_DIR%"
+@"%PM_PYTHON%" -s -u -E "%~dp0\install_package.py" "%TARGET%" "%PM_MODULE_DIR%"
 @if errorlevel 1 goto ERROR
 
 @del "%TARGET%"
 
 :ENSURE_7ZA
-@set PM_7Za_VERSION=16.02.2
+@set PM_7Za_VERSION=16.02.4
 @set PM_7Za_PATH=%PM_PACKAGES_ROOT%\7za\%PM_7ZA_VERSION%
 @if exist "%PM_7Za_PATH%" goto END
 @set PM_7Za_PATH=%PM_PACKAGES_ROOT%\chk\7za\%PM_7ZA_VERSION%
 @if exist "%PM_7Za_PATH%" goto END
 
-@"%PM_PYTHON%" "%PM_MODULE%" install 7za %PM_7za_VERSION% -r packman:cloudfront
+@"%PM_PYTHON%" -s -u -E "%PM_MODULE%" pull "%PM_MODULE_DIR%\deps.packman.xml"
 @if errorlevel 1 goto ERROR
 
 @goto END

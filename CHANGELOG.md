@@ -1,3 +1,47 @@
+v3.2
+------
+- Introduced concept of Experimental Features. These features are not included by default in "Falcor.h" and are instead part of a new "FalcorExperimental.h" header. DXR is considered an experimental feature.
+- Render Graph and a set of Render Passes are released as an experimental feature. Most existing effects can also be used as a render pass.
+- D3D Feature Level is now automatically selected by default
+- Check Vulkan device's max supported API version if user requested a specific version
+- RGB32 format no longer disabled on AMD GPUs now that drivers support it correctly
+- RGB32 format support is checked when loading textures in Vulkan
+- Added macro for suppressing deprecation warnings
+- Add option to Gui::pushWindow() to choose if it should be have focus or not
+- Add RenderContext::getBindFlags() getter
+- Add Sampler::getDesc() getter
+- Add Material::isEmissive() getter
+- Add `alphaTest()` that uses Slang generics to select Sample method
+- Add scene_unit key to fscene
+- Added `renderUI()` functions to `Scene` and `Camera`
+- Add error check for missing file in Program creation
+- Store scene bounding box in Scene, add getter
+- Change OBJ/MTL to use SpecGloss by default, overrideable with metal_rough key in fscene
+- Add frame reset option to video encoder UI
+- Make video encoder retain options (do not delete the UI class between exports)
+- Renamed getTriNormalsAndEdges to getTriNormalsAndEdgesInObjectSpace to clarify it's in object space
+- Renamed getGeometricNormal to getGeometricNormalW to clarify it's in world space
+- Loading of GLTF models has been enabled
+
+New samples
+- RenderGraphEditor: A visual, node-based tool for creating and editing render graph scripts.
+- RenderGraphViewer: Load scenes and render them with a render graph.
+- SamplePassLibrary: Demonstration of how to write render passes that compile to DLLs, and how they can be loaded from render graph scripts.
+
+Bug Fixes:
+- Fixed reflection data to use row major flag from Slang
+- Fixed bug in RtProgram::addDefine() methods
+- Fixed bug in scene exporter that it aborted on nan/inf
+- Fixed Vulkan image tiling flag selection for textures
+
+Deprecations:
+- Device::isExtensionSupported() - Use isFeatureSupported() instead.
+
+Dependencies:
+- Updated packman to 5.7.1
+- Updated Slang to 0.11.7
+- Updated Falcor Media to 2.2.1
+
 v3.1
 ------
 - Falcor now requires Windows 10 SDK version 1809 (10.0.17763.0)

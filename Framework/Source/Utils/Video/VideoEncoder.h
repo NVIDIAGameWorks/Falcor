@@ -70,7 +70,7 @@ namespace Falcor
         void appendFrame(const void* pData);
         void endCapture();
 
-        static const std::string getSupportedContainerForCodec(CodecID codec);
+        static FileDialogFilterVec getSupportedContainerForCodec(CodecID codec);
     private:
         VideoEncoder(const std::string& filename);
         bool init(const Desc& desc);

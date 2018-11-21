@@ -1,4 +1,4 @@
-Falcor 3.1
+Falcor 3.2
 =================
 
 Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.

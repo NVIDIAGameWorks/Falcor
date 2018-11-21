@@ -73,7 +73,7 @@ namespace Falcor
 
         if (handle.getType() == VkResourceType::Buffer)
         {
-            const TypedBufferBase* pTypedBuffer = dynamic_cast<const TypedBufferBase*>(pView->getResource());
+            TypedBufferBase* pTypedBuffer = dynamic_cast<TypedBufferBase*>(pView->getResource());
             if (pTypedBuffer)
             {
                 texelBufferView = pTypedBuffer->getUAV()->getApiHandle();
@@ -81,7 +81,7 @@ namespace Falcor
             }
             else
             {
-                const Buffer* pBuffer = dynamic_cast<const Buffer*>(pView->getResource());
+                Buffer* pBuffer = dynamic_cast<Buffer*>(pView->getResource());
                 buffer.buffer = pBuffer->getApiHandle();
                 buffer.offset = pBuffer->getGpuAddressOffset();
                 buffer.range = pBuffer->getSize();

@@ -63,6 +63,6 @@ VsOut vs(VsIn vIn)
 float4 ps(VsOut vOut) : SV_TARGET
 {
     float fontMask = gFont.Sample(gSampler, vOut.texC).r;
-    float4 c = (useGuiImage ? float4(guiImage.Sample(gSampler, vOut.texC).xyz, 1.0f) : vOut.color * fontMask);
+    float4 c = (useGuiImage ? float4(guiImage.Sample(gSampler, vOut.texC).xyzw) : vOut.color * fontMask);
     return c;
 }
