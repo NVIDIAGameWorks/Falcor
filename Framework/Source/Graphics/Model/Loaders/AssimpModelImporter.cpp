@@ -147,27 +147,26 @@ namespace Falcor
         return indices;
     }
 
-    void genTangentSpace(const aiMesh* pAiMesh)
+    void genTangentSpace(aiMesh* pAiMesh)
     {
         if (pAiMesh->mFaces[0].mNumIndices == 3)
         {
-            aiMesh* pMesh = const_cast<aiMesh*>(pAiMesh);
-            pMesh->mBitangents = new aiVector3D[pMesh->mNumVertices];
+            pAiMesh->mBitangents = new aiVector3D[pAiMesh->mNumVertices];
 
-            const glm::vec3* pPos = (glm::vec3*)pMesh->mVertices;
-            glm::vec3* pBi = (glm::vec3*)pMesh->mBitangents;
-            glm::vec3* pNormals = (glm::vec3*)pMesh->mNormals;
+            const glm::vec3* pPos = (glm::vec3*)pAiMesh->mVertices;
+            glm::vec3* pBi = (glm::vec3*)pAiMesh->mBitangents;
+            glm::vec3* pNormals = (glm::vec3*)pAiMesh->mNormals;
             std::vector<uint32_t> indices = createIndexBufferData(pAiMesh);
 
             uint32_t texCrdCount = 0;
             std::vector<glm::vec2> texCrd;
-            if (pMesh->mTextureCoords[0] != nullptr)
+            if (pAiMesh->mTextureCoords[0] != nullptr)
             {
                 texCrdCount = 1;
-                texCrd.resize(pMesh->mNumVertices);
-                for (size_t i = 0; i < pMesh->mNumVertices; ++i)
+                texCrd.resize(pAiMesh->mNumVertices);
+                for (size_t i = 0; i < pAiMesh->mNumVertices; ++i)
                 {
-                    texCrd[i] = glm::vec2(pMesh->mTextureCoords[0][i].x, pMesh->mTextureCoords[0][i].y);
+                    texCrd[i] = glm::vec2(pAiMesh->mTextureCoords[0][i].x, pAiMesh->mTextureCoords[0][i].y);
                 }
             }
 
@@ -334,11 +333,15 @@ namespace Falcor
         auto nameVec = splitString(nameStr, ".");   // The name might contain information about the material
         Material::SharedPtr pMaterial = Material::create(nameVec[0]);
 
-        if (is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials))
+        // Determine shading model.
+        // MetalRough is the default for everything except OBJ. Check that both flags aren't set simultaneously.
+        assert(!(is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials) && is_set(mFlags, Model::LoadFlags::UseMetalRoughMaterials)));
+        if (is_set(mFlags, Model::LoadFlags::UseSpecGlossMaterials) || (isObjFile && !is_set(mFlags, Model::LoadFlags::UseMetalRoughMaterials)))
         {
             pMaterial->setShadingModel(ShadingModelSpecGloss);
         }
 
+        // Load textures. Note that loading is affected by the current shading model.
         loadTextures(pAiMaterial, folder, pMaterial.get(), isObjFile, useSrgb);
 
         // Opacity
@@ -362,6 +365,12 @@ namespace Falcor
         float shininess;
         if (pAiMaterial->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS)
         {
+            // Convert OBJ/MTL Phong exponent to glossiness.
+            if (isObjFile)
+            {
+                float roughness = convertShininessToRoughness(shininess);
+                shininess = 1.f - roughness;
+            }
             vec4 spec = pMaterial->getSpecularParams();
             spec.a = shininess;
             pMaterial->setSpecularParams(spec);
@@ -391,10 +400,6 @@ namespace Falcor
         {
             vec3 emissive = vec3(color.r, color.g, color.b);
             pMaterial->setEmissiveColor(emissive);
-            if (isObjFile && luminance(emissive) > 0)
-            {
-                pMaterial->setEmissiveTexture(pMaterial->getBaseColorTexture());
-            }
         }
         // Double-Sided
         int isDoubleSided;
@@ -763,7 +768,7 @@ namespace Falcor
         return BoundingBox::fromMinMax(boxMin, boxMax);
     }
 
-    Mesh::SharedPtr AssimpModelImporter::createMesh(const aiMesh* pAiMesh)
+    Mesh::SharedPtr AssimpModelImporter::createMesh(aiMesh* pAiMesh)
     {
         uint32_t vertexCount = pAiMesh->mNumVertices;
         uint32_t indexCount = pAiMesh->mNumFaces * pAiMesh->mFaces[0].mNumIndices;
@@ -824,8 +829,7 @@ namespace Falcor
 
         if (generateTangentSpace)
         {
-            aiMesh* pM = const_cast<aiMesh*>(pAiMesh);
-            safe_delete_array(pM->mBitangents);
+            safe_delete_array(pAiMesh->mBitangents);
         }
 
         return pMesh;

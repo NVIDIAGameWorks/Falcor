@@ -51,7 +51,7 @@ namespace Falcor
         }
     }
 
-    bool Gizmo::beginAction(const Camera::SharedPtr& pCamera, const Scene::ModelInstance::SharedPtr& pAxisModelInstance)
+    bool Gizmo::beginAction(const Camera::SharedPtr& pCamera, const Scene::ModelInstance::SharedConstPtr& pAxisModelInstance)
     {
         for (uint32_t i = 0; i < 3; i++)
         {

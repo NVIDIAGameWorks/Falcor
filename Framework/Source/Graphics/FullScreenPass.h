@@ -76,8 +76,10 @@ namespace Falcor
             \param[in] disableStencil Optional. As DisableDepth for stencil.
             \param[in] viewportMask Optional. Value to initialize viewport mask with. Useful for multi-projection passes
             \param[in] enableSPS Optional. If true, use Single-Pass Stereo when executing this pass.
+            \param[in] compilerFlags Optional. Shader compiler flags.
+            \param[in] shaderModel Optional. The shader model string. This depends on the API you are using. See Program::Desc::setShaderModel().
         */
-        static UniquePtr create(const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None);
+        static UniquePtr create(const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
         
         /** Create a new object
             \param[in] vsFile Vertex shader filename. Can also be an absolute path or a relative path from a data directory.
@@ -87,14 +89,16 @@ namespace Falcor
             \param[in] disableStencil Optional. As DisableDepth for stencil.
             \param[in] viewportMask Optional. Value to initialize viewport mask with. Useful for multi-projection passes
             \param[in] enableSPS Optional. If true, use Single-Pass Stereo when executing this pass.
+            \param[in] compilerFlags Optional. Shader compiler flags.
+            \param[in] shaderModel Optional. The shader model string. This depends on the API you are using. See Program::Desc::setShaderModel().
         */
-        static UniquePtr create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None);
+        static UniquePtr create(const std::string& vsFile, const std::string& psFile, const Program::DefineList& programDefines = Program::DefineList(), bool disableDepth = true, bool disableStencil = true, uint32_t viewportMask = 0, bool enableSPS = false, Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None, const std::string& shaderModel = "");
 
         /** Execute the pass.
             \param[in] pRenderContext The render context.
             \param[in] pDsState Optional. Use it to make the pass use a different DS state then the one created during initialization
         */
-        void execute(RenderContext* pRenderContext, DepthStencilState::SharedPtr pDsState = nullptr) const;
+        void execute(RenderContext* pRenderContext, DepthStencilState::SharedPtr pDsState = nullptr, BlendState::SharedPtr pBlendState = nullptr) const;
 
         /** Get the program.
         */
@@ -103,7 +107,7 @@ namespace Falcor
 
     protected:
         FullScreenPass() { gFullScreenData.objectCount++; }
-        void init(const std::string& vsFile, const std::string & psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags);
+        void init(const std::string& vsFile, const std::string & psFile, const Program::DefineList& programDefines, bool disableDepth, bool disableStencil, uint32_t viewportMask, bool enableSPS, Shader::CompilerFlags compilerFlags, const std::string& shaderModel);
 
     private:
         GraphicsProgram::SharedPtr mpProgram;

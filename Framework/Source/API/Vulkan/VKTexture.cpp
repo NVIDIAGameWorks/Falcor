@@ -48,18 +48,18 @@ namespace Falcor
     // Like getD3D12ResourceFlags but for Images specifically
     VkImageUsageFlags getVkImageUsageFlags(Resource::BindFlags bindFlags)
     {
-        // Assume that every resource in the system can be updated or read from
-        VkImageUsageFlags vkFlags = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL | VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        // Assume that every image can be updated/cleared, read from, and sampled
+        VkImageUsageFlags vkFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
         if (is_set(bindFlags, Resource::BindFlags::UnorderedAccess))
         {
-            vkFlags |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            vkFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
         }
 
         if (is_set(bindFlags, Resource::BindFlags::DepthStencil))
         {
 
-            vkFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            vkFlags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
         }
 
         if (is_set(bindFlags, Resource::BindFlags::ShaderResource))
@@ -70,7 +70,7 @@ namespace Falcor
 
         if (is_set(bindFlags, Resource::BindFlags::RenderTarget))
         {
-            vkFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            vkFlags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         }
 
         // According to spec, must not be 0
@@ -104,6 +104,31 @@ namespace Falcor
         }
     }
 
+    static VkFormatFeatureFlags getFormatFeatureBitsFromUsage(VkImageUsageFlags usage)
+    {
+        VkFormatFeatureFlags bits = 0;
+        if(usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) bits |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
+        if(usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) bits |= VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
+        if(usage & VK_IMAGE_USAGE_SAMPLED_BIT) bits |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+        if(usage & VK_IMAGE_USAGE_STORAGE_BIT) bits |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+        if(usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) bits |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+        if(usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) bits |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        assert((usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) == 0);
+        assert((usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) == 0);
+        return bits;
+    }
+
+    static VkImageTiling getFormatImageTiling(VkFormat format, VkImageUsageFlags usage)
+    {
+        VkFormatProperties p;
+        vkGetPhysicalDeviceFormatProperties(gpDevice->getApiHandle(), format, &p);
+        auto featureBits = getFormatFeatureBitsFromUsage(usage);
+        if((p.optimalTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_OPTIMAL;
+        if((p.linearTilingFeatures & featureBits) == featureBits) return VK_IMAGE_TILING_LINEAR;
+        should_not_get_here();
+        return VkImageTiling(-1);
+    }
+
     void Texture::apinit(const void* pData, bool autoGenMips)
     {
         VkImageCreateInfo imageInfo = {};
@@ -121,8 +146,8 @@ namespace Falcor
         imageInfo.samples = (VkSampleCountFlagBits)mSampleCount;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage = getVkImageUsageFlags(mBindFlags);
+        imageInfo.tiling = getFormatImageTiling(imageInfo.format, imageInfo.usage);
 
         if (mType == Texture::Type::TextureCube)
         {

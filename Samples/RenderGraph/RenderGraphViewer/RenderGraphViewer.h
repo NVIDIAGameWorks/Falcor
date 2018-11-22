@@ -27,23 +27,25 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "FalcorExperimental.h"
 
 using namespace Falcor;
 
 class RenderGraphViewer : public Renderer
 {
 public:    
-    void onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext) override;
-    void onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
-    void onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint32_t height) override;
-    bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
-    bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
-    void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
-    void onDataReload(SampleCallbacks* pSample) override;
-    void onShutdown(SampleCallbacks* pSample) override;
-    void onInitializeTesting(SampleCallbacks* pSample) override;
+    void onLoad(SampleCallbacks* pCallbacks, RenderContext* pRenderContext) override;
+    void onFrameRender(SampleCallbacks* pCallbacks, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo) override;
+    void onResizeSwapChain(SampleCallbacks* pCallbacks, uint32_t width, uint32_t height) override;
+    bool onKeyEvent(SampleCallbacks* pCallbacks, const KeyboardEvent& keyEvent) override;
+    bool onMouseEvent(SampleCallbacks* pCallbacks, const MouseEvent& mouseEvent) override;
+    void onGuiRender(SampleCallbacks* pCallbacks, Gui* pGui) override;
+    void onDataReload(SampleCallbacks* pCallbacks) override;
+    void onShutdown(SampleCallbacks* pCallbacks) override;
+    void onInitializeTesting(SampleCallbacks* pCallbacks) override;
     void onBeginTestFrame(SampleTest* pSampleTest) override;
-    
+    void onDroppedFile(SampleCallbacks* pCallbacks, const std::string& filename) override;
+
 private:
     Scene::SharedPtr mpDefaultScene;
     FirstPersonCameraController mCamController;
@@ -70,14 +72,19 @@ private:
         bool showAllOutputs = false;
         std::vector<std::string> originalOutputs;
         std::vector<DebugWindow> debugWindows;
+        std::unordered_map<std::string, uint32_t> graphOutputRefs;
     };
 
     void initGraph(const RenderGraph::SharedPtr& pGraph, const std::string& name, const std::string& filename, SampleCallbacks* pCallbacks, GraphData& data);
     std::vector<std::string> getGraphOutputs(const RenderGraph::SharedPtr& pGraph);
-    void graphOutputsGui(Gui* pGui, SampleCallbacks* pSample);
+    void parseArguments(SampleCallbacks* pCallbacks, const ArgList& argList);
+    void graphOutputsGui(Gui* pGui, SampleCallbacks* pCallbacks);
     bool renderDebugWindow(Gui* pGui, const Gui::DropdownList& dropdown, DebugWindow& data, const uvec2& winSize); // Returns true if we need to close the window
     void renderOutputUI(Gui* pGui, const Gui::DropdownList& dropdown, std::string& selectedOutput);
     void addDebugWindow();
+    void eraseDebugWindow(size_t id);
+    void unmarkOutput(const std::string& name);
+    void markOutput(const std::string& name);
 
     std::vector<GraphData> mGraphs;
     uint32_t mActiveGraph = 0;
@@ -87,9 +94,11 @@ private:
     void resetEditor();
     void editorFileChangeCB();
     void applyEditorChanges();
-
+    
     static const size_t kInvalidProcessId = -1; // We use this to know that the editor was launching the viewer
     size_t mEditorProcess = 0;
     std::string mEditorTempFile;
     std::string mEditorScript;
+    std::string mDefaultSceneName;
+    std::string mDefaultImageName;
 };

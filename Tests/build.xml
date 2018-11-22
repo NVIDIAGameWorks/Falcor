@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<build branch='render-graph-testing'>
+    <buildType id="Falcor_GenerateReferencesGtx"/>
+    <properties>
+        <property name="branchname" value="render-graph-testing"/>
+        <property name="vcsRoot" value="Falcor_GitlabMaster"/>
+        <property name="tests_directory" value=""/>
+    </properties>
+</build>

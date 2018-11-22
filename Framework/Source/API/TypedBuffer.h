@@ -73,7 +73,8 @@ namespace Falcor
         {
         public:
             SharedPtr() : std::shared_ptr<TypedBuffer>() {}
-            SharedPtr(TypedBuffer* pBuffer) : std::shared_ptr<TypedBuffer>(pBuffer) {}
+            explicit SharedPtr(TypedBuffer* pBuffer) : std::shared_ptr<TypedBuffer>(pBuffer) {}
+            constexpr SharedPtr(nullptr_t) : std::shared_ptr<TypedBuffer>(nullptr) {}
 
             class TypedElement
             {

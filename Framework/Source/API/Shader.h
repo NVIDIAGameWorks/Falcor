@@ -129,9 +129,8 @@ namespace Falcor
     };
 
     /** Low-level shader object
-    This class abstracts the API's shader creation and management
+        This class abstracts the API's shader creation and management
     */
-
     class Shader : public std::enable_shared_from_this<Shader>
     {
     public:
@@ -143,19 +142,31 @@ namespace Falcor
 
         enum class CompilerFlags
         {
-            None                  = 0x0,
-            TreatWarningsAsErrors = 0x1,
-            DumpIntermediates     = 0x2,
+            None                        = 0x0,
+            TreatWarningsAsErrors       = 0x1,
+            DumpIntermediates           = 0x2,
+            FloatingPointModeFast       = 0x4,
+            FloatingPointModePrecise    = 0x8,
         };
 
         class DefineList : public std::map<std::string, std::string>
         {
         public:
+            /** Adds a macro definition. If the macro already exists, it will be replaced.
+                \param[in] name The name of macro.
+                \param[in] value Optional. The value of the macro.
+                \return The updated list of macro definitions.
+            */
             DefineList& add(const std::string& name, const std::string& val = "") { (*this)[name] = val; return *this; }
+
+            /** Removes a macro definition. If the macro doesn't exist, the call will be silently ignored.
+                \param[in] name The name of macro.
+                \return The updated list of macro definitions.
+            */
             DefineList& remove(const std::string& name) { (*this).erase(name); return *this; }
         };
 
-        /** create a shader object
+        /** Create a shader object
             \param[in] shaderBlog A blob containing the shader code
             \param[in] Type The Type of the shader
             \param[out] log This string will contain the error log message in case shader compilation failed

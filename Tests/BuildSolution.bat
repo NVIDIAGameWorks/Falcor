@@ -12,9 +12,10 @@ if "%3"=="released3d12" set config=released3d12
 if "%3"=="debugd3d12" set config=debugd3d12
 if "%3"=="releasevk" set config=releasevk
 if "%3"=="debugvk" set config=debugvk
-if "%3"=="releasedxr" set config=releasedxr
-if "%3"=="debugdxr" set config=debugdxr
-if not defined config goto usage
+if not defined config ( 
+    echo Unknown configuration : %3.  Available configs: released3d12, debugd3d12, releasevk, debugvk
+    exit /B 1
+)
 
 goto findVS
 

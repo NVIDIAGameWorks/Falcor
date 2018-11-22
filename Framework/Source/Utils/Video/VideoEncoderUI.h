@@ -44,11 +44,13 @@ namespace Falcor
         ~VideoEncoderUI();
 
         void render(Gui* pGui);
+        void setCaptureState(bool state);
 
         VideoEncoder::CodecID getCodec() const { return mCodec; }
         uint32_t getFPS() const { return mFPS; }
         bool useTimeRange() const { return mUseTimeRange; }
         bool captureUI() const { return mCaptureUI; }
+        bool resetOnFirstFrame() const { return mResetOnFirstFrame; }
         float getStartTime() const { return mStartTime; }
         float getEndTime() const { return mEndTime; }
         const std::string& getFilename() const { return mFilename; }
@@ -71,6 +73,7 @@ namespace Falcor
 
         bool mUseTimeRange = false;
         bool mCaptureUI = false;
+        bool mResetOnFirstFrame = false;
         float mStartTime = 0;
         float mEndTime = FLT_MAX;
         struct

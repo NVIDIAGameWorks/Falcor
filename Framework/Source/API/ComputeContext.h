@@ -32,7 +32,7 @@
 
 namespace Falcor
 {
-    class ComputeContext : public CopyContext, public inherit_shared_from_this<CopyContext, ComputeContext>
+    class ComputeContext : public CopyContext
     {
     public:
         using SharedPtr = std::shared_ptr<ComputeContext>;

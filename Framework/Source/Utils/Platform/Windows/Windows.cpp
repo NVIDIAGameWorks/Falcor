@@ -164,37 +164,74 @@ namespace Falcor
         return true;
     }
 
-    template<bool bOpen>
-    bool fileDialogCommon(const char* pFilters, std::string& filename)
+    template<bool open>
+    static std::string getExtensionsFilterString(const FileDialogFilterVec& filters)
+    {
+        std::string s;
+        std::string d;
+        bool appendForOpen = open && filters.size() > 1;
+        if (appendForOpen) s.append(1, 0);
+
+        for (size_t i = 0 ; i < filters.size() ; i++)
+        {
+            const auto& f = filters[i];
+            if (appendForOpen)
+            {
+                bool last = i == (filters.size() - 1);
+                std::string e = "*." + f.ext;
+                if (last == false) e += ';';
+                d += e;
+                s += e;
+            }
+            else
+            {
+                s += f.desc.empty() ? f.ext + " files" : f.desc + " (*." + f.ext + ')';
+                s.append(1, 0);
+                s += "*." + f.ext + ';';
+                s.append(1, 0);
+            }
+        }
+        if (appendForOpen) s = "Supported Formats (" + d + ')' + s;
+        s.append(appendForOpen ? 2 : 1, 0);
+        return s;
+    };
+
+    template<bool open>
+    bool fileDialogCommon(const FileDialogFilterVec& filters, std::string& filename)
     {
         OPENFILENAMEA ofn;
         CHAR chars[512] = "";
         ZeroMemory(&ofn, sizeof(ofn));
 
+        std::string filtersString = getExtensionsFilterString<open>(filters);
+
         ofn.lStructSize = sizeof(OPENFILENAME);
         ofn.hwndOwner = GetForegroundWindow();
-        ofn.lpstrFilter = pFilters;
+        ofn.lpstrFilter = filtersString.c_str();
         ofn.lpstrFile = chars;
         ofn.nMaxFile = arraysize(chars);
         ofn.Flags = OFN_HIDEREADONLY | OFN_NOCHANGEDIR;
-        if (bOpen == true)
+        if (open == true)
         {
             ofn.Flags |= OFN_FILEMUSTEXIST;
         }
         ofn.lpstrDefExt = "";
 
-        BOOL b = bOpen ? GetOpenFileNameA(&ofn) : GetSaveFileNameA(&ofn);
+        BOOL b = open ? GetOpenFileNameA(&ofn) : GetSaveFileNameA(&ofn);
         if (b)
         {
             filename = std::string(chars);
+            if (getExtensionFromFile(filename).empty() && filters.empty() == false)
+            {
+                filename += '.' + filters[ofn.nFilterIndex].ext;
+            }
             return true;
         }
-
         return false;
     }
 
-    template bool fileDialogCommon<true>(const char* pFilters, std::string& filename);
-    template bool fileDialogCommon<false>(const char* pFilters, std::string& filename);
+    template bool fileDialogCommon<true>(const FileDialogFilterVec& filters, std::string& filename);
+    template bool fileDialogCommon<false>(const FileDialogFilterVec& filters, std::string& filename);
 
     void setWindowIcon(const std::string& iconFile, Window::ApiHandle windowHandle)
     {

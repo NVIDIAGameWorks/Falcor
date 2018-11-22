@@ -41,7 +41,7 @@ void MultiPassPostProcess::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 }
 
-void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext)
+void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     mpLuminance = FullScreenPass::create("Luminance.ps.hlsl");
     mpGaussianBlur = GaussianBlur::create(5);
@@ -52,7 +52,8 @@ void MultiPassPostProcess::onLoad(SampleCallbacks* pSample, const RenderContext:
 void MultiPassPostProcess::loadImage(SampleCallbacks* pSample)
 {
     std::string filename;
-    if(openFileDialog("Supported Formats\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga\0\0", filename))
+    FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"} };
+    if(openFileDialog(filters, filename))
     {
         loadImageFromFile(pSample, filename);
     }
@@ -70,7 +71,7 @@ void MultiPassPostProcess::loadImageFromFile(SampleCallbacks* pSample, std::stri
     pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
 }
 
-void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext, const Fbo::SharedPtr& pTargetFbo)
+void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, RenderContext* pContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pContext->clearFbo(pTargetFbo.get(), clearColor, 0, 0, FboAttachmentType::Color);
@@ -84,15 +85,15 @@ void MultiPassPostProcess::onFrameRender(SampleCallbacks* pSample, const RenderC
 
         if(mEnableGaussianBlur)
         {
-            mpGaussianBlur->execute(pContext.get(), mpImage, mpTempFB);
+            mpGaussianBlur->execute(pContext, mpImage, mpTempFB);
             mpProgVars->setTexture("gTexture", mpTempFB->getColorTexture(0));
             const FullScreenPass* pFinalPass = mEnableGrayscale ? mpLuminance.get() : mpBlit.get();
-            pFinalPass->execute(pContext.get());
+            pFinalPass->execute(pContext);
         }
         else
         {
             mpProgVars->setTexture("gTexture", mpImage);
-            mpBlit->execute(pContext.get());
+            mpBlit->execute(pContext);
         }
     }
 }

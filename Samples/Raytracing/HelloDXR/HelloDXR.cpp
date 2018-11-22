@@ -43,7 +43,7 @@ void HelloDXR::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     if (pGui->addButton("Load Scene"))
     {
         std::string filename;
-        if (openFileDialog(Scene::kFileFormatString, filename))
+        if (openFileDialog(Scene::kFileExtensionFilters, filename))
         {
             loadScene(filename, pSample->getCurrentFbo().get());
         }
@@ -83,7 +83,7 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
     mpRtRenderer = RtSceneRenderer::create(mpScene);
 }
 
-void HelloDXR::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void HelloDXR::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     if (gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing) == false)
     {
@@ -122,7 +122,7 @@ void HelloDXR::renderRaster(RenderContext* pContext)
 
 void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 {
-    PROFILE(setPerFrameVars);
+    PROFILE("setPerFrameVars");
     GraphicsVars* pVars = mpRtVars->getGlobalVars().get();
     ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
     pCB["invView"] = glm::inverse(mpCamera->getViewMatrix());
@@ -133,7 +133,7 @@ void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 
 void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
 {
-    PROFILE(renderRT);
+    PROFILE("renderRT");
     setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
@@ -143,7 +143,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
-void HelloDXR::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void HelloDXR::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     pRenderContext->clearFbo(pTargetFbo.get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
 
@@ -154,11 +154,11 @@ void HelloDXR::onFrameRender(SampleCallbacks* pSample, const RenderContext::Shar
 
         if (mRayTrace)
         {
-            renderRT(pRenderContext.get(), pTargetFbo.get());
+            renderRT(pRenderContext, pTargetFbo.get());
         }
         else
         {
-            renderRaster(pRenderContext.get());
+            renderRaster(pRenderContext);
         }
     }
 }

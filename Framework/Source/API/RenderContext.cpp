@@ -107,11 +107,11 @@ namespace Falcor
 
     void RenderContext::applyGraphicsVars()
     {
-        if (mpGraphicsVars->apply(const_cast<RenderContext*>(this), mBindGraphicsRootSig) == false)
+        if (mpGraphicsVars->apply(this, mBindGraphicsRootSig) == false)
         {
             logWarning("RenderContext::prepareForDraw() - applying GraphicsVars failed, most likely because we ran out of descriptors. Flushing the GPU and retrying");
             flush(true);
-            if (!mpGraphicsVars->apply(const_cast<RenderContext*>(this), mBindGraphicsRootSig))
+            if (!mpGraphicsVars->apply(this, mBindGraphicsRootSig))
             {
                 logError("RenderContext::applyGraphicsVars() - applying GraphicsVars failed, most likely because we ran out of descriptors", true);
                 assert(false);

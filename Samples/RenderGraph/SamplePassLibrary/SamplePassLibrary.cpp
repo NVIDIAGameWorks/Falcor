@@ -27,16 +27,22 @@
 ***************************************************************************/
 #include "SamplePassLibrary.h"
 
+extern "C" __declspec(dllexport) const char* getProjDir()
+{
+    return PROJECT_DIR;
+}
+
 static const std::string kDst = "dst";
 static const std::string kSrc = "src";
 static const std::string kFilter = "filter";
+const char* MyBlitPass::kDesc = "Blit one texture to another";
 
 RenderPassReflection MyBlitPass::reflect() const
 {
     RenderPassReflection reflector;
 
-    reflector.addOutput(kDst);
-    reflector.addInput(kSrc);
+    reflector.addOutput(kDst, "Destination texture");
+    reflector.addInput(kSrc, "Source texture");
 
     return reflector;
 }

@@ -59,16 +59,16 @@ namespace Falcor
             \param[in] pRenderContext The rendering context
             \param[in] startPos The screen-space position, from the top-left, of the first letter to draw
         */
-        void begin(const RenderContext::SharedPtr& pRenderContext, const glm::vec2& startPos);
+        void begin(RenderContext* pRenderContext, const glm::vec2& startPos);
 
         /** End batching. This will cause the render queue to flush and display the message to the screen.
         */
-        void end();
+        void end(RenderContext* pRenderContext);
 
         /** Render a line. After the function is called, an implicit newline is inserted into the message.
             \param[in] line The line to draw. It can include newlines, tabs, carriage returns and regular ASCII characters.
         */
-        void renderLine(const std::string& line);
+        void renderLine(RenderContext* pRenderContext, const std::string& line);
                 
         /** Returns the color of the text being rendered
             \return current color The text color
@@ -89,8 +89,6 @@ namespace Falcor
             glm::vec2 texCoord;
         };
 
-        RenderContext::SharedPtr mpRenderContext = nullptr;
-
         glm::vec2 mCurPos = {0, 0};
         glm::vec2 mStartPos = {0, 0};
         glm::vec3 mTextColor = glm::vec3(1, 1, 1);
@@ -106,7 +104,7 @@ namespace Falcor
         void createVertexBuffer();
         static const auto kMaxBatchSize = 1000;
 
-        void flush();
+        void flush(RenderContext* pRenderContext);
         Vertex* mpBufferData = nullptr;
 
         struct  

@@ -48,13 +48,8 @@ namespace Falcor
         static const char* kAmbientIntensity = "ambient_intensity";
 #endif
 
-        // Values currently only used in the exporter
-#ifdef SCENE_EXPORTER
-        // Default values ignored by importer
-        static const char* kShadingMetalRough = "metal_rough";
-#endif
-
         static const char* kVersion = "version";
+        static const char* kSceneUnit = "scene_unit";
         static const char* kCameraSpeed = "camera_speed";
         static const char* kActiveCamera = "active_camera";
         static const char* kLightingScale = "lighting_scale";
@@ -103,6 +98,7 @@ namespace Falcor
         static const char* kMaterial = "material";
         static const char* kShadingModel = "shading_model";
         static const char* kShadingSpecGloss = "spec_gloss";
+        static const char* kShadingMetalRough = "metal_rough";
 
         static const char* kUserDefined = "user_defined";
     };

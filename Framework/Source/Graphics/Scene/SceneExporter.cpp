@@ -90,6 +90,12 @@ namespace Falcor
         rapidjson::Value jvec(rapidjson::kArrayType);
         for (int32_t i = 0; i < value.length(); i++)
         {
+            // Print warning and abort on invalid floating-point value, otherwise the export fails and we get a corrupt file.
+            if (isnan(value[i]) || isinf(value[i]))
+            {
+                logWarning("SceneExporter: invalid number found (inf/nan), ignoring value");
+                return;
+            }
             jvec.PushBack(value[i], jallocator);
         }
 
@@ -142,6 +148,7 @@ namespace Falcor
         rapidjson::Value& jval = mJDoc;
         auto& Allocator = mJDoc.GetAllocator();
 
+        addLiteral(jval, Allocator, SceneKeys::kSceneUnit, mpScene->getSceneUnit());
         addLiteral(jval, Allocator, SceneKeys::kCameraSpeed, mpScene->getCameraSpeed());
         addLiteral(jval, Allocator, SceneKeys::kLightingScale, mpScene->getLightingScale());
 

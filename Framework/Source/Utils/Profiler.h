@@ -41,23 +41,10 @@ namespace Falcor
 
     class GpuTimer;
 
-    /** Basic wrapper to calculate and store a string's hash value.
-    */
-    struct HashedString
-    {
-        static std::hash<std::string> hashFunc;
-
-        HashedString(const std::string& s) : str(s), hash(hashFunc(s)) {}
-        HashedString(const char* c) : str(c), hash(hashFunc(c)) {}
-
-        const std::string str;
-        const size_t hash;
-    };
-
     /** Container class for CPU/GPU profiling.
         This class uses the most accurately available CPU and GPU timers to profile given events. It automatically creates event hierarchies based on the order of the calls made.
         This class uses a double-buffering scheme for GPU profiling to avoid GPU stalls.
-        CProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
+        ProfilerEvent is a wrapper class which together with scoping can simplify event profiling.
     */
     class Profiler
     {
@@ -83,6 +70,7 @@ namespace Falcor
             CpuTimer::TimePoint cpuEnd;
             float cpuTotal = 0;
             uint32_t level;
+            uint32_t triggered = 0;
 #if _PROFILING_LOG == 1
             int stepNr = 0;
             int filesWritten = 0;
@@ -94,12 +82,12 @@ namespace Falcor
         /** Start profiling a new event and update the events hierarchies.
             \param[in] name The event name.
         */
-        static void startEvent(const HashedString& name, bool showInMsg = true);
+        static void startEvent(const std::string& name, bool showInMsg = true);
 
         /** Finish profiling a new event and update the events hierarchies.
             \param[in] name The event name.
         */
-        static void endEvent(const HashedString& name);
+        static void endEvent(const std::string& name);
 
         /** Finish profiling for the entire frame.
             Due to the double-buffering nature of the profiler, the results returned are for the previous frame.
@@ -114,34 +102,34 @@ namespace Falcor
         /** Create a new event and register and initialize it using \ref initNewEvent.
             \param[in] name The event name.
         */
-        static EventData* createNewEvent(const HashedString& name);
+        static EventData* createNewEvent(const std::string& name);
         
         /** Initialize a previously generated event.
             Used to do the default initialization without creating the actual event instance, to support derived event types. See \ref Cuda::Profiler::EventData.
             \param[out] pEvent Event to initialize
             \param[in] name New event name
         */
-        static void initNewEvent(EventData *pEvent, const HashedString& name);
+        static void initNewEvent(EventData *pEvent, const std::string& name);
 
         /** Get the event, or create a new one if the event does not yet exist.
             This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
         */
-        static EventData* getEvent(const HashedString& name);
+        static EventData* getEvent(const std::string& name);
 
         /** Get the event, or create a new one if the event does not yet exist.
         This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
         */
-        static double getEventCpuTime(const HashedString& name);
+        static double getEventCpuTime(const std::string& name);
 
         /** Get the event, or create a new one if the event does not yet exist.
         This is a public interface to facilitate more complicated construction of event names and finegrained control over the profiled region.
         */
-        static double getEventGpuTime(const HashedString& name);
+        static double getEventGpuTime(const std::string& name);
 
         /** Returns the event or \c nullptr if the event is not known.
             Can be used as a predicate.
         */
-        static EventData* isEventRegistered(const HashedString& name);
+        static EventData* isEventRegistered(const std::string& name);
 
         /** Clears all the events. 
             Useful if you want to start profiling a different technique with different events.
@@ -152,7 +140,7 @@ namespace Falcor
         static double getGpuTime(const EventData* pData);
         static double getCpuTime(const EventData* pData);
 
-        static std::map<size_t, EventData*> sProfilerEvents;
+        static std::map<std::string, EventData*> sProfilerEvents;
         static std::vector<EventData*> sProfilerVector;
         static uint32_t sCurrentLevel;
         static uint32_t sGpuTimerIndex;
@@ -167,17 +155,17 @@ namespace Falcor
     public:
         /** C'tor
         */
-        ProfilerEvent(const HashedString& name) : mName(name) { if(gProfileEnabled) { Profiler::startEvent(name); } }
+        ProfilerEvent(const std::string& name) : mName(name) { if(gProfileEnabled) { Profiler::startEvent(name); } }
         /** D'tor
         */
         ~ProfilerEvent() { if(gProfileEnabled) {Profiler::endEvent(mName); }}
 
     private:
-        const HashedString mName;
+        const std::string mName;
     };
 
 #if _PROFILING_ENABLED
-#define PROFILE(_name) static const Falcor::HashedString hashed ## _name(#_name); Falcor::ProfilerEvent _profileEvent(hashed ## _name);
+#define PROFILE(_name) Falcor::ProfilerEvent _profileEvent##__LINE__(_name);
 #else
 #define PROFILE(_name)
 #endif

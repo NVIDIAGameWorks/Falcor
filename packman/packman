@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PM_PACKMAN_VERSION=5.3.1
+PM_PACKMAN_VERSION=5.7.1
 
 # Specify where packman command exists
 export PM_INSTALL_PATH=$(dirname ${BASH_SOURCE})
@@ -32,17 +32,17 @@ if [ ! -d "$PM_PACKAGES_ROOT" ]; then
 fi
 
 # The packman module may be externally configured
-if [ -z "$PM_MODULE_EXT" ]; then
+if [ -z "$PM_MODULE_DIR_EXT" ]; then
 	PM_MODULE_DIR="$PM_PACKAGES_ROOT/packman-common/$PM_PACKMAN_VERSION"
-	export PM_MODULE="$PM_MODULE_DIR/packman.py"
 else
-	export PM_MODULE="$PM_MODULE_EXT"
+    PM_MODULE_DIR="$PM_MODULE_DIR_EXT"
 fi
+export PM_MODULE="$PM_MODULE_DIR/packman.py"
 
 fetch_file_from_s3() 
 {
 	SOURCE=$1
-	SOURCE_URL=http://packman.s3.amazonaws.com/$SOURCE
+	SOURCE_URL=http://packman-bootstrap.s3.amazonaws.com/$SOURCE
 	TARGET=$2
 	echo "Fetching $SOURCE from S3 ..."
 	if command -v wget >/dev/null 2>&1; then
@@ -79,12 +79,12 @@ else
 fi
 
 # Ensure 7za package exists:
-PM_7za_VERSION=16.02.2
+PM_7za_VERSION=16.02.4
 export PM_7za_PATH="$PM_PACKAGES_ROOT/7za/$PM_7za_VERSION"
 if [ ! -d "$PM_7za_PATH" ]; then
     export PM_7za_PATH="$PM_PACKAGES_ROOT/chk/7za/$PM_7za_VERSION"
     if [ ! -d "$PM_7za_PATH" ]; then
-        $PM_PYTHON "$PM_MODULE" install 7za $PM_7za_VERSION -r packman:cloudfront
+        $PM_PYTHON -s -u -E "$PM_MODULE" pull "$PM_MODULE_DIR/deps.packman.xml"
         if [ "$?" -ne 0 ]; then
            echo "Failure while installing required 7za package"
            exit 1
@@ -95,7 +95,7 @@ fi
 # Generate temporary file name for environment variables:
 PM_VAR_PATH=`mktemp -u -t tmp.$$.pmvars.XXXXXX`
 
-$PM_PYTHON -u "$PM_MODULE" $* --var-path="$PM_VAR_PATH"
+$PM_PYTHON -s -u -E "$PM_MODULE" $* --var-path="$PM_VAR_PATH"
 exit_code=$?
 # Export the variables if the file was used and remove the file:
 if [ -f "$PM_VAR_PATH" ]; then

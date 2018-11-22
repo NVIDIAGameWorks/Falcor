@@ -214,6 +214,14 @@ namespace Falcor
                     {
                         modelFlags |= Model::LoadFlags::UseSpecGlossMaterials;
                     }
+                    else if (m->value == SceneKeys::kShadingMetalRough)
+                    {
+                        modelFlags |= Model::LoadFlags::UseMetalRoughMaterials;
+                    }
+                    else
+                    {
+                        return error("Invalid value found in " + std::string(SceneKeys::kShadingModel) + ". Value == " + std::string(m->value.GetString()) + ".");
+                    }
                 }
             }
         }
@@ -676,7 +684,7 @@ namespace Falcor
                 }
             }
 
-            LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext().get(), actualPath, true, ResourceFormat::RGBA16Float, diffuseSamples, specSamples);
+            LightProbe::SharedPtr pLightProbe = LightProbe::create(gpDevice->getRenderContext(), actualPath, true, ResourceFormat::RGBA16Float, diffuseSamples, specSamples);
             pLightProbe->setPosW(position);
             pLightProbe->setIntensity(intensity);
             mScene.addLightProbe(pLightProbe);
@@ -1095,6 +1103,18 @@ namespace Falcor
         return true;
     }
 
+    bool SceneImporter::parseSceneUnit(const rapidjson::Value& jsonVal)
+    {
+        if (jsonVal.IsNumber() == false)
+        {
+            return error("Scene unit should be a number.");
+        }
+
+        float f = (float)(jsonVal.GetDouble());
+        mScene.setSceneUnit(f);
+        return true;
+    }
+
     bool SceneImporter::parseEnvMap(const rapidjson::Value& jsonVal)
     {
         if (mScene.getEnvironmentMap())
@@ -1301,6 +1321,7 @@ namespace Falcor
     {
         // The order matters here.
         {SceneKeys::kVersion, &SceneImporter::parseVersion},
+        {SceneKeys::kSceneUnit, &SceneImporter::parseSceneUnit},
         {SceneKeys::kEnvMap, &SceneImporter::parseEnvMap},
         {SceneKeys::kAmbientIntensity, &SceneImporter::parseAmbientIntensity},
         {SceneKeys::kLightingScale, &SceneImporter::parseLightingScale},

@@ -428,4 +428,20 @@ namespace Falcor
         glm::vec3 mScaling;              ///< Scaling, controls the size of the light
         glm::mat4 mTransformMatrix;      ///< Transform matrix minus scaling component
     };
+
+    inline std::string light_type_string(uint32_t type)
+    {
+        switch (type)
+        {
+        case LightPoint: return "Point Light";
+        case LightDirectional: return "Directional Light";
+        case LightArea: return "Area Light";
+        case LightAreaRect: return "Rectangular Light";
+        case LightAreaSphere: return "Spherical Light";
+        case LightAreaDisc: return "Disc Light";
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
 }

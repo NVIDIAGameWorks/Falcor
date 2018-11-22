@@ -38,6 +38,7 @@ namespace Falcor
 {
     struct BoundingBox;
     class ConstantBuffer;
+    class Gui;
 
     /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
     */
@@ -237,6 +238,10 @@ namespace Falcor
             static_assert(dataSize % (sizeof(vec4)) == 0, "Camera::CameraData size should be a multiple of 16");
             return dataSize;
         }
+
+        /** Render the UI
+        */
+        void renderUI(Gui* pGui, const char* uiGroup = nullptr);
 
         /** Begin frame. Should be called once per-frame, this is where we store the previous frame matrices
         */

@@ -41,7 +41,7 @@ Texture::SharedPtr createTmpTex(uint32_t width, uint32_t height)
     return Texture::create2D(width, height, ResourceFormat::RGBA8Unorm, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
 }
 
-void ComputeShader::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext)
+void ComputeShader::onLoad(SampleCallbacks* pSample, RenderContext* pContext)
 {
     mpProg = ComputeProgram::createFromFile("compute.hlsl", "main");
     mpState = ComputeState::create();
@@ -55,7 +55,8 @@ void ComputeShader::onLoad(SampleCallbacks* pSample, const RenderContext::Shared
 void ComputeShader::loadImage(SampleCallbacks* pSample)
 {
     std::string filename;
-    if(openFileDialog("Supported Formats\0*.jpg;*.bmp;*.dds;*.png;*.tiff;*.tif;*.tga\0\0", filename))
+    FileDialogFilterVec filters = { {"bmp"}, {"jpg"}, {"dds"}, {"png"}, {"tiff"}, {"tif"}, {"tga"} };
+    if(openFileDialog(filters, filename))
     {
         loadImageFromFile(pSample, filename);
     }
@@ -70,7 +71,7 @@ void ComputeShader::loadImageFromFile(SampleCallbacks* pSample, std::string file
     pSample->resizeSwapChain(mpImage->getWidth(), mpImage->getHeight());
 }
 
-void ComputeShader::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pContext, const Fbo::SharedPtr& pTargetFbo)
+void ComputeShader::onFrameRender(SampleCallbacks* pSample, RenderContext* pContext, const Fbo::SharedPtr& pTargetFbo)
 {
 	const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
 

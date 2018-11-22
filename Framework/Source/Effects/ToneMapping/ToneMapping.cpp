@@ -32,6 +32,8 @@
 
 namespace Falcor
 {
+    const char* ToneMapping::kDesc = "Tone-map a color-buffer. The resulting buffer is always in the [0, 1] range. The pass supports auto-exposure and eye-adaptation";
+
     static const char* kShaderFilename = "Effects/ToneMapping.ps.slang";
     const Gui::DropdownList kOperatorList = { 
     { (uint32_t)ToneMapping::Operator::Clamp, "Clamp to LDR" },
@@ -107,11 +109,6 @@ namespace Falcor
             desc.setColorTarget(0, luminanceFormat);
             mpLuminanceFbo = FboHelper::create2D(requiredWidth, requiredHeight, desc, 1, Fbo::kAttachEntireMipLevel);
         }
-    }
-
-    void ToneMapping::execute(RenderContext* pRenderContext, const Fbo::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
-    {
-        return execute(pRenderContext, pSrc->getColorTexture(0), pDst);
     }
 
     void ToneMapping::execute(RenderContext* pRenderContext, const Texture::SharedPtr& pSrc, const Fbo::SharedPtr& pDst)
@@ -256,8 +253,8 @@ namespace Falcor
     RenderPassReflection ToneMapping::reflect() const
     {
         RenderPassReflection reflector;
-        reflector.addInput(kSrc);
-        reflector.addOutput(kDst);
+        reflector.addInput(kSrc, "Source texture");
+        reflector.addOutput(kDst, "Tone-mapped output texture");
         return reflector;
     }
 

@@ -43,7 +43,7 @@ namespace Falcor
     //     Note 1:  this is pretty simplistic and may not correctly integrate with fancy materials, etc.
     //     Note 2:  this may not correctly setup model to interact with DirectX shaders.  In particular,
     //              vertex attribute names are required, and these may not all be set correctly!
-    deprecate("3.2", "")
+    deprecate("3.3", "")
     class SimpleModelImporter : public ModelImporter
     {
     public:

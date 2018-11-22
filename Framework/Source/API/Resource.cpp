@@ -111,10 +111,10 @@ namespace Falcor
     }
 
     template<typename ViewClass>
-    using CreateFuncType = std::function<typename ViewClass::SharedPtr(const Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)>;
+    using CreateFuncType = std::function<typename ViewClass::SharedPtr(Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)>;
 
     template<typename ViewClass, typename ViewMapType>
-    typename ViewClass::SharedPtr findViewCommon(const Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize, ViewMapType& viewMap, CreateFuncType<ViewClass> createFunc)
+    typename ViewClass::SharedPtr findViewCommon(Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize, ViewMapType& viewMap, CreateFuncType<ViewClass> createFunc)
     {
         uint32_t resMipCount = 1;
         uint32_t resArraySize = 1;
@@ -173,9 +173,9 @@ namespace Falcor
         return viewMap[view];
     }
 
-    DepthStencilView::SharedPtr Resource::getDSV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) const
+    DepthStencilView::SharedPtr Resource::getDSV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        auto createFunc = [](const Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        auto createFunc = [](Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
             return DepthStencilView::create(pResource->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
         };
@@ -183,9 +183,9 @@ namespace Falcor
         return findViewCommon<DepthStencilView>(this, mipLevel, 1, firstArraySlice, arraySize, mDsvs, createFunc);
     }
 
-    UnorderedAccessView::SharedPtr Resource::getUAV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) const
+    UnorderedAccessView::SharedPtr Resource::getUAV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        auto createFunc = [](const Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        auto createFunc = [](Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
             return UnorderedAccessView::create(pResource->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
         };
@@ -193,9 +193,9 @@ namespace Falcor
         return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
     }
 
-    RenderTargetView::SharedPtr Resource::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) const
+    RenderTargetView::SharedPtr Resource::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        auto createFunc = [](const Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        auto createFunc = [](Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
             return RenderTargetView::create(pResource->shared_from_this(), mostDetailedMip, firstArraySlice, arraySize);
         };
@@ -203,9 +203,9 @@ namespace Falcor
         return findViewCommon<RenderTargetView>(this, mipLevel, 1, firstArraySlice, arraySize, mRtvs, createFunc);
     }
 
-    ShaderResourceView::SharedPtr Resource::getSRV(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize) const
+    ShaderResourceView::SharedPtr Resource::getSRV(uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        auto createFunc = [](const Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        auto createFunc = [](Resource* pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
         {
             return ShaderResourceView::create(pResource->shared_from_this(), mostDetailedMip, mipCount, firstArraySlice, arraySize);
         };

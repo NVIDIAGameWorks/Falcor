@@ -322,6 +322,64 @@
     <ClCompile Include="Effects\TAA\TAA.cpp" />
     <ClCompile Include="Effects\ToneMapping\ToneMapping.cpp" />
     <ClCompile Include="Effects\Utils\GaussianBlur.cpp" />
+    <ClCompile Include="Experimental\Raytracing\RtModel.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgramVars.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgramVarsHelper.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgram\HitProgram.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgram\RtProgram.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtProgram\RtProgramVersion.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtScene.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtSceneRenderer.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtShader.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtState.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\RtStateObject.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Experimental\RenderGraph\RenderPass.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\RenderGraph.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphImportExport.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphIR.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphScripting.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\RenderGraphUI.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\RenderPassLibrary.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\RenderPassReflection.cpp" />
+    <ClCompile Include="Experimental\RenderGraph\ResourceCache.cpp" />
+    <ClCompile Include="Experimental\RenderPasses\BlitPass.cpp" />
+    <ClCompile Include="Experimental\RenderPasses\DepthPass.cpp" />
+    <ClCompile Include="Experimental\RenderPasses\ForwardLightingPass.cpp" />
+    <ClCompile Include="Experimental\RenderPasses\ImageLoader.cpp" />
+    <ClCompile Include="Experimental\RenderPasses\ResolvePass.cpp" />
     <ClCompile Include="Graphics\Camera\Camera.cpp" />
     <ClCompile Include="Graphics\Camera\CameraController.cpp" />
     <ClCompile Include="Graphics\ComputeState.cpp" />
@@ -353,14 +411,6 @@
     <ClCompile Include="Graphics\Program\ProgramVars.cpp" />
     <ClCompile Include="Graphics\Program\ProgramVersion.cpp" />
     <ClCompile Include="Graphics\Program\ShaderLibrary.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderGraph.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphImportExport.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphIR.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphScripting.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderGraphUI.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPassLibrary.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\RenderPassReflection.cpp" />
-    <ClCompile Include="Graphics\RenderGraph\ResourceCache.cpp" />
     <ClCompile Include="Graphics\Scene\Editor\Gizmo.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
@@ -374,78 +424,9 @@
     <ClCompile Include="Graphics\Scene\SceneImporter.cpp" />
     <ClCompile Include="Graphics\Scene\SceneRenderer.cpp" />
     <ClCompile Include="Graphics\TextureHelper.cpp" />
-    <ClCompile Include="Raytracing\RtModel.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgramVars.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\HitProgram.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtProgram\RtProgramVersion.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtScene.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtSceneRenderer.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtShader.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtState.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="Raytracing\RtStateObject.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="RenderPasses\BlitPass.cpp" />
-    <ClCompile Include="RenderPasses\DepthPass.cpp" />
-    <ClCompile Include="RenderPasses\ResolvePass.cpp" />
-    <ClCompile Include="RenderPasses\ForwardLightingPass.cpp" />
     <ClCompile Include="Sample.cpp" />
     <ClCompile Include="SampleTest.cpp" />
+    <ClCompile Include="UnitTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
     <ClCompile Include="Utils\DebugDrawer.cpp" />
     <ClCompile Include="Utils\DXHeader.cpp" />
@@ -951,7 +932,6 @@
     <ClInclude Include="Data\Effects\CsmData.h" />
     <ClInclude Include="Data\Effects\ParticleData.h" />
     <ClInclude Include="Data\Effects\SSAOData.h" />
-    <ClInclude Include="Data\HlslGlslCommon.h" />
     <ClInclude Include="Data\HostDeviceData.h" />
     <ClInclude Include="Data\HostDeviceSharedCode.h" />
     <ClInclude Include="Data\HostDeviceSharedMacros.h" />
@@ -965,8 +945,75 @@
     <ClInclude Include="Effects\TAA\TAA.h" />
     <ClInclude Include="Effects\ToneMapping\ToneMapping.h" />
     <ClInclude Include="Effects\Utils\GaussianBlur.h" />
+    <ClInclude Include="Experimental\Raytracing\RtModel.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgramVars.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgramVarsHelper.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\HitProgram.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\RtProgram.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\RtProgramVersion.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtProgram\SingleShaderProgram.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtScene.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtSceneRenderer.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtShader.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtState.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtStateObject.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\RtStateObjectHelper.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="Experimental\RenderGraph\RenderGraph.h" />
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphImportExport.h" />
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphIR.h" />
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphScripting.h" />
+    <ClInclude Include="Experimental\RenderGraph\RenderGraphUI.h" />
+    <ClInclude Include="Experimental\RenderGraph\RenderPass.h" />
+    <ClInclude Include="Experimental\RenderGraph\RenderPassLibrary.h" />
+    <ClInclude Include="Experimental\RenderGraph\RenderPassReflection.h" />
+    <ClInclude Include="Experimental\RenderGraph\ResourceCache.h" />
+    <ClInclude Include="Experimental\RenderPasses\BlitPass.h" />
+    <ClInclude Include="Experimental\RenderPasses\DepthPass.h" />
+    <ClInclude Include="Experimental\RenderPasses\ForwardLightingPass.h" />
+    <ClInclude Include="Experimental\RenderPasses\ImageLoader.h" />
+    <ClInclude Include="Experimental\RenderPasses\ResolvePass.h" />
     <ClInclude Include="Falcor.h" />
     <ClInclude Include="FalcorConfig.h" />
+    <ClInclude Include="FalcorExperimental.h" />
     <ClInclude Include="Framework.h" />
     <ClInclude Include="Graphics\Camera\Camera.h" />
     <ClInclude Include="Graphics\Camera\CameraController.h" />
@@ -1002,15 +1049,6 @@
     <ClInclude Include="Graphics\Program\ProgramVars.h" />
     <ClInclude Include="Graphics\Program\ProgramVersion.h" />
     <ClInclude Include="Graphics\Program\ShaderLibrary.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderGraph.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphImportExport.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphIR.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphScripting.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderGraphUI.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPass.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassLibrary.h" />
-    <ClInclude Include="Graphics\RenderGraph\RenderPassReflection.h" />
-    <ClInclude Include="Graphics\RenderGraph\ResourceCache.h" />
     <ClInclude Include="Graphics\Scene\Editor\Gizmo.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
@@ -1025,97 +1063,10 @@
     <ClInclude Include="Graphics\Scene\SceneImporter.h" />
     <ClInclude Include="Graphics\Scene\SceneRenderer.h" />
     <ClInclude Include="Graphics\TextureHelper.h" />
-    <ClInclude Include="Raytracing\DXR.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtModel.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgramVars.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgramVarsHelper.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\HitProgram.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\RtProgram.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\RtProgramVersion.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtProgram\SingleShaderProgram.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtScene.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtSceneRenderer.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtShader.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtState.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtStateObject.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Raytracing\RtStateObjectHelper.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">false</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="Renderer.h" />
-    <ClInclude Include="RenderPasses\BlitPass.h" />
-    <ClInclude Include="RenderPasses\DepthPass.h" />
-    <ClInclude Include="RenderPasses\ResolvePass.h" />
-    <ClInclude Include="RenderPasses\ForwardLightingPass.h" />
     <ClInclude Include="Sample.h" />
     <ClInclude Include="SampleTest.h" />
+    <ClInclude Include="UnitTest.h" />
     <ClInclude Include="Utils\AABB.h" />
     <ClInclude Include="Utils\BinaryFileStream.h" />
     <ClInclude Include="Utils\Bitmap.h" />
@@ -1146,7 +1097,6 @@
     <ClInclude Include="Utils\Psychophysics\Experiment.h" />
     <ClInclude Include="Utils\Psychophysics\SingleThresholdMeasurement.h" />
     <ClInclude Include="Utils\PythonEmbedding.h" />
-    <ClInclude Include="Utils\Renderer\MultiSampleRenderer.h" />
     <ClInclude Include="Utils\Scripting\Scripting.h" />
     <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
     <ClInclude Include="Utils\StringUtils.h" />
@@ -1401,7 +1351,7 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -1473,7 +1423,6 @@
       </AdditionalDependencies>
     </Lib>
   </ItemDefinitionGroup>
-
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">
     <ClCompile>
       <PrecompiledHeader>

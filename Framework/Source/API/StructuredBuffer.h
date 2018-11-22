@@ -72,7 +72,8 @@ namespace Falcor
 
             SharedPtr() = default;
             SharedPtr(std::shared_ptr<StructuredBuffer> pBuf) : std::shared_ptr<StructuredBuffer>(pBuf) {}
-            SharedPtr(StructuredBuffer* pBuf) : std::shared_ptr<StructuredBuffer>(pBuf) {}
+            explicit SharedPtr(StructuredBuffer* pBuf) : std::shared_ptr<StructuredBuffer>(pBuf) {}
+            constexpr SharedPtr(nullptr_t) : std::shared_ptr<StructuredBuffer>(nullptr) {}
 
             Element operator[](size_t elemIndex) { return Element(get(), elemIndex); }
         };

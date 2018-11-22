@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="FalcorTest.cpp" />
+    <ClCompile Include="Tests\ShadingUtilsTests.cpp">
+      <Filter>Tests</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FalcorTest.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Data">
+      <UniqueIdentifier>{755f6be9-89ff-4bda-b45b-4181e83d7d0a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{ce64d89a-ce01-4012-9706-d3f24f5da801}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\ShadingUtilsTests.cs.slang">
+      <Filter>Data</Filter>
+    </None>
+  </ItemGroup>
+</Project>

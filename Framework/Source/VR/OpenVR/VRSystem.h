@@ -102,7 +102,7 @@ namespace Falcor
 
         /** Initialize the display and the controllers
         */
-        void initDisplayAndController(RenderContext::SharedPtr pRenderContext);
+        void initDisplayAndController();
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         // Simple accessors
@@ -203,9 +203,6 @@ namespace Falcor
 
         VRSystem();  
         static VRSystem* spVrSystem;
-
-		// OpenGl/ DirectX context handle from Falcor
-		RenderContext::SharedPtr mpContext;
 
         // Returns a controller/tracker from an OpenVR device ID.  Returns nullptr if unknown deviceID.
         VRController::SharedPtr getControllerFromDeviceID( int32_t devID );

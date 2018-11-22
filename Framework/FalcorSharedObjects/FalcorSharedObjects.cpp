@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include <Falcor.h>
+#include <FalcorExperimental.h>
 
 namespace Falcor
 {

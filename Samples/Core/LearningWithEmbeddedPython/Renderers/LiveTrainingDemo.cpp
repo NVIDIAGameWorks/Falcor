@@ -52,7 +52,7 @@
 // Clarity.  Cleans pybind11 call notation a bit.
 namespace py = pybind11;
 
-void LiveTrainRenderer::onLoad(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext)
+void LiveTrainRenderer::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     // Don't re-initialize if we already have.
     if (mIsInitialized) 
@@ -182,7 +182,7 @@ void LiveTrainRenderer::doRandomTrain()
     if (mTrainsLeft>0) mTrainsLeft--;
 }
 
-void LiveTrainRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext::SharedPtr pRenderContext, Fbo::SharedPtr pTargetFbo)
+void LiveTrainRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, Fbo::SharedPtr pTargetFbo)
 {
     pRenderContext->clearFbo(pTargetFbo.get(), vec4(0.2f, 0.4f, 0.5f, 1), 1, 0);
 
@@ -417,14 +417,14 @@ bool LiveTrainRenderer::onMouseEvent(SampleCallbacks* pSample, const MouseEvent&
 // Below here:  Mostly encapsulation of simple/basic Falcor rendering code
 ///////////////////////////////////////////////////////////////////////////////////
 
-void LiveTrainRenderer::msaaResolvePass(RenderContext::SharedPtr pContext)
+void LiveTrainRenderer::msaaResolvePass(RenderContext* pContext)
 {
     pContext->blit(mpMainFbo->getColorTexture(0)->getSRV(), mpResolveFbo->getRenderTargetView(0));
     pContext->blit(mpMainFbo->getColorTexture(1)->getSRV(), mpResolveFbo->getRenderTargetView(1));
     pContext->blit(mpMainFbo->getDepthStencilTexture()->getSRV(), mpResolveFbo->getRenderTargetView(2));
 }
 
-void LiveTrainRenderer::lightingPass(RenderContext::SharedPtr pContext)
+void LiveTrainRenderer::lightingPass(RenderContext* pContext)
 {
     pContext->getGraphicsState()->setProgram(mLightingPass.pProgram);
     pContext->setGraphicsVars(mLightingPass.pVars);

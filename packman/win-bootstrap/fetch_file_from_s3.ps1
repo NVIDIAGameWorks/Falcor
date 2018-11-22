@@ -2,7 +2,7 @@ param(
 [Parameter(Mandatory=$true)][string]$sourceName=$null,
 [string]$output="out.exe"
 )
-$source = "http://packman.s3.amazonaws.com/" + $sourceName
+$source = "http://packman-bootstrap.s3.amazonaws.com/" + $sourceName
 $filename = $output
 
 $triesLeft = 3

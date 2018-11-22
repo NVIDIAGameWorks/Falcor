@@ -39,7 +39,7 @@
 #include "Graphics/FboHelper.h"
 #include <sstream>
 #include <iomanip>
-#include "Graphics/RenderGraph/RenderPassLibrary.h"
+#include "Experimental/RenderGraph/RenderPassLibrary.h"
 
 namespace Falcor
 {
@@ -49,16 +49,19 @@ namespace Falcor
     {
         if (!gpDevice) return;
         // Tell the device to resize the swap chain
-        mpBackBufferFBO = gpDevice->resizeSwapChain(mpWindow->getClientAreaWidth(), mpWindow->getClientAreaHeight());
-        auto width = mpBackBufferFBO->getWidth();
-        auto height = mpBackBufferFBO->getHeight();
+        auto pBackBufferFBO = gpDevice->resizeSwapChain(mpWindow->getClientAreaWidth(), mpWindow->getClientAreaHeight());
+        auto width = pBackBufferFBO->getWidth();
+        auto height = pBackBufferFBO->getHeight();
 
-        //Recopy back buffer to recreate target fbo 
-        mpTargetFBO = FboHelper::create2D(width, height, mpBackBufferFBO->getDesc());
+        // Recopy back buffer to recreate target fbo 
+        mpTargetFBO = FboHelper::create2D(width, height, pBackBufferFBO->getDesc());
         if(mpDefaultPipelineState) mpDefaultPipelineState->setFbo(mpTargetFBO);
 
         // Tell the GUI the swap-chain size changed
         if(mpGui) mpGui->onWindowResize(width, height);
+
+        // Resize the pixel zoom
+        if(mpPixelZoom) mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
 
         // Call the user callback
         if(mpRenderer) mpRenderer->onResizeSwapChain(this, width, height);
@@ -182,11 +185,9 @@ namespace Falcor
         Scripting::shutdown();
         mpGui.reset();
         mpDefaultPipelineState.reset();
-        mpBackBufferFBO.reset();    
         mpTargetFBO.reset();
         mpTextRenderer.reset();
         mpPixelZoom.reset();
-        mpRenderContext.reset();
         releaseSharedObjects();
         if(gpDevice) gpDevice->cleanup();
         gpDevice.reset();
@@ -241,12 +242,12 @@ namespace Falcor
             }
             
             // Get the default objects before calling onLoad()
-            mpBackBufferFBO = gpDevice->getSwapChainFbo();
-            mpTargetFBO = FboHelper::create2D(mpBackBufferFBO->getWidth(), mpBackBufferFBO->getHeight(), mpBackBufferFBO->getDesc());
+            auto pBackBufferFBO = gpDevice->getSwapChainFbo();
+            mpTargetFBO = FboHelper::create2D(pBackBufferFBO->getWidth(), pBackBufferFBO->getHeight(), pBackBufferFBO->getDesc());
             mpDefaultPipelineState = GraphicsState::create();
             mpDefaultPipelineState->setFbo(mpTargetFBO);
-            mpRenderContext = gpDevice->getRenderContext();
-            mpRenderContext->setGraphicsState(mpDefaultPipelineState);
+            auto pRenderContext = gpDevice->getRenderContext();
+            pRenderContext->setGraphicsState(mpDefaultPipelineState);
 
             // Init the UI
             initUI();
@@ -273,7 +274,7 @@ namespace Falcor
         }
 
         // Load and run
-        mpRenderer->onLoad(this, mpRenderContext);
+        mpRenderer->onLoad(this, getRenderContext());
         initializeTesting();
         pBar = nullptr;
 
@@ -378,7 +379,7 @@ namespace Falcor
                 mpRenderer->onGuiRender(this, mpGui.get());
                 mpGui->popWindow();
 
-                if (mVideoCapture.pUI)
+                if (mVideoCapture.displayUI && mVideoCapture.pUI)
                 {
                     mVideoCapture.pUI->render(mpGui.get());
                 }
@@ -391,7 +392,7 @@ namespace Falcor
 
             if (gProfileEnabled)
             {
-                uint32_t y = mpBackBufferFBO->getHeight() - 360;
+                uint32_t y = gpDevice->getSwapChainFbo()->getHeight() - 360;
 
                 mpGui->setActiveFont(kMonospaceFont);
                 mpGui->pushWindow("Profiler", 650, 350, 10, y);
@@ -403,7 +404,7 @@ namespace Falcor
                 mpGui->setActiveFont("");
             }
 
-            mpGui->render(mpRenderContext.get(), mFrameRate.getLastFrameTime());
+            mpGui->render(getRenderContext(), mFrameRate.getLastFrameTime());
         }
     }
 
@@ -450,24 +451,26 @@ namespace Falcor
         mFrameRate.newFrame();
         beginTestFrame();
         {
-            PROFILE(onFrameRender);
+            PROFILE("onFrameRender");
             // The swap-chain FBO might have changed between frames, so get it
+            RenderContext* pRenderContext = nullptr;
             if(gpDevice)
             {
-                mpBackBufferFBO = gpDevice->getSwapChainFbo();
-                mpRenderContext = gpDevice->getRenderContext();
+                pRenderContext = gpDevice->getRenderContext();
                 // Bind the default state
                 mpDefaultPipelineState->setFbo(mpTargetFBO);
-                mpRenderContext->setGraphicsState(mpDefaultPipelineState);
+                pRenderContext->setGraphicsState(mpDefaultPipelineState);
             }
             calculateTime();
-            mpRenderer->onFrameRender(this, mpRenderContext, mpTargetFBO);
+            mpRenderer->onFrameRender(this, pRenderContext, mpTargetFBO);
         }
 
         if (gpDevice)
         {
             // Copy the render-target
-            mpRenderContext->copyResource(mpBackBufferFBO->getColorTexture(0).get(), mpTargetFBO->getColorTexture(0).get());
+            const auto& pSwapChainFbo = gpDevice->getSwapChainFbo();
+            RenderContext* pCtx = getRenderContext();
+            getRenderContext()->copyResource(pSwapChainFbo->getColorTexture(0).get(), mpTargetFBO->getColorTexture(0).get());
 
             //Takes testing screenshots if desired (leaves out gui and fps text)
             endTestFrame();
@@ -480,17 +483,17 @@ namespace Falcor
             }
 
             //Swaps back to backbuffer to render fps text and gui directly onto it
-            mpDefaultPipelineState->setFbo(mpBackBufferFBO);
-            mpRenderContext->setGraphicsState(mpDefaultPipelineState);
+            mpDefaultPipelineState->setFbo(pSwapChainFbo);
+            pCtx->setGraphicsState(mpDefaultPipelineState);
             {
-                PROFILE(renderGUI);
+                PROFILE("renderGUI");
                 renderGUI();
             }
 
             renderText(getFpsMsg(), glm::vec2(10, 10));
             if (mpPixelZoom)
             {
-                mpPixelZoom->render(mpRenderContext.get(), mpBackBufferFBO.get());
+                mpPixelZoom->render(pCtx, pSwapChainFbo.get());
             }
 
 #if _PROFILING_ENABLED
@@ -508,7 +511,7 @@ namespace Falcor
             }
 
             {
-                PROFILE(present);
+                PROFILE("present");
                 gpDevice->present();
             }
         }
@@ -540,7 +543,8 @@ namespace Falcor
     void Sample::initUI()
     {
         float scaling = getDisplayScaleFactor();
-        mpGui = Gui::create(uint32_t(mpBackBufferFBO->getWidth()), uint32_t(mpBackBufferFBO->getHeight()), scaling);
+        const auto& pSwapChainFbo = gpDevice->getSwapChainFbo();
+        mpGui = Gui::create(uint32_t(pSwapChainFbo->getWidth()), uint32_t(pSwapChainFbo->getHeight()), scaling);
         mpGui->addFont(kMonospaceFont, "Framework/Fonts/consolab.ttf");
         mSampleGuiHeight = (uint32_t)(mSampleGuiHeight * scaling);
         mSampleGuiWidth = (uint32_t)(mSampleGuiWidth * scaling);
@@ -564,7 +568,6 @@ namespace Falcor
     void Sample::resizeSwapChain(uint32_t width, uint32_t height)
     {
         mpWindow->resize(width, height);
-        mpPixelZoom->onResizeSwapChain(gpDevice->getSwapChainFbo().get());
     }
 
     bool Sample::isKeyPressed(const KeyboardEvent::Key& key)
@@ -576,19 +579,20 @@ namespace Falcor
     {
         if (mShowText)
         {
+            RenderContext* pCtx = getRenderContext();
             // Render outline first
             if (shadowOffset.x != 0.f || shadowOffset.y != 0)
             {
                 const glm::vec3 oldColor = mpTextRenderer->getTextColor();
                 mpTextRenderer->setTextColor(glm::vec3(0.f));   // Black outline 
-                mpTextRenderer->begin(mpRenderContext, position + shadowOffset);
-                mpTextRenderer->renderLine(msg);
-                mpTextRenderer->end();
+                mpTextRenderer->begin(pCtx, position + shadowOffset);
+                mpTextRenderer->renderLine(pCtx, msg);
+                mpTextRenderer->end(pCtx);
                 mpTextRenderer->setTextColor(oldColor);
             }
-            mpTextRenderer->begin(mpRenderContext, position);
-            mpTextRenderer->renderLine(msg);
-            mpTextRenderer->end();
+            mpTextRenderer->begin(pCtx, position);
+            mpTextRenderer->renderLine(pCtx, msg);
+            mpTextRenderer->end(pCtx);
         }
     }
 
@@ -596,8 +600,9 @@ namespace Falcor
     {
         if (mVideoCapture.pUI == nullptr)
         {
-            mVideoCapture.pUI = VideoEncoderUI::create(20, 300, 240, 220, [this]() {startVideoCapture(); }, [this]() {endVideoCapture(); });
+            mVideoCapture.pUI = VideoEncoderUI::create(20, 300, 300, 280, [this]() {startVideoCapture(); }, [this]() {endVideoCapture(); });
         }
+        mVideoCapture.displayUI = true;
     }
 
     void Sample::startVideoCapture()
@@ -607,10 +612,11 @@ namespace Falcor
         desc.flipY = false;
         desc.codec = mVideoCapture.pUI->getCodec();
         desc.filename = mVideoCapture.pUI->getFilename();
-        desc.format = mpBackBufferFBO->getColorTexture(0)->getFormat();
+        const auto& pSwapChainFbo = gpDevice->getSwapChainFbo();
+        desc.format = pSwapChainFbo->getColorTexture(0)->getFormat();
         desc.fps = mVideoCapture.pUI->getFPS();
-        desc.height = mpBackBufferFBO->getHeight();
-        desc.width = mpBackBufferFBO->getWidth();
+        desc.height = pSwapChainFbo->getHeight();
+        desc.width = pSwapChainFbo->getWidth();
         desc.bitrateMbps = mVideoCapture.pUI->getBitrate();
         desc.gopSize = mVideoCapture.pUI->getGopSize();
 
@@ -630,6 +636,8 @@ namespace Falcor
             }
             mCurrentTime = mVideoCapture.pUI->getStartTime();
         }
+
+        mShouldResetRendering = mVideoCapture.pUI->resetOnFirstFrame();
     }
  
     void Sample::endVideoCapture()
@@ -639,7 +647,8 @@ namespace Falcor
             mVideoCapture.pVideoCapture->endCapture();
             mShowUI = UIStatus::ShowAll;
         }
-        mVideoCapture.pUI = nullptr;
+        mVideoCapture.pUI->setCaptureState(false);
+        mVideoCapture.displayUI = false;
         mVideoCapture.pVideoCapture = nullptr;
         safe_delete_array(mVideoCapture.pFrame);
         mFixedTimeDelta = mVideoCapture.sampleTimeDelta;
@@ -649,7 +658,7 @@ namespace Falcor
     {
         if (mVideoCapture.pVideoCapture)
         {
-            mVideoCapture.pVideoCapture->appendFrame(mpRenderContext->readTextureSubresource(mpBackBufferFBO->getColorTexture(0).get(), 0).data());
+            mVideoCapture.pVideoCapture->appendFrame(getRenderContext()->readTextureSubresource(gpDevice->getSwapChainFbo()->getColorTexture(0).get(), 0).data());
 
             if (mVideoCapture.pUI->useTimeRange())
             {
@@ -665,6 +674,8 @@ namespace Falcor
                     endVideoCapture();
                 }
             }
+
+            mShouldResetRendering = false;
         }
     }
 }

@@ -90,7 +90,6 @@ VertexOut getVertexAttributes(uint triangleIndex, float3 barycentrics)
 #endif
 #ifndef _MS_DISABLE_INSTANCE_TRANSFORM
     // Transform normal/bitangent to world space
-    // PETRIK TODO: LightTransport relies on getVertexAttributes() returning normalW and bitangentW in world space (as their names imply). If this is made the default, the Falcor RT sample(s) need to be updated.
     v.normalW = mul(v.normalW, (float3x3)gWorldInvTransposeMat[0]).xyz;
     v.bitangentW = mul(v.bitangentW, (float3x3)gWorldMat[0]).xyz;
 #endif
@@ -110,7 +109,12 @@ float3 getGeoNormal(const float3 e[2])
     return normalize(cross(e[0], e[1]));
 }
 
-void getTriNormalsAndEdges(uint triangleIndex, out float3 n[3], out float3 e[2])
+/** Returns a triangle's vertex normals and edges in object space.
+    \param[in] triangleIndex Index of the triangle.
+    \param[out] n Vertex normals in object space.
+    \param[out] e Triangle edges in object space.
+*/
+void getTriNormalsAndEdgesInObjectSpace(uint triangleIndex, out float3 n[3], out float3 e[2])
 {
     uint3 indices = getIndices(triangleIndex);
 
@@ -127,11 +131,11 @@ void getTriNormalsAndEdges(uint triangleIndex, out float3 n[3], out float3 e[2])
     n[2] = asfloat(gNormals.Load3((indices[2] * 3) * 4));
 }
 
-/** Returns geometric normal of the specified triangle.
+/** Returns a triangle's geometric normal in world space.
     \param[in] triangleIndex Index of the triangle.
-    \return Geometric normal. Front facing for counter-clockwise winding.
+    \return Geometric normal in world space. Front facing for counter-clockwise winding.
 */
-float3 getGeometricNormal(uint triangleIndex)
+float3 getGeometricNormalW(uint triangleIndex)
 {
     uint3 indices = getIndices(triangleIndex);
 
@@ -144,7 +148,8 @@ float3 getGeometricNormal(uint triangleIndex)
     e[0] = p[1] - p[0];
     e[1] = p[2] - p[0];
 
-    return getGeoNormal(e);
+    float3 N = getGeoNormal(e);
+    return mul(N, (float3x3)gWorldInvTransposeMat[0]).xyz;
 }
 
 /** Returns position on triangle in the previous frame in world space.

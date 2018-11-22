@@ -1,12 +1,15 @@
 /***************************************************************************
 * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 ***************************************************************************/
+#include "Framework.h"
 #include "TAA.h"
 #include "Utils/Gui.h"
 #include "API/RenderContext.h"
 
 namespace Falcor
 {
+    const char* TemporalAA::kDesc = "Temporal Anti-Aliasing";
+
     static const char* kShaderFilename = "Effects/TAA.ps.slang";
 
     TemporalAA::~TemporalAA() = default;
@@ -87,9 +90,9 @@ namespace Falcor
     RenderPassReflection TemporalAA::reflect() const
     {
         RenderPassReflection reflection;
-        reflection.addInput(kMotionVec);
-        reflection.addInput(kColorIn);
-        reflection.addOutput(kColorOut);
+        reflection.addInput(kMotionVec, "Screen-space motion vectors");
+        reflection.addInput(kColorIn, "Color-buffer of the current frame");
+        reflection.addOutput(kColorOut, "Anti-aliased color buffer");
         return reflection;
     }
 

@@ -47,6 +47,7 @@ namespace Falcor
         bool load(const std::string& filename, Model::LoadFlags modelLoadFlags, Scene::LoadFlags sceneLoadFlags);
 
         bool parseVersion(const rapidjson::Value& jsonVal);
+        bool parseSceneUnit(const rapidjson::Value& jsonVal);
         bool parseModels(const rapidjson::Value& jsonVal);
         bool parseLights(const rapidjson::Value& jsonVal);
         bool parseLightProbes(const rapidjson::Value& jsonVal);

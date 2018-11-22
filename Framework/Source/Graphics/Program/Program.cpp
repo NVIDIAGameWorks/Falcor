@@ -287,29 +287,6 @@ namespace Falcor
         return dirty;
     }
     
-    bool Program::clearDefines()
-    {
-        if (!mDefineList.empty())
-        {
-            mLinkRequired = true;
-            mDefineList.clear();
-            return true;
-        }
-        return false;
-    }
-
-    bool Program::replaceAllDefines(const DefineList& dl)
-    {
-        // TODO: re-link only if new macros differ from existing
-        if (!mDefineList.empty() || !dl.empty())
-        {
-            mLinkRequired = true;
-            mDefineList = dl;
-            return true;
-        }
-        return false;
-    }
-    
     bool Program::setDefines(const DefineList& dl)
     {
         if (dl != mDefineList)
@@ -468,6 +445,8 @@ namespace Falcor
 #endif
         spSetCodeGenTarget(slangRequest, slangTarget);
         spAddPreprocessorDefine(slangRequest, preprocessorDefine, "1");
+        std::string sm = "__SM_" + mDesc.mShaderModel + "__";
+        spAddPreprocessorDefine(slangRequest, sm.c_str(), "1");
 
         spSetTargetProfile(slangRequest, 0, spFindProfile(slangSession, getSlangProfileString(mDesc.mShaderModel).c_str()));
 
@@ -476,6 +455,20 @@ namespace Falcor
         // this is what we want/expect so that it can compute correct reflection information.
         //
         spSetTargetMatrixLayoutMode(slangRequest, 0, SLANG_MATRIX_LAYOUT_ROW_MAJOR);
+
+        // Set floating point mode. If no shader compiler flags for this were set, we use Slang's default mode.
+        bool flagFast = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModeFast);
+        bool flagPrecise = is_set(mDesc.getCompilerFlags(), Shader::CompilerFlags::FloatingPointModePrecise);
+        if (flagFast && flagPrecise)
+        {
+            logWarning("Shader compiler flags 'FloatingPointModeFast' and 'FloatingPointModePrecise' can't be used simultaneously. Ignoring 'FloatingPointModeFast'.");
+            flagFast = false;
+        }
+        SlangFloatingPointMode slangFpMode = SLANG_FLOATING_POINT_MODE_DEFAULT;
+        if (flagFast) slangFpMode = SLANG_FLOATING_POINT_MODE_FAST;
+        else if (flagPrecise) slangFpMode = SLANG_FLOATING_POINT_MODE_PRECISE;
+
+        spSetTargetFloatingPointMode(slangRequest, 0, slangFpMode);
 
         // Configure any flags for the Slang compilation step
         SlangCompileFlags slangFlags = 0;
@@ -503,7 +496,11 @@ namespace Falcor
                     logWarning("Compiling a shader file which is not a SLANG file or an HLSL file. This is not an error, but make sure that the file contains valid shaders");
                 }
                 std::string fullpath;
-                findFileInDataDirectories(src.pLibrary->getFilename(), fullpath);
+                if (!findFileInDataDirectories(src.pLibrary->getFilename(), fullpath))
+                {
+                    logError(std::string("Can't find file ") + src.pLibrary->getFilename(), true);
+                    return VersionData();
+                }
                 spAddTranslationUnitSourceFile(slangRequest, translationUnitIndex, fullpath.c_str());
             }
             else

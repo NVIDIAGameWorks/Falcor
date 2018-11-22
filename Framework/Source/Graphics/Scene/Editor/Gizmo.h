@@ -74,7 +74,7 @@ namespace Falcor
             \param[in] pAxisModelInstance Model instance to compare with gizmo.
             \return Whether pAxisModelInstance is part of the gizmo
         */
-        virtual bool beginAction(const Camera::SharedPtr& pCamera, const Scene::ModelInstance::SharedPtr& pAxisModelInstance);
+        virtual bool beginAction(const Camera::SharedPtr& pCamera, const Scene::ModelInstance::SharedConstPtr& pAxisModelInstance);
 
         /** Updates current mouse state during a click-and-drag.
             \param[in] pCamera Camera in the scene this gizmo is being viewed from.

@@ -60,8 +60,9 @@ namespace Falcor
             };
 
             SharedPtr() = default;
-            SharedPtr(ConstantBuffer* pBuf) : std::shared_ptr<ConstantBuffer>(pBuf) {}
+            explicit SharedPtr(ConstantBuffer* pBuf) : std::shared_ptr<ConstantBuffer>(pBuf) {}
             SharedPtr(std::shared_ptr<ConstantBuffer> pBuf) : std::shared_ptr<ConstantBuffer>(pBuf) {}
+            constexpr SharedPtr(nullptr_t) : std::shared_ptr<ConstantBuffer>(nullptr) {}
 
             Var operator[](size_t offset) { return Var(get(), offset); }
             Var operator[](const std::string& var) { return Var(get(), get()->getVariableOffset(var)); }
@@ -135,7 +136,7 @@ namespace Falcor
 
         virtual bool uploadToGPU(size_t offset = 0, size_t size = -1) override;
 
-        ConstantBufferView::SharedPtr getCbv() const;
+        ConstantBufferView::SharedPtr getCbv();
     protected:
         ConstantBuffer(const std::string& name, const ReflectionResourceType::SharedConstPtr& pReflectionType, size_t size);
         mutable ConstantBufferView::SharedPtr mpCbv;

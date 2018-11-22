@@ -35,6 +35,25 @@ namespace Falcor
     *  @{
     */
 
+    /** These flags are hints the driver to what pipeline stages the resource will be bound to.
+*/
+    enum class ResourceBindFlags : uint32_t
+    {
+        None = 0x0,             ///< The resource will not be bound the pipeline. Use this to create a staging resource
+        Vertex = 0x1,           ///< The resource will be bound as a vertex-buffer
+        Index = 0x2,            ///< The resource will be bound as a index-buffer
+        Constant = 0x4,         ///< The resource will be bound as a constant-buffer
+        StreamOutput = 0x8,     ///< The resource will be bound to the stream-output stage as an output buffer
+        ShaderResource = 0x10,  ///< The resource will be bound as a shader-resource
+        UnorderedAccess = 0x20, ///< The resource will be bound as an UAV
+        RenderTarget = 0x40,    ///< The resource will be bound as a render-target
+        DepthStencil = 0x80,    ///< The resource will be bound as a depth-stencil buffer
+        IndirectArg = 0x100,    ///< The resource will be bound as an indirect argument buffer
+#ifdef FALCOR_D3D12
+        AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
+#endif
+    };
+
     /** Resource formats
     */
     enum class ResourceFormat : uint32_t
@@ -338,6 +357,10 @@ namespace Falcor
             return false;
         }
     }
+
+    /** Get the supported bind-flags for a specific format
+    */
+    ResourceBindFlags getFormatBindFlags(ResourceFormat format);
 
     inline const std::string& to_string(ResourceFormat format)
     {

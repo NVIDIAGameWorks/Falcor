@@ -107,7 +107,7 @@ void ModelViewer::loadModelFromFile(const std::string& filename, ResourceFormat 
 void ModelViewer::loadModel(ResourceFormat fboFormat)
 {
     std::string Filename;
-    if(openFileDialog(Model::kSupportedFileFormatsStr, Filename))
+    if(openFileDialog(Model::kFileExtensionFilters, Filename))
     {
         loadModelFromFile(Filename, fboFormat);
     }
@@ -122,7 +122,7 @@ void ModelViewer::saveModel()
 
     }
     std::string filename;
-    if(saveFileDialog("Binary Model\0*.bin\0\0", filename))
+    if (saveFileDialog({ {"bin", "Binary Model"} }, filename))
     {
         mpModel->exportToBinaryFile(filename);
     }
@@ -230,7 +230,7 @@ void ModelViewer::renderModelUI(Gui* pGui)
     }
 }
 
-void ModelViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
+void ModelViewer::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
 {
     mpCamera = Camera::create();
     mpProgram = GraphicsProgram::createFromFile("ModelViewer.ps.hlsl", "", "main");
@@ -277,7 +277,7 @@ void ModelViewer::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPt
     loadModelFromFile(skDefaultModel, pRenderContext->getGraphicsState()->getFbo()->getColorTexture(0)->getFormat());
 }
 
-void ModelViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void ModelViewer::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.38f, 0.52f, 0.10f, 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
@@ -291,7 +291,7 @@ void ModelViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::S
         // Animate
         if(mAnimate)
         {
-            PROFILE(animate);
+            PROFILE("animate");
             mpModel->animate(pSample->getCurrentTime());
         }
 
@@ -317,7 +317,7 @@ void ModelViewer::onFrameRender(SampleCallbacks* pSample, const RenderContext::S
         mpGraphicsState->setProgram(mpProgram);
         pRenderContext->setGraphicsState(mpGraphicsState);
         pRenderContext->setGraphicsVars(mpProgramVars);
-        ModelRenderer::render(pRenderContext.get(), mpModel, mpCamera.get());
+        ModelRenderer::render(pRenderContext, mpModel, mpCamera.get());
     }
 
     pSample->renderText(mModelString, glm::vec2(10, 30));

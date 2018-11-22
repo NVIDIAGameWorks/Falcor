@@ -37,7 +37,7 @@ float2 dirToSphericalCrd(float3 direction)
     float3 p = normalize(direction);
     float2 uv;
     uv.x = (1 + atan2(-p.z, p.x) / M_PI) * 0.5;
-    uv.y = 1 - (-acos(p.y) / M_PI);
+    uv.y = acos(p.y) / M_PI;
     return uv;
 }
 
@@ -238,13 +238,6 @@ bool evalAlphaTest(uint matFlags, float alpha, float threshold, float3 posW)
     // Default to isotropic hashed alpha test
     float hashedThreshold = calculateHashedAlpha(posW, hashedAlphaScale, false);
     return evalHashedAlphaTest(alpha, threshold, hashedThreshold);
-#endif
-}
-
-void alphaTest(uint matFlags, float alpha, float threshold, float3 posW)
-{
-#ifndef _MS_DISABLE_ALPHA_TEST
-    if (evalAlphaTest(matFlags, alpha, threshold, posW)) discard;
 #endif
 }
 

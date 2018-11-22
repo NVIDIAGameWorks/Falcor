@@ -709,9 +709,6 @@ namespace Falcor
 
     void SampleTest::ShutdownFrameTask::onFrameEnd(SampleCallbacks* pSample, SampleTest* pSampleTest)
     {
-        // Write the json Test Results.
-        pSampleTest->writeJsonTestResults();
-
         // Shutdown the App.
         pSample->shutdown();
 
@@ -805,9 +802,6 @@ namespace Falcor
     {
         if (mShutdownTime <= pSample->getCurrentTime() && !mIsTaskComplete)
         {
-            // Write the json Test Results.
-            pSampleTest->writeJsonTestResults();
-
             // Shutdown the App.
             pSample->shutdown();
 

@@ -26,11 +26,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphEditor.h"
-#include "Graphics/RenderGraph/RenderPassLibrary.h"
+#include "Experimental/RenderGraph/RenderPassLibrary.h"
 #include <fstream>
+#include <experimental/filesystem>
 #include "RenderGraphEditor.h"
 
+namespace fs = std::experimental::filesystem;
+
 const char* kViewerExecutableName = "RenderGraphViewer";
+const char* kGraphFileSwitch = "graphFile";
+const char* kGraphNameSwitch = "graphname";
+const char* kEditorSwitch = "editor";
+const char* kDefaultPassIcon = "DefaultPassIcon.png";
 
 RenderGraphEditor::RenderGraphEditor()
     : mCurrentGraphIndex(0)
@@ -47,6 +54,52 @@ RenderGraphEditor::~RenderGraphEditor()
     {
         terminateProcess(mViewerProcess);
         mViewerProcess = 0;
+    }
+}
+
+void RenderGraphEditor::onLoad(SampleCallbacks* pSample, RenderContext* pRenderContext)
+{
+    const auto& argList = pSample->getArgList();
+    std::string filePath;
+    if (argList.argExists(kGraphFileSwitch))
+    {
+        filePath = argList[kGraphFileSwitch].asString();
+    }
+
+    mpDefaultIconTex = createTextureFromFile(kDefaultPassIcon, false, false);
+    pSample->toggleText(false);
+    pSample->toggleGlobalUI(false);
+
+    loadAllPassLibraries();
+
+    if (filePath.size())
+    {
+        std::string graphName;
+        if (argList.argExists(kGraphNameSwitch)) graphName = argList[kGraphNameSwitch].asString();
+
+        mViewerRunning = true;
+        loadGraphsFromFile(filePath, graphName);
+
+        if (argList.argExists(kEditorSwitch)) mUpdateFilePath = filePath;
+    }
+    else
+    {
+        createNewGraph("DefaultRenderGraph");
+    }
+}
+
+void RenderGraphEditor::onDroppedFile(SampleCallbacks* pCallbacks, const std::string& filename)
+{
+    std::string ext = getExtensionFromFile(filename);
+    if (ext == ".dll") RenderPassLibrary::instance().loadLibrary(filename);
+    else if (ext == ".py")
+    {
+        if (mViewerRunning) { msgBox("Viewer is running. Please close the viewer before loading a graph file.", MsgBoxType::Ok); }
+        else
+        {
+            loadGraphsFromFile(filename);
+            mpGraphs[mCurrentGraphIndex]->onResize(pCallbacks->getCurrentFbo().get());
+        }
     }
 }
 
@@ -74,7 +127,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
                 }
                 else
                 {
-                    if (openFileDialog("", renderGraphFilePath))
+                    if (openFileDialog({}, renderGraphFilePath))
                     {
                         loadGraphsFromFile(renderGraphFilePath);
                         mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
@@ -96,15 +149,16 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
                 if (saveGraph)
                 {
-                    std::string renderGraphFileName;
-                    if (saveFileDialog("", renderGraphFileName)) serializeRenderGraph(renderGraphFileName);
+                    std::string renderGraphFileName = mOpenGraphNames[mCurrentGraphIndex].label + ".py";
+                    if (saveFileDialog(RenderGraph::kFileExtensionFilters, renderGraphFileName)) serializeRenderGraph(renderGraphFileName);
                 }
             }
 
             if (pGui->addMenuItem("Load Pass Library"))
             {
                 std::string passLib;
-                if(openFileDialog("*.dll", passLib))
+                FileDialogFilterVec filters = { {"dll"} };
+                if(openFileDialog(filters, passLib))
                 {
                     RenderPassLibrary::instance().loadLibrary(passLib);
                 }
@@ -113,15 +167,21 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             pGui->endDropDownMenu();
         }
 
+        if (pGui->beginDropDownMenu("Window"))
+        {
+            pGui->addMenuItem("Debug Window", mShowDebugWindow);
+            pGui->endDropDownMenu();
+        }
+
         pGui->endMainMenuBar();
     }
 
     // sub window for listing available window passes
-    pGui->pushWindow("Render Passes", screenWidth / 2, screenHeight / 4 - 20, screenWidth / 4, screenHeight * 3 / 4 + 20, true);
+    pGui->pushWindow("Render Passes", screenWidth * 3 / 5, screenHeight / 4 - 20, screenWidth / 5, screenHeight * 3 / 4 + 20, true);
     if (mResetGuiWindows)
     {
-        pGui->setCurrentWindowSize(screenWidth / 2, screenHeight / 4 - 20);
-        pGui->setCurrentWindowPos(screenWidth / 4, screenHeight * 3 / 4 + 20);
+        pGui->setCurrentWindowSize(screenWidth * 3 / 5, screenHeight / 4 - 20);
+        pGui->setCurrentWindowPos(screenWidth / 5, screenHeight * 3 / 4 + 20);
     }
 
     pGui->beginColumns(5);
@@ -130,20 +190,25 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         const auto& pass = renderPasses[i];
         pGui->addRect({ 148.0f, 64.0f }, pGui->pickUniqueColor(pass.className), false);
-        pGui->addDummyItem((std::string("RenderPass##") + std::to_string(i)).c_str(), { 148.0f, 44.0f });
+        pGui->addImage((std::string("RenderPass##") + std::to_string(i)).c_str(), mpDefaultIconTex, { 148.0f, 44.0f });
         pGui->dragDropSource(pass.className, "RenderPassType", pass.className);
         pGui->addText(pass.className);
-        pGui->addTooltip(pass.desc, false);
+        pGui->addTooltip(pass.desc, true);
         pGui->nextColumn();
     }
 
     pGui->popWindow();
 
+    // diff name for this?
+    // create window for render ui.
+    pGui->pushWindow("Render UI", screenWidth * 1 / 5, screenHeight - 20, screenWidth * 4 / 5, 20, true);
+    pGui->popWindow();
+
     // push a sub GUI window for the node editor
-    pGui->pushWindow("Graph Editor", screenWidth, screenHeight * 3 / 4, 0, 20, false);
+    pGui->pushWindow("Graph Editor", screenWidth * 4 / 5, screenHeight * 3 / 4, 0, 20, false);
     if (mResetGuiWindows)
     {
-        pGui->setCurrentWindowSize(screenWidth, screenHeight * 3 / 4);
+        pGui->setCurrentWindowSize(screenWidth * 4 / 5, screenHeight * 3 / 4);
         pGui->setCurrentWindowPos(0, 20);
     }
     mRenderGraphUIs[mCurrentGraphIndex].renderUI(pGui);
@@ -155,10 +220,10 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         renderGraphUI.clearCurrentLog();
     }
     
-    pGui->pushWindow("Graph Editor Settings", screenWidth / 4, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true);
+    pGui->pushWindow("Graph Editor Settings", screenWidth / 5, screenHeight / 4 - 20, 0, screenHeight * 3 / 4 + 20, true);
     if (mResetGuiWindows)
     {
-        pGui->setCurrentWindowSize(screenWidth / 4, screenHeight / 4 - 20);
+        pGui->setCurrentWindowSize(screenWidth / 5, screenHeight / 4 - 20);
         pGui->setCurrentWindowPos(0, screenHeight * 3 / 4 + 20);
     }
 
@@ -169,9 +234,9 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
         mCurrentGraphIndex = selection;
     }
 
-    if (mFilePath.size())
+    if (mUpdateFilePath.size())
     {
-        mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mFilePath, pSample->getLastFrameTime());
+        mRenderGraphUIs[mCurrentGraphIndex].writeUpdateScriptToFile(mUpdateFilePath, pSample->getLastFrameTime());
     }
 
     if (mViewerRunning && mViewerProcess)
@@ -181,7 +246,7 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             terminateProcess(mViewerProcess);
             mViewerProcess = 0;
             mViewerRunning = false;
-            mFilePath.clear();
+            mUpdateFilePath.clear();
         }
     }
     
@@ -190,15 +255,39 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     {
         std::string currentLog;
         bool valid = mpGraphs[mCurrentGraphIndex]->isValid(currentLog);
-        mCurrentLog += (valid ? "Graph is Valid\n" : "Graph is currently invalid.\n");
-        mCurrentLog += currentLog;
+        std::string log = (valid ? "Graph is Valid\n" : "Graph is currently invalid.\n");
+        msgBox((log + currentLog).c_str());
+        mCurrentLog += log + currentLog;
     }
 
     if (pGui->addButton("Auto-Generate Edges"))
     {
-        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getExecutionOrder();
+        std::vector<uint32_t> executionOrder = mRenderGraphUIs[mCurrentGraphIndex].getPassOrder();
         mpGraphs[mCurrentGraphIndex]->autoGenEdges(executionOrder);
         mRenderGraphUIs[mCurrentGraphIndex].setToRebuild();
+    }
+
+    auto pScene = mpGraphs[mCurrentGraphIndex]->getScene();
+    if (pScene)
+    {
+        pGui->addText( (std::string("Graph Sets Scene: ") + pScene->getFilename()).c_str());
+    }
+    
+    if (pGui->addButton("Set Scene"))
+    {
+        // display warning when setting scene so that there is no confusion for overwriting default scene
+        MsgBoxButton setSceneMsg = msgBox("Note: Setting scene in graph will overwrite default scene from viewer.");
+        if (setSceneMsg == MsgBoxButton::Ok)
+        {
+            std::string filename;
+            if (openFileDialog(Scene::kFileExtensionFilters, filename))
+            {
+                filename = stripDataDirectories(filename);
+                auto pDummyScene = Scene::create(filename);
+                mpGraphs[mCurrentGraphIndex]->setScene(pDummyScene);
+                mSceneSet = true;
+            }
+        }
     }
 
     std::vector<std::string> graphOutputString{mGraphOutputEditString};
@@ -229,12 +318,13 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
         if (openViewer)
         {
-            mFilePath = getTempFilename();
-            RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mFilePath);
+            mUpdateFilePath = getTempFilename();
+            RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), mUpdateFilePath, {}, static_cast<RenderGraphExporter::ExportFlags>(mSceneSet));
             
             // load application for the editor given it the name of the mapped file
-            std::string commandLine = std::string("-tempFile ") + mFilePath + " -graphname " + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
-            mViewerProcess = executeProcess(kViewerExecutableName, commandLine);
+            std::string commandLineArgs = "-" + std::string(kEditorSwitch) + " -" + std::string(kGraphFileSwitch) + ' ' + mUpdateFilePath;
+            commandLineArgs += " -" + std::string(kGraphNameSwitch) + ' ' + std::string(mOpenGraphNames[mCurrentGraphIndex].label);
+            mViewerProcess = executeProcess(kViewerExecutableName, commandLineArgs);
             assert(mViewerProcess);
             mViewerRunning = true;
         }
@@ -242,15 +332,18 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
 
     pGui->popWindow();
 
-    pGui->pushWindow("output", screenWidth / 4, screenHeight / 4 - 20, screenWidth * 3 / 4, screenHeight * 3 / 4 + 20, true);
-    if (mResetGuiWindows)
+    if (mShowDebugWindow)
     {
-        pGui->setCurrentWindowSize(screenWidth / 4, screenHeight / 4 - 20);
-        pGui->setCurrentWindowPos(screenWidth * 3 / 4, screenHeight * 3 / 4 + 20);
+        pGui->pushWindow("output", screenWidth / 4, screenHeight / 4 - 20, screenWidth * 3 / 4, screenHeight * 3 / 4 + 20, true);
+        if (mResetGuiWindows)
+        {
+            pGui->setCurrentWindowSize(screenWidth / 4, screenHeight / 4 - 20);
+            pGui->setCurrentWindowPos(screenWidth * 3 / 4, screenHeight * 3 / 4 + 20);
+        }
+        renderLogWindow(pGui);
+        pGui->popWindow();
     }
-    renderLogWindow(pGui);
-    pGui->popWindow();
-
+    
     // pop up window for naming a new render graph
     if (mShowCreateGraphWindow)
     {
@@ -263,14 +356,14 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
             createNewGraph(mNextGraphString);
             mpGraphs[mCurrentGraphIndex]->onResize(pSample->getCurrentFbo().get());
             mNextGraphString.clear();
-            mNextGraphString.resize(255, '0');
+            mNextGraphString.resize(255, 0);
             mShowCreateGraphWindow = false;
         }
 
         if (pGui->addButton("Cancel", true))
         {
             mNextGraphString.clear();
-            mNextGraphString.resize(255, '0');
+            mNextGraphString.resize(255, 0);
             mShowCreateGraphWindow = false;
         }
 
@@ -278,6 +371,31 @@ void RenderGraphEditor::onGuiRender(SampleCallbacks* pSample, Gui* pGui)
     }
 
     mResetGuiWindows = false;
+}
+
+void RenderGraphEditor::loadAllPassLibraries()
+{
+    std::string executableDirectory = getExecutableDirectory();
+
+    // iterate through and find all render pass libraries
+    for (auto& file : fs::directory_iterator(executableDirectory))
+    {
+        std::string filename = file.path().string();
+        if (getExtensionFromFile(filename) == ".dll")
+        {
+            // check for addPasses() 
+            std::string fullpath;
+            findFileInDataDirectories(filename, fullpath);
+            DllHandle l = loadDll((fullpath + ".falcor").c_str());
+            auto pGetPass = (RenderPassLibrary::LibraryFunc)getDllProcAddress(l, "getPasses");
+            
+            if (pGetPass)
+            {
+                releaseDll(l);
+                RenderPassLibrary::instance().loadLibrary(filename);
+            }
+        }
+    }
 }
 
 void RenderGraphEditor::renderLogWindow(Gui* pGui)
@@ -288,7 +406,7 @@ void RenderGraphEditor::renderLogWindow(Gui* pGui)
 
 void RenderGraphEditor::serializeRenderGraph(const std::string& fileName)
 {
-    RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), fileName);
+    RenderGraphExporter::save(mpGraphs[mCurrentGraphIndex], mRenderGraphUIs[mCurrentGraphIndex].getName(), fileName, {});
 }
 
 void RenderGraphEditor::deserializeRenderGraph(const std::string& fileName)
@@ -325,7 +443,6 @@ void RenderGraphEditor::loadGraphsFromFile(const std::string& fileName, const st
         if (nameToIndexIt != mGraphNamesToIndex.end())
         {
              MsgBoxButton button = msgBox("Warning! Graph is already open. Update graph from file?", MsgBoxType::OkCancel);
-            
             if (button == MsgBoxButton::Ok)
             {
                 mCurrentGraphIndex = nameToIndexIt->second;
@@ -373,34 +490,7 @@ void RenderGraphEditor::createNewGraph(const std::string& renderGraphName)
     mOpenGraphNames.push_back(nextGraphID);
 }
 
-void RenderGraphEditor::onLoad(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext)
-{
-    std::vector<ArgList::Arg> commandArgs = pSample->getArgList().getValues("tempFile");
-    
-    if (commandArgs.size())
-    {
-        mFilePath = commandArgs.front().asString();
-    }
-
-    pSample->toggleText(false);
-    pSample->toggleGlobalUI(false);
-    
-    if (mFilePath.size())
-    {
-        std::vector<ArgList::Arg> graphArgs = pSample->getArgList().getValues("graphname");
-        std::string graphName;
-        if (graphArgs.size()) graphName = graphArgs[0].asString();
-
-        mViewerRunning = true;
-        loadGraphsFromFile(mFilePath, graphName);
-    }
-    else
-    {
-        createNewGraph("DefaultRenderGraph");
-    }
-}
-
-void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, const RenderContext::SharedPtr& pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+void RenderGraphEditor::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     const glm::vec4 clearColor(0.25, 0.25, 0.25 , 1);
     pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);

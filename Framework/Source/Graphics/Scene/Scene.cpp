@@ -30,6 +30,8 @@
 #include "SceneImporter.h"
 #include "glm/gtx/euler_angles.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "Utils/Gui.h"
+#include "Graphics/TextureHelper.h"
 
 namespace Falcor
 {
@@ -37,25 +39,24 @@ namespace Falcor
 
     const Scene::UserVariable Scene::kInvalidVar;
 
-    const char* Scene::kFileFormatString = "Scene files\0*.fscene\0\0";
+    const FileDialogFilterVec Scene::kFileExtensionFilters = { {"fscene", "Falcor Scene Files"} };
 
     Scene::SharedPtr Scene::loadFromFile(const std::string& filename, Model::LoadFlags modelLoadFlags, Scene::LoadFlags sceneLoadFlags)
     {
-        Scene::SharedPtr pScene = create();
+        Scene::SharedPtr pScene = create(filename);
         if (SceneImporter::loadScene(*pScene, filename, modelLoadFlags, sceneLoadFlags) == false)
         {
             pScene = nullptr;
         }
-        pScene->mFilename = filename;
         return pScene;
     }
 
-    Scene::SharedPtr Scene::create()
+    Scene::SharedPtr Scene::create(const std::string& filename)
     {
-        return SharedPtr(new Scene());
+        return SharedPtr(new Scene(filename));
     }
 
-    Scene::Scene() : mId(sSceneCounter++)
+    Scene::Scene(const std::string& filename) : mId(sSceneCounter++), mFilename(filename)
     {
         // Reset all global id counters recursively
         Model::resetGlobalIdCounter();
@@ -89,7 +90,8 @@ namespace Falcor
             }
 
             mCenter = sceneAABB.center;
-            mRadius = length(sceneAABB.extent) * 0.5f;
+            mRadius = length(sceneAABB.extent);
+            mBoundingBox = sceneAABB;
 
             // Update light extents
             for (auto& pLight : mpLights)
@@ -365,5 +367,75 @@ namespace Falcor
     void Scene::setCamerasAspectRatio(float ratio)
     {
         for (auto& c : mCameras) c->setAspectRatio(ratio);
+    }
+
+    void detachCameraFromPaths(const Camera::SharedPtr& pCamera, const std::vector<ObjectPath::SharedPtr>& paths)
+    {
+        for (auto& pPath : paths) pPath->detachObject(pCamera);
+    }
+
+    void Scene::renderUI(Gui* pGui, const char* uiGroup)
+    {
+        if (uiGroup == nullptr || pGui->beginGroup(uiGroup))
+        {
+
+            pGui->addFloatVar("Scene Unit", mSceneUnit, 0);
+            pGui->addTooltip("Scene unit in meters");
+
+            // Cameras (active, speed
+            if (pGui->beginGroup("Cameras"))
+            {
+                pGui->addIntVar("Active Camera", (int32_t&)mActiveCameraID, 0, (int32_t)mCameras.size() - 1);
+
+                if(mpPaths.size())
+                {
+                    pGui->addSeparator();
+                    pGui->addText("Camera Paths");
+                    if (pGui->addButton("Detach")) detachCameraFromPaths(mCameras[mActiveCameraID], mpPaths);
+                    pGui->addTooltip("Detach the active camera from every path it is attached to");
+                    if (pGui->addButton("Attach To", true)) mpPaths[mSelectedPath]->attachObject(mCameras[mActiveCameraID]);
+                    pGui->addIntVar("##SelectedPath", (int32_t&)mSelectedPath, 0, (int32_t)mpPaths.size() - 1, 1, true);
+                    pGui->addSeparator();
+                }
+
+                pGui->addFloatVar("Camera Speed", mCameraSpeed, 0);
+                mCameras[mActiveCameraID]->renderUI(pGui);
+                pGui->endGroup();
+            }
+
+            if (pGui->beginGroup("Lights"))
+            {
+                uint32_t i = 0;
+                auto lightUI = [&i, pGui](auto& lightVec)
+                {
+                    for (auto& pLight : lightVec)
+                    {
+                        std::string label = light_type_string(pLight->getType()) + std::to_string(i++);
+                        pLight->renderUI(pGui, label.c_str());
+                    }
+                };
+                lightUI(mpLights);
+                lightUI(mpAreaLights);
+
+                for (auto& pLight : mpLightProbes)
+                {
+                    std::string label = "LightProbe" + std::to_string(i++);
+                    pLight->renderUI(pGui, label.c_str());
+                }
+
+                if (pGui->addButton("Load EnvMap"))
+                {
+                    std::string filename;
+                    if (openFileDialog(Bitmap::getFileDialogFilters(), filename))
+                    {
+                        Texture::SharedPtr pEnvMap = createTextureFromFile(filename, false, true);
+                        if (pEnvMap) setEnvironmentMap(pEnvMap);
+                    }
+                }
+
+                pGui->endGroup();
+            }
+            if (uiGroup) pGui->endGroup();
+        }
     }
 }
