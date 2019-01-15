@@ -425,7 +425,6 @@
     <ClCompile Include="Graphics\Scene\SceneRenderer.cpp" />
     <ClCompile Include="Graphics\TextureHelper.cpp" />
     <ClCompile Include="Sample.cpp" />
-    <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="UnitTest.cpp" />
     <ClCompile Include="Utils\Bitmap.cpp" />
     <ClCompile Include="Utils\DebugDrawer.cpp" />
@@ -1065,7 +1064,6 @@
     <ClInclude Include="Graphics\TextureHelper.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Sample.h" />
-    <ClInclude Include="SampleTest.h" />
     <ClInclude Include="UnitTest.h" />
     <ClInclude Include="Utils\AABB.h" />
     <ClInclude Include="Utils\BinaryFileStream.h" />

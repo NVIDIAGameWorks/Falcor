@@ -102,6 +102,8 @@ namespace Falcor
         */
         void addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size = vec2(0), bool maintainRatio = true, bool sameLine = false);
 
+        bool addImageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio = true, bool sameLine = false);
+
         /** Display rectangle with specified color
             \param[in] size size in pixels of rectangle
             \param[in] color Optional. color as an rgba vec4
@@ -193,6 +195,11 @@ namespace Falcor
         bool addFloat3Var(const char label[], glm::vec3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false, const char* displayFormat = "%.3f");
         bool addFloat4Var(const char label[], glm::vec4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false, const char* displayFormat = "%.3f");
 
+        bool addFloatSlider(const char label[], float& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false, const char* displayFormat = "%.3f");
+        bool addFloat2Slider(const char label[], glm::vec2& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false, const char* displayFormat = "%.3f");
+        bool addFloat3Slider(const char label[], glm::vec3& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false, const char* displayFormat = "%.3f");
+        bool addFloat4Slider(const char label[], glm::vec4& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false, const char* displayFormat = "%.3f");
+
         /** Adds a checkbox.
             \param[in] label The name of the checkbox.
             \param[in] var A reference to a boolean that will be updated directly when the checkbox state changes.
@@ -263,6 +270,11 @@ namespace Falcor
         bool addInt2Var(const char label[], glm::ivec2& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
         bool addInt3Var(const char label[], glm::ivec3& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
         bool addInt4Var(const char label[], glm::ivec4& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
+
+        bool addIntSlider(const char label[], int32_t& var, int minVal = -INT32_MAX, int maxVal = INT32_MAX, bool sameLine = false);
+        bool addInt2Slider(const char label[], glm::ivec2& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
+        bool addInt3Slider(const char label[], glm::ivec3& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
+        bool addInt4Slider(const char label[], glm::ivec4& var, int32_t minVal = -INT32_MAX, int32_t maxVal = INT32_MAX, bool sameLine = false);
 
         template<typename VectorType>
         bool addFloatVecVar(const char label[], VectorType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, float step = 0.001f, bool sameLine = false);
@@ -357,7 +369,7 @@ namespace Falcor
 
         /** Create a new window on the stack
         */
-        void pushWindow(const char label[], uint32_t width = 0, uint32_t height = 0, uint32_t x = 0, uint32_t y = 0, bool showTitleBar = true, bool allowMove = true, bool focus = true);
+        void pushWindow(const char label[], uint32_t width = 0, uint32_t height = 0, uint32_t x = 0, uint32_t y = 0, bool showTitleBar = true, bool allowMove = true, bool focus = true, bool allowClose = true);
 
         /** End a window block
         */
@@ -384,6 +396,14 @@ namespace Falcor
             \return vec2 Value of window size
         */
         glm::vec2 getCurrentWindowSize();
+
+        /** Get if the window with the given label is currently open in the ui
+        */
+        bool isWindowOpen(const char label[]);
+
+        /**
+        */
+        void setWindowOpen(const char label[], bool isOpen);
 
         /** Start a new frame. Must be called at the start of each frame
         */
@@ -432,6 +452,8 @@ namespace Falcor
         uint32_t mGroupStackSize = 0;
 
         std::vector<Texture::SharedPtr> mpImages;
+        std::unordered_map<std::string, bool> mOpenWindows;
+        std::vector<uint32_t> mGroupHasWindow;
         ParameterBlockReflection::BindLocation mGuiImageLoc;
         float mScaleFactor = 1.0f;
         std::unordered_map<std::string, ImFont*> mFontMap;

@@ -42,9 +42,11 @@ public:
     void onGuiRender(SampleCallbacks* pCallbacks, Gui* pGui) override;
     void onDataReload(SampleCallbacks* pCallbacks) override;
     void onShutdown(SampleCallbacks* pCallbacks) override;
-    void onInitializeTesting(SampleCallbacks* pCallbacks) override;
-    void onBeginTestFrame(SampleTest* pSampleTest) override;
     void onDroppedFile(SampleCallbacks* pCallbacks, const std::string& filename) override;
+
+    // testing
+    void onInitializeTesting(SampleCallbacks* pCallbacks) override;
+    void onTestFrame(SampleCallbacks* pCallbacks) override;
 
 private:
     Scene::SharedPtr mpDefaultScene;
@@ -101,4 +103,5 @@ private:
     std::string mEditorScript;
     std::string mDefaultSceneName;
     std::string mDefaultImageName;
+    std::string mOutputImageDir;
 };

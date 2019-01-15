@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 
 using namespace Falcor;
 
@@ -51,9 +50,6 @@ private:
 
     static const std::string skDefaultSkyBoxTexture;
 
-    //Testing
-    void onInitializeTesting(SampleCallbacks* pSample) override;
-    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
     std::vector<uint32_t> mChangeViewFrames;
     std::vector<uint32_t>::iterator mChangeViewIt;
 };

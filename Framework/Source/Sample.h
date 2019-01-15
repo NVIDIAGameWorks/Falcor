@@ -39,7 +39,6 @@
 #include "ArgList.h"
 #include "Utils/PixelZoom.h"
 #include "Renderer.h"
-#include "SampleTest.h"
 
 namespace Falcor
 {
@@ -116,13 +115,11 @@ namespace Falcor
         std::string captureScreen(const std::string explicitFilename = "", const std::string explicitOutputDirectory = "") override;
         void shutdown() override { if (mpWindow) { mpWindow->shutdown(); } }
         
-        //Any cleanup required by renderer if its being shut down early via testing 
-        void onTestShutdown() override { mpRenderer->onTestShutdown(mpSampleTest.get()); }
-
-        //Non inherited testing functions 
+        //Non inherited testing functions
         bool initializeTesting();
-        void beginTestFrame();
-        void endTestFrame();
+        void onTestFrame();
+        //Any cleanup required by renderer if its being shut down early via testing 
+        void onTestShutdown() { mpRenderer->onTestShutdown(this); }
 
         /** Internal data structures
         */
@@ -130,6 +127,7 @@ namespace Falcor
         GraphicsState::SharedPtr mpDefaultPipelineState;    ///< The default pipeline 
         Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
         bool mFreezeTime;                                   ///< Whether global time is frozen
+        bool mFreezeRendering = false;                      ///< Freezes the renderer
         float mCurrentTime = 0;                             ///< Global time
         float mTimeScale;                                   ///< Global time scale
         ArgList mArgList;                                   ///< Arguments passed in by command line
@@ -154,7 +152,6 @@ namespace Falcor
         void renderGUI();
 
         void runInternal(const SampleConfig& config, uint32_t argc, char** argv);
-
 
         bool mVsyncOn = false;
         bool mShowText = true;
@@ -193,11 +190,14 @@ namespace Falcor
         uint32_t mSampleGuiPositionX = 20;
         uint32_t mSampleGuiPositionY = 40;
 
+        // testing
+        std::vector<uint64_t> mTestingFrames;
+        uint32_t mCurrentTestingIndex = 0;
+        uint64_t mShutdownFrame = static_cast<uint32_t>(-1);
+
         Sample(Renderer::UniquePtr& pRenderer) : mpRenderer(std::move(pRenderer)) {}
         Sample(const Sample&) = delete;
         Sample& operator=(const Sample&) = delete;
-        //Testing
-        SampleTest::UniquePtr mpSampleTest = nullptr;
     };
     enum_class_operators(SampleConfig::Flags);
 };

@@ -161,6 +161,16 @@ def main():
             errors = rPT.run_graph_pass_test(executable_filepath, args.tests_directory, args.graph_file, args.graph_name, references_dir, args.generate_missing)
         else:
             for subdir, dirs, files in os.walk(root_dir):
+                ignoreThisDir = False
+                for ignoreDir in iConfig.IgnoreDirectories[target_configuration]:
+                    ignore_abs_path = os.path.abspath(os.path.join(root_dir, str(ignoreDir)))
+                    current_abs_path = os.path.abspath(subdir)
+                    if (os.path.commonpath([ignore_abs_path]) == os.path.commonpath([ignore_abs_path, current_abs_path])):
+                        ignoreThisDir = True
+                        break;
+                if ignoreThisDir:
+                    continue
+                
                 if subdir.lower().endswith(iConfig.TestConfig['LocalTestingDir']):
                     new_errors =  rPT.run_graph_pass_test(executable_filepath, subdir, args.graph_file, args.graph_name, references_dir, args.generate_missing)
                     test_counter = test_counter + 1

@@ -441,17 +441,6 @@ void ForwardRenderer::executeFXAA(RenderContext* pContext, Fbo::SharedPtr pTarge
     }
 }
 
-void ForwardRenderer::onBeginTestFrame(SampleTest* pSampleTest)
-{
-    //  Already existing. Is this a problem?
-    auto nextTriggerType = pSampleTest->getNextTriggerType();
-    if (nextTriggerType == SampleTest::TriggerType::None)
-    {
-        SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
-        mShadowPass.pCsm->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
-    }
-}
-
 void ForwardRenderer::onFrameRender(SampleCallbacks* pSample, RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
 {
     if (mpSceneRenderer)
@@ -566,34 +555,6 @@ void ForwardRenderer::setActiveCameraAspectRatio(uint32_t w, uint32_t h)
 {
     mpSceneRenderer->getScene()->getActiveCamera()->setAspectRatio((float)w / (float)h);
 }
-
- void ForwardRenderer::onInitializeTesting(SampleCallbacks* pSample)
- {
-     auto args = pSample->getArgList();
-     std::vector<ArgList::Arg> model = args.getValues("loadmodel");
-     if (!model.empty())
-     {
-         loadModel(pSample, model[0].asString(), false);
-     }
- 
-     std::vector<ArgList::Arg> scene = args.getValues("loadscene");
-     if (!scene.empty())
-     {
-         loadScene(pSample, scene[0].asString(), false);
-     }
- 
-     std::vector<ArgList::Arg> cameraPos = args.getValues("camerapos");
-     if (!cameraPos.empty())
-     {
-         mpSceneRenderer->getScene()->getActiveCamera()->setPosition(glm::vec3(cameraPos[0].asFloat(), cameraPos[1].asFloat(), cameraPos[2].asFloat()));
-     }
- 
-     std::vector<ArgList::Arg> cameraTarget = args.getValues("cameratarget");
-     if (!cameraTarget.empty())
-     {
-         mpSceneRenderer->getScene()->getActiveCamera()->setTarget(glm::vec3(cameraTarget[0].asFloat(), cameraTarget[1].asFloat(), cameraTarget[2].asFloat()));
-     }
- }
 
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)

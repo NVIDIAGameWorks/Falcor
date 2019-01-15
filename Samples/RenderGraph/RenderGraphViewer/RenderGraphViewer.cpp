@@ -26,8 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "RenderGraphViewer.h"
+#include <experimental/filesystem>
 
 size_t RenderGraphViewer::DebugWindow::index = 0;
+namespace fs = std::experimental::filesystem;
 
 const std::string gkDefaultScene = "Arcade/Arcade.fscene";
 const char* kEditorExecutableName = "RenderGraphEditor";
@@ -37,6 +39,7 @@ const char* kImageSwitch = "image";
 const char* kGraphFileSwitch = "graphFile";
 const char* kGraphNameSwitch = "graphname";
 const char* kEditorSwitch = "editor";
+const char* kOutfileDirSwitch = "outputdir";
 
 void RenderGraphViewer::onShutdown(SampleCallbacks* pCallbacks)
 {
@@ -98,6 +101,8 @@ void RenderGraphViewer::parseArguments(SampleCallbacks* pCallbacks, const ArgLis
             mEditorProcess = kInvalidProcessId;
         }
     }
+
+    mOutputImageDir = argList.argExists(kOutfileDirSwitch) ? argList[kOutfileDirSwitch].asString() : getExecutableDirectory();
 }
 
 bool isInVector(const std::vector<std::string>& strVec, const std::string& str)
@@ -177,6 +182,7 @@ bool RenderGraphViewer::renderDebugWindow(Gui* pGui, const Gui::DropdownList& dr
     // Get the current output, in case `renderOutputUI()` unmarks it
     Texture::SharedPtr pTex = std::dynamic_pointer_cast<Texture>(mGraphs[mActiveGraph].pGraph->getOutput(data.currentOutput));
     std::string label = data.currentOutput + "##" + mGraphs[mActiveGraph].name;
+    if (!pTex) { logError("Invalid output resource. Is not a texture."); }
 
     uvec2 debugSize = (uvec2)(vec2(winSize) * vec2(0.4f, 0.55f));
     uvec2 debugPos = winSize - debugSize;
@@ -274,14 +280,13 @@ void RenderGraphViewer::onGuiRender(SampleCallbacks* pCallbacks, Gui* pGui)
         pGui->addSeparator();
         mGraphs[mActiveGraph].pGraph->renderUI(pGui, mGraphs[mActiveGraph].pGraph->getName().c_str());
     }
-
 }
 
 void RenderGraphViewer::onDroppedFile(SampleCallbacks* pCallbacks, const std::string& filename)
 {
     std::string ext = getExtensionFromFile(filename);
-    if (ext == ".fscene") loadSceneFromFile(filename, pCallbacks);
-    else if (ext == ".py") addGraphsFromFile(filename, pCallbacks);
+    if (ext == "fscene") loadSceneFromFile(filename, pCallbacks);
+    else if (ext == "py") addGraphsFromFile(filename, pCallbacks);
     logWarning("RenderGraphViewer::onDroppedFile() - Unknown file extension `" + ext + "`");
 }
 
@@ -488,6 +493,7 @@ void RenderGraphViewer::onResizeSwapChain(SampleCallbacks* pCallbacks, uint32_t 
     if (mpDefaultScene)  mpDefaultScene->setCamerasAspectRatio((float)width / (float)height);
 }
 
+// testing 
 void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pCallbacks)
 {
     auto args = pCallbacks->getArgList();
@@ -510,19 +516,25 @@ void RenderGraphViewer::onInitializeTesting(SampleCallbacks* pCallbacks)
     }
 }
 
-void RenderGraphViewer::onBeginTestFrame(SampleTest* pSampleTest)
+void RenderGraphViewer::onTestFrame(SampleCallbacks* pCallbacks)
 {
-    //  Already existing. Is this a problem?    
-    auto nextTriggerType = pSampleTest->getNextTriggerType();
-    if (nextTriggerType == SampleTest::TriggerType::None)
+    for (const std::string& outputName : mGraphs[mActiveGraph].originalOutputs)
     {
-        SampleTest::TaskType taskType = (nextTriggerType == SampleTest::TriggerType::Frame) ? pSampleTest->getNextFrameTaskType() : pSampleTest->getNextTimeTaskType();
-        RenderPass::SharedPtr pShadowPass = mGraphs[mActiveGraph].pGraph->getPass("ShadowPass");
-        if (pShadowPass != nullptr)
-        {
-            // Matt TODO this should be part of CascadedShadowMaps::Dictionary and store in the graph file
-            std::static_pointer_cast<CascadedShadowMaps>(pShadowPass)->setSdsmReadbackLatency(taskType == SampleTest::TaskType::ScreenCaptureTask ? 0 : 1);
-        }
+        std::string sceneName;
+        std::string imageName;
+
+        if (mDefaultSceneName.size())  sceneName = fs::path(getFilenameFromPath(mDefaultSceneName)).stem().string() + '_';
+        if (mDefaultImageName.size())  imageName = fs::path(getFilenameFromPath(mDefaultImageName)).stem().string() + '_';
+
+        std::string filename = mGraphs[mActiveGraph].name + '_' + sceneName + imageName + outputName + '.' + std::to_string(pCallbacks->getFrameID());
+        Texture::SharedPtr pTexture = std::dynamic_pointer_cast<Texture>(mGraphs[mActiveGraph].pGraph->getOutput(outputName));
+        if (!pTexture)  logError("Invalid output resource. Is not a texture.");
+
+        // get extension from texture resource format
+        std::string format = Bitmap::getFilExtFromResourceFormat(pTexture->getFormat());
+        std::string outputFilePath = mOutputImageDir + '/' + filename;
+        outputFilePath = replaceSubstring(outputFilePath, "\\", "/");
+        pTexture->captureToFile(0, 0, outputFilePath + '.' + format, Bitmap::getFormatFromFileExtension(format));
     }
 }
 
@@ -545,7 +557,7 @@ void RenderGraphViewer::onDataReload(SampleCallbacks* pCallbacks)
             RenderGraph::SharedPtr pGraph = g.pGraph;
             RenderGraph::SharedPtr pNewGraph;
             pNewGraph = RenderGraphImporter::import(g.name, g.filename);
-            pGraph->update(pNewGraph);
+            if(pNewGraph) pGraph->update(pNewGraph);
         }
     }
 }

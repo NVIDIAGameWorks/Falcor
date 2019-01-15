@@ -30,6 +30,8 @@
 
 namespace Falcor
 {
+    dlldecl Logger::Data gLoggerData;
+
     dlldecl void releaseSharedObjects()
     {
 #ifndef FALCOR_VK

@@ -91,8 +91,8 @@ void RenderGraphEditor::onLoad(SampleCallbacks* pSample, RenderContext* pRenderC
 void RenderGraphEditor::onDroppedFile(SampleCallbacks* pCallbacks, const std::string& filename)
 {
     std::string ext = getExtensionFromFile(filename);
-    if (ext == ".dll") RenderPassLibrary::instance().loadLibrary(filename);
-    else if (ext == ".py")
+    if (ext == "dll") RenderPassLibrary::instance().loadLibrary(filename);
+    else if (ext == "py")
     {
         if (mViewerRunning) { msgBox("Viewer is running. Please close the viewer before loading a graph file.", MsgBoxType::Ok); }
         else

@@ -6,6 +6,7 @@ import pprint
 from time import sleep
 from distutils.dir_util import copy_tree
 import shutil
+import InternalConfig as iConfig
 import MachineConfigs as machine_configs
 
 def get_executable_directory(configuration, test_set, runAsCollection):
@@ -175,7 +176,13 @@ def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuil
         subprocess.call(['make', 'All', '-j24', '-k'])
         os.chdir(prevDir)
             
-            
+def isSupportedImageExt(file):
+    for ext in iConfig.ImageExtensions:
+        if file.endswith(ext):
+            return True
+    
+    return False
+
 def dispatch_email(subject, attachments):
     dispatcher = 'NvrGfxTest@nvidia.com'
     recipients = str(open(machine_configs.machine_email_recipients, 'r').read())

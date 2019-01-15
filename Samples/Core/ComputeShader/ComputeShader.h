@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 
 using namespace Falcor;
 
@@ -49,7 +48,4 @@ private:
     Texture::SharedPtr mpTmpTexture;
     void loadImage(SampleCallbacks* pSample);
     void loadImageFromFile(SampleCallbacks* pSample, std::string file);
-
-    //testing
-    void onInitializeTesting(SampleCallbacks* pSample) override;
 };

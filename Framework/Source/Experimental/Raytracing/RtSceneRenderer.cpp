@@ -163,7 +163,7 @@ namespace Falcor
     void RtSceneRenderer::renderScene(RenderContext* pContext, RtProgramVars::SharedPtr pRtVars, RtState::SharedPtr pState, uvec3 targetDim, Camera* pCamera)
     {
         InstanceData data;
-        data.currentData.pCamera = pCamera;
+        data.currentData.pCamera = pCamera == nullptr ? mpScene->getActiveCamera().get() : pCamera;
         uint32_t hitCount = pRtVars->getHitProgramsCount();
         if (hitCount)
         {   

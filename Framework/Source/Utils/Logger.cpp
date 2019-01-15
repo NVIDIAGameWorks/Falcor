@@ -32,14 +32,7 @@
 
 namespace Falcor
 {
-#ifdef _DEBUG
-    bool Logger::sShowErrorBox = true;
-#else
-    bool Logger::sShowErrorBox = false;
-#endif
-
-    FILE* Logger::sLogFile = nullptr;
-    Logger::Level Logger::sVerbosity = Logger::Level::Warning;
+    dlldecl Logger::Data gLoggerData;
 
     static FILE* openLogFile()
     {
@@ -66,28 +59,40 @@ namespace Falcor
         return pFile;
     }
 
-    bool Logger::init()
+    bool Logger::initialize()
     {
-#if _LOG_ENABLED
-        sLogFile = openLogFile();
-        sInit = sLogFile != nullptr;
-        assert(sInit);
-#endif
-        return sInit;
+        if (gLoggerData.initialized == false)
+        {
+            gLoggerData.pLogFile = openLogFile();
+            gLoggerData.initialized = gLoggerData.pLogFile != nullptr;
+            assert(gLoggerData.initialized);
+        }
+        return true;
     }
-
-    bool Logger::sInit = Logger::init();
 
     void Logger::shutdown()
     {
-#if _LOG_ENABLED
-        if(sLogFile)
+        if (gLoggerData.initialized)
         {
-            fclose(sLogFile);
-            sLogFile = nullptr;
-            sInit = false;
+            fclose(gLoggerData.pLogFile);
+            gLoggerData.pLogFile = nullptr;
+            gLoggerData.initialized = false;
         }
-#endif
+    }
+
+    void Logger::showBoxOnError(bool showBox)
+    {
+        gLoggerData.showErrorBox = showBox;
+    }
+
+    bool Logger::isBoxShownOnError()
+    {
+        return gLoggerData.showErrorBox;
+    }
+
+    void Logger::setVerbosity(Level level)
+    {
+        gLoggerData.verbosity = level;
     }
 
     const char* getLogLevelString(Logger::Level L)
@@ -109,13 +114,13 @@ namespace Falcor
     void Logger::log(Level L, const std::string& msg, bool forceMsgBox)
     {
 #if _LOG_ENABLED
-        if(sInit)
+        if(gLoggerData.initialized)
         {
-            if(L >= sVerbosity)
+            if(L >= gLoggerData.verbosity)
             {
                 std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
-                std::fprintf(sLogFile, "%s", s.c_str());
-                fflush(sLogFile);   // Slows down execution, but ensures that the message will be printed in case of a crash
+                std::fprintf(gLoggerData.pLogFile, "%s", s.c_str());
+                fflush(gLoggerData.pLogFile);   // Slows down execution, but ensures that the message will be printed in case of a crash
                 if (isDebuggerPresent())
                 {
                     printToDebugWindow(s);
@@ -131,7 +136,7 @@ namespace Falcor
                 debugBreak();
             }
 
-            forceMsgBox = sShowErrorBox;
+            forceMsgBox = gLoggerData.showErrorBox;
         }
 
         if (forceMsgBox)

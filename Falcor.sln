@@ -70,6 +70,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PathTracer", "Samples\Raytracing\PathTracer\PathTracer.vcxproj", "{0B41644B-B687-44D8-9CD5-9D41E0011561}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		DebugD3D12|x64 = DebugD3D12|x64
@@ -268,6 +270,12 @@ Global
 		{20401FAD-6022-8EB7-2F78-41369B8F0F49}.ReleaseD3D12|x64.Build.0 = Release|x64
 		{20401FAD-6022-8EB7-2F78-41369B8F0F49}.ReleaseVK|x64.ActiveCfg = Release|x64
 		{20401FAD-6022-8EB7-2F78-41369B8F0F49}.ReleaseVK|x64.Build.0 = Release|x64
+		{0B41644B-B687-44D8-9CD5-9D41E0011561}.DebugD3D12|x64.ActiveCfg = Debug|x64
+		{0B41644B-B687-44D8-9CD5-9D41E0011561}.DebugD3D12|x64.Build.0 = Debug|x64
+		{0B41644B-B687-44D8-9CD5-9D41E0011561}.DebugVK|x64.ActiveCfg = Debug|x64
+		{0B41644B-B687-44D8-9CD5-9D41E0011561}.ReleaseD3D12|x64.ActiveCfg = Release|x64
+		{0B41644B-B687-44D8-9CD5-9D41E0011561}.ReleaseD3D12|x64.Build.0 = Release|x64
+		{0B41644B-B687-44D8-9CD5-9D41E0011561}.ReleaseVK|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -301,6 +309,7 @@ Global
 		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49} = {AC911782-AE2C-4026-9E0E-EB359ECDE830}
 		{232CBBB4-33D9-4445-BB62-08A7E7700147} = {AC911782-AE2C-4026-9E0E-EB359ECDE830}
 		{20401FAD-6022-8EB7-2F78-41369B8F0F49} = {152F0E49-0B22-4359-B8FB-BD76093D36DE}
+		{0B41644B-B687-44D8-9CD5-9D41E0011561} = {6D4D8D4B-CFFB-455A-BFFC-9490C5583150}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {357B2AE0-FE30-4AC6-8D41-B580232BC0DE}

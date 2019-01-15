@@ -264,48 +264,6 @@ void Shadows::createVisualizationProgram()
     mShadowVisualizer.pVisibilityBufferProgramVars = GraphicsVars::create(mShadowVisualizer.pVisibilityBufferProgram->getProgram()->getReflector());
 }
 
- void Shadows::onInitializeTesting(SampleCallbacks* pSample)
- {
-     auto argList = pSample->getArgList();
-     std::vector<ArgList::Arg> specifiedScene = argList.getValues("loadscene");
-     if (!specifiedScene.empty())
-     {
-         createScene(specifiedScene[0].asString());
-     }
- 
-     std::vector<ArgList::Arg> filterFrames = argList.getValues("incrementFilter");
-     if (!filterFrames.empty())
-     {
-         mFilterFrames.resize(filterFrames.size());
-         for (uint32_t i = 0; i < filterFrames.size(); ++i)
-         {
-             mFilterFrames[i] = filterFrames[i].asUint();
-         }
-     }
- 
-     //Set to first filter mode because it's going to be incrementing
-     mFilterFramesIt = mFilterFrames.begin();
-     for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-     {
-         mpCsmTech[i]->setFilterMode(CsmFilterPoint);
-     }
- }
-
- void Shadows:: onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
- {
-     uint64_t frameId = pSample->getFrameID();
-     if (mFilterFramesIt != mFilterFrames.end() && frameId >= *mFilterFramesIt)
-     {
-         ++mFilterFramesIt;
-         uint32_t nextFilterMode = mpCsmTech[0]->getFilterMode() + 1;
-         nextFilterMode = min(nextFilterMode, static_cast<uint32_t>(CsmFilterStochasticPcf));
-         for (uint32_t i = 0; i < mpScene->getLightCount(); i++)
-         {
-             mpCsmTech[i]->setFilterMode(nextFilterMode);
-         }
-     }
- }
-
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else

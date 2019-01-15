@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 
 using namespace Falcor;
 
@@ -106,9 +105,6 @@ private:
 
     static const std::string skDefaultModel;
 
-    //testing
-    void onInitializeTesting(SampleCallbacks* pSample) override;
-    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
     std::vector<uint32_t> mChangeModeFrames;
     std::vector<uint32_t>::iterator mChangeModeIt;
 };

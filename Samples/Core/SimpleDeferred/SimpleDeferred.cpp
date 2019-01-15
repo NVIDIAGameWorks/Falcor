@@ -346,33 +346,6 @@ void SimpleDeferred::resetCamera()
     }
 }
 
- void SimpleDeferred::onInitializeTesting(SampleCallbacks* pSample)
- {
-     auto argList = pSample->getArgList();
-     std::vector<ArgList::Arg> modeFrames = argList.getValues("incrementDebugMode");
-     if (!modeFrames.empty())
-     {
-         mChangeModeFrames.resize(modeFrames.size());
-         for (uint32_t i = 0; i < modeFrames.size(); ++i)
-         {
-             mChangeModeFrames[i] = modeFrames[i].asUint();
-         }
-     }
- 
-     mChangeModeIt = mChangeModeFrames.begin();
- }
- 
- void SimpleDeferred::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
- {
-     uint64_t frameId = pSample->getFrameID();
-     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
-     {
-         ++mChangeModeIt;
-         uint32_t* pMode = (uint32_t*)&mDebugMode;
-         *pMode = min(*pMode + 1, (uint32_t)ShowLighting);
-     }
- }
-
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else

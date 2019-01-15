@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 
 using namespace Falcor;
 
@@ -101,9 +100,6 @@ private:
     glm::uvec2 mWindowDimensions;
     std::vector<Texture::SharedPtr> mpVisibilityBuffers;
 
-    //Testing 
-    void onInitializeTesting(SampleCallbacks* pSample) override;
-    void onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest) override;
     std::vector<uint32_t> mFilterFrames;
     std::vector<uint32_t>::iterator mFilterFramesIt;
 };

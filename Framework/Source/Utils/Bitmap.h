@@ -105,6 +105,14 @@ namespace Falcor
             \param[in] format If set to ResourceFormat::Unknown, will return all the supported image file formats. If set to something else, will only return file types which support this format.
         */
         static FileDialogFilterVec getFileDialogFilters(ResourceFormat format = ResourceFormat::Unknown);
+
+
+        static std::string getFilExtFromResourceFormat(ResourceFormat format);
+
+        /** Get the file format flags for the image extension
+            \param[in] ext The image file extension to get the 
+        */
+        static FileFormat getFormatFromFileExtension(const std::string& ext);
     private:
         Bitmap() = default;
         uint8_t* mpData = nullptr;

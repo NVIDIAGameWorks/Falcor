@@ -1,3 +1,24 @@
+v3.2.1
+------
+- `Ctrl+Pause` freezes/unfreezes the renderer. This if useful in low framerates situations when the user wants to change an attribute using the GUI
+- File open dialog filters for images now include .hdr files for HDR formats (Bitmap::getFileDialogFilters)
+- Added ability to force execution of render passes through a flag when adding the pass to a render graph
+- GUI groups can be opened as a separate window by right-clicking on the group header bar
+- Added support for sliders in the GUI
+- Added support for buttons with images in the GUI (Gui::addImageButton)
+- Added option to include a close button when creating GUI windows
+
+New Samples:
+- PathTracer: A basic path tracer implemented using DXR and the render graph system
+
+Bug Fixes:
+- Messages logged in dll's will no longer output to a separate text file
+- Updated make_new_project.py to use Python 3 print()'s
+- Python copied from Externals to executable folder after build to be used as Python home directory
+
+Dependencies:
+- Updated Slang to 0.11.17
+
 v3.2
 ------
 - Introduced concept of Experimental Features. These features are not included by default in "Falcor.h" and are instead part of a new "FalcorExperimental.h" header. DXR is considered an experimental feature.
@@ -23,7 +44,7 @@ v3.2
 - Renamed getGeometricNormal to getGeometricNormalW to clarify it's in world space
 - Loading of GLTF models has been enabled
 
-New samples
+New Samples:
 - RenderGraphEditor: A visual, node-based tool for creating and editing render graph scripts.
 - RenderGraphViewer: Load scenes and render them with a render graph.
 - SamplePassLibrary: Demonstration of how to write render passes that compile to DLLs, and how they can be loaded from render graph scripts.
@@ -39,7 +60,7 @@ Deprecations:
 
 Dependencies:
 - Updated packman to 5.7.1
-- Updated Slang to 0.11.7
+- Updated Slang to 0.11.8
 - Updated Falcor Media to 2.2.1
 
 v3.1

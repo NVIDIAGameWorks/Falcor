@@ -162,47 +162,6 @@ bool HDRToneMapping::onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mo
     return mCameraController.onMouseEvent(mouseEvent);
 }
 
- void HDRToneMapping::onInitializeTesting(SampleCallbacks* pSample)
- {
-     auto argList = pSample->getArgList();
-     std::vector<ArgList::Arg> modeFrames = argList.getValues("changeMode");
-     if (!modeFrames.empty())
-     {
-         mChangeModeFrames.resize(modeFrames.size());
-         for (uint32_t i = 0; i < modeFrames.size(); ++i)
-         {
-             mChangeModeFrames[i] = modeFrames[i].asUint();
-         }
-     }
- 
-     mChangeModeIt = mChangeModeFrames.begin();
-     mToneMapOperatorIndex = 0;
-     mHdrImageIndex = HdrImage::EveningSun;
-     mpToneMapper->setOperator(ToneMapping::Operator::Clamp);
- }
-
- void HDRToneMapping::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
- {
-     uint64_t frameId = pSample->getFrameID();
-     if (mChangeModeIt != mChangeModeFrames.end() && frameId >= *mChangeModeIt)
-     {
-         ++mChangeModeIt;
-         if (mToneMapOperatorIndex == static_cast<uint32_t>(ToneMapping::Operator::HableUc2))
-         {
-             //Done all operators on this image, go to next image
-             mToneMapOperatorIndex = 0;
-             mHdrImageIndex = static_cast<HdrImage>(min(mHdrImageIndex + 1u, static_cast<uint32_t>(AtTheWindow)));
-             loadImage();
-         }
-         else
-         {
-             //Next operator
-             ++mToneMapOperatorIndex;
-         }
-         mpToneMapper->setOperator(static_cast<ToneMapping::Operator>(mToneMapOperatorIndex));
-     }
- }
-
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else
