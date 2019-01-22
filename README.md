@@ -1,4 +1,4 @@
-Falcor 3.2
+Falcor 3.2 [![Build Status](https://ci.appveyor.com/api/projects/status/github/NVIDIAGameWorks/Falcor?branch=master&svg=true)](https://ci.appveyor.com/project/NVIDIAGameWorks/Falcor)
 =================
 
 Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.
