@@ -41,11 +41,11 @@ void GGXGlobalIllumRayGen()
 
     // Load g-buffer data
     float4 posW = gPos[launchIndex];
-    float4 normW = gNorm[launchIndex];
+    float3 normW = gNorm[launchIndex].xyz;
     float4 diffuse = gDiffuseMatl[launchIndex];
     float4 specRough = gSpecMatl[launchIndex];
     float4 emissive = gEmissive[launchIndex];
-    float4 extraData = gExtraMatl[launchIndex];
+    float3 geomN = gExtraMatl[launchIndex].xyz;
 
     // Does this g-buffer pixel contain a valid piece of geometry?  (0 in pos.w for invalid)
     bool isGeometryValid = (posW.w != 0.0f);
@@ -55,10 +55,12 @@ void GGXGlobalIllumRayGen()
     float3 V = normalize(gCamera.posW - posW.xyz);
 
     // Make sure our normal is pointed the right direction
-    if (dot(normW.xyz, V) <= 0.0f) normW.xyz = -normW.xyz;
-    float NdotV = dot(normW.xyz, V);
+    if (dot(normW, V) <= 0.0f) normW = -normW;
 
-    float3 shadeColor = float3(0,0,0);
+    // Make sure out geometric normal is pointed in the right direction
+    if (dot(geomN, V) <= 0.0f) geomN = -geomN;
+
+    float3 shadeColor = float3(0, 0, 0);
 
     // Do shading, if we have geometry here (otherwise, output the background color)
     if (isGeometryValid)
@@ -69,7 +71,7 @@ void GGXGlobalIllumRayGen()
         // Fill out ShadingData struct with GBuffer data
         ShadingData sd = initShadingData();
         sd.posW = posW.xyz;
-        sd.N = normW.xyz;
+        sd.N = normW;
         sd.V = V;
         sd.diffuse = diffuse.rgb;
         sd.specular = specRough.rgb;
@@ -80,7 +82,7 @@ void GGXGlobalIllumRayGen()
         if (gDoDirectGI) shadeColor += ggxDirect(randSeed, sd);
 
         // Indirect lighting for global illumination
-        if (gDoIndirectGI && (gMaxDepth > 0)) shadeColor += ggxIndirect(randSeed, sd);
+        if (gDoIndirectGI && (gMaxDepth > 0)) shadeColor += ggxIndirect(randSeed, sd, geomN);
 
         // Zero out any bad samples
         bool colorsNan = any(isnan(shadeColor));

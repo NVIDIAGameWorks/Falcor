@@ -61,5 +61,7 @@ void IndirectClosestHit(inout IndirectRayPayload rayData, BuiltInTriangleInterse
     if (gDoDirectGI) rayData.color += ggxDirect(rayData.rndSeed, sd);
 
     // Do indirect illumination at this hit location (if we haven't traversed too far)
-    if (rayData.rayDepth < gMaxDepth) rayData.color += ggxIndirect(rayData.rndSeed, sd, rayData.rayDepth);
+    // Indirect bounces after the first will not check against geometric normals (and therefore possibly leak light) because
+    //  prepareShadingData does not provide that information. This will still produce a good enough result.
+    if (rayData.rayDepth < gMaxDepth) rayData.color += ggxIndirect(rayData.rndSeed, sd, sd.N, rayData.rayDepth);
 }

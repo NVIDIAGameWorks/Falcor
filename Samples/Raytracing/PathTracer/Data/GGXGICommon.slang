@@ -165,17 +165,17 @@ float probabilityToSampleDiffuse(float3 difColor, float3 specColor)
 
 /** Evaluates indirect lighting up to a bounce count specified by gMaxDepth. Initial call should leave rayDepth = 0.
 */
-float3 ggxIndirect(inout uint rndSeed, ShadingData sd, uint rayDepth = 0)
+float3 ggxIndirect(inout uint rndSeed, ShadingData sd, float3 geomN, uint rayDepth = 0)
 {
     // We have to decide whether we sample our diffuse or specular/ggx lobe.
     float probDiffuse = probabilityToSampleDiffuse(sd.diffuse, sd.specular);
     float chooseDiffuse = (rand_next(rndSeed) < probDiffuse);
     float2 randVal = float2(rand_next(rndSeed), rand_next(rndSeed));
 
-    // We'll need NdotV for both diffuse and specular...
+    // We'll need NdotV for both diffuse and specular
     float NdotV = saturate(dot(sd.N, sd.V));
 
-    // If we randomly selected to sample our diffuse lobe...
+    // If we randomly selected to sample our diffuse lobe
     if (chooseDiffuse)
     {
         // Shoot a randomly selected cosine-sampled diffuse ray.
@@ -183,9 +183,9 @@ float3 ggxIndirect(inout uint rndSeed, ShadingData sd, uint rayDepth = 0)
         float3 bounceColor = shootIndirectRay(sd.posW, L, gMinT, 0, rndSeed, rayDepth);
 
         // Check to make sure our randomly selected, normal mapped diffuse ray didn't go below the surface.
-        if (dot(sd.N, L) <= 0.0f) bounceColor = float3(0, 0, 0);
+        if (dot(geomN, L) <= 0.0f) bounceColor = float3(0, 0, 0);
 
-        // Accumulate the color: (NdotL * incomingLight * diff / pi) 
+        // Accumulate the color: (NdotL * incomingLight * diff / pi)
         // Probability of sampling:  (NdotL / pi) * probDiffuse
         return bounceColor * sd.diffuse / probDiffuse;
     }
@@ -202,7 +202,7 @@ float3 ggxIndirect(inout uint rndSeed, ShadingData sd, uint rayDepth = 0)
         float3 bounceColor = shootIndirectRay(sd.posW, L, gMinT, 0, rndSeed, rayDepth);
 
         // Check to make sure our randomly selected, normal mapped diffuse ray didn't go below the surface.
-        if (dot(sd.N, L) <= 0.0f) bounceColor = float3(0, 0, 0);
+        if (dot(geomN, L) <= 0.0f) bounceColor = float3(0, 0, 0);
 
         // Compute some dot products needed for shading
         float NdotL = saturate(dot(sd.N, L));

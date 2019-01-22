@@ -78,7 +78,7 @@ GBufferRaster::GBufferRaster() : RenderPass("GBufferRaster")
 {
     mpGraphicsState = GraphicsState::create();
 
-    mRaster.pProgram = GraphicsProgram::createFromFile(kFileRasterPrimary, "vs", "ps");
+    mRaster.pProgram = GraphicsProgram::createFromFile(kFileRasterPrimary, "", "ps");
 
     // Initialize graphics state
     mRaster.pState = GraphicsState::create();
