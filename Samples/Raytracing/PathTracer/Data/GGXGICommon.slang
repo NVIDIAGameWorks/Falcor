@@ -25,12 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
-__import Raytracing;
-__import Shading;
-__import BRDF;
-__import Lights;
-__import Helpers;
+import ShaderCommon;
+import Raytracing;
+import Shading;
+import BRDF;
+import Lights;
+import Helpers;
 #include "HostDeviceSharedMacros.h"
 #include "HostDeviceData.h"
 

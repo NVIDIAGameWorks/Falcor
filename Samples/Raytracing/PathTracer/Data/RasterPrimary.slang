@@ -25,8 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
-__import Shading;           // Imports ShaderCommon and DefaultVS, plus material evaluation
+import Shading;
+import DefaultVS;
 __import DefaultVS;         // VertexOut declaration
 
 #include "VertexAttrib.h"

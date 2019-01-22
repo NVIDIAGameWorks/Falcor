@@ -179,6 +179,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
     SampleConfig config;
     config.windowDesc.title = "Path Tracer";
     config.windowDesc.resizableWindow = true;
+    config.freezeTimeOnStartup = true;
     Sample::run(config, pRenderer);
     return 0;
 }

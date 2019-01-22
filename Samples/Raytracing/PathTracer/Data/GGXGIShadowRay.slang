@@ -25,9 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-__import ShaderCommon;
-__import Raytracing;
-__import GGXGICommon;
+import ShaderCommon;
+import Raytracing;
+import GGXGICommon;
 
 // What code is executed when our ray misses all geometry?
 [shader("miss")]
