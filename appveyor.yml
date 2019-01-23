@@ -14,7 +14,7 @@ artifacts:
  - name: "Falcor.lib (x64)"
    path: Bin\Int\x64\Release*\Lib\Falcor.lib
  - name: "FalcorSharedObjects.lib (x64)"
-   path: lib.zip
+   path: Bin\x64\Release\FalcorSharedObjects.lib
  - name: "All release .lib files (x64)"
    path: lib.zip
  - name: "All release .exe files (x64)"
