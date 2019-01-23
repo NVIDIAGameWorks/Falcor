@@ -7,4 +7,4 @@ build:
   project: Falcor.sln
 
 artifacts:
- - path: cmake_build\Release*\**\*.*
+ - path: cmake_build\**\Release*\**\*.*
