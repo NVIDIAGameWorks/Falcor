@@ -6,6 +6,16 @@ configuration:
 build:
   project: Falcor.sln
 
+before_package:
+ - 7z a lib1.zip Bin\**\Release*\**\*.lib
+ - 7z a exe1.zip Bin\**\Release*\**\*.exe
+ - 7z a lib2.zip .\Bin\**\Release*\**\*.lib
+ - 7z a exe2.zip .\Bin\**\Release*\**\*.exe
+ 
 artifacts:
+ - path: exe1.zip
+ - path: lib1.zip
+ - path: exe2.zip
+ - path: lib2.zip
  - path: Bin\**\Release*\**\*.exe
  - path: Bin\**\Release*\**\*.lib
