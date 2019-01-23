@@ -7,5 +7,5 @@ build:
   project: Falcor.sln
 
 artifacts:
- - path: falcor\**\Release*\**\*.exe
- - path: falcor\**\Release*\**\*.lib
+ - path: Bin\**\Release*\**\*.exe
+ - path: Bin\**\Release*\**\*.lib
