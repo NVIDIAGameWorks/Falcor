@@ -1,8 +1,10 @@
 image: Visual Studio 2017
-configuration: Release
+configuration:
+ - ReleaseD3D12
+ - ReleaseVK
 
 build:
   project: Falcor.sln
 
 artifacts:
- - path: cmake_build\Release\*.*
+ - path: cmake_build\Release*\**\*.*
