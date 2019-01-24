@@ -17,7 +17,7 @@ Bug Fixes:
 - Python copied from Externals to executable folder after build to be used as Python home directory
 
 Dependencies:
-- Updated Slang to 0.11.18
+- Updated Slang to 0.11.21
 
 v3.2
 ------
