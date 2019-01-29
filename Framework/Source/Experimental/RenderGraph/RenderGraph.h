@@ -48,6 +48,12 @@ namespace Falcor
 
         ~RenderGraph();
 
+        enum class PassFlags
+        {
+            None =           0x0,
+            ForceExecution = 0x1,
+        };
+
         /** Create a new object
         */
         static SharedPtr create(const std::string& name = "");
@@ -58,7 +64,7 @@ namespace Falcor
 
         /** Add a render-pass. The name has to be unique, otherwise the call will be ignored
         */
-        uint32_t addPass(const RenderPass::SharedPtr& pPass, const std::string& passName);
+        uint32_t addPass(const RenderPass::SharedPtr& pPass, const std::string& passName, PassFlags passFlags = PassFlags::None);
 
         /** Get a render-pass
         */
@@ -210,6 +216,7 @@ namespace Falcor
         {
             std::string nodeName;
             RenderPass::SharedPtr pPass;
+            PassFlags passFlags;
         };
 
         uint32_t getEdge(const std::string& src, const std::string& dst);
@@ -262,4 +269,5 @@ namespace Falcor
     };
 
     dlldecl std::vector<RenderGraph*> gRenderGraphs;
+    enum_class_operators(RenderGraph::PassFlags);
 }

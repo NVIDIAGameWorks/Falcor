@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 #include "ForwardRendererSceneRenderer.h"
 
 using namespace Falcor;
@@ -42,10 +41,6 @@ public:
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
     void onDroppedFile(SampleCallbacks* pSample, const std::string& filename) override;
-
-    //Testing
-    void onInitializeTesting(SampleCallbacks* pSample) override;
-    void onBeginTestFrame(SampleTest* pSampleTest) override;
 
 private:
     Fbo::SharedPtr mpMainFbo;

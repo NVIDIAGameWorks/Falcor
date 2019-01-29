@@ -202,16 +202,16 @@ namespace Falcor
         return FIT_BITMAP;
     }
     
-    Bitmap::FileFormat getFormatFromFileExtension(const std::string& ext)
+    Bitmap::FileFormat Bitmap::getFormatFromFileExtension(const std::string& ext)
     {
         // This array is in the order of the enum
         static const char* kExtensions[] = {
-            /* PngFile */ ".png",
-            /*JpegFile */ ".jpg",
-            /* TgaFile */ ".tga",
-            /* BmpFile */ ".bmp",
-            /* PfmFile */ ".pfm",
-            /* ExrFile */ ".exr"
+            /* PngFile */ "png",
+            /*JpegFile */ "jpg",
+            /* TgaFile */ "tga",
+            /* BmpFile */ "bmp",
+            /* PfmFile */ "pfm",
+            /* ExrFile */ "exr"
         };
 
         for (uint32_t i = 0 ; i < arraysize(kExtensions) ; i++)
@@ -239,6 +239,7 @@ namespace Falcor
 
         if (showHdr)
         {
+            filters.push_back({"hdr", "High Dynamic Range"});
             filters.push_back({"exr", "High Dynamic Range"});
             filters.push_back({"pfm", "Portable Float Map"});
         }
@@ -251,6 +252,12 @@ namespace Falcor
             filters.push_back({ "tga", "Truevision Graphics Adapter" });
         }
         return filters;
+    }
+
+    std::string Bitmap::getFilExtFromResourceFormat(ResourceFormat format)
+    {
+        auto filters = getFileDialogFilters(format);
+        return filters.front().ext;
     }
 
     void Bitmap::saveImageDialog(const Texture::SharedPtr& pTexture)

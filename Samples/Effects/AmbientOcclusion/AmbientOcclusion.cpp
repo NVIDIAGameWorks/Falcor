@@ -154,7 +154,7 @@ void AmbientOcclusion::onResizeSwapChain(SampleCallbacks* pSample, uint32_t widt
     mpCamera->setAspectRatio((float)width / (float)height);
 
     Fbo::Desc fboDesc;
-    fboDesc.setColorTarget(0, Falcor::ResourceFormat::RGBA8Unorm).setColorTarget(1, Falcor::ResourceFormat::RGBA8Unorm).setDepthStencilTarget(Falcor::ResourceFormat::D24UnormS8);
+    fboDesc.setColorTarget(0, Falcor::ResourceFormat::RGBA8Unorm).setColorTarget(1, Falcor::ResourceFormat::RGBA8Unorm).setDepthStencilTarget(Falcor::ResourceFormat::D32Float);
     mpGBufferFbo = FboHelper::create2D(width, height, fboDesc);
 }
 

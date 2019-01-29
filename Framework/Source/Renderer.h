@@ -110,11 +110,6 @@ namespace Falcor
         */
         virtual void shutdown() = 0;
 
-        /** Callback for anything the renderer wants to do right before 
-            early shutdown requested by testing
-        */
-        virtual void onTestShutdown() = 0;
-
         /** Stop the timer
         */
         virtual void freezeTime(bool timeFrozen) = 0;
@@ -178,21 +173,21 @@ namespace Falcor
         */
         virtual void onDroppedFile(SampleCallbacks* pCallbacks, const std::string& filename) {}
 
-        /** Callback for anything the tested renderer needs to do to initialize testing 
+        /** Callback for anything the tested renderer needs to do to initialize testing
+            Will only be called if testing has been activated
         */
         virtual void onInitializeTesting(SampleCallbacks* pCallbacks) {};
 
-        /** Callback for anything the tested renderer wants to do before the frame renders
+        /** Callback for anything the tested renderer wants to do on test frames
+            Will only be called if testing frames exist.
+            Called after onFrameRender() and before onGuiRender(). 
         */
-        virtual void onBeginTestFrame(SampleTest* pSampleTest) {};
-
-        /** Callback for anything the tested renderer wants to do after the frame renders
-        */
-        virtual void onEndTestFrame(SampleCallbacks* pCallbacks, SampleTest* pSampleTest) {};
+        virtual void onTestFrame(SampleCallbacks* pSampleTest) {};
 
         /** Callback for anything the tested renderer wants to do right before shutdown
+            Will only be called if testing frames exist
         */
-        virtual void onTestShutdown(SampleTest* pSampleTest) {};
+        virtual void onTestShutdown(SampleCallbacks* pSampleTest) {};
 
         // Deleted copy operators (copy a pointer type!)
         Renderer(const Renderer&) = delete;

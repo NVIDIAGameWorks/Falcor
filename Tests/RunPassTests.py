@@ -23,7 +23,7 @@ class TestsSetError(Exception):
 def run_test_run(executable_filepath, current_arguments, output_file_base_name, output_directory):
     try:
         # Start the process and record the time.
-        cmd_line = executable_filepath  + ' ' + current_arguments + ' -outputfilename ' + output_file_base_name + ' -outputdir ' + output_directory
+        cmd_line = executable_filepath  + ' ' + current_arguments + ' -outputdir ' + output_directory
         process = subprocess.Popen(cmd_line.split())
         start_time = time.time()
 
@@ -351,6 +351,16 @@ def main():
         else:
             
             for subdir, dirs, files in os.walk(root_dir):
+                ignoreThisDir = False
+                for ignoreDir in iConfig.IgnoreDirectories[target_configuration]:
+                    ignore_abs_path = os.path.abspath(os.path.join(root_dir, str(ignoreDir)))
+                    current_abs_path = os.path.abspath(subdir)
+                    if (os.path.commonpath([ignore_abs_path]) == os.path.commonpath([ignore_abs_path, current_abs_path])):
+                        ignoreThisDir = True
+                        break;
+                if ignoreThisDir:
+                    continue
+                
                 if subdir.lower().endswith('testing'):
                     new_errors = run_graph_pass_test(executable_filepath, subdir, args.graph_file, args.graph_name, results_dir, False)
                     for error_key in new_errors.keys():

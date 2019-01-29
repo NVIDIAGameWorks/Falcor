@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+import Helpers as helpers
 import InternalConfig as iConfig
 
 def default_comparison(result_image, result_image_dir, reference_image, screen_captures_results):
@@ -69,14 +70,16 @@ def compare_all_images(results_dir, reference_dir, comparison_func):
     screen_captures_results = {}
     screen_captures_results['Success'] = True
     
-    num_tests = len(iConfig.TestConfig['Times'])
+    num_tests = len(iConfig.TestConfig['Frames'])
     
     # make sure that expected references exist for the run tests
     for subdir, dirs, files in os.walk(results_dir):
         for file in files:
-            if not file.endswith('.png'):
+            if not helpers.isSupportedImageExt(file):
+                # .html or .txt files from the previous should already be deleted here
+                print('[FAILED] Unsupported reference file type from: ' + file)
                 continue
-                
+            
             result_file = os.path.join( subdir, file)
             relative_file_path = result_file[len(results_dir) + 1 : len(result_file)]
             reference_file = os.path.join(reference_dir, relative_file_path)
@@ -86,25 +89,22 @@ def compare_all_images(results_dir, reference_dir, comparison_func):
 
     for subdir, dirs, files in os.walk(reference_dir):
         for file in files:
-            if not file.endswith('.png'):
+            if not helpers.isSupportedImageExt(file):
+                print('[FAILED] Unsupported reference file type from: ' + file)
                 continue
             
             reference_file = os.path.join( subdir, file)
             
-            # test if we have more references than what the test will produce
-            splitFile = file.split('.')
-            if (num_tests <= int(splitFile[len(splitFile) - 2])):
-                print('Error: Incorrect number of reference files: More than ' + str(num_tests) + ' reference files for this test exist! \n')
-            else:
-                # make sure there is a subsequent file in results_dir
-                relative_file_path = reference_file[len(reference_dir) + 1 : len(reference_file)]
-                results_file = os.path.join(results_dir, relative_file_path)
-                if (not os.path.exists(results_file)):
-                    print('Result file: ' + results_file + ' does not exist')
-                status = comparison_func(results_file, os.path.split(results_file)[0], reference_file, screen_captures_results)
-                if not status:
-                    # add early out option?
-                    print('Error: Test failed on comparison between ' +  results_file + ' and reference ' + reference_file)
+            # checks that results and references have same number of images
+            # make sure there is a subsequent file in results_dir
+            relative_file_path = reference_file[len(reference_dir) + 1 : len(reference_file)]
+            results_file = os.path.join(results_dir, relative_file_path)
+            if (not os.path.exists(results_file)):
+                print('Result file: ' + results_file + ' does not exist')
+            status = comparison_func(results_file, os.path.split(results_file)[0], reference_file, screen_captures_results)
+            if not status:
+                # add early out option?
+                print('Error: Test failed on comparison between ' +  results_file + ' and reference ' + reference_file)
         
     
     return screen_captures_results

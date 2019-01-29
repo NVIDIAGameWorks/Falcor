@@ -92,49 +92,6 @@ void SkyBoxRenderer::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width,
     mpCamera->setDepthRange(0.01f, 1000);
 }
 
- void SkyBoxRenderer::onInitializeTesting(SampleCallbacks* pSample)
- {
-     auto argList = pSample->getArgList();
-     std::vector<ArgList::Arg> viewFrames = argList.getValues("changeView");
-     if (!viewFrames.empty())
-     {
-         mChangeViewFrames.resize(viewFrames.size());
-         for (uint32_t i = 0; i < viewFrames.size(); ++i)
-         {
-             mChangeViewFrames[i] = viewFrames[i].asUint();
-         }
-     }
- 
-     mChangeViewIt = mChangeViewFrames.begin();
- }
-
- void SkyBoxRenderer::onEndTestFrame(SampleCallbacks* pSample, SampleTest* pSampleTest)
- {
-     //initial target is (0, 0, -1)
-     static uint32_t targetIndex = 0;
-     static const uint32_t numTargets = 5;
-     static const vec3 targets[numTargets] = {
-         vec3(0,  0, 1),
-         vec3(0.1,  0.9, 0), //camera doesn't like looking directly up or down
-         vec3(-0.1, -0.9, 0),
-         vec3(1,  0, 0),
-         vec3(-1, 0, 0) 
-     };
- 
-     uint64_t frameId = pSample->getFrameID();
-     if (mChangeViewIt != mChangeViewFrames.end() && frameId >= *mChangeViewIt)
-     {
-         ++mChangeViewIt;
-         mpCamera->setTarget(targets[targetIndex]);
-         ++targetIndex;
-         //wrap around so it doesn't crash if too many args are given
-         if (targetIndex == numTargets)
-         {
-             targetIndex = 0;
-         }
-     }
- }
-
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else

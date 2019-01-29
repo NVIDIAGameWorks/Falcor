@@ -80,7 +80,7 @@ namespace Falcor
         }
     }
 
-    uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName)
+    uint32_t RenderGraph::addPass(const RenderPass::SharedPtr& pPass, const std::string& passName, PassFlags passFlags)
     {
         assert(pPass);
         uint32_t passIndex = getPassIndex(passName);
@@ -97,7 +97,7 @@ namespace Falcor
         auto passChangedCB = [this]() {mRecompile = true; };
         pPass->setPassChangedCB(passChangedCB);
         pPass->setScene(mpScene);
-        mNodeData[passIndex] = { passName, pPass };
+        mNodeData[passIndex] = { passName, pPass, passFlags };
         mRecompile = true;
         return passIndex;
     }
@@ -359,9 +359,6 @@ namespace Falcor
     {
         std::vector<const NodeData*> nodeVec;
         
-        // If there are no marked graph outputs, is not valid
-        if (!mOutputs.size()) return false;
-
         for (uint32_t i = 0; i < mpGraph->getCurrentNodeId(); i++)
         {
             if (mpGraph->doesNodeExist(i))
@@ -413,6 +410,8 @@ namespace Falcor
         // Find out which passes are mandatory
         std::unordered_set<uint32_t> mandatoryPasses;
         for (auto& o : mOutputs) mandatoryPasses.insert(o.nodeId); // Add direct-graph outputs
+        for (auto& n : mNodeData) if (is_set(n.second.passFlags, PassFlags::ForceExecution)) mandatoryPasses.insert(n.first); // Add the force-execution passes
+
         for (auto& e : mEdgeData) // Add all the passes which have an execution-edge connected to them
         {
             if (e.second.dstField.empty())
@@ -682,11 +681,12 @@ namespace Falcor
         {
             // if same name and type
             RenderPass::SharedPtr pRenderPass = pGraph->mNodeData[nameIndexPair.second].pPass;
+            PassFlags flags = pGraph->mNodeData[nameIndexPair.second].passFlags;
             std::string passTypeName = pRenderPass->getName();
 
-            if (!doesPassExist(nameIndexPair.first))
+            if (!doesPassExist(nameIndexPair.first) || mNodeData[nameIndexPair.second].passFlags != flags)
             { 
-                addPass(pRenderPass, nameIndexPair.first);
+                addPass(pRenderPass, nameIndexPair.first, flags);
             }
         }
 
@@ -732,6 +732,9 @@ namespace Falcor
                 addEdge(src, dst);
             }
         }
+
+        // mark all unmarked outputs from referenced graph
+        for (uint32_t i = 0; i < pGraph->getOutputCount(); ++i) { markOutput(pGraph->getOutputName(i)); }
     }
 
     bool RenderGraph::setInput(const std::string& name, const std::shared_ptr<Resource>& pResource)
@@ -979,14 +982,7 @@ namespace Falcor
             {
                 if(pGui->beginGroup("Scene Settings"))
                 {
-                    uint32_t w = (uint32_t)(mSwapChainData.width * 0.35f);
-                    uint32_t h = (uint32_t)(mSwapChainData.height * 0.5f);
-                    uint32_t y = 20;
-                    uint32_t x = (mSwapChainData.width - w) / 2;
-
-                    pGui->pushWindow("Scene Settings", w, h, x, y);
                     mpScene->renderUI(pGui);
-                    pGui->popWindow();
                     pGui->endGroup();
                 }
                 pGui->addSeparator();
@@ -1005,15 +1001,7 @@ namespace Falcor
                 if (desc.size()) pGui->addTooltip(desc.c_str());
                 if (groupOpen)
                 {
-                    uint32_t w = (uint32_t)(mSwapChainData.width * 0.25f);
-                    uint32_t h = (uint32_t)(mSwapChainData.height * 0.4f);
-                    uint32_t y = 20;
-                    uint32_t x = mSwapChainData.width - w - 20;
-
-                    pGui->pushWindow(pass.nodeName.c_str(), w, h, x, y);
-
-                    pass.pPass->renderUI(pGui, nullptr);
-                    pGui->popWindow();
+                    pass.pPass->renderUI(pGui, nullptr);   
                     pGui->endGroup();
                 }
             }

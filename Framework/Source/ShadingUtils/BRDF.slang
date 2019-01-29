@@ -36,7 +36,9 @@ __import Lights;
 #define DiffuseBrdfDisney       1
 #define DiffuseBrdfFrostbite    2
 
+#ifndef DiffuseBrdf
 #define DiffuseBrdf DiffuseBrdfFrostbite
+#endif
 
 float3 fresnelSchlick(float3 f0, float3 f90, float u)
 {
@@ -106,13 +108,12 @@ float evalSmithGGX(float NdotL, float NdotV, float roughness)
     float ggxv = NdotL * sqrt((-NdotV * a2 + NdotV) * NdotV + a2);
     float ggxl = NdotV * sqrt((-NdotL * a2 + NdotL) * NdotL + a2);
     return 0.5f / (ggxv + ggxl);
-
 }
 
 float3 evalSpecularBrdf(ShadingData sd, LightSample ls)
 {
     float roughness = sd.roughness;
-    
+
     float D = evalGGX(roughness, ls.NdotH);
     float G = evalSmithGGX(ls.NdotL, sd.NdotV, roughness);
     float3 F = fresnelSchlick(sd.specular, 1, max(0, ls.LdotH));

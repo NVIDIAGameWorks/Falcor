@@ -92,7 +92,7 @@ $(shell pkg-config --cflags libavcodec libavdevice libavformat libswscale libavu
 
 ADDITIONAL_LIB_DIRS = -L "Bin/" \
 -L "Framework/Externals/OpenVR/lib" \
--L "Framework/Externals/Slang/bin/linux-x86_64/release" \
+-L "Framework/Externals/Slang/bin/linux-x64/release" \
 -L "$(VULKAN_SDK)/lib"
 
 LIBS = -lfalcor -lfalcorshared \
@@ -161,7 +161,7 @@ endef
 define MoveFalcorData
 	$(call MoveProjectData,Framework/Source/,$(1))
 	@cp -r Framework/Source/ShadingUtils/* $(1)/Data/
-	@cp Framework/Externals/Slang/bin/linux-x86_64/release/*.so $(1)
+	@cp Framework/Externals/Slang/bin/linux-x64/release/*.so $(1)
 endef
 
 # Copies the "Data" folder inside the directory specified by Source path to the Destination path

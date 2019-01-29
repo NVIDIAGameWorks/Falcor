@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 #include "Utils/Picking/Picking.h"
 
 using namespace Falcor;

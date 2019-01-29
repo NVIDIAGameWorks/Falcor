@@ -392,12 +392,40 @@ namespace Falcor
 
     bool Gui::beginGroup(const char name[], bool beginExpanded)
     {
-        ImGuiTreeNodeFlags flags = beginExpanded ? ImGuiTreeNodeFlags_DefaultOpen :  0;
-        bool visible = mGroupStackSize ? ImGui::TreeNode(name) : ImGui::CollapsingHeader(name, flags);
+        std::string nameString(name);
+        ImGuiTreeNodeFlags flags = beginExpanded ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+        if (mOpenWindows[nameString]) ImGui::SetNextTreeNodeOpen(true);
+        bool visible = mGroupStackSize ? ImGui::TreeNodeEx(name, flags) : ImGui::CollapsingHeader(name, flags);
         if (visible)
         {
             mGroupStackSize++;
         }
+
+        std::string popupName = std::string("HeaderOptions##") + nameString;
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1)) { ImGui::OpenPopup(popupName.c_str()); }
+
+        if (ImGui::BeginPopup(popupName.c_str()))
+        {
+            if (ImGui::Button("Open in Window"))
+            {
+                mOpenWindows[nameString] = true;
+                ImGui::CloseCurrentPopup();
+            }
+            if(ImGui::Button("Cancel")) { ImGui::CloseCurrentPopup();}
+            ImGui::EndPopup();
+        }
+
+        if (visible && mOpenWindows.find(nameString) != mOpenWindows.end())
+        {
+            const ImGuiIO& io = ImGui::GetIO();
+            uint32_t w = (uint32_t)(io.DisplaySize.x * 0.25f);
+            uint32_t h = (uint32_t)(io.DisplaySize.y * 0.4f);
+            uint32_t y = 20;
+            uint32_t x = static_cast<uint32_t>(io.DisplaySize.x) - w - 20;
+            pushWindow(name, w, h, x, y, true, true, true, true);
+            mGroupHasWindow.push_back(mOpenWindows[nameString]);
+        }
+
         return visible;
     }
 
@@ -405,10 +433,16 @@ namespace Falcor
     {
         assert(mGroupStackSize >= 1);
         mGroupStackSize--;
+
+        if (mGroupHasWindow.back())
+        {
+            popWindow();
+        }
         if (mGroupStackSize)
         {
             ImGui::TreePop();
         }
+        mGroupHasWindow.pop_back();
     }
 
     bool Gui::addFloatVar(const char label[], float& var, float minVal, float maxVal, float step, bool sameLine, const char* displayFormat)
@@ -476,6 +510,50 @@ namespace Falcor
         var = clamp(var, minVal, maxVal);
         return b;
     }
+
+    bool Gui::addIntSlider(const char label[], int32_t& var, int minVal, int maxVal, bool sameLine)
+    {
+        ImGui::PushItemWidth(200);
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::SliderInt(label, &var, minVal, maxVal);
+        var = clamp(var, minVal, maxVal);
+        ImGui::PopItemWidth();
+        return b;
+    }
+
+    bool Gui::addFloatSlider(const char label[], float& var, float minVal, float maxVal, bool sameLine, const char* displayFormat)
+    {
+        if (sameLine) ImGui::SameLine();
+        bool b = ImGui::SliderFloat(label, &var, minVal, maxVal);
+        var = clamp(var, minVal, maxVal);
+        return b;
+    }
+
+#define add_int_slider(FuncName, SliderFunc, TypeName, Type) \
+    bool Gui::FuncName(const char label[], TypeName& var, Type minVal, Type maxVal, bool sameLine) \
+    {\
+        if (sameLine) ImGui::SameLine();\
+        bool b = ImGui::SliderFunc(label, glm::value_ptr(var), minVal, maxVal);\
+        var = clamp(var, minVal, maxVal);\
+        return b;\
+    }
+
+    add_int_slider(addInt2Slider, SliderInt2, glm::ivec2, int32_t);
+    add_int_slider(addInt3Slider, SliderInt3, glm::ivec3, int32_t);
+    add_int_slider(addInt4Slider, SliderInt4, glm::ivec4, int32_t);
+
+#define add_float_slider(FuncName, SliderFunc, TypeName, Type) \
+    bool Gui::FuncName(const char label[], TypeName& var, Type minVal, Type maxVal, bool sameLine, const char* displayFormat) \
+    {\
+        if (sameLine) ImGui::SameLine();\
+        bool b = ImGui::SliderFunc(label, glm::value_ptr(var), minVal, maxVal);\
+        var = clamp(var, minVal, maxVal);\
+        return b;\
+    }
+
+    add_float_slider(addFloat2Slider, SliderFloat2, glm::vec2, float);
+    add_float_slider(addFloat3Slider, SliderFloat3, glm::vec3, float);
+    add_float_slider(addFloat4Slider, SliderFloat4, glm::vec4, float);
 
     template <>
     bool Gui::addFloatVecVar<glm::vec2>(const char label[], glm::vec2& var, float minVal, float maxVal, float step, bool sameLine)
@@ -685,6 +763,13 @@ namespace Falcor
         ImGui::PopID();
     }
 
+    bool Gui::addImageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
+    {
+        mpImages.push_back(pTex);
+        float aspectRatio = maintainRatio ? (static_cast<float>(pTex->getHeight()) / static_cast<float>(pTex->getWidth())) : 1.0f;
+        return ImGui::ImageButton(reinterpret_cast<ImTextureID>(mpImages.size()), { size.x, maintainRatio ? size.x  * aspectRatio : size.y });
+    }
+
     bool Gui::onMouseEvent(const MouseEvent& event)
     {
         ImGuiIO& io = ImGui::GetIO();
@@ -720,8 +805,19 @@ namespace Falcor
         return io.WantCaptureMouse;
     }
 
-    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar, bool allowMove, bool focus)
+    void Gui::pushWindow(const char label[], uint32_t width, uint32_t height, uint32_t x, uint32_t y, bool showTitleBar, bool allowMove, bool focus, bool allowClose)
     {
+        if (mOpenWindows.find(label) == mOpenWindows.end()) mOpenWindows[label] = true;
+        if (allowClose)
+        {
+            if (!showTitleBar)
+            {
+                std::string warning("showTitleBar is set to false on the window ");
+                logWarning(warning.append(label).append(". The window will not be able to display a close button."));
+            }
+            if (!mOpenWindows[label]) return;
+        }
+        
         ImVec2 pos{ float(x), float(y) };
         ImVec2 size{ float(width), float(height) };
         ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
@@ -730,9 +826,11 @@ namespace Falcor
         if (!showTitleBar) flags |= ImGuiWindowFlags_NoTitleBar;
         if (!allowMove)  flags |= ImGuiWindowFlags_NoMove;
         if (!focus) flags |= ImGuiWindowFlags_NoFocusOnAppearing;
+        
+        ImGui::Begin(label, allowClose ? &mOpenWindows[label] : nullptr, flags);
 
-        ImGui::Begin(label, nullptr, flags);
-        ImGui::PushFont(mpActiveFont);
+        if (allowClose && !mOpenWindows[label])  ImGui::End();
+        else  ImGui::PushFont(mpActiveFont);
     }
 
     void Gui::popWindow()
@@ -927,5 +1025,19 @@ namespace Falcor
             mpActiveFont = nullptr;
         }
         mpActiveFont = it->second;
+    }
+
+    bool Gui::isWindowOpen(const char label[])
+    {
+        const auto it = mOpenWindows.find(std::string(label));
+        return (it !=  mOpenWindows.end()) && it->second;
+    }
+
+    void Gui::setWindowOpen(const char label[], bool isOpen)
+    {
+        std::string labelString(label);
+        auto it = mOpenWindows.find(labelString);
+        if (it == mOpenWindows.end()) logWarning(std::string("Gui Window ") + labelString + " does not exist.");
+        it->second = isOpen;
     }
 }

@@ -73,6 +73,71 @@ float2 getHammersley(uint i, uint N)
     return float2(float(i) / float(N), radicalInverse(i));
 }
 
+// Utility function to get a vector perpendicular to an input vector 
+//    (from "Efficient Construction of Perpendicular Vectors Without Branching")
+float3 getPerpendicularStark(float3 u)
+{
+    float3 a = abs(u);
+    uint xm = ((a.x - a.y) < 0 && (a.x - a.z) < 0) ? 1 : 0;
+    uint ym = (a.y - a.z) < 0 ? (1 ^ xm) : 0;
+    uint zm = 1 ^ (xm | ym);
+    return cross(u, float3(xm, ym, zm));
+}
+
+float3 getPerpendicularSimple(float3 u)
+{
+    float3 up = abs(u.z) < 0.999999f ? float3(0, 0, 1) : float3(1, 0, 0);
+    return normalize(cross(up, u));
+}
+
+/** Get a cosine-weighted random vector centered around a specified normal direction.
+
+    \param[in] u Uniformly distributed random numbers between 0 and 1
+    \param[in] N Surface normal
+    \param[in] T A vector perpendicular to N
+*/
+float3 getCosHemisphereSample(float2 u, float3 N, float3 T)
+{
+    float3 B = normalize(cross(N, T));
+
+    float r = sqrt(u.x);
+    float phi = u.y * M_PI2;
+
+    float3 L = float3(r * cos(phi),
+                    r * sin(phi),
+                    sqrt(max(0.0f, 1.0f - u.x)));
+
+    return normalize(T * L.x + B * L.y + N * L.z);
+}
+
+/** Get a GGX half vector / microfacet normal, sampled according to the GGX distribution
+    When using this function to sample, the probability density is pdf = D * NdotH / (4 * HdotV)
+
+    \param[in] u Uniformly distributed random numbers between 0 and 1
+    \param[in] N Surface normal
+    \param[in] roughness Roughness^2 of material
+*/
+float3 getGGXMicrofacet(float2 u, float3 N, float roughness)
+{
+    float a2 = roughness * roughness;
+
+    float phi = M_PI2 * u.x;
+    float cosTheta = sqrt(max(0, (1 - u.y)) / (1 + (a2 * a2 - 1) * u.y));
+    float sinTheta = sqrt(max(0, 1 - cosTheta * cosTheta));
+
+    // Tangent space H
+    float3 tH;
+    tH.x = sinTheta * cos(phi);
+    tH.y = sinTheta * sin(phi);
+    tH.z = cosTheta;
+
+    float3 T = getPerpendicularStark(N);
+    float3 B = normalize(cross(N, T));
+
+    // World space H
+    return normalize(T * tH.x + B * tH.y + N * tH.z);
+}
+
 /*******************************************************************
     Other
 *******************************************************************/
@@ -126,6 +191,7 @@ bool evalBasicAlphaTest(float alpha, float threshold)
 {
     return alpha < threshold;
 }
+
 /*******************************************************************
                     Hashed Alpha Test
 *******************************************************************/
@@ -158,30 +224,36 @@ float calculateHashedAlpha(float3 hashInputCoord, float hashScale, bool useAniso
         // Find the discretized derivatives of our coordinates
         float3 anisoDeriv = max(abs(ddx(hashInputCoord)), abs(ddy(hashInputCoord)));
         float3 anisoScales = float3(0.707f / (hashScale * anisoDeriv.x),
-                                    0.707f / (hashScale * anisoDeriv.y),
-                                    0.707f / (hashScale * anisoDeriv.z));
+                                0.707f / (hashScale * anisoDeriv.y),
+                                0.707f / (hashScale * anisoDeriv.z));
         // Find log-discretized noise scales
         float3 scaleFlr = float3(exp2(floor(log2(anisoScales.x))),
-                                 exp2(floor(log2(anisoScales.y))),
-                                 exp2(floor(log2(anisoScales.z))));
+                                exp2(floor(log2(anisoScales.y))),
+                                exp2(floor(log2(anisoScales.z))));
         float3 scaleCeil = float3(exp2(ceil(log2(anisoScales.x))),
-                                  exp2(ceil(log2(anisoScales.y))),
-                                  exp2(ceil(log2(anisoScales.z))));
+                                exp2(ceil(log2(anisoScales.y))),
+                                exp2(ceil(log2(anisoScales.z))));
+
         // Compute alpha thresholds at our two noise scales
         float2 alpha = float2(sineHash3D(floor(scaleFlr * hashInputCoord)),
-                              sineHash3D(floor(scaleCeil * hashInputCoord)));
+                            sineHash3D(floor(scaleCeil * hashInputCoord)));
+
         // Factor to linearly interpolate with
         float3 fractLoc = float3(frac(log2(anisoScales.x)),
-                                 frac(log2(anisoScales.y)),
-                                 frac(log2(anisoScales.z)));
-        float2 toCorners = float2(length(fractLoc), 
-                                  length(float3(1.0f, 1.0f, 1.0f) - fractLoc));
+                                frac(log2(anisoScales.y)),
+                                frac(log2(anisoScales.z)));
+
+        float2 toCorners = float2(length(fractLoc),
+                                length(float3(1.0f, 1.0f, 1.0f) - fractLoc));
         float lerpFactor = toCorners.x / (toCorners.x + toCorners.y);
+
         // Interpolate alpha threshold from noise at two scales
         float x = (1 - lerpFactor) * alpha.x + lerpFactor * alpha.y;
+
         // Pass into CDF to compute uniformly distrib threshold
         float a = min(lerpFactor, 1 - lerpFactor);
         float3 cases = float3(x * x / (2 * a * (1 - a)), (x - 0.5 * a) / (1 - a), 1.0 - ((1 - x) * (1 - x) / (2 * a * (1 - a))));
+
         // Find our final, uniformly distributed alpha threshold
         alphaCompare = (x < (1 - a)) ? ((x < a) ? cases.x : cases.y) : cases.z;
         alphaCompare = clamp(alphaCompare, 1.0e-6, 1.0f);
@@ -193,17 +265,23 @@ float calculateHashedAlpha(float3 hashInputCoord, float hashScale, bool useAniso
         // Find the discretized derivatives of our coordinates
         float maxDeriv = max(length(ddx(hashInputCoord)), length(ddy(hashInputCoord)));
         float pixScale = 1.0 / (hashScale * maxDeriv);
+
         // Find two nearest log-discretized noise scales
         float2 pixScales = float2(exp2(floor(log2(pixScale))), exp2(ceil(log2(pixScale))));
+
         // Compute alpha thresholds at our two noise scales
         float2 alpha = float2(sineHash3D(floor(pixScales.x * hashInputCoord)), sineHash3D(floor(pixScales.y * hashInputCoord)));
+
         // Factor to interpolate lerp with
         float lerpFactor = frac(log2(pixScale));
+
         // Interpolate alpha threshold from noise at two scales
         float x = (1 - lerpFactor) * alpha.x + lerpFactor * alpha.y;
         float a = min(lerpFactor, 1 - lerpFactor);
+
         // Pass into CDF to compute uniformly distrib threshold
         float3 cases = float3(x * x / (2 * a * (1 - a)), (x - 0.5 * a) / (1 - a), 1.0 - ((1 - x) * (1 - x) / (2 * a * (1 - a))));
+
         // Find our final, uniformly distributed alpha threshold
         alphaCompare = (x < (1 - a)) ? ((x < a) ? cases.x : cases.y) : cases.z;
         alphaCompare = clamp(alphaCompare, 1e-6f, 1.0f);

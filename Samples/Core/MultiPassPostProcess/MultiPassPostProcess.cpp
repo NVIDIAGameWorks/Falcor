@@ -122,25 +122,6 @@ bool MultiPassPostProcess::onKeyEvent(SampleCallbacks* pSample, const KeyboardEv
     return false;
 }
 
- void MultiPassPostProcess::onInitializeTesting(SampleCallbacks* pSample)
- {
-     auto argList = pSample->getArgList();
-     std::vector<ArgList::Arg> filenames = argList.getValues("loadimage");
-     if (!filenames.empty())
-     {
-         loadImageFromFile(pSample, filenames[0].asString());
-     }
- 
-     if (argList.argExists("gaussianblur"))
-     {
-         mEnableGaussianBlur = true;
-         if (argList.argExists("grayscale"))
-         {
-             mEnableGrayscale = true;
-         }
-     }
- }
-
 #ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
 #else

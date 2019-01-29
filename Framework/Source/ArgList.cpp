@@ -121,6 +121,24 @@ namespace Falcor
         }
     }
 
+    uint64_t ArgList::Arg::asUint64() const
+    {
+        try
+        {
+            return std::stoull(mValue);
+        }
+        catch (std::invalid_argument& e)
+        {
+            logWarning("Unable to convert " + mValue + " to unsigned 64. Exception: " + e.what());
+            return -1;
+        }
+        catch (std::out_of_range& e)
+        {
+            logWarning("Unable to convert " + mValue + " to unsigned 64. Exception: " + e.what());
+            return -1;
+        }
+    }
+
     float ArgList::Arg::asFloat() const
     {
         try

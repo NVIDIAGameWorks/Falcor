@@ -27,7 +27,6 @@
 ***************************************************************************/
 #pragma once
 #include "Falcor.h"
-#include "SampleTest.h"
 
 using namespace Falcor;
 
@@ -52,7 +51,4 @@ private:
     bool mEnableGrayscale = false;
     void loadImage(SampleCallbacks* pSample);
     void loadImageFromFile(SampleCallbacks* pSample, std::string filename);
-    
-    //testing 
-    void onInitializeTesting(SampleCallbacks* pSample) override;
 };

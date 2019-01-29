@@ -203,7 +203,6 @@
     <ClCompile Include="ArgList.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
-    <ClCompile Include="SampleTest.cpp" />
     <ClCompile Include="Utils\Picking\Picking.cpp">
       <Filter>Utils\Picking</Filter>
     </ClCompile>
@@ -1157,7 +1156,6 @@
     <ClInclude Include="ArgList.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="SampleTest.h" />
     <ClInclude Include="Utils\Graph.h">
       <Filter>Utils</Filter>
     </ClInclude>

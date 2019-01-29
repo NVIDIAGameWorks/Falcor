@@ -19,6 +19,7 @@ echo "%DestinationDirectory%"
 
 if not exist "%DestinationDirectory%" mkdir "%DestinationDirectory%"
 
+robocopy %ExternalsSourceDirectory%\Python %DestinationDirectory%\Python /E /r:0 >nul
 robocopy %ExternalsSourceDirectory%\Python\ %DestinationDirectory% Python37*.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\AntTweakBar\lib %DestinationDirectory% AntTweakBar64.dll /r:0 >nul
 robocopy %ExternalsSourceDirectory%\FreeImage %DestinationDirectory%  freeimage.dll /r:0 >nul

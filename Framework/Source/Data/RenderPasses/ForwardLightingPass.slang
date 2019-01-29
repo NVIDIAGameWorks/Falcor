@@ -38,7 +38,6 @@ cbuffer PerFrameCB
 
 SamplerState gSampler;
 Texture2D visibilityBuffer;
-VertexOut vsData;
 
 VertexOut vs(VertexIn vIn)
 {

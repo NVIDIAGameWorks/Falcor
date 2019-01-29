@@ -50,6 +50,10 @@ namespace Falcor
             */
             uint32_t asUint() const;
 
+            /** Attempts to return internal string as an uint64, -1(max unsigned) if fail
+           */
+            uint64_t asUint64() const;
+
             /** Attempts to return internal string as a float, -1 if fail
             */
             float asFloat() const;

@@ -65,6 +65,7 @@ namespace Falcor
             pGraph = pScripting->getGraph(graphName);
         }
 
+        if (!pGraph) logError("Can't import graphs from file `" + filename + "`");
         if (pGraph && pDstFbo) pGraph->onResize(pDstFbo);
 
         return pGraph;
@@ -113,8 +114,8 @@ namespace Falcor
             const auto& data = edge.second;
             const auto& srcPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getSourceNode()].nodeName;
             const auto& dstPass = pGraph->mNodeData[pGraph->mpGraph->getEdge(edge.first)->getDestNode()].nodeName;
-            std::string src = srcPass + '.' + data.srcField;
-            std::string dst = dstPass + '.' + data.dstField;
+            std::string src = srcPass + (data.srcField.size() ? '.' + data.srcField : data.srcField);
+            std::string dst = dstPass + (data.dstField.size() ? '.' + data.dstField : data.dstField);
             pIR->addEdge(src, dst);
         }
 

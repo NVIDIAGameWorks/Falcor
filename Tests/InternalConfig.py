@@ -3,26 +3,31 @@ import os
 TestConfig = {}
 TestConfig['Scenes'] = [ "Arcade/Arcade.fscene", "SunTemple/SunTemple.fscene", "Bistro/Bistro_Interior.fscene" ]
 TestConfig['Images'] = [ "StockImage.jpg" ]
-TestConfig['Duration'] = 60
-TestConfig['Times'] = [ 1, 2, 3, 4]
+TestConfig['Duration'] = 360
+TestConfig['Frames'] = [ 16, 32, 128, 256]
 TestConfig['DefaultConfiguration'] = 'ReleaseD3D12'
 TestConfig['LocalTestingDir'] = 'testing'
 TestConfig['Tolerance'] = 200.0
 TestConfig['Tolerance_Lower'] = 0.1
 TestConfig['FixedTimeDelta'] = 0.01666
 
+# Relative to root directory
+IgnoreDirectories = {}
+IgnoreDirectories['ReleaseD3D12'] = []
+IgnoreDirectories['ReleaseVK'] = [ os.path.join('Framework', 'Internals') ]
+
+# Supported image extensions
+ImageExtensions = ['.png', '.jpg', '.tga', '.bmp', '.pfm', '.exr']
 
 # get 'static' part of the arguments
 def get_config_arguments():
-    current_args =  "-test "
+    current_args = '-testFrames '
     
-    current_args = current_args + '-sstimes '
-    
-    for ssTime in TestConfig['Times']:
-        current_args = current_args + str(ssTime) + ' '
+    for testFrame in TestConfig['Frames']:
+        current_args = current_args + str(testFrame) + ' '
         
     if 'Duration' in TestConfig:
-        current_args = current_args + '-shutdowntime ' + str(TestConfig['Duration']) + ' ';
+        current_args = current_args + '-shutdownframe ' + str(TestConfig['Duration']) + ' ';
         
     if 'FixedTimeDelta' in TestConfig:
         current_args = current_args + '-fixedtimedelta ' + str(TestConfig['FixedTimeDelta']) + ' ';

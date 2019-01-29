@@ -4,7 +4,7 @@ import sys
 import os
 
 if len(sys.argv) != 2:
-	print 'Usage: make_new_project <NewProjectName>'
+	print("Usage: make_new_project <NewProjectName>")
 	sys.exit(1)
 
 # copy the ProjectTemplate directory

@@ -196,7 +196,14 @@ namespace Falcor
     std::string getExtensionFromFile(const std::string& filename)
     {
         fs::path path = filename;
-        return path.has_extension() ? path.extension().string() : "";
+        std::string ext;
+        if (path.has_extension())
+        {
+            // remove the leading '.' that filesystem gives us
+            ext = path.extension().string();
+            if (hasPrefix(ext, "."))   ext = ext.substr(1, ext.size());
+        }
+        return ext;
     }
 
     std::string getFilenameFromPath(const std::string& filename)

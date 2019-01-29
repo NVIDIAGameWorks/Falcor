@@ -38,52 +38,6 @@ cbuffer DataCB : register(b0)
     uint32_t gSampleCount;
 }
 
-void generateBasis(float3 N, out float3 up, out float3 right, out float3 forward)
-{
-    up = abs(N.z) < 0.999999f ? float3(0, 0, 1) : float3(1, 0, 0);
-    right = normalize(cross(up, N));
-    forward = cross(N, right);
-}
-
-float3 importanceSampleCosDir(float2 u, float3 N)
-{
-    float3 up, right, forward;
-    generateBasis(N, up, right, forward);
-
-    float u1 = u.x;
-    float u2 = u.y;
-
-    float r = sqrt(u1);
-    float phi = u2 * M_PI2;
-
-    float3 L = float3(r * cos(phi),
-                      r * sin(phi),
-                      sqrt(max(0.0f, 1.0f - u1)));
-
-    return normalize(right * L.y + forward * L.x + N * L.z);
-}
-
-float3 importanceSampleGGX(float2 u, float3 N, float roughness)
-{
-    float a = roughness * roughness;
-
-    float phi = M_PI2 * u.x;
-    float cosTheta = sqrt((1 - u.y) / (1 + (a * a - 1) * u.y));
-    float sinTheta = sqrt(1 - cosTheta * cosTheta);
-
-    // Tangent space H
-    float3 tH;
-    tH.x = sinTheta * cos(phi);
-    tH.y = sinTheta * sin(phi);
-    tH.z = cosTheta;
-
-    float3 up, right, forward;
-    generateBasis(N, up, right, forward);
-
-    // World space H
-    return normalize(right * tH.x + forward * tH.y + N * tH.z);
-}
-
 float smithGGX(float NdotL, float NdotV, float roughness)
 {
     float k = ((roughness + 1) * (roughness + 1)) / 8;
@@ -100,7 +54,8 @@ float4 integrateDiffuseLD(float3 N)
     for (uint i = 0; i < gSampleCount; i++)
     {
         float2 u = getHammersley(i, gSampleCount);
-        float3 L = importanceSampleCosDir(u, N);
+        // Less artifacts when using basic perpendicular calculation
+        float3 L = getCosHemisphereSample(u, N, getPerpendicularSimple(N));
         float NdotL = dot(N, L);
         if (NdotL > 0)
         {
@@ -132,7 +87,7 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
     for (uint i = 0; i < gSampleCount; i++)
     {
         float2 u = getHammersley(i, gSampleCount);
-        float3 H = importanceSampleGGX(u, N, roughness);
+        float3 H = getGGXMicrofacet(u, N, roughness);
         float3 L = reflect(-N, H);
         float NdotL = dot(N, L);
 
@@ -141,7 +96,7 @@ float4 integrateSpecularLD(float3 V, float3 N, float roughness)
             float NdotH = saturate(dot(N, H));
             float LdotH = saturate(dot(L, H));
 
-            // D term GGX
+            // Our GGX function does not include division by PI
             float pdf = (evalGGX(roughness, NdotH) * M_INV_PI) * NdotH / (4 * LdotH);
 
             float omegaS = 1 / (gSampleCount * pdf);
@@ -173,7 +128,7 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
         float2 u = getHammersley(i, gSampleCount);
 
         // Specular GGX DFG integration (stored in RG)
-        float3 H = importanceSampleGGX(u, N, roughness);
+        float3 H = getGGXMicrofacet(u, N, roughness);
         float3 L = reflect(-N, H);
         float NdotH = saturate(dot(N, H));
         float LdotH = saturate(dot(L, H));
@@ -191,7 +146,7 @@ float4 integrateDFG(float3 N, float3 V, float roughness)
 
         // Disney Diffuse integration (stored in B)
         u = frac(u + 0.5);
-        L = importanceSampleCosDir(u, N);
+        L = getCosHemisphereSample(u, N, getPerpendicularStark(N));
         NdotL = saturate(dot(N, L));
         if(NdotL > 0)
         {

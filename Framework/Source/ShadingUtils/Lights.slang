@@ -46,9 +46,9 @@ struct LightSample
 void calcCommonLightProperties(ShadingData sd, inout LightSample ls)
 {
     float3 H = normalize(sd.V + ls.L);
-    ls.NdotH = dot(sd.N, H);
-    ls.NdotL = dot(sd.N, ls.L);
-    ls.LdotH = dot(ls.L, H);
+    ls.NdotH = saturate(dot(sd.N, H));
+    ls.NdotL = saturate(dot(sd.N, ls.L));
+    ls.LdotH = saturate(dot(ls.L, H));
 };
 
 float getDistanceFalloff(float distSquared)
