@@ -55,10 +55,10 @@ follow the instructions below.
 Creating a New Project
 ------------------------
 - If you haven't done so already, create a Visual Studio solution and project for your code. Falcor only supports 64-bit builds, so make sure you have a 64-bit build configuration
-- Add `Falcor.props` to your project (Property Manager -> Right click your project -> Add existing property sheet)
+- Add `Framework\Source\Falcor.props` to your project (View -> Other Windows ->Property Manager -> Right click your project -> Add existing property sheet)
 - Add `FalcorSharedObjects.vcxproj` to your solution (Located at `Framework/FalcorSharedObjects/FalcorSharedObjects.vcxproj`)
 - Add `Falcor.vcxproj` to your solution (Located at `Framework/Source/Falcor.vcxproj`)
-- Add a reference to Falcor in your project (Solution Explorer -> Your Project -> Right Click `References` -> Click `Add Reference...` -> Choose Falcor)
+- Add a reference to Falcor in your project (Solution Explorer -> Right click your Project -> `Add` -> `Reference` -> Choose Falcor)
 
 *Sample* Class
 -------------------
