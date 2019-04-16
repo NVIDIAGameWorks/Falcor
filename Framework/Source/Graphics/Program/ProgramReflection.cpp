@@ -789,15 +789,11 @@ namespace Falcor
             break;
             case SLANG_STAGE_FRAGMENT:
                 reflectShaderIO(pEntryPoint, SLANG_PARAMETER_CATEGORY_FRAGMENT_OUTPUT, mPsOut);
+                mIsSampleFrequency = pEntryPoint->usesAnySampleRateInput();
                 break;
             case SLANG_STAGE_VERTEX:
                 reflectShaderIO(pEntryPoint, SLANG_PARAMETER_CATEGORY_VERTEX_INPUT, mVertAttr, &mVertAttrBySemantic);
                 break;
-#ifdef FALCOR_VK
-                mIsSampleFrequency = pEntryPoint->usesAnySampleRateInput();
-#else
-                mIsSampleFrequency = true; // #SLANG Slang reports false for DX shaders. There's an open issue, once it's fixed we should remove that
-#endif
             default:
                 break;
             }
