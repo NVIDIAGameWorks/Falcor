@@ -1,3 +1,13 @@
+v3.2.2
+------
+Bug Fixes:
+- Fixed referencing a temporary variable in Vulkan MSAA state creation that causes it to not work on some systems
+- Fixed unreachable code when reflecting sample shading configuration
+- Fixed comment in Material.h incorrectly describing material channel layout
+
+Dependencies:
+- Updates Slang to 0.12.5
+
 v3.2.1
 ------
 - `Ctrl+Pause` freezes/unfreezes the renderer. This if useful in low framerates situations when the user wants to change an attribute using the GUI
