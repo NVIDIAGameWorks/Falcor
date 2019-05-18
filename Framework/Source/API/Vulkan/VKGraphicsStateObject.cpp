@@ -62,7 +62,8 @@ namespace Falcor
         // Multisample State
         VkPipelineMultisampleStateCreateInfo multisampleInfo = {};
         bool enableSampleFrequency = mDesc.getProgramVersion() ? mDesc.getProgramVersion()->getReflector()->isSampleFrequency() : false;
-        initVkMultiSampleInfo(mDesc.getBlendState().get(), mDesc.getFboDesc(), mDesc.getSampleMask(), multisampleInfo, enableSampleFrequency);
+        uint32_t sampleMask = mDesc.getSampleMask(); // getSampleMask returns a temp value but needs to be referenced in VkPipelineMultisampleStateCreateInfo by address
+        initVkMultiSampleInfo(mDesc.getBlendState().get(), mDesc.getFboDesc(), sampleMask, multisampleInfo, enableSampleFrequency);
 
         // Depth Stencil State
         VkPipelineDepthStencilStateCreateInfo depthStencilInfo = {};

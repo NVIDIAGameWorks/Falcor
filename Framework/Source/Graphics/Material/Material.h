@@ -53,8 +53,8 @@ namespace Falcor
                 - A   - Transparency
             Specular
                 - R - Occlusion
-                - G - Metalness
-                - B - Roughness
+                - G - Roughness
+                - B - Metalness
                 - A - Reserved
 
         ShadingModelSpecGloss
