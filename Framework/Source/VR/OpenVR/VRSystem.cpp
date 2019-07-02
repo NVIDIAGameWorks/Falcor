@@ -95,7 +95,6 @@ namespace Falcor
         // Create our VRSystem object and apply developer-specified parameters
         spVrSystem = new VRSystem;
         spVrSystem->mVSyncEnabled = enableVSync;
-        
         // Initialize the HMD system and check for initialization errors
         vr::HmdError hmdError;
         spVrSystem->mpHMD = vr::VR_Init(&hmdError, vr::VRApplication_Scene);
@@ -106,7 +105,7 @@ namespace Falcor
             cleanup();
             return spVrSystem;
         }
-
+        
         // Initialize our compositor
         hmdError = vr::VRInitError_None;
         spVrSystem->mpCompositor = (vr::IVRCompositor*)vr::VR_GetGenericInterface(vr::IVRCompositor_Version, &hmdError);
@@ -117,7 +116,7 @@ namespace Falcor
             cleanup();
             return spVrSystem;
         }
-
+                
         // // IVRCompositor::GetLastError has been removed. Errors are reported in the log.
         //// Check if the compositor has any error message to show
         //uint32_t errStrSize = spVrSystem->mpCompositor->GetLastError( NULL, 0 );
@@ -154,7 +153,7 @@ namespace Falcor
         {
             spVrSystem->mpModels = 0;
         }
-
+        
         // Create a lens distortion VBO if we're in GL mode
         spVrSystem->createDistortionVBO();
 
@@ -169,6 +168,11 @@ namespace Falcor
         }
 
         return spVrSystem;
+    }
+
+    bool VRSystem::isHMDPresent()
+    {
+        return vr::VR_IsHmdPresent();
     }
 
     void VRSystem::initDisplayAndController()
@@ -212,6 +216,10 @@ namespace Falcor
         return mReadyToRender;
     }
 
+    void VRSystem::postPresent(void)
+    {
+        mpCompositor->PostPresentHandoff();
+    }
 
     uint32_t VRSystem::getError(std::string *errMessage)
     {
@@ -387,7 +395,6 @@ namespace Falcor
                 // Other types of devices?
             }
         }
-
     }
 
     void VRSystem::refresh()

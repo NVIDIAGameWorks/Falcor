@@ -50,15 +50,20 @@ namespace Falcor
         // Create the FBO
         VrFbo::UniquePtr pVrFbo = std::make_unique<VrFbo>();
         pVrFbo->mpFbo = FboHelper::create2D(width, height, desc, 2);
-
+        
         // create the textures
         // in the future we should use SRVs directly
         // or some other way to avoid copying resources
-
+        
         pVrFbo->mpLeftView = Texture::create2D(width, height, desc.getColorTargetFormat(0),1,1);
         pVrFbo->mpRightView = Texture::create2D(width, height, desc.getColorTargetFormat(0),1,1);
 
         return pVrFbo;
+    }
+
+    ShaderResourceView::SharedPtr VrFbo::getEyeSRV(VRDisplay::Eye eye) const
+    {
+        return mpFbo->getColorTexture(0)->getSRV(0u, 1u, eye == VRDisplay::Eye::Left ? 0u : 1u, 1u);
     }
 
     void VrFbo::submitToHmd(RenderContext* pRenderCtx) const

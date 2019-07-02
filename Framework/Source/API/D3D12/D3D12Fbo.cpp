@@ -102,12 +102,12 @@ namespace Falcor
 
     void Fbo::initApiHandle() const {}
 
-    RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex) const
+    RenderTargetView::SharedPtr Fbo::getRenderTargetView(uint32_t rtIndex, uint32_t arraySlice) const
     {
         const auto& rt = mColorAttachments[rtIndex];
         if(rt.pTexture)
         {
-            return rt.pTexture->getRTV(rt.mipLevel, rt.firstArraySlice, rt.arraySize);
+            return rt.pTexture->getRTV(rt.mipLevel, arraySlice == 1000 ? rt.firstArraySlice : arraySlice, rt.arraySize);
         }
         else
         {

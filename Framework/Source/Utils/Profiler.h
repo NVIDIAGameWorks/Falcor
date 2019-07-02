@@ -71,6 +71,9 @@ namespace Falcor
             float cpuTotal = 0;
             uint32_t level;
             uint32_t triggered = 0;
+            uint32_t timerTraceIdx = 0;
+            double cpuTimeTrace[60];
+            double gpuTimeTrace[60];
 #if _PROFILING_LOG == 1
             int stepNr = 0;
             int filesWritten = 0;

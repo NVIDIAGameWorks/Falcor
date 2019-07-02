@@ -571,6 +571,7 @@
       <Filter>Experimental\RenderGraph</Filter>
     </ClCompile>
     <ClCompile Include="UnitTest.cpp" />
+    <ClCompile Include="VRSample.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -2120,6 +2121,8 @@
     <ClInclude Include="Experimental\RenderGraph\ResourceCache.h">
       <Filter>Experimental\RenderGraph</Filter>
     </ClInclude>
+    <ClInclude Include="VRSample.h" />
+    <ClInclude Include="VRRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Externals">

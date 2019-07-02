@@ -138,6 +138,19 @@ float3 getGGXMicrofacet(float2 u, float3 N, float roughness)
     return normalize(T * tH.x + B * tH.y + N * tH.z);
 }
 
+
+float3 getUniformConeSample(float2 u, float3 N, float cosThetaMax)
+{
+    float cosTheta = (1.0f - u.x) + u.x * cosThetaMax;
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+    float phi = u.y * 2.0 * M_PI;
+    float3 T = getPerpendicularStark(N);
+    float3 B = normalize(cross(N, T));
+    float3 tH = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    return normalize(T * tH.x + B * tH.y + N * tH.z);
+    //return tH;
+}
+
 /*******************************************************************
     Other
 *******************************************************************/

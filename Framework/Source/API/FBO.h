@@ -188,7 +188,7 @@ namespace Falcor
 
         /** Get a render target view to a color target.
         */
-        RenderTargetView::SharedPtr getRenderTargetView(uint32_t rtIndex) const;
+        RenderTargetView::SharedPtr getRenderTargetView(uint32_t rtIndex, uint32_t arraySlice = 1000) const;
 
 
         struct SamplePosition

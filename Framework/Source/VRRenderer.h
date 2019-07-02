@@ -25,45 +25,25 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 #pragma once
+
 #include <memory>
-#include "API/FBO.h"
-#include "API/Texture.h"
-#include "glm/vec2.hpp"
-#include <vector>
-#include "OpenVR/VRDisplay.h"
+#include "Renderer.h"
 
 namespace Falcor
-{
-    class VrFbo
+{ 
+    class VRRenderer : public Renderer, std::enable_shared_from_this<VRRenderer>
     {
     public:
-        using UniquePtr = std::unique_ptr<VrFbo>;
-        /** Create a new VrFbo. It will create array resources for color and depth. It will also create views into each array-slice
-            \param[in] desc FBO description
-            \param[in] width The width of the FBO. Optional, by default will use the HMD render-target size
-            \param[in] height The height of the FBO. Optional, by default will use the HMD render-target size
+        VRRenderer() = default;
+        virtual ~VRRenderer() {};
+
+        /** Called on each frame render.
         */
-        static UniquePtr create(const Fbo::Desc& desc, uint32_t width = 0, uint32_t height = 0);
-
-        /** Submit the color target into the HMD
-        */
-        void submitToHmd(RenderContext* pRenderCtx) const;
-
-        /** Get the FBO
-        */
-        Fbo::SharedPtr getFbo() const { return mpFbo; }
-
-        /** Get the resource view to an eye's resource view
-        */
-        Texture::SharedPtr getEyeResourceView(VRDisplay::Eye eye) const { return (eye == VRDisplay::Eye::Left) ? mpLeftView : mpRightView; }
-
-        ShaderResourceView::SharedPtr getEyeSRV(VRDisplay::Eye eye) const;
-
-    private:
-        Fbo::SharedPtr mpFbo;
-        Texture::SharedPtr mpLeftView;
-        Texture::SharedPtr mpRightView;
+        virtual void onFrameSubmit(SampleCallbacks* pCallbacks, RenderContext* pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) = 0;
+        
+        // Deleted copy operators (copy a pointer type!)
+        VRRenderer(const VRRenderer&) = delete;
+        VRRenderer& operator=(const VRRenderer &) = delete;
     };
 }

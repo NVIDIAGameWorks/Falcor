@@ -25,45 +25,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-
 #pragma once
-#include <memory>
-#include "API/FBO.h"
-#include "API/Texture.h"
-#include "glm/vec2.hpp"
-#include <vector>
-#include "OpenVR/VRDisplay.h"
+#include "Sample.h"
+#include "VRRenderer.h"
 
 namespace Falcor
 {
-    class VrFbo
+    
+    /** Bootstrapper class for Falcor
+        Call Sample::run() to start the sample.
+        The render loop will then call the user's Renderer object
+    */
+    class VRSample : public Sample
     {
     public:
-        using UniquePtr = std::unique_ptr<VrFbo>;
-        /** Create a new VrFbo. It will create array resources for color and depth. It will also create views into each array-slice
-            \param[in] desc FBO description
-            \param[in] width The width of the FBO. Optional, by default will use the HMD render-target size
-            \param[in] height The height of the FBO. Optional, by default will use the HMD render-target size
+        /** Entry-point to Sample. User should call this to start processing.
+            On Windows, command line args will be retrieved and parsed even if not passed through this function.
+            On Linux, this function is the only way to feed the sample command line args.
+
+            \param[in] config Requested sample configuration
+            \param[in] pRenderer The user's renderer
+            \param[in] argc Optional. Number of command line arguments
+            \param[in] argv Optional. Array of command line arguments
         */
-        static UniquePtr create(const Fbo::Desc& desc, uint32_t width = 0, uint32_t height = 0);
+        static void run(const SampleConfig& config, VRRenderer::UniquePtr& pRenderer);
 
-        /** Submit the color target into the HMD
-        */
-        void submitToHmd(RenderContext* pRenderCtx) const;
+        virtual ~VRSample() {}
+    protected:
+        void renderFrame() override;
 
-        /** Get the FBO
-        */
-        Fbo::SharedPtr getFbo() const { return mpFbo; }
-
-        /** Get the resource view to an eye's resource view
-        */
-        Texture::SharedPtr getEyeResourceView(VRDisplay::Eye eye) const { return (eye == VRDisplay::Eye::Left) ? mpLeftView : mpRightView; }
-
-        ShaderResourceView::SharedPtr getEyeSRV(VRDisplay::Eye eye) const;
-
-    private:
-        Fbo::SharedPtr mpFbo;
-        Texture::SharedPtr mpLeftView;
-        Texture::SharedPtr mpRightView;
+        VRSample(Renderer::UniquePtr& pRenderer) : Sample(pRenderer) {}
+        VRSample(const VRSample&) = delete;
+        VRSample& operator=(const VRSample&) = delete;
     };
-}
+};

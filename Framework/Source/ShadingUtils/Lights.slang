@@ -85,16 +85,19 @@ LightSample evalPointLight(in LightData light, in float3 surfacePosW)
     // Calculate the falloff
     float falloff = getDistanceFalloff(distSquared);
 
+    if (light.openingAngle < 3.14159265f)
+    {
     // Calculate the falloff for spot-lights
-    float cosTheta = -dot(ls.L, light.dirW); // cos of angle of light orientation
-    if(cosTheta < light.cosOpeningAngle)
-    {
-        falloff = 0;
-    }
-    else if(light.penumbraAngle > 0)
-    {
-        float deltaAngle = light.openingAngle - acos(cosTheta);
-        falloff *= saturate((deltaAngle - light.penumbraAngle) / light.penumbraAngle);
+        float cosTheta = -dot(ls.L, light.dirW); // cos of angle of light orientation
+        if (cosTheta < light.cosOpeningAngle)
+        {
+            falloff = 0;
+        }
+        else if (light.penumbraAngle > 0)
+        {
+            float deltaAngle = light.openingAngle - acos(cosTheta);
+            falloff *= saturate((deltaAngle - light.penumbraAngle) / light.penumbraAngle);
+        }
     }
     ls.diffuse = light.intensity * falloff;
     ls.specular = ls.diffuse;

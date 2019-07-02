@@ -148,6 +148,7 @@
 #define LightAreaRect               3    ///< Quad shaped area light source
 #define LightAreaSphere             4    ///< Spherical area light source
 #define LightAreaDisc               5    ///< Disc shaped area light source
+#define LightSpot                   6
 
 #define MAX_LIGHT_SOURCES 16
 
