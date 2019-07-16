@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "RtProgramVarsHelper.h"
+#include "D3D12RtProgramVarsHelper.h"
 #include "API/Device.h"
 #include "API/LowLevel/DescriptorPool.h"
 #include "API/D3D12/LowLevel/D3D12DescriptorData.h"
@@ -34,31 +34,6 @@
 
 namespace Falcor
 {
-    RtVarsContext::SharedPtr RtVarsContext::create()
-    {
-        return SharedPtr(new RtVarsContext());
-    }
-
-    RtVarsContext::RtVarsContext()
-    {
-        mpLowLevelData = LowLevelContextData::create(LowLevelContextData::CommandQueueType::Direct, nullptr);
-        mpList = RtVarsCmdList::create();
-        ID3D12GraphicsCommandList* pList = mpList.get();
-        mpLowLevelData->setCommandList(pList);
-    }
-
-    RtVarsContext::~RtVarsContext()
-    {
-        // Release the low-level data before the list
-        mpLowLevelData = nullptr;
-        mpList = nullptr;
-    }
-
-    void RtVarsContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
-    {
-        gpDevice->getRenderContext()->resourceBarrier(pResource, newState, pViewInfo);
-    }
-
     HRESULT RtVarsCmdList::QueryInterface(REFIID riid, void **ppvObject)
     {
         if (riid == __uuidof(ID3D12CommandList))

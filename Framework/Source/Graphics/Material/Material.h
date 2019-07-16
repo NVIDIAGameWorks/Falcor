@@ -280,6 +280,8 @@ namespace Falcor
         ParameterBlock::SharedPtr mpParameterBlock;
         static uint32_t sMaterialCounter;
         static ParameterBlockReflection::SharedConstPtr spBlockReflection;
+
+        friend class RtSceneRenderer;
     };
 
 #undef Texture2D

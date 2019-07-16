@@ -28,7 +28,6 @@
 #include "Framework.h"
 #include "RtProgramVersion.h"
 #include "API/Device.h"
-#include "API/D3D12/D3D12State.h"
 #include "Utils/StringUtils.h"
 
 namespace Falcor

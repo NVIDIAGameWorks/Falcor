@@ -501,9 +501,6 @@
     <ClCompile Include="Experimental\Raytracing\RtProgramVars.cpp">
       <Filter>Experimental\Raytracing</Filter>
     </ClCompile>
-    <ClCompile Include="Experimental\Raytracing\RtProgramVarsHelper.cpp">
-      <Filter>Experimental\Raytracing</Filter>
-    </ClCompile>
     <ClCompile Include="Experimental\Raytracing\RtScene.cpp">
       <Filter>Experimental\Raytracing</Filter>
     </ClCompile>
@@ -571,6 +568,42 @@
       <Filter>Experimental\RenderGraph</Filter>
     </ClCompile>
     <ClCompile Include="UnitTest.cpp" />
+    <ClCompile Include="Experimental\Raytracing\D3D12\D3D12RtScene.cpp">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\D3D12\D3D12RtStateObject.cpp">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\D3D12\D3D12RtProgramVars.cpp">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\D3D12\D3D12RtModel.cpp">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\D3D12\D3D12RtProgramVarsHelper.cpp">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\Vulkan\VKRtModel.cpp">
+      <Filter>Experimental\Raytracing\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\Vulkan\VKRtProgramVars.cpp">
+      <Filter>Experimental\Raytracing\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\Vulkan\VKRtScene.cpp">
+      <Filter>Experimental\Raytracing\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\Vulkan\VKRtSceneRenderer.cpp">
+      <Filter>Experimental\Raytracing\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\Vulkan\VKRtStateObject.cpp">
+      <Filter>Experimental\Raytracing\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\D3D12\D3D12RtSceneRenderer.cpp">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Experimental\Raytracing\Vulkan\VKRtEntryPoints.cpp">
+      <Filter>Experimental\Raytracing\Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graphics\Model\Animation.h">
@@ -2044,9 +2077,6 @@
     <ClInclude Include="Experimental\Raytracing\RtProgramVars.h">
       <Filter>Experimental\Raytracing</Filter>
     </ClInclude>
-    <ClInclude Include="Experimental\Raytracing\RtProgramVarsHelper.h">
-      <Filter>Experimental\Raytracing</Filter>
-    </ClInclude>
     <ClInclude Include="Experimental\Raytracing\RtScene.h">
       <Filter>Experimental\Raytracing</Filter>
     </ClInclude>
@@ -2060,9 +2090,6 @@
       <Filter>Experimental\Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="Experimental\Raytracing\RtStateObject.h">
-      <Filter>Experimental\Raytracing</Filter>
-    </ClInclude>
-    <ClInclude Include="Experimental\Raytracing\RtStateObjectHelper.h">
       <Filter>Experimental\Raytracing</Filter>
     </ClInclude>
     <ClInclude Include="Experimental\Raytracing\RtProgram\HitProgram.h">
@@ -2119,6 +2146,15 @@
     </ClInclude>
     <ClInclude Include="Experimental\RenderGraph\ResourceCache.h">
       <Filter>Experimental\RenderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\D3D12\D3D12RtStateObjectHelper.h">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\D3D12\D3D12RtProgramVarsHelper.h">
+      <Filter>Experimental\Raytracing\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Experimental\Raytracing\Vulkan\VKRtProgramVarsHelper.h">
+      <Filter>Experimental\Raytracing\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2328,6 +2364,12 @@
     </Filter>
     <Filter Include="Experimental\RenderGraph">
       <UniqueIdentifier>{60443751-4f7a-4361-adb2-d3e6edabecf8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Experimental\Raytracing\Vulkan">
+      <UniqueIdentifier>{b096a6e1-930f-4be3-a6ad-ce53aaafeb91}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Experimental\Raytracing\D3D12">
+      <UniqueIdentifier>{069f3bc2-70ce-495a-9e77-556ce9f7e32c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

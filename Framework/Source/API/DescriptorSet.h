@@ -46,6 +46,12 @@ namespace Falcor
         Domain = (1 << (uint32_t)ShaderType::Domain),
         Geometry = (1 << (uint32_t)ShaderType::Geometry),
         Compute = (1 << (uint32_t)ShaderType::Compute),
+        RayGeneration = (1 << (uint32_t)ShaderType::RayGeneration),
+        Intersection = (1 << (uint32_t)ShaderType::Intersection),
+        AnyHit = (1 << (uint32_t)ShaderType::AnyHit),
+        ClosestHit = (1 << (uint32_t)ShaderType::ClosestHit),
+        Miss = (1 << (uint32_t)ShaderType::Miss),
+        Callable = (1 << (uint32_t)ShaderType::Callable),
 
         All = (1 << (uint32_t)ShaderType::Count) - 1,
 
@@ -99,9 +105,15 @@ namespace Falcor
         void setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav);
         void setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler);
         void setCbv(uint32_t rangeIndex, uint32_t descIndex, const ConstantBufferView::SharedPtr& pView);
+#ifdef FALCOR_VK
+        void setAccelerationStructure(uint32_t rangeIndex, uint32_t descIndex, const AccelerationStructureHandle& pAccelerationStructure);
+#endif
 
         void bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);
         void bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);
+#ifdef FALCOR_VK
+        void bindForRaytracing(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex);
+#endif
     private:
         using ApiData = DescriptorSetApiData;
         DescriptorSet(DescriptorPool::SharedPtr pPool, const Layout& layout) : mpPool(pPool), mLayout(layout) {}

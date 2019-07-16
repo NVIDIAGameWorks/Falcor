@@ -136,7 +136,7 @@ namespace Falcor
         static size_t sMeshIdOffset;
         static size_t sDrawIDOffset;
 
-        static void updateVariableOffsets(const ProgramReflection* pReflector);
+        static void updateVariableOffsets(const ProgramReflection* pReflector, bool globalOnly = false);
 
         virtual void setPerFrameData(const CurrentWorkingData& currentData);
         virtual bool setPerModelData(const CurrentWorkingData& currentData);

@@ -133,20 +133,4 @@ namespace Falcor
         uint8_t* mpRootBase;
         RootSignature::SharedPtr mpRootSignature;
     };
-
-    class RtVarsContext : public CopyContext, inherit_shared_from_this<CopyContext, RtVarsContext>
-    {
-    public:
-        using SharedPtr = std::shared_ptr<RtVarsContext>;
-        ~RtVarsContext();
-
-        static SharedPtr create();
-
-        const LowLevelContextData::SharedPtr& getLowLevelData() const override { return mpLowLevelData; }
-        void resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo = nullptr) override;
-        RtVarsCmdList::SharedPtr getRtVarsCmdList() const { return mpList; }
-    private:
-        RtVarsContext();
-        RtVarsCmdList::SharedPtr mpList;
-    };
 }

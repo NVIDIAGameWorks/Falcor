@@ -26,46 +26,33 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 #include "Framework.h"
-#include "RtShader.h"
-#include "Utils/StringUtils.h"
+#include "API/Device.h"
+#include "Experimental/Raytracing/RtProgramVars.h"
+#include "Experimental/Raytracing/RtStateObject.h"
+#include "D3D12RtProgramVarsHelper.h"
 
 namespace Falcor
 {
-    RtShader::RtShader(ShaderType type, const std::string& entryPointName) : Shader(type), mEntryPoint(entryPointName) {}
-    RtShader::~RtShader() = default;
-
-    RtShader::SharedPtr RtShader::create(const Blob& shaderBlob, const std::string& entryPointName, ShaderType type, Shader::CompilerFlags flags, std::string& log)
+    uint32_t RtProgramVars::getProgramIdentifierSize()
     {
-        SharedPtr pShader = SharedPtr(new RtShader(type, entryPointName));
-        return pShader->init(shaderBlob, entryPointName, flags, log) ? pShader : nullptr;
+        return D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
     }
 
-    RtShader::SharedPtr createRtShaderFromBlob(const std::string& filename, const std::string& entryPoint, const Shader::Blob& blob, Shader::CompilerFlags flags, ShaderType shaderType, std::string& log)
+    bool RtProgramVars::applyRtProgramVars(uint8_t* pRecord, const RtProgramVersion* pProgVersion, const RtStateObject* pRtso, ProgramVars* pVars, RtVarsContext* pContext)
     {
-        std::string msg;
-        RtShader::SharedPtr pShader = RtShader::create(blob, entryPoint, shaderType, flags, msg);
-
-        if(pShader == nullptr)
-        {
-            log = "Error when creating " + to_string(shaderType) + " shader from file \"" + filename + "\"\nError log:\n";
-            log += msg;
-        }
-        return pShader;
+        MAKE_SMART_COM_PTR(ID3D12StateObjectProperties);
+        ID3D12StateObjectPropertiesPtr pRtsoPtr = pRtso->getApiHandle();
+        memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pProgVersion->getExportName().c_str()), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        pRecord += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+        pContext->getRtVarsCmdList()->setRootParams(pProgVersion->getLocalRootSignature(), pRecord);
+        return pVars->applyProgramVarsCommon<true>(pContext, true);
     }
 
-#ifdef FALCOR_VK
-    VkPipelineShaderStageCreateInfo RtShader::getShaderStage(VkShaderStageFlagBits stage) const
+    void RtVarsContext::apiInit()
     {
-        VkPipelineShaderStageCreateInfo result;
-        result.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        result.pNext = nullptr;
-        result.stage = stage;
-        result.module = mApiHandle;
-        // This member has to be "main", regardless of the actual entry point of the shader
-        result.pName = "main";
-        result.flags = 0;
-        result.pSpecializationInfo = nullptr;
-        return result;
+        mpList = RtVarsCmdList::create();
+
+        ID3D12GraphicsCommandList* pList = mpList.get();
+        mpLowLevelData->setCommandList(pList);
     }
-#endif
 }

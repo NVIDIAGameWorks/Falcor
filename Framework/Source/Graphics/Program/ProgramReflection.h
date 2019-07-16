@@ -360,7 +360,8 @@ namespace Falcor
             RawBuffer,
             TypedBuffer,
             Sampler,
-            ConstantBuffer
+            ConstantBuffer,
+            AccelerationStructure
         };
         
         /** Create a new object
@@ -430,8 +431,9 @@ namespace Falcor
 
         enum class Modifier
         {
-            None        = 0x0,    ///< No modifier
-            Shared      = 0x1,  ///< Shared resource
+            None            = 0x0,    ///< No modifier
+            Shared          = 0x1,    ///< Shared resource
+            ShaderRecord    = 0x2,    ///< Ray tracing shader record
         };
 
         /** Create a new object
@@ -657,6 +659,9 @@ namespace Falcor
             Srv,        ///> Shader-resource view
             Uav,        ///> Unordered-access view
             Sampler,    ///> Sampler
+#ifdef FALCOR_VK
+            AccelerationStructure, ///> Acceleration structure
+#endif
         };
 
         /** Translate a global register location (space, index, type) to a relative bind-location in the default parameter block

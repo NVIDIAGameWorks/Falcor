@@ -245,13 +245,13 @@ namespace Falcor
         return false;
     }
 
-    static void appendVrExtensions(std::vector<const char*>& vkExt, const std::vector<std::string>& vrSystemExt, const std::vector<VkExtensionProperties>& supportedExt)
+    static void appendExtensions(std::vector<const char*>& vkExt, const std::vector<std::string>& requiredExt, const std::vector<VkExtensionProperties>& supportedExt, const std::string& featureName)
     {
-        for (const auto& a : vrSystemExt)
+        for (const auto& a : requiredExt)
         {
             if (isExtensionSupported(a, supportedExt) == false)
             {
-                logError("Can't start OpenVR. Missing device extension " + a);
+                logError("Can't start " + featureName + ". Missing device extension " + a);
             }
             else
             {
@@ -286,12 +286,18 @@ namespace Falcor
 
         if (desc.enableDebugLayer) { requiredExtensions.push_back("VK_EXT_debug_report"); }
 
-        // Get the VR extensions
         std::vector<std::string> vrExt;
         if (desc.enableVR)
         {
             vrExt = VRSystem::getRequiredVkInstanceExtensions();
-            appendVrExtensions(requiredExtensions, vrExt, supportedExtensions);
+            appendExtensions(requiredExtensions, vrExt, supportedExtensions, "OpenVR");
+        }
+
+        std::vector<std::string> raytracingExt;
+        if (desc.enableRaytracing)
+        {
+            raytracingExt = { "VK_KHR_get_physical_device_properties2" };
+            appendExtensions(requiredExtensions, raytracingExt, supportedExtensions, "ray tracing");
         }
 
         VkInstanceCreateInfo instanceCreateInfo = {};
@@ -444,6 +450,22 @@ namespace Falcor
         }
     }
 
+    Device::SupportedFeatures getSupportedFeatures(DeviceHandle pDevice, DeviceApiData *pData)
+    {
+        Device::SupportedFeatures supported = Device::SupportedFeatures::None;
+
+        if (isExtensionSupported("VK_NV_ray_tracing", pData->deviceExtensions))
+        {
+            supported |= Device::SupportedFeatures::Raytracing;
+        }
+        else
+        {
+            logInfo("Raytracing is not supported on this device.");
+        }
+
+        return supported;
+    }
+
     VkDevice createLogicalDevice(VkPhysicalDevice physicalDevice, DeviceApiData *pData, const Device::Desc& desc, std::vector<CommandQueueHandle> cmdQueues[Device::kQueueTypeCount])
     {
         // Features
@@ -473,7 +495,14 @@ namespace Falcor
         if (desc.enableVR)
         {
             requiredOpenVRExt = VRSystem::getRequiredVkDeviceExtensions(physicalDevice);
-            appendVrExtensions(extensionNames, requiredOpenVRExt, pData->deviceExtensions);
+            appendExtensions(extensionNames, requiredOpenVRExt, pData->deviceExtensions, "OpenVR");
+        }
+
+        std::vector<std::string> requiredRaytracingExt;
+        if (desc.enableRaytracing)
+        {
+            requiredRaytracingExt = { "VK_NV_ray_tracing", "VK_KHR_get_memory_requirements2" };
+            appendExtensions(extensionNames, requiredRaytracingExt, pData->deviceExtensions, "ray tracing");
         }
 
         for (const auto& a : desc.requiredExtensions)
@@ -678,7 +707,13 @@ namespace Falcor
         if (initMemoryTypes(physicalDevice, mpApiData) == false) return false;
 
         mApiHandle = DeviceHandle::create(instance, physicalDevice, device, surface);
+        mSupportedFeatures = getSupportedFeatures(mApiHandle, mpApiData);
         mGpuTimestampFrequency = getPhysicalDeviceLimits().timestampPeriod / (1000 * 1000);
+
+        if (desc.enableRaytracing && is_set(mSupportedFeatures, Device::SupportedFeatures::Raytracing))
+        {
+            loadRaytracingEntrypoints();
+        }
 
         if (createSwapChain(desc.colorFormat) == false)
         {

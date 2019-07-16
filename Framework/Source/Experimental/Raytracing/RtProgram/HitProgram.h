@@ -44,7 +44,7 @@ namespace Falcor
             const std::string& intersectionEntry, 
             const DefineList& programDefines = DefineList(),
             uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES,
-            uint32_t maxAttributeSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES,
+            uint32_t maxAttributeSize = FALCOR_RT_MAX_ATTRIBUTE_SIZE_IN_BYTES,
             Shader::CompilerFlags flags = Shader::CompilerFlags::None
             );
 

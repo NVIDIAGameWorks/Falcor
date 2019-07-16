@@ -83,6 +83,67 @@ namespace Falcor
     };
 #endif
 
+    enum class RtBuildFlags
+    {
+        None = 0,
+        AllowUpdate = 0x1,
+        AllowCompaction = 0x2,
+        FastTrace = 0x4,
+        FastBuild = 0x8,
+        MinimizeMemory = 0x10,
+        PerformUpdate = 0x20,
+    };
+    enum_class_operators(RtBuildFlags);
+
+#define rt_flags(a) case RtBuildFlags::a: return #a
+    inline std::string to_string(RtBuildFlags flags)
+    {
+        switch (flags)
+        {
+            rt_flags(None);
+            rt_flags(AllowUpdate);
+            rt_flags(AllowCompaction);
+            rt_flags(FastTrace);
+            rt_flags(FastBuild);
+            rt_flags(MinimizeMemory);
+            rt_flags(PerformUpdate);
+        default:
+            should_not_get_here();
+            return "";
+        }
+    }
+#undef rt_flags
+
+    inline VkBuildAccelerationStructureFlagsNV getVKRayBuildFlags(RtBuildFlags buildFlags)
+    {
+        VkBuildAccelerationStructureFlagsNV vkRayFlags = 0;
+
+        if (is_set(buildFlags, RtBuildFlags::AllowUpdate)) vkRayFlags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
+        if (is_set(buildFlags, RtBuildFlags::AllowCompaction)) vkRayFlags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_NV;
+        if (is_set(buildFlags, RtBuildFlags::FastTrace)) vkRayFlags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NV;
+        if (is_set(buildFlags, RtBuildFlags::FastBuild)) vkRayFlags |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_NV;
+        if (is_set(buildFlags, RtBuildFlags::MinimizeMemory)) vkRayFlags |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_NV;
+        if (is_set(buildFlags, RtBuildFlags::PerformUpdate)) should_not_get_here(); // Not supported
+
+        return vkRayFlags;
+    }
+
+    struct VkGeometryInstance
+    {
+        float transform[12];
+        uint32_t instanceId : 24;
+        uint32_t mask : 8;
+        uint32_t instanceOffset : 24;
+        uint32_t flags : 8;
+        uint64_t accelerationStructureHandle;
+    };
+
+    // The max scalars supported by our driver
+    #define FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES (14 * sizeof(float))
+    #define FALCOR_RT_MAX_ATTRIBUTE_SIZE_IN_BYTES 32 // Unused, but keep in sync with D3D12
+
+    #define FALCOR_RT_SHADER_TABLE_BYTE_ALIGNMENT 16
+
     using DeviceHandle = VkDeviceData::SharedPtr;
     using CommandListHandle = VkCommandBuffer;
     using CommandQueueHandle = VkQueue;
@@ -101,6 +162,7 @@ namespace Falcor
     using GpuAddress = size_t;
     using DescriptorSetApiHandle = VkDescriptorSet;
     using QueryHeapHandle = VkHandle<VkQueryPool>::SharedPtr;
+    using AccelerationStructureHandle = VkHandle<VkAccelerationStructureNV>::SharedPtr;
 
     using GraphicsStateHandle = VkHandle<VkPipeline>::SharedPtr;
     using ComputeStateHandle = VkHandle<VkPipeline>::SharedPtr;
@@ -126,6 +188,19 @@ namespace Falcor
     using ApiObjectHandle = VkBaseApiHandle::SharedPtr;
 
     uint32_t getMaxViewportCount();
+
+    extern PFN_vkCreateAccelerationStructureNV vkCreateAccelerationStructureNV;
+    extern PFN_vkDestroyAccelerationStructureNV vkDestroyAccelerationStructureNV;
+    extern PFN_vkGetAccelerationStructureMemoryRequirementsNV vkGetAccelerationStructureMemoryRequirementsNV;
+    extern PFN_vkCmdCopyAccelerationStructureNV vkCmdCopyAccelerationStructureNV;
+    extern PFN_vkBindAccelerationStructureMemoryNV vkBindAccelerationStructureMemoryNV;
+    extern PFN_vkCmdBuildAccelerationStructureNV vkCmdBuildAccelerationStructureNV;
+    extern PFN_vkCmdTraceRaysNV vkCmdTraceRaysNV;
+    extern PFN_vkGetRayTracingShaderGroupHandlesNV vkGetRayTracingShaderGroupHandlesNV;
+    extern PFN_vkCreateRayTracingPipelinesNV vkCreateRayTracingPipelinesNV;
+    extern PFN_vkGetAccelerationStructureHandleNV vkGetAccelerationStructureHandleNV;
+
+    void loadRaytracingEntrypoints();
 }
 
 #define VK_FAILED(res) (res != VK_SUCCESS)

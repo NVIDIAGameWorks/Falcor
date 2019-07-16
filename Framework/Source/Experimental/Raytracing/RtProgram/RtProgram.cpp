@@ -138,7 +138,8 @@ namespace Falcor
         if (mReflectionDirty)
         {
             // Create the global reflector and root-signature
-            mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, std::string());
+            std::string log;
+            mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, log);
             mpGlobalReflector = ProgramReflection::merge(*mpGlobalReflector, *mpRayGenProgram->getGlobalReflector());
 
             for (const auto m : mMissProgs)

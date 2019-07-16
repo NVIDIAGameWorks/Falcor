@@ -120,15 +120,12 @@ namespace Falcor
         Hull,           ///< Hull shader (AKA Tessellation control shader)
         Domain,         ///< Domain shader (AKA Tessellation evaluation shader)
         Compute,        ///< Compute shader
-
-#ifdef FALCOR_D3D12
         RayGeneration,  ///< Ray generation shader
         Intersection,   ///< Intersection shader
         AnyHit,         ///< Any hit shader
         ClosestHit,     ///< Closest hit shader
         Miss,           ///< Miss shader
         Callable,       ///< Callable shader
-#endif
         Count           ///< Shader Type count
     };
 

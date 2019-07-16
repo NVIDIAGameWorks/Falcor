@@ -25,47 +25,23 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
-#include "Framework.h"
-#include "RtShader.h"
-#include "Utils/StringUtils.h"
+#pragma once
+#include "API/CopyContext.h"
+#include "API/LowLevel/RootSignature.h"
 
 namespace Falcor
 {
-    RtShader::RtShader(ShaderType type, const std::string& entryPointName) : Shader(type), mEntryPoint(entryPointName) {}
-    RtShader::~RtShader() = default;
-
-    RtShader::SharedPtr RtShader::create(const Blob& shaderBlob, const std::string& entryPointName, ShaderType type, Shader::CompilerFlags flags, std::string& log)
+    class RtVarsCmdList
     {
-        SharedPtr pShader = SharedPtr(new RtShader(type, entryPointName));
-        return pShader->init(shaderBlob, entryPointName, flags, log) ? pShader : nullptr;
-    }
+    public:
+        using SharedPtr = std::shared_ptr<RtVarsCmdList>;
+        static SharedPtr create() { return SharedPtr(new RtVarsCmdList); }
+        void setRootParams(RootSignature::SharedPtr pRoot, uint8_t* pBase) { mpRootBase = pBase; mpRootSignature = pRoot; }
+        void setRootConstants(const void* pData, uint32_t size) { memcpy(mpRootBase, pData, size); mpRootBase += size; }
 
-    RtShader::SharedPtr createRtShaderFromBlob(const std::string& filename, const std::string& entryPoint, const Shader::Blob& blob, Shader::CompilerFlags flags, ShaderType shaderType, std::string& log)
-    {
-        std::string msg;
-        RtShader::SharedPtr pShader = RtShader::create(blob, entryPoint, shaderType, flags, msg);
-
-        if(pShader == nullptr)
-        {
-            log = "Error when creating " + to_string(shaderType) + " shader from file \"" + filename + "\"\nError log:\n";
-            log += msg;
-        }
-        return pShader;
-    }
-
-#ifdef FALCOR_VK
-    VkPipelineShaderStageCreateInfo RtShader::getShaderStage(VkShaderStageFlagBits stage) const
-    {
-        VkPipelineShaderStageCreateInfo result;
-        result.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        result.pNext = nullptr;
-        result.stage = stage;
-        result.module = mApiHandle;
-        // This member has to be "main", regardless of the actual entry point of the shader
-        result.pName = "main";
-        result.flags = 0;
-        result.pSpecializationInfo = nullptr;
-        return result;
-    }
-#endif
+    private:
+        RtVarsCmdList() = default;
+        uint8_t* mpRootBase;
+        RootSignature::SharedPtr mpRootSignature;
+    };
 }

@@ -31,6 +31,8 @@
 #include "API/Device.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "VKState.h"
+#include "Experimental/Raytracing/RtProgramVars.h"
+#include "Experimental/Raytracing/RtState.h"
 
 namespace Falcor
 {
@@ -107,7 +109,7 @@ namespace Falcor
         vkCmdSetScissor(cmdList, 0, (uint32_t)scissors.size(), vkScissors.data());
     }
 
-    static VkIndexType getVkIndexType(ResourceFormat format)
+    VkIndexType getVkIndexType(ResourceFormat format)
     {
         switch (format)
         {
@@ -267,6 +269,66 @@ namespace Falcor
         prepareForDraw();
         vkCmdDrawIndexedIndirect(mpLowLevelData->getCommandList(), pArgBuffer->getApiHandle(), argBufferOffset + pArgBuffer->getGpuAddressOffset(), 1, 0);
         endVkDraw(mpLowLevelData->getCommandList());
+    }
+
+    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height)
+    {
+        raytrace(pVars, pState, width, height, 1);
+    }
+
+    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height, uint32_t depth)
+    {
+        resourceBarrier(pVars->getShaderTable().get(), Resource::State::ShaderResource);
+
+        Buffer* pShaderTable = pVars->getShaderTable().get();
+        uint32_t recordSize = pVars->getRecordSize();
+
+        // RayGen is the first entry in the shader-table
+        VkBuffer raygenShaderBindingTableBuffer = pShaderTable->getApiHandle();
+        uint32_t raygenShaderBindingOffset = pVars->getRayGenRecordIndex() * recordSize;
+        size_t tableSize = recordSize;
+
+        VkBuffer missShaderBindingTableBuffer = VK_NULL_HANDLE;
+        uint32_t missShaderBindingOffset = 0;
+        uint32_t missShaderBindingStride = 0;
+
+        VkBuffer hitShaderBindingTableBuffer = VK_NULL_HANDLE;
+        uint32_t hitShaderBindingOffset = 0;
+        uint32_t hitShaderBindingStride = 0;
+
+        // Miss is the second entry in the shader-table
+        // If there are no entries, leave the start address as nullptr. The runtime validates that it's valid or null.
+        if (pVars->getMissProgramsCount() > 0)
+        {
+            missShaderBindingTableBuffer = pShaderTable->getApiHandle();
+            missShaderBindingOffset = pVars->getFirstMissRecordIndex() * recordSize;
+            missShaderBindingStride = recordSize;
+            assert(missShaderBindingOffset >= tableSize);
+            tableSize += recordSize * pVars->getMissProgramsCount();
+        }
+
+        // Hit groups is the third entry in the shader-table
+        // If there are no entries, we leave the start address as nullptr. The runtime validates that it's valid or null.
+        if (pVars->getHitRecordsCount() > 0)
+        {
+            hitShaderBindingTableBuffer = pShaderTable->getApiHandle();
+            hitShaderBindingOffset = pVars->getFirstHitRecordIndex() * recordSize;
+            hitShaderBindingStride = recordSize;
+            assert(hitShaderBindingOffset >= tableSize);
+            tableSize += recordSize * pVars->getHitRecordsCount();
+        }
+
+        // Check that the buffer is large enough.
+        assert(pVars->getShaderTable()->getSize() >= tableSize);
+
+        vkCmdBindPipeline(mpLowLevelData->getCommandList(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, pState->getRtso()->getApiHandle());
+
+        vkCmdTraceRaysNV(
+            mpLowLevelData->getCommandList(), raygenShaderBindingTableBuffer, raygenShaderBindingOffset,
+            missShaderBindingTableBuffer, missShaderBindingOffset, missShaderBindingStride,
+            hitShaderBindingTableBuffer, hitShaderBindingOffset, hitShaderBindingStride,
+            VK_NULL_HANDLE, 0, 0,
+            width, height, depth);
     }
 
     void RenderContext::initDrawCommandSignatures()

@@ -55,6 +55,10 @@ namespace Falcor
 
     RtProgramVars::SharedPtr RtProgramVars::create(RtProgram::SharedPtr pProgram, RtScene::SharedPtr pScene)
     {
+#ifdef FALCOR_VK
+        pProgram->addDefine("RT_GEOMETRY_COUNT", std::to_string(pScene->getGeometryCount(pProgram->getHitProgramCount())));
+#endif
+
         SharedPtr pVars = SharedPtr(new RtProgramVars(pProgram, pScene));
         if ((checkParams(pProgram, pScene) == false) || (pVars->init() == false))
         {
@@ -104,17 +108,14 @@ namespace Falcor
             }
         }
 
-
-        // Get the program identifier size
-        DeviceHandle pRtDevice = gpDevice->getApiHandle();
-
         // Create the shader-table buffer
         mHitRecordCount = recordCountPerHit * mHitProgCount;
         uint32_t numEntries = mMissProgCount + mHitRecordCount + 1; // 1 is for the ray-gen
 
         // Calculate the record size
-        mRecordSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + maxRootSigSize;
-        mRecordSize = align_to(D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, mRecordSize); // We align to SHADER_TABLE_ALIGNMENT instead of SHADER_RECORD_ALIGNMENT because we pack all three tables in the same buffer
+        mProgramIdentifierSize = getProgramIdentifierSize();
+        mRecordSize = mProgramIdentifierSize + maxRootSigSize;
+        mRecordSize = align_to(FALCOR_RT_SHADER_TABLE_BYTE_ALIGNMENT, mRecordSize); // We align to SHADER_TABLE_ALIGNMENT instead of SHADER_RECORD_ALIGNMENT because we pack all three tables in the same buffer
         assert(mRecordSize != 0);
 
         // Create the buffer and allocate the temporary storage
@@ -123,7 +124,7 @@ namespace Falcor
         mShaderTableData.resize(mpShaderTable->getSize());
 
         // Create the global variables
-        mpGlobalVars = GraphicsVars::create(mpProgram->getGlobalReflector(), true, mpProgram->getGlobalRootSignature());
+        mpGlobalVars = RaytracingVars::create(mpProgram->getGlobalReflector(), true, mpProgram->getGlobalRootSignature());
 
         return true;
     }
@@ -161,16 +162,6 @@ namespace Falcor
         uint32_t meshIndex = mFirstHitVarEntry + mHitProgCount * meshId;    // base record of the requested mesh
         uint32_t recordIndex = meshIndex + hitId;
         return mShaderTableData.data() + (recordIndex * mRecordSize);
-    }
-
-    bool applyRtProgramVars(uint8_t* pRecord, const RtProgramVersion* pProgVersion, const RtStateObject* pRtso, ProgramVars* pVars, RtVarsContext* pContext)
-    {
-        MAKE_SMART_COM_PTR(ID3D12StateObjectProperties);
-        ID3D12StateObjectPropertiesPtr pRtsoPtr = pRtso->getApiHandle();
-        memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pProgVersion->getExportName().c_str()), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-        pRecord += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-        pContext->getRtVarsCmdList()->setRootParams(pProgVersion->getLocalRootSignature(), pRecord);
-        return pVars->applyProgramVarsCommon<true>(pContext, true);
     }
 
     bool RtProgramVars::apply(RenderContext* pCtx, RtStateObject* pRtso)
@@ -211,12 +202,36 @@ namespace Falcor
             }
         }
 
-        if (!mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true))
+        if (!mpGlobalVars->apply(pCtx, true))
         {
             return false;
         }
 
         pCtx->updateBuffer(mpShaderTable.get(), mShaderTableData.data());
         return true;
+    }
+
+    RtVarsContext::SharedPtr RtVarsContext::create()
+    {
+        return SharedPtr(new RtVarsContext());
+    }
+
+    RtVarsContext::RtVarsContext()
+    {
+        mpLowLevelData = LowLevelContextData::create(LowLevelContextData::CommandQueueType::Direct, nullptr);
+
+        apiInit();
+    }
+
+    RtVarsContext::~RtVarsContext()
+    {
+        // Release the low-level data before the list
+        mpLowLevelData = nullptr;
+        mpList = nullptr;
+    }
+
+    void RtVarsContext::resourceBarrier(const Resource* pResource, Resource::State newState, const ResourceViewInfo* pViewInfo)
+    {
+        gpDevice->getRenderContext()->resourceBarrier(pResource, newState, pViewInfo);
     }
 }

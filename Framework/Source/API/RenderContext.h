@@ -42,10 +42,8 @@
 
 namespace Falcor
 {
-#ifdef FALCOR_D3D12
     class RtProgramVars;
     class RtState;
-#endif
 
     /** The rendering context. Use it to bind state and dispatch calls to the GPU
     */
@@ -207,13 +205,11 @@ namespace Falcor
         */
         void resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource);
 
-#ifdef FALCOR_D3D12
         /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same
         */
         deprecate("3.3", "Ray dispatch now accepts depth as a parameter. Using the deprecated version will assume depth = 1.")
         void raytrace(std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height);
         void raytrace(std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height, uint32_t depth);
-#endif
 
     private:
         RenderContext();

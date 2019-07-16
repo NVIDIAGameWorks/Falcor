@@ -318,4 +318,23 @@ namespace Falcor
         ComputeVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
             ProgramVars(pReflector, createBuffers, pRootSig) {}
     };
+
+    // Variables for global root signature
+    class RaytracingVars : public GraphicsVars, public std::enable_shared_from_this<RaytracingVars>
+    {
+    public:
+        using SharedPtr = SharedPtrT<RaytracingVars>;
+        using SharedConstPtr = std::shared_ptr<const RaytracingVars>;
+
+        /** Create a new object
+            \param[in] pReflector A program reflection object containing the requested declarations
+            \param[in] createBuffers If true, will create the ConstantBuffer objects. Otherwise, the user will have to bind the CBs himself
+            \param[in] pRootSignature A root-signature describing how to bind resources into the shader. If this parameter is nullptr, a root-signature object will be created from the program reflection object
+        */
+        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true, const RootSignature::SharedPtr& pRootSig = nullptr);
+        virtual bool apply(RenderContext* pContext, bool bindRootSig);
+    protected:
+        RaytracingVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
+            GraphicsVars(pReflector, createBuffers, pRootSig) {}
+    };
 }

@@ -85,6 +85,10 @@ namespace Falcor
         */
         virtual void uavBarrier(const Resource* pResource);
 
+        /** Insert a memory barrier for acceleration structure
+        */
+        void accelerationStructureBarrier();
+
         /** Copy an entire resource
         */
         void copyResource(const Resource* pDst, const Resource* pSrc);

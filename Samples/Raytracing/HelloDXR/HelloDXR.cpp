@@ -137,7 +137,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
-    mpRtVars->getRayGenVars()->setTexture("gOutput", mpRtOut);
+    mpRtVars->getGlobalVars()->setTexture("gOutput", mpRtOut);
 
     mpRtRenderer->renderScene(pContext, mpRtVars, mpRtState, uvec3(pTargetFbo->getWidth(), pTargetFbo->getHeight(), 1), mpCamera.get());
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
@@ -194,10 +194,15 @@ void HelloDXR::onResizeSwapChain(SampleCallbacks* pSample, uint32_t width, uint3
     mpRtOut = Texture::create2D(width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
 }
 
+#ifdef _WIN32
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nShowCmd)
+#else
+int main(int argc, char** argv)
+#endif
 {
     HelloDXR::UniquePtr pRenderer = std::make_unique<HelloDXR>();
     SampleConfig config;
+    config.deviceDesc.enableRaytracing = true;
     config.windowDesc.title = "HelloDXR";
     config.windowDesc.resizableWindow = true;
 
