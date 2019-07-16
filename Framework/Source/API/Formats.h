@@ -52,6 +52,9 @@ namespace Falcor
 #ifdef FALCOR_D3D12
         AccelerationStructure = 0x80000000,  ///< The resource will be bound as an acceleration structure
 #endif
+#ifdef FALCOR_VK
+        RayTracing = 0x80000000,
+#endif
     };
 
     /** Resource formats

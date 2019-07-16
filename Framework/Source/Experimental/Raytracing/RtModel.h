@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-    class RtModel : public Model, inherit_shared_from_this<Model, RtModel>
+    class RtModel : public Model, public inherit_shared_from_this<Model, RtModel>
     {
     public:
         using SharedPtr = std::shared_ptr<RtModel>;
@@ -45,13 +45,17 @@ namespace Falcor
             uint32_t meshBaseIndex = 0;
             uint32_t meshCount = 0;
             bool isStatic = true;
-            Buffer::SharedPtr pBlas;
+#ifdef FALCOR_VK
+            AccelerationStructureHandle pBlas;
+#else
+            Buffer::SharedPtr pBlas; 
+#endif
         };
 
         uint32_t getBottomLevelDataCount() const { return (uint32_t)mBottomLevelData.size(); }
         const BottomLevelData& getBottomLevelData(uint32_t index) const { return mBottomLevelData[index]; }
 
-    private:
+    protected:
         RtModel(const Model& model, RtBuildFlags buildFlags);
         bool update() override;            // Override update() from Model, which updates vertices for skinned models
         void buildAccelerationStructure();

@@ -31,7 +31,7 @@
 
 namespace Falcor
 {
-    class RtShader : public Shader, inherit_shared_from_this<Shader, RtShader>
+    class RtShader : public Shader, public inherit_shared_from_this<Shader, RtShader>
     {
     public:
         using SharedPtr = std::shared_ptr<RtShader>;
@@ -41,6 +41,11 @@ namespace Falcor
         ~RtShader();
 
         const std::string& getEntryPoint() const { return mEntryPoint; }
+
+#ifdef FALCOR_VK
+        VkPipelineShaderStageCreateInfo getShaderStage(VkShaderStageFlagBits stage) const;
+#endif
+
     private:
         RtShader(ShaderType type, const std::string& entryPointName);
         std::string mEntryPoint;

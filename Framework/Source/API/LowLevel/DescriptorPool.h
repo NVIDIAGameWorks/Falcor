@@ -61,6 +61,9 @@ namespace Falcor
             Dsv,
             Rtv,
             Sampler,
+#ifdef FALCOR_VK
+            AccelerationStructure,
+#endif
 
             Count
         };

@@ -74,6 +74,8 @@ namespace Falcor
         */
         void setBlob(const void* pSrc, size_t offset, size_t size);
 
+        const std::vector<uint8_t>& getData() const { return mData; }
+
         /** Get a variable offset inside the buffer. See notes about naming in the VariablesBuffer class description. Constant name can be provided with an implicit array-index, similar to VariablesBuffer#SetVariableArray.
         */
         size_t getVariableOffset(const std::string& varName) const;

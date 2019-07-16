@@ -35,7 +35,7 @@ namespace Falcor
     class RootSignature;
 
     // The inheritence here is just so that we could work with Program. We're not actually using anything from ProgramVersion
-    class RtProgramVersion : public ProgramVersion, inherit_shared_from_this<ProgramVersion, RtProgramVersion>
+    class RtProgramVersion : public ProgramVersion, public inherit_shared_from_this<ProgramVersion, RtProgramVersion>
     {
     public:
         using SharedPtr = std::shared_ptr<RtProgramVersion>;

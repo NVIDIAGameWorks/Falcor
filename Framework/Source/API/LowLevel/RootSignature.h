@@ -48,17 +48,15 @@ namespace Falcor
         {
         public:
             Desc& addDescriptorSet(const DescriptorSetLayout& setLayout);
-#ifdef FALCOR_D3D12
             Desc& setLocal(bool isLocal) { mIsLocal = isLocal; return *this; }
-#endif
+            Desc& setSize(uint32_t size) { mSize = size; return *this; }
             size_t getSetsCount() const { return mSets.size(); }
             const DescriptorSetLayout getSet(size_t index) const { return mSets[index]; }
         private:
             friend class RootSignature;
             std::vector<DescriptorSetLayout> mSets;
-#ifdef FALCOR_D3D12
             bool mIsLocal = false;
-#endif
+            uint32_t mSize = 0;
         };
 
         ~RootSignature();

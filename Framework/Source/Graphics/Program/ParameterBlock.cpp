@@ -93,6 +93,11 @@ namespace Falcor
         case DescriptorSet::Type::TextureUav:
             pUAV = other.pUAV;
             break;
+#ifdef FALCOR_VK
+        case DescriptorSet::Type::AccelerationStructure:
+            pAS = other.pAS;
+            break;
+#endif
         case DescriptorPool::Type::Count:
             break;
         default:
@@ -122,8 +127,13 @@ namespace Falcor
         case DescriptorSet::Type::TextureUav:
             pUAV = nullptr;
             break;
+#ifdef FALCOR_VK
+        case DescriptorSet::Type::AccelerationStructure:
+            pAS = nullptr;
+            break;
         case DescriptorPool::Type::Count:
             break;
+#endif
         default:
             should_not_get_here();
             break;
@@ -173,6 +183,11 @@ namespace Falcor
                     case DescriptorSet::Type::Sampler:
                         d.pSampler = Sampler::getDefault();
                         break;
+#ifdef FALCOR_VK
+                    case DescriptorSet::Type::AccelerationStructure:
+                        d.pAS = AccelerationStructureHandle();
+                        break;
+#endif
                     default:
                         should_not_get_here();
                     }
@@ -566,7 +581,25 @@ namespace Falcor
         mRootSets[bindLocation.setIndex].pSet = nullptr;
         return true;
     }
-    
+
+#ifdef FALCOR_VK
+    bool ParameterBlock::setAccelerationStructure(const BindLocation& bindLocation, uint32_t arrayIndex, const AccelerationStructureHandle& pAccelerationStructure)
+    {
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::Count, "setAccelerationStructure()") == false) return false;
+        auto& desc = mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex];
+        if (desc.pAS == pAccelerationStructure) return true;
+        desc.pAS = pAccelerationStructure ? pAccelerationStructure : AccelerationStructureHandle();
+        mRootSets[bindLocation.setIndex].pSet = nullptr;
+        return true;
+    }
+
+    AccelerationStructureHandle ParameterBlock::getAccelerationStructure(const BindLocation& bindLocation, uint32_t arrayIndex) const
+    {
+        if (checkResourceIndices(bindLocation, arrayIndex, DescriptorSet::Type::AccelerationStructure, "getAccelerationStructure()") == false) return nullptr;
+        return mAssignedResources[bindLocation.setIndex][bindLocation.rangeIndex][arrayIndex].pAS;
+    }
+#endif
+
     static bool isUavSetType(DescriptorSet::Type type)
     {
         switch (type)
@@ -696,6 +729,12 @@ namespace Falcor
                         assert(desc.pUAV);
                         pDescSet->setUav(r, d, desc.pUAV.get());
                         break;
+#ifdef FALCOR_VK
+                    case DescriptorSet::Type::AccelerationStructure:
+                        assert(desc.pAS);
+                        pDescSet->setAccelerationStructure(r, d, desc.pAS);
+                        break;
+#endif
 
                     default:
                         should_not_get_here();

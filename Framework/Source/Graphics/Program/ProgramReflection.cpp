@@ -79,6 +79,8 @@ namespace Falcor
                 return ReflectionResourceType::Type::RawBuffer;
             case SLANG_TEXTURE_BUFFER:
                 return ReflectionResourceType::Type::TypedBuffer;
+            case SLANG_ACCELERATION_STRUCTURE:
+                return ReflectionResourceType::Type::AccelerationStructure;
             default:
                 return ReflectionResourceType::Type::Texture;
             }
@@ -345,6 +347,14 @@ namespace Falcor
                     break;
                 }
             }
+        }
+        if (category == SLANG_PARAMETER_CATEGORY_SHADER_RECORD)
+        {
+            if (is_set(mod, ReflectionVar::Modifier::Shared))
+            {
+                logError("Shader record can't be shared");
+            }
+            mod |= ReflectionVar::Modifier::ShaderRecord;
         }
         return mod;
     }
@@ -641,6 +651,10 @@ namespace Falcor
         case DescriptorSet::Type::TextureUav:
         case DescriptorSet::Type::TypedBufferUav:
             return ProgramReflection::BindType::Uav;
+#ifdef FALCOR_VK
+        case DescriptorSet::Type::AccelerationStructure:
+            return ProgramReflection::BindType::AccelerationStructure;
+#endif
         default:
             should_not_get_here();
             return ProgramReflection::BindType(-1);
@@ -749,7 +763,13 @@ namespace Falcor
             if (pVar->getType()->unwrapArray()->asResourceType() == nullptr) continue;
             auto varMod = pVar->getModifier();
             
+#ifdef FALCOR_VK
+            // In Vulkan, Explicity only store the shader record buffer when reflecting the local scope
+            bool storeVar = is_set(varMod, ReflectionVar::Modifier::ShaderRecord) ? is_set(scopeToReflect, ResourceScope::Local) : is_set(scopeToReflect, ResourceScope::Global);
+#else
+            // Observe the shared qualifier in D3D12
             bool storeVar = is_set(varMod, ReflectionVar::Modifier::Shared) ? is_set(scopeToReflect, ResourceScope::Global) : is_set(scopeToReflect, ResourceScope::Local);
+#endif
             if (storeVar == false) continue;
 
             if (pSlangLayout->getType()->unwrapArray()->getKind() == TypeReflection::Kind::ParameterBlock)
@@ -878,6 +898,13 @@ namespace Falcor
             break;
         case ReflectionResourceType::Type::TypedBuffer:
             d.setType = shaderAccess == ReflectionResourceType::ShaderAccess::Read ? ParameterBlockReflection::ResourceDesc::Type::TypedBufferSrv : ParameterBlockReflection::ResourceDesc::Type::TypedBufferUav;
+            break;
+        case ReflectionResourceType::Type::AccelerationStructure:
+#ifdef FALCOR_D3D12
+            d.setType = ParameterBlockReflection::ResourceDesc::Type::TextureSrv;
+#else
+            d.setType = ParameterBlockReflection::ResourceDesc::Type::AccelerationStructure;
+#endif
             break;
         default:
             should_not_get_here();

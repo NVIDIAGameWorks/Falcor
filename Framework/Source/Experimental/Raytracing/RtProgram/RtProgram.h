@@ -87,7 +87,7 @@ namespace Falcor
             Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
         };
 
-        static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+        static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = FALCOR_RT_MAX_ATTRIBUTE_SIZE_IN_BYTES);
 
         // Ray-gen
         RayGenProgram::SharedPtr getRayGenProgram() const { return mpRayGenProgram; }
@@ -118,7 +118,7 @@ namespace Falcor
 
         void updateReflection() const;
 
-        RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
+        RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = FALCOR_RT_MAX_ATTRIBUTE_SIZE_IN_BYTES);
         HitProgramList mHitProgs;
         MissProgramList mMissProgs;
         RayGenProgram::SharedPtr mpRayGenProgram;

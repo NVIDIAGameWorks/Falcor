@@ -156,21 +156,49 @@ namespace Falcor
         vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
     }
 
-    template<bool forGraphics>
+    void DescriptorSet::setAccelerationStructure(uint32_t rangeIndex, uint32_t descIndex, const AccelerationStructureHandle& pAccelerationStructure)
+    {
+        VkAccelerationStructureNV asHandle = pAccelerationStructure;
+
+        VkWriteDescriptorSetAccelerationStructureNV descriptorAccelerationStructureInfo;
+        descriptorAccelerationStructureInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV;
+        descriptorAccelerationStructureInfo.pNext = nullptr;
+        descriptorAccelerationStructureInfo.accelerationStructureCount = 1;
+        descriptorAccelerationStructureInfo.pAccelerationStructures = &asHandle;
+
+        VkWriteDescriptorSet write;
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = &descriptorAccelerationStructureInfo;
+        write.dstSet = mApiHandle;
+        write.dstBinding = mLayout.getRange(rangeIndex).baseRegIndex;
+        write.dstArrayElement = descIndex;
+        write.descriptorCount = 1;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
+        write.pImageInfo = nullptr;
+        write.pBufferInfo = nullptr;
+        write.pTexelBufferView = nullptr;
+        vkUpdateDescriptorSets(gpDevice->getApiHandle(), 1, &write, 0, nullptr);
+    }
+
+    template<VkPipelineBindPoint bindPoint>
     static void bindCommon(DescriptorSet::ApiHandle set, CopyContext* pCtx, const RootSignature* pRootSig, uint32_t bindLocation)
     {
-        VkPipelineBindPoint bindPoint = forGraphics ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
         VkDescriptorSet vkSet = set;
         vkCmdBindDescriptorSets(pCtx->getLowLevelData()->getCommandList(), bindPoint, pRootSig->getApiHandle(), bindLocation, 1, &vkSet, 0, nullptr);
     }
 
     void DescriptorSet::bindForGraphics(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
     {
-        bindCommon<true>(mApiHandle, pCtx, pRootSig, rootIndex);
+        bindCommon<VK_PIPELINE_BIND_POINT_GRAPHICS>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 
     void DescriptorSet::bindForCompute(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
     {
-        bindCommon<false>(mApiHandle, pCtx, pRootSig, rootIndex);
+        bindCommon<VK_PIPELINE_BIND_POINT_COMPUTE>(mApiHandle, pCtx, pRootSig, rootIndex);
+    }
+
+    void DescriptorSet::bindForRaytracing(CopyContext* pCtx, const RootSignature* pRootSig, uint32_t rootIndex)
+    {
+        bindCommon<VK_PIPELINE_BIND_POINT_RAY_TRACING_NV>(mApiHandle, pCtx, pRootSig, rootIndex);
     }
 }

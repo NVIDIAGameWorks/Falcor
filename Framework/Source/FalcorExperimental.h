@@ -42,7 +42,6 @@
 #include "Experimental/RenderGraph/RenderGraphImportExport.h"
 
 // Raytracing
-#ifdef FALCOR_D3D12
 #include "Experimental/Raytracing/RtModel.h"
 #include "Experimental/Raytracing/RtScene.h"
 #include "Experimental/Raytracing/RtShader.h"
@@ -54,4 +53,3 @@
 #include "Experimental/Raytracing/RtState.h"
 #include "Experimental/Raytracing/RtStateObject.h"
 #include "Experimental/Raytracing/RtSceneRenderer.h"
-#endif

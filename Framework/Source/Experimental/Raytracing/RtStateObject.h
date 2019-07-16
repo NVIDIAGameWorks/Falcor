@@ -35,7 +35,11 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<RtStateObject>;
         using SharedConstPtr = std::shared_ptr<const RtStateObject>;
+#ifdef FALCOR_VK
+        using ApiHandle = ComputeStateHandle;
+#else
         using ApiHandle = ID3D12StateObjectPtr;
+#endif
 
         using ProgramList = std::vector<RtProgramVersion::SharedConstPtr>;
 
@@ -61,9 +65,16 @@ namespace Falcor
         uint32_t getMaxTraceRecursionDepth() const { return mDesc.mMaxTraceRecursionDepth; }
         const std::shared_ptr<RootSignature>& getGlobalRootSignature() const { return mDesc.mpGlobalRootSignature; }
         const Desc& getDesc() const { return mDesc; }
+#ifdef FALCOR_VK
+        const void* getShaderGroupHandle(const RtProgramVersion* pProgVersion) const;
+#endif
+
     private:
         RtStateObject(const Desc& d) : mDesc(d) {}
         ApiHandle mApiHandle;
         Desc mDesc;
+#ifdef FALCOR_VK
+        std::map<std::wstring, std::unique_ptr<uint8_t[]>> mShaderGroupHandleCache;
+#endif
     };
 }

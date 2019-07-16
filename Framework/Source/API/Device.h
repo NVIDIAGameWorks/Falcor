@@ -64,6 +64,7 @@ namespace Falcor
             bool enableVsync = false;                                       ///< Controls vertical-sync
             bool enableDebugLayer = DEFAULT_ENABLE_DEBUG_LAYER;             ///< Enable the debug layer. The default for release build is false, for debug build it's true.
             bool enableVR = false;                                          ///< Create a device matching OpenVR requirements
+            bool enableRaytracing = false;                                  ///< Enable ray tracing through extension for Vulkan, not needed for D3D12.
 
             static_assert((uint32_t)LowLevelContextData::CommandQueueType::Direct == 2, "Default initialization of cmdQueues assumes that Direct queue index is 2");
             uint32_t cmdQueues[kQueueTypeCount] = { 0, 0, 1 };  ///< Command queues to create. If not direct-queues are created, mpRenderContext will not be initialized

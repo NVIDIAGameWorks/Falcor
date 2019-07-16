@@ -150,6 +150,11 @@ namespace Falcor
         return SharedPtr(new ComputeVars(pReflector, createBuffers, pRootSig));
     }
 
+    RaytracingVars::SharedPtr RaytracingVars::create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig)
+    {
+        return SharedPtr(new RaytracingVars(pReflector, createBuffers, pRootSig));
+    }
+
     ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(const std::string& name) const
     {
         return mDefaultBlock.pBlock->getConstantBuffer(name);
@@ -319,5 +324,37 @@ namespace Falcor
     bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig)
     {
         return applyProgramVarsCommon<true>(pContext, bindRootSig);
+    }
+
+    bool RaytracingVars::apply(RenderContext* pContext, bool bindRootSig)
+    {
+        mpRootSignature->bindForCompute(pContext);
+
+        // Bind the sets
+        for(uint32_t b = 0 ; b < getParameterBlockCount() ; b++)
+        {
+            ParameterBlock* pBlock = mParameterBlocks[b].pBlock.get();
+            if (pBlock->prepareForDraw(pContext) == false) return false;
+
+            const auto& rootIndices = mParameterBlocks[b].rootIndex;
+            auto& rootSets = pBlock->getRootSets();
+            bool forceBind = bindRootSig || mParameterBlocks[b].bind;
+            mParameterBlocks[b].bind = false;
+
+            for (uint32_t s = 0; s < rootSets.size(); s++)
+            {
+                if (rootSets[s].dirty || forceBind)
+                {
+                    rootSets[s].dirty = false;
+                    uint32_t rootIndex = rootIndices[s];
+#ifdef FALCOR_VK
+                    rootSets[s].pSet->bindForRaytracing(pContext, mpRootSignature.get(), rootIndex);
+#else
+                    rootSets[s].pSet->bindForCompute(pContext, mpRootSignature.get(), rootIndex);
+#endif
+                }
+            }
+        }
+        return true;
     }
 }

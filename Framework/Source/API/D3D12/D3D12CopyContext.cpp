@@ -274,6 +274,11 @@ namespace Falcor
         mCommandsPending = true;
     }
 
+    void CopyContext::accelerationStructureBarrier()
+    {
+        UNSUPPORTED_IN_D3D12("CopyContext::accelerationStructureBarrier()");
+    }
+
     void CopyContext::copyResource(const Resource* pDst, const Resource* pSrc)
     {
         resourceBarrier(pDst, Resource::State::CopyDest);

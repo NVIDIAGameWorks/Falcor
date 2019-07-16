@@ -113,10 +113,31 @@ namespace Falcor
         {
             addParamBlockSets(pReflector->getParameterBlock(i).get(), d);
         }
-#ifdef FALCOR_D3D12
         d.setLocal(isLocal);
-#else
-        if (isLocal) logWarning("Local root-signatures are only supported in D3D12 for use with DXR. Make sure you are using the correct build configuration.");
+#ifdef FALCOR_VK
+        // Validate no more than one shader record and store its size in root signature for building SBT
+        if (isLocal)
+        {
+            const auto& pBlock = pReflector->getDefaultParameterBlock();
+            bool shaderRecordFound = false;
+            for (const auto& r : pBlock->getResourceVec())
+            {
+                // The only thing allowed in Vulkan "local" root signature is a cbuffer with ShaderRecord qualifier
+                if (is_set(pBlock->getResource(r.name)->getModifier(), ReflectionVar::Modifier::ShaderRecord))
+                {
+                    assert(r.pType->getType() == ReflectionResourceType::Type::ConstantBuffer);
+                    assert(!shaderRecordFound); // only 1 shader record allowed
+
+                    // The cbuffer is to be embedded in the shader table, hence the size here is size of the cbuffer
+                    // struct, unlike in D3D12 it's the size taken by all the CBV/SRV handles
+                    const auto& structType = r.pType->getStructType()->asStructType();
+                    uint32_t structSize = static_cast<uint32_t>(structType->getSize());
+                    d.setSize(structSize);
+
+                    shaderRecordFound = true;
+                }
+            }
+        }
 #endif
         return d;
     }

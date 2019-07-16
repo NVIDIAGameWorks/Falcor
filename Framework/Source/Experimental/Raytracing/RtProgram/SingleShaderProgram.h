@@ -27,7 +27,7 @@
 ***************************************************************************/
 #pragma once
 #include "Graphics/Program/Program.h"
-#include "..\RtShader.h"
+#include "../RtShader.h"
 #include "RtProgramVersion.h"
 #include "Graphics/Program/ShaderLibrary.h"
 
@@ -41,7 +41,7 @@ namespace Falcor
         using SharedConstPtr = std::shared_ptr<const RtSingleShaderProgram>;
         ~RtSingleShaderProgram() = default;
 
-        static SharedPtr createFromFile(const char* filename, const char* entryPoint, const DefineList& programDefines = DefineList(), uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES, Shader::CompilerFlags flags = Shader::CompilerFlags::None)
+        static SharedPtr createFromFile(const char* filename, const char* entryPoint, const DefineList& programDefines = DefineList(), uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = FALCOR_RT_MAX_ATTRIBUTE_SIZE_IN_BYTES, Shader::CompilerFlags flags = Shader::CompilerFlags::None)
         {
             return createCommon(filename, entryPoint, programDefines, maxPayloadSize, maxAttributesSize, flags);
         }
@@ -60,7 +60,11 @@ namespace Falcor
             Desc d(str);
             d.setCompilerFlags(flags);
             d.entryPoint((ShaderType)shaderType, entryPoint);
+#ifdef FALCOR_VK
+            d.setShaderModel("460");
+#else
             d.setShaderModel("6_3");
+#endif
             pProg->init(d, programDefines);
             return pProg;
         }

@@ -69,10 +69,10 @@ namespace Falcor
         setCameraControllerType(CameraControllerType::SixDof);
     }
 
-    void SceneRenderer::updateVariableOffsets(const ProgramReflection* pReflector)
+    void SceneRenderer::updateVariableOffsets(const ProgramReflection* pReflector, bool globalOnly)
     {
         const ParameterBlockReflection* pBlock = pReflector->getDefaultParameterBlock().get();
-        if (sWorldMatOffset == ConstantBuffer::kInvalidOffset)
+        if (sWorldMatOffset == ConstantBuffer::kInvalidOffset && !globalOnly)
         {
             const ReflectionVar* pVar = pBlock->getResource(kPerMeshCbName).get();
             assert(pVar->getType()->asResourceType()->getType() == ReflectionResourceType::Type::ConstantBuffer);
