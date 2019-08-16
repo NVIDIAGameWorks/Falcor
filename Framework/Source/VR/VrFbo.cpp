@@ -66,7 +66,7 @@ namespace Falcor
         return mpFbo->getColorTexture(0)->getSRV(0u, 1u, eye == VRDisplay::Eye::Left ? 0u : 1u, 1u);
     }
 
-    void VrFbo::submitToHmd(RenderContext* pRenderCtx) const
+    void VrFbo::submitToHmd(RenderContext* pRenderCtx, bool fakeCommit) const
     {
         VRSystem* pVrSystem = VRSystem::instance();
 
@@ -79,7 +79,9 @@ namespace Falcor
         pRenderCtx->copySubresource(mpLeftView.get(),  ltDstSubresourceIdx, mpFbo->getColorTexture(0).get(), ltSrcSubresourceIdx);
         pRenderCtx->copySubresource(mpRightView.get(), rtDstSubresourceIdx, mpFbo->getColorTexture(0).get(), rtSrcSubresourceIdx);
 
-        pVrSystem->submit(VRDisplay::Eye::Left, mpLeftView, pRenderCtx);
-        pVrSystem->submit(VRDisplay::Eye::Right, mpRightView, pRenderCtx);
+        if (!fakeCommit) {
+            pVrSystem->submit(VRDisplay::Eye::Left, mpLeftView, pRenderCtx);
+            pVrSystem->submit(VRDisplay::Eye::Right, mpRightView, pRenderCtx);
+        }
     }
 }

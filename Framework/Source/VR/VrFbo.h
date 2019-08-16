@@ -49,7 +49,7 @@ namespace Falcor
 
         /** Submit the color target into the HMD
         */
-        void submitToHmd(RenderContext* pRenderCtx) const;
+        void submitToHmd(RenderContext* pRenderCtx, bool fakeCommit = false) const;
 
         /** Get the FBO
         */
