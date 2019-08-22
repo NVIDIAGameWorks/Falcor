@@ -261,12 +261,16 @@ namespace Falcor
         mutable CameraData mData;
         mutable glm::mat4 mViewProjMatNoJitter;
 
-        struct 
+        struct FrustumPlane
         {
             glm::vec3   xyz;    ///< Camera frustum plane position
             float       negW;   ///< Camera frustum plane, sign of the coordinates
             glm::vec3   sign;   ///< Camera frustum plane position
-        } mutable mFrustumPlanes[6];
+        };
+        mutable FrustumPlane mFrustumPlanes[6];
+        mutable FrustumPlane mRightEyeFrustumPlanes[6];
+
+        mutable bool mIsStereoCamera;
 
         struct  
         {

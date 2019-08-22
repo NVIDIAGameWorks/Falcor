@@ -129,6 +129,10 @@ namespace Falcor
         */
         const DeviceHandle& getApiHandle() { return mApiHandle; }
 
+        /** Flushes the current render context executing recorded command lists
+        */
+        void finishFrame();
+
         /** Present the back-buffer to the window
         */
         void present();

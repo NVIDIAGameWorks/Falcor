@@ -50,6 +50,10 @@ namespace Falcor
         /** Submit the color target into the HMD
         */
         void submitToHmd(RenderContext* pRenderCtx) const;
+        
+        /** Copy color target into temporary textures for submit
+        */
+        void prepareSubmit(RenderContext* pRenderCtx) const;
 
         /** Get the FBO
         */
@@ -58,7 +62,7 @@ namespace Falcor
         /** Get the resource view to an eye's resource view
         */
         Texture::SharedPtr getEyeResourceView(VRDisplay::Eye eye) const { return (eye == VRDisplay::Eye::Left) ? mpLeftView : mpRightView; }
-
+        
     private:
         Fbo::SharedPtr mpFbo;
         Texture::SharedPtr mpLeftView;

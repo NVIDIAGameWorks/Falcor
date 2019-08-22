@@ -534,7 +534,10 @@ namespace Falcor
 
             {
                 PROFILE("present");
+                gpDevice->finishFrame();
+                mpRenderer->onPrePresent(pCtx);
                 gpDevice->present();
+                mpRenderer->onPostPresent(pCtx);
             }
         }
     }

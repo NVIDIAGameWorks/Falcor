@@ -38,6 +38,7 @@ namespace Falcor
     const float Camera::kDefaultFrameHeight = 24.0f;
 
     Camera::Camera()
+        : mIsStereoCamera(false)
     {
     }
 
@@ -114,6 +115,7 @@ namespace Falcor
             // Extract camera space frustum planes from the VP matrix
             // See: https://fgiesen.wordpress.com/2012/08/31/frustum-planes-from-the-projection-matrix/
             glm::mat4 tempMat = glm::transpose(mData.viewProjMat);
+            glm::mat4 rightEyeTempMat = glm::transpose(mData.rightEyeViewProjMat);
             for (int i = 0; i < 6; i++)
             {
                 glm::vec4 plane = (i & 1) ? tempMat[i >> 1] : -tempMat[i >> 1];
@@ -125,6 +127,18 @@ namespace Falcor
                 mFrustumPlanes[i].xyz = glm::vec3(plane);
                 mFrustumPlanes[i].sign = glm::sign(mFrustumPlanes[i].xyz);
                 mFrustumPlanes[i].negW = -plane.w;
+
+                if (mIsStereoCamera) {
+                    plane = (i & 1) ? rightEyeTempMat[i >> 1] : -rightEyeTempMat[i >> 1];
+                    if (i != 5) // Z range is [0, w]. For the 0 <= z plane we don't need to add w
+                    {
+                        plane += rightEyeTempMat[3];
+                    }
+
+                    mRightEyeFrustumPlanes[i].xyz = glm::vec3(plane);
+                    mRightEyeFrustumPlanes[i].sign = glm::sign(mRightEyeFrustumPlanes[i].xyz);
+                    mRightEyeFrustumPlanes[i].negW = -plane.w;
+                }
             }
 
             // Ray tracing related vectors
@@ -202,11 +216,23 @@ namespace Falcor
             isInside = isInside && (dr > mFrustumPlanes[plane].negW);
         }
 
-        return !isInside;
+        bool isInsideRightEye = true;
+        if(mIsStereoCamera) {
+            for (int plane = 0; plane < 6; plane++)
+            {
+                glm::vec3 signedExtent = box.extent * mRightEyeFrustumPlanes[plane].sign;
+                float dr = glm::dot(box.center + signedExtent, mRightEyeFrustumPlanes[plane].xyz);
+                isInsideRightEye = isInsideRightEye && (dr > mRightEyeFrustumPlanes[plane].negW);
+            }
+        }
+
+        return !isInside && !isInsideRightEye;
     }
 
     void Camera::setRightEyeMatrices(const glm::mat4& view, const glm::mat4& proj)
     {
+        mIsStereoCamera = true;
+
         mData.rightEyeViewMat = view;
         mData.rightEyeProjMat = proj;
         mData.rightEyeViewProjMat = proj * view;
