@@ -33,7 +33,6 @@
 #include "API/LowLevel/DescriptorPool.h"
 #include "API/LowLevel/ResourceAllocator.h"
 #include "API/QueryHeap.h"
-#include "Renderer.h"
 
 namespace Falcor
 {
