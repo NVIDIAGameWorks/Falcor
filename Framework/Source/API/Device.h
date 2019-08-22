@@ -33,6 +33,7 @@
 #include "API/LowLevel/DescriptorPool.h"
 #include "API/LowLevel/ResourceAllocator.h"
 #include "API/QueryHeap.h"
+#include "Renderer.h"
 
 namespace Falcor
 {
@@ -128,6 +129,10 @@ namespace Falcor
         /** Get the native API handle
         */
         const DeviceHandle& getApiHandle() { return mApiHandle; }
+
+        /** Flushes the current render context executing recorded command lists
+        */
+        void finishFrame();
 
         /** Present the back-buffer to the window
         */

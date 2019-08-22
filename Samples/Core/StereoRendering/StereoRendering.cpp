@@ -72,7 +72,7 @@ void StereoRendering::initVR(Fbo* pTargetFbo)
         vrFboDesc.setDepthStencilTarget(pTargetFbo->getDepthStencilTexture()->getFormat());
 
         mpVrFbo = VrFbo::create(vrFboDesc);
-
+        
         mSubmitModeList.push_back({ (int)RenderMode::Stereo, "Stereo" });
 
         if (mSPSSupported)
@@ -93,7 +93,6 @@ void StereoRendering::initVR(Fbo* pTargetFbo)
 void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pTargetFbo, bool singlePassStereo)
 {
     PROFILE("submitStereo");
-    VRSystem::instance()->refresh();
 
     // Clear the FBO
     pContext->clearFbo(mpVrFbo->getFbo().get(), kClearColor, 1.0f, 0, FboAttachmentType::All);
@@ -108,18 +107,15 @@ void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pTarg
     {
         mpGraphicsState->setProgram(mpStereoProgram);
         pContext->setGraphicsVars(mpStereoVars);
+        pContext->setGraphicsState(mpGraphicsState);
     }
     mpGraphicsState->setFbo(mpVrFbo->getFbo());
-    pContext->pushGraphicsState(mpGraphicsState);
 
-    // Render
+    // Render 
     mpSceneRenderer->renderScene(pContext);
 
-    // Restore the state
-    pContext->popGraphicsState();
-
     // Submit the views and display them
-    mpVrFbo->submitToHmd(pContext);
+    mpVrFbo->prepareSubmit(pContext);
     blitTexture(pContext, pTargetFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Left), 0);
     blitTexture(pContext, pTargetFbo.get(), mpVrFbo->getEyeResourceView(VRDisplay::Eye::Right), pTargetFbo->getWidth() / 2);
 }
@@ -247,6 +243,16 @@ void StereoRendering::onFrameRender(SampleCallbacks* pSample, RenderContext* pRe
     pSample->renderText(message, glm::vec2(10, 10));
 
     frameCount++;
+}
+
+void StereoRendering::onPrePresent(RenderContext* pContext)
+{
+    mpVrFbo->submitToHmd(pContext);
+}
+
+void StereoRendering::onPostPresent(RenderContext* pContext)
+{
+    VRSystem::instance()->refresh();
 }
 
 bool StereoRendering::onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent)

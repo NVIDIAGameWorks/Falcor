@@ -35,7 +35,6 @@
 #include "FalcorConfig.h"
 #include "Framework.h"
 #include "Sample.h"
-#include "VRSample.h"
 #define _USE_MATH_DEFINES
 #include <math.h>
 

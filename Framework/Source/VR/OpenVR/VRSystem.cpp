@@ -416,7 +416,7 @@ namespace Falcor
         subTex.eType = getVrTextureType();
         subTex.handle = &submitTex;
         subTex.eColorSpace = isSrgbFormat(pDisplayTex->getFormat()) ? vr::EColorSpace::ColorSpace_Gamma : vr::EColorSpace::ColorSpace_Linear;
-
+        
         mpCompositor->Submit((whichEye == VRDisplay::Eye::Right) ? vr::Eye_Right : vr::Eye_Left, &subTex, NULL);
         return true;
     }

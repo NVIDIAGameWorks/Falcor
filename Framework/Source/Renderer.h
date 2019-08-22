@@ -139,6 +139,14 @@ namespace Falcor
         */
         virtual void onFrameRender(SampleCallbacks* pCallbacks, RenderContext* pRenderContext, const std::shared_ptr<Fbo>& pTargetFbo) {}
 
+        /** Called after command lists for this frame are sent to the GPU.
+        */
+        virtual void onPrePresent(RenderContext* pContext) {}
+
+        /** Called after Present was called on the SwapChain.
+        */
+        virtual void onPostPresent(RenderContext* pContext) {}
+
         /** Called right before the context is destroyed.
         */
         virtual void onShutdown(SampleCallbacks* pCallbacks) {}

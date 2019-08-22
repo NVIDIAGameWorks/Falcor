@@ -39,9 +39,11 @@ public:
     bool onKeyEvent(SampleCallbacks* pSample, const KeyboardEvent& keyEvent) override;
     bool onMouseEvent(SampleCallbacks* pSample, const MouseEvent& mouseEvent) override;
     void onGuiRender(SampleCallbacks* pSample, Gui* pGui) override;
+    void onPrePresent(RenderContext* pContext) override;
+    void onPostPresent(RenderContext* pContext) override;
 
 private:
-
+    
     Scene::SharedPtr mpScene;
     SceneRenderer::SharedPtr mpSceneRenderer;
 
