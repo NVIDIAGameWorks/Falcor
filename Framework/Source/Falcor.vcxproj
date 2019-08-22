@@ -1105,8 +1105,6 @@
     <ClInclude Include="Utils\Video\VideoDecoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoderUI.h" />
-    <ClInclude Include="VRRenderer.h" />
-    <ClInclude Include="VRSample.h" />
     <ClInclude Include="VR\OpenVR\VRController.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">false</ExcludedFromBuild>
@@ -1396,12 +1394,11 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..\Externals\Python\Include;$(ProjectDir)\..\Externals\pybind11\include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -1430,12 +1427,11 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..\Externals\Python\Include;$(ProjectDir)\..\Externals\pybind11\include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <MinimalRebuild>false</MinimalRebuild>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -1468,11 +1464,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..\Externals\Python\Include;$(ProjectDir)\..\Externals\pybind11\include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -1506,11 +1501,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;IMGUI_API=__declspec(dllimport);FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\GLM;$(ProjectDir)\..\Externals\GLFW\include;$(ProjectDir)\..\Externals\FreeImage;$(ProjectDir)\..\Externals\ASSIMP\include;$(ProjectDir)\..\Externals\FFMpeg\include;$(ProjectDir)\..\Externals\OculusSDK\LibOVR\Include;$(ProjectDir)\..\Externals\OculusSDK\LibOVRKernel\Src;$(ProjectDir)\..\Externals\OpenVR\headers;$(ProjectDir)\..\Externals\RapidJson\include;$(ProjectDir)\..\Externals\VulkanSDK\Include;$(ProjectDir)\..\Externals\Python\Include;$(ProjectDir)\..\Externals\pybind11\include;$(ProjectDir)\..;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\nvapi;$(VK_SDK_PATH)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

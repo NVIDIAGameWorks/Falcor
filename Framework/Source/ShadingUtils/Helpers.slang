@@ -138,19 +138,6 @@ float3 getGGXMicrofacet(float2 u, float3 N, float roughness)
     return normalize(T * tH.x + B * tH.y + N * tH.z);
 }
 
-
-float3 getUniformConeSample(float2 u, float3 N, float cosThetaMax)
-{
-    float cosTheta = (1.0f - u.x) + u.x * cosThetaMax;
-    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
-    float phi = u.y * 2.0 * M_PI;
-    float3 T = getPerpendicularStark(N);
-    float3 B = normalize(cross(N, T));
-    float3 tH = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-    return normalize(T * tH.x + B * tH.y + N * tH.z);
-    //return tH;
-}
-
 /*******************************************************************
     Other
 *******************************************************************/
@@ -358,54 +345,4 @@ float rand_next(inout uint s)
     s = (LCG_A * s + LCG_C);
     return float(s & 0x00FFFFFF) / float(0x01000000);
 }
-
-/*******************************************************************
-   	Packing stuff
-*******************************************************************/  
-
-float2 TEMP_unpackSnorm2x16(uint val)
-{
-    uint l = (val) & 0xffff;
-    uint h = (val >> 16) & 0xffff;
-
-    return float2(f16tof32(l), f16tof32(h));
-}
-
-uint TEMP_packSnorm2x16(float2 val)
-{
-    uint l = asuint(f32tof16(val.x));
-    uint h = asuint(f32tof16(val.y));
-
-    return (h << 16) + l;
-}
-
-float2 sign_not_zero(float2 v)
-{
-    return step(0.0, v) * 2.0 - (float2) (1.0);
-}
-
-// TODO: We have octahedral mapping helpers in Utils/MathHelpers.slang. Remove these and update the code.
-
-/** Encodes a float3 direction to an octahedral representation in a 32-bit uint
-*/
-uint dir_to_oct(float3 normal)
-{
-    float2 p = normal.xy * (1.0 / dot(abs(normal), float3(1.0f, 1.0f, 1.0f)));
-    float2 e = normal.z > 0.0
-		? p
-		: (1.0 - abs(p.yx)) * sign_not_zero(p);
-    return TEMP_packSnorm2x16(e);
-}
-
-/** Decodes a 32-bit uint octahedral encoding back to a float3 direction 
-*/
-float3 oct_to_dir(uint octo)
-{
-    float2 e = TEMP_unpackSnorm2x16(octo);
-    float3 v = float3(e, 1.0 - abs(e.x) - abs(e.y));
-    if (v.z < 0.0)
-        v.xy = (1.0 - abs(v.yx)) * sign_not_zero(v.xy);
-    return normalize(v);
-}
-
 #endif //_FALCOR_HELPERS_SLANG_

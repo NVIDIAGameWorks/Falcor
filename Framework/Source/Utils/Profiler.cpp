@@ -34,7 +34,6 @@
 #include <fstream>
 #include <sstream>
 #include <cstdio>
-#include <set>
 
 namespace Falcor
 {
@@ -48,8 +47,6 @@ namespace Falcor
     void Profiler::initNewEvent(EventData *pEvent, const std::string& name)
     {
         pEvent->name = name;
-        for (int i = 0; i < 60; i++) pEvent->gpuTimeTrace[i] = 0.0;
-        for (int i = 0; i < 60; i++) pEvent->cpuTimeTrace[i] = 0.0;
         sProfilerEvents[name] = pEvent;
     }
 
@@ -106,11 +103,7 @@ namespace Falcor
         pData->cpuEnd = CpuTimer::getCurrentTimePoint();
         pData->cpuTotal += CpuTimer::calcDuration(pData->cpuStart, pData->cpuEnd);
 
-        GpuTimer* gpuTimer = pData->frameData[sGpuTimerIndex].pTimers[pData->callStack.top()].get();
-        gpuTimer->end();
-        pData->gpuTimeTrace[pData->timerTraceIdx] = gpuTimer->getElapsedTime();
-        pData->cpuTimeTrace[pData->timerTraceIdx] = pData->cpuTotal;
-        pData->timerTraceIdx = (pData->timerTraceIdx + 1) % 60;
+        pData->frameData[sGpuTimerIndex].pTimers[pData->callStack.top()]->end();
         pData->callStack.pop();
 
         sCurrentLevel--;
@@ -131,38 +124,24 @@ namespace Falcor
     double Profiler::getGpuTime(const EventData* pData)
     {
         double gpuTime = 0;
-        double onesixty = 1.0 / 60.0;
         for (size_t i = 0; i < pData->frameData[1 - sGpuTimerIndex].currentTimer; i++)
         {
-            GpuTimer* timer = pData->frameData[1 - sGpuTimerIndex].pTimers[i].get();
-            for (int j = 0; j < 60; j++)
-                gpuTime += (pData->gpuTimeTrace[j] * onesixty);
-
-            //gpuTime += timer->getElapsedTime();
+            gpuTime += pData->frameData[1 - sGpuTimerIndex].pTimers[i]->getElapsedTime();
         }
         return gpuTime;
     }
 
     double Profiler::getCpuTime(const EventData* pData)
     {
-        double cpuTime = 0.0;
-        double onesixty = 1.0 / 60.0;
-        for (int j = 0; j < 60; j++)
-            cpuTime += (pData->cpuTimeTrace[j] * onesixty);
-
-        return cpuTime;
+        return pData->cpuTotal;
     }
 
     std::string Profiler::getEventsString()
     {
         std::string results("Name\t\t\t\t\tCPU time(ms)\tGPU time(ms)\n");
 
-        auto uniqueProfiles = sProfilerVector;
-        auto lastElem = std::unique(uniqueProfiles.begin(), uniqueProfiles.end());
-        for (auto pDataF = uniqueProfiles.begin(); pDataF != lastElem; pDataF++)
-        //for(EventData* pData : sProfilerVector)
+        for (EventData* pData : sProfilerVector)
         {
-            EventData* pData = *pDataF;
             assert(pData->triggered == 0);
             if(pData->showInMsg == false) continue;
 

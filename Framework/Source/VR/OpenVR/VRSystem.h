@@ -93,7 +93,6 @@ namespace Falcor
         */
         static VRSystem* start( bool enableVSync = true );
         static VRSystem* instance() { checkInit(); return spVrSystem; }
-        static bool isHMDPresent();
 
 		// If you want to clean up resources and shut down the VR system, call cleanup(), which acts as
 		//     a destructor.  This wrapper does not have an explicit destructor, since Falcor appears
@@ -133,9 +132,6 @@ namespace Falcor
         //     each frame.  The submit() routines handle all warping due to lens and color distortions.
         //     Size of each texture should be:  getHMD()->getRecommendedRenderSize() for best results.
         bool submit( VRDisplay::Eye whichEye, const Texture::SharedConstPtr& pDisplayTex, RenderContext* pRenderCtx);
-
-
-        void postPresent();
 
 
         //////////////////////////////////////////////////////////////////////////////////////////////////

@@ -107,12 +107,15 @@ void StereoRendering::submitStereo(RenderContext* pContext, Fbo::SharedPtr pTarg
     {
         mpGraphicsState->setProgram(mpStereoProgram);
         pContext->setGraphicsVars(mpStereoVars);
-        pContext->setGraphicsState(mpGraphicsState);
     }
     mpGraphicsState->setFbo(mpVrFbo->getFbo());
+    pContext->pushGraphicsState(mpGraphicsState);
 
     // Render 
     mpSceneRenderer->renderScene(pContext);
+
+    // Restore the state
+    pContext->popGraphicsState();
 
     // Submit the views and display them
     mpVrFbo->prepareSubmit(pContext);

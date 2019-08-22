@@ -49,7 +49,7 @@ namespace Falcor
             const Mesh* pMesh = pModel->getMesh(data.mesh).get();
             const Model::MeshInstance* pMeshInstance = pModel->getMeshInstance(data.mesh, data.meshInstance).get();
 
-            //setPerFrameData(pRtVars, data);
+            setPerFrameData(pRtVars, data);
             setPerModelData(data.currentData);
             setPerModelInstanceData(data.currentData, pModelInstance, data.modelInstance);
             setPerMeshData(data.currentData, pMesh);
@@ -123,7 +123,7 @@ namespace Falcor
     void RtSceneRenderer::setRayGenShaderData(RtProgramVars* pRtVars, InstanceData& data)
     {
         data.currentData.pVars = pRtVars->getRayGenVars().get();
-        //setPerFrameData(pRtVars, data);
+        setPerFrameData(pRtVars, data);
     }
 
     void RtSceneRenderer::setGlobalData(RtProgramVars* pRtVars, InstanceData& data)
@@ -149,10 +149,10 @@ namespace Falcor
     void RtSceneRenderer::setMissShaderData(RtProgramVars* pRtVars, InstanceData& data)
     {
         data.currentData.pVars = pRtVars->getMissVars(data.progId).get();
-        //if(data.currentData.pVars)
-        //{
-        //    setPerFrameData(pRtVars, data);
-        //}
+        if(data.currentData.pVars)
+        {
+            setPerFrameData(pRtVars, data);
+        }
     }
 
     void RtSceneRenderer::renderScene(RenderContext* pContext, RtProgramVars::SharedPtr pRtVars, RtState::SharedPtr pState, uvec2 targetDim, Camera* pCamera)
