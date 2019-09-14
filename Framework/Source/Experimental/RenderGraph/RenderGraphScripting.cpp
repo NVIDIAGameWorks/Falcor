@@ -134,7 +134,7 @@ namespace Falcor
             mContext.getObject<RenderGraph::SharedPtr>(name);
             logWarning("RenderGraph `" + name + "` already exists. Replacing the current object");
         }
-        catch (std::exception) {}
+        catch (const std::exception &e) {}
         mContext.setObject(name, pGraph);
     }
 
@@ -144,7 +144,7 @@ namespace Falcor
         {
             return mContext.getObject<RenderGraph::SharedPtr>(name);
         }
-        catch (std::exception) 
+        catch (const std::exception &e)
         {
             logWarning("Can't find RenderGraph `" + name + "` in RenderGraphScriptContext");
             return nullptr;

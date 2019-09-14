@@ -90,7 +90,7 @@ namespace Falcor
         uint32_t texCrdCount,
         glm::vec3* bitangentData)
     {
-        std::memset(bitangentData, 0, vertexCount * sizeof(vec3));
+        std::memset(static_cast<void*>(bitangentData), 0, vertexCount * sizeof(vec3));
 
         // calculate the tangent and bitangent for every face
         size_t primCount = indices.size() / 3;
