@@ -1916,7 +1916,7 @@ namespace ImGui {
             }
             if (tmp && Count < IMGUINODE_MAX_SLOTS) {
                 length = (int)strlen(tmp); if (length >= IMGUINODE_MAX_SLOT_NAME_LENGTH) length = IMGUINODE_MAX_SLOT_NAME_LENGTH - 1;
-                strncpy(Names[Count], tmp, length);
+                memcpy(Names[Count], tmp, length);
                 Names[Count][length] = '\0';
                 ++Count;
             }

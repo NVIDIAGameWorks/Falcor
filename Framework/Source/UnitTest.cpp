@@ -109,14 +109,14 @@ namespace Falcor
                 if (t.cpuFunc) t.cpuFunc(cpuCtx);
                 else t.gpuFunc(gpuCtx);
             }
-            catch (ErrorRunningTestException e)
+            catch (const ErrorRunningTestException &e)
             {
                 status = "SKIPPED";
                 failureDetails = "    ";
                 failureDetails += e.what();
                 failureDetails += "\n";
             }
-            catch (TooManyFailedTestsException e)
+            catch (const TooManyFailedTestsException &e)
             {
                 status = "ABORTED";
                 failureDetails = "    Gave up after " + std::to_string(kMaxTestFailures) + " failures.\n";
