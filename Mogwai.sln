@@ -1,0 +1,70 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2027
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{350A0B15-98C0-45E3-872B-4FEFB47AA37C}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Falcor", "Source\Falcor\Falcor.vcxproj", "{2C535635-E4C5-4098-A928-574F0E7CD5F9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildScripts", "BuildScripts", "{0ABDD59E-937B-41FF-B78A-7F47CBCCA387}"
+	ProjectSection(SolutionItems) = preProject
+		Build\deploycommon.bat = Build\deploycommon.bat
+		Build\deployproject.bat = Build\deployproject.bat
+		Build\patchpropssheet.py = Build\patchpropssheet.py
+		Build\prebuild.bat = Build\prebuild.bat
+		Build\update_dependencies.bat = Build\update_dependencies.bat
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Mogwai", "Source\Mogwai\Mogwai.vcxproj", "{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71} = {DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderGraphEditor", "Source\Tools\RenderGraphEditor\RenderGraphEditor.vcxproj", "{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		DebugD3D12|x64 = DebugD3D12|x64
+		DebugVK|x64 = DebugVK|x64
+		ReleaseD3D12|x64 = ReleaseD3D12|x64
+		ReleaseVK|x64 = ReleaseVK|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.DebugD3D12|x64.ActiveCfg = DebugD3D12|x64
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.DebugD3D12|x64.Build.0 = DebugD3D12|x64
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.DebugVK|x64.ActiveCfg = DebugVK|x64
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.DebugVK|x64.Build.0 = DebugVK|x64
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.ReleaseD3D12|x64.ActiveCfg = ReleaseD3D12|x64
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.ReleaseD3D12|x64.Build.0 = ReleaseD3D12|x64
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.ReleaseVK|x64.ActiveCfg = ReleaseVK|x64
+		{2C535635-E4C5-4098-A928-574F0E7CD5F9}.ReleaseVK|x64.Build.0 = ReleaseVK|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.DebugD3D12|x64.ActiveCfg = Debug|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.DebugD3D12|x64.Build.0 = Debug|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.DebugVK|x64.ActiveCfg = Debug|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.DebugVK|x64.Build.0 = Debug|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.ReleaseD3D12|x64.ActiveCfg = Release|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.ReleaseD3D12|x64.Build.0 = Release|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.ReleaseVK|x64.ActiveCfg = Release|x64
+		{204D1CBA-6D34-4EB7-9F78-A1369F8F0F49}.ReleaseVK|x64.Build.0 = Release|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.DebugD3D12|x64.ActiveCfg = Debug|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.DebugD3D12|x64.Build.0 = Debug|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.DebugVK|x64.ActiveCfg = Debug|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.DebugVK|x64.Build.0 = Debug|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.ReleaseD3D12|x64.ActiveCfg = Release|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.ReleaseD3D12|x64.Build.0 = Release|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.ReleaseVK|x64.ActiveCfg = Release|x64
+		{DE81ACAA-933F-4DBC-A7EB-D69B9CB0BA71}.ReleaseVK|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0ABDD59E-937B-41FF-B78A-7F47CBCCA387} = {350A0B15-98C0-45E3-872B-4FEFB47AA37C}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {357B2AE0-FE30-4AC6-8D41-B580232BC0DE}
+	EndGlobalSection
+EndGlobal

@@ -1,5 +1,5 @@
-Falcor 3.2
-=================
+Falcor 4.0 Development Snapshot
+===============================
 
 Falcor is a real-time rendering framework supporting DirectX 12 and Vulkan. It aims to improve productivity of research and prototype projects.
 Its features include:
@@ -8,44 +8,34 @@ Its features include:
 * Common rendering effects such as shadows and post-processing effects
 * DirectX Raytracing abstraction 
 
+Note that Falcor 4.0 is still under development. There will be more changes to the interfaces as well as new features. This is a snapshot of our development branch and doesn't represent an offical version (not even alpha).
+This release only supports DX12 on Windows.
+The path tracer requires NVAPI. Please make sure you have it setup properly, otherwise the path-tracer won't work. You can find the instructions below.
+
+
 Prerequisites
 ------------------------
-- GPU that supports DirectX 12 or Vulkan
-- Windows 10 RS2 (version 1703) or newer, or Ubuntu 17.10
+- A GPU which supports DirectX Raytracing, such as the NVIDIA Titan V or GeForce RTX (make sure you have the latest driver)
+- Windows 10 RS5 (version 1809) or newer
+- NVAPI
 
 On Windows:
-- Visual Studio 2017
+- Visual Studio 2017 15.9.10 (it might not compile with older VS versions)
 - [Microsoft Windows SDK version 1809 (10.0.17763.0)](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive)
 - To run DirectX 12 applications with the debug layer enabled, you need to install the Graphics Tools optional feature. The tools version must match the OS version you are using (not to be confused with the SDK version used for building Falcor). There are 2 ways to install it:
     - Click the Windows button and type `Optional Features`, in the window that opens click `Add a feature` and select `Graphics Tools`.
     - Download an offline pacakge from [here](https://docs.microsoft.com/en-us/windows-hardware/test/hlk/windows-hardware-lab-kit#supplemental-content-for-graphics-media-and-mean-time-between-failures-mtbf-tests). Choose a ZIP file that matches the OS version you are using. The ZIP includes a document which explains how to install the graphics tools.
 
-DirectX Raytracing 
--------------------------
-Falcor 3.0 added support for DirectX Raytracing. As of Falcor 3.1, special build configs are no longer required to enable these features. Simply use the `DebugD3D12` or `ReleaseD3D12` configs as you would for any other DirectX project.
-The HelloDXR sample demonstrates how to use Falcor’s DXR abstraction layer.
+NVAPI installation
+------------------
+After cloning the repository, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R435).
+Extract the content of the zip file into `<FalcorRootDir>\Source\Externals\.packman` and rename `R435-developer` to `NVAPI`
 
-- Requirements:
-    - Windows 10 RS5 (version 1809)
-    - A GPU which supports DirectX Raytracing, such as the NVIDIA Titan V or GeForce RTX (make sure you have the latest driver)
 
-Falcor doesn’t support the DXR fallback layer.
-
-TensorFlow Support
+CUDA Support
 --------------
-Refer to the README located in the `Samples\Core\LearningWithEmbeddedPython` for instructions on how to set up your environment to use TensorFlow and Python with Falcor.
+Refer to the README located in the `Samples\Interops\CudaInterop` for instructions on how to set up your environment to use CUDA with Falcor.
 
-Linux
---------------
-Falcor is tested on Ubuntu 17.10, but may also work with other versions and distributions.
-
-To build and run Falcor on Linux:
-- Install the Vulkan SDK following the instructions [HERE](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html)
-- Install additional dependencies:
-    - `sudo apt-get install python python3-dev libassimp-dev libglfw3-dev libgtk-3-dev libfreeimage-dev libavcodec-dev libavdevice-dev libavformat-dev libswscale-dev libavutil-dev`
-- Run the `Makefile`
-    - To only build the library, run `make Debug` or `make Release` depending on the desired configuration
-    - To build samples, run `make` using the target for the sample(s) you want to build. Config can be changed by setting `SAMPLE_CONFIG` to `Debug` or `Release`
 
 Building Falcor
 ---------------
@@ -55,10 +45,10 @@ follow the instructions below.
 Creating a New Project
 ------------------------
 - If you haven't done so already, create a Visual Studio solution and project for your code. Falcor only supports 64-bit builds, so make sure you have a 64-bit build configuration
-- Add `Framework\Source\Falcor.props` to your project (View -> Other Windows ->Property Manager -> Right click your project -> Add existing property sheet)
+- Add `Falcor.props` to your project (Property Manager -> Right click your project -> Add existing property sheet)
 - Add `FalcorSharedObjects.vcxproj` to your solution (Located at `Framework/FalcorSharedObjects/FalcorSharedObjects.vcxproj`)
 - Add `Falcor.vcxproj` to your solution (Located at `Framework/Source/Falcor.vcxproj`)
-- Add a reference to Falcor in your project (Solution Explorer -> Right click your Project -> `Add` -> `Reference` -> Choose Falcor)
+- Add a reference to Falcor in your project (Solution Explorer -> Your Project -> Right Click `References` -> Click `Add Reference...` -> Choose Falcor)
 
 *Sample* Class
 -------------------
@@ -70,8 +60,7 @@ Build Configurations
 Falcor has the following build configurations for DirectX 12, Vulkan and DXR, respectively:
 - `DebugD3D12`
 - `ReleaseD3D12`
-- `DebugVK`
-- `ReleaseVK`
+- Currently, the `DebugVK` and `ReleaseVK` build is failing
 
 Debug builds enable file logging and message boxes by default, and there is a lot of runtime error checking. If debug layers for the selected API are installed, they will be loaded as well.
 
@@ -123,11 +112,11 @@ If you use Falcor in a research project leading to a publication, please cite th
 The BibTex entry is
 
 ```bibtex
-@Misc{Benty18,  
-   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Matthew Oakes and Conor Lavelle and Chris Wyman},  
+@Misc{Benty17,  
+   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Conor Lavelle and Chris Wyman},  
    title =       {The {Falcor} Rendering Framework},  
-   year =        {2018},  
-   month =       {05},  
+   year =        {2017},  
+   month =       {07},  
    url =         {https://github.com/NVIDIAGameWorks/Falcor},  
    note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}  
 }

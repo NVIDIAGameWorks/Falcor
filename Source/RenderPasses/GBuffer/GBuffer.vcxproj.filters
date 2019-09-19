@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="GBuffer.cpp" />
+    <ClCompile Include="GBufferRaster.cpp" />
+    <ClCompile Include="GBufferRT.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GBufferRaster.h" />
+    <ClInclude Include="GBufferRT.h" />
+    <ClInclude Include="GBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ShaderSource Include="RasterPrimary.slang" />
+    <ShaderSource Include="GBufferHelpers.slang" />
+    <ShaderSource Include="RaytracePrimary.rt.slang" />
+    <ShaderSource Include="GBufferParams.h" />
+  </ItemGroup>
+</Project>

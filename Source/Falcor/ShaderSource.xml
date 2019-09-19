@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProjectSchemaDefinitions xmlns="http://schemas.microsoft.com/build/2009/properties" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+  <ItemType Name="ShaderSource" DisplayName="Shader Source" />
+  <ContentType Name="ShaderSource" DisplayName="Shader Source" ItemType="ShaderSource" />
+  <FileExtension Name="*.slang" ContentType="ShaderSource" />
+  <FileExtension Name="*.hlsl" ContentType="ShaderSource" />
+  <FileExtension Name="*.hlsli" ContentType="ShaderSource" />
+
+  <Rule Name="ShaderSourceConfig"
+        DisplayName="Shader Source"
+        PageTemplate="tool"
+        Order="500"
+        Description="Shader Source propery sheet"
+        xmlns="http://schemas.microsoft.com/build/2009/properties">
+
+    <Rule.Categories>
+      <Category Name="General" DisplayName="General" />
+    </Rule.Categories>
+
+    <Rule.DataSource>
+      <DataSource Persistence="ProjectFile" Label="Configuration"/>
+    </Rule.DataSource>
+
+    <StringProperty Name="ShaderSourceSubDir"
+        DisplayName="Destination Subfolder"
+        Description="Subfolder of $(OutDir) in which to install shader source files"
+        Default="Data"
+        Category="General">
+    </StringProperty>
+
+    <BoolProperty Name="ShaderSourcePreservePaths"
+        DisplayName="Preserve folder structure"
+        Description="If true, shaders will be copied into the destination subfolder using the original folder structure.  If false, shader will be copied directly into the destination subfolder."
+        Default="Yes"
+        Category="General">
+    </BoolProperty>
+  </Rule>
+</ProjectSchemaDefinitions>

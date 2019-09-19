@@ -30,14 +30,16 @@ for /f "usebackq tokens=*" %%i in (`"%VS_WHERE%" -latest -property installationP
 set solution=%2
 set project=%4
 set errFileSuffix=_BuildLog.txt
+set CL=%CL% /D_TEST_
 if defined project (
     set errFile="%project%%errFileSuffix%"
-    echo Starting %action% of %config% config of project %project% in solution %2
+    echo %action%ing the %config% config of project %project% in solution %2
     call "%VS_INSTALL_DIR%\Common7\IDE\devenv.com" %solution% /%action% %config% /project %project% > !errFile!
+    call type !errFile!
 ) else (
     set errFile="Solution%errFileSuffix%"
-    echo Starting %action% of %config% config of entire solution %2
-    call "%VS_INSTALL_DIR%\Common7\IDE\devenv.com" %solution% /%action% %config% > !errFile!
+    echo %action%ing %config% config of solution %2
+    call "%VS_INSTALL_DIR%\Common7\IDE\devenv.com" %solution% /%action% %config% > !errFile! 2>&1
 )
 if not %errorlevel%==0 (
     goto buildFailed 
@@ -49,6 +51,7 @@ exit /B 0
 
 :buildFailed
 echo Build Failed
+call type !errFile!
 exit /B 1
 
 :cantFindVs

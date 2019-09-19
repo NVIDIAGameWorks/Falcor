@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="FalcorTest.cpp" />
+    <ClCompile Include="Tests\Utils\BitTricksTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\BitonicSortTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\ColorUtilsTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\SlangTests.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\ShadingUtils\ShadingUtilsTests.cpp">
+      <Filter>Tests\ShadingUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\ParallelReductionTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\PrefixSumTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\AlignedAllocatorTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Sampling\PseudorandomTests.cpp">
+      <Filter>Tests\Sampling</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Sampling\SampleGeneratorTests.cpp">
+      <Filter>Tests\Sampling</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Scene\EnvProbeTests.cpp">
+      <Filter>Tests\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\MathHelpersTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\HashUtilsTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\DebugPasses\InvalidPixelDetectionTests.cpp">
+      <Filter>Tests\DebugPasses</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\AABBTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\ShadingUtils\RaytracingTests.cpp">
+      <Filter>Tests\ShadingUtils</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\BufferTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Utils\HalfUtilsTests.cpp">
+      <Filter>Tests\Utils</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FalcorTest.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{ce64d89a-ce01-4012-9706-d3f24f5da801}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Utils">
+      <UniqueIdentifier>{0d6b912d-7c18-415e-af37-399e137194d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Sampling">
+      <UniqueIdentifier>{619ed051-9ecd-4324-8b5a-bb65a8b608ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Slang">
+      <UniqueIdentifier>{68dbdd58-1038-443a-a47c-4ba6afed1f99}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\ShadingUtils">
+      <UniqueIdentifier>{b68d5b46-cd0d-4739-99d0-645cc1d11377}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Scene">
+      <UniqueIdentifier>{d5138b9b-d23f-415e-af68-eafc7cbdfb91}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\DebugPasses">
+      <UniqueIdentifier>{7c5c7694-8d37-40c3-9f3d-48a95c0e9d80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tests\Core">
+      <UniqueIdentifier>{ae20200a-382a-40ce-a8ab-40af7c9a512c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ShaderSource Include="Tests\ShadingUtils\ShadingUtilsTests.cs.slang">
+      <Filter>Tests\ShadingUtils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\SlangTests.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\SlangShared.h">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\BitTricksTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Sampling\PseudorandomTests.cs.slang">
+      <Filter>Tests\Sampling</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Sampling\SampleGeneratorTests.cs.slang">
+      <Filter>Tests\Sampling</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\MathHelpersTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\HashUtilsTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\AABBTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\ShadingUtils\RaytracingTests.cs.slang">
+      <Filter>Tests\ShadingUtils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\BufferTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Utils\HalfUtilsTests.cs.slang">
+      <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+  </ItemGroup>
+</Project>

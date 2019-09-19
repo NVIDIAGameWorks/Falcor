@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <Target Name="ShaderSourceCopy"
+          Condition="'$(ShaderSourcePreservePaths)'"
+          BeforeTargets="Build"
+          Inputs="%(ShaderSource.Identity)"
+          Outputs="$(OutDir)$(ShaderSourceSubDir)\%(ShaderSource.Identity)" >
+          <Copy SourceFiles="%(ShaderSource.Identity)" 
+                DestinationFolder="$(OutDir)$(ShaderSourceSubDir)\%(ShaderSource.RelativeDir)"
+          />
+  </Target>
+
+  <Target Name="ShaderSourceCopyFlat"
+          Condition="'!$(ShaderSourcePreservePaths)'"
+          BeforeTargets="Build"
+          Inputs="%(ShaderSource.Identity)"
+          Outputs="$(OutDir)$(ShaderSourceSubDir)\%(ShaderSource.Filename)%(ShaderSource.Extension)" >
+          <Copy SourceFiles="%(ShaderSource.Identity)" 
+                DestinationFolder="$(OutDir)$(ShaderSourceSubDir)"
+          />
+  </Target>
+
+  <Target Name="ShaderSourceClean" BeforeTargets="Clean" Condition="'$(ShaderSourcePreservePaths)'">
+    <Delete Files="$(OutDir)$(ShaderSourceSubDir)\%(ShaderSource.Identity)" />
+</Target>
+
+  <Target Name="ShaderSourceCleanFlat" BeforeTargets="Clean" Condition="'!$(ShaderSourcePreservePaths)'">
+    <Delete Files="$(OutDir)$(ShaderSourceSubDir)\%(ShaderSource.Filename)%(ShaderSource.Extension)" />
+  </Target>
+
+  <PropertyGroup>
+    <BuildDependsOn>$(BuildDependsOn);ShaderSourceCopy;ShaderSourceCopyFlat</BuildDependsOn>
+    <CleanDependsOn>$(CleanDependsOn);ShaderSourceClean;ShaderSourceCleanFlat</CleanDependsOn>
+  </PropertyGroup>
+
+</Project>
