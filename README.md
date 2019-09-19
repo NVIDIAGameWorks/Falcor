@@ -29,7 +29,8 @@ On Windows:
 NVAPI installation
 ------------------
 After cloning the repository, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R435).
-Extract the content of the zip file into `<FalcorRootDir>\Source\Externals\.packman` and rename `R435-developer` to `NVAPI`
+1. Extract the content of the zip file into `<FalcorRootDir>\Source\Externals\.packman`. If you have NVAPI version R435, you should have the `<FalcorRootDir>\Source\Externals\.packman\R435-developer` folder.
+2. Rename `R435-developer` to `NVAPI`. You should end up with the `<FalcorRootDir>\Source\Externals\.packman\NVAPI` folder.
 
 
 CUDA Support

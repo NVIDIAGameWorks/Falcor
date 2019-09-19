@@ -156,6 +156,13 @@ namespace Falcor
         // We do this in a raster pass, so we get one thread per texel/triangle.
         // TODO: Make this deterministic with regards to floating-point errors in the integration.
 
+        std::string s;
+        if (findFileInDataDirectories("NVAPI/nvHLSLExtns.h", s) == false)
+        {
+            logError("LightCollection relies on NVAPI, which appears to be missing. Please make sure you have NVAPI installed (instructions are in the readme file)");
+            return false;
+        }
+
         // Create program.
         Program::Desc desc;
         desc.addShaderLibrary(kFileEmissiveIntegrator).vsEntry("vsMain").psEntry("psMain");
