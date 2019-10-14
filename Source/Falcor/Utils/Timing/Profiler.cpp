@@ -39,10 +39,10 @@ namespace Falcor
     bool gProfileEnabled = false;
 
     std::unordered_map<std::string, Profiler::EventData*> Profiler::sProfilerEvents;
+    std::vector<Profiler::EventData*> Profiler::sRegisteredEvents;
     std::string curEventName = "";
     uint32_t Profiler::sCurrentLevel = 0;
     uint32_t Profiler::sGpuTimerIndex = 0;
-    std::vector<Profiler::EventData*> Profiler::sProfilerVector;
 
     void Profiler::initNewEvent(EventData *pEvent, const std::string& name)
     {
@@ -82,7 +82,6 @@ namespace Falcor
                 return;
             }
 
-            sProfilerVector.push_back(pData);
             pData->showInMsg = showInMsg;
             pData->level = sCurrentLevel;
             pData->cpuStart = CpuTimer::getCurrentTimePoint();
@@ -95,6 +94,12 @@ namespace Falcor
             pData->callStack.push(frame.currentTimer);
             frame.currentTimer++;
             sCurrentLevel++;
+
+            if (!pData->registered)
+            {
+                sRegisteredEvents.push_back(pData);
+                pData->registered = true;
+            }
         }
         if (is_set(flags, Flags::Pix))
         {
@@ -157,10 +162,10 @@ namespace Falcor
     {
         std::string results("Name\t\t\t\t\tCPU time(ms)\t\t  GPU time(ms)\n");
 
-        for (EventData* pData : sProfilerVector)
+        for (EventData* pData : sRegisteredEvents)
         {
             assert(pData->triggered == 0);
-            if(pData->showInMsg == false) continue;
+            if (pData->showInMsg == false) continue;
 
             double gpuTime = getGpuTime(pData);
             assert(pData->callStack.empty());
@@ -169,7 +174,7 @@ namespace Falcor
             uint32_t nameIndent = pData->level * 2 + 1;
             uint32_t cpuIndent = 30 - (nameIndent + (uint32_t)pData->name.substr(pData->name.find_last_of("#") + 1).size());
             snprintf(event, 1000, "%*s%s %*.2f (%.2f) %14.2f (%.2f)\n", nameIndent, " ", pData->name.substr(pData->name.find_last_of("#") + 1).c_str(), cpuIndent, getCpuTime(pData),
-                     pData->cpuRunningAverageMS, gpuTime, pData->gpuRunningAverageMS);
+                pData->cpuRunningAverageMS, gpuTime, pData->gpuRunningAverageMS);
 #if _PROFILING_LOG == 1
             pData->cpuMs[pData->stepNr] = (float)pData->cpuTotal;
             pData->gpuMs[pData->stepNr] = (float)gpuTime;
@@ -196,7 +201,7 @@ namespace Falcor
 
     void Profiler::endFrame()
     {
-        for (EventData* pData : sProfilerVector)
+        for (EventData* pData : sRegisteredEvents)
         {
             // Update CPU/GPU time running averages.
             const double cpuTime = getCpuTime(pData);
@@ -214,15 +219,16 @@ namespace Falcor
             pData->cpuTotal = 0;
             pData->triggered = 0;
             pData->frameData[1 - sGpuTimerIndex].currentTimer = 0;
+            pData->registered = false;
         }
-        sProfilerVector.clear();
+        sRegisteredEvents.clear();
         sGpuTimerIndex = 1 - sGpuTimerIndex;
     }
 
 #if _PROFILING_LOG == 1
     void Profiler::flushLog()
     {
-        for (EventData* pData : sProfilerVector)
+        for (EventData* pData : sRegisteredEvents)
         {
             std::ostringstream logOss, fileOss;
             logOss << "dumping " << "profile_" << pData->name << "_" << pData->filesWritten;
@@ -240,12 +246,12 @@ namespace Falcor
 
     void Profiler::clearEvents()
     {
-        for (EventData* pData : sProfilerVector)
+        for (EventData* pData : sRegisteredEvents)
         {
             delete pData;
         }
         sProfilerEvents.clear();
-        sProfilerVector.clear();
+        sRegisteredEvents.clear();
         sCurrentLevel = 0;
         sGpuTimerIndex = 0;
         curEventName = "";

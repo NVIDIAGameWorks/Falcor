@@ -78,6 +78,7 @@ namespace Falcor
             double gpuRunningAverageMS = -1.f;
             uint32_t level;
             uint32_t triggered = 0;
+            bool registered = false;
 #if _PROFILING_LOG == 1
             int stepNr = 0;
             int filesWritten = 0;
@@ -110,7 +111,7 @@ namespace Falcor
             \param[in] name The event name.
         */
         static EventData* createNewEvent(const std::string& name);
-        
+
         /** Initialize a previously generated event.
             Used to do the default initialization without creating the actual event instance, to support derived event types. See \ref Cuda::Profiler::EventData.
             \param[out] pEvent Event to initialize
@@ -138,7 +139,7 @@ namespace Falcor
         */
         static EventData* isEventRegistered(const std::string& name);
 
-        /** Clears all the events. 
+        /** Clears all the events.
             Useful if you want to start profiling a different technique with different events.
         */
         static void clearEvents();
@@ -148,7 +149,7 @@ namespace Falcor
         static double getCpuTime(const EventData* pData);
 
         static std::unordered_map<std::string, EventData*> sProfilerEvents;
-        static std::vector<EventData*> sProfilerVector;
+        static std::vector<EventData*> sRegisteredEvents;
         static uint32_t sCurrentLevel;
         static uint32_t sGpuTimerIndex;
     };
@@ -162,10 +163,10 @@ namespace Falcor
     public:
         /** C'tor
         */
-        ProfilerEvent(const std::string& name, Profiler::Flags flags = Profiler::Flags::Default) : mName(name), mFlags(flags) { if(gProfileEnabled) { Profiler::startEvent(name, flags); } }
+        ProfilerEvent(const std::string& name, Profiler::Flags flags = Profiler::Flags::Default) : mName(name), mFlags(flags) { if (gProfileEnabled) { Profiler::startEvent(name, flags); } }
         /** D'tor
         */
-        ~ProfilerEvent() { if(gProfileEnabled) {Profiler::endEvent(mName, mFlags); }}
+        ~ProfilerEvent() { if (gProfileEnabled) { Profiler::endEvent(mName, mFlags); } }
 
     private:
         const std::string mName;
