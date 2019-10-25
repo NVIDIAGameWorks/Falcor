@@ -89,6 +89,7 @@ namespace Falcor
     Scene::Scene()
     {
         mpFrontClockwiseRS = RasterizerState::create(RasterizerState::Desc().setFrontCounterCW(false));
+        mpNoCullRS = RasterizerState::create(RasterizerState::Desc().setCullMode(RasterizerState::CullMode::None));
     }
 
     Scene::SharedPtr Scene::create(const std::string& filename)
@@ -129,6 +130,12 @@ namespace Falcor
         {
             if (overrideRS) pState->setRasterizerState(mpFrontClockwiseRS);
             pContext->drawIndexedIndirect(pState, pVars, mDrawClockwiseMeshes.count, mDrawClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
+        }
+
+        if (mDrawAlphaTestedMeshes.count)
+        {
+            if (overrideRS) pState->setRasterizerState(mpNoCullRS);
+            pContext->drawIndexedIndirect(pState, pVars, mDrawAlphaTestedMeshes.count, mDrawAlphaTestedMeshes.pBuffer.get(), 0, nullptr, 0);
         }
 
         if (overrideRS) pState->setRasterizerState(pCurrentRS);
@@ -501,7 +508,7 @@ namespace Falcor
 
     void Scene::createDrawList()
     {
-        std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
+        std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes, drawAlphaTestedMeshes;
         auto pMatricesBuffer = mpSceneBlock->getTypedBuffer("worldMatrices");
         const mat4* matrices = (mat4*)pMatricesBuffer->getData();
 
@@ -515,9 +522,16 @@ namespace Falcor
             draw.InstanceCount = 1;
             draw.StartIndexLocation = mesh.ibOffset;
             draw.BaseVertexLocation = mesh.vbOffset;
-            draw.StartInstanceLocation = (uint32_t)(drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size());
+            draw.StartInstanceLocation = (uint32_t)(drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size() + drawAlphaTestedMeshes.size());
 
-            (doesTransformFlip(transform)) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
+            if (mMaterials[mesh.materialID]->getAlphaMode() == AlphaModeMask)
+            {
+                drawAlphaTestedMeshes.push_back(draw);
+            }
+            else
+            {
+                (doesTransformFlip(transform)) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
+            }
         }
 
         // Create the draw-indirect buffer
@@ -533,7 +547,13 @@ namespace Falcor
             mDrawClockwiseMeshes.count = (uint32_t)drawClockwiseMeshes.size();
         }
 
-        size_t drawCount = drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size();
+        if (drawAlphaTestedMeshes.size())
+        {
+            mDrawAlphaTestedMeshes.pBuffer = Buffer::create(sizeof(drawAlphaTestedMeshes[0]) * drawAlphaTestedMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawAlphaTestedMeshes.data());
+            mDrawAlphaTestedMeshes.count = (uint32_t)drawAlphaTestedMeshes.size();
+        }
+
+        size_t drawCount = drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size() + drawAlphaTestedMeshes.size();
         assert(drawCount <= UINT32_MAX);
     }
 

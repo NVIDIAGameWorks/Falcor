@@ -364,7 +364,7 @@ namespace Falcor
         {
             Buffer::SharedPtr pBuffer;
             uint32_t count = 0;
-        } mDrawClockwiseMeshes, mDrawCounterClockwiseMeshes;
+        } mDrawClockwiseMeshes, mDrawCounterClockwiseMeshes, mDrawAlphaTestedMeshes;
 
         static const uint32_t kInvalidNode = -1;
 
@@ -408,6 +408,7 @@ namespace Falcor
 
         // Rendering
         RasterizerState::SharedPtr mpFrontClockwiseRS;
+        RasterizerState::SharedPtr mpNoCullRS;
         UpdateFlags mUpdates = UpdateFlags::All;
         AnimationController::UniquePtr mpAnimationController;
 
