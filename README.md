@@ -8,7 +8,7 @@ Its features include:
 * Common rendering effects such as shadows and post-processing effects
 * DirectX Raytracing abstraction 
 
-Note that Falcor 4.0 is still under development. There will be more changes to the interfaces as well as new features. This is a snapshot of our development branch and doesn't represent an offical version (not even alpha).
+Note that Falcor 4.0 is still under development. There will be more changes to the interfaces as well as new features. This is a snapshot of our development branch and doesn't represent an official version (not even alpha).
 This release only supports DX12 on Windows.
 The path tracer requires NVAPI. Please make sure you have it setup properly, otherwise the path-tracer won't work. You can find the instructions below.
 
@@ -32,12 +32,6 @@ After cloning the repository, head over to https://developer.nvidia.com/nvapi an
 1. Extract the content of the zip file into `<FalcorRootDir>\Source\Externals\.packman`. If you have NVAPI version R435, you should have the `<FalcorRootDir>\Source\Externals\.packman\R435-developer` folder.
 2. Rename `R435-developer` to `NVAPI`. You should end up with the `<FalcorRootDir>\Source\Externals\.packman\NVAPI` folder.
 
-
-CUDA Support
---------------
-Refer to the README located in the `Samples\Interops\CudaInterop` for instructions on how to set up your environment to use CUDA with Falcor.
-
-
 Building Falcor
 ---------------
 Open `Falcor.sln` and it should build successfully in Visual Studio out of the box. If you wish to skip this step and add Falcor to your own Visual Studio solution directly,
@@ -47,7 +41,6 @@ Creating a New Project
 ------------------------
 - If you haven't done so already, create a Visual Studio solution and project for your code. Falcor only supports 64-bit builds, so make sure you have a 64-bit build configuration
 - Add `Falcor.props` to your project (Property Manager -> Right click your project -> Add existing property sheet)
-- Add `FalcorSharedObjects.vcxproj` to your solution (Located at `Framework/FalcorSharedObjects/FalcorSharedObjects.vcxproj`)
 - Add `Falcor.vcxproj` to your solution (Located at `Framework/Source/Falcor.vcxproj`)
 - Add a reference to Falcor in your project (Solution Explorer -> Your Project -> Right Click `References` -> Click `Add Reference...` -> Choose Falcor)
 
@@ -113,11 +106,11 @@ If you use Falcor in a research project leading to a publication, please cite th
 The BibTex entry is
 
 ```bibtex
-@Misc{Benty17,  
-   author =      {Nir Benty and Kai-Hwa Yao and Tim Foley and Conor Lavelle and Chris Wyman},  
+@Misc{Benty19,  
+   author =      {Nir Benty and Kai-Hwa Yao and Lucy Chen and Tim Foley and Matthew Oakes and Conor Lavelle and Chris Wyman},  
    title =       {The {Falcor} Rendering Framework},  
-   year =        {2017},  
-   month =       {07},  
+   year =        {2019},  
+   month =       {10},  
    url =         {https://github.com/NVIDIAGameWorks/Falcor},  
    note=         {\url{https://github.com/NVIDIAGameWorks/Falcor}}  
 }
