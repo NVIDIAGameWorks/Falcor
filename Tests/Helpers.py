@@ -3,28 +3,33 @@ import os
 import shutil
 import stat
 import pprint
-from time import sleep
+import time
 from distutils.dir_util import copy_tree
 import shutil
-import InternalConfig as iConfig
+import TestConfig as testConfig
 import MachineConfigs as machine_configs
+from pathlib import Path
+from urllib.parse import urlparse
 
-def get_executable_directory(configuration, test_set, runAsCollection):
-    if runAsCollection:
-        exe_dir = os.path.join(test_set, 'Bin')
-    else:
-        exe_dir = 'Bin'
-        
+def getExeDirectory(configuration):
+    exeDir = os.path.join(machine_configs.default_main_dir, 'Bin')
+
     if os.name == 'nt':
-        exe_dir = os.path.join(exe_dir, 'x64')
+        exeDir = os.path.join(exeDir, 'x64')
         if configuration.lower() == 'released3d12' or configuration.lower() == 'releasevk' :
             config = 'Release'
         else:
             config = 'Debug'
-        return os.path.join(exe_dir, config)
+        return os.path.join(exeDir, config)
     else:
-        return exe_dir
-        
+        return exeDir
+
+def findExecutable(config, exe):
+    exePath = os.path.join(getExeDirectory(config), exe)
+    if not os.path.isfile(exePath):
+        raise FileNotFoundError("Can't find the exe file `" + exe + "`")
+    return exePath
+
 # Error if we failed to clean or make the correct directory.
 class CloneRepoCleanOrMakeError(Exception):
     pass
@@ -33,71 +38,37 @@ class CloneRepoCleanOrMakeError(Exception):
 class CloneRepoCloneError(Exception):
     pass
 
-def directory_make(destination):
-    if not os.path.isdir(destination):
-        try:
-            os.makedirs(destination)
-            return 0
+def mkdir(dir):
+    dir = Path(dir)
+    if not dir.is_dir():
+        os.makedirs(str(dir))
 
-        except OSError:
-            print("Error trying to Create Directory : " + destination)
-            return None
-
-def directory_clean(destination):
-    try:
-        remove_directory_return_code = 0
-        if os.name == 'nt':
-            # Create the arguments.
-            batch_args = ["RemoveDirectoryTree.bat ", destination]
-            # Clean the Directory.
-            remove_directory_return_code = subprocess.call(batch_args)
+def rmdir(dir):
+    dir = Path(dir)
+    if dir.is_dir():
+        shutil.rmtree(dir, ignore_errors=True)
     
-            # Check if it was success.
-            if remove_directory_return_code != 0:
-                print("Error trying to clean Directory : " + destination + str(remove_directory_return_code))
-        else:
-            # Clean the Directory.
-            shutil.rmtree(destination)
-        if not os.path.exists(destination):
-            os.makedirs(destination)
-        return remove_directory_return_code
-        
-    # Exception Handling.
-    except subprocess.CalledProcessError:
-        print("Error trying to clean Directory : " + destination)
-        # Return failure.
-        return None
-    
-
 # Clean the directory if it exists, or make it if it does not.
-def directory_clean_or_make(destination):
-    # Check if the Directory exists, and make it if it does not.
-    if not os.path.isdir(destination):
-        try:
-            os.makedirs(destination)
-            return 0
-        except OSError:
-            print("Error trying to Create Directory : " + destination)
-            return None
-    else:
-        directory_clean(destination)
+def cleanDir(dir):
+    rmdir(dir)
+    mkdir(dir)
 
 # Clone the Repository with the specified Arguments.
 def clone(repository, branch, destination):
 
    # Create the Destination Directory.
-    if directory_clean_or_make(destination) != 0 :
+    if cleanDir(destination) != 0 :
         raise CloneRepoCleanOrMakeError("Failed To Clean or Make Directory")
 
     # Clone the Specified Repository and Branch.
     try: 
-        clone_return_code = subprocess.call(['git', 'clone', repository, destination, '-b', branch])
+        errCode = subprocess.call(['git', 'clone', repository, destination, '-b', branch])
         
         # Raise an exception if the subprocess did not run correctly.
-        if clone_return_code != 0 :
+        if errCode != 0 :
             raise CloneRepoCloneError('Error Cloning Repository : ' + repository + ' Branch : ' + branch + ' Destination : ' + destination + ' ')
 
-        return clone_return_code 
+        return errCode 
             
     # Exception Handling.
     except subprocess.CalledProcessError:
@@ -105,85 +76,102 @@ def clone(repository, branch, destination):
         raise CloneRepoCloneError('Error Cloning Repository : ' + repository + ' Branch : ' + branch + ' Destination : '  + destination + ' ')
         
 
-def open_file_dir(references_dir):
-    if os.path.isdir(references_dir):
+def openFolderInExplorer(folder):
+    if os.path.isdir(folder):
         if os.name == 'nt':
-            subprocess.call('explorer.exe ' + references_dir )
+            subprocess.call('explorer.exe ' + folder )
         else:
-            subprocess.call('nautilus --browser ' + references_dir )
+            subprocess.call('nautilus --browser ' + folder )
 
 
 class GitError(Exception):
     pass
         
 # get branch name without having to store it in a config or require the user to install pygit
-def get_git_branch_name(base_dir):
+def getGitBranchName(baseDir):
     try:
-        git_file = open(os.path.join(base_dir, '.git/HEAD' ))
-        git_file_string = git_file.readline()
+        gitFile = open(os.path.join(baseDir, '.git/HEAD' ))
+        gitFileStr = gitFile.readline()
     except (IOError, OSError) as e:
         raise GitError(e.args)
-        
-    print(git_file_string)
-    
-    if git_file_string.find('ref: ') > -1:
-        git_file_string = git_file_string[5 : len(git_file_string)]
-        return git_file_string[git_file_string.rfind('/') + 1 : len(git_file_string) - 1]
+            
+    if gitFileStr.find('ref: ') > -1:
+        gitFileStr = gitFileStr[5 : len(gitFileStr)]
+        return gitFileStr[gitFileStr.rfind('/') + 1 : len(gitFileStr) - 1]
         
     return machine_configs.default_reference_branch_name
 
 # get branch name without having to store it in a config or require the user to install pygit
-def get_git_url(base_dir):
+def getGitUrl(baseDir):
     try:
-        git_file = open(os.path.join(base_dir, '.git/config' ))
-        git_file_string = git_file.read()
+        gitFile = open(os.path.join(baseDir, '.git/config' ))
+        gitFileStr = gitFile.read()
     except (IOError, OSError) as e:
         raise GitError(e.args)
     
-    ref = git_file_string.find('url = ')
+    ref = gitFileStr.find('url = ')
     if ref > -1:
-        rest = git_file_string[ref:len(git_file_string)]
-        git_url = rest[6 : rest.find('\n')]
-        return git_url
+        rest = gitFileStr[ref:len(gitFileStr)]
+        gitUrl = rest[6 : rest.find('\n')]
+        return gitUrl
         
     return machine_configs.default_reference_url
+
+def getVcsRoot(baseDir):
+    url = getGitUrl(baseDir)
+    url = urlparse(url)
+    url = url.netloc.split('.')
+    for u in url:
+        if u.startswith("git@"): u = u.replace("git@", "")
+        if u == "gitlab-master" or u == "github": return u
+    print("Error. Unknown VCS root `" + url[0] + "`")
+    return url[0].lower()
+
 
 # Error if we failed to build the solution.
 class BuildSolutionError(Exception):
     pass
     
-def build_solution(cloned_dir, relative_solution_filepath, configuration, rebuild):
+def buildSolution(slnDir, slnFile, config, rebuild):
     if os.name == 'nt':
-        windows_build_script = "BuildSolution.bat"
+        winBuildScript = "BuildSolution.bat"
         try:
             # Build the Batch Args.
             buildType = "build"
             if rebuild:
                 buildType = "rebuild"
-            batch_args = [windows_build_script, buildType, relative_solution_filepath, configuration.lower()]
+            slnPath = Path(slnDir) / Path(slnFile + ".sln")
+            batchArgs = [winBuildScript, buildType, str(slnPath), config.lower()]
 
             # Build Solution.
-            if subprocess.call(batch_args) == 0:
+            if subprocess.call(batchArgs) == 0:
                 return 0
+            else:
+                raise Exception()
             
-        except subprocess.CalledProcessError as subprocess_error:
-            raise BuildSolutionError("Error building solution : " + relative_solution_filepath + " with configuration : " + configuration.lower())
+        except Exception:
+            raise BuildSolutionError("Error building solution : " + str(slnPath) + " with configuration : " + config.lower())
     else:
         prevDir = os.getcwd()
         #Call Makefile
         os.chdir(cloned_dir)
         subprocess.call(['make', 'PreBuild', '-j8', '-k'])
-        subprocess.call(['make', 'All', '-j24', '-k'])
+        subprocess.call(['make', 'All', '-j24', '-k','TESTS=\'-D _TEST_\''])
         os.chdir(prevDir)
             
 def isSupportedImageExt(file):
-    for ext in iConfig.ImageExtensions:
+    for ext in testConfig.imageExtensions:
         if file.endswith(ext):
             return True
     
     return False
 
-def dispatch_email(subject, attachments):
+def deletePackmanRepo():
+    if os.path.isdir(machine_configs.packman_repo):
+        print("Deleting the packman repository")
+        rmdir(machine_configs.packman_repo)
+
+def dispatchEmail(subject, attachments):
     dispatcher = 'NvrGfxTest@nvidia.com'
     recipients = str(open(machine_configs.machine_email_recipients, 'r').read())
 
@@ -200,13 +188,13 @@ def dispatch_email(subject, attachments):
             command.append(attachment)
     subprocess.call(command)    
             
-def directory_copy(fromDirectory, toDirectory):
+def copyDir(fromDirectory, toDirectory):
     print('Copying directory ' + fromDirectory + ' to ' + toDirectory)
     
     try:
         for subdir, dirs, files in os.walk(fromDirectory):
-            relative_file_path = subdir[len(fromDirectory) + 1 : len(subdir)]
-            to_path = os.path.join(toDirectory, relative_file_path)
+            relPath = subdir[len(fromDirectory) + 1 : len(subdir)]
+            to_path = os.path.join(toDirectory, relPath)
             if not os.path.isdir(to_path):
                 os.mkdir(to_path)
             for file in files:
@@ -217,7 +205,14 @@ def directory_copy(fromDirectory, toDirectory):
         print('Failed to copy reference files to server. Please check local directory.')
         return
 
-def build_html_filename(tests_sets, configuration):
+def createShortcut(source_path, link_file_path):
+    if os.name == 'nt':
+        # creates a junction to avoid requiring admin rights because of windows
+        subprocess.call(['mklink', link_file_path, source_path], shell=True)
+    else:
+        os.symlink(source_path, link_file_path)
+
+def buildHtmlFilename(tests_sets, configuration):
     header = "[SUCCESS]"
     for tests_set_key in tests_sets.keys():
         if tests_sets[tests_set_key]['Success'] is False:
@@ -226,3 +221,55 @@ def build_html_filename(tests_sets, configuration):
 
     return header + configuration + "_Results.html"
 
+class ProcessFailed(RuntimeError):
+    pass
+
+class ProcessTimedoutError(Exception):
+    pass
+
+def runProcessAsync(cmdArgs):
+    try:
+        process = subprocess.Popen(cmdArgs, stderr = subprocess.PIPE, stdout = subprocess.PIPE)
+        startTime = time.time()
+    
+        # Wait for the process to finish.
+        while process.returncode is None:
+            process.poll()
+
+            now = time.time()
+            diffTime = now - startTime
+            # If the process has taken too long, kill it.
+            if diffTime > machine_configs.machine_process_default_kill_time:
+                process.kill()
+                raise ProcessTimedoutError("Process ran for too long, had to kill it. Please verify that the program finishes within its hang time, and that it does not crash")
+                break
+
+        e = "Process log:\n"
+        for string in process.stderr:
+            e += str(string.decode())
+
+        if process.returncode == 0:
+            return "Process " + cmdArgs[0] + " finished. " + e
+
+        else:
+            e = "Process " + cmdArgs[0] + " failed with error " + str(process.returncode) + ". " + e
+            raise ProcessFailed(e)
+
+
+    except(NameError, IOError, OSError) as e:
+        print(e.args)
+        raise RuntimeError('Error when trying to run "' + cmdArgs + '"')
+
+def buildRefSubFolder(args):
+    ref = os.path.join(args.vcs_root, os.path.join(args.machine_name, os.path.join(args.branch_name, args.build_config)))
+    return ref
+
+def mirror_folders(source, dst):
+    if not os.name == 'nt':
+        raise RuntimeError("mirror_folders() is not implemented for this OS")
+    robocopy = ["Robocopy.exe", source, dst, "/MIR", "/FFT", "/Z", "/XA:H", "/W:5", "/LOG:robocopy.txt", "/np"]
+    try:
+        subprocess.check_call(robocopy)
+    except(subprocess.CalledProcessError) as e:
+        if e.returncode > 7:
+            raise RuntimeError("Mirroring folders failed")

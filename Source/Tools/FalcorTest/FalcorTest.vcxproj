@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="FalcorTest.cpp" />
+    <ClCompile Include="Tests\Core\BufferTests.cpp" />
+    <ClCompile Include="Tests\DebugPasses\InvalidPixelDetectionTests.cpp" />
+    <ClCompile Include="Tests\Sampling\PseudorandomTests.cpp" />
+    <ClCompile Include="Tests\Sampling\SampleGeneratorTests.cpp" />
+    <ClCompile Include="Tests\Scene\EnvProbeTests.cpp" />
+    <ClCompile Include="Tests\ShadingUtils\RaytracingTests.cpp" />
+    <ClCompile Include="Tests\ShadingUtils\ShadingUtilsTests.cpp" />
+    <ClCompile Include="Tests\Slang\SlangTests.cpp" />
+    <ClCompile Include="Tests\Utils\AABBTests.cpp" />
+    <ClCompile Include="Tests\Utils\AlignedAllocatorTests.cpp" />
+    <ClCompile Include="Tests\Utils\BitonicSortTests.cpp" />
+    <ClCompile Include="Tests\Utils\BitTricksTests.cpp" />
+    <ClCompile Include="Tests\Utils\ColorUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\HalfUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\HashUtilsTests.cpp" />
+    <ClCompile Include="Tests\Utils\MathHelpersTests.cpp" />
+    <ClCompile Include="Tests\Utils\ParallelReductionTests.cpp" />
+    <ClCompile Include="Tests\Utils\PrefixSumTests.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FalcorTest.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ShaderSource Include="Tests\Core\BufferTests.cs.slang" />
+    <ShaderSource Include="Tests\Sampling\PseudorandomTests.cs.slang" />
+    <ShaderSource Include="Tests\Sampling\SampleGeneratorTests.cs.slang" />
+    <ShaderSource Include="Tests\ShadingUtils\RaytracingTests.cs.slang" />
+    <ShaderSource Include="Tests\ShadingUtils\ShadingUtilsTests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\SlangTests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\SlangShared.h" />
+    <ShaderSource Include="Tests\Utils\AABBTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\BitTricksTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\HalfUtilsTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\HashUtilsTests.cs.slang" />
+    <ShaderSource Include="Tests\Utils\MathHelpersTests.cs.slang" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Falcor\Falcor.vcxproj">
+      <Project>{2c535635-e4c5-4098-a928-574f0e7cd5f9}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{20401FAD-6022-8EB7-2F78-41369B8F0F49}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>FeatureDemo</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <ProjectName>FalcorTest</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="..\..\Falcor\Falcor.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="..\..\Falcor\Falcor.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

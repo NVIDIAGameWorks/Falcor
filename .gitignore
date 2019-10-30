@@ -9,28 +9,16 @@ Bin/*
 *.suo
 *.ptx
 *.pyc
-Falcor.VC.db
-FalcorTest.VC.db
-Framework/BuildScripts/PatchFalcorProps/PatchFalcorPropertySheet/PatchFalcorPropertySheet.VC.db
+*.VC.db
 FalcorTest/TestResults/*
-Falcor.VC.VC.opendb
+*.VC.opendb
 .vs/*
 .vscode/
 *.pyc
 *.o
 *slang-dump-*
-
-# A bit of a song and dance to ignore all the files
-# in the Slang codebase except for the ones we need.
-Framework/Externals/slang/*
-!Framework/Externals/slang/source/
-Framework/Externals/slang/source/**/*.vcxproj
-Framework/Externals/slang/source/**/*.filters
-Framework/Externals/slang/source/**/*.natvis
-!Framework/Externals/slang/source/**/*.cpp
-!Framework/Externals/slang/source/**/*.cpp
-!Framework/Externals/slang/source/**/*.h
-Framework/Externals/*
-!Framework/Externals/dear_imgui_addons/
-!Framework/Externals/dear_imgui_addons/imguinodegrapheditor/
+Source/Externals/.packman/*
 Media
+/Tests/TestResults/*
+/Tests/Solution_BuildLog.txt
+/Tests/robocopy.txt

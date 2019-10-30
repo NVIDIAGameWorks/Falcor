@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <FALCOR_CORE_DIRECTORY>$(SolutionDir)\Source</FALCOR_CORE_DIRECTORY>
+    <FALCOR_BACKEND>FALCOR_D3D12</FALCOR_BACKEND>
+  </PropertyGroup>
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)Bin\$(PlatformShortName)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Bin\Int\$(PlatformShortName)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalIncludeDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\.packman\DL4RT\Include;$(FALCOR_CORE_DIRECTORY)\Falcor;$(FALCOR_CORE_DIRECTORY)\Internal;$(FALCOR_CORE_DIRECTORY)\Internal\RenderPassCommon;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\GLM;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\VulkanSDK\Include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\RapidJson\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\pybind11\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Python\include;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\Include\WinPixEventRuntime;$(FALCOR_CORE_DIRECTORY)\Externals;$(FALCOR_CORE_DIRECTORY)\Externals\.packman</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_$(OutputType);_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;GLM_FORCE_DEPTH_ZERO_TO_ONE;$(FALCOR_BACKEND);_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(FALCOR_CORE_DIRECTORY)\Externals\.packman\DL4RT\Lib\x64\$(ConfigurationName)\;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\FreeImage;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Assimp\lib\$(PlatformName)\;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\FFMpeg\lib\$(PlatformName);$(FALCOR_CORE_DIRECTORY)\Externals\.packman\openvr\lib\win64;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\nvapi\amd64;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\VulkanSDK\Lib;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Slang\bin\windows-x64\release;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\GLFW\lib;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\Python\libs;$(FALCOR_CORE_DIRECTORY)\Externals\.packman\WinPixEventRuntime\bin\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>call $(FALCOR_CORE_DIRECTORY)\..\Build\deployproject.bat $(ProjectDir) $(OutDir)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <PropertyPageSchema Include="$(FALCOR_CORE_DIRECTORY)\Falcor\ShaderSource.xml">
+      <Context>Project</Context>
+    </PropertyPageSchema>
+    <ProjectTools Include="ShaderSource" />
+  </ItemGroup>
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(FALCOR_CORE_DIRECTORY)\Falcor\ShaderSource.targets" />
+  </ImportGroup>
+  <PropertyGroup>
+    <ShaderSourceSubDir>Data</ShaderSourceSubDir>
+    <ShaderSourcePreservePaths>true</ShaderSourcePreservePaths>
+  </PropertyGroup>
+  <ItemGroup>
+    <BuildMacro Include="FALCOR_CORE_DIRECTORY">
+      <Value>$(FALCOR_CORE_DIRECTORY)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

@@ -17,3 +17,8 @@ charset = utf-8
 # Override trailing whitespace setting for Markdown since there it's actually useful
 [*.{md}]
 trim_trailing_whitespace = false
+
+# Override settings for project files to use the same settings as Visual Studio
+[*.{vcxproj,vcxproj.filters}]
+indent_size = 2
+insert_final_newline = false

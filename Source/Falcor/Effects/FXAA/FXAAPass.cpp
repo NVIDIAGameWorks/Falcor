@@ -1,0 +1,129 @@
+/***************************************************************************
+# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#  * Neither the name of NVIDIA CORPORATION nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+***************************************************************************/
+#include "stdafx.h"
+#include "FXAAPass.h"
+
+namespace Falcor
+{
+    const char* FXAAPass::kDesc = "Fast Approximate Anti-Aliasing";
+
+    namespace
+    {
+        const std::string kSrc = "src";
+        const std::string kDst = "dst";
+
+        const std::string kQualitySubPix = "qualitySubPix";
+        const std::string kQualityEdgeThreshold = "qualityEdgeThreshold";
+        const std::string kQualityEdgeThresholdMin = "qualityEdgeThresholdMin";
+        const std::string kEarlyOut = "earlyOut";
+
+        const std::string kShaderFilename = "Effects/FXAA.slang";
+    }
+
+    FXAAPass::FXAAPass()
+    {
+        mpPass = FullScreenPass::create(kShaderFilename);
+        mpFbo = Fbo::create();
+        Sampler::Desc samplerDesc;
+        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
+        mpPass["gSampler"] = Sampler::create(samplerDesc);
+    }
+
+    FXAAPass::SharedPtr FXAAPass::create(RenderContext* pRenderContext, const Dictionary& dict)
+    {
+        SharedPtr pFXAA = SharedPtr(new FXAAPass);
+        for (const auto& v : dict)
+        {
+            if (v.key() == kQualitySubPix) pFXAA->mQualitySubPix = v.val();
+            if (v.key() == kQualityEdgeThreshold) pFXAA->mQualityEdgeThreshold = v.val();
+            if (v.key() == kQualityEdgeThresholdMin) pFXAA->mQualityEdgeThresholdMin = v.val();
+            if (v.key() == kEarlyOut) pFXAA->mEarlyOut = v.val();
+            else logWarning("Unknown field `" + v.key() + "` in an FXAA dictionary");
+        }
+        return pFXAA;
+    }
+
+    Dictionary FXAAPass::getScriptingDictionary()
+    {
+        Dictionary dict;
+        dict[kQualitySubPix] = mQualitySubPix;
+        dict[kQualityEdgeThreshold] = mQualityEdgeThreshold;
+        dict[kQualityEdgeThresholdMin] = mQualityEdgeThresholdMin;
+        dict[kEarlyOut] = mEarlyOut;
+        return dict;
+    }
+
+    RenderPassReflection FXAAPass::reflect(const CompileData& compileData)
+    {
+        RenderPassReflection reflector;
+        reflector.addInput(kSrc, "Source color-buffer");
+        reflector.addOutput(kDst, "Destination color-buffer");
+        return reflector;
+    }
+
+    void FXAAPass::execute(RenderContext* pContext, const RenderData& renderData)
+    {
+        auto pSrc = renderData[kSrc]->asTexture();
+        auto pDst = renderData[kDst]->asTexture();
+        mpFbo->attachColorTarget(pDst, 0);
+
+        mpPass["gSrc"] = pSrc;
+        vec2 rcpFrame = 1.0f / vec2(pSrc->getWidth(), pSrc->getHeight());
+
+        auto pCB = mpPass["PerFrameCB"];
+        pCB["rcpTexDim"] = rcpFrame;
+        pCB["qualitySubPix"] = mQualitySubPix;
+        pCB["qualityEdgeThreshold"] = mQualityEdgeThreshold;
+        pCB["qualityEdgeThresholdMin"] = mQualityEdgeThresholdMin;
+        pCB["earlyOut"] = mEarlyOut;
+
+        mpPass->execute(pContext, mpFbo);
+    }
+
+    void FXAAPass::renderUI(Gui::Widgets& widget)
+    {
+        widget.var("Sub-Pixel Quality", mQualitySubPix, 0.f, 1.f, 0.001f);
+        widget.var("Edge Threshold", mQualityEdgeThreshold, 0.f, 1.f, 0.001f);
+        widget.var("Edge Threshold Min", mQualityEdgeThresholdMin, 0.f, 1.f, 0.001f);
+        widget.checkbox("Early out", mEarlyOut);
+
+    }
+
+    SCRIPT_BINDING(FXAAPass)
+    {
+        auto c = m.regClass(FXAAPass);
+        c.func_("qualitySubPix", &FXAAPass::setQualitySubPix);
+        c.func_("qualitySubPix", &FXAAPass::getQualitySubPix);
+        c.func_("qualityEdgeThreshold", &FXAAPass::setQualityEdgeThreshold);
+        c.func_("qualityEdgeThreshold", &FXAAPass::getQualityEdgeThreshold);
+        c.func_("qualityEdgeThresholdMin", &FXAAPass::setQualityEdgeThresholdMin);
+        c.func_("qualityEdgeThresholdMin", &FXAAPass::getQualityEdgeThresholdMin);
+        c.func_("earlyOut", &FXAAPass::setEarlyOut);
+        c.func_("earlyOut", &FXAAPass::getEarlyOut);
+    }
+}
