@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PM_PACKMAN_VERSION=5.7.1
+PM_PACKMAN_VERSION=5.14
 
 # Specify where packman command exists
 export PM_INSTALL_PATH=$(dirname ${BASH_SOURCE})
@@ -52,23 +52,6 @@ fetch_file_from_s3()
 	fi		
 }
 
-# Ensure the packman package exists:
-if [ ! -f "$PM_MODULE" ]; then
-	PM_MODULE_PACKAGE="packman-common@$PM_PACKMAN_VERSION.zip"
-	TARGET="/tmp/$PM_MODULE_PACKAGE"
-	# We always fetch packman from S3:
-	fetch_file_from_s3 $PM_MODULE_PACKAGE $TARGET
-	if [ "$?" -eq "0" ]; then
-		echo "Unpacking ..."
-		mkdir -p "$PM_MODULE_DIR"
-		unzip -q $TARGET -d "$PM_MODULE_DIR"
-		rm $TARGET
-	else
-		echo "Failure while fetching packman module from S3!"
-		exit 1
-	fi
-fi
-
 # For now assume python is installed on the box and we just need to find it
 if command -v python2.7 >/dev/null 2>&1; then
 	export PM_PYTHON=python2.7
@@ -78,13 +61,29 @@ else
 	export PM_PYTHON=python
 fi
 
+# Ensure the packman package exists:
+if [ ! -f "$PM_MODULE" ]; then
+	PM_MODULE_PACKAGE="packman-common@$PM_PACKMAN_VERSION.zip"
+	TARGET="/tmp/$PM_MODULE_PACKAGE"
+	# We always fetch packman from S3:
+	fetch_file_from_s3 $PM_MODULE_PACKAGE $TARGET
+	if [ "$?" -eq "0" ]; then
+		echo "Unpacking ..."
+		$PM_PYTHON -S -s -u -E "$PM_INSTALL_PATH/bootstrap/install_package.py" "$TARGET" "$PM_MODULE_DIR"
+		rm $TARGET
+	else
+		echo "Failure while fetching packman module from S3!"
+		exit 1
+	fi
+fi
+
 # Ensure 7za package exists:
 PM_7za_VERSION=16.02.4
 export PM_7za_PATH="$PM_PACKAGES_ROOT/7za/$PM_7za_VERSION"
 if [ ! -d "$PM_7za_PATH" ]; then
     export PM_7za_PATH="$PM_PACKAGES_ROOT/chk/7za/$PM_7za_VERSION"
     if [ ! -d "$PM_7za_PATH" ]; then
-        $PM_PYTHON -s -u -E "$PM_MODULE" pull "$PM_MODULE_DIR/deps.packman.xml"
+        $PM_PYTHON -S -s -u -E "$PM_MODULE" pull "$PM_MODULE_DIR/deps.packman.xml"
         if [ "$?" -ne 0 ]; then
            echo "Failure while installing required 7za package"
            exit 1
@@ -95,7 +94,7 @@ fi
 # Generate temporary file name for environment variables:
 PM_VAR_PATH=`mktemp -u -t tmp.$$.pmvars.XXXXXX`
 
-$PM_PYTHON -s -u -E "$PM_MODULE" $* --var-path="$PM_VAR_PATH"
+$PM_PYTHON -S -s -u -E "$PM_MODULE" "$@" --var-path="$PM_VAR_PATH"
 exit_code=$?
 # Export the variables if the file was used and remove the file:
 if [ -f "$PM_VAR_PATH" ]; then

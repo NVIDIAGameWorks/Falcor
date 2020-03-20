@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Logger.h"
 
@@ -32,47 +32,67 @@ namespace Falcor
 {
     namespace
     {
-        bool sShowErrorBox = true;
-        FILE* sLogFile = nullptr;
+        std::string sLogFilePath;
+        bool sShowBoxOnError = true;
         Logger::Level sVerbosity = Logger::Level::Warning;
 
-        FILE* openLogFile()
-        {
-            FILE* pFile = nullptr;
+#if _LOG_ENABLED
+        bool sInitialized = false;
+        FILE* sLogFile = nullptr;
 
+        std::string generateLogFilePath()
+        {
             // Get current process name
             std::string filename = getExecutableName();
 
             // Now we have a folder and a filename, look for an available filename (we don't overwrite existing files)
             std::string prefix = std::string(filename);
             std::string executableDir = getExecutableDirectory();
-            std::string logFile;
-            if (findAvailableFilename(prefix, executableDir, "log", logFile))
+            std::string path;
+            if (findAvailableFilename(prefix, executableDir, "log", path))
             {
-                pFile = std::fopen(logFile.c_str(), "w");
-                if (pFile != nullptr)
-                {
-                    // Success
-                    return pFile;
-                }
+                return path;
             }
+            should_not_get_here();
+            return "";
+        }
+
+        FILE* openLogFile()
+        {
+            FILE* pFile = nullptr;
+
+            if (sLogFilePath.empty())
+            {
+                sLogFilePath = generateLogFilePath();
+            }
+
+            pFile = std::fopen(sLogFilePath.c_str(), "w");
+            if (pFile != nullptr)
+            {
+                // Success
+                return pFile;
+            }
+
             // If we got here, we couldn't create a log file
             should_not_get_here();
             return pFile;
         }
 
-        bool init()
+        void printToLogFile(const std::string& s)
         {
-            bool b = false;
-#if _LOG_ENABLED
-            sLogFile = openLogFile();
-            b = sLogFile != nullptr;
-            assert(b);
-#endif
-            return b;
-        }
+            if (!sInitialized)
+            {
+                sLogFile = openLogFile();
+                sInitialized = true;
+            }
 
-        bool sInit = init();
+            if (sLogFile)
+            {
+                std::fprintf(sLogFile, "%s", s.c_str());
+                std::fflush(sLogFile);
+            }
+        }
+#endif
     }
 
     void Logger::shutdown()
@@ -82,7 +102,7 @@ namespace Falcor
         {
             fclose(sLogFile);
             sLogFile = nullptr;
-            sInit = false;
+            sInitialized = false;
         }
 #endif
     }
@@ -96,6 +116,7 @@ namespace Falcor
             create_level_case(Logger::Level::Info);
             create_level_case(Logger::Level::Warning);
             create_level_case(Logger::Level::Error);
+            create_level_case(Logger::Level::Fatal);
         default:
             should_not_get_here();
         }
@@ -106,62 +127,84 @@ namespace Falcor
     void Logger::log(Level L, const std::string& msg, MsgBox mbox)
     {
 #if _LOG_ENABLED
-        if(sInit)
+        if(L >= sVerbosity)
         {
-            if(L >= sVerbosity)
+            std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
+            printToLogFile(s);
+            if (isDebuggerPresent())
             {
-                std::string s = getLogLevelString(L) + std::string("\t") + msg + "\n";
-                std::fprintf(sLogFile, "%s", s.c_str());
-                if (isDebuggerPresent())
+                printToDebugWindow(s);
+            }
+            else
+            {
+                // Log errors to stderr if no debugger is attached.
+                if (L >= Logger::Level::Error)
                 {
-                    printToDebugWindow(s);
+                    std::cerr << s;
                 }
             }
         }
 #endif
 
-        bool showMsgBox = false;
-
-        switch (mbox)
+        if (sShowBoxOnError)
         {
-        case MsgBox::Auto:
-            showMsgBox = (L >= Level::Error) ? sShowErrorBox : false;
-            break;
-        case MsgBox::Nope:
-            showMsgBox = false;
-            break;
-        case MsgBox::Show:
-            showMsgBox = true;
-            break;
-        default:
-            should_not_get_here();
-        }
-
-        if (showMsgBox)
-        {
-            static bool exiting = false;
-            bool quit = false;
-            if (exiting == false)
+            if (mbox == MsgBox::Auto)
             {
-                if (isDebuggerPresent())
-                {
-                    auto res = msgBox(msg + "\n\nPress Abort to quit, Retry to debug or Ignore to continue", MsgBoxType::AbortRetryIgnore);
-                    if (res == MsgBoxButton::Retry) debugBreak();
-                    if (res == MsgBoxButton::Abort) quit = true;
-                }
-                else
-                {
-                    quit = msgBox(msg + "\n\nContinue execution?", MsgBoxType::YesNo) == MsgBoxButton::No;
-                }
+                mbox = (L >= Level::Error) ? MsgBox::ContinueAbort : MsgBox::None;
             }
 
-            if (quit) exit(1); // Don't post quit message. It will cause execution of the current frame to resume, which might crash the app
+            if (mbox != MsgBox::None)
+            {
+                enum ButtonId {
+                    ContinueOrRetry,
+                    Debug,
+                    Abort
+                };
+
+                // Setup message box buttons
+                std::vector<MsgBoxCustomButton> buttons;
+                if (L != Level::Fatal) buttons.push_back({ContinueOrRetry, mbox == MsgBox::ContinueAbort ? "Continue" : "Retry"});
+                if (isDebuggerPresent()) buttons.push_back({Debug, "Debug"});
+                buttons.push_back({Abort, "Abort"});
+
+                // Setup icon
+                MsgBoxIcon icon = MsgBoxIcon::Info;
+                if (L == Level::Warning) icon = MsgBoxIcon::Warning;
+                else if (L >= Level::Error) icon = MsgBoxIcon::Error;
+
+                // Show message box
+                auto result = msgBox(msg, buttons, icon);
+                if (result == Debug) debugBreak();
+                else if (result == Abort) exit(1);
+            }
         }
 
-        if (L >= Level::Fatal) assert(false);   // Assert on errors even without debugger attached
+        // Terminate on errors if showBoxOnError is not set
+        if (L == Level::Error && sShowBoxOnError == false) exit(1);
+
+        // Always terminate on fatal errors
+        if (L == Level::Fatal) exit(1);
     }
 
-    void Logger::showBoxOnError(bool showBox) { sShowErrorBox = showBox; }
-    bool Logger::isBoxShownOnError() { return sShowErrorBox; }
+    bool Logger::setLogFilePath(const std::string& path)
+    {
+#if _LOG_ENABLED
+        if (sLogFile)
+        {
+            return false;
+        }
+        else
+        {
+            sLogFilePath = path;
+            return true;
+        }
+#else
+        return false;
+#endif
+    }
+
+    const std::string& Logger::getLogFilePath() { return sLogFilePath; }
+    void Logger::showBoxOnError(bool showBox) { sShowBoxOnError = showBox; }
+    bool Logger::isBoxShownOnError() { return sShowBoxOnError; }
     void Logger::setVerbosity(Level level) { sVerbosity = level; }
 }

@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "UnitTest.h"
 #include <algorithm>
@@ -43,100 +43,140 @@ namespace Falcor
                 return getFilenameFromPath(filename) + "/" + name + " (" + (cpuFunc ? "CPU" : "GPU") + ")";
             }
 
-            std::string filename, name;
+            std::string filename;
+            std::string name;
+            std::string skipMessage;
             CPUTestFunc cpuFunc;
             GPUTestFunc gpuFunc;
         };
 
-        /** tests is declared as pointer so that we can ensure it can be explicitly
+        struct TestResult
+        {
+            enum class Status
+            {
+                Passed,
+                Failed,
+                Skipped
+            };
+
+            Status status;
+            std::vector<std::string> messages;
+            uint64_t elapsedMS = 0;
+        };
+
+        /** testRegistry is declared as pointer so that we can ensure it can be explicitly
              allocated when register[CG]PUTest() is called.  (The C++ static object
              initialization fiasco.)
          */
-        std::vector<Test>* tests;
+        std::vector<Test>* testRegistry;
 
     }   // end anonymous namespace
 
     void registerCPUTest(const std::string& filename, const std::string& name,
-                         CPUTestFunc func)
+                         const std::string& skipMessage, CPUTestFunc func)
     {
-        if (!tests) tests = new std::vector<Test>;
-        tests->push_back({ filename, name, std::move(func), {} });
+        if (!testRegistry) testRegistry = new std::vector<Test>;
+        testRegistry->push_back({ filename, name, skipMessage, std::move(func), {} });
     }
 
     void registerGPUTest(const std::string& filename, const std::string& name,
-                         GPUTestFunc func)
+                         const std::string& skipMessage, GPUTestFunc func)
     {
-        if (!tests) tests = new std::vector<Test>;
-        tests->push_back({ filename, name, {}, std::move(func) });
+        if (!testRegistry) testRegistry = new std::vector<Test>;
+        testRegistry->push_back({ filename, name, skipMessage, {}, std::move(func) });
     }
 
-    int32_t runTests(FILE *file, RenderContext *pRenderContext, const std::string &testFilter)
+    inline TestResult runTest(const Test& test, RenderContext* pRenderContext)
     {
-        int32_t nFailures = 0;
+        if (!test.skipMessage.empty()) return { TestResult::Status::Skipped, { test.skipMessage } };
 
-        if (tests == nullptr) return 0;
+        TestResult result { TestResult::Status::Passed };
 
+        auto startTime = std::chrono::steady_clock::now();
+
+        CPUUnitTestContext cpuCtx;
+        GPUUnitTestContext gpuCtx(pRenderContext);
+
+        std::string extraMessage;
+
+        try
+        {
+            if (test.cpuFunc) test.cpuFunc(cpuCtx);
+            else test.gpuFunc(gpuCtx);
+        }
+        catch (const ErrorRunningTestException& e)
+        {
+            result.status = TestResult::Status::Failed;
+            extraMessage = e.what();
+        }
+        catch (const TooManyFailedTestsException&)
+        {
+            result.status = TestResult::Status::Failed;
+            extraMessage = "Gave up after " + std::to_string(kMaxTestFailures) + " failures.";
+        }
+        catch (const std::exception& e)
+        {
+            result.status = TestResult::Status::Failed;
+            extraMessage = e.what();
+        }
+
+        result.messages = test.cpuFunc ? cpuCtx.getFailureMessages() : gpuCtx.getFailureMessages();
+
+        if (!result.messages.empty()) result.status = TestResult::Status::Failed;
+        
+        if (!extraMessage.empty()) result.messages.push_back(extraMessage);
+
+        auto endTime = std::chrono::steady_clock::now();
+        result.elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+        return result;
+    }
+
+    int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string &testFilter)
+    {
+        if (testRegistry == nullptr) return 0;
+
+        std::vector<Test> tests;
+
+        // Filter tests.
         std::regex testFilterRegex(testFilter, std::regex::icase | std::regex::basic);
-        size_t nTests = std::count_if(tests->begin(), tests->end(),
-            [&testFilterRegex](const Test &test)
+        std::copy_if(testRegistry->begin(), testRegistry->end(), std::back_inserter(tests),
+            [&testFilterRegex] (const Test& test)
         {
             return std::regex_search(test.getTitle(), testFilterRegex);
         });
 
-        fprintf(file, "Running %d tests\n", int32_t(nTests));
-
-        std::sort(tests->begin(), tests->end(),
+        // Sort tests by name.
+        std::sort(tests.begin(), tests.end(),
             [](const Test &a, const Test &b)
         {
             return (a.filename + "/" + a.name) < (b.filename + "/" + b.name);
         });
 
-        for (const auto& t : *tests)
+        stream << "Running " << std::to_string(tests.size()) << " tests" << std::endl;
+
+        int32_t failureCount = 0;
+
+        for (const auto& test : tests)
         {
-            if (!testFilter.empty() && !std::regex_search(t.getTitle(), testFilterRegex)) continue;
+            stream << "  " << padStringToLength(test.getTitle(), 60) << ": " << std::flush;
 
-            auto startTime = std::chrono::steady_clock::now();
-            CPUUnitTestContext cpuCtx;
-            GPUUnitTestContext gpuCtx(pRenderContext);
+            TestResult result = runTest(test, pRenderContext);
 
-            std::string status, failureDetails;
-            try
+            switch (result.status)
             {
-                if (t.cpuFunc) t.cpuFunc(cpuCtx);
-                else t.gpuFunc(gpuCtx);
-            }
-            catch (ErrorRunningTestException e)
-            {
-                status = "SKIPPED";
-                failureDetails = "    ";
-                failureDetails += e.what();
-                failureDetails += "\n";
-            }
-            catch (TooManyFailedTestsException e)
-            {
-                status = "ABORTED";
-                failureDetails = "    Gave up after " + std::to_string(kMaxTestFailures) + " failures.\n";
+            case TestResult::Status::Passed: stream << colored("PASSED", TermColor::Green, stream); break;
+            case TestResult::Status::Failed: stream << colored("FAILED", TermColor::Red, stream); break;
+            case TestResult::Status::Skipped: stream << colored("SKIPPED", TermColor::Yellow, stream); break;
             }
 
-            std::string failureMessage;
-            if (t.cpuFunc) failureMessage = cpuCtx.getFailureMessage();
-            else failureMessage = gpuCtx.getFailureMessage();
+            stream << " (" << std::to_string(result.elapsedMS) << " ms)" << std::endl;
+            for (const auto& m : result.messages) stream << "    "  << m << std::endl;
 
-            if (status.empty()) status = failureMessage.empty() ? "PASSED" : "FAILED";
-
-            auto endTime = std::chrono::steady_clock::now();
-            int64_t elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-
-            fprintf(file, "  %-60s: %s (%" PRId64 " ms)\n", t.getTitle().c_str(), status.c_str(), elapsedMS);
-            if (!failureMessage.empty())
-            {
-                ++nFailures;
-                fprintf(file, "%s", failureMessage.c_str());
-            }
-            if (!failureDetails.empty()) fprintf(file, "%s", failureDetails.c_str());
+            if (result.status == TestResult::Status::Failed) ++failureCount;
         }
 
-        return nFailures;
+        return failureCount;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -150,8 +190,6 @@ namespace Falcor
     {
         // Create program.
         mpProgram = ComputeProgram::createFromFile(path, entry, programDefines, flags, shaderModel);
-        if (!mpProgram) throw ErrorRunningTestException("Couldn't create program");
-
         mpState = ComputeState::create();
         mpState->setProgram(mpProgram);
 
@@ -163,9 +201,8 @@ namespace Falcor
     {
         // Create shader variables.
         ProgramReflection::SharedConstPtr pReflection = mpProgram->getReflector();
-        if (!pReflection) throw ErrorRunningTestException("Couldn't create program reflector");
         mpVars = ComputeVars::create(pReflection);
-        if (!mpVars) throw ErrorRunningTestException("Couldn't create program vars");
+        assert(mpVars);
 
         // Try to use shader reflection to query thread group size.
         // ((1,1,1) is assumed if it's not specified.)
@@ -173,17 +210,16 @@ namespace Falcor
         assert(mThreadGroupSize.x >= 1 && mThreadGroupSize.y >= 1 && mThreadGroupSize.z >= 1);
     }
 
-    void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, size_t nElements, const void* pInitData, size_t initDataSize)
+    void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize)
     {
         assert(mpVars);
-        mStructuredBuffers[name].pBuffer = StructuredBuffer::create(mpProgram.get(), name, nElements);
-        if (!mStructuredBuffers[name].pBuffer) throw ErrorRunningTestException(name + ": couldn't create structured buffer");
+        mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpProgram.get(), name, nElements);
+        assert(mStructuredBuffers[name].pBuffer);
         if (pInitData)
         {
-            size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getElementSize() * mStructuredBuffers[name].pBuffer->getElementCount();
+            size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getStructSize() * mStructuredBuffers[name].pBuffer->getElementCount();
             if (initDataSize == 0) initDataSize = expectedDataSize;
             else if (initDataSize != expectedDataSize) throw ErrorRunningTestException("StructuredBuffer '" + name + "' initial data size mismatch");
-            //mStructuredBuffers[name].pBuffer->updateData(pInitData, 0, initDataSize);
             mStructuredBuffers[name].pBuffer->setBlob(pInitData, 0, initDataSize);
         }
     }
@@ -193,7 +229,7 @@ namespace Falcor
         assert(mpVars);
         for (const auto& buffer : mStructuredBuffers)
         {
-            mpVars->setStructuredBuffer(buffer.first, buffer.second.pBuffer);
+            mpVars->setBuffer(buffer.first, buffer.second.pBuffer);
         }
 
         uvec3 groups = div_round_up(dimensions, mThreadGroupSize);
@@ -266,7 +302,7 @@ namespace Falcor
 
     GPU_TEST(TestGPUTest)
     {
-        ctx.createProgram("UnitTest.cs.hlsl");
+        ctx.createProgram("Testing/UnitTest.cs.slang");
         ctx.allocateStructuredBuffer("result", 10);
         ctx["TestCB"]["nValues"] = 10;
         ctx["TestCB"]["scale"] = 2.f;

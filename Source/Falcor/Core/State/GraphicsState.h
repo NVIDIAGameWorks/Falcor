@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Core/API/GraphicsStateObject.h"
 #include "StateGraph.h"
@@ -79,7 +79,8 @@ namespace Falcor
             int32_t bottom = 0;
         };
 
-        /** Create a new object
+        /** Create a new state object.
+            \return A new object, or an exception is thrown if creation failed.
         */
         static SharedPtr create() { return SharedPtr(new GraphicsState()); }
 
@@ -182,7 +183,7 @@ namespace Falcor
 
         /** Bind a program to the pipeline.
         */
-        GraphicsState& setProgram(const GraphicsProgram::SharedPtr& pProgram) { mpProgram = pProgram; return *this; }
+        GraphicsState& setProgram(const GraphicsProgram::SharedPtr& pProgram) { assert(pProgram); mpProgram = pProgram; return *this; }
 
         /** Get the currently bound program.
         */
@@ -224,14 +225,6 @@ namespace Falcor
         */
         virtual GraphicsStateObject::SharedPtr getGSO(const GraphicsVars* pVars);
 
-        /** Enable/disable single-pass-stereo.
-        */
-        void toggleSinglePassStereo(bool enable);
-
-        /** Get the status of single-pass-stereo.
-        */
-        bool isSinglePassStereoEnabled() const { return mEnableSinglePassStereo; }
-
         /** Get the desc
         */
         const GraphicsStateObject::Desc& getDesc() const { return mDesc; }
@@ -251,11 +244,9 @@ namespace Falcor
         std::vector<std::stack<Viewport>> mVpStack;
         std::vector<std::stack<Scissor>> mScStack;
 
-        bool mEnableSinglePassStereo = false;
-
         struct CachedData
         {
-            const ProgramVersion* pProgramVersion = nullptr;
+            const ProgramKernels* pProgramKernels = nullptr;
             const RootSignature* pRootSig = nullptr;
             const Fbo::Desc* pFboDesc = nullptr;
         };

@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Core/Window.h"
 #include "Utils/UI/UserInput.h"
@@ -348,14 +348,20 @@ namespace Falcor
     {
     }
 
-    void Window::checkWindowSize()
+    void Window::updateWindowSize()
     {
         // Actual window size may be clamped to slightly lower than monitor resolution
-        int32_t actualWidth, actualHeight;
-        glfwGetWindowSize(mpGLFWWindow, &actualWidth, &actualHeight);
+        int32_t width, height;
+        glfwGetWindowSize(mpGLFWWindow, &width, &height);
+        setWindowSize(width, height);
+    }
 
-        mDesc.width = uint32_t(actualWidth);
-        mDesc.height = uint32_t(actualHeight);
+    void Window::setWindowSize(uint32_t width, uint32_t height)
+    {
+        assert(width > 0 && height > 0);
+
+        mDesc.width = width;
+        mDesc.height = height;
         mMouseScale.x = 1.0f / (float)mDesc.width;
         mMouseScale.y = 1.0f / (float)mDesc.height;
     }
@@ -390,7 +396,7 @@ namespace Falcor
         uint32_t w = desc.width;
         uint32_t h = desc.height;
 
-        if (desc.fullScreen)
+        if (desc.mode == WindowMode::Fullscreen)
         {
             glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
             auto mon = glfwGetPrimaryMonitor();
@@ -398,9 +404,19 @@ namespace Falcor
             w = mod->width;
             h = mod->height;
         }
+        else if (desc.mode == WindowMode::Minimized)
+        {
+            // Start with window being invisible
+            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        }
+
+        if (desc.resizableWindow == false)
+        {
+            glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        }
 
         GLFWwindow* pGLFWWindow = glfwCreateWindow(w, h, desc.title.c_str(), nullptr, nullptr);
-    
+
         if (pGLFWWindow == nullptr)
         {
             logError("Window creation failed!");
@@ -417,7 +433,9 @@ namespace Falcor
         pWindow->mApiHandle.window = glfwGetX11Window(pGLFWWindow);
         assert(pWindow->mApiHandle.pDisplay != nullptr);
 #endif
-        pWindow->checkWindowSize();
+        setMainWindowHandle(pWindow->mApiHandle);
+
+        pWindow->updateWindowSize();
 
         glfwSetWindowUserPointer(pGLFWWindow, pWindow.get());
 
@@ -430,13 +448,29 @@ namespace Falcor
         glfwSetCharCallback(pGLFWWindow, ApiCallbacks::charInputCallback);
         glfwSetDropCallback(pGLFWWindow, ApiCallbacks::droppedFileCallback);
 
+        if (desc.mode == WindowMode::Minimized)
+        {
+            // Iconify and show window to make it available if user clicks on it
+            glfwIconifyWindow(pWindow->mpGLFWWindow);
+            glfwShowWindow(pWindow->mpGLFWWindow);
+        }
+
         return pWindow;
     }
 
     void Window::resize(uint32_t width, uint32_t height)
     {
         glfwSetWindowSize(mpGLFWWindow, width, height);
-        checkWindowSize();
+
+        // In minimized mode GLFW reports incorrect window size
+        if (mDesc.mode == WindowMode::Minimized)
+        {
+            setWindowSize(width, height);
+        }
+        else
+        {
+            updateWindowSize();
+        }
 
         mpCallbacks->handleWindowSizeChange();
     }
@@ -447,8 +481,11 @@ namespace Falcor
         // This would have happened from a WM_SIZE message when calling ShowWindow on Win32
         mpCallbacks->handleWindowSizeChange();
 
-        glfwShowWindow(mpGLFWWindow);
-        glfwFocusWindow(mpGLFWWindow);
+        if (mDesc.mode != WindowMode::Minimized)
+        {
+            glfwShowWindow(mpGLFWWindow);
+            glfwFocusWindow(mpGLFWWindow);
+        }
 
         while (glfwWindowShouldClose(mpGLFWWindow) == false)
         {
@@ -469,9 +506,14 @@ namespace Falcor
 
     SCRIPT_BINDING(Window)
     {
+        auto windowMode = m.enum_<Window::WindowMode>("WindowMode");
+        windowMode.regEnumVal(Window::WindowMode::Normal);
+        windowMode.regEnumVal(Window::WindowMode::Fullscreen);
+        windowMode.regEnumVal(Window::WindowMode::Minimized);
+
         auto winDesc = m.class_<Window::Desc>("WindowDesc");
 #define desc_field(f_) rwField(#f_, &Window::Desc::f_)
-        winDesc.desc_field(width).desc_field(height).desc_field(fullScreen).desc_field(title).desc_field(resizableWindow);
+        winDesc.desc_field(width).desc_field(height).desc_field(title).desc_field(mode).desc_field(resizableWindow);
 #undef desc_field
     }
 }

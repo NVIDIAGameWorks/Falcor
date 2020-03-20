@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Bitmap.h"
 #include "FreeImage.h"
@@ -34,8 +34,8 @@
 namespace Falcor
 {
 #ifdef FALCOR_VK
-    static bool isRGB32fSupported() 
-    { 
+    static bool isRGB32fSupported()
+    {
         VkFormatProperties p;
         vkGetPhysicalDeviceFormatProperties(gpDevice->getApiHandle(), VK_FORMAT_R32G32B32_SFLOAT, &p);
         return p.optimalTilingFeatures != 0;
@@ -43,11 +43,106 @@ namespace Falcor
 #else
     static bool isRGB32fSupported() { return false; } // FIX THIS
 #endif
-    static const Bitmap* genError(const std::string& errMsg, const std::string& filename)
+    static void genError(const std::string& errMsg, const std::string& filename)
     {
         std::string err = "Error when loading image file " + filename + '\n' + errMsg + '.';
         logError(err);
-        return nullptr;
+    }
+
+    static bool isConvertibleToRGBA32Float(ResourceFormat format)
+    {
+        FormatType type = getFormatType(format);
+        bool isHalfFormat = (type == FormatType::Float && getNumChannelBits(format, 0) == 16);
+        bool isLargeIntFormat = ((type == FormatType::Uint || type == FormatType::Sint) && getNumChannelBits(format, 0) >= 16);
+        return isHalfFormat || isLargeIntFormat;
+    }
+
+    /** Converts half float image to RGBA float image.
+    */
+    static std::vector<float> convertHalfToRGBA32Float(uint32_t width, uint32_t height, uint32_t channelCount, const void* pData)
+    {
+        std::vector<float> newData(width * height * 4u, 0.f);
+        const glm::detail::hdata* pSrc = reinterpret_cast<const glm::detail::hdata*>(pData);
+        float* pDst = newData.data();
+
+        for (uint32_t i = 0; i < width * height; ++i)
+        {
+            for (uint32_t c = 0; c < channelCount; ++c)
+            {
+                *pDst++ = glm::detail::toFloat32(*pSrc++);
+            }
+            pDst += (4 - channelCount);
+        }
+
+        return newData;
+    }
+
+    /** Converts integer image to RGBA float image.
+        Unsigned integers are normalized to [0,1], signed integers to [-1,1].
+    */
+    template<typename SrcT>
+    static std::vector<float> convertIntToRGBA32Float(uint32_t width, uint32_t height, uint32_t channelCount, const void* pData)
+    {
+        std::vector<float> newData(width * height * 4u, 0.f);
+        const SrcT* pSrc = reinterpret_cast<const SrcT*>(pData);
+        float* pDst = newData.data();
+
+        for (uint32_t i = 0; i < width * height; ++i)
+        {
+            for (uint32_t c = 0; c < channelCount; ++c)
+            {
+                *pDst++ = float(*pSrc++) / float(std::numeric_limits<SrcT>::max());
+            }
+            pDst += (4 - channelCount);
+        }
+
+        return newData;
+    }
+
+    /** Converts an image of the given format to an RGBA float image.
+    */
+    static std::vector<float> convertToRGBA32Float(ResourceFormat format, uint32_t width, uint32_t height, const void* pData)
+    {
+        assert(isConvertibleToRGBA32Float(format));
+
+        FormatType type = getFormatType(format);
+        uint32_t channelCount = getFormatChannelCount(format);
+        uint32_t channelBits = getNumChannelBits(format, 0);
+
+        std::vector<float> floatData;
+
+        if (type == FormatType::Float && channelBits == 16)
+        {
+            floatData = convertHalfToRGBA32Float(width, height, channelCount, pData);
+        }
+        else if (type == FormatType::Uint && channelBits == 16)
+        {
+            floatData = convertIntToRGBA32Float<uint16_t>(width, height, channelCount, pData);
+        }
+        else if (type == FormatType::Uint && channelBits == 32)
+        {
+            floatData = convertIntToRGBA32Float<uint32_t>(width, height, channelCount, pData);
+        }
+        else if (type == FormatType::Sint && channelBits == 16)
+        {
+            floatData = convertIntToRGBA32Float<int16_t>(width, height, channelCount, pData);
+        }
+        else if (type == FormatType::Sint && channelBits == 32)
+        {
+            floatData = convertIntToRGBA32Float<int32_t>(width, height, channelCount, pData);
+        }
+        else
+        {
+            should_not_get_here();
+        }
+
+        // Default alpha channel to 1.
+        if (channelCount < 4)
+        {
+            for (uint32_t i = 0; i < width * height; ++i) floatData[i * 4 + 3] = 1.f;
+        }
+
+        return floatData;
     }
 
     /** Converts 96bpp to 128bpp RGBA without clamping.
@@ -92,12 +187,12 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            msgBox("Error when loading image file " + filename + "\n. Can't find the file");
+            logError("Error when loading image file. Can't find image file " + filename);
             return nullptr;
         }
 
         FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
-        
+
         fifFormat = FreeImage_GetFileType(fullpath.c_str(), 0);
         if (fifFormat == FIF_UNKNOWN)
         {
@@ -106,21 +201,24 @@ namespace Falcor
 
             if (fifFormat == FIF_UNKNOWN)
             {
-                return UniqueConstPtr(genError("Image Type unknown", filename));
+                genError("Image Type unknown", filename);
+                return nullptr;
             }
         }
 
         // Check the the library supports loading this image Type
         if (FreeImage_FIFSupportsReading(fifFormat) == false)
         {
-            return UniqueConstPtr(genError("Library doesn't support the file format", filename));
+            genError("Library doesn't support the file format", filename);
+            return nullptr;
         }
 
         // Read the DIB
         FIBITMAP* pDib = FreeImage_Load(fifFormat, fullpath.c_str());
         if (pDib == nullptr)
         {
-            return UniqueConstPtr(genError("Can't read image file", filename));
+            genError("Can't read image file", filename);
+            return nullptr;
         }
 
         // Create the bitmap
@@ -130,7 +228,8 @@ namespace Falcor
 
         if (pBmp->mHeight == 0 || pBmp->mWidth == 0 || FreeImage_GetBits(pDib) == nullptr)
         {
-            return UniqueConstPtr(genError("Invalid image", filename));
+            genError("Invalid image", filename);
+            return nullptr;
         }
 
         uint32_t bpp = FreeImage_GetBPP(pDib);
@@ -235,7 +334,7 @@ namespace Falcor
         }
         return FIT_BITMAP;
     }
-    
+
     Bitmap::FileFormat Bitmap::getFormatFromFileExtension(const std::string& ext)
     {
         // This array is in the order of the enum
@@ -264,7 +363,8 @@ namespace Falcor
 
         if (format != ResourceFormat::Unknown)
         {
-            showHdr = getFormatType(format) == FormatType::Float;
+            // Save float, half and large integer (16/32 bit) formats as HDR.
+            showHdr = getFormatType(format) == FormatType::Float || isConvertibleToRGBA32Float(format);
             showLdr = !showHdr;
         }
 
@@ -309,21 +409,6 @@ namespace Falcor
         }
     }
 
-    std::vector<uint8> rgba16torgba32(const void* pData, uint32_t width, uint32_t height)
-    {
-        std::vector<uint8> newData(width*height * sizeof(float) * 4);
-        glm::detail::hdata* f16data = (glm::detail::hdata*)pData;
-        float* f32data = (float*)newData.data();
-        uint32_t count = width * height * 4;
-
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            f32data[i] = glm::detail::toFloat32(f16data[i]);
-        }
-
-        return newData;
-    }
-
     void Bitmap::saveImage(const std::string& filename, uint32_t width, uint32_t height, FileFormat fileFormat, ExportFlags exportFlags, ResourceFormat resourceFormat, bool isTopDown, void* pData)
     {
         if (pData == nullptr)
@@ -331,7 +416,7 @@ namespace Falcor
             logError("Bitmap::saveImage provided no data to save.");
             return;
         }
-        
+
         if (is_set(exportFlags, ExportFlags::Uncompressed) && is_set(exportFlags, ExportFlags::Lossy))
         {
             logError("Bitmap::saveImage incompatible flags: lossy cannot be combined with uncompressed.");
@@ -361,11 +446,11 @@ namespace Falcor
 
         if (fileFormat == Bitmap::FileFormat::PfmFile || fileFormat == Bitmap::FileFormat::ExrFile)
         {
-            std::vector<uint8_t> f16data;
-            if (resourceFormat == ResourceFormat::RGBA16Float)
+            std::vector<float> floatData;
+            if (isConvertibleToRGBA32Float(resourceFormat))
             {
-                f16data = rgba16torgba32(pData, width, height);
-                pData = f16data.data();
+                floatData = convertToRGBA32Float(resourceFormat, width, height, pData);
+                pData = floatData.data();
                 resourceFormat = ResourceFormat::RGBA32Float;
                 bytesPerPixel = 16;
             }
@@ -402,7 +487,7 @@ namespace Falcor
 
             pImage = FreeImage_AllocateT(exportAlpha ? FIT_RGBAF : FIT_RGBF, width, height);
             BYTE* head = (BYTE*)pData;
-            for (unsigned y = 0; y < height; y++) 
+            for (unsigned y = 0; y < height; y++)
             {
                 float* dstBits = (float*)FreeImage_GetScanLine(pImage, height - y - 1);
                 if (scanlineCopy)
@@ -412,7 +497,7 @@ namespace Falcor
                 else
                 {
                     assert(exportAlpha == false);
-                    for (unsigned x = 0; x < width; x++) 
+                    for (unsigned x = 0; x < width; x++)
                     {
                         dstBits[x*3 + 0] = (((float*)head)[x*4 + 0]);
                         dstBits[x*3 + 1] = (((float*)head)[x*4 + 1]);

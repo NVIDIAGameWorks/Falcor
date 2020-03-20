@@ -1,38 +1,39 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
-#include "Data/HostDeviceData.h"
+#include "CameraData.slang"
 #include "Utils/SampleGenerators/CPUSampleGenerator.h"
+#include "Core/BufferTypes/ParameterBlock.h"
 
 namespace Falcor
 {
     struct BoundingBox;
-    class ConstantBuffer;
+    class ParameterBlock;
     class Gui;
 
     /** Camera class. Default transform matrices are interpreted as left eye transform during stereo rendering.
@@ -142,11 +143,19 @@ namespace Falcor
 
         /** Set the camera's depth range.
         */
-        void setDepthRange(float nearZ, float farZ) { mData.farZ = farZ; mData.nearZ = nearZ; mDirty = true; }
+        void setDepthRange(float nearZ, float farZ) { mData.farZ = farZ;  mData.nearZ = nearZ; mDirty = true; }
+
+        /** Set the near plane depth.
+        */
+        void setNearPlane(float nearZ) { mData.nearZ = nearZ; mDirty = true; }
 
         /** Get the near plane depth.
         */
         float getNearPlane() const { return mData.nearZ; }
+
+        /** Set the far plane depth.
+        */
+        void setFarPlane(float farZ) { mData.farZ = farZ; mDirty = true; }
 
         /** Get the far plane depth.
         */
@@ -203,17 +212,9 @@ namespace Falcor
         */
         bool isObjectCulled(const BoundingBox& box) const;
 
-        /** Set camera data into a program's constant buffer.
-            \param[in] pBuffer The constant buffer to set the parameters into.
-            \param[in] varName The name of the light variable in the program.
+        /** Set the camera into a shader var
         */
-        void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::string& varName) const;
-
-        /** Set camera data into a program's constant buffer.
-            \param[in] pBuffer The constant buffer to set the parameters into.
-            \param[in] offset Byte offset into the constant buffer to set data to.
-        */
-        void setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::size_t& offset) const;
+        void setShaderData(const ShaderVar& var) const;
 
         /** Returns the raw camera data
         */
@@ -224,27 +225,6 @@ namespace Falcor
             \param[in] proj Right eye projection matrix
         */
         void setRightEyeMatrices(const glm::mat4& view, const glm::mat4& proj);
-
-        /** Get the right eye view matrix.
-        */
-        const glm::mat4& getRightEyeViewMatrix() const { return mData.rightEyeViewMat; }
-
-        /** Get the right eye projection matrix.
-        */
-        const glm::mat4& getRightEyeProjMatrix() const { return mData.rightEyeProjMat; }
-
-        /** get the right eye view-projection matrix.
-        */
-        const glm::mat4& getRightEyeViewProjMatrix() const { return mData.rightEyeViewProjMat; }
-
-        /** Get the size of the CameraData struct in bytes.
-        */
-        static uint32_t getShaderDataSize()
-        {
-            static const size_t dataSize = sizeof(CameraData);
-            static_assert(dataSize % (sizeof(vec4)) == 0, "Camera::CameraData size should be a multiple of 16");
-            return dataSize;
-        }
 
         /** Render the UI
         */
@@ -289,14 +269,14 @@ namespace Falcor
         mutable CameraData mData;
         CameraData mPrevData;
 
-        struct 
+        struct
         {
             glm::vec3   xyz;    ///< Camera frustum plane position
             float       negW;   ///< Camera frustum plane, sign of the coordinates
             glm::vec3   sign;   ///< Camera frustum plane position
         } mutable mFrustumPlanes[6];
 
-        struct  
+        struct
         {
             CPUSampleGenerator::SharedPtr pGenerator;
             vec2 scale;

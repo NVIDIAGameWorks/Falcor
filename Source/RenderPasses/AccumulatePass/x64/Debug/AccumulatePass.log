@@ -1,1 +1,0 @@
-﻿C:\Work\GIT\Falcor\Source\RenderPasses\AccumulatePass\AccumulatePass.vcxproj(22,5): error MSB4019: The imported project "C:\Work\GIT\Falcor\Falcor\Falcor.props" was not found. Confirm that the path in the <Import> declaration is correct, and that the file exists on disk.

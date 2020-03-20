@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "D3D12State.h"
 #include "Core/API/Sampler.h"
@@ -422,7 +422,7 @@ namespace Falcor
         }
     }
 
-    void convertRootCbvSet(const RootSignature::DescriptorSetLayout& set, D3D12_ROOT_PARAMETER& desc)
+    void convertRootCbvSet(const RootSignature::DescriptorSetLayout& set, D3D12_ROOT_PARAMETER1& desc)
     {
         assert(set.getRangeCount() == 1);
         const auto& range = set.getRange(0);
@@ -431,10 +431,11 @@ namespace Falcor
         desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         desc.Descriptor.RegisterSpace = range.regSpace;
         desc.Descriptor.ShaderRegister = range.baseRegIndex;
+        desc.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE;
         desc.ShaderVisibility = getShaderVisibility(set.getVisibility());
     }
 
-    void convertRootDescTable(const RootSignature::DescriptorSetLayout& falcorSet, D3D12_ROOT_PARAMETER& desc, std::vector<D3D12_DESCRIPTOR_RANGE>& d3dRange)
+    void convertRootDescTable(const RootSignature::DescriptorSetLayout& falcorSet, D3D12_ROOT_PARAMETER1& desc, std::vector<D3D12_DESCRIPTOR_RANGE1>& d3dRange)
     {
         desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         desc.ShaderVisibility = getShaderVisibility(falcorSet.getVisibility());
@@ -450,29 +451,88 @@ namespace Falcor
             d3dRange[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
             d3dRange[i].RangeType = getRootDescRangeType(falcorRange.type);
             d3dRange[i].RegisterSpace = falcorRange.regSpace;
+            d3dRange[i].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
         }
+    }
+
+    void convertRootDescriptor(const RootSignature::RootDescriptorDesc& rootDesc, D3D12_ROOT_PARAMETER1& desc)
+    {
+        // Convert the descriptor type to a root parameter type.
+        // Only buffer SRV/UAVs are supported (CBVs take another path).
+        switch (rootDesc.type)
+        {
+        case RootSignature::DescType::RawBufferSrv:
+        case RootSignature::DescType::TypedBufferSrv:
+        case RootSignature::DescType::StructuredBufferSrv:
+            desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+            break;
+        case RootSignature::DescType::RawBufferUav:
+        case RootSignature::DescType::TypedBufferUav:
+        case RootSignature::DescType::StructuredBufferUav:
+            desc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+            break;
+        default:
+            should_not_get_here();
+            logError("Unsupported root descriptor type. Only buffer SRV/UAVs supported.");
+        }
+
+        desc.Descriptor.RegisterSpace = rootDesc.spaceIndex;
+        desc.Descriptor.ShaderRegister = rootDesc.regIndex;
+        desc.Descriptor.Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE; // TODO: Add user api for specifying volatility
+        desc.ShaderVisibility = getShaderVisibility(rootDesc.visibility);
     }
 
     void initD3D12RootParams(const RootSignature::Desc& desc, RootSignatureParams& params)
     {
+        const size_t numElements = desc.getSetsCount() + desc.getRootDescriptorCount() + desc.getRootConstantCount();
         params.signatureSizeInBytes = 0;
         params.d3dRanges.resize(desc.getSetsCount());
-        params.rootParams.resize(desc.getSetsCount());
-        params.elementByteOffset.resize(desc.getSetsCount());
+        params.rootParams.resize(numElements);
+        params.elementByteOffset.resize(numElements);
+
+        size_t elementIndex = 0;
         for (size_t i = 0; i < desc.getSetsCount(); i++)
         {
             const auto& set = desc.getSet(i);
-            convertRootDescTable(set, params.rootParams[i], params.d3dRanges[i]);
-            params.elementByteOffset[i] = params.signatureSizeInBytes;
+            convertRootDescTable(set, params.rootParams[elementIndex], params.d3dRanges[i]);
+            params.elementByteOffset[elementIndex] = params.signatureSizeInBytes;
             params.signatureSizeInBytes += 8;
+            elementIndex++;
         }
+
+        for (size_t i = 0; i < desc.getRootDescriptorCount(); i++)
+        {
+            const auto& rootDesc = desc.getRootDescriptorDesc(i);
+            convertRootDescriptor(rootDesc, params.rootParams[elementIndex]);
+            params.elementByteOffset[elementIndex] = params.signatureSizeInBytes;
+            params.signatureSizeInBytes += 8;
+            elementIndex++;
+        }
+
+        // Place root constants last so that we do not have to worry about padding,
+        // as addresses must be 8B aligned but we may have an odd number of root constants.
+        for (size_t i = 0; i < desc.getRootConstantCount(); i++)
+        {
+            const auto& rootConst = desc.getRootConstantDesc(i);
+            D3D12_ROOT_PARAMETER1& d3dDesc = params.rootParams[elementIndex];
+            d3dDesc.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+            d3dDesc.Constants.Num32BitValues = rootConst.count;
+            d3dDesc.Constants.RegisterSpace = rootConst.spaceIndex;
+            d3dDesc.Constants.ShaderRegister = rootConst.regIndex;
+            d3dDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+            params.elementByteOffset[elementIndex] = params.signatureSizeInBytes;
+            params.signatureSizeInBytes += 4 * rootConst.count;
+            elementIndex++;
+        }
+        assert(elementIndex == numElements);
     }
 
     void initD3D12GraphicsStateDesc(const GraphicsStateObject::Desc& gsoDesc, D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc, InputLayoutDesc& layoutDesc)
     {
         desc = {};
-        assert(gsoDesc.getProgramVersion());
-#define get_shader_handle(_type) gsoDesc.getProgramVersion()->getShader(_type) ? gsoDesc.getProgramVersion()->getShader(_type)->getApiHandle() : D3D12_SHADER_BYTECODE{}
+        assert(gsoDesc.getProgramKernels());
+#define get_shader_handle(_type) gsoDesc.getProgramKernels()->getShader(_type) ? gsoDesc.getProgramKernels()->getShader(_type)->getApiHandle() : D3D12_SHADER_BYTECODE{}
         desc.VS = get_shader_handle(ShaderType::Vertex);
         desc.PS = get_shader_handle(ShaderType::Pixel);
         desc.GS = get_shader_handle(ShaderType::Geometry);

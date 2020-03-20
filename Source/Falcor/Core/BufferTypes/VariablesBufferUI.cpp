@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "VariablesBufferUI.h"
 #include "Utils/UI/Gui.h"
@@ -33,23 +33,23 @@ namespace Falcor
 {
     std::unordered_map<std::string, int32_t> VariablesBufferUI::mGuiArrayIndices;
 
-    bool renderGuiWidgetFromType(Gui::Widgets& widget, ReflectionBasicType::Type type, size_t offset, const std::string& name, std::vector<uint8_t>& data)
+    bool renderGuiWidgetFromType(Gui::Widgets& widget, ReflectionBasicType::Type type, uint8_t* data, const std::string& name)
     {
         bool returnValue = false;
 
 #define to_gui_widget(widgetName, baseType) \
-            returnValue = widget.widgetName(name.c_str(), *reinterpret_cast<baseType*>(data.data() + offset)); \
-            offset += sizeof(baseType);
+            returnValue = widget.widgetName(name.c_str(), *reinterpret_cast<baseType*>(data)); \
+
 #define to_gui_widget_matrix(widgetName, baseType) \
-            returnValue = widget.widgetName<baseType>(name.c_str(), *reinterpret_cast<baseType*>(data.data() + offset)); \
-            offset += sizeof(baseType);
+            returnValue = widget.widgetName<baseType>(name.c_str(), *reinterpret_cast<baseType*>(data)); \
+
 #define to_gui_widget_bvec(widgetName, baseType) \
             { \
-                uint32_t* pUintData = reinterpret_cast<uint32_t*>(data.data() + offset); \
+                uint32_t* pUintData = reinterpret_cast<uint32_t*>(data); \
                 baseType tempBVec; \
                 for (int32_t i = 0; i < tempBVec.length(); ++i) { tempBVec[i] = pUintData[i]; } \
                 returnValue = widget.widgetName(name.c_str(), tempBVec); \
-                for (int32_t i = 0; i < tempBVec.length(); ++i) { pUintData[i] = tempBVec[i]; offset += sizeof(uint32_t); } \
+                for (int32_t i = 0; i < tempBVec.length(); ++i) { pUintData[i] = tempBVec[i]; data += sizeof(uint32_t); } \
             }
 
         switch (type)
@@ -141,13 +141,21 @@ namespace Falcor
         return returnValue;
     }
 
-    void VariablesBufferUI::renderUIMemberInternal(Gui::Widgets& widget, const std::string& memberName, size_t memberOffset, size_t memberSize, const std::string& memberTypeString, const ReflectionBasicType::Type& memberType, size_t arraySize)
+    void VariablesBufferUI::renderUIBasicVarInternal(
+        Gui::Widgets&                       widget,
+        const std::string&                  memberName,
+        const ShaderVar&                    var,
+        size_t                              memberSize,
+        const std::string&                  memberTypeString,
+        const ReflectionBasicType::Type&    memberType,
+        size_t                              arraySize)
     {
         // Display data from the stage memory
-        mVariablesBufferRef.mDirty |= renderGuiWidgetFromType(widget, memberType, memberOffset, memberName, mVariablesBufferRef.mData);
+        auto data = (uint8_t*)(var.getRawData());
+        bool dirty = renderGuiWidgetFromType(widget, memberType, data, memberName);
 
         // Display name and then reflection data as tooltip
-        std::string toolTipString = "Offset: " + std::to_string(memberOffset);
+        std::string toolTipString = "Offset: " + std::to_string(var.getByteOffset());
         toolTipString.append("\nSize: " + std::to_string(memberSize));
         if (arraySize > 1)
         {
@@ -158,23 +166,24 @@ namespace Falcor
         widget.tooltip(toolTipString.c_str(), true);
     }
 
-    void VariablesBufferUI::renderUIVarInternal(Gui::Widgets& widget, const ReflectionVar::SharedConstPtr& pMember, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag)
+    void VariablesBufferUI::renderUIVarInternal(Gui::Widgets& widget, const std::string& memberName, const ShaderVar& var)
     {
         size_t numMembers = 1;
         size_t memberSize = 0;
         ReflectionBasicType::Type memberType = ReflectionBasicType::Type::Unknown;
-        std::string memberName = (pMember)->getName();
-        const ReflectionBasicType* pBasicType = (pMember)->getType()->asBasicType();
+
+        auto pType = var.getType();
+        const ReflectionBasicType* pBasicType = pType->asBasicType();
         const ReflectionArrayType* pArrayType = nullptr;
         bool baseTypeIsStruct = false;
-        size_t currentOffset = startOffset + (pMember)->getOffset();
-        std::shared_ptr<Gui::Group> arrayGroup;
+
+        Gui::Group arrayGroup;
 
         // First test is not basic type
         if (!pBasicType)
         {
             // recurse through struct if possible
-            const ReflectionStructType* pStructType = (pMember)->getType()->asStructType();
+            const ReflectionStructType* pStructType = pType->asStructType();
             if (pStructType)
             {
                 auto group = Gui::Group(widget, memberName);
@@ -183,9 +192,7 @@ namespace Falcor
                     // Iterate through the internal struct
                     group.separator();
 
-                    memberName.push_back('.');
-                    renderUIInternal(group, pStructType, memberName, currentOffset, dirtyFlag);
-                    memberName.pop_back();
+                    renderUIInternal(group, var);
 
                     group.separator();
                     group.release();
@@ -196,20 +203,17 @@ namespace Falcor
             }
 
             // if array type gather info for iterating through elements
-            pArrayType = (pMember)->getType()->asArrayType();
+            pArrayType = pType->asArrayType();
 
             if (pArrayType)
             {
-                const ReflectionBasicType* elementBasicType = pArrayType->getType()->asBasicType();
-                numMembers = pArrayType->getArraySize();
-                memberSize = pArrayType->getArrayStride();
+                const ReflectionBasicType* elementBasicType = pArrayType->getElementType()->asBasicType();
+                numMembers = pArrayType->getElementCount();
+                memberSize = pArrayType->getElementByteStride();
 
                 // only iterate through array if it is displaying
-                arrayGroup = std::shared_ptr<Gui::Group>(new Gui::Group(widget.gui(), memberName + "[" + std::to_string(numMembers) + "]"));
-                if (!arrayGroup->open())
-                {
-                    return;
-                }
+                arrayGroup = Gui::Group(widget, memberName + "[" + std::to_string(numMembers) + "]");
+                if(!arrayGroup.open()) return;
 
                 if (elementBasicType)
                 {
@@ -221,126 +225,103 @@ namespace Falcor
                     baseTypeIsStruct = true;
                 }
             }
-            else if (!pStructType)
-            {
-                // Other types could be presented here
-                return;
-            }
+            else if (!pStructType) return;
         }
         else
         {
             // information if only basic type
             memberType = pBasicType->getType();
-            memberSize = pBasicType->getSize();
         }
+
 
         // Display member of the array
         std::string displayName = memberName;
-        int32_t& memberIndex = mGuiArrayIndices[displayName];
+        auto displayCursor = var;
 
+        // TODO: Using `mGuiArrayIndices` here and computing a `displayName` here
+        // is not using the ImGui library appropriately. Instead, it should use
+        // the built-int facilities in ImGui for handling transient storage:
+        //
+        //      auto pStorage = ImGui::GetStateStorage();
+        //      auto& memberIndex = *pStorage->GetIntRef(GetID());
+        //      ...
+        //
+        int32_t& memberIndex = mGuiArrayIndices[displayName];
+        bool dirty = false;
         if (numMembers > 1)
         {
             // display information for specific index of array
             std::string indexLabelString = (displayName + std::to_string(numMembers));
-            arrayGroup->var(("Array Index" + std::string("##") + indexLabelString).c_str(), memberIndex, 0, static_cast<int32_t>(numMembers - 1));
+            dirty = arrayGroup.var(("Array Index" + std::string("##") + indexLabelString).c_str(), memberIndex, 0, static_cast<int32_t>(numMembers - 1));
 
-            currentOffset += (memberSize * memberIndex);
+            displayCursor = displayCursor[memberIndex];
             displayName.append("[" + std::to_string(memberIndex) + ":" + std::to_string(numMembers) + "]");
         }
 
+
         if (baseTypeIsStruct)
         {
-            auto group = Gui::Group(widget, displayName);
+            Gui::Group group(widget, displayName);
             if (group.open())
             {
-                // For arrays of structs, display dropdown for struct before recursing through struct members
-                displayName.push_back('.');
-                renderUIInternal(group, pArrayType->getType()->asStructType(), displayName, currentOffset, dirtyFlag);
+                renderUIInternal(group, displayCursor);
                 group.release();
             }
         }
         else
         {
             // for basic types
-            renderUIMemberInternal(widget, displayName, currentOffset, memberSize, to_string(memberType), memberType, numMembers);
-        }
-
-        if (numMembers > 1)
-        {
-            arrayGroup->release();
+            renderUIBasicVarInternal(widget, displayName, displayCursor, memberSize, to_string(memberType), memberType, numMembers);
         }
     }
 
-    void VariablesBufferUI::renderUIInternal(Gui::Widgets& widget, const ReflectionType* pType, const std::string& currentStructName, size_t startOffset, bool& dirtyFlag)
+    void VariablesBufferUI::renderUIInternal(Gui::Widgets& widget, const ShaderVar& var)
     {
-        const ReflectionStructType* pStruct = pType->asStructType();
-        if (pStruct)
+        auto pType = var.getType();
+        if (auto pStruct = pType->asStructType())
         {
-            for (auto pMember : *pStruct)
+            auto memberCount = pStruct->getMemberCount();
+            for(uint32_t m = 0; m < memberCount; ++m)
             {
-                // test if a struct member is a structured buffer
-                const ReflectionResourceType* pResourceType = pMember->getType()->asResourceType();
-                if (pResourceType && pResourceType->getStructuredBufferType() != ReflectionResourceType::StructuredType::Invalid)
-                {
-                    renderUIInternal(widget, pMember->getType().get(), currentStructName + pMember->getName(), startOffset, dirtyFlag);
-                }
-                else
-                {
-                    renderUIVarInternal(widget, pMember, currentStructName, startOffset, dirtyFlag);
-                }
+                auto pMember = pStruct->getMember(m);
+                auto memberName = pMember->getName();
+
+                // TODO: We should wrap the following with
+                // `ImGui::PushID` and `ImGui::PopID` to ensure
+                // that the ID stack can be used to ensure
+                // unique IDs for distinct members.
+
+                return renderUIVarInternal(widget, memberName, var[memberName]);
             }
         }
         else
         {
-            // for structured buffers
             if (pType->asResourceType()->getStructuredBufferType() != ReflectionResourceType::StructuredType::Invalid)
             {
-                std::string displayName = currentStructName; // find a way to get the name of the structured buffer
-                int32_t& memberIndex = mGuiArrayIndices[displayName];
-                int32_t oldMemberIndex = memberIndex;
-                size_t structSize = pType->getSize();
+#if 0
+                // TODO: ideally structured buffers (and arrays in general) should
+                // display as a list view in the GUI, rather than an element
+                // at a time.
+                //
+                size_t structSize = pType->asResourceType()->getStructType()->getByteSize();
 
-                if (widget.var(("Structured Buffer Index" + std::string("##") + displayName).c_str(), memberIndex, 0))
-                {
-                    // since we can't get the actual number of structs by default, we test the validity of the offset
-                    size_t offset = (structSize * memberIndex);
-                    if (mVariablesBufferRef.mData.size() <= offset)
-                    {
-                        memberIndex = oldMemberIndex;
-                    }
-                }
+                // TODO: need to allocate space for element index in ImGui itself...
 
-                startOffset += (structSize * memberIndex);
-                displayName.append("[" + std::to_string(memberIndex) + "]");
-
-                auto group = Gui::Group(widget, displayName.c_str());
-                if (group.open())
-                {
-                    renderUIInternal(widget, pType->asResourceType()->getStructType().get(), displayName, startOffset, dirtyFlag);
-                    group.release();
-                }
+                uint32_t memberIndex = 0;
+                widget.var("Element Index", memberIndex, 0);
+                renderUIInternal(widget, var[memberIndex]);
+#endif
             }
             else
             {
-                renderUIInternal(widget, pType->asResourceType()->getStructType().get(), currentStructName, startOffset, dirtyFlag);
+                return renderUIVarInternal(widget, "", var);
             }
         }
     }
 
-    void VariablesBufferUI::renderUI(Gui* pGui, const char* uiGroup)
+    void VariablesBufferUI::renderUI(Gui::Widgets& widget)
     {
-        if (!uiGroup) uiGroup = "Variables Buffer";
-
-        auto group = Gui::Group(pGui, uiGroup);
-        if (group.open())
-        {   
-            // begin recursion on first struct
-            renderUIInternal(group, mVariablesBufferRef.mpReflector.get(), "", 0, mVariablesBufferRef.mDirty);
-
-            // dirty flag for uploading will be set by GUI
-            mVariablesBufferRef.uploadToGPU();
-
-            group.release();
-        }
+        // begin recursion on first struct
+        renderUIInternal(widget,mVariablesBufferRef.getRootVar());
     }
 }

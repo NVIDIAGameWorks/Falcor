@@ -6,9 +6,4 @@
   <ItemGroup>
     <ClInclude Include="TemporalDelayPass.h" />
   </ItemGroup>
-  <ItemGroup>
-    <Filter Include="Data">
-      <UniqueIdentifier>{af379eba-da22-4554-b098-3b5a60dd6590}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
 </Project>

@@ -1,37 +1,34 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Core/API/ResourceViews.h"
 #include "Core/API/Texture.h"
 #include "Core/API/Buffer.h"
-#include "Core/BufferTypes/TypedBuffer.h"
-#include "Core/BufferTypes/StructuredBuffer.h"
-#include "Core/BufferTypes/ConstantBuffer.h"
 #include "Core/API/Device.h"
 
 namespace Falcor
@@ -42,9 +39,9 @@ namespace Falcor
     template<typename ViewType>
     ViewType getViewDimension(Resource::Type type, bool isArray);
     
-    ResourceWeakPtr getEmptyTexture()
+    Texture::SharedPtr getEmptyTexture()
     {
-        return ResourceWeakPtr();
+        return Texture::SharedPtr();
     }
 
     D3D12_SHADER_RESOURCE_VIEW_DESC createBufferSrvDesc(const Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount)
@@ -52,20 +49,17 @@ namespace Falcor
         assert(pBuffer);
         D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
 
-        const TypedBufferBase* pTypedBuffer = dynamic_cast<const TypedBufferBase*>(pBuffer);
-        const StructuredBuffer* pStructuredBuffer = dynamic_cast<const StructuredBuffer*>(pBuffer);
-
         uint32_t bufferElementCount = ShaderResourceView::kMaxPossible;
-        if (pTypedBuffer)
+        if (pBuffer->isTyped())
         {
-            bufferElementCount = pTypedBuffer->getElementCount();
-            desc.Format = getDxgiFormat(pTypedBuffer->getResourceFormat());
+            bufferElementCount = pBuffer->getElementCount();
+            desc.Format = getDxgiFormat(pBuffer->getFormat());
         }
-        else if (pStructuredBuffer)
+        else if (pBuffer->isStructured())
         {
-            bufferElementCount = (uint32_t)pStructuredBuffer->getElementCount();
+            bufferElementCount = pBuffer->getElementCount();
             desc.Format = DXGI_FORMAT_UNKNOWN;
-            desc.Buffer.StructureByteStride = (uint32_t)pStructuredBuffer->getElementSize();
+            desc.Buffer.StructureByteStride = pBuffer->getStructSize();
         }
         else
         {
@@ -246,21 +240,18 @@ namespace Falcor
         assert(pBuffer);
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
 
-        const TypedBufferBase* pTypedBuffer = dynamic_cast<const TypedBufferBase*>(pBuffer);
-        const StructuredBuffer* pStructuredBuffer = dynamic_cast<const StructuredBuffer*>(pBuffer);
-
         desc = {};
         uint32_t bufferElementCount = UnorderedAccessView::kMaxPossible;
-        if (pTypedBuffer != nullptr)
+        if (pBuffer->isTyped())
         {
-            bufferElementCount = (uint32_t)pTypedBuffer->getElementCount();
-            desc.Format = getDxgiFormat(pTypedBuffer->getResourceFormat());
+            bufferElementCount = pBuffer->getElementCount();
+            desc.Format = getDxgiFormat(pBuffer->getFormat());
         }
-        else if (pStructuredBuffer != nullptr)
+        else if (pBuffer->isStructured())
         {
-            bufferElementCount = (uint32_t)pStructuredBuffer->getElementCount();
+            bufferElementCount = pBuffer->getElementCount();
             desc.Format = DXGI_FORMAT_UNKNOWN;
-            desc.Buffer.StructureByteStride = (uint32_t)pStructuredBuffer->getElementSize();
+            desc.Buffer.StructureByteStride = pBuffer->getStructSize();
         }
         else
         {
@@ -284,24 +275,21 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
         ShaderResourceView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
-        assert(handle);
         gpDevice->getApiHandle()->CreateShaderResourceView(resHandle, &desc, handle->getCpuHandle(0));
 
         return handle;
     }
 
-    ShaderResourceView::SharedPtr ShaderResourceView::create(ResourceWeakPtr pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+    ShaderResourceView::SharedPtr ShaderResourceView::create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        Resource::SharedConstPtr pSharedPtr = pResource.lock();
-        if (!pSharedPtr && getNullView()) return getNullView();
+        if (!pTexture && getNullView()) return getNullView();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC desc;
         Resource::ApiHandle resHandle = nullptr;
-        if(pSharedPtr)
+        if(pTexture)
         {
-            const Texture* pTexture = std::dynamic_pointer_cast<const Texture>(pSharedPtr).get();
-            desc = createTextureSrvDesc(pTexture, firstArraySlice, arraySize, mostDetailedMip, mipCount);
-            resHandle = pSharedPtr->getApiHandle();
+            desc = createTextureSrvDesc(pTexture.get(), firstArraySlice, arraySize, mostDetailedMip, mipCount);
+            resHandle = pTexture->getApiHandle();
         }
         else
         {
@@ -311,22 +299,20 @@ namespace Falcor
             desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         }
 
-        SharedPtr pObj = SharedPtr(new ShaderResourceView(pResource, createSrvDescriptor(desc, resHandle), mostDetailedMip, mipCount, firstArraySlice, arraySize));
+        SharedPtr pObj = SharedPtr(new ShaderResourceView(pTexture, createSrvDescriptor(desc, resHandle), mostDetailedMip, mipCount, firstArraySlice, arraySize));
         return pObj;
     }
 
-    ShaderResourceView::SharedPtr ShaderResourceView::create(ResourceWeakPtr pResource, uint32_t firstElement, uint32_t elementCount)
+    ShaderResourceView::SharedPtr ShaderResourceView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount)
     {
-        Resource::SharedConstPtr pSharedPtr = pResource.lock();
-        if (!pSharedPtr && getNullView()) return getNullView();
+        if (!pBuffer && getNullView()) return getNullView();
 
         D3D12_SHADER_RESOURCE_VIEW_DESC desc;
         Resource::ApiHandle resHandle = nullptr;
-        if (pSharedPtr)
+        if (pBuffer)
         {
-            const Buffer* pBuffer = std::dynamic_pointer_cast<const Buffer>(pSharedPtr).get();
-            desc = createBufferSrvDesc(pBuffer, firstElement, elementCount);
-            resHandle = pSharedPtr->getApiHandle();
+            desc = createBufferSrvDesc(pBuffer.get(), firstElement, elementCount);
+            resHandle = pBuffer->getApiHandle();
         }
         else
         {
@@ -336,21 +322,20 @@ namespace Falcor
             desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         }
 
-        SharedPtr pObj = SharedPtr(new ShaderResourceView(pResource, createSrvDescriptor(desc, resHandle), firstElement, elementCount));
+        SharedPtr pObj = SharedPtr(new ShaderResourceView(pBuffer, createSrvDescriptor(desc, resHandle), firstElement, elementCount));
         return pObj;
     }
 
-    DepthStencilView::SharedPtr DepthStencilView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    DepthStencilView::SharedPtr DepthStencilView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        Resource::SharedConstPtr pSharedPtr = pResource.lock();
-        if (!pSharedPtr && getNullView()) return getNullView();
+        if (!pTexture && getNullView()) return getNullView();
 
         D3D12_DEPTH_STENCIL_VIEW_DESC desc;
         Resource::ApiHandle resHandle = nullptr;
-        if(pSharedPtr)
+        if(pTexture)
         {
-            desc = createDsvDesc(pSharedPtr.get(), mipLevel, firstArraySlice, arraySize);
-            resHandle = pSharedPtr->getApiHandle();
+            desc = createDsvDesc(pTexture.get(), mipLevel, firstArraySlice, arraySize);
+            resHandle = pTexture->getApiHandle();
         }
         else
         {
@@ -362,10 +347,9 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Dsv, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
-        assert(handle);
         gpDevice->getApiHandle()->CreateDepthStencilView(resHandle, &desc, handle->getCpuHandle(0));
 
-        return SharedPtr(new DepthStencilView(pResource, handle, mipLevel, firstArraySlice, arraySize));
+        return SharedPtr(new DepthStencilView(pTexture, handle, mipLevel, firstArraySlice, arraySize));
     }
 
     UnorderedAccessView::ApiHandle createUavDescriptor(const D3D12_UNORDERED_ACCESS_VIEW_DESC& desc, Resource::ApiHandle resHandle, Resource::ApiHandle counterHandle)
@@ -373,24 +357,21 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::TextureUav, 0, 1);
         UnorderedAccessView::ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
-        assert(handle);
         gpDevice->getApiHandle()->CreateUnorderedAccessView(resHandle, counterHandle, &desc, handle->getCpuHandle(0));
         return handle;
     }
 
-    UnorderedAccessView::SharedPtr UnorderedAccessView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        Resource::SharedConstPtr pSharedPtr = pResource.lock();
-
-        if (!pSharedPtr && getNullView()) return getNullView();
+        if (!pTexture && getNullView()) return getNullView();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
         Resource::ApiHandle resHandle = nullptr;
 
-        if(pSharedPtr != nullptr)
+        if(pTexture != nullptr)
         {
-            desc = createDsvRtvUavDescCommon<D3D12_UNORDERED_ACCESS_VIEW_DESC, true>(pSharedPtr.get(), mipLevel, firstArraySlice, arraySize);
-            resHandle = pSharedPtr->getApiHandle();
+            desc = createDsvRtvUavDescCommon<D3D12_UNORDERED_ACCESS_VIEW_DESC, true>(pTexture.get(), mipLevel, firstArraySlice, arraySize);
+            resHandle = pTexture->getApiHandle();
         }
         else
         {
@@ -399,29 +380,25 @@ namespace Falcor
             desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         }
 
-        return SharedPtr(new UnorderedAccessView(pResource, createUavDescriptor(desc, resHandle, nullptr), mipLevel, firstArraySlice, arraySize));
+        return SharedPtr(new UnorderedAccessView(pTexture, createUavDescriptor(desc, resHandle, nullptr), mipLevel, firstArraySlice, arraySize));
     }
 
-    UnorderedAccessView::SharedPtr UnorderedAccessView::create(ResourceWeakPtr pResource, uint32_t firstElement, uint32_t elementCount)
+    UnorderedAccessView::SharedPtr UnorderedAccessView::create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount)
     {
-        Resource::SharedConstPtr pSharedPtr = pResource.lock();
-
-        if (!pSharedPtr && getNullView()) return getNullView();
+        if (!pBuffer && getNullView()) return getNullView();
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc;
         Resource::ApiHandle resHandle = nullptr;
         Resource::ApiHandle counterHandle = nullptr;
 
-        if (pSharedPtr != nullptr)
+        if (pBuffer != nullptr)
         {
-            const Buffer* pBuffer = std::dynamic_pointer_cast<const Buffer>(pSharedPtr).get();
-            desc = createBufferUavDesc(pBuffer, firstElement, elementCount);
-            resHandle = pSharedPtr->getApiHandle();
+            desc = createBufferUavDesc(pBuffer.get(), firstElement, elementCount);
+            resHandle = pBuffer->getApiHandle();
 
-            StructuredBuffer::SharedConstPtr pStructuredBuffer = std::dynamic_pointer_cast<const StructuredBuffer>(pSharedPtr);
-            if (pStructuredBuffer != nullptr && pStructuredBuffer->hasUAVCounter())
+            if (pBuffer->getUAVCounter())
             {
-                counterHandle = pStructuredBuffer->getUAVCounter()->getApiHandle();
+                counterHandle = pBuffer->getUAVCounter()->getApiHandle();
             }
         }
         else
@@ -431,23 +408,21 @@ namespace Falcor
             desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
         }
 
-        return SharedPtr(new UnorderedAccessView(pResource, createUavDescriptor(desc, resHandle, counterHandle), firstElement, elementCount));
+        return SharedPtr(new UnorderedAccessView(pBuffer, createUavDescriptor(desc, resHandle, counterHandle), firstElement, elementCount));
     }
 
     RenderTargetView::~RenderTargetView() = default;
 
-    RenderTargetView::SharedPtr RenderTargetView::create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    RenderTargetView::SharedPtr RenderTargetView::create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        Resource::SharedConstPtr pSharedPtr = pResource.lock();
-
-        if (!pSharedPtr && getNullView()) return getNullView();
+        if (!pTexture && getNullView()) return getNullView();
 
         D3D12_RENDER_TARGET_VIEW_DESC desc;
         Resource::ApiHandle resHandle = nullptr;
-        if(pSharedPtr)
+        if(pTexture)
         {
-            desc = createRtvDesc(pSharedPtr.get(), mipLevel, firstArraySlice, arraySize);
-            resHandle = pSharedPtr->getApiHandle();
+            desc = createRtvDesc(pTexture.get(), mipLevel, firstArraySlice, arraySize);
+            resHandle = pTexture->getApiHandle();
         }
         else
         {
@@ -459,27 +434,23 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Rtv, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
-        assert(handle);
         gpDevice->getApiHandle()->CreateRenderTargetView(resHandle, &desc, handle->getCpuHandle(0));
 
-        SharedPtr pObj = SharedPtr(new RenderTargetView(pResource, handle, mipLevel, firstArraySlice, arraySize));
+        SharedPtr pObj = SharedPtr(new RenderTargetView(pTexture, handle, mipLevel, firstArraySlice, arraySize));
         return pObj;
     }
 
-    ConstantBufferView::SharedPtr ConstantBufferView::create(ResourceWeakPtr pResource)
+    ConstantBufferView::SharedPtr ConstantBufferView::create(ConstBufferSharedPtrRef pBuffer)
     {
-        Resource::SharedConstPtr pSharedPtr = pResource.lock();
-
-        if (!pSharedPtr && getNullView()) return getNullView();
+        if (!pBuffer && getNullView()) return getNullView();
 
         D3D12_CONSTANT_BUFFER_VIEW_DESC desc;
         Resource::ApiHandle resHandle = nullptr;
-        if (pSharedPtr)
+        if (pBuffer)
         {
-            ConstantBuffer::SharedConstPtr pBuffer = std::dynamic_pointer_cast<const ConstantBuffer>(pSharedPtr);
             desc.BufferLocation = pBuffer->getGpuAddress();
             desc.SizeInBytes = (uint32_t)pBuffer->getSize();
-            resHandle = pSharedPtr->getApiHandle();
+            resHandle = pBuffer->getApiHandle();
         }
         else
         {
@@ -489,10 +460,9 @@ namespace Falcor
         DescriptorSet::Layout layout;
         layout.addRange(DescriptorSet::Type::Cbv, 0, 1);
         ApiHandle handle = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
-        assert(handle);
         gpDevice->getApiHandle()->CreateConstantBufferView(&desc, handle->getCpuHandle(0));
 
-        SharedPtr pObj = SharedPtr(new ConstantBufferView(pResource, handle));
+        SharedPtr pObj = SharedPtr(new ConstantBufferView(pBuffer, handle));
         return pObj;
     }
 }

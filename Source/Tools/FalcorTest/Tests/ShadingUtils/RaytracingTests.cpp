@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "Testing/UnitTest.h"
 #include <random>
 #include <glm/gtx/io.hpp>
@@ -79,17 +79,17 @@ namespace Falcor
         }
 
         // Setup and run GPU test.
-        ctx.createProgram("Tests/ShadingUtils/RaytracingTests.cs.slang", "testComputeRayOrigin");
+        ctx.createProgram("Tests/ShadingUtils/RaytracingTests.cs.slang", "testComputeRayOrigin", {{"MATERIAL_COUNT", "1"}});
         ctx.allocateStructuredBuffer("result", n);
         // TODO: Cleanup when !122 is merged
         //ctx.allocateStructuredBuffer("pos", n, testPositions, testPositions.size() * sizeof(glm::vec3));
         //ctx.allocateStructuredBuffer("normal", n, testNormals.size() * sizeof(glm::vec3));
-        auto pPos = StructuredBuffer::create(ctx.getProgram(), "pos", n);
+        auto pPos = Buffer::createStructured(ctx.getProgram(), "pos", n);
         pPos->setBlob(testPositions.data(), 0, testPositions.size() * sizeof(glm::vec3));
-        ctx.vars().setStructuredBuffer("pos", pPos);
-        auto pNormal = StructuredBuffer::create(ctx.getProgram(), "normal", n);
+        ctx["pos"] = pPos;
+        auto pNormal = Buffer::createStructured(ctx.getProgram(), "normal", n);
         pNormal->setBlob(testNormals.data(), 0, testNormals.size() * sizeof(glm::vec3));
-        ctx.vars().setStructuredBuffer("normal", pNormal);
+        ctx["normal"] = pNormal;
 
         ctx["CB"]["n"] = n;
         ctx.runProgram(n);

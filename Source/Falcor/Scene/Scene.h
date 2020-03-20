@@ -1,33 +1,32 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Core/API/VAO.h"
-#include "Data/HostDeviceData.h"
 #include "Animation/Animation.h"
 #include "Lights/Light.h"
 #include "Lights/LightProbe.h"
@@ -36,9 +35,13 @@
 #include "Utils/Math/AABB.h"
 #include "Animation/AnimationController.h"
 #include "Camera/CameraController.h"
+#include "Experimental/Scene/Lights/LightCollection.h"
+#include "SceneTypes.slang"
 
 namespace Falcor
 {
+    class RtProgramVars;
+
     /** DXR Scene and Resources Layout:
         - BLAS creation logic is similar to Falcor 3.0, and are grouped in the following order:
             1) For non-instanced meshes, group them if they use the same scene graph transform matrix. One BLAS is created per group.
@@ -68,7 +71,9 @@ namespace Falcor
         - This is wrapped in getGlobalHitID() in Raytracing.slang.
     */
 
-    class dlldecl Scene
+    constexpr char kScene[] = "s";
+
+    class dlldecl Scene : public std::enable_shared_from_this<Scene>
     {
     public:
         using SharedPtr = std::shared_ptr<Scene>;
@@ -80,7 +85,7 @@ namespace Falcor
         static SharedPtr create(const std::string& filename);
 
         // #SCENE: we should get rid of this. We can't right now because we can't create a structured-buffer of materials (MaterialData contains textures)
-        Shader::DefineList getSceneDefines();
+        Shader::DefineList getSceneDefines() const;
 
         enum class RenderFlags
         {
@@ -102,8 +107,10 @@ namespace Falcor
             LightIntensityChanged       = 0x10, ///< Light intensity changed
             LightPropertiesChanged      = 0x20, ///< Other light changes not included in LightIntensityChanged and LightsMoved
             SceneGraphChanged           = 0x40, ///< Any transform in the scene graph changed.
+            LightCollectionChanged      = 0x80, ///< Light collection changed (mesh lights)
+            MaterialsChanged            = 0x100,///< Materials changed
 
-            All                     = -1
+            All                         = -1
         };
 
         /** Settings for how the scene is updated
@@ -141,6 +148,10 @@ namespace Falcor
         */
         CameraControllerType getCameraControllerType() const { return mCamCtrlType; }
 
+        /** Toggle whether the camera is animated.
+        */
+        void toggleCameraAnimation(bool animate) { mCamera.animate = animate; }
+
         /** Reset the camera.
             This function will place the camera at the center of scene and optionally set the depth range to some reasonable pre-determined values
         */
@@ -153,6 +164,22 @@ namespace Falcor
         /** Get the camera's speed
         */
         float getCameraSpeed() const { return mCameraSpeed; }
+
+        /** Save the current camera viewpoint and returns a reference to it.
+        */
+        void saveNewViewpoint();
+
+        /** Remove the currently active viewpoint.
+        */
+        void removeViewpoint();
+
+        /** Load a selected camera viewpoint and returns a reference to it.
+        */
+        void gotoViewpoint(uint32_t index);
+
+        /** Returns true if there are saved viewpoints (used for dumping to config)
+        */
+        bool hasSavedViewpoints() { return mViewpoints.size() > 1; }
 
         /** Get the number of meshes
         */
@@ -178,6 +205,10 @@ namespace Falcor
         */
         Material::ConstSharedPtrRef getMaterial(uint32_t materialID) const { return mMaterials[materialID]; }
 
+        /** Get a material by name
+        */
+        Material::SharedPtr getMaterialByName(const std::string &name) const;
+
         /** Get the scene bounds
         */
         const BoundingBox& getSceneBounds() const { return mSceneBB; }
@@ -194,9 +225,25 @@ namespace Falcor
         */
         Light::ConstSharedPtrRef getLight(uint32_t lightID) const { return mLights[lightID].pObject; }
 
+        /** Get a light by name
+        */
+        Light::SharedPtr getLightByName(const std::string &name) const;
+
+        /** Get the light collection representing all the mesh lights in the scene.
+            The light collection is created lazily on the first call. It needs a render context.
+            to run the initialization shaders.
+            \param[in] pContext Render context.
+            \return Returns the light collection.
+        */
+        LightCollection::ConstSharedPtrRef getLightCollection(RenderContext* pContext);
+
         /** Get the light probe or nullptr if it doesn't exist.
         */
         const LightProbe::SharedPtr& getLightProbe() const { return mpLightProbe; }
+
+        /** Toggle whether the specified light is animated.
+        */
+        void toggleLightAnimation(int index, bool animate) { mLights[index].animate = animate; }
 
         /** Get/Set how the scene's TLASes are updated when raytracing.
             TLASes are REBUILT by default
@@ -227,7 +274,7 @@ namespace Falcor
 
         /** Render the scene using raytracing
         */
-        void raytrace(RenderContext* pContext, const std::shared_ptr<RtState>& pState, const std::shared_ptr<RtProgramVars>& pVars, uvec3 dispatchDims);
+        void raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uvec3 dispatchDims);
 
         /** Render the UI
         */
@@ -241,7 +288,8 @@ namespace Falcor
         */
         const Vao::SharedPtr& getVao() const { return mpVao; }
 
-        /** Set an environment map
+        /** Set an environment map.
+            \param[in] pEnvMap Texture to use as environment map. Can be nullptr.
         */
         void setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap);
 
@@ -265,10 +313,29 @@ namespace Falcor
         */
         const AnimationController* getAnimationController() const { return mpAnimationController.get(); }
 
+        /** Toggle all animations on or off.
+        */
+        void toggleAnimations(bool animate);
+
         /** Get the parameter block with all scene resources.
             Note that the camera is not bound automatically.
         */
         ParameterBlock::ConstSharedPtrRef getParameterBlock() const { return mpSceneBlock; }
+
+        /** Set the BLAS geometry index into the local vars for each geometry.
+            This is a workaround before GeometryIndex() is supported in shaders.
+        */
+        void setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pVars);
+
+        /** Set the scene ray tracing resources into a shader var.
+            The acceleration structure is created lazily, which requires the render context.
+            \param[in] pContext Render context.
+            \param[in] var Shader variable to set data into, usually the root var.
+            \param[in] rayTypeCount Number of ray types in raygen program. Not needed for inline raytracing.
+        */
+        void setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount = 1);
+
+        std::string getConfig();
 
     private:
         friend class SceneBuilder;
@@ -287,6 +354,10 @@ namespace Falcor
         /** Uploads scene data to parameter block
         */
         void uploadResources();
+
+        /** Uploads a single material.
+        */
+        void uploadMaterial(uint32_t materialID);
 
         /** Verify variable offsets in GPU buffers are consistent with CPU data.
         */
@@ -330,12 +401,6 @@ namespace Falcor
         */
         void buildTlas(RenderContext* pContext, uint32_t rayCount, bool perMeshHitEntry);
 
-        /** Set the BLAS geometry index into their local constant buffer.
-
-            This is a workaround before GeometryIndex() is supported in shaders.
-        */
-        void setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pVars);
-
         /** Create the buffer that maps Acceleration Structure indices to their location in mMeshInstanceData
             mMeshInstanceData should be indexed with [InstanceID() + GeometryIndex]
         */
@@ -343,6 +408,17 @@ namespace Falcor
 
         UpdateFlags updateCamera(bool forceUpdate);
         UpdateFlags updateLights(bool forceUpdate);
+        UpdateFlags updateMaterials(bool forceUpdate);
+
+        void updateGeometryStats();
+
+        struct GeometryStats
+        {
+            size_t uniqueTriangleCount = 0;     ///< Number of unique triangles. A triangle can exist in multiple instances.
+            size_t uniqueVertexCount = 0;       ///< Number of unique vertices. A vertex can be referenced by multiple triangles/instances.
+            size_t instancedTriangleCount = 0;  ///< Number of instanced triangles. This is the total number of rendered triangles.
+            size_t instancedVertexCount = 0;    ///< Number of instanced vertices. This is the total number of vertices in the rendered triangles.
+        };
 
         template<typename Object>
         struct AnimatedObject
@@ -364,7 +440,7 @@ namespace Falcor
         {
             Buffer::SharedPtr pBuffer;
             uint32_t count = 0;
-        } mDrawClockwiseMeshes, mDrawCounterClockwiseMeshes, mDrawAlphaTestedMeshes;
+        } mDrawClockwiseMeshes, mDrawCounterClockwiseMeshes;
 
         static const uint32_t kInvalidNode = -1;
 
@@ -385,6 +461,7 @@ namespace Falcor
 
         std::vector<Material::SharedPtr> mMaterials;        ///< Bound to parameter block
         std::vector<AnimatedObject<Light>> mLights;         ///< Bound to parameter block
+        LightCollection::SharedPtr mpLightCollection;       ///< Bound to parameter block
         LightProbe::SharedPtr mpLightProbe;                 ///< Bound to parameter block
         Texture::SharedPtr mpEnvMap;                        ///< Not bound to anything, not rendered automatically. Can be used to render a skybox
 
@@ -393,11 +470,13 @@ namespace Falcor
         std::vector<std::vector<uint32_t>> mMeshIdToInstanceIds;    ///< Mapping of what instances belong to which mesh
         BoundingBox mSceneBB;                                       ///< Bounding boxes of the entire scene
         std::vector<bool> mMeshHasDynamicData;                      ///< Whether a Mesh has dynamic data, meaning it is skinned
+        GeometryStats mGeometryStats;                               ///< Geometry statistics for the scene.
 
         // Resources
-        StructuredBuffer::SharedPtr mpMeshesBuffer;
-        StructuredBuffer::SharedPtr mpMeshInstancesBuffer;
-        StructuredBuffer::SharedPtr mpLightsBuffer;
+        Buffer::SharedPtr mpMeshesBuffer;
+        Buffer::SharedPtr mpMeshInstancesBuffer;
+        Buffer::SharedPtr mpMaterialsBuffer;
+        Buffer::SharedPtr mpLightsBuffer;
         ParameterBlock::SharedPtr mpSceneBlock;
 
         // Camera
@@ -406,9 +485,18 @@ namespace Falcor
         AnimatedObject<Camera> mCamera;
         float mCameraSpeed = 1.0f;
 
+        // Saved Camera Viewpoints
+        struct Viewpoint
+        {
+            glm::vec3 position;
+            glm::vec3 target;
+            glm::vec3 up;
+        };
+        std::vector<Viewpoint> mViewpoints;
+        uint32_t mCurrentViewpoint = 0;
+
         // Rendering
         RasterizerState::SharedPtr mpFrontClockwiseRS;
-        RasterizerState::SharedPtr mpNoCullRS;
         UpdateFlags mUpdates = UpdateFlags::All;
         AnimationController::UniquePtr mpAnimationController;
 
@@ -449,7 +537,6 @@ namespace Falcor
         bool mHasSkinnedMesh = false;       ///< Whether the scene has a skinned mesh at all.
 
         Buffer::SharedPtr mpAsToInstanceMapping;            ///< Lookup table from [InstanceID() + GeometryIndex()] to mMeshInstanceData index
-        std::unordered_set<void*> mRtVarsWithGeometryIndex; ///< Lookup for what RtProgramVars have had geometryIndex set for each mesh. Cleared/invalidated when BLAS changes.
         std::string mFilename;
     };
 

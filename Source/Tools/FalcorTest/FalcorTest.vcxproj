@@ -13,13 +13,25 @@
   <ItemGroup>
     <ClCompile Include="FalcorTest.cpp" />
     <ClCompile Include="Tests\Core\BufferTests.cpp" />
+    <ClCompile Include="Tests\Core\BufferAccessTests.cpp" />
+    <ClCompile Include="Tests\Core\ConstantBufferTests.cpp" />
+    <ClCompile Include="Tests\Core\RootBufferStructTests.cpp" />
+    <ClCompile Include="Tests\Core\UserConstantBufferTests.cpp" />
+    <ClCompile Include="Tests\Core\RootBufferParamBlockTests.cpp" />
+    <ClCompile Include="Tests\Core\RootBufferTests.cpp" />
     <ClCompile Include="Tests\DebugPasses\InvalidPixelDetectionTests.cpp" />
     <ClCompile Include="Tests\Sampling\PseudorandomTests.cpp" />
     <ClCompile Include="Tests\Sampling\SampleGeneratorTests.cpp" />
     <ClCompile Include="Tests\Scene\EnvProbeTests.cpp" />
     <ClCompile Include="Tests\ShadingUtils\RaytracingTests.cpp" />
     <ClCompile Include="Tests\ShadingUtils\ShadingUtilsTests.cpp" />
+    <ClCompile Include="Tests\Slang\Int64Tests.cpp" />
+    <ClCompile Include="Tests\Slang\ShaderModel.cpp" />
+    <ClCompile Include="Tests\Slang\SlangMutatingTests.cpp" />
     <ClCompile Include="Tests\Slang\SlangTests.cpp" />
+    <ClCompile Include="Tests\Slang\TraceRayFlags.cpp" />
+    <ClCompile Include="Tests\Slang\TraceRayInline.cpp" />
+    <ClCompile Include="Tests\Slang\WaveOps.cpp" />
     <ClCompile Include="Tests\Utils\AABBTests.cpp" />
     <ClCompile Include="Tests\Utils\AlignedAllocatorTests.cpp" />
     <ClCompile Include="Tests\Utils\BitonicSortTests.cpp" />
@@ -36,12 +48,26 @@
   </ItemGroup>
   <ItemGroup>
     <ShaderSource Include="Tests\Core\BufferTests.cs.slang" />
+    <ShaderSource Include="Tests\Core\BufferAccessTests.cs.slang" />
+    <ShaderSource Include="Tests\Core\ConstantBufferTests.cs.slang" />
+    <ShaderSource Include="Tests\Core\RootBufferStructTests.cs.slang" />
+    <ShaderSource Include="Tests\Core\UserConstantBufferTests.cs.slang" />
+    <ShaderSource Include="Tests\Core\ParamBlockReflection.cs.slang" />
+    <ShaderSource Include="Tests\Core\ParamBlockDefinition.slang" />
+    <ShaderSource Include="Tests\Core\RootBufferParamBlockTests.cs.slang" />
+    <ShaderSource Include="Tests\Core\RootBufferTests.cs.slang" />
     <ShaderSource Include="Tests\Sampling\PseudorandomTests.cs.slang" />
     <ShaderSource Include="Tests\Sampling\SampleGeneratorTests.cs.slang" />
     <ShaderSource Include="Tests\ShadingUtils\RaytracingTests.cs.slang" />
     <ShaderSource Include="Tests\ShadingUtils\ShadingUtilsTests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\Int64Tests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\ShaderModel.cs.slang" />
+    <ShaderSource Include="Tests\Slang\SlangMutatingTests.cs.slang" />
+    <ShaderSource Include="Tests\Slang\SlangShared.slang" />
     <ShaderSource Include="Tests\Slang\SlangTests.cs.slang" />
-    <ShaderSource Include="Tests\Slang\SlangShared.h" />
+    <ShaderSource Include="Tests\Slang\TraceRayFlags.cs.slang" />
+    <ShaderSource Include="Tests\Slang\TraceRayInline.cs.slang" />
+    <ShaderSource Include="Tests\Slang\WaveOps.cs.slang" />
     <ShaderSource Include="Tests\Utils\AABBTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\BitTricksTests.cs.slang" />
     <ShaderSource Include="Tests\Utils\HalfUtilsTests.cs.slang" />
@@ -57,20 +83,20 @@
     <ProjectGuid>{20401FAD-6022-8EB7-2F78-41369B8F0F49}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>FeatureDemo</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
     <ProjectName>FalcorTest</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>

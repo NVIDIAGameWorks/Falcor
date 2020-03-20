@@ -1,36 +1,38 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "ProgramVars.h"
 #include "GraphicsProgram.h"
 #include "ComputeProgram.h"
 #include "Core/API/ComputeContext.h"
 #include "Core/API/RenderContext.h"
+
+#include <slang/slang.h>
 
 namespace Falcor
 {
@@ -52,283 +54,278 @@ namespace Falcor
         return true;
     }
 
-    static uint32_t findRootIndex(const DescriptorSet::Layout& blockSet, const RootSignature::SharedPtr& pRootSig)
-    {
-        for (uint32_t i = 0; i < pRootSig->getDescriptorSetCount(); i++)
-        {
-            const auto& rootSet = pRootSig->getDescriptorSet(i);
-            if (compareRootSets(rootSet, blockSet))
-            {
-#ifdef FALCOR_D3D12
-                return i;
-#else
-                return rootSet.getRange(0).regSpace;
-#endif
-            }
-        }
-        should_not_get_here();
-        return -1;
-    }
-
-    ProgramVars::BlockData ProgramVars::initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers)
-    {
-        BlockData data;
-        data.pBlock = ParameterBlock::create(pBlockReflection, createBuffers);
-        // For each set, find the matching root-index. 
-        const auto& sets = pBlockReflection->getDescriptorSetLayouts();
-        data.rootIndex.resize(sets.size());
-        for (size_t i = 0; i < sets.size(); i++)
-        {
-            data.rootIndex[i] = findRootIndex(sets[i], mpRootSignature);
-        }
-
-        return data;
-    }
-
-    ProgramVars::ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) : mpReflector(pReflector)
+    ProgramVars::ProgramVars(
+        const ProgramReflection::SharedConstPtr& pReflector)
+        : ParameterBlock(pReflector->getProgramVersion(), pReflector->getDefaultParameterBlock())
+        , mpReflector(pReflector)
     {
         assert(pReflector);
-        mpRootSignature = pRootSig ? pRootSig : RootSignature::create(pReflector.get());
-        ParameterBlockReflection::SharedConstPtr pDefaultBlock = pReflector->getDefaultParameterBlock();
-        // Initialize the global-block first so that it's the first entry in the vector
-        for (uint32_t i = 0; i < pReflector->getParameterBlockCount(); i++)
+    }
+
+    void ProgramVars::addSimpleEntryPointGroups()
+    {
+        auto& entryPointGroups = mpReflector->getEntryPointGroups();
+        auto groupCount = entryPointGroups.size();
+        for( size_t gg = 0; gg < groupCount; ++gg )
         {
-            const auto& pBlock = pReflector->getParameterBlock(i);
-            BlockData data = initParameterBlock(pBlock, createBuffers);
-            mParameterBlocks.push_back(data);
+            auto pGroup = entryPointGroups[gg];
+            auto pGroupVars = EntryPointGroupVars::create(pGroup, uint32_t(gg));
+            mpEntryPointGroupVars.push_back(pGroupVars);
         }
-        mDefaultBlock = mParameterBlocks[mpReflector->getParameterBlockIndex("")];
     }
 
-    ParameterBlock::SharedPtr ProgramVars::getParameterBlock(const std::string& name) const
+    GraphicsVars::GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector)
+        : ProgramVars(pReflector)
     {
-        uint32_t index = mpReflector->getParameterBlockIndex(name);
-        if (index == ProgramReflection::kInvalidLocation)
-        {
-            logWarning("Can't find parameter block named " + name + ". Ignoring getParameterBlock() call");
-            return nullptr;
-        }
-        return mParameterBlocks[index].pBlock;
+        addSimpleEntryPointGroups();
     }
 
-    ParameterBlock::SharedPtr ProgramVars::getParameterBlock(uint32_t blockIndex) const
+    GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector)
     {
-        return (blockIndex < mParameterBlocks.size()) ? mParameterBlocks[blockIndex].pBlock : nullptr;
-    }
-
-    bool ProgramVars::setParameterBlock(const std::string& name, const std::shared_ptr<ParameterBlock>& pBlock)
-    {
-        uint32_t index = mpReflector->getParameterBlockIndex(name);
-        if (index == ProgramReflection::kInvalidLocation)
-        {
-            logWarning("Can't find parameter block named " + name + ". Ignoring setParameterBlock() call");
-            return false;
-        }
-        mParameterBlocks[index].bind = true;
-        mParameterBlocks[index].pBlock = pBlock ? pBlock : ParameterBlock::create(mpReflector->getParameterBlock(index), true);
-        return true;
-    }
-
-    bool ProgramVars::setParameterBlock(uint32_t blockIndex, const std::shared_ptr<ParameterBlock>& pBlock)
-    {
-        if (blockIndex >= mParameterBlocks.size())
-        {
-            logWarning("setParameterBlock() - block index out-of-bounds");
-            return false;
-        }
-        mParameterBlocks[blockIndex].bind = true;
-        mParameterBlocks[blockIndex].pBlock = pBlock ? pBlock : ParameterBlock::create(mpReflector->getParameterBlock(blockIndex), true);
-        return true;
-    }
-
-    GraphicsVars::SharedPtr GraphicsVars::create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig)
-    {
-        return SharedPtr(new GraphicsVars(pReflector, createBuffers, pRootSig));
+        if (pReflector == nullptr) throw std::exception("Can't create a GraphicsVars object without a program reflector");
+        return SharedPtr(new GraphicsVars(pReflector));
     }
 
     GraphicsVars::SharedPtr GraphicsVars::create(const GraphicsProgram* pProg)
     {
+        if (pProg == nullptr) throw std::exception("Can't create a GraphicsVars object without a program");
         return create(pProg->getReflector());
     }
 
-    ComputeVars::SharedPtr ComputeVars::create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig)
+    ComputeVars::SharedPtr ComputeVars::create(const ProgramReflection::SharedConstPtr& pReflector)
     {
-        return SharedPtr(new ComputeVars(pReflector, createBuffers, pRootSig));
+        if (pReflector == nullptr) throw std::exception("Can't create a ComputeVars object without a program reflector");
+        return SharedPtr(new ComputeVars(pReflector));
     }
 
     ComputeVars::SharedPtr ComputeVars::create(const ComputeProgram* pProg)
     {
+        if (pProg == nullptr) throw std::exception("Can't create a ComputeVars object without a program");
         return create(pProg->getReflector());
     }
 
-    ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(const std::string& name) const
+    ComputeVars::ComputeVars(const ProgramReflection::SharedConstPtr& pReflector)
+        : ProgramVars(pReflector)
     {
-        return mDefaultBlock.pBlock->getConstantBuffer(name);
-    }
-
-    ConstantBuffer::SharedPtr ProgramVars::getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Cbv);
-        return mDefaultBlock.pBlock->getConstantBuffer(loc, arrayIndex);
-    }
-
-    bool ProgramVars::setConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB)
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Cbv);
-        return mDefaultBlock.pBlock->setConstantBuffer(loc, arrayIndex, pCB);
-    }
-
-    bool ProgramVars::setConstantBuffer(const std::string& name, const ConstantBuffer::SharedPtr& pCB)
-    {
-        return mDefaultBlock.pBlock->setConstantBuffer(name, pCB);
-    }
-
-    bool ProgramVars::setRawBuffer(const std::string& name, const Buffer::SharedPtr& pBuf)
-    {
-        return mDefaultBlock.pBlock->setRawBuffer(name, pBuf);
-    }
-
-    bool ProgramVars::setTypedBuffer(const std::string& name, const TypedBufferBase::SharedPtr& pBuf)
-    {
-        return mDefaultBlock.pBlock->setTypedBuffer(name, pBuf);
-    }
-    
-    bool ProgramVars::setStructuredBuffer(const std::string& name, const StructuredBuffer::SharedPtr& pBuf)
-    {
-        return mDefaultBlock.pBlock->setStructuredBuffer(name, pBuf);
-    }
-    
-    Buffer::SharedPtr ProgramVars::getRawBuffer(const std::string& name) const
-    {
-        return mDefaultBlock.pBlock->getRawBuffer(name);
-    }
-
-    TypedBufferBase::SharedPtr ProgramVars::getTypedBuffer(const std::string& name) const
-    {
-        return mDefaultBlock.pBlock->getTypedBuffer(name);
-    }
-
-    StructuredBuffer::SharedPtr ProgramVars::getStructuredBuffer(const std::string& name) const
-    {
-        return mDefaultBlock.pBlock->getStructuredBuffer(name);
-    }
-
-    bool ProgramVars::setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler)
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Sampler);
-        return mDefaultBlock.pBlock->setSampler(loc, arrayIndex, pSampler);
-    }
-
-    bool ProgramVars::setSampler(const std::string& name, const Sampler::SharedPtr& pSampler)
-    {
-        return mDefaultBlock.pBlock->setSampler(name, pSampler);
-    }
-
-    Sampler::SharedPtr ProgramVars::getSampler(const std::string& name) const
-    {
-        return mDefaultBlock.pBlock->getSampler(name);
-    }
-
-    Sampler::SharedPtr ProgramVars::getSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Sampler);
-        return mDefaultBlock.pBlock->getSampler(loc, arrayIndex);
-    }
-
-    ShaderResourceView::SharedPtr ProgramVars::getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Srv);
-        return mDefaultBlock.pBlock->getSrv(loc, arrayIndex);
-    }
-
-    UnorderedAccessView::SharedPtr ProgramVars::getUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Uav);
-        return mDefaultBlock.pBlock->getUav(loc, arrayIndex);
-    }
-
-    bool ProgramVars::setTexture(const std::string& name, const Texture::SharedPtr& pTexture)
-    {
-        return mDefaultBlock.pBlock->setTexture(name, pTexture);
-    }
-
-    Texture::SharedPtr ProgramVars::getTexture(const std::string& name) const
-    {
-        return mDefaultBlock.pBlock->getTexture(name);
-    }
-
-    bool ProgramVars::setSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv)
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Srv);
-        return mDefaultBlock.pBlock->setSrv(loc, arrayIndex, pSrv);
-    }
-    
-    bool ProgramVars::setUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav)
-    {
-        const auto& loc = mpReflector->translateRegisterIndicesToBindLocation(regSpace, baseRegIndex, ProgramReflection::BindType::Uav);
-        return mDefaultBlock.pBlock->setUav(loc, arrayIndex, pUav);
+        addSimpleEntryPointGroups();
     }
 
     template<bool forGraphics>
-    bool ProgramVars::bindRootSetsCommon(CopyContext* pContext, bool bindRootSig)
+    void bindRootSet(DescriptorSet::SharedPtr const& pSet, CopyContext* pContext, RootSignature* pRootSignature, uint32_t rootIndex)
     {
-        // Bind the sets
-        for(uint32_t b = 0 ; b < getParameterBlockCount() ; b++)
+        if (forGraphics)
         {
-            ParameterBlock* pBlock = mParameterBlocks[b].pBlock.get(); // #PARAMBLOCK getParameterBlock() because we don't want the user to change blocks directly, but we need it non-const here
-            if (pBlock->prepareForDraw(pContext) == false) return false; // #PARAMBLOCK Get rid of it. getRootSets() should have a dirty flag
+            pSet->bindForGraphics(pContext, pRootSignature, rootIndex);
+        }
+        else
+        {
+            pSet->bindForCompute(pContext, pRootSignature, rootIndex);
+        }
+    }
 
-            const auto& rootIndices = mParameterBlocks[b].rootIndex;
-            auto& rootSets = pBlock->getRootSets();
-            bool forceBind = bindRootSig || mParameterBlocks[b].bind;
-            mParameterBlocks[b].bind = false;
+    template<bool forGraphics>
+    void bindRootDescriptor(CopyContext* pContext, uint32_t rootIndex, const Resource::SharedPtr& pResource, bool isUav)
+    {
+        auto pBuffer = pResource->asBuffer();
+        assert(!pResource || pBuffer); // If a resource is bound, it must be a buffer
+        uint64_t gpuAddress = pBuffer ? pBuffer->getGpuAddress() : 0;
 
-            for (uint32_t s = 0; s < rootSets.size(); s++)
+        if (forGraphics)
+        {
+            if (isUav)
+                pContext->getLowLevelData()->getCommandList()->SetGraphicsRootUnorderedAccessView(rootIndex, gpuAddress);
+            else
+                pContext->getLowLevelData()->getCommandList()->SetGraphicsRootShaderResourceView(rootIndex, gpuAddress);
+        }
+        else
+        {
+            if (isUav)
+                pContext->getLowLevelData()->getCommandList()->SetComputeRootUnorderedAccessView(rootIndex, gpuAddress);
+            else
+                pContext->getLowLevelData()->getCommandList()->SetComputeRootShaderResourceView(rootIndex, gpuAddress);
+        }
+    }
+
+    template<bool forGraphics>
+    void bindRootConstants(CopyContext* pContext, uint32_t rootIndex, ParameterBlock* pParameterBlock, const ParameterBlockReflection* pParameterBlockReflector)
+    {
+        uint32_t count = uint32_t(pParameterBlockReflector->getElementType()->getByteSize() / sizeof(uint32_t));
+        void const* pSrc = pParameterBlock->getRawData();
+        if (forGraphics)
+        {
+            pContext->getLowLevelData()->getCommandList()->SetGraphicsRoot32BitConstants(
+                rootIndex,
+                count,
+                pSrc,
+                0);
+        }
+        else
+        {
+            pContext->getLowLevelData()->getCommandList()->SetComputeRoot32BitConstants(
+                rootIndex,
+                count,
+                pSrc,
+                0);
+        }
+    }
+
+    template<bool forGraphics>
+    bool bindParameterBlockSets(
+        ParameterBlock*                 pParameterBlock,
+        const ParameterBlockReflection* pParameterBlockReflector,
+        CopyContext*                    pContext,
+        RootSignature*                  pRootSignature,
+        bool                            bindRootSig,
+        uint32_t&                       descSetIndex,
+        uint32_t&                       rootConstIndex)
+    {
+        auto defaultConstantBufferInfo = pParameterBlockReflector->getDefaultConstantBufferBindingInfo();
+        if( defaultConstantBufferInfo.useRootConstants )
+        {
+            uint32_t rootIndex = rootConstIndex++;
+
+            bindRootConstants<forGraphics>(pContext, rootIndex, pParameterBlock, pParameterBlockReflector);
+        }
+
+        auto descriptorSetCount = pParameterBlockReflector->getDescriptorSetCount();
+        for(uint32_t s = 0; s < descriptorSetCount; ++s)
+        {
+            auto pSet = pParameterBlock->getDescriptorSet(s);
+
+            uint32_t rootIndex = descSetIndex++;
+
+            bindRootSet<forGraphics>(pSet, pContext, pRootSignature, rootIndex);
+        }
+
+        // Iterate over parameter blocks to recursively bind their descriptor sets.
+        auto parameterBlockRangeCount = pParameterBlockReflector->getParameterBlockSubObjectRangeCount();
+        for(uint32_t i = 0; i < parameterBlockRangeCount; ++i)
+        {
+            auto resourceRangeIndex = pParameterBlockReflector->getParameterBlockSubObjectRangeIndex(i);
+            auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
+            auto& bindingInfo = pParameterBlockReflector->getResourceRangeBindingInfo(resourceRangeIndex);
+
+            auto pSubObjectReflector = bindingInfo.pSubObjectReflector;
+            auto objectCount = resourceRange.count;
+
+            for(uint32_t i = 0; i < objectCount; ++i)
             {
-                if (rootSets[s].dirty || forceBind)
+                auto pSubBlock = pParameterBlock->getParameterBlock(resourceRangeIndex, i);
+                if(!bindParameterBlockSets<forGraphics>(pSubBlock.get(), pSubObjectReflector.get(), pContext, pRootSignature, bindRootSig, descSetIndex, rootConstIndex))
                 {
-                    rootSets[s].dirty = false;
-                    uint32_t rootIndex = rootIndices[s];
-                    if (forGraphics)
-                    {
-                        rootSets[s].pSet->bindForGraphics(pContext, mpRootSignature.get(), rootIndex);
-                    }
-                    else
-                    {
-                        rootSets[s].pSet->bindForCompute(pContext, mpRootSignature.get(), rootIndex);
-                    }
+                    return false;
                 }
             }
         }
+
         return true;
     }
 
     template<bool forGraphics>
-    bool ProgramVars::applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig)
+    bool bindParameterBlockRootDescs(
+        ParameterBlock*                 pParameterBlock,
+        const ParameterBlockReflection* pParameterBlockReflector,
+        CopyContext*                    pContext,
+        RootSignature*                  pRootSignature,
+        bool                            bindRootSig,
+        uint32_t&                       rootDescIndex)
+    {
+        auto rootDescriptorRangeCount = pParameterBlockReflector->getRootDescriptorRangeCount();
+        for (uint32_t i = 0; i < rootDescriptorRangeCount; ++i)
+        {
+            auto resourceRangeIndex = pParameterBlockReflector->getRootDescriptorRangeIndex(i);
+            auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
+
+            assert(resourceRange.count == 1); // Root descriptors cannot be arrays
+            auto [pResource, isUav] = pParameterBlock->getRootDescriptor(resourceRangeIndex, 0);
+
+            bindRootDescriptor<forGraphics>(pContext, rootDescIndex++, pResource, isUav);
+        }
+
+        // Iterate over constant buffers and parameter blocks to recursively bind their root descriptors.
+        uint32_t resourceRangeCount = pParameterBlockReflector->getResourceRangeCount();
+        for (uint32_t resourceRangeIndex = 0; resourceRangeIndex < resourceRangeCount; ++resourceRangeIndex)
+        {
+            auto& resourceRange = pParameterBlockReflector->getResourceRange(resourceRangeIndex);
+            auto& bindingInfo = pParameterBlockReflector->getResourceRangeBindingInfo(resourceRangeIndex);
+
+            if (bindingInfo.flavor != ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ConstantBuffer &&
+                bindingInfo.flavor != ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::ParameterBlock)
+                continue;
+
+            auto pSubObjectReflector = bindingInfo.pSubObjectReflector;
+            auto objectCount = resourceRange.count;
+
+            for (uint32_t i = 0; i < objectCount; ++i)
+            {
+                auto pSubBlock = pParameterBlock->getParameterBlock(resourceRangeIndex, i);
+                if (!bindParameterBlockRootDescs<forGraphics>(pSubBlock.get(), pSubObjectReflector.get(), pContext, pRootSignature, bindRootSig, rootDescIndex))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    template<bool forGraphics>
+    bool bindRootSetsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature)
+    {
+        if(!pVars->prepareDescriptorSets(pContext)) return false;
+
+        uint32_t descSetIndex = pRootSignature->getDescriptorSetBaseIndex();
+        uint32_t rootDescIndex = pRootSignature->getRootDescriptorBaseIndex();
+        uint32_t rootConstIndex = pRootSignature->getRootConstantBaseIndex();
+
+        if (!bindParameterBlockSets<forGraphics>(pVars, pVars->getSpecializedReflector().get(), pContext, pRootSignature, bindRootSig, descSetIndex, rootConstIndex)) return false;
+        if (!bindParameterBlockRootDescs<forGraphics>(pVars, pVars->getSpecializedReflector().get(), pContext, pRootSignature, bindRootSig, rootDescIndex)) return false;
+
+        return true;
+    }
+
+    template<bool forGraphics>
+    bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature)
     {
         if (bindRootSig)
         {
             if (forGraphics)
             {
-                mpRootSignature->bindForGraphics(pContext);
+                pRootSignature->bindForGraphics(pContext);
             }
             else
             {
-                mpRootSignature->bindForCompute(pContext);
+                pRootSignature->bindForCompute(pContext);
             }
         }
 
-        return bindRootSetsCommon<forGraphics>(pContext, bindRootSig);
+        return bindRootSetsCommon<forGraphics>(pVars, pContext, bindRootSig, pRootSignature);
     }
 
-
-    bool ComputeVars::apply(ComputeContext* pContext, bool bindRootSig)
+    bool ProgramVars::updateSpecializationImpl() const
     {
-        return applyProgramVarsCommon<false>(pContext, bindRootSig);
+        ParameterBlock::SpecializationArgs specializationArgs;
+        collectSpecializationArgs(specializationArgs);
+        if( specializationArgs.size() == 0 )
+        {
+            mpSpecializedReflector = ParameterBlock::mpReflector;
+            return false;
+        }
+
+        // TODO: Want a caching step here, if possible...
+
+        auto pProgramKernels = mpProgramVersion->getKernels(this);
+        mpSpecializedReflector = pProgramKernels->getReflector()->getDefaultParameterBlock();
+        return false;
     }
 
-    bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig)
+    bool ComputeVars::apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature)
     {
-        return applyProgramVarsCommon<true>(pContext, bindRootSig);
+        return applyProgramVarsCommon<false>(this, pContext, bindRootSig, pRootSignature);
+    }
+
+    bool GraphicsVars::apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature)
+    {
+        return applyProgramVarsCommon<true>(this, pContext, bindRootSig, pRootSignature);
     }
 }

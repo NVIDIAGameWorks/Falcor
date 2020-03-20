@@ -1,112 +1,113 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "RtProgram.h"
 
+#include "Raytracing/RtProgramVars.h"
+
+#include <slang/slang.h>
+
 namespace Falcor
 {
-    static bool checkValidLibrary(uint32_t activeIndex, const std::string& shader)
+    void RtProgram::Desc::init()
     {
-        if (activeIndex == -1)
-        {
-            logWarning("Can't set " + shader + " entry-point. Please add a shader-library first");
-            return false;
-        }
-        return true;
-    }
-
-    RtProgram::Desc& RtProgram::Desc::addShaderLibrary(const ShaderLibrary::SharedPtr& pLibrary)
-    {
-        if (pLibrary == nullptr)
-        {
-            logWarning("Can't add a null library to RtProgram::Desc");
-            return *this;
-        }
-        mActiveLibraryIndex = (uint32_t)mShaderLibraries.size();
-        mShaderLibraries.emplace_back(pLibrary);
-        return *this;
+        mBaseDesc.setShaderModel("6_2");
     }
 
     RtProgram::Desc& RtProgram::Desc::addShaderLibrary(const std::string& filename)
     {
-        return addShaderLibrary(ShaderLibrary::create(filename));
+        mBaseDesc.addShaderLibrary(filename);
+        return *this;
     }
 
     RtProgram::Desc& RtProgram::Desc::setRayGen(const std::string& raygen)
     {
-        if (!checkValidLibrary(mActiveLibraryIndex, "raygen")) return *this;
-        if (mRayGen.libraryIndex != -1)
-        {
-            logWarning("RtProgram::Desc::setRayGen() - a ray-generation entry point is already set. Replacing the old entry-point");
-        }
-        mRayGen.libraryIndex = mActiveLibraryIndex;
-        mRayGen.entryPoint = raygen;
+        return addRayGen(raygen);
+    }
+
+    RtProgram::Desc& RtProgram::Desc::addRayGen(const std::string& raygen)
+    {
+        mBaseDesc.beginEntryPointGroup();
+        mBaseDesc.entryPoint(ShaderType::RayGeneration, raygen);
+
+        DescExtra::GroupInfo info = { mBaseDesc.mActiveGroup };
+        mRayGenEntryPoints.push_back(info);
         return *this;
     }
 
     RtProgram::Desc& RtProgram::Desc::addMiss(uint32_t missIndex, const std::string& miss)
     {
-        if (!checkValidLibrary(mActiveLibraryIndex, "miss")) return *this;
-        if (mMiss.size() <= missIndex)
+        if(missIndex >= mMissEntryPoints.size())
         {
-            mMiss.resize(missIndex + 1);
+            mMissEntryPoints.resize(missIndex+1);
         }
-        else
+        else if(mMissEntryPoints[missIndex].groupIndex >= 0)
         {
-            if (mMiss[missIndex].libraryIndex != -1)
-            {
-                logWarning("RtProgram::Desc::addMiss() - a miss entry point already exists for index " + std::to_string(missIndex) + ". Replacing the old entry-point");
-            }
+            logError("already have a miss shader at that index");
         }
-        mMiss[missIndex].libraryIndex = mActiveLibraryIndex;
-        mMiss[missIndex].entryPoint = miss;
 
+        auto entryPointIndex = int32_t(mBaseDesc.mEntryPoints.size());
+        mBaseDesc.beginEntryPointGroup();
+        mBaseDesc.entryPoint(ShaderType::Miss, miss);
+
+        DescExtra::GroupInfo info = { mBaseDesc.mActiveGroup };
+        mMissEntryPoints[missIndex] = info;
         return *this;
     }
 
     RtProgram::Desc& RtProgram::Desc::addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit, const std::string& intersection /* = "" */)
     {
-        if (!checkValidLibrary(mActiveLibraryIndex, "his")) return *this;
-        if (mHit.size() <= hitIndex)
+        if(hitIndex >= mHitGroups.size())
         {
-            mHit.resize(hitIndex + 1);
+            mHitGroups.resize(hitIndex+1);
         }
-        else
+        else if(mHitGroups[hitIndex].groupIndex >= 0)
         {
-            if (mHit[hitIndex].libraryIndex != -1)
-            {
-                logWarning("RtProgram::Desc::addHitGroup() - a hit-group already exists for index " + std::to_string(hitIndex) + ". Replacing the old group");
-            }
+            logError("already have a hit group at that index");
         }
-        mHit[hitIndex].anyHit = anyHit;
-        mHit[hitIndex].closestHit = closestHit;
-        mHit[hitIndex].intersection = intersection;
-        mHit[hitIndex].libraryIndex = mActiveLibraryIndex;
+
+        auto groupIndex = int32_t(mBaseDesc.mGroups.size());
+        mBaseDesc.beginEntryPointGroup();
+        if(closestHit.length())
+        {
+            mBaseDesc.entryPoint(ShaderType::ClosestHit, closestHit);
+        }
+        if(anyHit.length())
+        {
+            mBaseDesc.entryPoint(ShaderType::AnyHit, anyHit);
+        }
+        if(intersection.length())
+        {
+            mBaseDesc.entryPoint(ShaderType::Intersection, intersection);
+        }
+
+        DescExtra::GroupInfo info = { mBaseDesc.mActiveGroup };
+        mHitGroups[hitIndex] = info;
         return *this;
     }
 
@@ -124,166 +125,101 @@ namespace Falcor
 
     RtProgram::SharedPtr RtProgram::create(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
     {
-        if (desc.mRayGen.libraryIndex == -1)
+        size_t rayGenCount = desc.mRayGenEntryPoints.size();
+        if (rayGenCount == 0)
         {
-            logError("Can't create an RtProgram without a ray-generation shader");
-            return nullptr;
+            throw std::exception("Can't create an RtProgram without a ray generation shader");
+        }
+        else if(rayGenCount > 1)
+        {
+            throw std::exception("Can't create an RtProgram with more than one ray generation shader");
         }
 
         SharedPtr pProg = SharedPtr(new RtProgram(desc, maxPayloadSize, maxAttributesSize));
+        pProg->init(desc);
         pProg->addDefine("_MS_DISABLE_ALPHA_TEST");
         pProg->addDefine("_DEFAULT_ALPHA_TEST");
 
         return pProg;
     }
 
-    void RtProgram::updateReflection() const
+    void RtProgram::init(const RtProgram::Desc& desc)
     {
-        if (mReflectionDirty)
-        {
-            // Create the global reflector and root-signature
-            std::string log;
-            mpGlobalReflector = ProgramReflection::create(nullptr, ProgramReflection::ResourceScope::Global, log);
-            mpGlobalReflector = ProgramReflection::merge(*mpGlobalReflector, *mpRayGenProgram->getGlobalReflector());
-
-            for (const auto m : mMissProgs)
-            {
-                if (m) mpGlobalReflector = ProgramReflection::merge(*mpGlobalReflector, *m->getGlobalReflector());
-            }
-
-            for (const auto& h : mHitProgs)
-            {
-                if (h) mpGlobalReflector = ProgramReflection::merge(*mpGlobalReflector, *h->getGlobalReflector());
-            }
-
-            mpGlobalRootSignature = RootSignature::create(mpGlobalReflector.get(), false);
-
-            mReflectionDirty = false;
-        }
+        Program::init(desc.mBaseDesc, desc.mDefineList);
+        mDescExtra = desc;
     }
 
     RtProgram::RtProgram(const Desc& desc, uint32_t maxPayloadSize, uint32_t maxAttributesSize)
+        : Program()
+        , mMaxPayloadSize(maxPayloadSize)
+        , mMaxAttributesSize(maxAttributesSize)
     {
-        // Create the programs
-        const std::string raygenFile = desc.mShaderLibraries[desc.mRayGen.libraryIndex]->getFilename();
-        mpRayGenProgram = RayGenProgram::createFromFile(raygenFile.c_str(), desc.mRayGen.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize, desc.getCompilerFlags());
+    }
 
-        mMissProgs.resize(desc.mMiss.size());
-        for (size_t i = 0 ; i < desc.mMiss.size() ; i++)
+    static uint64_t sHitGroupID = 0;
+
+    EntryPointGroupKernels::SharedPtr RtProgram::createEntryPointGroupKernels(
+        const std::vector<Shader::SharedPtr>& shaders,
+        EntryPointBaseReflection::SharedPtr const& pReflector) const
+    {
+        assert(shaders.size() != 0);
+
+        auto localRootSignature = RootSignature::createLocal(pReflector.get());
+
+        switch( shaders[0]->getType() )
         {
-            const auto& m = desc.mMiss[i];
-
-            if (m.libraryIndex != -1)
+        case ShaderType::AnyHit:
+        case ShaderType::ClosestHit:
+        case ShaderType::Intersection:
             {
-                const std::string missFile = desc.mShaderLibraries[m.libraryIndex]->getFilename();
-                mMissProgs[i] = MissProgram::createFromFile(missFile.c_str(), m.entryPoint.c_str(), desc.mDefineList, maxPayloadSize, maxAttributesSize, desc.getCompilerFlags());
+                std::string exportName = "HitGroup" + std::to_string(sHitGroupID++);
+                return RtEntryPointGroupKernels::create(RtEntryPointGroupKernels::Type::RtHitGroup, shaders, exportName, localRootSignature, mMaxPayloadSize, mMaxAttributesSize);
+            }
+
+        default:
+            return RtEntryPointGroupKernels::create(RtEntryPointGroupKernels::Type::RtSingleShader, shaders, shaders[0]->getEntryPoint(), localRootSignature, mMaxPayloadSize, mMaxAttributesSize);
+        }
+
+    }
+
+    RtStateObject::SharedPtr RtProgram::getRtso(RtProgramVars* pVars)
+    {
+        auto pProgramVersion = getActiveVersion();
+        auto pProgramKernels = pProgramVersion->getKernels(pVars);
+
+        mRtsoGraph.walk((void*) pProgramKernels.get());
+
+        RtStateObject::SharedPtr pRtso = mRtsoGraph.getCurrentNode();
+
+        if (pRtso == nullptr)
+        {
+            RtStateObject::Desc desc;
+            desc.setKernels(pProgramKernels);
+            desc.setMaxTraceRecursionDepth(mDescExtra.mMaxTraceRecursionDepth);
+            desc.setGlobalRootSignature(pProgramKernels->getRootSignature());
+
+            StateGraph::CompareFunc cmpFunc = [&desc](RtStateObject::SharedPtr pRtso) -> bool
+            {
+                return pRtso && (desc == pRtso->getDesc());
+            };
+
+            if (mRtsoGraph.scanForMatchingNode(cmpFunc))
+            {
+                pRtso = mRtsoGraph.getCurrentNode();
+            }
+            else
+            {
+                pRtso = RtStateObject::create(desc);
+                mRtsoGraph.setCurrentNodeData(pRtso);
             }
         }
 
-        mHitProgs.resize(desc.mHit.size());
-        for (size_t i = 0 ; i < desc.mHit.size() ; i++)
-        {
-            const auto& h = desc.mHit[i];
-            if(h.libraryIndex != -1)
-            {
-                const std::string hitFile = desc.mShaderLibraries[h.libraryIndex]->getFilename();
-                mHitProgs[i] = HitProgram::createFromFile(hitFile.c_str(), h.closestHit, h.anyHit, h.intersection, desc.mDefineList, maxPayloadSize, maxAttributesSize, desc.getCompilerFlags());
-            }
-        }
+        return pRtso;
     }
 
-    bool RtProgram::addDefine(const std::string& name, const std::string& value /*= ""*/)
+    void RtProgram::setScene(Scene::ConstSharedPtrRef pScene)
     {
-        bool changed = false;
-        if(mpRayGenProgram && mpRayGenProgram->addDefine(name, value)) changed = true;
-
-        for (auto& pHit : mHitProgs)
-        {
-            if (pHit && pHit->addDefine(name, value)) changed = true;
-        }
-
-        for (auto& pMiss : mMissProgs)
-        {
-            if (pMiss && pMiss->addDefine(name, value)) changed = true;
-        }
-
-        if (changed) mReflectionDirty = true;
-        return changed;
-    }
-
-    bool RtProgram::addDefines(const DefineList& dl)
-    {
-        bool changed = false;
-        if (mpRayGenProgram && mpRayGenProgram->addDefines(dl)) changed = true;
-
-        for (auto& pHit : mHitProgs)
-        {
-            if (pHit && pHit->addDefines(dl)) changed = true;
-        }
-
-        for (auto& pMiss : mMissProgs)
-        {
-            if (pMiss && pMiss->addDefines(dl)) changed = true;
-        }
-
-        if (changed) mReflectionDirty = true;
-        return changed;
-    }
-
-    bool RtProgram::removeDefine(const std::string& name)
-    {
-        bool changed = false;
-        if (mpRayGenProgram && mpRayGenProgram->removeDefine(name)) changed = true;
-
-        for (auto& pHit : mHitProgs)
-        {
-            if (pHit && pHit->removeDefine(name)) changed = true;
-        }
-
-        for (auto& pMiss : mMissProgs)
-        {
-            if (pMiss && pMiss->removeDefine(name)) changed = true;
-        }
-
-        if (changed) mReflectionDirty = true;
-        return changed;
-    }
-
-    bool RtProgram::removeDefines(size_t pos, size_t len, const std::string& str)
-    {
-        bool changed = false;
-        if (mpRayGenProgram && mpRayGenProgram->removeDefines(pos, len, str)) changed = true;
-
-        for (auto& pHit : mHitProgs)
-        {
-            if (pHit && pHit->removeDefines(pos, len, str)) changed = true;
-        }
-
-        for (auto& pMiss : mMissProgs)
-        {
-            if (pMiss && pMiss->removeDefines(pos, len, str)) changed = true;
-        }
-
-        if (changed) mReflectionDirty = true;
-        return changed;
-    }
-
-    bool RtProgram::setDefines(const DefineList& dl)
-    {
-        bool changed = false;
-        if (mpRayGenProgram && mpRayGenProgram->setDefines(dl)) changed = true;
-
-        for (auto& pHit : mHitProgs)
-        {
-            if (pHit && pHit->setDefines(dl)) changed = true;
-        }
-
-        for (auto& pMiss : mMissProgs)
-        {
-            if (pMiss && pMiss->setDefines(dl)) changed = true;
-        }
-
-        if (changed) mReflectionDirty = true;
-        return changed;
+        if (mpScene == pScene) return;
+        mpScene = pScene;
     }
 }

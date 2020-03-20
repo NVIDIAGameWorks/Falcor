@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Core/API/Device.h"
 
@@ -144,9 +144,18 @@ namespace Falcor
         D3D_FEATURE_LEVEL deviceFeatureLevel;
 
         // Read FALCOR_GPU_DEVICE_ID environment variable or select first GPU device
-        const int selectedGpuDeviceId = ([] () {
+        const uint32_t selectedGpuDeviceId = ([] ()
+        {
             std::string str;
             return getEnvironmentVariable("FALCOR_GPU_DEVICE_ID", str) ? std::stoi(str) : 0;
+        })();
+
+        // Read FALCOR_GPU_VENDOR_ID environment variable or return 0
+        const uint32_t selectedGpuVendorId = ([] ()
+        {
+            std::string str;
+            // Use base = 0 in stoi to autodetect octal/hex/decimal strings
+            return getEnvironmentVariable("FALCOR_GPU_VENDOR_ID", str) ? std::stoi(str, nullptr, 0) : 0;
         })();
 
         auto createMaxFeatureLevel = [&](const D3D_FEATURE_LEVEL* pFeatureLevels, uint32_t featureLevelCount) -> bool
@@ -163,7 +172,7 @@ namespace Falcor
             return false;
         };
 
-        int gpuDeviceId = 0;
+        uint32_t gpuDeviceId = 0;
         for (uint32_t i = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(i, &pAdapter); i++)
         {
             DXGI_ADAPTER_DESC1 desc;
@@ -171,6 +180,9 @@ namespace Falcor
 
             // Skip SW adapters
             if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) continue;
+
+            // Skip if vendorId doesn't match requested
+            if (selectedGpuVendorId != 0 && desc.VendorId != selectedGpuVendorId) continue;
 
             // Skip to selected device id
             if (gpuDeviceId++ < selectedGpuDeviceId) continue;
@@ -185,7 +197,7 @@ namespace Falcor
             }
         }
 
-        logErrorAndExit("Could not find a GPU that supports D3D12 device");
+        logFatal("Could not find a GPU that supports D3D12 device");
         return nullptr;
     }
 
@@ -235,8 +247,7 @@ namespace Falcor
         case LowLevelContextData::CommandQueueType::Direct:
             return D3D12_COMMAND_LIST_TYPE_DIRECT;
         default:
-            should_not_get_here();
-            return D3D12_COMMAND_LIST_TYPE_DIRECT;
+            throw std::exception("Unknown command queue type");
         }
     }
 
@@ -283,13 +294,19 @@ namespace Falcor
             if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&pDx12Debug))))
             {
                 pDx12Debug->EnableDebugLayer();
+                dxgiFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }
-            dxgiFlags |= DXGI_CREATE_FACTORY_DEBUG;
+            else
+            {
+                logWarning("The D3D12 debug layer is not available. Please install Graphics Tools.");
+                mDesc.enableDebugLayer = false;
+            }
         }
 
         // Create the DXGI factory
         d3d_call(CreateDXGIFactory2(dxgiFlags, IID_PPV_ARGS(&mpApiData->pDxgiFactory)));
 
+        // Create the device
         mApiHandle = createDevice(mpApiData->pDxgiFactory, getD3DFeatureLevel(mDesc.apiMajorVersion, mDesc.apiMinorVersion), mDesc.experimentalFeatures);
         if (mApiHandle == nullptr) return false;
 

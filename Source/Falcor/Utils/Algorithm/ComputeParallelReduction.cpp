@@ -1,80 +1,73 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "ComputeParallelReduction.h"
-#include "ParallelReductionType.h"
+#include "ParallelReductionType.slangh"
 
 namespace Falcor
 {
     static const char kShaderFile[] = "Utils/Algorithm/ParallelReduction.cs.slang";
-    static const char kShaderModel[] = "6_0";
 
     ComputeParallelReduction::SharedPtr ComputeParallelReduction::create()
     {
-        SharedPtr ptr = SharedPtr(new ComputeParallelReduction());
-        return ptr->init() ? ptr : nullptr;
+        return SharedPtr(new ComputeParallelReduction());
     }
 
-    bool ComputeParallelReduction::init()
+    ComputeParallelReduction::ComputeParallelReduction()
     {
         // Create the programs.
         // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
         Program::DefineList defines = { { "FORMAT_CHANNELS", "1" }, { "FORMAT_TYPE", "1" } };
-        if (!(mpInitialProgram = ComputeProgram::createFromFile(kShaderFile, "initialPass", defines, Shader::CompilerFlags::None, kShaderModel))) return false;
-        if (!(mpFinalProgram = ComputeProgram::createFromFile(kShaderFile, "finalPass", defines, Shader::CompilerFlags::None, kShaderModel))) return false;
-        if (!(mpVars = ComputeVars::create(mpInitialProgram.get()))) return false;
+        mpInitialProgram = ComputeProgram::createFromFile(kShaderFile, "initialPass", defines, Shader::CompilerFlags::None);
+        mpFinalProgram = ComputeProgram::createFromFile(kShaderFile, "finalPass", defines, Shader::CompilerFlags::None);
+        mpVars = ComputeVars::create(mpInitialProgram.get());
 
         // Check assumptions on thread group sizes. The initial pass is a 2D dispatch, the final pass a 1D.
         assert(mpInitialProgram->getReflector()->getThreadGroupSize().z == 1);
         assert(mpFinalProgram->getReflector()->getThreadGroupSize().y == 1 && mpFinalProgram->getReflector()->getThreadGroupSize().z == 1);
 
         mpState = ComputeState::create();
-
-        return true;
     }
 
-    bool ComputeParallelReduction::allocate(uint32_t elementCount)
+    void ComputeParallelReduction::allocate(uint32_t elementCount)
     {
         if (mpBuffers[0] == nullptr || mpBuffers[0]->getElementCount() < elementCount)
         {
             // Buffer 0 has one element per tile.
-            mpBuffers[0] = TypedBuffer<glm::uvec4>::create(elementCount);
-            if (!mpBuffers[0]) return false;
+            mpBuffers[0] = Buffer::createTyped<glm::uvec4>(elementCount);
 
             // Buffer 1 has one element per N elements in buffer 0.
             const uint32_t numElem1 = div_round_up(elementCount, mpFinalProgram->getReflector()->getThreadGroupSize().x);
             if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1)
             {
-                mpBuffers[1] = TypedBuffer<glm::uvec4>::create(numElem1);
-                if (!mpBuffers[1]) return false;
+                mpBuffers[1] = Buffer::createTyped<glm::uvec4>(numElem1);
             }
         }
-        return true;
     }
 
     template<typename T>
@@ -124,12 +117,7 @@ namespace Falcor
         assert(resolution.x > 0 && resolution.y > 0);
 
         const glm::uvec2 numTiles = div_round_up(resolution, glm::uvec2(mpInitialProgram->getReflector()->getThreadGroupSize()));
-        if (!allocate(numTiles.x * numTiles.y))
-        {
-            logError("ComputeParallelReduction::execute() - Failed to allocate intermediate buffers. Aborting.");
-            return false;
-        }
-
+        allocate(numTiles.x * numTiles.y);
         assert(mpBuffers[0]);
         assert(mpBuffers[1]);
 
@@ -146,7 +134,7 @@ namespace Falcor
         mpVars["PerFrameCB"]["gResolution"] = resolution;
         mpVars["PerFrameCB"]["gNumTiles"] = numTiles;
         mpVars["gInput"] = pInput;
-        mpVars->setTypedBuffer("gResult", mpBuffers[0]);
+        mpVars->setBuffer("gResult", mpBuffers[0]);
 
         mpState->setProgram(mpInitialProgram);
         glm::uvec3 numGroups = div_round_up(glm::uvec3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
@@ -159,8 +147,8 @@ namespace Falcor
         while (elems > 1)
         {
             mpVars["PerFrameCB"]["gElems"] = elems;
-            mpVars->setTypedBuffer("gInputBuffer", mpBuffers[inputsBufferIndex]);
-            mpVars->setTypedBuffer("gResult", mpBuffers[1 - inputsBufferIndex]);
+            mpVars->setBuffer("gInputBuffer", mpBuffers[inputsBufferIndex]);
+            mpVars->setBuffer("gResult", mpBuffers[1 - inputsBufferIndex]);
 
             mpState->setProgram(mpFinalProgram);
             uint32_t numGroups = div_round_up(elems, mpFinalProgram->getReflector()->getThreadGroupSize().x);

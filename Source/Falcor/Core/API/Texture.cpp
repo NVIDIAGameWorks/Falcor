@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Texture.h"
 #include "Device.h"
@@ -48,7 +48,7 @@ namespace Falcor
             {
                 logError("Error when creating " + texType + " of format " + to_string(format) + ". The requested bind-flags are not supported.\n"
                     "Requested = (" + to_string(flags) + "), supported = (" + to_string(supported) + ").\n\n"
-                    "The texture will be created only with the supported bind flags, which may result in a crash or a rendering error");
+                    "The texture will be created only with the supported bind flags, which may result in a crash or a rendering error.");
                 flags = flags & supported;
             }
 
@@ -58,6 +58,7 @@ namespace Falcor
 
     Texture::SharedPtr Texture::createFromApiHandle(ApiHandle handle, Type type, uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, uint32_t mipLevels, State initState, BindFlags bindFlags)
     {
+        assert(handle);
         switch (type)
         {
             case Resource::Type::Texture1D:
@@ -75,13 +76,15 @@ namespace Falcor
             case Resource::Type::TextureCube:
                 assert(depth == 1 && sampleCount == 1);
                 break;
+            default:
+                should_not_get_here();
+                break;
         }
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
         pTexture->mApiHandle = handle;
-
         pTexture->mState.global = initState;
         pTexture->mState.isGlobal = true;
-        return pTexture->mApiHandle ? pTexture : nullptr;
+        return pTexture;
     }
 
     Texture::SharedPtr Texture::create1D(uint32_t width, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags)
@@ -89,7 +92,7 @@ namespace Falcor
         bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "Texture1D");
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags));
         pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-        return pTexture->mApiHandle ? pTexture : nullptr;
+        return pTexture;
     }
 
     Texture::SharedPtr Texture::create2D(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags)
@@ -97,7 +100,7 @@ namespace Falcor
         bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags));
         pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-        return pTexture->mApiHandle ? pTexture : nullptr;
+        return pTexture;
     }
 
     Texture::SharedPtr Texture::create3D(uint32_t width, uint32_t height, uint32_t depth, ResourceFormat format, uint32_t mipLevels, const void* pData, BindFlags bindFlags, bool isSparse)
@@ -105,16 +108,15 @@ namespace Falcor
         bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags));
         pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-        return pTexture->mApiHandle ? pTexture : nullptr;
+        return pTexture;
     }
 
-    // Texture Cube
     Texture::SharedPtr Texture::createCube(uint32_t width, uint32_t height, ResourceFormat format, uint32_t arraySize, uint32_t mipLevels, const void* pData, BindFlags bindFlags)
     {
         bindFlags = updateBindFlags(bindFlags, pData != nullptr, mipLevels, format, "TextureCube");
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags));
         pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-        return pTexture->mApiHandle ? pTexture : nullptr;
+        return pTexture;
     }
 
     Texture::SharedPtr Texture::create2DMS(uint32_t width, uint32_t height, ResourceFormat format, uint32_t sampleCount, uint32_t arraySize, BindFlags bindFlags)
@@ -122,13 +124,17 @@ namespace Falcor
         bindFlags = updateBindFlags(bindFlags, false, 1, format, "Texture2DMultisample");
         Texture::SharedPtr pTexture = SharedPtr(new Texture(width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags));
         pTexture->apiInit(nullptr, false);
-        return pTexture->mApiHandle ? pTexture : nullptr;
+        return pTexture;
     }
 
     Texture::Texture(uint32_t width, uint32_t height, uint32_t depth, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount, ResourceFormat format, Type type, BindFlags bindFlags)
         : Resource(type, bindFlags, 0), mWidth(width), mHeight(height), mDepth(depth), mMipLevels(mipLevels), mSampleCount(sampleCount), mArraySize(arraySize), mFormat(format)
     {
-        if(mMipLevels == kMaxPossible)
+        assert(width > 0 && height > 0 && depth > 0);
+        assert(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
+        assert(format != ResourceFormat::Unknown);
+
+        if (mMipLevels == kMaxPossible)
         {
             uint32_t dims = width | height | depth;
             mMipLevels = bitScanReverse(dims) + 1;
@@ -210,6 +216,16 @@ namespace Falcor
         return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
     }
 
+    ShaderResourceView::SharedPtr Texture::getSRV()
+    {
+        return getSRV(0);
+    }
+
+    UnorderedAccessView::SharedPtr Texture::getUAV()
+    {
+        return getUAV(0);
+    }
+
     RenderTargetView::SharedPtr Texture::getRTV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
@@ -263,6 +279,7 @@ namespace Falcor
 
     void Texture::uploadInitData(const void* pData, bool autoGenMips)
     {
+        assert(gpDevice);
         auto pRenderContext = gpDevice->getRenderContext();
         if (autoGenMips)
         {
@@ -335,13 +352,13 @@ namespace Falcor
     SCRIPT_BINDING(Texture)
     {
         auto c = m.regClass(Texture);
-        c.func_("width", &Texture::getWidth);
-        c.func_("height", &Texture::getHeight);
-        c.func_("depth", &Texture::getDepth);
-        c.func_("mipCount", &Texture::getMipCount);
-        c.func_("arraySize", &Texture::getArraySize);
-        c.func_("samples", &Texture::getSampleCount);
-        c.func_("format", &Texture::getFormat);
+        c.roProperty("width", &Texture::getWidth);
+        c.roProperty("height", &Texture::getHeight);
+        c.roProperty("depth", &Texture::getDepth);
+        c.roProperty("mipCount", &Texture::getMipCount);
+        c.roProperty("arraySize", &Texture::getArraySize);
+        c.roProperty("samples", &Texture::getSampleCount);
+        c.roProperty("format", &Texture::getFormat);
 
         auto data = [](Texture* pTexture, uint32_t subresource)
         {

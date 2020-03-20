@@ -1,36 +1,36 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "RenderGraphEditor.h"
 #include <fstream>
-#include <experimental/filesystem>
+#include <filesystem>
 #include "RenderGraphEditor.h"
-
-namespace fs = std::experimental::filesystem;
+#include "dear_imgui/imgui.h"
+#include "dear_imgui/imgui_internal.h"
 
 const char* kViewerExecutableName = "Mogwai";
 const char* kScriptSwitch = "script";
@@ -67,6 +67,8 @@ void RenderGraphEditor::onLoad(RenderContext* pRenderContext)
     }
 
     mpDefaultIconTex = Texture::createFromFile(kDefaultPassIcon, false, false);
+    if (!mpDefaultIconTex) throw std::exception("Failed to load icon");
+
     loadAllPassLibraries();
 
     if (filePath.size())
@@ -93,6 +95,49 @@ void RenderGraphEditor::onDroppedFile(const std::string& filename)
     }
 }
 
+void setUpDockSpace(uint32_t width, uint32_t height)
+{
+    ImGuiID dockspace_id = ImGui::GetID("RenderGraphEditor");
+
+    if (ImGui::DockBuilderGetNode(dockspace_id) == NULL)
+    {
+        ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace); // Add empty node
+        ImGui::DockBuilderSetNodeSize(dockspace_id, ImVec2((float) width, (float) height));
+
+        ImGuiID dock_id_graph_editor = dockspace_id; // This variable tracks the central node
+        ImGuiID dock_id_render_ui = ImGui::DockBuilderSplitNode(dock_id_graph_editor, ImGuiDir_Right, 0.20f, NULL, &dock_id_graph_editor);
+        ImGuiID dock_id_editor_settings = ImGui::DockBuilderSplitNode(dock_id_graph_editor, ImGuiDir_Down, 0.25f, NULL, &dock_id_graph_editor);
+        ImGuiID dock_id_render_passes = ImGui::DockBuilderSplitNode(dock_id_editor_settings, ImGuiDir_Right, 0.75f, NULL, &dock_id_editor_settings);
+
+        ImGui::DockBuilderDockWindow("Graph Editor", dock_id_graph_editor);
+        ImGui::DockBuilderDockWindow("Render UI", dock_id_render_ui);
+        ImGui::DockBuilderDockWindow("Graph Editor Settings", dock_id_editor_settings);
+        ImGui::DockBuilderDockWindow("Render Passes", dock_id_render_passes);
+        ImGui::DockBuilderFinish(dockspace_id);
+    }
+
+    // create the main dockspace over the entire editor window
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->Pos);
+    ImGui::SetNextWindowSize(viewport->Size);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGui::SetNextWindowBgAlpha(0.0f);
+
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+    window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+    window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::Begin("Render Graph Editor", NULL, window_flags);
+    ImGui::PopStyleVar(3);
+
+    ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+    ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+    ImGui::End();
+}
+
 // some of this will need to be moved to render graph ui
 void RenderGraphEditor::onGuiRender(Gui* pGui)
 {
@@ -100,7 +145,9 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
 
     uint32_t screenHeight = mWindowSize.y;
     uint32_t screenWidth = mWindowSize.x;
-    
+
+    setUpDockSpace(screenWidth, screenHeight);
+
     Gui::MainMenu menu(pGui);
     Gui::Menu::Dropdown fileMenu = menu.dropdown("File");
     if (!mShowCreateGraphWindow && fileMenu.item("Create New Graph"))
@@ -131,7 +178,7 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
             std::string s;
             mpGraphs[mCurrentGraphIndex]->compile(pRenderContext, s);
         }
-        catch (std::exception e)
+        catch (const std::exception&)
         {
             MsgBoxButton msgBoxButton = msgBox("Attempting to save invalid graph.\nGraph may not execute correctly when loaded\nAre you sure you want to save the graph?"
                 , MsgBoxType::OkCancel);
@@ -243,15 +290,9 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
     if (settingsWindow.button("Validate Graph"))
     {
         std::string s;
-        try
-        {
-            mpGraphs[mCurrentGraphIndex]->compile(pRenderContext, s);
-            s = "The graph is valid";
-        }
-        catch (std::exception e)
-        {
-            s = std::string("The graph is invalid. ") + e.what();
-        }
+        bool valid = mpGraphs[mCurrentGraphIndex]->compile(pRenderContext, s);
+        if (valid) s += "The graph is valid";
+        else s += std::string("The graph is invalid.");
         msgBox(s);
         mCurrentLog += s;
     }
@@ -295,7 +336,7 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
             std::string s;
             mpGraphs[mCurrentGraphIndex]->compile(pRenderContext, s);
         }
-        catch (std::exception e)
+        catch (const std::exception& e)
         {
             openViewer = msgBox(std::string("Graph is invalid :\n ") + e.what() + "\n Are you sure you want to attempt preview?", MsgBoxType::OkCancel) == MsgBoxButton::Ok;
         }
@@ -359,17 +400,15 @@ void RenderGraphEditor::loadAllPassLibraries()
     std::string executableDirectory = getExecutableDirectory();
 
     // iterate through and find all render pass libraries
-    for (auto& file : fs::directory_iterator(executableDirectory))
+    for (auto& file : std::filesystem::directory_iterator(executableDirectory))
     {
         std::string filename = file.path().string();
         if (getExtensionFromFile(filename) == "dll")
         {
-            // check for addPasses() 
-            std::string fullpath;
-            findFileInDataDirectories(filename, fullpath);
-            DllHandle l = loadDll(fullpath.c_str());
+            // check for addPasses()
+            DllHandle l = loadDll(filename);
             auto pGetPass = (RenderPassLibrary::LibraryFunc)getDllProcAddress(l, "getPasses");
-            
+
             if (pGetPass)
             {
                 releaseDll(l);

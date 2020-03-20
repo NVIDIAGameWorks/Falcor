@@ -56,6 +56,42 @@
     <ClCompile Include="Tests\Utils\HalfUtilsTests.cpp">
       <Filter>Tests\Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Tests\Core\BufferAccessTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\ConstantBufferTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\UserConstantBufferTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\SlangMutatingTests.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\RootBufferTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\RootBufferParamBlockTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\Int64Tests.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Core\RootBufferStructTests.cpp">
+      <Filter>Tests\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\ShaderModel.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\WaveOps.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\TraceRayInline.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
+    <ClCompile Include="Tests\Slang\TraceRayFlags.cpp">
+      <Filter>Tests\Slang</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FalcorTest.h" />
@@ -93,9 +129,6 @@
     <ShaderSource Include="Tests\Slang\SlangTests.cs.slang">
       <Filter>Tests\Slang</Filter>
     </ShaderSource>
-    <ShaderSource Include="Tests\Slang\SlangShared.h">
-      <Filter>Tests\Slang</Filter>
-    </ShaderSource>
     <ShaderSource Include="Tests\Utils\BitTricksTests.cs.slang">
       <Filter>Tests\Utils</Filter>
     </ShaderSource>
@@ -122,6 +155,51 @@
     </ShaderSource>
     <ShaderSource Include="Tests\Utils\HalfUtilsTests.cs.slang">
       <Filter>Tests\Utils</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\SlangShared.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\BufferAccessTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\ConstantBufferTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\UserConstantBufferTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\SlangMutatingTests.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\RootBufferTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\RootBufferParamBlockTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\ParamBlockReflection.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\ParamBlockDefinition.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\Int64Tests.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Core\RootBufferStructTests.cs.slang">
+      <Filter>Tests\Core</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\ShaderModel.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\WaveOps.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\TraceRayInline.cs.slang">
+      <Filter>Tests\Slang</Filter>
+    </ShaderSource>
+    <ShaderSource Include="Tests\Slang\TraceRayFlags.cs.slang">
+      <Filter>Tests\Slang</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

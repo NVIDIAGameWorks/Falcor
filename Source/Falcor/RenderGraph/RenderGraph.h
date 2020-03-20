@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "RenderPassReflection.h"
 #include "ResourceCache.h"
@@ -46,7 +46,9 @@ namespace Falcor
 
         ~RenderGraph();
 
-        /** Create a new object
+        /** Create a new render graph.
+            \param[in] name Name of the render graph.
+            \return New object, or throws an exception if creation failed.
         */
         static SharedPtr create(const std::string& name = "");
 
@@ -146,7 +148,7 @@ namespace Falcor
         */
         const Scene::SharedPtr& getScene() const { return mpScene; }
 
-        /** Get an graph output name from the graph outputs 
+        /** Get an graph output name from the graph outputs
         */
         std::string getOutputName(size_t index) const;
 
@@ -167,10 +169,6 @@ namespace Falcor
         */
         void renderUI(Gui::Widgets& widget);
 
-        /** Enable/disable pass profiling
-        */
-        void profileGraph(bool enabled) { mProfileGraph = enabled; }
-
         /** Mouse event handler.
             Returns true if the event was handled by the object, false otherwise
         */
@@ -180,6 +178,11 @@ namespace Falcor
         Returns true if the event was handled by the object, false otherwise
         */
         bool onKeyEvent(const KeyboardEvent& keyEvent);
+
+        /** Called upon hot reload (by pressing F5).
+            \param[in] reloaded Resources that have been reloaded.
+        */
+        void onHotReload(HotReloadFlags reloaded);
 
         /** Get the dictionary objects used to communicate app data to the render-passes
         */
@@ -235,7 +238,7 @@ namespace Falcor
             uint32_t nodeId;
             std::string field;
 
-            bool operator==(const GraphOut& other) const 
+            bool operator==(const GraphOut& other) const
             {
                 if (nodeId != other.nodeId) return false;
                 if (field != other.field) return false;
@@ -248,7 +251,6 @@ namespace Falcor
         std::vector<GraphOut> mOutputs; // GRAPH_TODO should this be an unordered set?
         bool isGraphOutput(const GraphOut& graphOut) const;
 
-        bool mProfileGraph = true;
         Dictionary::SharedPtr mpPassDictionary;
         RenderGraphExe::SharedPtr mpExe;
         bool mRecompile = false;

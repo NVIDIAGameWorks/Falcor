@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Core/API/Texture.h"
 #include "Core/API/ResourceViews.h"
@@ -117,61 +117,65 @@ namespace Falcor
         */
         static SharedPtr getDefault();
 
-        /** create a new empty FBO.
+        /** Create a new empty FBO.
+            \return A new object, or throws an exception if creation failed.
         */
         static SharedPtr create();
 
-        /** Create an FBO from a list of textures.  It will bind mip 0 and the all of the array-slices
-            \param[in] colors A vector with color-textures. The index in the vector corresponds to the render-target index in the shader. You can use nullptr for unused indices
-            \param[in] depth An optional depth-buffer texture
-            \return A new object. The function will return nullptr if there's a mismatch in the textures can't be used together as an FBO (due to size mismatch, bind-flags issues, illegal formats, etc.)
+        /** Create an FBO from a list of textures. It will bind mip 0 and the all of the array slices.
+            \param[in] colors A vector with color textures. The index in the vector corresponds to the render target index in the shader. You can use nullptr for unused indices.
+            \param[in] depth An optional depth buffer texture.
+            \return A new object. An exception is thrown if creation failed, for example due to texture size mismatch, bind flags issues, illegal formats, etc.
         */
         static SharedPtr create(const std::vector<Texture::SharedPtr>& colors, const Texture::SharedPtr& pDepth = nullptr);
 
         /** Create a color-only 2D framebuffer.
-            \param[in] width Width of the render-targets.
-            \param[in] height Height of the render-targets.
+            \param[in] width Width of the render targets.
+            \param[in] height Height of the render targets.
             \param[in] fboDesc Struct specifying the frame buffer's attachments and formats.
             \param[in] arraySize Optional. The number of array slices in the texture.
-            \param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain
+            \param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain.
+            \return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
         */
         static SharedPtr create2D(uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize = 1, uint32_t mipLevels = 1);
 
         /** Create a color-only cubemap framebuffer.
-            \param[in] width width of the render-targets.
-            \param[in] height height of the render-targets.
+            \param[in] width width of the render targets.
+            \param[in] height height of the render targets.
             \param[in] fboDesc Struct specifying the frame buffer's attachments and formats.
             \param[in] arraySize Optional. The number of cubes in the texture.
-            \param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain
+            \param[in] mipLevels Optional. The number of mip levels to create. You can use Texture#kMaxPossible to create the entire chain.
+            \return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
         */
         static SharedPtr createCubemap(uint32_t width, uint32_t height, const Desc& fboDesc, uint32_t arraySize = 1, uint32_t mipLevels = 1);
 
-        /** Creates an FBO with a single color texture (single mip, single array-slice), and optionally a depth-buffer
-            \param[in] width Width of the render-targets
-            \param[in] height Height of the render-targets
-            \param[in] color The color format
-            \param[in] depth The depth-format. If a depth-buffer is not required, use ResourceFormat::Unknown
+        /** Creates an FBO with a single color texture (single mip, single array slice), and optionally a depth buffer.
+            \param[in] width Width of the render targets.
+            \param[in] height Height of the render targets.
+            \param[in] color The color format.
+            \param[in] depth The depth-format. If a depth-buffer is not required, use ResourceFormat::Unknown.
+            \return A new object. An exception is thrown if creation failed, for example due to invalid parameters.
         */
         static SharedPtr create2D(uint32_t width, uint32_t height, ResourceFormat color, ResourceFormat depth = ResourceFormat::Unknown);
 
         /** Attach a depth-stencil texture.
+            An exception is thrown if the texture can't be used as a depth-buffer (usually a format or bind flags issue).
             \param pDepthStencil The depth-stencil texture.
             \param mipLevel The selected mip-level to attach.
             \param firstArraySlice The first array-slice to bind
             \param arraySize The number of array sliced to bind, or Fbo#kAttachEntireMipLevel to attach the range [firstArraySlice, pTexture->getArraySize()]
-            \return false if the texture can't be used as a depth-buffer (usually a format or bind-flags issue). Otherwise, true
         */
-        bool attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
+        void attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
 
         /** Attach a color texture.
+            An exception is thrown if the texture can't be used as a color-target (usually a format or bind flags issue).
             \param pColorTexture The color texture.
             \param rtIndex The render-target index to attach the texture to.
             \param mipLevel The selected mip-level to attach.
             \param firstArraySlice The first array-slice to bind
             \param arraySize The number of array sliced to bind, or Fbo#kAttachEntireMipLevel to attach the range [firstArraySlice, pTexture->getArraySize()]
-            \return false if the texture can't be used as a color-target (usually a format or bind-flags issue). Otherwise, true
         */
-        bool attachColorTarget(const Texture::SharedPtr& pColorTexture, uint32_t rtIndex, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
+        void attachColorTarget(const Texture::SharedPtr& pColorTexture, uint32_t rtIndex, uint32_t mipLevel = 0, uint32_t firstArraySlice = 0, uint32_t arraySize = kAttachEntireMipLevel);
 
         /** Get the object's API handle.      
         */
@@ -258,8 +262,10 @@ namespace Falcor
         void applyDepthAttachment();
         void initApiHandle() const;
 
-        // Validates that the framebuffer attachments are OK. This function causes the actual HW resources to be generated (RTV/DSV)
-        bool finalize() const;
+        /** Validates that the framebuffer attachments are OK. Throws an exception on error.
+            This function causes the actual HW resources to be generated (RTV/DSV).
+        */
+        void finalize() const;
 
         Fbo();
         std::vector<Attachment> mColorAttachments;

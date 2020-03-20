@@ -1,36 +1,33 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
-#include "Core/BufferTypes/ConstantBuffer.h"
-#include "Core/BufferTypes/StructuredBuffer.h"
-#include "Core/Program/ParameterBlock.h"
 #include "Core/API/RootSignature.h"
-#include "ProgramVarsHelpers.h"
+#include "ShaderVar.h"
 
 namespace Falcor
 {
@@ -38,273 +35,118 @@ namespace Falcor
     class ComputeProgram;
     class ComputeContext;
 
+    class dlldecl EntryPointGroupVars  : public ParameterBlock
+    {
+    public:
+        using SharedPtr = ParameterBlockSharedPtr<EntryPointGroupVars>;
+        using SharedConstPtr = std::shared_ptr<const EntryPointGroupVars>;
+
+        /** Create a new entry point group vars object.
+            \param[in] pReflector The reflection object.
+            \param[in] groupIndexInProgram Group index.
+            \return New object, or throws an exception if creation failed.
+        */
+        static SharedPtr create(const EntryPointGroupReflection::SharedConstPtr& pReflector, uint32_t groupIndexInProgram)
+        {
+            assert(pReflector);
+            return SharedPtr(new EntryPointGroupVars(pReflector, groupIndexInProgram));
+        }
+
+        uint32_t getGroupIndexInProgram() const { return mGroupIndexInProgram; }
+
+    protected:
+        EntryPointGroupVars(const EntryPointGroupReflection::SharedConstPtr& pReflector, uint32_t groupIndexInProgram)
+            : ParameterBlock(pReflector->getProgramVersion(), pReflector)
+            , mGroupIndexInProgram(groupIndexInProgram)
+        {
+            assert(pReflector);
+        }
+
+    private:
+        uint32_t mGroupIndexInProgram;
+    };
+
     /** This class manages a program's reflection and variable assignment.
         It's a high-level abstraction of variables-related concepts such as CBs, texture and sampler assignments, root-signature, descriptor tables, etc.
     */
-    class dlldecl ProgramVars : public IProgramVars
+    class dlldecl ProgramVars : public ParameterBlock
     {
     public:
-        /** Bind a constant buffer object by name.
-            If the name doesn't exists or the CBs size doesn't match the required size, the call will fail.
-            If a buffer was previously bound it will be released.
-            \param[in] name The name of the constant buffer in the program
-            \param[in] pCB The constant buffer object
-            \return false is the call failed, otherwise true
-        */
-        bool setConstantBuffer(const std::string& name, const ConstantBuffer::SharedPtr& pCB);
-
-        /** Bind a constant buffer object by index.
-            If the no CB exists in the specified index or the CB size doesn't match the required size, the call will fail.
-            If a buffer was previously bound it will be released.
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace The register space
-            \param[in] baseRegIndex The base register index
-            \param[in] arrayIndex The array index, or 0 for non-array variables
-            \param[in] pCB The constant buffer object
-            \return false is the call failed, otherwise true
-        */
-        bool setConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ConstantBuffer::SharedPtr& pCB);
-
-        /** Get a constant buffer object.
-            \param[in] name The name of the buffer
-            \return If the name is valid, a shared pointer to the CB. Otherwise returns nullptr
-        */
-        ConstantBuffer::SharedPtr getConstantBuffer(const std::string& name) const;
-
-        /** Get a constant buffer object.
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace The register space
-            \param[in] baseRegIndex The base register index
-            \param[in] arrayIndex The array index, or 0 for non-array variables
-            \return If the indices are valid, a shared pointer to the buffer. Otherwise returns nullptr
-        */
-        ConstantBuffer::SharedPtr getConstantBuffer(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
-
-        /** Set a raw-buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
-            \param[in] name The name of the buffer
-            \param[in] pBuf The buffer object
-            \return false is the call failed, otherwise true
-        */
-        bool setRawBuffer(const std::string& name, const Buffer::SharedPtr& pBuf);
-        
-        /** Set a typed buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
-            \param[in] name The name of the buffer
-            \param[in] pBuf The buffer object
-            \return false is the call failed, otherwise true
-        */
-        bool setTypedBuffer(const std::string& name, const TypedBufferBase::SharedPtr& pBuf);
-
-        /** Set a structured buffer. Based on the shader reflection, it will be bound as either an SRV or a UAV
-            \param[in] name The name of the buffer
-            \param[in] pBuf The buffer object
-            \return false is the call failed, otherwise true
-        */
-        bool setStructuredBuffer(const std::string& name, const StructuredBuffer::SharedPtr& pBuf);
-
-        /** Get a raw-buffer object.
-            \param[in] name The name of the buffer
-            \return If the name is valid, a shared pointer to the buffer object. Otherwise returns nullptr
-        */
-        Buffer::SharedPtr getRawBuffer(const std::string& name) const;
-
-        /** Get a typed buffer object.
-            \param[in] name The name of the buffer
-            \return If the name is valid, a shared pointer to the buffer object. Otherwise returns nullptr
-        */
-        TypedBufferBase::SharedPtr getTypedBuffer(const std::string& name) const;
-        
-        /** Get a structured buffer object.
-            \param[in] name The name of the buffer
-            \return If the name is valid, a shared pointer to the buffer object. Otherwise returns nullptr
-        */
-        StructuredBuffer::SharedPtr getStructuredBuffer(const std::string& name) const;
-
-        /** Bind a texture. Based on the shader reflection, it will be bound as either an SRV or a UAV
-            \param[in] name The name of the texture object in the shader
-            \param[in] pTexture The texture object to bind
-            \return false is the call failed, otherwise true
-        */
-        bool setTexture(const std::string& name, const Texture::SharedPtr& pTexture);
-
-        /** Get a texture object.
-            \param[in] name The name of the texture
-            \return If the name is valid, a shared pointer to the texture object. Otherwise returns nullptr
-        */
-        Texture::SharedPtr getTexture(const std::string& name) const;
-
-        /** Bind an SRV.
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace The register space
-            \param[in] baseRegIndex The base register index
-            \param[in] arrayIndex The array index, or 0 for non-array variables
-            \param[in] pSrv The shader-resource-view. If it's nullptr, will set a view to a default (black) texture.
-            \return false is the call failed, otherwise true
-        */
-        bool setSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const ShaderResourceView::SharedPtr& pSrv);
-
-        /** Bind a UAV.
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace The register space
-            \param[in] baseRegIndex The base register index
-            \param[in] arrayIndex The array index, or 0 for non-array variables
-            \param[in] pUav The unordered-access-view. If it's nullptr, will set a view to a default (black) texture.
-            \return false is the call failed, otherwise true
-        */
-        bool setUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const UnorderedAccessView::SharedPtr& pUav);
-
-        /** Get an SRV object.
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace Register space the SRV is located in
-            \param[in] baseRegIndex Register index the SRV is located at
-            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
-            \return If the indices are valid, a shared pointer to the SRV. Otherwise returns nullptr
-        */
-        ShaderResourceView::SharedPtr getSrv(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
-
-        /** Get a UAV object
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace Register space the UAV is located in
-            \param[in] baseRegIndex Register index the UAV is located at
-            \param[in] arrayIndex Index into array, if applicable. Use 0 otherwise
-            \return If the indices are valid, a shared pointer to the UAV. Otherwise returns nullptr
-        */
-        UnorderedAccessView::SharedPtr getUav(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
-
-        /** Bind a sampler to the program in the global namespace.
-            \param[in] name The name of the sampler object in the shader
-            \param[in] pSampler The sampler object to bind
-            \return false if the sampler was not found in the program, otherwise true
-        */
-        bool setSampler(const std::string& name, const Sampler::SharedPtr& pSampler);
-
-        /** Bind a sampler to the program in the global namespace.
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace Register space the sampler is located in
-            \param[in] baseRegIndex Register index the sampler is located at
-            \param[in] arrayIndex Index into sampler array, if applicable. Use 0 otherwise
-            \param[in] The sampler object
-            \return false if the sampler was not found in the program, otherwise true
-        */
-        bool setSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex, const Sampler::SharedPtr& pSampler);
-
-        /** Gets a sampler object.
-            \return If the index is valid, a shared pointer to the sampler. Otherwise returns nullptr
-        */
-        Sampler::SharedPtr getSampler(const std::string& name) const;
-
-        /** Gets a sampler object.
-            Please note that the register space and index are the global indices used in the program. Do not confuse those indices with ParameterBlock::BindLocation.
-            \param[in] regSpace Register space the sampler is located in
-            \param[in] baseRegIndex Register index the sampler is located at
-            \param[in] arrayIndex Index into sampler array, if applicable. Use 0 otherwise
-            \param[in] The sampler object
-            \return If the index is valid, a shared pointer to the sampler. Otherwise returns nullptr
-        */
-        Sampler::SharedPtr getSampler(uint32_t regSpace, uint32_t baseRegIndex, uint32_t arrayIndex) const;
+        using SharedPtr = ParameterBlockSharedPtr<ProgramVars>;
+        using SharedConstPtr = std::shared_ptr<const ProgramVars>;
 
         /** Get the program reflection interface
         */
         const ProgramReflection::SharedConstPtr& getReflection() const { return mpReflector; }
 
-        /** Get the root signature object
-        */
-        const RootSignature::SharedPtr& getRootSignature() const { return mpRootSignature; }
+        virtual bool updateSpecializationImpl() const override;
 
-        /** Get the number of parameter-blocks
-        */
-        uint32_t getParameterBlockCount() const { return (uint32_t)mParameterBlocks.size(); }
-        
-        /** Get a list of indices translating a parameter-block's set index to the root-signature entry index
-        */
-        const std::vector<uint32_t>& getParameterBlockRootIndices(uint32_t blockIndex) const { return mParameterBlocks[blockIndex].rootIndex; }
-
-        /** Get parameter-block by index. You can translate a name to an index using the ProgramReflection object
-        */
-        ParameterBlock::SharedPtr getParameterBlock(uint32_t blockIndex) const;
-
-        /** Get parameter-block by name
-        */
-        ParameterBlock::SharedPtr getParameterBlock(const std::string& name) const;
-
-        /** Set parameter-block by index. You can translate a name to an index using the ProgramReflection object
-        */
-        bool setParameterBlock(uint32_t blockIndex, const std::shared_ptr<ParameterBlock>& pBlock);
-
-        /** Set parameter-block by name
-        */
-        bool setParameterBlock(const std::string& name, const std::shared_ptr<ParameterBlock>& pBlock);
-
-        /** Get the default parameter-block
-        */
-        const ParameterBlock::SharedPtr& getDefaultBlock() const { return mDefaultBlock.pBlock; }
-
-        // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
-        Sampler::SharedPtr getSampler(uint32_t) const = delete;
-        bool setSampler(uint32_t, const Sampler::SharedPtr&) = delete;
-        bool setConstantBuffer(uint32_t, const ConstantBuffer::SharedPtr&) = delete;
-        ConstantBuffer::SharedPtr getConstantBuffer(uint32_t) const = delete;
-
-        template<bool forGraphics>
-        bool applyProgramVarsCommon(CopyContext* pContext, bool bindRootSig);
+        uint32_t getEntryPointGroupCount() const { return uint32_t(mpEntryPointGroupVars.size()); }
+        EntryPointGroupVars* getEntryPointGroupVars(uint32_t index) const
+        {
+            return mpEntryPointGroupVars[index].get();
+        }
 
     protected:
-        ProgramVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig);
-        
-        RootSignature::SharedPtr mpRootSignature;
+        ProgramVars(const ProgramReflection::SharedConstPtr& pReflector);
+
         ProgramReflection::SharedConstPtr mpReflector;
 
-        struct BlockData
-        {
-            ParameterBlock::SharedPtr pBlock;
-            std::vector<uint32_t> rootIndex;        // Maps the block's set-index to the root-signature entry
-            bool bind = true;
-        };
+        void addSimpleEntryPointGroups();
 
-        BlockData mDefaultBlock;
-        std::vector<BlockData> mParameterBlocks; // First element is the global block
-        ProgramVars::BlockData initParameterBlock(const ParameterBlockReflection::SharedConstPtr& pBlockReflection, bool createBuffers);
-
-        template<bool forGraphics>
-        bool bindRootSetsCommon(CopyContext* pContext, bool bindRootSig);
+        std::vector<EntryPointGroupVars::SharedPtr> mpEntryPointGroupVars;
     };
 
-    class dlldecl GraphicsVars : public ProgramVars, public std::enable_shared_from_this<GraphicsVars>
+    class dlldecl GraphicsVars : public ProgramVars
     {
     public:
-        using SharedPtr = VarsSharedPtr<GraphicsVars>;
+        using SharedPtr = ParameterBlockSharedPtr<GraphicsVars>;
         using SharedConstPtr = std::shared_ptr<const GraphicsVars>;
+        using ConstSharedPtrRef = const SharedPtr&;
 
-        /** Create a new object
-            \param[in] pReflector A program reflection object containing the requested declarations
-            \param[in] createBuffers If true, will create the ConstantBuffer objects. Otherwise, the user will have to bind the CBs himself
-            \param[in] pRootSignature A root-signature describing how to bind resources into the shader. If this parameter is nullptr, a root-signature object will be created from the program reflection object
+        /** Create a new graphics vars object.
+            \param[in] pReflector A program reflection object containing the requested declarations.
+            \return A new object, or an exception is thrown if creation failed.
         */
-        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true, const RootSignature::SharedPtr& pRootSig = nullptr);
+        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector);
+
+        /** Create a new graphics vars object.
+            \param[in] pProg A program containing the requested declarations. The active version of the program is used.
+            \return A new object, or an exception is thrown if creation failed.
+        */
         static SharedPtr create(const GraphicsProgram* pProg);
-        virtual bool apply(RenderContext* pContext, bool bindRootSig);
-        SharedPtr getVars() { return shared_from_this(); }
+
+        virtual bool apply(RenderContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+
     protected:
-        GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
-            ProgramVars(pReflector, createBuffers, pRootSig) {}
+        GraphicsVars(const ProgramReflection::SharedConstPtr& pReflector);
     };
 
-    class dlldecl ComputeVars : public ProgramVars, public std::enable_shared_from_this<ComputeVars>
+    template<bool forGraphics>
+    bool applyProgramVarsCommon(ParameterBlock* pVars, CopyContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+
+    class dlldecl ComputeVars : public ProgramVars
     {
     public:
-        using SharedPtr = VarsSharedPtr<ComputeVars>;
+        using SharedPtr = ParameterBlockSharedPtr<ComputeVars>;
         using SharedConstPtr = std::shared_ptr<const ComputeVars>;
+        using ConstSharedPtrRef = const SharedPtr&;
 
-        /** Create a new object
-            \param[in] pReflector A program reflection object containing the requested declarations
-            \param[in] createBuffers If true, will create the ConstantBuffer objects. Otherwise, the user will have to bind the CBs himself
-            \param[in] pRootSignature A root-signature describing how to bind resources into the shader. If this parameter is nullptr, a root-signature object will be created from the program reflection object
+        /** Create a new compute vars object.
+            \param[in] pReflector A program reflection object containing the requested declarations.
+            \return A new object, or an exception is thrown if creation failed.
         */
-        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers = true, const RootSignature::SharedPtr& pRootSig = nullptr);
+        static SharedPtr create(const ProgramReflection::SharedConstPtr& pReflector);
+
+        /** Create a new compute vars object.
+            \param[in] pProg A program containing the requested declarations. The active version of the program is used.
+            \return A new object, or an exception is thrown if creation failed.
+        */
         static SharedPtr create(const ComputeProgram* pProg);
-        virtual bool apply(ComputeContext* pContext, bool bindRootSig);
-        SharedPtr getVars() { return shared_from_this(); }
+
+        virtual bool apply(ComputeContext* pContext, bool bindRootSig, RootSignature* pRootSignature);
+
     protected:
-        ComputeVars(const ProgramReflection::SharedConstPtr& pReflector, bool createBuffers, const RootSignature::SharedPtr& pRootSig) :
-            ProgramVars(pReflector, createBuffers, pRootSig) {}
+        ComputeVars(const ProgramReflection::SharedConstPtr& pReflector);
     };
 }

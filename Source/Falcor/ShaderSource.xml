@@ -4,6 +4,7 @@
   <ItemType Name="ShaderSource" DisplayName="Shader Source" />
   <ContentType Name="ShaderSource" DisplayName="Shader Source" ItemType="ShaderSource" />
   <FileExtension Name="*.slang" ContentType="ShaderSource" />
+  <FileExtension Name="*.slangh" ContentType="ShaderSource" />
   <FileExtension Name="*.hlsl" ContentType="ShaderSource" />
   <FileExtension Name="*.hlsli" ContentType="ShaderSource" />
 
@@ -25,7 +26,7 @@
     <StringProperty Name="ShaderSourceSubDir"
         DisplayName="Destination Subfolder"
         Description="Subfolder of $(OutDir) in which to install shader source files"
-        Default="Data"
+        Default="Shaders"
         Category="General">
     </StringProperty>
 

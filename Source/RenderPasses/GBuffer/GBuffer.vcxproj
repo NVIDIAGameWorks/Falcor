@@ -14,7 +14,7 @@
     <ProjectGuid>{CA155B01-7528-4D81-B5CD-E801B4AA4027}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>GBuffer</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
     <ProjectName>GBuffer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -25,40 +25,51 @@
     <Import Project="..\..\Falcor\Falcor.props" />
   </ImportGroup>
   <ItemGroup>
-    <ClCompile Include="GBuffer.cpp" />
-    <ClCompile Include="GBufferRaster.cpp" />
-    <ClCompile Include="GBufferRT.cpp" />
+    <ClCompile Include="GBufferBase.cpp" />
+    <ClCompile Include="GBuffer\GBuffer.cpp" />
+    <ClCompile Include="GBuffer\GBufferRaster.cpp" />
+    <ClCompile Include="GBuffer\GBufferRT.cpp" />
+    <ClCompile Include="VBuffer\VBufferRaster.cpp" />
+    <ClCompile Include="VBuffer\VBufferRT.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Falcor\Falcor.vcxproj">
       <Project>{2c535635-e4c5-4098-a928-574f0e7cd5f9}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\DepthPass\DepthPass.vcxproj">
+      <Project>{730aa5b9-7ddb-40af-a882-eb39b9d3ac7c}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="GBufferParams.h" />
-    <ClInclude Include="GBuffer.h" />
-    <ClInclude Include="GBufferRaster.h" />
-    <ClInclude Include="GBufferRT.h" />
+    <ClInclude Include="GBufferBase.h" />
+    <ClInclude Include="GBuffer\GBuffer.h" />
+    <ClInclude Include="GBuffer\GBufferRaster.h" />
+    <ClInclude Include="GBuffer\GBufferRT.h" />
+    <ClInclude Include="VBuffer\VBufferRaster.h" />
+    <ClInclude Include="VBuffer\VBufferRT.h" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="GBufferHelpers.slang" />
-    <ShaderSource Include="RasterPrimary.slang" />
-    <ShaderSource Include="RaytracePrimary.rt.slang" />
+    <ShaderSource Include="GBuffer\GBufferHelpers.slang" />
+    <ShaderSource Include="GBuffer\GBufferParams.slang" />
+    <ShaderSource Include="GBuffer\GBufferRaster.3d.slang" />
+    <ShaderSource Include="GBuffer\GBufferRT.rt.slang" />
+    <ShaderSource Include="VBuffer\VBufferRaster.3d.slang" />
+    <ShaderSource Include="VBuffer\VBufferRT.rt.slang" />
   </ItemGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <ShaderSourceSubDir>Data\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
+    <ShaderSourceSubDir>Shaders\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <ShaderSourceSubDir>Data\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
+    <ShaderSourceSubDir>Shaders\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">

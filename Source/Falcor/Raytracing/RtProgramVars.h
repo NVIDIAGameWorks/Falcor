@@ -1,95 +1,97 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Core/Program/ProgramVars.h"
 #include "RtProgram/RtProgram.h"
 #include "RtProgramVarsHelper.h"
-#include "Scene/Scene.h"
 
 namespace Falcor
 {
     class RtStateObject;
 
-    class dlldecl RtProgramVars : public std::enable_shared_from_this<RtProgramVars>
+    class dlldecl RtProgramVars : public ProgramVars
     {
     public:
-        using SharedPtr = std::shared_ptr<RtProgramVars>;
-        using SharedConstPtr = std::shared_ptr<const RtProgramVars>;
+        using SharedPtr = ParameterBlockSharedPtr<RtProgramVars>;
+        using SharedConstPtr = ParameterBlockSharedPtr<const RtProgramVars>;
 
-        using VarsVector = std::vector<GraphicsVars::SharedPtr>;
+        /** Create a new ray tracing vars object.
+            \param[in] pProgram The ray tracing program.
+            \param[in] pScene The scene.
+            \return A new object, or an exception is thrown if creation failed.
+        */
+        static SharedPtr create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene);
 
-        static SharedPtr create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene, bool perMeshHitEntry = true);
+        const EntryPointGroupVars::SharedPtr& getRayGenVars(uint32_t index = 0) { return mRayGenVars[index].pVars; }
+        const EntryPointGroupVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID].pVars; }
+        const EntryPointGroupVars::SharedPtr& getHitVars(uint32_t rayID, uint32_t meshID) { return mHitVars[meshID*mDescHitGroupCount + rayID].pVars; }
 
-        VarsVector& getHitVars(uint32_t rayID) { return mHitVars[rayID]; }
-        const GraphicsVars::SharedPtr& getRayGenVars() { return mRayGenVars; }
-        const GraphicsVars::SharedPtr& getMissVars(uint32_t rayID) { return mMissVars[rayID]; }
-        const GraphicsVars::SharedPtr& getGlobalVars() { return mpGlobalVars; }
+        bool apply(
+            RenderContext*  pCtx,
+            RtStateObject*  pRtso);
 
-        bool apply(RenderContext* pCtx, RtStateObject* pRtso);
+        ShaderTable::SharedPtr getShaderTable() const { return mpShaderTable; }
 
-        Buffer::SharedPtr getShaderTable() const { return mpShaderTable; }
-        uint32_t getRecordSize() const { return mRecordSize; }
-        uint32_t getRayGenRecordIndex() const { return kRayGenRecordIndex; }
-        uint32_t getFirstMissRecordIndex() const { return kFirstMissRecordIndex; }
-        uint32_t getFirstHitRecordIndex() const { return mFirstHitVarEntry; }
-        uint32_t getHitProgramsCount() const { return mHitProgCount; }
-        uint32_t getMissProgramsCount() const { return mMissProgCount; }
-        uint32_t getHitRecordsCount() const { return mHitRecordCount; }
+        uint32_t getTotalHitVarsCount() const { return uint32_t(mHitVars.size()); }
+        uint32_t getDescHitGroupCount() const { return mDescHitGroupCount; }
+        uint32_t getRayGenVarsCount() const { return uint32_t(mRayGenVars.size()); }
+        uint32_t getMissVarsCount() const { return uint32_t(mMissVars.size()); }
 
-        bool hasPerMeshHitEntry() const { return mPerMeshHitEntry; }
+        Scene::SharedPtr getSceneForGeometryIndices() const { return mpSceneForGeometryIndices.lock(); }
+        void setSceneForGeometryIndices(Scene::ConstSharedPtrRef scene) { mpSceneForGeometryIndices = scene; }
+
     private:
-        static const uint32_t kRayGenRecordIndex = 0;
-        static const uint32_t kFirstMissRecordIndex = 1;
-        uint32_t mMissProgCount = 0;
-        uint32_t mHitProgCount = 0;
-        uint32_t mHitRecordCount = 0;       ///< Total number of hit records in shader table
-        uint32_t mFirstHitVarEntry = 0;
+        void updateShaderTable(RenderContext* pCtx, RtStateObject* pRtso) const;
 
-        RtProgramVars(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene, bool perMeshHitEntry);
-        RtProgram::SharedPtr mpProgram;
-        std::weak_ptr<Scene> mpScene;
-        uint32_t mRecordSize;
-        Buffer::SharedPtr mpShaderTable;
+        struct EntryPointGroupInfo
+        {
+            EntryPointGroupVars::SharedPtr  pVars;
+            ChangeEpoch                     lastObservedChangeEpoch = 0;
+        };
 
-        uint8_t* getRayGenRecordPtr();
-        uint8_t* getMissRecordPtr(uint32_t missId);
-        uint8_t* getHitRecordPtr(uint32_t hitId, uint32_t meshId);
+        using VarsVector = std::vector<EntryPointGroupInfo>;
 
-        bool init();
+        RtProgramVars(
+            const RtProgram::SharedPtr& pProgram,
+            const Scene::SharedPtr& pScene);
 
-        bool updateSBT(RenderContext* pCtx, RtStateObject* pRtso);
-        const RtStateObject* mpLastUsedRtpso = nullptr;
-        GraphicsVars::SharedPtr mpGlobalVars;
-        GraphicsVars::SharedPtr mRayGenVars;
-        std::vector<VarsVector> mHitVars;
-        std::vector<uint8_t> mShaderTableData;
+        void init();
+
+        Scene::SharedPtr mpScene;
+        uint32_t mDescHitGroupCount = 0;
+        mutable ShaderTable::SharedPtr mpShaderTable;
+
+        VarsVector mRayGenVars;
+        VarsVector mHitVars;
         VarsVector mMissVars;
+
         RtVarsContext::SharedPtr mpRtVarsHelper;
-        bool mPerMeshHitEntry;
+
+        std::weak_ptr<Scene> mpSceneForGeometryIndices;
     };
 }

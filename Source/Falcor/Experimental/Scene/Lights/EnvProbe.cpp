@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "EnvProbe.h"
 #include "glm/gtc/integer.hpp"
@@ -39,7 +39,7 @@ namespace Falcor
         const uint32_t kDefaultDimension = 512;
         const uint32_t kDefaultSpp = 64;
 
-        // Default variable name used by setIntoProgramVars().
+        // Default variable name used by setShaderData().
         const char kDefaultCbVar[] = "gEnvProbe";
     }
 
@@ -49,38 +49,30 @@ namespace Falcor
         return ptr->init(pRenderContext, filename) ? ptr : nullptr;
     }
 
-    bool EnvProbe::setIntoParameterBlock(ParameterBlock* pBlock, const char varName[]) const
+    bool EnvProbe::setShaderData(const ShaderVar& var) const
     {
-        // Get the implicit CB for the block.
-        // Note that the default parameter block doesn't have an implicit CB. Return if that happens.
-        ConstantBuffer* pCB = pBlock->getDefaultConstantBuffer().get();
-        if (!pCB) return false;
+        assert(var.isValid());
 
-        std::string prefix = std::string(varName).empty() ? "" : std::string(varName) + '.';
-        return setIntoBlockCommon(pBlock, pCB, prefix);
-    }
+        // Set variables.
+        if (!var["importanceBaseMip"].set(mpImportanceMap->getMipCount() - 1)) return false;   // The base mip is 1x1 texels
+        if (!var["importanceInvDim"].set(glm::vec2(1.f / mpImportanceMap->getWidth(), 1.f / mpImportanceMap->getHeight()))) return false;
 
-    bool EnvProbe::setIntoConstantBuffer(ProgramVars* pVars, ConstantBuffer* pCB, const char varName[]) const
-    {
-        assert(pVars);
-        assert(pCB);
-
-        // Check that the struct exists.
-        std::string cbVar = std::string(varName).empty() ? kDefaultCbVar : varName;
-        if (pCB->getVariableOffset(cbVar) == ConstantBuffer::kInvalidOffset)
+        // Bind resources.
+        if (!var["envMap"].setTexture(mpEnvMap) ||
+            !var["importanceMap"].setTexture(mpImportanceMap) ||
+            !var["envSampler"].setSampler(mpEnvSampler) ||
+            !var["importanceSampler"].setSampler(mpImportanceSampler))
         {
-            logError("EnvProbe::setIntoProgramVars() - Variable " + cbVar + " not found in constant buffer");
             return false;
         }
 
-        return setIntoBlockCommon(pVars->getDefaultBlock().get(), pCB, cbVar + '.');
+        return true;
     }
 
     bool EnvProbe::init(RenderContext* pRenderContext, const std::string& filename)
     {
         // Create compute program for the setup phase.
         mpSetupPass = ComputePass::create(kShaderFilenameSetup, "main");
-        if (!mpSetupPass) return false;
 
         // Create sampler.
         // The lat-long map wraps around horizontally, but not vertically. Set the sampler to only wrap in U.
@@ -146,24 +138,4 @@ namespace Falcor
         return true;
     }
 
-    bool EnvProbe::setIntoBlockCommon(ParameterBlock* pBlock, ConstantBuffer* pCB, const std::string& varName) const
-    {
-        assert(pBlock);
-        assert(pCB);
-
-        // Set variables.
-        if (!pCB->setVariable(varName + "importanceBaseMip", mpImportanceMap->getMipCount() - 1)) return false;   // The base mip is 1x1 texels
-        if (!pCB->setVariable(varName + "importanceInvDim", glm::vec2(1.f / mpImportanceMap->getWidth(), 1.f / mpImportanceMap->getHeight()))) return false;
-
-        // Bind resources.
-        if (!pBlock->setTexture(varName + "envMap", mpEnvMap) ||
-            !pBlock->setTexture(varName + "importanceMap", mpImportanceMap) ||
-            !pBlock->setSampler(varName + "envSampler", mpEnvSampler) ||
-            !pBlock->setSampler(varName + "importanceSampler", mpImportanceSampler))
-        {
-            return false;
-        }
-
-        return true;
-    }
 }

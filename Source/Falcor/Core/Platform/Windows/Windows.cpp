@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include <shellscalingapi.h>
 #include <Psapi.h>
@@ -41,55 +41,142 @@ namespace Falcor
 {
     extern std::string gMsgBoxTitle;
 
-    MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType)
+    static HWND gMainWindowHandle;
+
+    void setMainWindowHandle(HWND windowHandle)
     {
-#ifdef _TEST_
-        throw std::exception(msg.c_str());
-#endif
-        UINT Type = MB_OK;
-        switch (mbType)
+        gMainWindowHandle = windowHandle;
+    }
+
+    MsgBoxButton msgBox(const std::string& msg, MsgBoxType type, MsgBoxIcon icon)
+    {
+        const MsgBoxCustomButton buttonOk{uint32_t(MsgBoxButton::Ok), "Ok"};
+        const MsgBoxCustomButton buttonRetry{uint32_t(MsgBoxButton::Retry), "Retry"};
+        const MsgBoxCustomButton buttonCancel{uint32_t(MsgBoxButton::Cancel), "Cancel"};
+        const MsgBoxCustomButton buttonAbort{uint32_t(MsgBoxButton::Abort), "Abort"};
+        const MsgBoxCustomButton buttonIgnore{uint32_t(MsgBoxButton::Ignore), "Ignore"};
+        const MsgBoxCustomButton buttonYes{uint32_t(MsgBoxButton::Yes), "Yes"};
+        const MsgBoxCustomButton buttonNo{uint32_t(MsgBoxButton::No), "No"};
+
+        std::vector<MsgBoxCustomButton> buttons;
+        switch (type)
         {
-        case MsgBoxType::Ok:
-            Type = MB_OK;
-            break;
-        case MsgBoxType::OkCancel:
-            Type = MB_OKCANCEL;
-            break;
-        case  MsgBoxType::RetryCancel:
-            Type = MB_RETRYCANCEL;
-            break;
-        case  MsgBoxType::AbortRetryIgnore:
-            Type = MB_ABORTRETRYIGNORE;
-            break;
-        case MsgBoxType::YesNo:
-            Type = MB_YESNO;
-            break;
-        default:
-            should_not_get_here();
-            break;
+        case MsgBoxType::Ok: buttons = { buttonOk }; break;
+        case MsgBoxType::OkCancel: buttons = { buttonOk, buttonCancel }; break;
+        case MsgBoxType::RetryCancel: buttons = { buttonRetry, buttonCancel }; break;
+        case MsgBoxType::AbortRetryIgnore: buttons = { buttonAbort, buttonRetry, buttonIgnore }; break;
+        case MsgBoxType::YesNo: buttons = { buttonYes, buttonNo }; break;
+        default: should_not_get_here();
         }
 
-        int value = MessageBoxA(nullptr, msg.c_str(), gMsgBoxTitle.c_str(), Type | MB_TOPMOST);
-        switch (value)
+        return (MsgBoxButton)msgBox(msg, buttons, icon);
+    }
+
+    uint32_t msgBox(const std::string& msg, std::vector<MsgBoxCustomButton> buttons, MsgBoxIcon icon, uint32_t defaultButtonId)
+    {
+        assert(buttons.size() > 0);
+
+        // Helper to convert a string to a wide string
+        auto toWideString = [](const std::string& str) { std::wstring wstr(str.begin(), str.end()); return wstr; };
+
+        // TASKDIALOGCONFIG has a flag TDF_SIZE_TO_CONTENT to automatically size the dialog to fit the content.
+        // Unfortunately this flag leads to the content being modified with ellipsis when lines are too long.
+        // For that reason we go through the excercise of determining the width of the longest text line manually.
+
+        // Compute the width of the given text in pixels using the default message font.
+        auto computeTextWidth = [&toWideString](const std::string& text)
         {
-        case IDOK:
-            return MsgBoxButton::Ok;
-        case IDCANCEL:
-            return MsgBoxButton::Cancel;
-        case IDRETRY:
-            return MsgBoxButton::Retry;
-        case IDABORT:
-            return MsgBoxButton::Abort;
-        case IDIGNORE:
-            return MsgBoxButton::Ignore;
-        case IDYES:
-            return MsgBoxButton::Yes;
-        case IDNO:
-            return MsgBoxButton::No;
-        default:
-            should_not_get_here();
-            return MsgBoxButton::Cancel;
+            LONG textWidth = 0;
+
+            // Query windows for common metrics.
+            HWND hwnd = gMainWindowHandle;
+            UINT dpi = GetDpiForSystem();
+            NONCLIENTMETRICS metrics;
+            metrics.cbSize = sizeof(metrics);
+            if (!SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0, dpi)) return textWidth;
+
+            // Setup DC with message font.
+            HDC hdc = GetDC(hwnd);
+            HFONT font = CreateFontIndirect(&metrics.lfMessageFont);
+            HGDIOBJ oldFont = SelectObject(hdc, font);
+
+            // Compute text width of longest line.
+            for (const auto& line : splitString(text, "\n"))
+            {
+                auto wideLine = toWideString(line);
+                SIZE textSize;
+                if (GetTextExtentPoint32(hdc, wideLine.c_str(), (int)line.size(), &textSize)) textWidth = std::max(textWidth, textSize.cx);
+            }
+
+            // Restore DC.
+            SelectObject(hdc, oldFont);
+            ReleaseDC(hwnd, hdc);
+            DeleteObject(font);
+
+            return textWidth;
+        };
+
+        auto wideTitle = toWideString(gMsgBoxTitle);
+        auto wideMsg = toWideString(msg);
+
+        // We need to map button ids to a range beyond IDCANCEL, which is used to indicate when the dialog was canceled/closed.
+        auto mapButtonId = [](uint32_t id) { return id + IDCANCEL + 1; };
+
+        // Highlight the first button by default.
+        int defaultId = mapButtonId(buttons.front().id);
+
+        // Set up button configs
+        std::vector<std::wstring> wideButtonTitles(buttons.size());
+        std::vector<TASKDIALOG_BUTTON> buttonConfigs(buttons.size());
+        for (size_t i = 0; i < buttons.size(); ++i)
+        {
+            wideButtonTitles[i] = toWideString(buttons[i].title);
+            buttonConfigs[i].pszButtonText = wideButtonTitles[i].c_str();
+            buttonConfigs[i].nButtonID = mapButtonId(buttons[i].id);
+            if (buttons[i].id == defaultButtonId) defaultId = buttonConfigs[i].nButtonID;
         }
+
+        // The width of the dialog is expressed in "dialog units", not pixels.
+        LONG horizontalBaseUnit = GetDialogBaseUnits() & 0xffff;
+        UINT dialogWidth = (computeTextWidth(msg) * 4) / horizontalBaseUnit;
+
+        // We add a margin of 16 units (and another 32 if using an icon) to make sure the text fits the dialog size.
+        dialogWidth += 16 + (icon != MsgBoxIcon::None) ? 32 : 0;
+
+        // Set up dialog config
+        TASKDIALOGCONFIG config = {};
+        config.cbSize = sizeof(TASKDIALOGCONFIG);
+        config.hwndParent = gMainWindowHandle;
+        config.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION;
+        config.pszWindowTitle = wideTitle.c_str();
+        switch (icon)
+        {
+        case MsgBoxIcon:: None: break;
+        case MsgBoxIcon::Info: config.pszMainIcon = TD_INFORMATION_ICON; break;
+        case MsgBoxIcon::Warning: config.pszMainIcon = TD_WARNING_ICON; break;
+        case MsgBoxIcon::Error: config.pszMainIcon = TD_ERROR_ICON; break;
+        }
+        config.pszContent = wideMsg.c_str();
+        config.cButtons = (UINT)buttonConfigs.size();
+        config.pButtons = buttonConfigs.data();
+        config.nDefaultButton = defaultId;
+        config.cxWidth = dialogWidth;
+
+        // By default return the id of the last button.
+        uint32_t result = buttons.back().id;
+
+        // Execute dialog.
+        int selectedId;
+        if (TaskDialogIndirect(&config, &selectedId, nullptr, nullptr) == S_OK)
+        {
+            // Map selected id back to the user provided button id.
+            for (const auto& button : buttons)
+            {
+                if (selectedId == mapButtonId(button.id)) result = button.id;
+            }
+        }
+
+        return result;
     }
 
     bool doesFileExist(const std::string& filename)
@@ -243,6 +330,7 @@ namespace Falcor
         d3d_call(CoCreateInstance(clsid, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pDialog)));
         pDialog->SetOptions(options | FOS_FORCEFILESYSTEM);
         pDialog->SetFileTypes((uint32_t)fs.size(), fs.data());
+        pDialog->SetDefaultExtension(fs.data()->pszSpec);
 
         if (pDialog->Show(nullptr) == S_OK)
         {
@@ -273,7 +361,7 @@ namespace Falcor
     };
 
     bool chooseFolderDialog(std::string& folder)
-    {        
+    {
         return fileDialogCommon<IFileOpenDialog>({}, folder, FOS_PICKFOLDERS | FOS_PATHMUSTEXIST, CLSID_FileOpenDialog);
     }
 
@@ -340,11 +428,7 @@ namespace Falcor
 
     bool isDebuggerPresent()
     {
-#ifdef _DEBUG
         return ::IsDebuggerPresent() == TRUE;
-#else
-        return false;
-#endif
     }
 
     void printToDebugWindow(const std::string& s)
@@ -396,7 +480,7 @@ namespace Falcor
     {
         std::string fileName = getFilenameFromPath(filePath);
         std::string dir = getDirectoryFromFile(filePath);
-        
+
         HANDLE hFile = CreateFileA(dir.c_str(), GENERIC_READ | FILE_LIST_DIRECTORY,
             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
         assert(hFile != INVALID_HANDLE_VALUE);
@@ -424,7 +508,7 @@ namespace Falcor
                 logError("Failed to read directory changes for shared file.");
                 CloseHandle(hFile);
                 return;
-                
+
             }
 
             // don't check for another overlapped result if main thread is closed
@@ -468,7 +552,7 @@ namespace Falcor
                 fileThreadsIt->second.first.join();
             }
         }
-        
+
         fileThreads[filePath].first = std::thread(checkFileModifiedStatus, filePath, callback);
         fileThreads[filePath].second = true;
     }
@@ -526,7 +610,7 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            logWarning("setThreadAffinity failed with error: " + std::string(err.begin(), err.end()));
+            logWarning("setThreadAffinity failed with error: " + to_string(err));
             LocalFree(lpMsgBuf);
         }
     }
@@ -548,7 +632,7 @@ namespace Falcor
             FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL, dwError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
             std::wstring err((LPTSTR)lpMsgBuf);
-            logWarning("setThreadPriority failed with error: " + std::string(err.begin(), err.end()));
+            logWarning("setThreadPriority failed with error: " + to_string(err));
             LocalFree(lpMsgBuf);
         }
     }

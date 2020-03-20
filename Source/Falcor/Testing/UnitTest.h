@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Falcor.h"
 
@@ -63,9 +63,9 @@ namespace Falcor
     using CPUTestFunc = std::function<void(CPUUnitTestContext& ctx)>;
     using GPUTestFunc = std::function<void(GPUUnitTestContext& ctx)>;
 
-    dlldecl void registerCPUTest(const std::string& filename, const std::string& name, CPUTestFunc func);
-    dlldecl void registerGPUTest(const std::string& filename, const std::string& name, GPUTestFunc func);
-    dlldecl int32_t runTests(FILE *file, RenderContext* pRenderContext, const std::string& testFilterRegexp);
+    dlldecl void registerCPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, CPUTestFunc func);
+    dlldecl void registerGPUTest(const std::string& filename, const std::string& name, const std::string& skipMessage, GPUTestFunc func);
+    dlldecl int32_t runTests(std::ostream& stream, RenderContext* pRenderContext, const std::string& testFilterRegexp);
 
     class dlldecl UnitTestContext
     {
@@ -77,15 +77,15 @@ namespace Falcor
         void reportFailure(const std::string& message)
         {
             if (message.empty()) return;
-            mFailureMessage += std::string("    ") + message + '\n';
+            mFailureMessages.push_back(message);
         }
 
-        std::string getFailureMessage() const { return mFailureMessage; }
+        std::vector<std::string> getFailureMessages() const { return mFailureMessages; }
 
         int mNumFailures = 0;
 
     private:
-        std::string mFailureMessage;
+        std::vector<std::string> mFailureMessages;
     };
 
     class dlldecl CPUUnitTestContext : public UnitTestContext
@@ -124,13 +124,12 @@ namespace Falcor
             return *mpVars;
         }
 
-        /** operator[] returns the |ConstantBuffer| with the given name
-            (or nullptr if no such constant buffer exists, in which case an error is logged).
+        /** Get a shader variable that points at the field with the given `name`.
+            This is an alias for `vars().getRootVar()[name]`.
         */
-        ConstantBuffer::SharedPtr operator[](const std::string& cbName)
+        ShaderVar operator[](const std::string& name)
         {
-            assert(mpVars);
-            return mpVars->getDefaultBlock()->getConstantBuffer(cbName);
+            return vars().getRootVar()[name];
         }
 
         /** allocateStructuredBuffer is a helper method that allocates a
@@ -146,7 +145,7 @@ namespace Falcor
             \param[in] pInitData Optional parameter. Initial buffer data.
             \param[in] initDataSize Optional parameter. Size of the pointed initial data for validation (if 0 the buffer is assumed to be of the right size).
         */
-        void allocateStructuredBuffer(const std::string& name, size_t nElements, const void* pInitData = nullptr, size_t initDataSize = 0);
+        void allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData = nullptr, size_t initDataSize = 0);
 
         /** runProgram runs the compute program that was specified in
             |createProgram|, where the total number of threads that runs is
@@ -196,7 +195,7 @@ namespace Falcor
 
         struct ParameterBuffer
         {
-            StructuredBuffer::SharedPtr pBuffer;
+            Buffer::SharedPtr pBuffer;
             bool mapped = false;
         };
         std::map<std::string, ParameterBuffer> mStructuredBuffers;
@@ -336,31 +335,38 @@ namespace Falcor
 
     /** Start of user-facing API */
 
-#define CPU_TEST(Name) \
-    static void CPUUnitTest##Name(CPUUnitTestContext& ctx);           \
-    struct CPUUnitTestRegisterer##Name {                              \
-        CPUUnitTestRegisterer##Name()                                 \
-        {                                                             \
-            registerCPUTest(__FILE__, #Name, CPUUnitTest##Name);      \
-        }                                                             \
-    } RegisterCPUTest##Name;                                          \
+/** Macro to define a CPU unit test. The optional skip message will
+    disable the test from running without leading to a failure.
+    The macro defines an instance of the |CPUUnitTestRegisterer| class,
+    which in turn registers the test with the test framework when its
+    constructor executes at program startup time. Next, it starts the
+    definition of the testing function, up to the point at which
+    the user should supply an open brace and start writing code.
+*/
+#define CPU_TEST(Name, ...)                                                     \
+    static void CPUUnitTest##Name(CPUUnitTestContext& ctx);                     \
+    struct CPUUnitTestRegisterer##Name {                                        \
+        CPUUnitTestRegisterer##Name()                                           \
+        {                                                                       \
+            const char* skipMessage = "" __VA_ARGS__;                           \
+            registerCPUTest(__FILE__, #Name, skipMessage, CPUUnitTest##Name);   \
+        }                                                                       \
+    } RegisterCPUTest##Name;                                                    \
     static void CPUUnitTest##Name(CPUUnitTestContext& ctx) /* over to the user for the braces */
 
-/** Macro to define a GPU unit test.  It defines an instance of the
-    |GPUUnitTestRegisterer| class, which in turn registers the test with
-    the test framework when its constructor executes at program startup
-    time.  Next, it starts the definition of the testing function, up to
-    the point at which the user should supply an open brace and start
-    writing code.
+/** Macro to define a GPU unit test. The optional skip message will
+    disable the test from running without leading to a failure.
+    The macro works in the same ways as CPU_TEST().
 */
-#define GPU_TEST(Name) \
-    static void GPUUnitTest##Name(GPUUnitTestContext& ctx);           \
-    struct GPUUnitTestRegisterer##Name {                              \
-        GPUUnitTestRegisterer##Name()                                 \
-        {                                                             \
-            registerGPUTest(__FILE__, #Name, GPUUnitTest##Name);      \
-        }                                                             \
-    } RegisterGPUTest##Name;                                          \
+#define GPU_TEST(Name, ...)                                                     \
+    static void GPUUnitTest##Name(GPUUnitTestContext& ctx);                     \
+    struct GPUUnitTestRegisterer##Name {                                        \
+        GPUUnitTestRegisterer##Name()                                           \
+        {                                                                       \
+            const char* skipMessage = "" __VA_ARGS__;                           \
+            registerGPUTest(__FILE__, #Name, skipMessage, GPUUnitTest##Name);   \
+        }                                                                       \
+    } RegisterGPUTest##Name;                                                    \
     static void GPUUnitTest##Name(GPUUnitTestContext& ctx) /* over to the user for the braces */
 
 /** Macro definitions for the GPU unit testing framework. Note that they

@@ -1,35 +1,35 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
-
-#include "PixelInspectorData.h"
-
-import Shading;
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+import Scene.ShadingData;
+import Scene.Camera.Camera;
 import Experimental.Scene.Material.MaterialHelpers;
+import Utils.Color.ColorHelpers;
+import PixelInspectorData;
 
 cbuffer PerFrameCB
 {
@@ -48,7 +48,7 @@ cbuffer PerFrameCB
     uint2 gOutputColorCoord;
     uint2 gVisBufferCoord;
 
-    CameraData gCamera;
+    Camera gCamera;
 }
 
 Texture2D<float4> gWorldPosition;
@@ -72,30 +72,12 @@ RWStructuredBuffer<PixelData> gPixelDataBuffer;
 MaterialParams loadMaterialParams()
 {
     MaterialParams matParams;
-    matParams = matParams.init();
-
     matParams.diffuseOpacity = gMaterialDiffuseOpacity[gMaterialDiffuseOpacityCoord];
     matParams.specularRoughness = gMaterialSpecularRoughness[gMaterialSpecularRoughnessCoord];
     matParams.emissive = gMaterialEmissive[gMaterialEmissiveCoord];
     matParams.extraParams = gMaterialExtraParams[gMaterialExtraParamsCoord];
 
     return matParams;
-}
-
-/** Calculates the primary ray direction in world space.
-    The returned ray points from the camera origin towards the jittered pixel position.
-    The function assumes a point camera, no depth-of-field supported in this version.
-    \param[in] pixel Pixel coordinates with origin in the top-left corner.
-    \param[in] frameDim Frame dimensions in pixels.
-    \return World-space dir from camera origin to jittered pixel position (normalized).
-*/
-float3 getCameraRayDir(uint2 pixel, uint2 frameDim, const CameraData camera)
-{
-    float2 p = (pixel + float2(0.5f, 0.5f)) / frameDim; // Pixel center on image plane in [0,1] where (0,0) is top-left
-    p += float2(-camera.jitterX, camera.jitterY);       // Camera jitter offsets the sample by +-0.5 pixels.
-    float2 ndc = float2(2, -2) * p + float2(-1, 1);
-    float3 rayDir = ndc.x * camera.cameraU + ndc.y * camera.cameraV + camera.cameraW;
-    return normalize(rayDir);
 }
 
 [numthreads(1, 1, 1)]
@@ -115,7 +97,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // Compute the view vector. This must exactly match what the G-buffer pass is doing (jitter etc.).
     // Note that we do not take depth-of-field into account as it would require exactly matching the
     // sample generator between the passes, which is error prone. The host side will issue a warning instead.
-    const float3 viewDir = -getCameraRayDir(pixelPos, gResolution, gCamera);
+    const float3 viewDir = -gCamera.computeRayPinhole(pixelPos, gResolution).dir;
 
     const GeometryParams geoParams = prepareGeometryParams(worldPos.xyz, viewDir, normal, bitangent, faceNormal, gTextureCoordinate[gTextureCoordinateCoord].xy);
     const MaterialParams matParams = loadMaterialParams();

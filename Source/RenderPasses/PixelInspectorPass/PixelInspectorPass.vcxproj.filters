@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ShaderSource Include="PixelInspector.cs.slang" />
-    <ShaderSource Include="PixelInspectorData.h" />
+    <ShaderSource Include="PixelInspectorData.slang" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PixelInspectorPass.cpp" />

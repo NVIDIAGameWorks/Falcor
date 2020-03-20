@@ -1,34 +1,33 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Profiler.h"
 #include "Core/API/GpuTimer.h"
-#include "Core/API/FencedPool.h"
 #include <sstream>
 #include <fstream>
 #define USE_PIX
@@ -71,7 +70,7 @@ namespace Falcor
 
     void Profiler::startEvent(const std::string& name, Flags flags, bool showInMsg)
     {
-        if (is_set(flags, Flags::Internal))
+        if (gProfileEnabled && is_set(flags, Flags::Internal))
         {
             curEventName = curEventName + "#" + name;
             EventData* pData = getEvent(curEventName);
@@ -109,7 +108,7 @@ namespace Falcor
 
     void Profiler::endEvent(const std::string& name, Flags flags)
     {
-        if (is_set(flags, Flags::Internal))
+        if (gProfileEnabled && is_set(flags, Flags::Internal))
         {
             assert(isEventRegistered(curEventName));
             EventData* pData = getEvent(curEventName);
@@ -165,7 +164,7 @@ namespace Falcor
         for (EventData* pData : sRegisteredEvents)
         {
             assert(pData->triggered == 0);
-            if (pData->showInMsg == false) continue;
+            if(pData->showInMsg == false) continue;
 
             double gpuTime = getGpuTime(pData);
             assert(pData->callStack.empty());
@@ -174,7 +173,7 @@ namespace Falcor
             uint32_t nameIndent = pData->level * 2 + 1;
             uint32_t cpuIndent = 30 - (nameIndent + (uint32_t)pData->name.substr(pData->name.find_last_of("#") + 1).size());
             snprintf(event, 1000, "%*s%s %*.2f (%.2f) %14.2f (%.2f)\n", nameIndent, " ", pData->name.substr(pData->name.find_last_of("#") + 1).c_str(), cpuIndent, getCpuTime(pData),
-                pData->cpuRunningAverageMS, gpuTime, pData->gpuRunningAverageMS);
+                     pData->cpuRunningAverageMS, gpuTime, pData->gpuRunningAverageMS);
 #if _PROFILING_LOG == 1
             pData->cpuMs[pData->stepNr] = (float)pData->cpuTotal;
             pData->gpuMs[pData->stepNr] = (float)gpuTime;

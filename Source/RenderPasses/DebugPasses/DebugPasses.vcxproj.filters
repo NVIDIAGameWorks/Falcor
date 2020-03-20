@@ -1,42 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Data">
-      <UniqueIdentifier>{af379eba-da22-4554-b098-3b5a60dd6590}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="InvalidPixelDetectionPass">
-      <UniqueIdentifier>{230d611e-fde4-40ca-b0d3-3e00481d4d53}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="SplitScreenPass">
-      <UniqueIdentifier>{65347d22-d193-41fa-947a-8b224c27da0e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="SideBySidePass">
-      <UniqueIdentifier>{cfc05c4d-c4b8-4552-83b8-4d55466cbbef}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Data\InvalidPixelDetection.ps.slang">
-      <Filter>Data</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
+    <ClCompile Include="DebugPasses.cpp" />
+    <ClCompile Include="ComparisonPass.cpp" />
     <ClCompile Include="InvalidPixelDetectionPass\InvalidPixelDetectionPass.cpp">
       <Filter>InvalidPixelDetectionPass</Filter>
     </ClCompile>
-    <ClCompile Include="ComparisonPass.cpp" />
     <ClCompile Include="SplitScreenPass\SplitScreenPass.cpp">
       <Filter>SplitScreenPass</Filter>
     </ClCompile>
     <ClCompile Include="SideBySidePass\SideBySidePass.cpp">
       <Filter>SideBySidePass</Filter>
     </ClCompile>
-    <ClCompile Include="DebugPasses.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ComparisonPass.h" />
     <ClInclude Include="InvalidPixelDetectionPass\InvalidPixelDetectionPass.h">
       <Filter>InvalidPixelDetectionPass</Filter>
     </ClInclude>
-    <ClInclude Include="ComparisonPass.h" />
     <ClInclude Include="SplitScreenPass\SplitScreenPass.h">
       <Filter>SplitScreenPass</Filter>
     </ClInclude>
@@ -45,14 +26,26 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="Data\Comparison.ps.slang">
-      <Filter>Data</Filter>
+    <Filter Include="InvalidPixelDetectionPass">
+      <UniqueIdentifier>{4fba5c4e-4b44-442d-a81a-0ec2aeec0f19}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SideBySidePass">
+      <UniqueIdentifier>{c396e4e1-1a17-4c4d-acf8-d7833312bd39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="SplitScreenPass">
+      <UniqueIdentifier>{6a60f294-d8de-4760-a5d8-e2112c7178b5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ShaderSource Include="InvalidPixelDetectionPass\InvalidPixelDetection.ps.slang">
+      <Filter>InvalidPixelDetectionPass</Filter>
     </ShaderSource>
-    <ShaderSource Include="Data\SplitScreen.ps.slang">
-      <Filter>Data</Filter>
+    <ShaderSource Include="Comparison.ps.slang" />
+    <ShaderSource Include="SplitScreenPass\SplitScreen.ps.slang">
+      <Filter>SplitScreenPass</Filter>
     </ShaderSource>
-    <ShaderSource Include="Data\SideBySide.ps.slang">
-      <Filter>Data</Filter>
+    <ShaderSource Include="SideBySidePass\SideBySide.ps.slang">
+      <Filter>SideBySidePass</Filter>
     </ShaderSource>
   </ItemGroup>
 </Project>

@@ -99,10 +99,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="Core\BufferTypes\ConstantBuffer.h" />
-    <ClInclude Include="Core\BufferTypes\StructuredBuffer.h" />
-    <ClInclude Include="Core\BufferTypes\TypedBuffer.h" />
-    <ClInclude Include="Core\BufferTypes\VariablesBuffer.h" />
+    <ClInclude Include="Core\BufferTypes\ParameterBlock.h" />
     <ClInclude Include="Core\BufferTypes\VariablesBufferUI.h" />
     <ClInclude Include="Core\FalcorConfig.h" />
     <ClInclude Include="Core\Framework.h" />
@@ -111,11 +108,10 @@
     <ClInclude Include="Core\Platform\ProgressBar.h" />
     <ClInclude Include="Core\Program\ComputeProgram.h" />
     <ClInclude Include="Core\Program\GraphicsProgram.h" />
-    <ClInclude Include="Core\Program\ParameterBlock.h" />
     <ClInclude Include="Core\Program\Program.h" />
     <ClInclude Include="Core\Program\ProgramReflection.h" />
     <ClInclude Include="Core\Program\ProgramVars.h" />
-    <ClInclude Include="Core\Program\ProgramVarsHelpers.h" />
+    <ClInclude Include="Core\Program\ShaderVar.h" />
     <ClInclude Include="Core\Program\ProgramVersion.h" />
     <ClInclude Include="Core\Program\ShaderLibrary.h" />
     <ClInclude Include="Core\Renderer.h" />
@@ -124,64 +120,59 @@
     <ClInclude Include="Core\State\GraphicsState.h" />
     <ClInclude Include="Core\State\StateGraph.h" />
     <ClInclude Include="Core\Window.h" />
-    <ClInclude Include="Data\Effects\CsmData.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Data\Effects\ParticleData.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Data\Effects\SSAOData.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="Data\Effects\ToneMappingData.h" />
-    <ClInclude Include="Data\HostDeviceData.h" />
-    <ClInclude Include="Data\HostDeviceSharedCode.h" />
-    <ClInclude Include="Data\HostDeviceSharedMacros.h" />
-    <ClInclude Include="Data\VertexAttrib.h" />
-    <ClInclude Include="Effects\AmbientOcclusion\SSAOPass.h" />
-    <ClInclude Include="Effects\FXAA\FXAAPass.h" />
     <ClInclude Include="Experimental\Scene\Lights\EmissiveLightSampler.h" />
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerType.h" />
+    <ShaderSource Include="Experimental\Scene\Lights\BuildTriangleList.cs.slang" />
+    <ShaderSource Include="Core\API\Blit.slang" />
     <ClInclude Include="Experimental\Scene\Lights\EmissiveUniformSampler.h" />
     <ClInclude Include="Experimental\Scene\Lights\EnvProbe.h" />
+    <ClInclude Include="Experimental\Scene\Lights\LightBVH.h" />
+    <ClInclude Include="Experimental\Scene\Lights\LightBVHBuilder.h" />
+    <ClInclude Include="Experimental\Scene\Lights\LightBVHSampler.h" />
+    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerType.slangh" />
     <ClInclude Include="Experimental\Scene\Lights\LightCollection.h" />
-    <ShaderSource Include="Experimental\Scene\Lights\LightCollectionShared.h" />
-    <ShaderSource Include="Experimental\Scene\Lights\MeshLightData.h" />
+    <ShaderSource Include="Experimental\Scene\Lights\FinalizeIntegration.cs.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightBVHSamplerSharedDefinitions.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightBVHStaticParams.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightCollectionShared.slang" />
     <ClInclude Include="Raytracing\RtProgramVars.h" />
     <ClInclude Include="Raytracing\RtProgramVarsHelper.h" />
-    <ClInclude Include="Raytracing\RtProgram\HitProgram.h" />
     <ClInclude Include="Raytracing\RtProgram\RtProgram.h" />
-    <ClInclude Include="Raytracing\RtProgram\RtProgramVersion.h" />
-    <ClInclude Include="Raytracing\RtProgram\SingleShaderProgram.h" />
-    <ClInclude Include="Raytracing\RtShader.h" />
-    <ClInclude Include="Raytracing\RtState.h" />
     <ClInclude Include="Raytracing\RtStateObject.h" />
     <ClInclude Include="Raytracing\RtStateObjectHelper.h" />
+    <ClInclude Include="Raytracing\ShaderTable.h" />
     <ClInclude Include="RenderGraph\RenderPassHelpers.h" />
-    <ClInclude Include="RenderPasses\BlitPass.h" />
-    <ClInclude Include="RenderPasses\DepthPass.h" />
-    <ClInclude Include="RenderPasses\ForwardLightingPass.h" />
-    <ClInclude Include="RenderPasses\ImageLoader.h" />
     <ClInclude Include="RenderPasses\ResolvePass.h" />
+    <ClInclude Include="RenderPasses\Shared\HitInfo.h" />
+    <ClInclude Include="RenderPasses\Shared\PathTracer\PixelStats.h" />
+    <ClInclude Include="RenderPasses\Shared\PathTracer\PathTracer.h" />
     <ClInclude Include="Scene\Animation\Animation.h" />
     <ClInclude Include="Scene\Animation\AnimationController.h" />
     <ClInclude Include="Scene\Importers\AssimpImporter.h" />
+    <ClInclude Include="Scene\Importers\PythonImporter.h" />
     <ClInclude Include="Scene\Importers\SceneImporter.h" />
+    <ShaderSource Include="Experimental\Scene\Lights\MeshLightData.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\UpdateTriangleVertices.cs.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\BxDFConfig.slangh" />
+    <ShaderSource Include="RenderPasses\Shared\HitInfo.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorList.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\InteriorListHelpers.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\LoadShadingData.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\PixelStats.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\PathData.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\PathTracerHelpers.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\PathTracerParams.slang" />
+    <ShaderSource Include="RenderPasses\Shared\PathTracer\StaticParams.slang" />
+    <ShaderSource Include="Scene\Animation\Skinning.slang" />
+    <ShaderSource Include="Scene\Camera\Camera.slang" />
+    <ShaderSource Include="Scene\Camera\CameraData.slang" />
+    <ShaderSource Include="Scene\Lights\LightData.slang" />
+    <ShaderSource Include="Scene\Lights\LightProbeData.slang" />
+    <ShaderSource Include="Scene\Lights\Lights.slang" />
+    <ShaderSource Include="Scene\Material\BRDF.slang" />
+    <ShaderSource Include="Scene\Material\MaterialData.slang" />
+    <ShaderSource Include="Scene\Material\MaterialDefines.slangh" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleConstColor.ps.slang" />
     <ClInclude Include="Scene\ParticleSystem\ParticleSystem.h" />
-    <ClInclude Include="Effects\Shadows\CSM.h" />
-    <ClInclude Include="Effects\SkyBox\SkyBox.h" />
-    <ClInclude Include="Effects\TAA\TAAPass.h" />
-    <ClInclude Include="Effects\ToneMapping\ToneMappingPass.h" />
-    <ClInclude Include="Effects\Utils\GaussianBlurPass.h" />
     <ClInclude Include="Falcor.h" />
     <ClInclude Include="FalcorExperimental.h" />
     <ClInclude Include="RenderGraph\BasePasses\BaseGraphicsPass.h" />
@@ -207,6 +198,13 @@
     <ClInclude Include="Scene\Material\Material.h" />
     <ClInclude Include="Scene\SceneBuilder.h" />
     <ClInclude Include="Scene\Scene.h" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleData.slang" />
+    <ShaderSource Include="Scene\Raster.slang" />
+    <ShaderSource Include="Scene\Raytracing.slang" />
+    <ShaderSource Include="Scene\Scene.slang" />
+    <ShaderSource Include="Scene\SceneTypes.slang" />
+    <ShaderSource Include="Scene\Shading.slang" />
+    <ShaderSource Include="Scene\ShadingData.slang" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="Testing\UnitTest.h" />
     <ClInclude Include="Utils\Algorithm\BitonicSort.h" />
@@ -214,7 +212,23 @@
     <ClInclude Include="Utils\Algorithm\DirectedGraph.h" />
     <ClInclude Include="Utils\Algorithm\DirectedGraphTraversal.h" />
     <ClInclude Include="Utils\Algorithm\ParallelReduction.h" />
-    <ShaderSource Include="Utils\Algorithm\ParallelReductionType.h" />
+    <ShaderSource Include="Experimental\Scene\Material\BxDF.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\Fresnel.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\Microfacet.slang" />
+    <ShaderSource Include="RenderGraph\BasePasses\FullScreenPass.gs.slang" />
+    <ShaderSource Include="RenderGraph\BasePasses\FullScreenPass.vs.slang" />
+    <ShaderSource Include="Scene\Lights\LightProbeIntegration.ps.slang" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleEmit.cs.slang" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleInterpColor.ps.slang" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleSimulate.cs.slang" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleSort.cs.slang" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleTexture.ps.slang" />
+    <ShaderSource Include="Scene\ParticleSystem\ParticleVertex.vs.slang" />
+    <ShaderSource Include="Scene\SceneBlock.slang" />
+    <ShaderSource Include="Scene\TextureSampler.slang" />
+    <ShaderSource Include="Scene\VertexAttrib.slangh" />
+    <ShaderSource Include="Testing\UnitTest.cs.slang" />
+    <ShaderSource Include="Utils\Algorithm\ParallelReduction.ps.slang" />
     <ClInclude Include="Utils\Algorithm\PrefixSum.h" />
     <ClInclude Include="Utils\AlignedAllocator.h" />
     <ClInclude Include="Utils\ArgList.h" />
@@ -222,7 +236,8 @@
     <ClInclude Include="Utils\Color\ColorUtils.h" />
     <ClInclude Include="Utils\Debug\DebugConsole.h" />
     <ClInclude Include="Utils\Debug\PixelDebug.h" />
-    <ShaderSource Include="Utils\Debug\PixelDebugTypes.h" />
+    <ShaderSource Include="Utils\Algorithm\ParallelReductionType.slangh" />
+    <ShaderSource Include="Utils\Color\ColorHelpers.slang" />
     <ClInclude Include="Utils\Image\Bitmap.h" />
     <ClInclude Include="Utils\Image\DDSHeader.h" />
     <ClInclude Include="Utils\Image\DXHeader.h" />
@@ -231,9 +246,9 @@
     <ClInclude Include="Utils\Math\BBox.h" />
     <ClInclude Include="Utils\Math\CubicSpline.h" />
     <ClInclude Include="Utils\Math\FalcorMath.h" />
-    <ShaderSource Include="Utils\Math\MathConstants.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
+    <ShaderSource Include="Utils\Debug\PixelDebugTypes.slang" />
+    <ShaderSource Include="Utils\Debug\ReflectPixelDebugTypes.cs.slang" />
+    <ShaderSource Include="Utils\Helpers.slang" />
     <ClInclude Include="Utils\Math\Vector.h" />
     <ClInclude Include="Utils\Perception\Experiment.h" />
     <ClInclude Include="Utils\Perception\SingleThresholdMeasurement.h" />
@@ -242,12 +257,14 @@
     <ClInclude Include="Utils\SampleGenerators\HaltonSamplePattern.h" />
     <ClInclude Include="Utils\SampleGenerators\StratifiedSamplePattern.h" />
     <ClInclude Include="Utils\Sampling\SampleGenerator.h" />
-    <ShaderSource Include="Utils\Sampling\SampleGeneratorType.h" />
+    <ShaderSource Include="Utils\HostDeviceShared.slangh" />
+    <ShaderSource Include="Utils\Math\MathConstants.slangh" />
     <ClInclude Include="Utils\Scripting\Console.h" />
     <ClInclude Include="Utils\Scripting\Dictionary.h" />
     <ClInclude Include="Utils\Scripting\ScriptBindings.h" />
     <ClInclude Include="Utils\Scripting\Scripting.h" />
     <ClInclude Include="Utils\StringUtils.h" />
+    <ClInclude Include="Utils\TermColor.h" />
     <ClInclude Include="Utils\Threading.h" />
     <ClInclude Include="Utils\Timing\Clock.h" />
     <ClInclude Include="Utils\Timing\CpuTimer.h" />
@@ -255,14 +272,15 @@
     <ClInclude Include="Utils\Timing\Profiler.h" />
     <ClInclude Include="Utils\UI\DebugDrawer.h" />
     <ClInclude Include="Utils\UI\Font.h" />
-    <ClInclude Include="Utils\UI\Gizmo.h" />
     <ClInclude Include="Utils\UI\Gui.h" />
-    <ClInclude Include="Utils\UI\Picking.h" />
     <ClInclude Include="Utils\UI\PixelZoom.h" />
     <ClInclude Include="Utils\UI\TextRenderer.h" />
     <ClInclude Include="Utils\UI\UserInput.h" />
     <ClInclude Include="Utils\Video\VideoEncoder.h" />
     <ClInclude Include="Utils\Video\VideoEncoderUI.h" />
+    <ShaderSource Include="Utils\Sampling\SampleGeneratorType.slangh" />
+    <ShaderSource Include="Utils\UI\Gui.slang" />
+    <ShaderSource Include="Utils\UI\TextRenderer.slang" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Externals\.packman\dear_imgui\imgui.cpp">
@@ -527,10 +545,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Core\BufferTypes\ConstantBuffer.cpp" />
-    <ClCompile Include="Core\BufferTypes\StructuredBuffer.cpp" />
-    <ClCompile Include="Core\BufferTypes\TypedBuffer.cpp" />
-    <ClCompile Include="Core\BufferTypes\VariablesBuffer.cpp" />
+    <ClCompile Include="Core\BufferTypes\ParameterBlock.cpp" />
     <ClCompile Include="Core\BufferTypes\VariablesBufferUI.cpp" />
     <ClCompile Include="Core\Framework.cpp" />
     <ClCompile Include="Core\Platform\Linux\Linux.cpp">
@@ -552,45 +567,37 @@
     <ClCompile Include="Core\Platform\Windows\Windows.cpp" />
     <ClCompile Include="Core\Program\ComputeProgram.cpp" />
     <ClCompile Include="Core\Program\GraphicsProgram.cpp" />
-    <ClCompile Include="Core\Program\ParameterBlock.cpp" />
     <ClCompile Include="Core\Program\Program.cpp" />
     <ClCompile Include="Core\Program\ProgramReflection.cpp" />
     <ClCompile Include="Core\Program\ProgramVars.cpp" />
     <ClCompile Include="Core\Program\ProgramVersion.cpp" />
     <ClCompile Include="Core\Program\ShaderLibrary.cpp" />
+    <ClCompile Include="Core\Program\ShaderVar.cpp" />
     <ClCompile Include="Core\Sample.cpp" />
     <ClCompile Include="Core\State\ComputeState.cpp" />
     <ClCompile Include="Core\State\GraphicsState.cpp" />
     <ClCompile Include="Core\Window.cpp" />
-    <ClCompile Include="Effects\AmbientOcclusion\SSAOPass.cpp" />
-    <ClCompile Include="Effects\FXAA\FXAAPass.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\EmissiveLightSampler.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\EmissiveUniformSampler.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\EnvProbe.cpp" />
+    <ClCompile Include="Experimental\Scene\Lights\LightBVH.cpp" />
+    <ClCompile Include="Experimental\Scene\Lights\LightBVHBuilder.cpp" />
+    <ClCompile Include="Experimental\Scene\Lights\LightBVHSampler.cpp" />
     <ClCompile Include="Experimental\Scene\Lights\LightCollection.cpp" />
     <ClCompile Include="Raytracing\RtProgramVars.cpp" />
     <ClCompile Include="Raytracing\RtProgramVarsHelper.cpp" />
-    <ClCompile Include="Raytracing\RtProgram\HitProgram.cpp" />
     <ClCompile Include="Raytracing\RtProgram\RtProgram.cpp" />
-    <ClCompile Include="Raytracing\RtProgram\RtProgramVersion.cpp" />
-    <ClCompile Include="Raytracing\RtShader.cpp" />
-    <ClCompile Include="Raytracing\RtState.cpp" />
     <ClCompile Include="Raytracing\RtStateObject.cpp" />
-    <ClCompile Include="RenderPasses\BlitPass.cpp" />
-    <ClCompile Include="RenderPasses\DepthPass.cpp" />
-    <ClCompile Include="RenderPasses\ForwardLightingPass.cpp" />
-    <ClCompile Include="RenderPasses\ImageLoader.cpp" />
+    <ClCompile Include="Raytracing\ShaderTable.cpp" />
     <ClCompile Include="RenderPasses\ResolvePass.cpp" />
+    <ClCompile Include="RenderPasses\Shared\PathTracer\PixelStats.cpp" />
+    <ClCompile Include="RenderPasses\Shared\PathTracer\PathTracer.cpp" />
     <ClCompile Include="Scene\Animation\Animation.cpp" />
     <ClCompile Include="Scene\Animation\AnimationController.cpp" />
     <ClCompile Include="Scene\Importers\AssimpImporter.cpp" />
+    <ClCompile Include="Scene\Importers\PythonImporter.cpp" />
     <ClCompile Include="Scene\Importers\SceneImporter.cpp" />
     <ClCompile Include="Scene\ParticleSystem\ParticleSystem.cpp" />
-    <ClCompile Include="Effects\Shadows\CSM.cpp" />
-    <ClCompile Include="Effects\SkyBox\SkyBox.cpp" />
-    <ClCompile Include="Effects\TAA\TAAPass.cpp" />
-    <ClCompile Include="Effects\ToneMapping\ToneMappingPass.cpp" />
-    <ClCompile Include="Effects\Utils\GaussianBlurPass.cpp" />
     <ClCompile Include="RenderGraph\BasePasses\BaseGraphicsPass.cpp" />
     <ClCompile Include="RenderGraph\BasePasses\ComputePass.cpp" />
     <ClCompile Include="RenderGraph\BasePasses\FullScreenPass.cpp" />
@@ -638,265 +645,55 @@
     <ClCompile Include="Utils\Scripting\Console.cpp" />
     <ClCompile Include="Utils\Scripting\ScriptBindings.cpp" />
     <ClCompile Include="Utils\Scripting\Scripting.cpp" />
+    <ClCompile Include="Utils\TermColor.cpp" />
     <ClCompile Include="Utils\Threading.cpp" />
     <ClCompile Include="Utils\Timing\Clock.cpp" />
     <ClCompile Include="Utils\Timing\FrameRate.cpp" />
     <ClCompile Include="Utils\Timing\Profiler.cpp" />
     <ClCompile Include="Utils\UI\DebugDrawer.cpp" />
     <ClCompile Include="Utils\UI\Font.cpp" />
-    <ClCompile Include="Utils\UI\Gizmo.cpp" />
     <ClCompile Include="Utils\UI\Gui.cpp" />
-    <ClCompile Include="Utils\UI\Picking.cpp" />
     <ClCompile Include="Utils\UI\PixelZoom.cpp" />
     <ClCompile Include="Utils\UI\TextRenderer.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoder.cpp" />
     <ClCompile Include="Utils\Video\VideoEncoderUI.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Data\ApplyAO.ps.slang" />
-    <None Include="Data\Effects\CascadedShadowMap.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\DepthPass.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\FXAA.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\GaussianBlur.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\LeanMapping.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ParticleConstColor.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ParticleEmit.cs.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ParticleInterpColor.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ParticleSimulate.cs.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ParticleSort.cs.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ParticleTexture.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ParticleVertex.vs.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ShadowPass.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\SkyBox.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\SSAO.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\TAA.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\ToneMapping.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Effects\VisibilityPass.ps.slang">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </None>
-    <None Include="Data\Framework\Shaders\Blit.slang" />
-    <None Include="Data\Framework\Shaders\ComputeSkinning.cs.slang" />
-    <None Include="Data\Framework\Shaders\FullScreenPass.gs.slang" />
-    <None Include="Data\Framework\Shaders\FullScreenPass.vs.slang" />
-    <None Include="Data\Framework\Shaders\Gui.slang" />
-    <None Include="Data\Framework\Shaders\LightProbeIntegration.ps.slang" />
-    <None Include="Data\Framework\Shaders\MaterialBlock.slang" />
-    <None Include="Data\Framework\Shaders\ParallelReduction.ps.slang" />
-    <None Include="Data\Framework\Shaders\SceneBlock.slang" />
-    <None Include="Data\Framework\Shaders\SceneEditor.slang" />
-    <None Include="Data\Framework\Shaders\TextRenderer.slang" />
-    <None Include="Data\HostDeviceData.slang" />
-    <None Include="Data\Raster.slang" />
-    <None Include="Data\RenderPasses\DepthPass.ps.slang" />
-    <None Include="Data\RenderPasses\ForwardLightingPass.slang" />
-    <None Include="Data\ShaderCommon.slang" />
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveIntegrator.ps.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSampler.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerHelpers.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerInterface.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EmissiveUniformSampler.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvProbe.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\EnvProbeSetup.cs.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightCollection.cs.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightCollection.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Lights\LightHelpers.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\MaterialHelpers.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Experimental\Scene\Material\MaterialShading.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <None Include="ShadingUtils\BRDF.slang" />
-    <None Include="ShadingUtils\Helpers.slang" />
-    <None Include="ShadingUtils\Lights.slang" />
-    <None Include="ShadingUtils\Raytracing.slang" />
-    <None Include="ShadingUtils\Scene.slang" />
-    <None Include="ShadingUtils\Shading.slang" />
-    <None Include="ShadingUtils\Skinning.slang" />
-    <ShaderSource Include="Utils\Algorithm\BitonicSort.cs.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Algorithm\ParallelReduction.cs.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Algorithm\PrefixSum.cs.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Color\ColorMap.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Debug\PixelDebug.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\AABB.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\BitTricks.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\FormatConversion.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\HalfUtils.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\HashUtils.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\MathHelpers.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\PackedFormats.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Math\SphericalHarmonics.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Sampling\Pseudorandom\LCG.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Sampling\Pseudorandom\SplitMix64.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Sampling\Pseudorandom\Xoshiro.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Sampling\SampleGenerator.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Sampling\SampleGeneratorInterface.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Sampling\TinyUniformSampleGenerator.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-    <ShaderSource Include="Utils\Sampling\UniformSampleGenerator.slang">
-      <FileType>Document</FileType>
-    </ShaderSource>
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="Data\Effects\cube.obj">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </Object>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Data\UnitTest.cs.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'">true</ExcludedFromBuild>
-    </FxCompile>
+    <ShaderSource Include="Experimental\Scene\Lights\EmissiveIntegrator.ps.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSampler.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerHelpers.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\EmissiveLightSamplerInterface.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\EmissiveUniformSampler.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\EnvProbe.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\EnvProbeSetup.cs.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightBVH.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightBVHRefit.cs.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightBVHSampler.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightCollection.slang" />
+    <ShaderSource Include="Experimental\Scene\Lights\LightHelpers.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\MaterialHelpers.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\MaterialShading.slang" />
+    <ShaderSource Include="Experimental\Scene\Material\TexLODHelpers.slang" />
+    <ShaderSource Include="Utils\Algorithm\BitonicSort.cs.slang" />
+    <ShaderSource Include="Utils\Algorithm\ParallelReduction.cs.slang" />
+    <ShaderSource Include="Utils\Algorithm\PrefixSum.cs.slang" />
+    <ShaderSource Include="Utils\Color\ColorMap.slang" />
+    <ShaderSource Include="Utils\Debug\PixelDebug.slang" />
+    <ShaderSource Include="Utils\Math\AABB.slang" />
+    <ShaderSource Include="Utils\Math\BitTricks.slang" />
+    <ShaderSource Include="Utils\Math\FormatConversion.slang" />
+    <ShaderSource Include="Utils\Math\HalfUtils.slang" />
+    <ShaderSource Include="Utils\Math\HashUtils.slang" />
+    <ShaderSource Include="Utils\Math\MathHelpers.slang" />
+    <ShaderSource Include="Utils\Math\PackedFormats.slang" />
+    <ShaderSource Include="Utils\Math\SphericalHarmonics.slang" />
+    <ShaderSource Include="Utils\Sampling\Pseudorandom\LCG.slang" />
+    <ShaderSource Include="Utils\Sampling\Pseudorandom\SplitMix64.slang" />
+    <ShaderSource Include="Utils\Sampling\Pseudorandom\Xoshiro.slang" />
+    <ShaderSource Include="Utils\Sampling\SampleGenerator.slang" />
+    <ShaderSource Include="Utils\Sampling\SampleGeneratorInterface.slang" />
+    <ShaderSource Include="Utils\Sampling\TinyUniformSampleGenerator.slang" />
+    <ShaderSource Include="Utils\Sampling\UniformSampleGenerator.slang" />
   </ItemGroup>
   <ItemGroup>
     <Xml Include="dependencies.xml" />
@@ -908,32 +705,32 @@
     <ProjectGuid>{2C535635-E4C5-4098-A928-574F0E7CD5F9}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Falcor</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugD3D12|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugVK|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D12|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseVK|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -978,7 +775,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE;_$(OutputType)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\\OpenVR\headers;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -990,7 +787,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\FreeImage;$(ProjectDir)..\Externals\.packman\Assimp\lib\$(PlatformName)\;$(ProjectDir)..\Externals\.packman\FFMpeg\lib\$(PlatformName);$(ProjectDir)..\Externals\.packman\openvr\lib\win64;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\VulkanSDK\Lib;$(ProjectDir)..\Externals\.packman\Slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\GLFW\lib;$(ProjectDir)..\Externals\.packman\Python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc141-mt.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -1016,7 +813,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\\OpenVR\headers;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -1028,7 +825,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\FreeImage;$(ProjectDir)..\Externals\.packman\Assimp\lib\$(PlatformName)\;$(ProjectDir)..\Externals\.packman\FFMpeg\lib\$(PlatformName);$(ProjectDir)..\Externals\.packman\openvr\lib\win64;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\VulkanSDK\Lib;$(ProjectDir)..\Externals\.packman\Slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\GLFW\lib;$(ProjectDir)..\Externals\.packman\Python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc141-mt.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -1057,7 +854,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_D3D12;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\\OpenVR\headers;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -1071,7 +868,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\FreeImage;$(ProjectDir)..\Externals\.packman\Assimp\lib\$(PlatformName)\;$(ProjectDir)..\Externals\.packman\FFMpeg\lib\$(PlatformName);$(ProjectDir)..\Externals\.packman\openvr\lib\win64;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\VulkanSDK\Lib;$(ProjectDir)..\Externals\.packman\Slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\GLFW\lib;$(ProjectDir)..\Externals\.packman\Python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc141-mt.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -1099,7 +896,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FALCOR_DLL;IMGUI_API=__declspec(dllexport);_PROJECT_DIR_=R"($(ProjectDir))";_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;FALCOR_VK;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions);GLM_FORCE_DEPTH_ZERO_TO_ONE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\\OpenVR\headers;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\..\Externals\.packman\GLM;$(ProjectDir)\..\Externals\.packman\GLFW\include;$(ProjectDir)\..\Externals\.packman\FreeImage;$(ProjectDir)\..\Externals\.packman\ASSIMP\include;$(ProjectDir)\..\Externals\.packman\FFMpeg\include;$(ProjectDir)\..\Externals\.packman\RapidJson\include;$(ProjectDir)\..\Externals\.packman\VulkanSDK\Include;$(ProjectDir)\..\Externals\.packman\Python\Include;$(ProjectDir)\..\Externals\.packman\pybind11\include;$(ProjectDir)\..\Externals\;$(ProjectDir)\..\Externals\.packman\nvapi;$(ProjectDir)\..\Externals\.packman</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -1113,7 +910,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(ProjectDir)..\Externals\.packman\FreeImage;$(ProjectDir)..\Externals\.packman\Assimp\lib\$(PlatformName)\;$(ProjectDir)..\Externals\.packman\FFMpeg\lib\$(PlatformName);$(ProjectDir)..\Externals\.packman\openvr\lib\win64;$(ProjectDir)..\Externals\.packman\nvapi\amd64;$(ProjectDir)..\Externals\.packman\VulkanSDK\Lib;$(ProjectDir)..\Externals\.packman\Slang\bin\windows-x64\release;$(ProjectDir)..\Externals\.packman\GLFW\lib;$(ProjectDir)..\Externals\.packman\Python\libs;$(ProjectDir)..\Externals\.packman\WinPixEventRuntime\bin\x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>WinPixEventRuntime.lib;glfw3dll.lib;slang.lib;Comctl32.lib;Shlwapi.lib;assimp-vc141-mt.lib;freeimage.lib;avcodec.lib;avutil.lib;avformat.lib;swscale.lib;Shcore.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>call $(ProjectDir)\..\..\Build\prebuild.bat $(ProjectDir)\..\ $(SolutionDir) $(ProjectDir) $(PlatformName) $(PlatformShortName) $(Configuration) $(OutDir)</Command>
@@ -1149,7 +946,7 @@
     <Import Project="ShaderSource.targets" />
   </ImportGroup>
   <PropertyGroup>
-    <ShaderSourceSubDir>Data</ShaderSourceSubDir>
+    <ShaderSourceSubDir>Shaders</ShaderSourceSubDir>
     <ShaderSourcePreservePaths>true</ShaderSourcePreservePaths>
   </PropertyGroup>
 </Project>

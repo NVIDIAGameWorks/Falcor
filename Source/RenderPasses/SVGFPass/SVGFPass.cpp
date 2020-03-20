@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "SVGFPass.h"
 
 /*
@@ -86,11 +86,10 @@ extern "C" __declspec(dllexport) void getPasses(Falcor::RenderPassLibrary& lib)
 
 SVGFPass::SharedPtr SVGFPass::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new SVGFPass);
-    return pPass->init(dict) ? pPass : nullptr;
+    return SharedPtr(new SVGFPass(dict));
 }
 
-bool SVGFPass::init(const Dictionary& dict)
+SVGFPass::SVGFPass(const Dictionary& dict)
 {
     for (const auto& v : dict)
     {
@@ -108,28 +107,12 @@ bool SVGFPass::init(const Dictionary& dict)
         }
     }
 
-    if (!(mpPackLinearZAndNormal = FullScreenPass::create(kPackLinearZAndNormalShader)))
-    {
-        logWarning(std::string("Error creating ") + kPackLinearZAndNormalShader + " shader.");
-    }
-    if (!(mpReprojection = FullScreenPass::create(kReprojectShader)))
-    {
-        logWarning(std::string("Error creating ") + kReprojectShader + " shader.");
-    }
-    if (!(mpAtrous = FullScreenPass::create(kAtrousShader)))
-    {
-        logWarning(std::string("Error creating ") + kAtrousShader + " shader.");
-    }
-    if (!(mpFilterMoments = FullScreenPass::create(kFilterMomentShader)))
-    {
-        logWarning(std::string("Error creating ") + kFilterMomentShader + " shader.");
-    }
-    if (!(mpFinalModulate = FullScreenPass::create(kFinalModulateShader)))
-    {
-        logWarning(std::string("Error creating ") + kFinalModulateShader + " shader.");
-    }
-
-    return (mpPackLinearZAndNormal && mpReprojection && mpAtrous && mpFilterMoments && mpFinalModulate);
+    mpPackLinearZAndNormal = FullScreenPass::create(kPackLinearZAndNormalShader);
+    mpReprojection = FullScreenPass::create(kReprojectShader);
+    mpAtrous = FullScreenPass::create(kAtrousShader);
+    mpFilterMoments = FullScreenPass::create(kFilterMomentShader);
+    mpFinalModulate = FullScreenPass::create(kFinalModulateShader);
+    assert(mpPackLinearZAndNormal && mpReprojection && mpAtrous && mpFilterMoments && mpFinalModulate);
 }
 
 Dictionary SVGFPass::getScriptingDictionary()
@@ -246,9 +229,10 @@ void SVGFPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
         computeAtrousDecomposition(pRenderContext, pAlbedoTexture);
 
         // Compute albedo * filtered illumination and add emission back in.
-        mpFinalModulate["gAlbedo"] = pAlbedoTexture;
-        mpFinalModulate["gEmission"] = pEmissionTexture;
-        mpFinalModulate["gIllumination"] = mpPingPongFbo[0]->getColorTexture(0);
+        auto perImageCB = mpFinalModulate["PerImageCB"];
+        perImageCB["gAlbedo"] = pAlbedoTexture;
+        perImageCB["gEmission"] = pEmissionTexture;
+        perImageCB["gIllumination"] = mpPingPongFbo[0]->getColorTexture(0);
         mpFinalModulate->execute(pRenderContext, mpFinalFbo);
 
         // Blit into the output texture.
@@ -323,8 +307,9 @@ void SVGFPass::clearBuffers(RenderContext* pRenderContext, const RenderData& ren
 void SVGFPass::computeLinearZAndNormal(RenderContext* pRenderContext, Texture::SharedPtr pLinearZTexture,
                                        Texture::SharedPtr pWorldNormalTexture)
 {
-    mpPackLinearZAndNormal["gLinearZ"] = pLinearZTexture;
-    mpPackLinearZAndNormal["gNormal"] = pWorldNormalTexture;
+    auto perImageCB = mpPackLinearZAndNormal["PerImageCB"];
+    perImageCB["gLinearZ"] = pLinearZTexture;
+    perImageCB["gNormal"] = pWorldNormalTexture;
 
     mpPackLinearZAndNormal->execute(pRenderContext, mpLinearZAndNormalFbo);
 }
@@ -335,53 +320,59 @@ void SVGFPass::computeReprojection(RenderContext* pRenderContext, Texture::Share
                                    Texture::SharedPtr pPositionNormalFwidthTexture,
                                    Texture::SharedPtr pPrevLinearZTexture)
 {
+    auto perImageCB = mpReprojection["PerImageCB"];
+
     // Setup textures for our reprojection shader pass
-    mpReprojection["gMotion"]        = pMotionVectorTexture;
-    mpReprojection["gColor"]         = pColorTexture;
-    mpReprojection["gEmission"]      = pEmissionTexture;
-    mpReprojection["gAlbedo"]        = pAlbedoTexture;
-    mpReprojection["gPositionNormalFwidth"] = pPositionNormalFwidthTexture;
-    mpReprojection["gPrevIllum"]     = mpFilteredPastFbo->getColorTexture(0);
-    mpReprojection["gPrevMoments"]   = mpPrevReprojFbo->getColorTexture(1);
-    mpReprojection["gLinearZAndNormal"]       = mpLinearZAndNormalFbo->getColorTexture(0);
-    mpReprojection["gPrevLinearZAndNormal"]   = pPrevLinearZTexture;
-    mpReprojection["gPrevHistoryLength"] = mpPrevReprojFbo->getColorTexture(2);
+    perImageCB["gMotion"]        = pMotionVectorTexture;
+    perImageCB["gColor"]         = pColorTexture;
+    perImageCB["gEmission"]      = pEmissionTexture;
+    perImageCB["gAlbedo"]        = pAlbedoTexture;
+    perImageCB["gPositionNormalFwidth"] = pPositionNormalFwidthTexture;
+    perImageCB["gPrevIllum"]     = mpFilteredPastFbo->getColorTexture(0);
+    perImageCB["gPrevMoments"]   = mpPrevReprojFbo->getColorTexture(1);
+    perImageCB["gLinearZAndNormal"]       = mpLinearZAndNormalFbo->getColorTexture(0);
+    perImageCB["gPrevLinearZAndNormal"]   = pPrevLinearZTexture;
+    perImageCB["gPrevHistoryLength"] = mpPrevReprojFbo->getColorTexture(2);
 
     // Setup variables for our reprojection pass
-    mpReprojection["PerImageCB"]["gAlpha"] = mAlpha;
-    mpReprojection["PerImageCB"]["gMomentsAlpha"] = mMomentsAlpha;
+    perImageCB["gAlpha"] = mAlpha;
+    perImageCB["gMomentsAlpha"] = mMomentsAlpha;
 
     mpReprojection->execute(pRenderContext, mpCurReprojFbo);
 }
 
 void SVGFPass::computeFilteredMoments(RenderContext* pRenderContext)
 {
-    mpFilterMoments["gIllumination"]     = mpCurReprojFbo->getColorTexture(0);
-    mpFilterMoments["gHistoryLength"]    = mpCurReprojFbo->getColorTexture(2);
-    mpFilterMoments["gLinearZAndNormal"]          = mpLinearZAndNormalFbo->getColorTexture(0);
-    mpFilterMoments["gMoments"]          = mpCurReprojFbo->getColorTexture(1);
+    auto perImageCB = mpFilterMoments["PerImageCB"];
 
-    mpFilterMoments["PerImageCB"]["gPhiColor"]  = mPhiColor;
-    mpFilterMoments["PerImageCB"]["gPhiNormal"]  = mPhiNormal;
+    perImageCB["gIllumination"]     = mpCurReprojFbo->getColorTexture(0);
+    perImageCB["gHistoryLength"]    = mpCurReprojFbo->getColorTexture(2);
+    perImageCB["gLinearZAndNormal"]          = mpLinearZAndNormalFbo->getColorTexture(0);
+    perImageCB["gMoments"]          = mpCurReprojFbo->getColorTexture(1);
+
+    perImageCB["gPhiColor"]  = mPhiColor;
+    perImageCB["gPhiNormal"]  = mPhiNormal;
 
     mpFilterMoments->execute(pRenderContext, mpPingPongFbo[0]);
 }
 
 void SVGFPass::computeAtrousDecomposition(RenderContext* pRenderContext, Texture::SharedPtr pAlbedoTexture)
 {
-    mpAtrous["gAlbedo"]        = pAlbedoTexture;
-    mpAtrous["gHistoryLength"] = mpCurReprojFbo->getColorTexture(2);
-    mpAtrous["gLinearZAndNormal"]       = mpLinearZAndNormalFbo->getColorTexture(0);
+    auto perImageCB = mpAtrous["PerImageCB"];
 
-    mpAtrous["PerImageCB"]["gPhiColor"]  = mPhiColor;
-    mpAtrous["PerImageCB"]["gPhiNormal"] = mPhiNormal;
+    perImageCB["gAlbedo"]        = pAlbedoTexture;
+    perImageCB["gHistoryLength"] = mpCurReprojFbo->getColorTexture(2);
+    perImageCB["gLinearZAndNormal"]       = mpLinearZAndNormalFbo->getColorTexture(0);
+
+    perImageCB["gPhiColor"]  = mPhiColor;
+    perImageCB["gPhiNormal"] = mPhiNormal;
 
     for (int i = 0; i < mFilterIterations; i++)
     {
         Fbo::SharedPtr curTargetFbo = mpPingPongFbo[1];
 
-        mpAtrous["gIllumination"] = mpPingPongFbo[0]->getColorTexture(0);
-        mpAtrous["PerImageCB"]["gStepSize"] = 1 << i;
+        perImageCB["gIllumination"] = mpPingPongFbo[0]->getColorTexture(0);
+        perImageCB["gStepSize"] = 1 << i;
 
         mpAtrous->execute(pRenderContext, curTargetFbo);
 

@@ -1,34 +1,49 @@
-#!/usr/bin/python
-import shutil
 import sys
-import os
+import argparse
+from pathlib import Path
 
-if len(sys.argv) != 2:
-	print ('Usage: make_new_project <NewProjectName>')
-	sys.exit(1)
+RENDER_PASSES_DIR = Path(sys.argv[0]).parent
+EXCLUDE_EXT = ['.user']
+TEMPLATE_NAME = 'PassLibraryTemplate'
 
-# copy the make_new_pass_project directory
-Src = "PassLibraryTemplate"
-Dst = sys.argv[1]
+def create_project(name):
+    # Source and destination directories.
+    src_dir = RENDER_PASSES_DIR / TEMPLATE_NAME
+    dst_dir = RENDER_PASSES_DIR / name
 
-os.mkdir(Dst)
+    print(f'Creating project "{name}":')
 
-Files=[]
-Files.append(".cpp")
-Files.append(".h")
-Files.append(".vcxproj")
-Files.append(".vcxproj.filters")
+    # Check that destination does not exist.
+    if dst_dir.exists():
+        print(f'Project "{name}" already exists!')
+        return False
 
-for File in Files:
-	#rename the File
-	SrcFile = Src + '/' + Src + File
-	DstFile = Dst + '/' + Dst + File
+    # Create destination folder.
+    dst_dir.mkdir()
 
-	# replace all occurences
-	F = open(SrcFile)
-	Content = F.read()
-	F.close()
-	F = open(DstFile, 'w')
-	Content = Content.replace(Src, Dst);
-	F.write(Content.replace("RenderPassTemplate", Dst))
-	F.close() 
+    # Copy project template.
+    for src_file in filter(lambda f: not f.suffix in EXCLUDE_EXT, src_dir.iterdir()):
+        dst_file = dst_dir / (src_file.name.replace(TEMPLATE_NAME, name))
+
+        print(f'Writing {dst_file}.')
+
+        # Replace all occurrences 'PassLibraryTemplate' and 'RenderPassTemplate' with new project name.
+        content = src_file.read_text()
+        content = content.replace(TEMPLATE_NAME, name)
+        content = content.replace('RenderPassTemplate', name)
+        dst_file.write_text(content)
+
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Script to create a new Falcor render pass project.')
+    parser.add_argument('name', help='Project name')
+    args = parser.parse_args()
+
+    success = create_project(args.name)
+
+    return 0 if success else 1
+
+if __name__ == '__main__':
+    main()

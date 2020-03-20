@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "Testing/UnitTest.h"
 
 // TODO: Replace DirectXPackedVector.h by a platform-independent alternative that
@@ -112,8 +112,6 @@ namespace Falcor
         */
         bool isExactFP16(float v) { return f16tof32(f32tof16(v)) == v; }
 
-#if 0
-        // TODO: Currently disabled until we figure out the rounding modes and have a matching CPU library.
         /** Generates test data to verify round-to-nearest-even in fp32->fp16 conversion.
         */
         void generateFP16RNETestData(std::vector<float>& input, std::vector<float>& expected)
@@ -159,7 +157,6 @@ namespace Falcor
                 expected.push_back(e);
             }
         }
-#endif
 
         std::vector<uint32_t> generateAllFiniteFP16()
         {
@@ -204,16 +201,15 @@ namespace Falcor
         }
     }
 
-#if 0
     // This test currently fails due to difference in rounding modes for f32tof16() between CPU and GPU.
     // TODO: Currently disabled until we figure out the rounding modes and have a matching CPU library.
-    GPU_TEST(FP32ToFP16Conversion)
+    GPU_TEST(FP32ToFP16Conversion, "Disabled due to lacking fp16 library (#391)")
     {
         std::vector<float> testData = generateFP16TestData(ctx);
 
         ctx.createProgram("Tests/Utils/HalfUtilsTests.cs.slang", "testFP32ToFP16");
-        ctx.allocateStructuredBuffer("inputFloat", testData.size(), testData.data(), testData.size() * sizeof(decltype(testData)::value_type));
-        ctx.allocateStructuredBuffer("resultUint", testData.size());
+        ctx.allocateStructuredBuffer("inputFloat", (uint32_t)testData.size(), testData.data(), testData.size() * sizeof(decltype(testData)::value_type));
+        ctx.allocateStructuredBuffer("resultUint", (uint32_t)testData.size());
         ctx["CB"]["testSize"] = (uint32_t)testData.size();
         ctx.runProgram((uint32_t)testData.size(), 1, 1);
 
@@ -226,15 +222,14 @@ namespace Falcor
         }
         ctx.unmapBuffer("resultUint");
     }
-#endif
 
     GPU_TEST(FP16ToFP32Conversion)
     {
         std::vector<uint32_t> testData = generateAllFiniteFP16();
 
         ctx.createProgram("Tests/Utils/HalfUtilsTests.cs.slang", "testFP16ToFP32");
-        ctx.allocateStructuredBuffer("inputUint", testData.size(), testData.data(), testData.size() * sizeof(decltype(testData)::value_type));
-        ctx.allocateStructuredBuffer("resultFloat", testData.size());
+        ctx.allocateStructuredBuffer("inputUint", uint32_t(testData.size()), testData.data(), testData.size() * sizeof(decltype(testData)::value_type));
+        ctx.allocateStructuredBuffer("resultFloat", uint32_t(testData.size()));
         ctx["CB"]["testSize"] = (uint32_t)testData.size();
         ctx.runProgram((uint32_t)testData.size(), 1, 1);
 
@@ -287,8 +282,8 @@ namespace Falcor
         std::vector<float> testData = generateFP16TestData(ctx);
 
         ctx.createProgram("Tests/Utils/HalfUtilsTests.cs.slang", "testFP32ToFP16ConservativeRounding");
-        ctx.allocateStructuredBuffer("inputFloat", testData.size(), testData.data(), testData.size() * sizeof(decltype(testData)::value_type));
-        ctx.allocateStructuredBuffer("resultUint", testData.size() * 2);
+        ctx.allocateStructuredBuffer("inputFloat", uint32_t(testData.size()), testData.data(), testData.size() * sizeof(decltype(testData)::value_type));
+        ctx.allocateStructuredBuffer("resultUint", uint32_t(testData.size() * 2));
         ctx["CB"]["testSize"] = (uint32_t)testData.size();
         ctx.runProgram((uint32_t)testData.size(), 1, 1);
 
@@ -315,10 +310,9 @@ namespace Falcor
         ctx.unmapBuffer("resultUint");
     }
 
-#if 0
-    // TODO: Currently disabled until we figure out the rounding modes and have a matching CPU library.
+    // TODO: Currently disabled until we figure out the rounding modes and have a matching CPU library. See #391.
     // TODO: Look into the spec (is it even strictly spec'ed in HLSL?) and add utility function to detect the mode used.
-    GPU_TEST(FP16RoundingModeGPU)
+    GPU_TEST(FP16RoundingModeGPU, "Disabled due to lacking fp16 library (#391)")
     {
         std::vector<float> input, expected;
         generateFP16RNETestData(input, expected);
@@ -326,8 +320,8 @@ namespace Falcor
         // TODO: The precise flag does not seem to be respected on pre-SM6.2 for this shader
         // The computation of the quantized value using 'y = f16tof32(f32tof16(x))' gets optimized to 'y = x' in the shader, despite the global precise flag.
         ctx.createProgram("Tests/Utils/HalfUtilsTests.cs.slang", "testFP16RoundingMode", Program::DefineList(), Shader::CompilerFlags::FloatingPointModePrecise, "6_2");
-        ctx.allocateStructuredBuffer("inputFloat", input.size(), input.data(), input.size() * sizeof(decltype(input)::value_type));
-        ctx.allocateStructuredBuffer("resultFloat", expected.size());
+        ctx.allocateStructuredBuffer("inputFloat", (uint32_t)input.size(), input.data(), input.size() * sizeof(decltype(input)::value_type));
+        ctx.allocateStructuredBuffer("resultFloat", (uint32_t)expected.size());
         ctx["CB"]["testSize"] = (uint32_t)input.size();
         ctx.runProgram((uint32_t)input.size(), 1, 1);
 
@@ -342,5 +336,4 @@ namespace Falcor
 
         ctx.unmapBuffer("resultFloat");
     }
-#endif
 }

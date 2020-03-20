@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "Testing/UnitTest.h"
 #include <algorithm>
 #include <cmath>
@@ -44,10 +44,10 @@ namespace Falcor
 
         void runBBoxTestComputeShader(GPUUnitTestContext& ctx, const BBoxTestCase* testCases, int nTests, const char* entrypoint)
         {
-            TypedBuffer<float3>::SharedPtr pOriginBuffer = TypedBuffer<float3>::create(nTests);
-            TypedBuffer<float3>::SharedPtr pAABBMinBuffer = TypedBuffer<float3>::create(nTests);
-            TypedBuffer<float3>::SharedPtr pAABBMaxBuffer = TypedBuffer<float3>::create(nTests);
-            if (!pOriginBuffer ||!pAABBMinBuffer || !pAABBMaxBuffer) throw ErrorRunningTestException("Failed to allocate buffer");
+            Buffer::SharedPtr pOriginBuffer = Buffer::createTyped<float3>(nTests);
+            Buffer::SharedPtr pAABBMinBuffer = Buffer::createTyped<float3>(nTests);
+            Buffer::SharedPtr pAABBMaxBuffer = Buffer::createTyped<float3>(nTests);
+
             for (int i = 0; i < nTests; ++i)
             {
                 pOriginBuffer->setElement(i, testCases[i].origin);
@@ -57,9 +57,9 @@ namespace Falcor
 
             // Setup and run GPU test.
             ctx.createProgram("Tests/Utils/MathHelpersTests.cs.slang", entrypoint);
-            ctx.vars().setTypedBuffer("origin", pOriginBuffer);
-            ctx.vars().setTypedBuffer("aabbMin", pAABBMinBuffer);
-            ctx.vars().setTypedBuffer("aabbMax", pAABBMaxBuffer);
+            ctx["origin"] = pOriginBuffer;
+            ctx["aabbMin"] = pAABBMinBuffer;
+            ctx["aabbMax"] = pAABBMaxBuffer;
             ctx.allocateStructuredBuffer("sinTheta", nTests);
             ctx.allocateStructuredBuffer("cosTheta", nTests);
             ctx.allocateStructuredBuffer("coneDir", nTests);
@@ -182,15 +182,13 @@ namespace Falcor
         testKnownBBoxes(ctx, "testBoundingConeAngleAverage");
     }
 
-#if 0
     // Disable this test for now: it turns out that this bounding method returns
     // cos(theta) = -1 for points that are close enough to the bounding box that
     // their cos(theta) value is < 0.
-    GPU_TEST(BoxSubtendedConeAngleCenterRandoms)
+    GPU_TEST(BoxSubtendedConeAngleCenterRandoms, "Disabled as bounding cone is over-conservative (#699)")
     {
         testRandomBBoxes(ctx, "testBoundingConeAngleCenter");
     }
-#endif
 
     GPU_TEST(BoxSubtendedConeAngleAverageRandoms)
     {
@@ -219,8 +217,8 @@ namespace Falcor
         };
         int nTests = sizeof(testCases) / sizeof(testCases[0]);
 
-        TypedBuffer<float4>::SharedPtr pTestCaseBuffer = TypedBuffer<float4>::create(nTests);
-        if (!pTestCaseBuffer) throw ErrorRunningTestException("Failed to allocate buffer");
+        Buffer::SharedPtr pTestCaseBuffer = Buffer::createTyped<float4>(nTests);
+
         for (int i = 0; i < nTests; ++i)
         {
             // Pack sphere origins and radii into float4s.
@@ -229,7 +227,7 @@ namespace Falcor
 
         // Setup and run GPU test.
         ctx.createProgram("Tests/Utils/MathHelpersTests.cs.slang", "testBoundSphereAngle");
-        ctx.vars().setTypedBuffer("spheres", pTestCaseBuffer);
+        ctx["spheres"] = pTestCaseBuffer;
         ctx.allocateStructuredBuffer("sinTheta", nTests);
         ctx.allocateStructuredBuffer("cosTheta", nTests);
         ctx.runProgram(nTests);

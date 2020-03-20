@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "AnimationController.h"
 #include <fstream>
@@ -41,11 +41,12 @@ namespace Falcor
     AnimationController::AnimationController(Scene* pScene, const StaticVertexVector& staticVertexData, const DynamicVertexVector& dynamicVertexData) :
         mpScene(pScene), mLocalMatrices(pScene->mSceneGraph.size()), mInvTransposeGlobalMatrices(pScene->mSceneGraph.size()), mMatricesChanged(pScene->mSceneGraph.size())
     {
-        size_t l2wBufSize = mLocalMatrices.size() * 4;
-        assert(l2wBufSize <= UINT32_MAX);
-        mpWorldMatricesBuffer = TypedBuffer<float4>::create((uint32_t)l2wBufSize);
+        assert(mLocalMatrices.size() * 4 <= UINT32_MAX);
+        uint32_t float4Count = (uint32_t)mLocalMatrices.size() * 4;
+
+        mpWorldMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, Resource::BindFlags::ShaderResource);
         mpPrevWorldMatricesBuffer = mpWorldMatricesBuffer;
-        mpInvTransposeWorldMatricesBuffer = TypedBuffer<float4>::create((uint32_t)l2wBufSize);
+        mpInvTransposeWorldMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, Resource::BindFlags::ShaderResource);
         createSkinningPass(staticVertexData, dynamicVertexData);
     }
 
@@ -58,6 +59,14 @@ namespace Falcor
     {
         mMeshes[meshID].pAnimations.push_back(pAnimation);
         mHasAnimations = true;
+    }
+
+    void AnimationController::toggleAnimations(bool animate)
+    {
+        for (int i = 0; i < mMeshes.size(); i++)
+        {
+            mMeshes[i].activeAnimation = animate ? 0 : kBindPoseAnimationId;
+        }
     }
 
     void AnimationController::initLocalMatrices()
@@ -197,9 +206,9 @@ namespace Falcor
     void AnimationController::bindBuffers()
     {
         ParameterBlock* pBlock = mpScene->mpSceneBlock.get();
-        pBlock->setTypedBuffer(kWorldMatricesBufferName, mpWorldMatricesBuffer);
-        pBlock->setTypedBuffer(kPreviousWorldMatrices, mpPrevWorldMatricesBuffer);
-        pBlock->setTypedBuffer(kInverseTransposeWorldMatrices, mpInvTransposeWorldMatricesBuffer);
+        pBlock->setBuffer(kWorldMatricesBufferName, mpWorldMatricesBuffer);
+        pBlock->setBuffer(kPreviousWorldMatrices, mpPrevWorldMatricesBuffer);
+        pBlock->setBuffer(kInverseTransposeWorldMatrices, mpInvTransposeWorldMatricesBuffer);
     }
 
     void AnimationController::allocatePrevWorldMatrixBuffer()
@@ -208,7 +217,7 @@ namespace Falcor
         {
             if(mpWorldMatricesBuffer == mpPrevWorldMatricesBuffer)
             {
-                mpPrevWorldMatricesBuffer = TypedBuffer<float4>::create(mpWorldMatricesBuffer->getElementCount());
+                mpPrevWorldMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, mpWorldMatricesBuffer->getElementCount(), ResourceBindFlags::ShaderResource);
             }
         }
         else mpPrevWorldMatricesBuffer = mpWorldMatricesBuffer;
@@ -216,38 +225,38 @@ namespace Falcor
 
     void AnimationController::createSkinningPass(const std::vector<StaticVertexData>& staticVertexData, const std::vector<DynamicVertexData>& dynamicVertexData)
     {
-        StructuredBuffer::SharedPtr pVB = mpScene->mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex)->asStructuredBuffer();
+        Buffer::ConstSharedPtrRef pVB = mpScene->mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex);
         assert(pVB->getSize() == staticVertexData.size() * sizeof(staticVertexData[0]));
         // We always copy the static data, to initialize the non-skinned vertices
         pVB->setBlob(staticVertexData.data(), 0, pVB->getSize());
-        pVB->uploadToGPU();
 
         if (dynamicVertexData.size())
         {
             mSkinningMatrices.resize(mpScene->mSceneGraph.size());
             mInvTransposeSkinningMatrices.resize(mSkinningMatrices.size());
 
-            mpSkinningPass = ComputePass::create("Skinning.slang");
-            auto pBlock = mpSkinningPass->getVars()->getParameterBlock("gData");
-            pBlock->setStructuredBuffer("skinnedVertices", pVB);
+            mpSkinningPass = ComputePass::create("Scene/Animation/Skinning.slang");
+            auto block = mpSkinningPass->getVars()["gData"];
+            block["skinnedVertices"] = pVB;
 
             auto createBuffer = [&](const std::string& name, const auto& initData)
             {
-                ReflectionResourceType::SharedConstPtr pReflector = pBlock->getReflection()->getResource(name)->getType()->asResourceType()->shared_from_this();
-                auto pBuffer = StructuredBuffer::create(name, pReflector, (uint32_t)initData.size(), ResourceBindFlags::ShaderResource);
+                auto pBuffer = Buffer::createStructured(block[name], (uint32_t)initData.size(), ResourceBindFlags::ShaderResource);
                 pBuffer->setBlob(initData.data(), 0, pBuffer->getSize());
-                pBlock->setStructuredBuffer(name, pBuffer);
+                block[name] = pBuffer;
             };
 
             createBuffer("staticData", staticVertexData);
             createBuffer("dynamicData", dynamicVertexData);
 
-            mpSkinningMatricesBuffer = TypedBuffer<float4>::create((uint32_t)mSkinningMatrices.size() * 4, ResourceBindFlags::ShaderResource);
-            mpInvTransposeSkinningMatricesBuffer = TypedBuffer<float4>::create((uint32_t)mSkinningMatrices.size() * 4, ResourceBindFlags::ShaderResource);
-            pBlock->setTypedBuffer("boneMatrices", mpSkinningMatricesBuffer);
-            pBlock->setTypedBuffer("inverseTransposeBoneMatrices", mpInvTransposeSkinningMatricesBuffer);
-            pBlock->setTypedBuffer("inverseTransposeWorldMatrices", mpInvTransposeWorldMatricesBuffer);
-            pBlock->setTypedBuffer("worldMatrices", mpWorldMatricesBuffer);
+            assert(mSkinningMatrices.size() * 4 < UINT32_MAX);
+            uint32_t float4Count = (uint32_t)mSkinningMatrices.size() * 4;
+            mpSkinningMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, ResourceBindFlags::ShaderResource);
+            mpInvTransposeSkinningMatricesBuffer = Buffer::createTyped(ResourceFormat::RGBA32Float, float4Count, ResourceBindFlags::ShaderResource);
+            block["boneMatrices"].setBuffer(mpSkinningMatricesBuffer);
+            block["inverseTransposeBoneMatrices"].setBuffer(mpInvTransposeSkinningMatricesBuffer);
+            block["inverseTransposeWorldMatrices"].setBuffer(mpInvTransposeWorldMatricesBuffer);
+            block["worldMatrices"].setBuffer(mpWorldMatricesBuffer);
             
             mSkinningDispatchSize = (uint32_t)dynamicVertexData.size();
         }

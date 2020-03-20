@@ -1,39 +1,41 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Camera.h"
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/FalcorMath.h"
-#include "Core/BufferTypes/ConstantBuffer.h"
 #include "Utils/UI/Gui.h"
+#include "glm/gtc/type_ptr.hpp"
 
 namespace Falcor
 {
+    static_assert(sizeof(CameraData) % (sizeof(vec4)) == 0, "CameraData size should be a multiple of 16");
+
     // Default dimensions of full frame cameras and 35mm film
     const float Camera::kDefaultFrameHeight = 24.0f;
 
@@ -64,7 +66,6 @@ namespace Falcor
 
         // Keep copies of the transforms used for the previous frame. We need these for computing motion vectors etc.
         mData.prevViewProjMatNoJitter = mPrevData.viewProjMatNoJitter;
-        mData.rightEyePrevViewProjMat = mPrevData.rightEyeViewProjMat;
 
         mChanges = is_set(mChanges, Changes::Movement | Changes::Frustum) ? Changes::History : Changes::None;
 
@@ -235,32 +236,10 @@ namespace Falcor
         return !isInside;
     }
 
-    void Camera::setRightEyeMatrices(const glm::mat4& view, const glm::mat4& proj)
-    {
-        mData.rightEyeViewMat = view;
-        mData.rightEyeProjMat = proj;
-        mData.rightEyeViewProjMat = proj * view;
-    }
-
-    void Camera::setIntoConstantBuffer(ConstantBuffer* pCB, const std::string& varName) const
-    {
-        size_t offset = pCB->getVariableOffset(varName + ".viewMat");
-
-        if (offset == ConstantBuffer::kInvalidOffset)
-        {
-            logWarning("Camera::setIntoConstantBuffer() - variable \"" + varName + "\"not found in constant buffer\n");
-            return;
-        }
-
-        setIntoConstantBuffer(pCB, offset);
-    }
-
-    void Camera::setIntoConstantBuffer(ConstantBuffer* pBuffer, const std::size_t& offset) const
+    void Camera::setShaderData(const ShaderVar& var) const
     {
         calculateCameraParameters();
-        assert(offset + getShaderDataSize() <= pBuffer->getSize());
-
-        pBuffer->setBlob(&mData, offset, getShaderDataSize());
+        var["data"].setBlob(mData);
     }
 
     void Camera::setPatternGenerator(const CPUSampleGenerator::SharedPtr& pGenerator, const vec2& scale)
@@ -284,10 +263,10 @@ namespace Falcor
     }
 
     void Camera::setJitterInternal(float jitterX, float jitterY)
-    { 
-        mData.jitterX = jitterX; 
-        mData.jitterY = jitterY; 
-        mDirty = true; 
+    {
+        mData.jitterX = jitterX;
+        mData.jitterY = jitterY;
+        mDirty = true;
     }
 
     void Camera::renderUI(Gui* pGui, const char* uiGroup)
@@ -315,7 +294,7 @@ namespace Falcor
             float ISOSpeed = getISOSpeed();
             if (g.var("ISO Speed", ISOSpeed, 0.8f, FLT_MAX, 0.25f)) setISOSpeed(ISOSpeed);
 
-            float2 depth(getNearPlane(), getFarPlane());
+            float2 depth = glm::vec2(mData.nearZ, mData.farZ);
             if (g.var("Depth Range", depth, 0.f, FLT_MAX, 0.1f)) setDepthRange(depth.x, depth.y);
 
             float3 pos = getPosition();
@@ -328,11 +307,24 @@ namespace Falcor
             if (g.var("Up", up, -FLT_MAX, FLT_MAX, 0.001f)) setUpVector(up);
 
             g.release();
-        }        
+        }
     }
 
     SCRIPT_BINDING(Camera)
     {
-        m.regClass(Camera);
+        auto camera = m.regClass(Camera);
+        camera.roProperty("name", &Camera::getName);
+        camera.property("aspectRatio", &Camera::getAspectRatio, &Camera::setAspectRatio);
+        camera.property("focalLength", &Camera::getFocalLength, &Camera::setFocalLength);
+        camera.property("frameHeight", &Camera::getFrameHeight, &Camera::setFrameHeight);
+        camera.property("focalDistance", &Camera::getFocalDistance, &Camera::setFocalDistance);
+        camera.property("apertureRadius", &Camera::getApertureRadius, &Camera::setApertureRadius);
+        camera.property("shutterSpeed", &Camera::getShutterSpeed, &Camera::setShutterSpeed);
+        camera.property("ISOSpeed", &Camera::getISOSpeed, &Camera::setISOSpeed);
+        camera.property("nearPlane", &Camera::getNearPlane, &Camera::setNearPlane);
+        camera.property("farPlane", &Camera::getFarPlane, &Camera::setFarPlane);
+        camera.property("position", &Camera::getPosition, &Camera::setPosition);
+        camera.property("target", &Camera::getTarget, &Camera::setTarget);
+        camera.property("up", &Camera::getUpVector, &Camera::setUpVector);
     }
 }

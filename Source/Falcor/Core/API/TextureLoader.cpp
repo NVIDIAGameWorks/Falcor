@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Core/API/Texture.h"
 #include "Utils/Image/DDSHeader.h"
@@ -56,7 +56,7 @@ namespace Falcor
         return fourCC;
     }
 
-    ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt) 
+    ResourceFormat falcorFormatFromDXGIFormat(DXFormat fmt)
     {
         switch (fmt)
         {
@@ -507,12 +507,12 @@ namespace Falcor
             {
                 uint32_t heightPitch = max(width >> mipCounter, 1U) * getFormatBytesPerBlock(format);
                 uint32_t currentMipHeight = max(height >> mipCounter, 1U);
-                uint32_t depthPitch = currentMipHeight * heightPitch;    
+                uint32_t depthPitch = currentMipHeight * heightPitch;
 
                 for (uint32_t depthCounter = 0; depthCounter < depth; ++depthCounter)
                 {
                     currentTexture = currentDepth + depthPitch * depthCounter;
-                    
+
                     if (isCubemap)
                     {
                         if (depthCounter % 6 == 2)
@@ -524,13 +524,13 @@ namespace Falcor
                             currentTexture -= depthPitch;
                         }
                     }
-                    
+
                     for (uint32_t heightCounter = 1; heightCounter <= currentMipHeight; ++heightCounter)
                     {
                         std::memcpy(currentPos, currentTexture + (currentMipHeight - heightCounter) * heightPitch, heightPitch);
                         currentPos += heightPitch;
                     }
-                    
+
                 }
 
                 currentDepth += depthPitch * depth;
@@ -538,31 +538,29 @@ namespace Falcor
         }
     }
 
-    void loadDDSDataFromFile(const std::string filename, DdsData& ddsData)
+    bool loadDDSDataFromFile(const std::string filename, DdsData& ddsData)
     {
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            msgBox("Error when loading DDS file. Can't find texture file " + filename);
-            //could not find file
-            return;
+            logError("Error when loading DDS file. Can't find texture file " + filename);
+            return false;
         }
 
         BinaryFileStream stream(fullpath, BinaryFileStream::Mode::Read);
 
-        //check the dds identifier
+        // Check the dds identifier
         uint32_t ddsIdentifier;
         stream >> ddsIdentifier;
         if (ddsIdentifier != kDdsMagicNumber)
         {
-            //not valid dds file apparently
-            logError(std::string("The dds file ") + filename + std::string(" is not a valid dds file"));
-            return;
+            logError("The dds file " + filename + " is not a valid dds file");
+            return false;
         }
 
         stream >> ddsData.header;
 
-        if((ddsData.header.pixelFormat.flags & DdsHeader::PixelFormat::kFourCCFlag) && (makeFourCC("DX10") == ddsData.header.pixelFormat.fourCC))
+        if ((ddsData.header.pixelFormat.flags & DdsHeader::PixelFormat::kFourCCFlag) && (makeFourCC("DX10") == ddsData.header.pixelFormat.fourCC))
         {
             ddsData.hasDX10Header = true;
             stream >> ddsData.dx10Header;
@@ -575,6 +573,7 @@ namespace Falcor
         uint32_t dataSize = stream.getRemainingStreamSize();
         ddsData.data.resize(dataSize);
         stream.read(ddsData.data.data(), dataSize);
+        return true;
     }
 
     static ResourceFormat convertBgrxFormatToBgra(DdsData& ddsData, ResourceFormat format)
@@ -627,10 +626,10 @@ namespace Falcor
             return Texture::create3D(ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
         case DXResourceDimension::RESOURCE_DIMENSION_BUFFER:
         case DXResourceDimension::RESOURCE_DIMENSION_UNKNOWN:
-            //these file formats are not supported 
-            logError(std::string("the resource dimension specified in ") + filename + std::string(" is not supported by Falcor"));
+            logError("The resource dimension specified in " + filename + " is not supported by Falcor");
+            return nullptr;
         default:
-            should_not_get_here();
+            logError("Unknown resource dimension specified in " + filename);
             return nullptr;
         }
     }
@@ -639,18 +638,18 @@ namespace Falcor
     {
         format = convertBgrxFormatToBgra(ddsData, format);
 
-        //load the volume or 3D texture
+        // Load the volume or 3D texture
         if(ddsData.header.flags & DdsHeader::kDepthMask)
         {
             flipData(ddsData, format, ddsData.header.width, ddsData.header.height, ddsData.header.depth, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
             return Texture::create3D(ddsData.header.width, ddsData.header.height, ddsData.header.depth, format, mipLevels, ddsData.data.data(), bindFlags);
         }
-        //load the cubemap texture
+        // Load the cubemap texture
         else if(ddsData.header.caps[1] & DdsHeader::kCaps2CubeMapMask)
         {
             return Texture::createCube(ddsData.header.width, ddsData.header.height, format, 1, mipLevels, ddsData.data.data(), bindFlags);
         }
-        //This is a 2D Texture
+        // This is a 2D Texture
         else
         {
             flipData(ddsData, format, ddsData.header.width, ddsData.header.height, 1, mipLevels == Texture::kMaxPossible ? 1 : mipLevels);
@@ -664,10 +663,14 @@ namespace Falcor
     Texture::SharedPtr createTextureFromDDSFile(const std::string filename, bool generateMips, bool loadAsSrgb, Texture::BindFlags bindFlags)
     {
         DdsData ddsData;
-        loadDDSDataFromFile(filename, ddsData);
+        if (!loadDDSDataFromFile(filename, ddsData)) return nullptr;
 
         ResourceFormat format = getDdsResourceFormat(ddsData);
-        assert(format != ResourceFormat::Unknown);
+        if (format == ResourceFormat::Unknown)
+        {
+            logError("Unknown resource format in DDS file " + filename);
+            return nullptr;
+        }
 
         if (loadAsSrgb)
         {
@@ -692,17 +695,10 @@ namespace Falcor
         {
             return createTextureFromLegacyDds(ddsData, filename, format, mipLevels, bindFlags);
         }
-        return nullptr;
     }
 
     Texture::SharedPtr Texture::createFromFile(const std::string& filename, bool generateMipLevels, bool loadAsSrgb, Texture::BindFlags bindFlags)
     {
-#define no_srgb()   \
-    if(loadAsSrgb)  \
-    {               \
-        logWarning("createTexture2DFromFile() warning. " + std::to_string(pBitmap->getBytesPerPixel()) + " channel images doesn't have a matching sRGB format. Loading in linear space.");  \
-    }
-
         Texture::SharedPtr pTex;
         if (hasSuffix(filename, ".dds"))
         {
@@ -711,10 +707,10 @@ namespace Falcor
         else
         {
             Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(filename, kTopDown);
-            if(pBitmap)
+            if (pBitmap)
             {
                 ResourceFormat texFormat = pBitmap->getFormat();
-                if(loadAsSrgb)
+                if (loadAsSrgb)
                 {
                     texFormat = linearToSrgbFormat(texFormat);
                 }
@@ -730,5 +726,4 @@ namespace Falcor
 
         return pTex;
     }
-#undef no_srgb
 }
