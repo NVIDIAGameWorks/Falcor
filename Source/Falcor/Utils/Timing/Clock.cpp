@@ -63,7 +63,7 @@ namespace Falcor
             bool changed = w.dropdown("FPS", dropdown, index);
             if (index == kCustom)
             {
-                changed = w.var<uint32_t>("Custom##fps", curVal, 0u, UINT32_MAX, 1u, nullptr, false);
+                changed = w.var<uint32_t>("Custom##fps", curVal, 0u, UINT32_MAX, 1u, false, nullptr);
             }
             else curVal = index;
 

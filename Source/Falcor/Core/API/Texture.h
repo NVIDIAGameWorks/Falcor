@@ -52,15 +52,15 @@ namespace Falcor
 
         /** Get a mip-level width
         */
-        uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel < mMipLevels) ? max(1U, mWidth >> mipLevel) : 0; }
+        uint32_t getWidth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? max(1U, mWidth >> mipLevel) : 0; }
 
         /** Get a mip-level height
         */
-        uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel < mMipLevels) ? max(1U, mHeight >> mipLevel) : 0; }
+        uint32_t getHeight(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? max(1U, mHeight >> mipLevel) : 0; }
 
         /** Get a mip-level depth
         */
-        uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel < mMipLevels) ? max(1U, mDepth >> mipLevel) : 0; }
+        uint32_t getDepth(uint32_t mipLevel = 0) const { return (mipLevel == 0) || (mipLevel < mMipLevels) ? max(1U, mDepth >> mipLevel) : 0; }
 
         /** Get the number of mip-levels
         */
