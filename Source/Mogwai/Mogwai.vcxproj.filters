@@ -14,6 +14,9 @@
       <Filter>Extensions\Capture</Filter>
     </ClCompile>
     <ClCompile Include="MogwaiSettings.cpp" />
+    <ClCompile Include="Extensions\Profiler\TimingCapture.cpp">
+      <Filter>Extensions\Profiler</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Mogwai.h" />
@@ -28,6 +31,9 @@
       <Filter>Extensions\Capture</Filter>
     </ClInclude>
     <ClInclude Include="MogwaiSettings.h" />
+    <ClInclude Include="Extensions\Profiler\TimingCapture.h">
+      <Filter>Extensions\Profiler</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Data">
@@ -38,6 +44,9 @@
     </Filter>
     <Filter Include="Extensions\Capture">
       <UniqueIdentifier>{306d36f4-db42-4d88-ad51-be753440d5fa}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Extensions\Profiler">
+      <UniqueIdentifier>{b68fbd90-4c98-4a56-b140-075e2e0d4e84}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

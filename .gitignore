@@ -1,7 +1,3 @@
-Tests/Bin/*
-Tests/TestsResults/*
-Tests/TestConfigsDev/*
-Tests/.vs/*
 Bin/*
 *.user
 *.sdf
@@ -10,7 +6,6 @@ Bin/*
 *.ptx
 *.pyc
 *.VC.db
-FalcorTest/TestResults/*
 *.VC.opendb
 .vs/*
 .vscode/
@@ -19,6 +14,5 @@ FalcorTest/TestResults/*
 *slang-dump-*
 Source/Externals/.packman/*
 Media
-/Tests/TestResults/*
-/Tests/Solution_BuildLog.txt
-/Tests/robocopy.txt
+Tools/.packman
+Tests/data

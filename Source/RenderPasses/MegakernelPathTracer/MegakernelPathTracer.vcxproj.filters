@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="MegakernelPathTracer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MegakernelPathTracer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ShaderSource Include="PathTracer.rt.slang" />
+    <ShaderSource Include="PathTracer.slang" />
+  </ItemGroup>
+</Project>

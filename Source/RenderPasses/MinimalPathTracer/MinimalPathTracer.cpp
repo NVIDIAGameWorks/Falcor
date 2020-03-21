@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "MinimalPathTracer.h"
 #include "RenderGraph/RenderPassHelpers.h"
 
@@ -72,11 +72,10 @@ namespace
 
 MinimalPathTracer::SharedPtr MinimalPathTracer::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new MinimalPathTracer);
-    return pPass->init(dict) ? pPass : nullptr;
+    return SharedPtr(new MinimalPathTracer(dict));
 }
 
-bool MinimalPathTracer::init(const Dictionary& dict)
+MinimalPathTracer::MinimalPathTracer(const Dictionary& dict)
 {
     // Deserialize pass from dictionary.
     serializePass<true>(dict);
@@ -87,20 +86,12 @@ bool MinimalPathTracer::init(const Dictionary& dict)
     progDesc.addHitGroup(0, "scatterClosestHit", "scatterAnyHit").addMiss(0, "scatterMiss");
     progDesc.addHitGroup(1, "", "shadowAnyHit").addMiss(1, "shadowMiss");
     progDesc.addDefine("MAX_BOUNCES", std::to_string(mMaxBounces));
+    progDesc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
     mTracer.pProgram = RtProgram::create(progDesc, kMaxPayloadSizeBytes, kMaxAttributesSizeBytes);
-    if (!mTracer.pProgram) return false;
-
-    // Setup ray tracing state.
-    mTracer.pState = RtState::create();
-    assert(mTracer.pState);
-    mTracer.pState->setMaxTraceRecursionDepth(kMaxRecursionDepth);
-    mTracer.pState->setProgram(mTracer.pProgram);
 
     // Create a sample generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
     assert(mpSampleGenerator);
-
-    return true;
 }
 
 Dictionary MinimalPathTracer::getScriptingDictionary()
@@ -115,20 +106,8 @@ RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)
     RenderPassReflection reflector;
 
     // Define our input/output channels.
-    for (auto it : kInputChannels)
-    {
-        auto& buf = reflector.addInput(it.name, it.desc);
-        buf.bindFlags(ResourceBindFlags::ShaderResource);
-        buf.format(it.format);
-        if (it.optional) buf.flags(RenderPassReflection::Field::Flags::Optional);
-    }
-    for (auto it : kOutputChannels)
-    {
-        auto& buf = reflector.addOutput(it.name, it.desc);
-        buf.bindFlags(ResourceBindFlags::UnorderedAccess);
-        buf.format(it.format);
-        if (it.optional) buf.flags(RenderPassReflection::Field::Flags::Optional);
-    }
+    addRenderPassInputs(reflector, kInputChannels);
+    addRenderPassOutputs(reflector, kOutputChannels);
 
     return reflector;
 }
@@ -171,19 +150,10 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     mTracer.pProgram->addDefine("USE_ENV_LIGHT", (mpEnvProbe && mUseEnvLight) ? "1" : "0");
     mTracer.pProgram->addDefine("USE_ENV_BACKGROUND", (mpEnvProbe && mUseEnvBackground) ? "1" : "0");
 
-    // For optional channels, set 'is_valid_<name>' defines to inform the program of which ones it can access.
+    // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
-    // This means we're currently always generating all outputs even though they may be unnecessary.
-    auto prepare = [&](const ChannelDesc& desc)
-    {
-        if (desc.optional && !desc.texname.empty())
-        {
-            std::string define = "is_valid_" + desc.texname;
-            mTracer.pProgram->addDefine(define, renderData[desc.name] != nullptr ? "1" : "0");
-        }
-    };
-    for (auto channel : kInputChannels) prepare(channel);
-    for (auto channel : kOutputChannels) prepare(channel);
+    mTracer.pProgram->addDefines(getValidResourceDefines(kInputChannels, renderData));
+    mTracer.pProgram->addDefines(getValidResourceDefines(kOutputChannels, renderData));
 
     // Prepare program vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
@@ -191,7 +161,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     assert(mTracer.pVars);
 
     // Set constants.
-    auto pVars = mTracer.pVars->getGlobalVars();
+    auto pVars = mTracer.pVars;
     pVars["CB"]["gFrameCount"] = mFrameCount;
     pVars["CB"]["gPRNGDimension"] = dict.keyExists(kRenderPassPRNGDimension) ? dict[kRenderPassPRNGDimension] : 0u;
 
@@ -200,7 +170,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     {
         if (!desc.texname.empty())
         {
-            auto pGlobalVars = mTracer.pVars->getGlobalVars();
+            auto pGlobalVars = mTracer.pVars;
             pGlobalVars[desc.texname] = renderData[desc.name]->asTexture();
         }
     };
@@ -212,7 +182,7 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
     assert(targetDim.x > 0 && targetDim.y > 0);
 
     // Spawn the rays.
-    mpScene->raytrace(pRenderContext, mTracer.pState, mTracer.pVars, uvec3(targetDim, 1));
+    mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uvec3(targetDim, 1));
 
     mFrameCount++;
 }
@@ -261,19 +231,22 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const Scene::Sha
     mFrameCount = 0;
 
     // Set new scene.
-    assert(pScene);
     mpScene = pScene;
-    mTracer.pProgram->addDefines(pScene->getSceneDefines());
 
-    // Load environment map if scene uses one.
-    // We're getting the file name from the scene's LightProbe because that was used in the fscene files.
-    // TODO: Switch to use Scene::getEnvironmentMap() when the assets have been updated.
-    auto pLightProbe = mpScene->getLightProbe();
-    if (pLightProbe != nullptr)
+    if (pScene)
     {
-        std::string fn = pLightProbe->getOrigTexture()->getSourceFilename();
-        mpEnvProbe = EnvProbe::create(pRenderContext, fn);
-        mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(mpEnvProbe->getEnvMap()->getSourceFilename()) : "";
+        mTracer.pProgram->addDefines(pScene->getSceneDefines());
+
+        // Load environment map if scene uses one.
+        // We're getting the file name from the scene's LightProbe because that was used in the fscene files.
+        // TODO: Switch to use Scene::getEnvironmentMap() when the assets have been updated.
+        auto pLightProbe = mpScene->getLightProbe();
+        if (pLightProbe != nullptr)
+        {
+            std::string fn = pLightProbe->getOrigTexture()->getSourceFilename();
+            mpEnvProbe = EnvProbe::create(pRenderContext, fn);
+            mEnvProbeFilename = mpEnvProbe ? getFilenameFromPath(mpEnvProbe->getEnvMap()->getSourceFilename()) : "";
+        }
     }
 }
 
@@ -288,19 +261,16 @@ void MinimalPathTracer::prepareVars()
     // Create program variables for the current program/scene.
     // This may trigger shader compilation. If it fails, throw an exception to abort rendering.
     mTracer.pVars = RtProgramVars::create(mTracer.pProgram, mpScene);
-    if (!mTracer.pVars) throw std::exception("Failed to create shader variables");
 
     // Bind utility classes into shared data.
-    auto pGlobalVars = mTracer.pVars->getGlobalVars().get();
-    bool success = mpSampleGenerator->setIntoProgramVars(pGlobalVars);
+    auto pGlobalVars = mTracer.pVars->getRootVar();
+    bool success = mpSampleGenerator->setShaderData(pGlobalVars);
     if (!success) throw std::exception("Failed to bind sample generator");
 
     // Bind the light probe if one is loaded.
     if (mpEnvProbe)
     {
-        auto pCB = pGlobalVars->getConstantBuffer("CB").get();
-        if (!pCB) throw std::exception("Failed to get constant buffer");
-        bool success = mpEnvProbe->setIntoConstantBuffer(pGlobalVars, pCB, "gEnvProbe");
+        bool success = mpEnvProbe->setShaderData(pGlobalVars["CB"]["gEnvProbe"]);
         if (!success) throw std::exception("Failed to bind environment map");
     }
 }

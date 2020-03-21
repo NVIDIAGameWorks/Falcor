@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Gui.h"
 #include "dear_imgui/imgui.h"
@@ -129,14 +129,14 @@ namespace Falcor
         bool addImageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio = true, bool sameLine = false);
  
         template<typename T>
-        bool addScalarVar(const char label[], T& var, T minVal = std::numeric_limits<T>::min(), T maxVal = std::numeric_limits<T>::max(), float step = 1.0f, bool sameLine = false, const char* displayFormat = nullptr);
+        bool addScalarVar(const char label[], T& var, T minVal = std::numeric_limits<T>::lowest(), T maxVal = std::numeric_limits<T>::max(), float step = 1.0f, bool sameLine = false, const char* displayFormat = nullptr);
         template<typename T>
-        bool addScalarSlider(const char label[], T& var, T minVal = std::numeric_limits<T>::min(), T maxVal = std::numeric_limits<T>::max(), bool sameLine = false, const char* displayFormat = nullptr);
+        bool addScalarSlider(const char label[], T& var, T minVal = std::numeric_limits<T>::lowest(), T maxVal = std::numeric_limits<T>::max(), bool sameLine = false, const char* displayFormat = nullptr);
 
         template<typename T>
-        bool addVecVar(const char label[], T& var, typename T::value_type minVal = std::numeric_limits<typename T::value_type>::min(), typename T::value_type maxVal = std::numeric_limits<typename T::value_type>::max(), float step = 1.0f, bool sameLine = false, const char* displayFormat = nullptr);
+        bool addVecVar(const char label[], T& var, typename T::value_type minVal = std::numeric_limits<typename T::value_type>::lowest(), typename T::value_type maxVal = std::numeric_limits<typename T::value_type>::max(), float step = 1.0f, bool sameLine = false, const char* displayFormat = nullptr);
         template<typename T>
-        bool addVecSlider(const char label[], T& var, typename T::value_type minVal = std::numeric_limits<typename T::value_type>::min(), typename T::value_type maxVal = std::numeric_limits<typename T::value_type>::max(), bool sameLine = false, const char* displayFormat = nullptr);
+        bool addVecSlider(const char label[], T& var, typename T::value_type minVal = std::numeric_limits<typename T::value_type>::lowest(), typename T::value_type maxVal = std::numeric_limits<typename T::value_type>::max(), bool sameLine = false, const char* displayFormat = nullptr);
 
         template <typename MatrixType>
         bool addMatrixVar(const char label[], MatrixType& var, float minVal = -FLT_MAX, float maxVal = FLT_MAX, bool sameLine = false);
@@ -149,6 +149,7 @@ namespace Falcor
         mScaleFactor = scaleFactor;
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         io.KeyMap[ImGuiKey_Tab] = (uint32_t)KeyboardEvent::Key::Tab;
         io.KeyMap[ImGuiKey_LeftArrow] = (uint32_t)KeyboardEvent::Key::Left;
         io.KeyMap[ImGuiKey_RightArrow] = (uint32_t)KeyboardEvent::Key::Right;
@@ -184,7 +185,7 @@ namespace Falcor
         mpPipelineState = GraphicsState::create();
 
         // Create the program
-        mpProgram = GraphicsProgram::createFromFile("Framework/Shaders/Gui.slang", "vs", "ps");
+        mpProgram = GraphicsProgram::createFromFile("Utils/UI/Gui.slang", "vs", "ps");
         mpProgramVars = GraphicsVars::create(mpProgram->getReflector());
         mpPipelineState->setProgram(mpProgram);
 
@@ -645,6 +646,7 @@ namespace Falcor
 
     void GuiImpl::addImage(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
     {
+        assert(pTex);
         if (size == vec2(0))
         {
             ImVec2 windowSize = ImGui::GetWindowSize();
@@ -661,6 +663,7 @@ namespace Falcor
 
     bool GuiImpl::addImageButton(const char label[], const Texture::SharedPtr& pTex, glm::vec2 size, bool maintainRatio, bool sameLine)
     {
+        assert(pTex);
         mpImages.push_back(pTex);
         if (sameLine) ImGui::SameLine();
         float aspectRatio = maintainRatio ? (static_cast<float>(pTex->getHeight()) / static_cast<float>(pTex->getWidth())) : 1.0f;
@@ -870,7 +873,7 @@ namespace Falcor
     Gui::UniquePtr Gui::create(uint32_t width, uint32_t height, float scaleFactor)
     {
         UniquePtr pGui = UniquePtr(new Gui);
-        pGui->mpWrapper = new GuiImpl();
+        pGui->mpWrapper = new GuiImpl;
         pGui->mpWrapper->init(pGui.get(), scaleFactor);
         pGui->onWindowResize(width, height);
         return pGui;
@@ -988,7 +991,7 @@ namespace Falcor
                 GraphicsState::Scissor scissor((int32_t)pCmd->ClipRect.x, (int32_t)pCmd->ClipRect.y, (int32_t)pCmd->ClipRect.z, (int32_t)pCmd->ClipRect.w);
                 if (pCmd->TextureId)
                 {
-                    mpWrapper->mpProgramVars->getDefaultBlock()->setSrv(mpWrapper->mGuiImageLoc, 0, (mpWrapper->mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
+                    mpWrapper->mpProgramVars->setSrv(mpWrapper->mGuiImageLoc, (mpWrapper->mpImages[reinterpret_cast<size_t>(pCmd->TextureId) - 1])->getSRV());
                     mpWrapper->mpProgramVars["PerFrameCB"]["useGuiImage"] = true;
                 }
                 else
@@ -1189,8 +1192,8 @@ namespace Falcor
     template<typename T, std::enable_if_t<!is_vector<T>::value, bool>>
     bool Gui::Widgets::slider(const char label[], T& var, T minVal, T maxVal, bool sameLine, const char* displayFormat)
     {
-        T lowerBound = glm::clamp(minVal, std::numeric_limits<T>::min() / 2, std::numeric_limits<T>::max() / 2);
-        T upperBound = glm::clamp(maxVal, std::numeric_limits<T>::min() / 2, std::numeric_limits<T>::max() / 2);
+        T lowerBound = glm::clamp(minVal, std::numeric_limits<T>::lowest() / 2, std::numeric_limits<T>::max() / 2);
+        T upperBound = glm::clamp(maxVal, std::numeric_limits<T>::lowest() / 2, std::numeric_limits<T>::max() / 2);
         return mpGui ? mpGui->mpWrapper->addScalarSlider(label, var, lowerBound, upperBound, sameLine, displayFormat) : false;
     }
 
@@ -1226,8 +1229,8 @@ namespace Falcor
     template<typename T, std::enable_if_t<is_vector<T>::value, bool>>
     bool Gui::Widgets::slider(const char label[], T& var, typename T::value_type minVal, typename T::value_type maxVal, bool sameLine, const char* displayFormat)
     {
-        typename T::value_type lowerBound = glm::clamp(minVal, std::numeric_limits<typename T::value_type>::min() / 2, std::numeric_limits<typename T::value_type>::max() / 2);
-        typename T::value_type upperBound = glm::clamp(maxVal, std::numeric_limits<typename T::value_type>::min() / 2, std::numeric_limits<typename T::value_type>::max() / 2);
+        typename T::value_type lowerBound = glm::clamp(minVal, std::numeric_limits<typename T::value_type>::lowest() / 2, std::numeric_limits<typename T::value_type>::max() / 2);
+        typename T::value_type upperBound = glm::clamp(maxVal, std::numeric_limits<typename T::value_type>::lowest() / 2, std::numeric_limits<typename T::value_type>::max() / 2);
         return mpGui ? mpGui->mpWrapper->addVecSlider(label, var, lowerBound, upperBound, sameLine, displayFormat) : false;
     }
 

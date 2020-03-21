@@ -1,131 +1,150 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Core/Program/Program.h"
-#include "SingleShaderProgram.h"
-#include "HitProgram.h"
 #include "Core/API/RootSignature.h"
+#include "../RtStateObject.h"
+#include "../ShaderTable.h"
+#include "Scene/Scene.h"
 
 namespace Falcor
 {
-    class dlldecl RtProgram : public ProgramBase, public std::enable_shared_from_this<RtProgram>
+    /** Ray tracing program. See GraphicsProgram and ComputeProgram to manage other types of programs.
+    */
+    class dlldecl RtProgram : public Program, public inherit_shared_from_this<Program, RtProgram>
     {
     public:
         using SharedPtr = std::shared_ptr<RtProgram>;
         using SharedConstPtr = std::shared_ptr<const RtProgram>;
+        using inherit_shared_from_this<Program, RtProgram>::shared_from_this;
+
         using DefineList = Program::DefineList;
 
-        class dlldecl Desc
+        struct dlldecl DescExtra
         {
         public:
-            Desc() = default;
-            Desc(const std::string& filename) { addShaderLibrary(filename); }
-            Desc(const ShaderLibrary::SharedPtr& pLibrary) { addShaderLibrary(pLibrary); }
+            struct GroupInfo
+            {
+                int32_t groupIndex = -1;
+            };
 
-            Desc& addShaderLibrary(const ShaderLibrary::SharedPtr& pLibrary);
+            /** Set the max recursion depth
+            */
+            void setMaxTraceRecursionDepth(uint32_t maxDepth) { mMaxTraceRecursionDepth = maxDepth; }
+
+            std::vector<GroupInfo> mRayGenEntryPoints;
+            std::vector<GroupInfo> mMissEntryPoints;
+            std::vector<GroupInfo> mHitGroups;
+            uint32_t mMaxTraceRecursionDepth = 1;
+        };
+
+        class dlldecl Desc : public DescExtra
+        {
+        public:
+            Desc() { init(); }
+            Desc(const std::string& filename) : mBaseDesc(filename) { init(); }
+
             Desc& addShaderLibrary(const std::string& filename);
             Desc& setRayGen(const std::string& raygen);
+            Desc& addRayGen(const std::string& raygen);
             Desc& addMiss(uint32_t missIndex, const std::string& miss);
-            Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit, const std::string& intersection = "");
+            Desc& addHitGroup(uint32_t hitIndex, const std::string& closestHit, const std::string& anyHit = "", const std::string& intersection = "");
             Desc& addDefine(const std::string& define, const std::string& value);
             Desc& addDefines(const DefineList& defines);
 
-            /** Get the compiler flags
-            */
-            Shader::CompilerFlags getCompilerFlags() const { return shaderFlags; }
-
             /** Set the compiler flags. Replaces any previously set flags.
             */
-            Desc& setCompilerFlags(Shader::CompilerFlags flags) { shaderFlags = flags; return *this; }
+            Desc& setCompilerFlags(Shader::CompilerFlags flags) { mBaseDesc.setCompilerFlags(flags); return *this; }
+
         private:
             friend class RtProgram;
-            std::vector<ShaderLibrary::SharedPtr> mShaderLibraries;
+
+            void init();
+
+            Program::Desc mBaseDesc;
             DefineList mDefineList;
-
-            struct ShaderEntry
-            {
-                uint32_t libraryIndex = -1;
-                std::string entryPoint;
-            };
-
-            ShaderEntry mRayGen;
-            std::vector<ShaderEntry> mMiss;
-
-            struct HitProgramEntry
-            {
-                std::string intersection;
-                std::string anyHit;
-                std::string closestHit;
-                uint32_t libraryIndex = -1;
-            };
-            std::vector<HitProgramEntry> mHit;
-            uint32_t mActiveLibraryIndex = -1;
-            Shader::CompilerFlags shaderFlags = Shader::CompilerFlags::None;
         };
 
+        /** Create a new ray tracing program.
+            \param[in] desc The program description.
+            \param[in] maxPayloadSize The maximum ray payload size in bytes.
+            \param[in] maxAttributesSize The maximum attributes size in bytes.
+            \return A new object, or an exception is thrown if creation failed.
+        */
         static RtProgram::SharedPtr create(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
 
+        /** Get the max recursion depth
+        */
+        uint32_t getMaxTraceRecursionDepth() const { return mDescExtra.mMaxTraceRecursionDepth; }
+
+        /** Get the raytracing state object for this program
+        */
+        RtStateObject::SharedPtr getRtso(RtProgramVars* pVars);
+
         // Ray-gen
-        RayGenProgram::SharedPtr getRayGenProgram() const { return mpRayGenProgram; }
+        uint32_t getRayGenProgramCount() const { return (uint32_t) mDescExtra.mRayGenEntryPoints.size(); }
+        uint32_t getRayGenIndex(uint32_t index) const { return mDescExtra.mRayGenEntryPoints[index].groupIndex; }
 
         // Hit
-        uint32_t getHitProgramCount() const { return (uint32_t)mHitProgs.size(); }
-        HitProgram::SharedPtr getHitProgram(uint32_t rayIndex) const { return mHitProgs[rayIndex]; }
+        uint32_t getHitProgramCount() const { return (uint32_t) mDescExtra.mHitGroups.size(); }
+        uint32_t getHitIndex(uint32_t index) const { return mDescExtra.mHitGroups[index].groupIndex; }
 
         // Miss
-        uint32_t getMissProgramCount() const { return (uint32_t)mMissProgs.size(); }
-        MissProgram::SharedPtr getMissProgram(uint32_t rayIndex) const { return mMissProgs[rayIndex]; }
+        uint32_t getMissProgramCount() const { return (uint32_t) mDescExtra.mMissEntryPoints.size(); }
+        uint32_t getMissIndex(uint32_t index) const { return mDescExtra.mMissEntryPoints[index].groupIndex; }
 
-        virtual bool addDefine(const std::string& name, const std::string& value = "") override;
-        virtual bool addDefines(const DefineList& dl) override;
-        virtual bool removeDefine(const std::string& name) override;
-        virtual bool removeDefines(const DefineList& dl) override { assert(false); return false; /* not implemented */ }
-        virtual bool removeDefines(size_t pos, size_t len, const std::string& str) override;
-        virtual bool setDefines(const DefineList& dl) override;
-        virtual const DefineList& getDefines() const override { assert(false); static DefineList dummy; return dummy; /* not well defined if the ray programs have mismatching set of defines */ }
+        /** Set the scene
+        */
+        void setScene(Scene::ConstSharedPtrRef pScene);
 
-        const RootSignature::SharedPtr& getGlobalRootSignature() const { updateReflection(); return mpGlobalRootSignature; }
-        const ProgramReflection::SharedPtr& getGlobalReflector() const { updateReflection(); return mpGlobalReflector; }
+        DescExtra const& getDescExtra() const { return mDescExtra; }
+
+    protected:
+        void init(const Desc& desc);
+
+        EntryPointGroupKernels::SharedPtr createEntryPointGroupKernels(
+            const std::vector<Shader::SharedPtr>& shaders,
+            EntryPointGroupReflection::SharedPtr const& pReflector) const override;
 
     private:
-
-        using MissProgramList = std::vector<MissProgram::SharedPtr>;
-        using HitProgramList = std::vector<HitProgram::SharedPtr>;
-
-        void updateReflection() const;
+        RtProgram(RtProgram const&) = delete;
+        RtProgram& operator=(RtProgram const&) = delete;
 
         RtProgram(const Desc& desc, uint32_t maxPayloadSize = FALCOR_RT_MAX_PAYLOAD_SIZE_IN_BYTES, uint32_t maxAttributesSize = D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES);
-        HitProgramList mHitProgs;
-        MissProgramList mMissProgs;
-        RayGenProgram::SharedPtr mpRayGenProgram;
 
-        mutable bool mReflectionDirty = true;
-        mutable RootSignature::SharedPtr mpGlobalRootSignature;
-        mutable ProgramReflection::SharedPtr mpGlobalReflector;
+        DescExtra mDescExtra;
+
+        uint32_t mMaxPayloadSize;
+        uint32_t mMaxAttributesSize;
+
+        using StateGraph = Falcor::StateGraph<RtStateObject::SharedPtr, void*>;
+        StateGraph mRtsoGraph;
+
+        Scene::SharedPtr mpScene;
     };
 }

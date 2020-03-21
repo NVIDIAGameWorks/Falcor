@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "FBO.h"
 
@@ -108,7 +108,7 @@ namespace Falcor
             return true;
         }
 
-        bool CheckParams(const std::string& Func, uint32_t width, uint32_t height, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount)
+        bool checkParams(const std::string& Func, uint32_t width, uint32_t height, uint32_t arraySize, uint32_t mipLevels, uint32_t sampleCount)
         {
             std::string msg = "Fbo::" + Func + "() - ";
             std::string param;
@@ -218,14 +218,14 @@ namespace Falcor
         auto pFbo = create();
         for (uint32_t i = 0 ; i < colors.size() ; i++)
         {
-            if (pFbo->attachColorTarget(colors[i], i) == false) return nullptr;
+            pFbo->attachColorTarget(colors[i], i);
         }
         if (pDepth)
         {
-            if (pFbo->attachDepthStencilTarget(pDepth) == false) return nullptr;
+            pFbo->attachDepthStencilTarget(pDepth);
         }
-
-        return pFbo->finalize() ? pFbo : nullptr;
+        pFbo->finalize();
+        return pFbo;
     }
 
     Fbo::SharedPtr Fbo::getDefault()
@@ -238,9 +238,12 @@ namespace Falcor
         return pDefault;
     }
 
-    bool Fbo::attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    void Fbo::attachDepthStencilTarget(const Texture::SharedPtr& pDepthStencil, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
-        if (checkAttachmentParams(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true) == false) return false;
+        if (checkAttachmentParams(pDepthStencil.get(), mipLevel, firstArraySlice, arraySize, true) == false)
+        {
+            throw std::exception("Can't attach depth-stencil texture to FBO. Invalid parameters.");
+        }
 
         mpDesc = nullptr;
         mDepthStencil.pTexture = pDepthStencil;
@@ -255,18 +258,18 @@ namespace Falcor
 
         mTempDesc.setDepthStencilTarget(pDepthStencil ? pDepthStencil->getFormat() : ResourceFormat::Unknown, allowUav);
         applyDepthAttachment();
-        return true;
     }
 
-    bool Fbo::attachColorTarget(const Texture::SharedPtr& pTexture, uint32_t rtIndex, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
+    void Fbo::attachColorTarget(const Texture::SharedPtr& pTexture, uint32_t rtIndex, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
     {
         if (rtIndex >= mColorAttachments.size())
         {
-            logError("Error when attaching texture to FBO. Requested color index " + std::to_string(rtIndex) + ", but context only supports " + std::to_string(mColorAttachments.size()) + " targets");
-            return false;
+            throw std::exception(("Error when attaching texture to FBO. Requested color index " + std::to_string(rtIndex) + ", but context only supports " + std::to_string(mColorAttachments.size()) + " targets").c_str());
         }
-
-        if (checkAttachmentParams(pTexture.get(), mipLevel, firstArraySlice, arraySize, false) == false) return false;
+        if (checkAttachmentParams(pTexture.get(), mipLevel, firstArraySlice, arraySize, false) == false)
+        {
+            throw std::exception("Can't attach texture to FBO. Invalid parameters.");
+        }
 
         mpDesc = nullptr;
         mColorAttachments[rtIndex].pTexture = pTexture;
@@ -281,7 +284,6 @@ namespace Falcor
 
         mTempDesc.setColorTarget(rtIndex, pTexture ? pTexture->getFormat() : ResourceFormat::Unknown, allowUav);
         applyColorAttachment(rtIndex);
-        return true;
     }
 
     bool Fbo::verifyAttachment(const Attachment& attachment) const
@@ -367,8 +369,7 @@ namespace Falcor
     {
         if (index >= mColorAttachments.size())
         {
-            logError("Fbo::getColorTexture(): Index is out of range. Requested " + std::to_string(index) + " but only " + std::to_string(mColorAttachments.size()) + " color slots are available.");
-            return nullptr;
+            throw std::exception(("Can't get texture from FBO. Index is out of range. Requested " + std::to_string(index) + " but only " + std::to_string(mColorAttachments.size()) + " color slots are available.").c_str());
         }
         return mColorAttachments[index].pTexture;
     }
@@ -378,15 +379,16 @@ namespace Falcor
         return mDepthStencil.pTexture;
     }
 
-    bool Fbo::finalize() const
+    void Fbo::finalize() const
     {
         if (mpDesc == nullptr)
         {
-            if (calcAndValidateProperties() == false) return false;
+            if (calcAndValidateProperties() == false)
+            {
+                throw std::exception("Can't finalize FBO. Invalid frame buffer object.");
+            }
             initApiHandle();
-            return true;
         }
-        return true;
     }
 
     void Fbo::setSamplePositions(uint32_t samplesPerPixel, uint32_t pixelCount, const SamplePosition positions[])
@@ -406,10 +408,14 @@ namespace Falcor
     Fbo::SharedPtr Fbo::create2D(uint32_t width, uint32_t height, const Fbo::Desc& fboDesc, uint32_t arraySize, uint32_t mipLevels)
     {
         uint32_t sampleCount = fboDesc.getSampleCount();
-        if (CheckParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false) return nullptr;
+        if (checkParams("Create2D", width, height, arraySize, mipLevels, sampleCount) == false)
+        {
+            throw std::exception("Can't create 2D FBO. Invalid parameters.");
+        }
+
         Fbo::SharedPtr pFbo = create();
 
-        // create the color targets
+        // Create the color targets
         for (uint32_t i = 0; i < Fbo::getMaxColorTargetCount(); i++)
         {
             if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown)
@@ -434,14 +440,16 @@ namespace Falcor
     {
         if (fboDesc.getSampleCount() > 1)
         {
-            logError("creatceCubemap() - can't create a multisampled FBO");
-            return nullptr;
+            throw std::exception("Can't create cubemap FBO. Multisampled cubemap is not supported.");
         }
-        if (CheckParams("CreateCubemap", width, height, arraySize, mipLevels, 0) == false)  return nullptr;
+        if (checkParams("CreateCubemap", width, height, arraySize, mipLevels, 0) == false)
+        {
+            throw std::exception("Can't create cubemap FBO. Invalid parameters.");
+        }
 
         Fbo::SharedPtr pFbo = create();
 
-        // create the color targets
+        // Create the color targets
         for (uint32_t i = 0; i < getMaxColorTargetCount(); i++)
         {
             Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));

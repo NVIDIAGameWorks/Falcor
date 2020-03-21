@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "RenderGraph.h"
 #include "RenderPassLibrary.h"
@@ -38,19 +38,13 @@ namespace Falcor
 
     RenderGraph::SharedPtr RenderGraph::create(const std::string& name)
     {
-        try
-        {
-            return SharedPtr(new RenderGraph(name));
-        }
-        catch (const std::exception& e)
-        {
-            logError(std::string("Can't create a new RenderGraph. ") + e.what());
-            return nullptr;
-        }
+        return SharedPtr(new RenderGraph(name));
     }
 
-    RenderGraph::RenderGraph(const std::string& name) : mName(name)
+    RenderGraph::RenderGraph(const std::string& name)
+        : mName(name)
     {
+        if (gpFramework == nullptr) throw std::exception("Can't construct RenderGraph - framework is not initialized");
         mpGraph = DirectedGraph::create();
         mpPassDictionary = Dictionary::create();
         gRenderGraphs.push_back(this);
@@ -100,7 +94,7 @@ namespace Falcor
         pPass->mPassChangedCB = [this]() { mRecompile = true; };
         pPass->mName = passName;
 
-        if(mpScene) pPass->setScene(gpDevice->getRenderContext(), mpScene);
+        if (mpScene) pPass->setScene(gpDevice->getRenderContext(), mpScene);
         mNodeData[passIndex] = { passName, pPass };
         mRecompile = true;
         return passIndex;
@@ -152,7 +146,7 @@ namespace Falcor
         pPass->mPassChangedCB = [this]() { mRecompile = true; };
         pPass->mName = pOldPass->getName();
 
-        pPass->setScene(gpDevice->getRenderContext(), mpScene);
+        if (mpScene) pPass->setScene(gpDevice->getRenderContext(), mpScene);
         mRecompile = true;
     }
 
@@ -356,7 +350,7 @@ namespace Falcor
         {
             if (graphOut == currentOut) return true;
         }
-        
+
         return false;
     }
 
@@ -387,7 +381,7 @@ namespace Falcor
             mRecompile = false;
             return true;
         }
-        catch (std::exception e)
+        catch (const std::exception& e)
         {
             log = e.what();
             return false;
@@ -407,7 +401,6 @@ namespace Falcor
         RenderGraphExe::Context c;
         c.pGraphDictionary = mpPassDictionary;
         c.pRenderContext = pContext;
-        c.profileGraph = mProfileGraph;
         c.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
         c.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
         mpExe->execute(c);
@@ -433,7 +426,7 @@ namespace Falcor
                 passesToRemove.push_back(nameIndexPair.first);
             }
         }
-        
+
         for (const std::string& passName : passesToRemove)
         {
             removePass(passName);
@@ -443,7 +436,7 @@ namespace Falcor
         for (uint32_t i = 0; i < mpGraph->getCurrentEdgeId(); ++i)
         {
             if (!mpGraph->doesEdgeExist(i)) { continue; }
-            
+
             mpGraph->removeEdge(i);
         }
         mEdgeData.clear();
@@ -588,9 +581,8 @@ namespace Falcor
     void RenderGraph::onResize(const Fbo* pTargetFbo)
     {
         // Store the back-buffer values
-        const Texture* pColor = pTargetFbo->getColorTexture(0).get();
-        const Texture* pDepth = pTargetFbo->getDepthStencilTexture().get();
-        assert(pColor && pDepth);
+        const Texture* pColor = pTargetFbo ? pTargetFbo->getColorTexture(0).get() : nullptr;
+        if (pColor == nullptr) throw std::exception("Can't resize render graph without a frame buffer.");
 
         // Store the values
         mCompilerDeps.defaultResourceProps.format = pColor->getFormat();
@@ -603,7 +595,7 @@ namespace Falcor
     bool canFieldsConnect(const RenderPassReflection::Field& src, const RenderPassReflection::Field& dst)
     {
         assert(is_set(src.getVisibility(), RenderPassReflection::Field::Visibility::Output) && is_set(dst.getVisibility(), RenderPassReflection::Field::Visibility::Input));
-        
+
         return src.getName() == dst.getName() &&
             (dst.getWidth() == 0 || src.getWidth() == dst.getWidth()) &&
             (dst.getHeight() == 0 || src.getHeight() == dst.getHeight()) &&
@@ -734,12 +726,10 @@ namespace Falcor
                 mpScene->renderUI(sceneGroup);
                 sceneGroup.release();
             }
-            
+
             widget.separator();
         }
 
-        widget.checkbox("Profile Passes", mProfileGraph);
-        widget.tooltip("Profile the render-passes. The results will be shown in the profiler window. If you can't see it, click 'P'");
         if (mpExe) mpExe->renderUI(widget);
     }
 
@@ -751,6 +741,11 @@ namespace Falcor
     bool RenderGraph::onKeyEvent(const KeyboardEvent& keyEvent)
     {
         return mpExe ? mpExe->onKeyEvent(keyEvent) : false;
+    }
+
+    void RenderGraph::onHotReload(HotReloadFlags reloaded)
+    {
+        if (mpExe) mpExe->onHotReload(reloaded);
     }
 
     SCRIPT_BINDING(RenderGraph)
@@ -776,7 +771,7 @@ namespace Falcor
         const auto& createRenderPass = [](const std::string& passName, pybind11::dict d = {})
         {
             auto pPass = RenderPassLibrary::instance().createPass(gpDevice->getRenderContext(), passName.c_str(), Dictionary(d));
-            if (!pPass) throw std::exception(("Can't create a render pass named `" + passName + "`. Make sure the required DLL was loaded").c_str());
+            if (!pPass) throw std::exception(("Can't create a render pass named `" + passName + "`. Make sure the required DLL was loaded.").c_str());
             return pPass;
         };
         passClass.ctor(createRenderPass, "passName"_a, "dict"_a = pybind11::dict());

@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Sample.h"
 #include "RenderGraph/RenderPassLibrary.h"
@@ -56,7 +56,7 @@ namespace Falcor
         auto pCurrentFbo = mpTargetFBO;
         mpTargetFBO = Fbo::create2D(width, height, pBackBufferFBO->getDesc());
         gpDevice->getRenderContext()->blit(pCurrentFbo->getColorTexture(0)->getSRV(), mpTargetFBO->getRenderTargetView(0));
-        
+
         // Tell the GUI the swap-chain size changed
         if(mpGui) mpGui->onWindowResize(width, height);
 
@@ -69,6 +69,12 @@ namespace Falcor
 
     void Sample::handleKeyboardEvent(const KeyboardEvent& keyEvent)
     {
+        if (mSuppressInput)
+        {
+            if (keyEvent.key == KeyboardEvent::Key::Escape) mpWindow->shutdown();
+            return;
+        }
+
         if (keyEvent.type == KeyboardEvent::Type::KeyPressed)       mPressedKeys.insert(keyEvent.key);
         else if (keyEvent.type == KeyboardEvent::Type::KeyReleased) mPressedKeys.erase(keyEvent.key);
 
@@ -90,6 +96,7 @@ namespace Falcor
                 switch (keyEvent.key)
                 {
                 case KeyboardEvent::Key::Pause:
+                case KeyboardEvent::Key::Space:
                     mRendererPaused = !mRendererPaused;
                     break;
                 }
@@ -116,8 +123,11 @@ namespace Falcor
                     toggleUI(!mShowUI);
                     break;
                 case KeyboardEvent::Key::F5:
-                    Program::reloadAllPrograms();
-                    if (mpRenderer) mpRenderer->onDataReload();
+                    {
+                        HotReloadFlags reloaded = HotReloadFlags::None;
+                        if (Program::reloadAllPrograms()) reloaded |= HotReloadFlags::Program;
+                        if (mpRenderer) mpRenderer->onHotReload(reloaded);
+                    }
                     break;
                 case KeyboardEvent::Key::Escape:
                     if (mVideoCapture.pVideoCapture)
@@ -130,6 +140,7 @@ namespace Falcor
                     }
                     break;
                 case KeyboardEvent::Key::Pause:
+                case KeyboardEvent::Key::Space:
                     mClock.isPaused() ? mClock.play() : mClock.pause();
                     break;
                 }
@@ -144,6 +155,7 @@ namespace Falcor
 
     void Sample::handleMouseEvent(const MouseEvent& mouseEvent)
     {
+        if (mSuppressInput) return;
         if (mShowUI && mpGui->onMouseEvent(mouseEvent)) return;
         if (mpRenderer && mpRenderer->onMouseEvent(mouseEvent)) return;
         if (mpPixelZoom->onMouseEvent(mouseEvent)) return;
@@ -152,6 +164,7 @@ namespace Falcor
     // Sample functions
     Sample::~Sample()
     {
+        mpRenderer.reset();
         if (mVideoCapture.pVideoCapture) endVideoCapture();
 
         Clock::shutdown();
@@ -160,33 +173,41 @@ namespace Falcor
         RenderPassLibrary::instance().shutdown();
         TextRenderer::shutdown();
         mpGui.reset();
-        mpTargetFBO.reset();        
+        mpTargetFBO.reset();
         mpPixelZoom.reset();
         if(gpDevice) gpDevice->cleanup();
         gpDevice.reset();
         OSServices::stop();
     }
-    
+
     void Sample::run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv)
     {
         Sample s(pRenderer);
-        s.runInternal(config, argc, argv);
+        try
+        {
+            s.runInternal(config, argc, argv);
+        }
+        catch (const std::exception & e)
+        {
+            logError("Error:\n" + std::string(e.what()));
+        }
+        Logger::shutdown();
     }
-    
+
     void Sample::run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc, char** argv)
     {
-        auto err = [filename](std::string_view msg) {logError("Error in Sample::Run(). `" + filename + "` " + msg); };
         Sample s(pRenderer);
-
-        s.startScripting(); // We have to do that before running the script
-        std::string fullpath;
-        SampleConfig c;
-        if (findFileInDataDirectories(filename, fullpath))
+        try
         {
-            Scripting::Context ctx;
-            std::string errorLog;
-            try
+            auto err = [filename](std::string_view msg) {logError("Error in Sample::Run(). `" + filename + "` " + msg); };
+
+            s.startScripting(); // We have to do that before running the script
+            std::string fullpath;
+            SampleConfig c;
+
+            if (findFileInDataDirectories(filename, fullpath))
             {
+                Scripting::Context ctx;
                 Scripting::runScriptFromFile(fullpath, ctx);
                 auto configs = ctx.getObjects<SampleConfig>();
                 if (configs.empty()) err("doesn't contain any SampleConfig objects");
@@ -196,31 +217,35 @@ namespace Falcor
                     c = configs[0];
                 }
             }
-            catch (std::exception e)
+            else
             {
-                err("\n" + errorLog);
-            }            
+                err("doesn't exist. Using default configuration");
+            }
+
+            s.runInternal(c, argc, argv);
         }
-        else
+        catch (const std::exception & e)
         {
-            err(" doesn't exist. Using default configuration");
+            logError("Error:\n" + std::string(e.what()));
         }
-        s.runInternal(c, argc, argv);
+        Logger::shutdown();
     }
 
     void Sample::runInternal(const SampleConfig& config, uint32_t argc, char** argv)
     {
         gpFramework = this;
 
+        Logger::showBoxOnError(config.showMessageBoxOnError);
+
         OSServices::start();
         startScripting();
         Threading::start();
 
+        mSuppressInput = config.suppressInput;
         mShowUI = config.showUI;
         mClock.timeScale(config.timeScale);
         if (config.pauseTime) mClock.pause();
         mVsyncOn = config.deviceDesc.enableVsync;
-        Logger::showBoxOnError(config.showMessageBoxOnError);
 
         // Create the window
         mpWindow = Window::create(config.windowDesc, this);
@@ -230,19 +255,9 @@ namespace Falcor
             return;
         }
 
-        // Show the progress bar
-        ProgressBar::MessageList msgList =
-        {
-            { "Initializing Falcor" },
-            { "Takes a while, doesn't it?" },
-            { "Don't get too bored now" },
-            { "Getting there" },
-            { "Loading. Seriously, loading" },
-            { "Are we there yet?"},
-            { "NI!"}
-        };
-
-        ProgressBar::SharedPtr pBar = ProgressBar::show(msgList);
+        // Show the progress bar (unless window is minimized)
+        ProgressBar::SharedPtr pBar;
+        if (config.windowDesc.mode != Window::WindowMode::Minimized) pBar = ProgressBar::show("Initializing Falcor");
 
         Device::Desc d = config.deviceDesc;
         gpDevice = Device::create(mpWindow, config.deviceDesc);
@@ -286,7 +301,6 @@ namespace Falcor
         mpRenderer->onShutdown();
         if (gpDevice) gpDevice->flushAndSync();
         mpRenderer = nullptr;
-        Logger::shutdown();
     }
 
     void screenSizeUI(Gui::Widgets& widget, uvec2 screenDims)
@@ -335,10 +349,11 @@ namespace Falcor
             "  'F5'      - Reload shaders\n"
             "  'ESC'     - Quit\n"
             "  'V'       - Toggle VSync\n"
+            "  'F3'      - Capture current camera location\n"
             "  'F12'     - Capture screenshot\n"
             "  'Shift+F12'  - Video capture\n"
-            "  'Pause'      - Pause\\resume the global timer\n"
-            "  'Ctrl+Pause' - Pause\\resume the renderer\n"
+            "  'Pause|Space'      - Pause\\resume the global timer\n"
+            "  'Ctrl+Pause|Space' - Pause\\resume the renderer\n"
             "  'Z'       - Zoom in on a pixel\n"
             "  'MouseWheel' - Change level of zoom\n"
 #if _PROFILING_ENABLED
@@ -365,7 +380,7 @@ namespace Falcor
 
         auto controlsGroup = Gui::Group(pGui, "Global Controls");
         if (controlsGroup.open())
-        {            
+        {
             float t = (float)mClock.now();
             if (controlsGroup.var("Time", t, 0.f, FLT_MAX)) mClock.now(double(t));
             if (controlsGroup.button("Reset")) mClock.now(0.0);
@@ -390,7 +405,7 @@ namespace Falcor
 
             controlsGroup.release();
         }
-        
+
     }
 
     void Sample::renderUI()
@@ -404,7 +419,7 @@ namespace Falcor
             if(mShowUI) mpRenderer->onGuiRender(mpGui.get());
             if (mVideoCapture.displayUI && mVideoCapture.pUI)
             {
-                Gui::Window w(mpGui.get(), "Video Capture", mVideoCapture.displayUI, { 20, 300 }, { 300, 280 });
+                Gui::Window w(mpGui.get(), "Video Capture", mVideoCapture.displayUI, { 350, 250 }, { 300, 280 });
                 mVideoCapture.pUI->render(w);
             }
 
@@ -448,7 +463,7 @@ namespace Falcor
                 mpRenderer->onFrameRender(pRenderContext, mpTargetFBO);
             }
         }
-        
+
         if (gpDevice)
         {
             // Copy the render-target
@@ -461,7 +476,7 @@ namespace Falcor
             if (!captureVideoUI) captureVideoFrame();
             renderUI();
 
-            pSwapChainFbo = gpDevice->getSwapChainFbo(); // The UI might have triggered a swap-chain resize, invalidating the previous FBO            
+            pSwapChainFbo = gpDevice->getSwapChainFbo(); // The UI might have triggered a swap-chain resize, invalidating the previous FBO
             if (mpPixelZoom) mpPixelZoom->render(pRenderContext, pSwapChainFbo.get());
 
 #if _PROFILING_ENABLED
@@ -526,12 +541,12 @@ namespace Falcor
     {
         if (mVideoCapture.pUI == nullptr)
         {
-            mVideoCapture.pUI = VideoEncoderUI::create([this]() {startVideoCapture(); }, [this]() {endVideoCapture(); });
+            mVideoCapture.pUI = VideoEncoderUI::create([this]() {return startVideoCapture(); }, [this]() {endVideoCapture(); });
         }
         mVideoCapture.displayUI = true;
     }
 
-    void Sample::startVideoCapture()
+    bool Sample::startVideoCapture()
     {
         // Create the Capture Object and Framebuffer.
         VideoEncoder::Desc desc;
@@ -547,6 +562,7 @@ namespace Falcor
         desc.gopSize = mVideoCapture.pUI->getGopSize();
 
         mVideoCapture.pVideoCapture = VideoEncoder::create(desc);
+        if (!mVideoCapture.pVideoCapture) return false;
 
         assert(mVideoCapture.pVideoCapture);
         mVideoCapture.pFrame.resize(desc.width*desc.height * 4);
@@ -560,8 +576,9 @@ namespace Falcor
             }
             mVideoCapture.currentTime = mVideoCapture.pUI->getStartTime();
         }
+        return true;
     }
- 
+
     void Sample::endVideoCapture()
     {
         if (mVideoCapture.pVideoCapture)

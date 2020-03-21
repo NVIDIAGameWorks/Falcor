@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="ToneMapper.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ToneMapper.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ShaderSource Include="ToneMapping.ps.slang" />
+    <ShaderSource Include="Luminance.ps.slang" />
+    <ShaderSource Include="ToneMapperParams.slang" />
+  </ItemGroup>
+</Project>

@@ -1,37 +1,37 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Core/API/RenderContext.h"
 #include "Core/API/Device.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "D3D12State.h"
+#include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
-#include "Raytracing/RtState.h"
 #include "RenderGraph/BasePasses/FullScreenPass.h"
 
 namespace Falcor
@@ -53,13 +53,13 @@ namespace Falcor
                 Sampler::SharedPtr pLinearSampler;
                 Sampler::SharedPtr pPointSampler;
 
-                ConstantBuffer::SharedPtr pSrcRectBuffer;
+                ParameterBlock::SharedPtr pSrcRectBuffer;
                 vec2 prevSrcRectOffset = vec2(0, 0);
                 vec2 prevSrcReftScale = vec2(0, 0);
 
                 // Variable offsets in constant buffer
-                size_t offsetVarOffset = ConstantBuffer::kInvalidOffset;
-                size_t scaleVarOffset = ConstantBuffer::kInvalidOffset;
+                UniformShaderVarOffset offsetVarOffset;
+                UniformShaderVarOffset scaleVarOffset;
                 ProgramReflection::BindLocation texBindLoc;
             } blitData;
 
@@ -71,18 +71,20 @@ namespace Falcor
 
         void RenderContextApiData::init()
         {
+            assert(gpDevice);
             auto& blitData = sApiData.blitData;
             if (blitData.pPass == nullptr)
             {
                 // Init the blit data
                 Program::Desc d;
-                d.addShaderLibrary("Framework/Shaders/Blit.slang").vsEntry("vs").psEntry("ps");
+                d.addShaderLibrary("Core/API/Blit.slang").vsEntry("vs").psEntry("ps");
                 blitData.pPass = FullScreenPass::create(d);
                 blitData.pFbo = Fbo::create();
+                assert(blitData.pPass && blitData.pFbo);
 
-                blitData.pSrcRectBuffer = blitData.pPass->getVars()->getConstantBuffer("SrcRectCB");
-                blitData.offsetVarOffset = (uint32_t)blitData.pSrcRectBuffer->getVariableOffset("gOffset");
-                blitData.scaleVarOffset = (uint32_t)blitData.pSrcRectBuffer->getVariableOffset("gScale");
+                blitData.pSrcRectBuffer = blitData.pPass->getVars()->getParameterBlock("SrcRectCB");
+                blitData.offsetVarOffset = blitData.pSrcRectBuffer->getVariableOffset("gOffset");
+                blitData.scaleVarOffset = blitData.pSrcRectBuffer->getVariableOffset("gScale");
                 blitData.prevSrcRectOffset = vec2(-1.0f);
                 blitData.prevSrcReftScale = vec2(-1.0f);
 
@@ -91,6 +93,7 @@ namespace Falcor
                 blitData.pLinearSampler = Sampler::create(desc);
                 desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
                 blitData.pPointSampler = Sampler::create(desc);
+
                 const auto& pDefaultBlockReflection = blitData.pPass->getProgram()->getReflector()->getDefaultParameterBlock();
                 blitData.texBindLoc = pDefaultBlockReflection->getResourceBinding("gTex");
 
@@ -100,17 +103,17 @@ namespace Falcor
                 sigDesc.NodeMask = 0;
                 D3D12_INDIRECT_ARGUMENT_DESC argDesc;
 
-                //Draw 
+                // Draw
                 sigDesc.ByteStride = sizeof(D3D12_DRAW_ARGUMENTS);
                 argDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
                 sigDesc.pArgumentDescs = &argDesc;
-                gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawCommandSig));
+                d3d_call(gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawCommandSig)));
 
-                //Draw index
+                // Draw index
                 sigDesc.ByteStride = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
                 argDesc.Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
                 sigDesc.pArgumentDescs = &argDesc;
-                gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawIndexCommandSig));
+                d3d_call(gpDevice->getApiHandle()->CreateCommandSignature(&sigDesc, nullptr, IID_PPV_ARGS(&sApiData.pDrawIndexCommandSig)));
             }
 
             sApiData.refCount++;
@@ -123,7 +126,8 @@ namespace Falcor
         }
     }
 
-    RenderContext::RenderContext()
+    RenderContext::RenderContext(CommandQueueHandle queue)
+        : ComputeContext(LowLevelContextData::CommandQueueType::Direct, queue)
     {
         RenderContextApiData::init();
     }
@@ -133,17 +137,6 @@ namespace Falcor
         RenderContextApiData::release();
     }
 
-    RenderContext::SharedPtr RenderContext::create(CommandQueueHandle queue)
-    {
-        SharedPtr pCtx = SharedPtr(new RenderContext());
-        pCtx->mpLowLevelData = LowLevelContextData::create(LowLevelContextData::CommandQueueType::Direct, queue);
-        if (pCtx->mpLowLevelData == nullptr)
-        {
-            return nullptr;
-        }
-        return pCtx;
-    }
-    
     void RenderContext::clearRtv(const RenderTargetView* pRtv, const glm::vec4& color)
     {
         resourceBarrier(pRtv->getResource(), Resource::State::RenderTarget);
@@ -294,26 +287,22 @@ namespace Falcor
         // Vao must be valid so at least primitive topology is known
         assert(pState->getVao().get());
 
+        auto pGSO = pState->getGSO(pVars);
+
         if (is_set(StateBindFlags::Vars, mBindFlags))
         {
             // Apply the vars. Must be first because applyGraphicsVars() might cause a flush
             if (pVars)
             {
-                if (applyGraphicsVars(pVars) == false) return false;
+                // TODO(tfoley): Need to find a way to pass the specialization information
+                // from computing the GSO down into `applyGraphicsVars` so that parameters
+                // can be bound using an appropriate layout.
+                //
+                if (applyGraphicsVars(pVars, pGSO->getDesc().getRootSignature().get()) == false) return false;
             }
             else mpLowLevelData->getCommandList()->SetGraphicsRootSignature(RootSignature::getEmpty()->getApiHandle());
             mpLastBoundGraphicsVars = pVars;
         }
-
-#if _ENABLE_NVAPI
-        if (pState->isSinglePassStereoEnabled())
-        {
-            NvAPI_Status ret = NvAPI_D3D12_SetSinglePassStereoMode(mpLowLevelData->getCommandList(), 2, 1, false);
-            assert(ret == NVAPI_OK);
-        }
-#else
-        assert(pState->isSinglePassStereoEnabled() == false);
-#endif
 
         ID3D12GraphicsCommandList* pList = mpLowLevelData->getCommandList();
 
@@ -324,7 +313,7 @@ namespace Falcor
         if (is_set(StateBindFlags::SamplePositions, mBindFlags))    D3D12SetSamplePositions(pList, pState->getFbo().get());
         if (is_set(StateBindFlags::Viewports, mBindFlags))          D3D12SetViewports(pList, &pState->getViewport(0));
         if (is_set(StateBindFlags::Scissors, mBindFlags))           D3D12SetScissors(pList, &pState->getScissors(0));
-        if (is_set(StateBindFlags::PipelineState, mBindFlags))      pList->SetPipelineState(pState->getGSO(pVars)->getApiHandle());
+        if (is_set(StateBindFlags::PipelineState, mBindFlags))      pList->SetPipelineState(pGSO->getApiHandle());
 
         BlendState::SharedPtr blendState = pState->getBlendState();
         if (blendState != nullptr)  pList->OMSetBlendFactor(glm::value_ptr(blendState->getBlendFactor()));
@@ -377,55 +366,52 @@ namespace Falcor
         drawIndirectCommon(this, mpLowLevelData->getCommandList(), sApiData.pDrawIndexCommandSig, maxCommandCount, pArgBuffer, argBufferOffset, pCountBuffer, countBufferOffset);
     }
 
-    void RenderContext::raytrace(RtProgramVars::SharedPtr pVars, RtState::SharedPtr pState, uint32_t width, uint32_t height, uint32_t depth)
+    void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth)
     {
-        resourceBarrier(pVars->getShaderTable().get(), Resource::State::NonPixelShader);
+        auto pRtso = pProgram->getRtso(pVars);
 
-        Buffer* pShaderTable = pVars->getShaderTable().get();
-        uint32_t recordSize = pVars->getRecordSize();
-        D3D12_GPU_VIRTUAL_ADDRESS startAddress = pShaderTable->getGpuAddress();
+        pVars->apply(this, pRtso.get());
+
+        const auto& pShaderTable = pVars->getShaderTable();
+        resourceBarrier(pShaderTable->getBuffer().get(), Resource::State::NonPixelShader);
+
+        D3D12_GPU_VIRTUAL_ADDRESS startAddress = pShaderTable->getBuffer()->getGpuAddress();
 
         D3D12_DISPATCH_RAYS_DESC raytraceDesc = {};
         raytraceDesc.Width = width;
         raytraceDesc.Height = height;
         raytraceDesc.Depth = depth;
 
-        // RayGen is the first entry in the shader-table
-        raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress + pVars->getRayGenRecordIndex() * recordSize;
-        raytraceDesc.RayGenerationShaderRecord.SizeInBytes = recordSize;
-        size_t tableSize = raytraceDesc.RayGenerationShaderRecord.SizeInBytes;
+        // RayGen data
+        //
+        // TODO: We could easily support specifying the ray-gen program to invoke by an index in
+        // the call to `raytrace()`.
+        //
+        raytraceDesc.RayGenerationShaderRecord.StartAddress = startAddress + pShaderTable->getRayGenTableOffset();
+        raytraceDesc.RayGenerationShaderRecord.SizeInBytes = pShaderTable->getRayGenRecordSize();;
 
-        // Miss is the second entry in the shader-table
-        // If there are no entries, leave the start address as nullptr. The runtime validates that it's valid or null.
-        if (pVars->getMissProgramsCount() > 0)
+        // Miss data
+        if (pProgram->getMissProgramCount() > 0)
         {
-            raytraceDesc.MissShaderTable.StartAddress = startAddress + pVars->getFirstMissRecordIndex() * recordSize;
-            raytraceDesc.MissShaderTable.StrideInBytes = recordSize;
-            raytraceDesc.MissShaderTable.SizeInBytes = recordSize * pVars->getMissProgramsCount();
-            assert(raytraceDesc.MissShaderTable.StartAddress >= startAddress + tableSize);
-            tableSize += raytraceDesc.MissShaderTable.SizeInBytes;
+            raytraceDesc.MissShaderTable.StartAddress = startAddress + pShaderTable->getMissTableOffset();
+            raytraceDesc.MissShaderTable.StrideInBytes = pShaderTable->getMissRecordSize();
+            raytraceDesc.MissShaderTable.SizeInBytes = pShaderTable->getMissRecordSize() * pProgram->getMissProgramCount();
         }
 
-        // Hit groups is the third entry in the shader-table
-        // If there are no entries, we leave the start address as nullptr. The runtime validates that it's valid or null.
-        if (pVars->getHitRecordsCount() > 0)
+        // Hit data
+        if (pProgram->getHitProgramCount() > 0)
         {
-            raytraceDesc.HitGroupTable.StartAddress = startAddress + pVars->getFirstHitRecordIndex() * recordSize;
-            raytraceDesc.HitGroupTable.StrideInBytes = recordSize;
-            raytraceDesc.HitGroupTable.SizeInBytes = recordSize * pVars->getHitRecordsCount();
-            assert(raytraceDesc.HitGroupTable.StartAddress >= startAddress + tableSize);
-            tableSize += raytraceDesc.HitGroupTable.SizeInBytes;
+            raytraceDesc.HitGroupTable.StartAddress = startAddress + pShaderTable->getHitTableOffset();
+            raytraceDesc.HitGroupTable.StrideInBytes = pShaderTable->getHitRecordSize();
+            raytraceDesc.HitGroupTable.SizeInBytes = pShaderTable->getHitRecordSize() * pShaderTable->getHitRecordCount();
         }
-
-        // Check that the buffer is large enough.
-        assert(pVars->getShaderTable()->getSize() >= tableSize);
 
         auto pCmdList = getLowLevelData()->getCommandList();
-        pCmdList->SetComputeRootSignature(pVars->getGlobalVars()->getRootSignature()->getApiHandle().GetInterfacePtr());
+        pCmdList->SetComputeRootSignature(pRtso->getGlobalRootSignature()->getApiHandle().GetInterfacePtr());
 
         // Dispatch
         GET_COM_INTERFACE(pCmdList, ID3D12GraphicsCommandList4, pList4);
-        pList4->SetPipelineState1(pState->getRtso()->getApiHandle().GetInterfacePtr());
+        pList4->SetPipelineState1(pRtso->getApiHandle().GetInterfacePtr());
         pList4->DispatchRays(&raytraceDesc);
     }
 
@@ -485,12 +471,12 @@ namespace Falcor
 
         Texture::SharedPtr pSharedTex = std::const_pointer_cast<Texture>(pDstTexture->shared_from_this());
         blitData.pFbo->attachColorTarget(pSharedTex, 0, pDst->getViewInfo().mostDetailedMip, pDst->getViewInfo().firstArraySlice, pDst->getViewInfo().arraySize);
-        blitData.pPass->getVars()->getDefaultBlock()->setSrv(blitData.texBindLoc, 0, pSrc);
+        blitData.pPass->getVars()->setSrv(blitData.texBindLoc, pSrc);
         blitData.pPass->getState()->setViewport(0, dstViewport);
         blitData.pPass->execute(this, blitData.pFbo, false);
 
         // Release the resources we bound
-        blitData.pPass->getVars()->getDefaultBlock()->setSrv(blitData.texBindLoc, 0, nullptr);
+        blitData.pPass->getVars()->setSrv(blitData.texBindLoc, nullptr);
     }
 
     void RenderContext::resolveSubresource(const Texture::SharedPtr& pSrc, uint32_t srcSubresource, const Texture::SharedPtr& pDst, uint32_t dstSubresource)

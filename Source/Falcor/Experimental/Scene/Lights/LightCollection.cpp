@@ -1,44 +1,47 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "LightCollection.h"
-#include "LightCollectionShared.h"
+#include "LightCollectionShared.slang"
+#include "Scene/Scene.h"
 #include <sstream>
 
 namespace Falcor
 {
     namespace
     {
-        const char kFileEmissiveIntegrator[] = "Experimental/Scene/Lights/EmissiveIntegrator.ps.slang";
-        const char kFileSetup[] = "Experimental/Scene/Lights/LightCollection.cs.slang";
+        const char kEmissiveIntegratorFile[] = "Experimental/Scene/Lights/EmissiveIntegrator.ps.slang";
+        const char kBuildTriangleListFile[] = "Experimental/Scene/Lights/BuildTriangleList.cs.slang";
+        const char kUpdateTriangleVerticesFile[] = "Experimental/Scene/Lights/UpdateTriangleVertices.cs.slang";
+        const char kFinalizeIntegrationFile[] = "Experimental/Scene/Lights/FinalizeIntegration.cs.slang";
     }
 
-    LightCollection::SharedPtr LightCollection::create(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+    LightCollection::SharedPtr LightCollection::create(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene)
     {
         SharedPtr ptr = SharedPtr(new LightCollection());
         return ptr->init(pRenderContext, pScene) ? ptr : nullptr;
@@ -92,12 +95,7 @@ namespace Falcor
         return false;
     }
 
-    bool LightCollection::prepareProgram(ProgramBase* pProgram) const
-    {
-        return pProgram->addDefine("_NUM_MESH_LIGHTS", std::to_string(mMeshLights.size()));
-    }
-
-    bool LightCollection::renderUI(Gui::Widgets& widget)
+    void LightCollection::renderUI(Gui::Widgets& widget)
     {
         // Prints stats about the number of lights etc.
         const MeshLightStats& stats = getStats();
@@ -115,11 +113,9 @@ namespace Falcor
             << " -> textured emissive   : " << stats.trianglesActiveTextured << std::endl;
 
         widget.text(oss.str().c_str());
-
-        return false;
     }
 
-    bool LightCollection::init(RenderContext* pRenderContext, const Scene::SharedPtr& pScene)
+    bool LightCollection::init(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene)
     {
         assert(pScene);
         mpScene = pScene;
@@ -133,15 +129,11 @@ namespace Falcor
 
         // Create programs for building/updating the mesh lights.
         Shader::DefineList defines = mpScene->getSceneDefines();
-        mpTriangleListBuilder = ComputePass::create(kFileSetup, "buildTriangleList", defines);
-        if (!mpTriangleListBuilder) return false;
-        mpTrianglePositionUpdater = ComputePass::create(kFileSetup, "updateTriangleVertices", defines);
-        if (!mpTrianglePositionUpdater) return false;
-        mpFinalizeIntegration = ComputePass::create(kFileSetup, "finalizeIntegration", Program::DefineList(), false);
-        if (!mpFinalizeIntegration) return false;
+        mpTriangleListBuilder = ComputePass::create(kBuildTriangleListFile, "buildTriangleList", defines);
+        mpTrianglePositionUpdater = ComputePass::create(kUpdateTriangleVerticesFile, "updateTriangleVertices", defines);
+        mpFinalizeIntegration = ComputePass::create(kFinalizeIntegrationFile, "finalizeIntegration", defines);
 
         mpStagingFence = GpuFence::create();
-        if (!mpStagingFence) return false;
 
         // Now build the mesh light data.
         build(pRenderContext);
@@ -157,7 +149,7 @@ namespace Falcor
         // TODO: Make this deterministic with regards to floating-point errors in the integration.
 
         std::string s;
-        if (findFileInDataDirectories("NVAPI/nvHLSLExtns.h", s) == false)
+        if (findFileInShaderDirectories("NVAPI/nvHLSLExtns.h", s) == false)
         {
             logError("LightCollection relies on NVAPI, which appears to be missing. Please make sure you have NVAPI installed (instructions are in the readme file)");
             return false;
@@ -165,9 +157,8 @@ namespace Falcor
 
         // Create program.
         Program::Desc desc;
-        desc.addShaderLibrary(kFileEmissiveIntegrator).vsEntry("vsMain").psEntry("psMain");
-        mIntegrator.pProgram = GraphicsProgram::create(desc);
-        if (!mIntegrator.pProgram) return false;
+        desc.addShaderLibrary(kEmissiveIntegratorFile).vsEntry("vsMain").psEntry("psMain");
+        mIntegrator.pProgram = GraphicsProgram::create(desc, mpScene->getSceneDefines());
 
         // Create graphics state.
         mIntegrator.pState = GraphicsState::create();
@@ -222,9 +213,7 @@ namespace Falcor
                 meshLight.meshInstanceID = meshInstanceID;
                 meshLight.triangleCount = meshData.indexCount / 3;
                 meshLight.triangleOffset = mTriangleCount;
-                meshLight.flags = PACK_EMISSIVE_TYPE(meshLight.flags, pMaterial->getEmissiveTexture() != nullptr ? ChannelTypeTexture : ChannelTypeConst);
-                meshLight.emissiveColor = pMaterial->getEmissiveColor();
-                meshLight.emissiveFactor = pMaterial->getEmissiveFactor();
+                meshLight.materialID = instanceData.materialID;
 
                 mMeshLights.push_back(meshLight);
                 mTriangleCount += meshLight.triangleCount;
@@ -290,7 +279,7 @@ namespace Falcor
         mpMeshLightsVertexPos->setName("LightCollection_MeshLightsVertexPos");
         mpMeshLightsTexCoords = Buffer::create(uvBufSize, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
         mpMeshLightsTexCoords->setName("LightCollection_MeshLightsTexCoords");
-        mpTriangleData = StructuredBuffer::create(mpTriangleListBuilder->getProgram().get(), "gTriangleData", mTriangleCount);
+        mpTriangleData = Buffer::createStructured(mpTriangleListBuilder->getProgram().get(), "gTriangleData", mTriangleCount);
         mpTriangleData->setName("LightCollection_TriangleData");
 
         // Compute triangle data (vertices, uv-coordinates, materialID) for all mesh lights.
@@ -302,13 +291,17 @@ namespace Falcor
         assert(mMeshLights.size() > 0);
 
         // Create buffer for the mesh data.
-        mpMeshData = StructuredBuffer::create(mpTriangleListBuilder->getProgram().get(), "gLights.meshData", mMeshLights.size(), ResourceBindFlags::ShaderResource);
-        if (!mpMeshData || mpMeshData->getElementSize() != sizeof(MeshLightData))
+        mpMeshData = Buffer::createStructured(
+            mpTrianglePositionUpdater->getProgram().get(),
+            "gMeshData",
+            uint32_t(mMeshLights.size()),
+            ResourceBindFlags::ShaderResource);
+        if (mpMeshData->getStructSize() != sizeof(MeshLightData))
         {
-            throw std::exception("Failed to create structured buffer of MeshLightData");
+            throw std::exception("Size mismatch for structured buffer of MeshLightData");
         }
         size_t meshDataSize = mMeshLights.size() * sizeof(mMeshLights[0]);
-        assert(mpMeshData && mpMeshData->getSize() == meshDataSize);
+        assert(mpMeshData->getSize() == meshDataSize);
         mpMeshData->setBlob(mMeshLights.data(), 0, meshDataSize);
 
         // Build a lookup table from mesh instance ID to emissive triangle offset.
@@ -323,7 +316,7 @@ namespace Falcor
         }
 
         // Create the GPU buffer.
-        mpPerMeshInstanceOffset = TypedBuffer<uint32_t>::create(instanceCount, Resource::BindFlags::ShaderResource);
+        mpPerMeshInstanceOffset = Buffer::createTyped<uint32_t>(instanceCount, Resource::BindFlags::ShaderResource);
         mpPerMeshInstanceOffset->setName("LightCollection_PerMeshInstanceOffset");
 
         const size_t sizeInBytes = triangleOffsets.size() * sizeof(triangleOffsets[0]);
@@ -351,14 +344,15 @@ namespace Falcor
             pRenderContext->clearUAV(mIntegrator.pResultBuffer->getUAV().get(), glm::vec4(0.f));
 
             // Specialize the program and re-create the vars.
-            prepareProgram(mIntegrator.pProgram.get());
             mIntegrator.pVars = GraphicsVars::create(mIntegrator.pProgram.get());
-            if (!mIntegrator.pVars) throw std::exception("Failed to create program vars");
+
+            // Bind scene.
+            mIntegrator.pVars["gScene"] = mpScene->getParameterBlock();
+
+            // Bind light collection.
+            setShaderData(mIntegrator.pVars["gLightCollection"]);
 
             // Bind our resources.
-            bool success = setIntoProgramVars(mIntegrator.pVars.get(), mIntegrator.pVars->getConstantBuffer("CB"), "gLights");
-            assert(success);
-
             mIntegrator.pVars["gTexelSum"] = mIntegrator.pResultBuffer;
             mIntegrator.pVars["gPointSampler"] = mIntegrator.pPointSampler;
 
@@ -368,16 +362,14 @@ namespace Falcor
 
         // 2nd pass: Finalize the per-triangle flux values.
         {
-            // Specialize the program and re-create the vars.
-            prepareProgram(mpFinalizeIntegration->getProgram().get());
-            mpFinalizeIntegration->setVars(nullptr); // Re-create vars.
-
-            // Bind our resources.
-            bool success = setIntoProgramVars(mpFinalizeIntegration->getVars().get(), mpFinalizeIntegration->getVars()->getConstantBuffer("FinalCB"), "gLights");
-            assert(success);
+            // Bind scene.
+            mpFinalizeIntegration["gScene"] = mpScene->getParameterBlock();
 
             mpFinalizeIntegration["gTexelSum"] = mIntegrator.pResultBuffer;
-            mpFinalizeIntegration["gTriangleData"] = mpTriangleData; // TODO: This buffer is already bound by setIntoProgramVars, is it dangerous to alias it like this?
+            mpFinalizeIntegration["gMeshData"] = mpMeshData;
+            mpFinalizeIntegration["gTriangleData"] = mpTriangleData;
+
+            mpFinalizeIntegration["CB"]["gTriangleCount"] = mTriangleCount;
 
             // Execute.
             assert(mpFinalizeIntegration->getThreadGroupSize().y == 1);
@@ -401,7 +393,9 @@ namespace Falcor
         uint32_t trianglesTotal = 0;
         for (const auto& meshLight : mMeshLights)
         {
-            if (meshLight.isTextured())
+            bool isTextured = mpScene->getMaterial(meshLight.materialID)->getEmissiveTexture() != nullptr;
+
+            if (isTextured)
             {
                 stats.meshesTextured++;
                 stats.trianglesTextured += meshLight.triangleCount;
@@ -422,7 +416,9 @@ namespace Falcor
             {
                 // TODO: Currently we don't detect uniform radiance for textured lights, so just look at whether the mesh light is textured or not.
                 // This code will change when we tag individual triangles as textured vs non-textured.
-                if (mMeshLights[tri.lightIdx].isTextured()) stats.trianglesActiveTextured++;
+                bool isTextured = mpScene->getMaterial(mMeshLights[tri.lightIdx].materialID)->getEmissiveTexture() != nullptr;
+
+                if (isTextured) stats.trianglesActiveTextured++;
                 else stats.trianglesActiveUniform++;
             }
         }
@@ -450,12 +446,13 @@ namespace Falcor
         {
             const MeshLightData& meshLight = mMeshLights[lightIdx];
 
-            mpTriangleListBuilder["PerMeshCB"]["gLightIdx"] = lightIdx;
-            mpTriangleListBuilder["PerMeshCB"]["gMeshInstanceID"] = meshLight.meshInstanceID;
-            mpTriangleListBuilder["PerMeshCB"]["gTriangleCount"] = meshLight.triangleCount;
-            mpTriangleListBuilder["PerMeshCB"]["gTriangleOffset"] = meshLight.triangleOffset;
+            mpTriangleListBuilder["CB"]["gLightIdx"] = lightIdx;
+            mpTriangleListBuilder["CB"]["gMeshInstanceID"] = meshLight.meshInstanceID;
+            mpTriangleListBuilder["CB"]["gTriangleCount"] = meshLight.triangleCount;
+            mpTriangleListBuilder["CB"]["gTriangleOffset"] = meshLight.triangleOffset;
 
-            // as each kernel will write to non-overlapping parts of the output buffers.
+            // TODO: Disable automatic UAV barriers.
+            // Each kernel writes to non-overlapping parts of the output buffers, but currently Falcor inserts barriers between each dispatch.
             mpTriangleListBuilder->execute(pRenderContext, meshLight.triangleCount, 1u, 1u);
         }
     }
@@ -476,7 +473,8 @@ namespace Falcor
         mpTrianglePositionUpdater["gVertexPosOutput"] = mpMeshLightsVertexPos;
         mpTrianglePositionUpdater["gTriangleData"] = mpTriangleData;
         mpTrianglePositionUpdater["gMeshData"] = mpMeshData;
-        mpTrianglePositionUpdater["PerMeshCB"]["gTriangleCount"] = mTriangleCount;
+
+        mpTrianglePositionUpdater["CB"]["gTriangleCount"] = mTriangleCount;
 
         // Run compute pass to update all triangles.
         mpTrianglePositionUpdater->execute(pRenderContext, mTriangleCount, 1u, 1u);
@@ -485,38 +483,28 @@ namespace Falcor
         mStagingBufferValid = false;
     }
 
-    bool LightCollection::setIntoBlockCommon(const ParameterBlock::SharedPtr& pBlock, const ConstantBuffer::SharedPtr& pCB, const std::string& varName) const
+    bool LightCollection::setShaderData(const ShaderVar& var) const
     {
-        assert(pBlock);
-        assert(pCB);
+        assert(var.isValid());
 
-        // Check that the struct exists.
-        if (pCB->getVariableOffset(varName) == ConstantBuffer::kInvalidOffset)
-        {
-            logError("LightCollection::setIntoBlockCommon() - Variable " + varName + " does not exist");
-            return false;
-        }
-        std::string prefix = varName + ".";
-
-        // Ok. The struct exists.
-        // In the following we validate it has the correct fields and set the data.
+        // In the following we validate that the variable has the correct fields and set the data.
 
         // Set variables.
-        pCB[prefix + "triangleCount"] = mTriangleCount;
-        pCB[prefix + "meshCount"] = (uint32_t)mMeshLights.size();
+        var["triangleCount"] = mTriangleCount;
+        var["meshCount"] = (uint32_t)mMeshLights.size();
 
         // Bind mesh light triangles.
         if (mTriangleCount > 0)
         {
             // Bind per-triangle data (these buffers must exist if triangle count is > 0).
-            pBlock[prefix + "meshLightsVertexPos"] = mpMeshLightsVertexPos;
-            pBlock[prefix + "meshLightsTexCoords"] = mpMeshLightsTexCoords;
-            pBlock[prefix + "triangleData"] = mpTriangleData;
+            var["meshLightsVertexPos"] = mpMeshLightsVertexPos;
+            var["meshLightsTexCoords"] = mpMeshLightsTexCoords;
+            var["triangleData"] = mpTriangleData;
         }
 
         // Bind per-mesh instance triangle offsets (if buffer exists, reset binding otherwise).
         // This buffer can exist even if mTriangleCount == 0. It would just be an array of kInvalidIndex then.
-        pBlock[prefix + "perMeshInstanceOffset"] = mpPerMeshInstanceOffset->asTypedBufferBase();
+        var["perMeshInstanceOffset"] = mpPerMeshInstanceOffset;
 
         // Bind mesh lights array.
         if (!mMeshLights.empty())
@@ -524,30 +512,7 @@ namespace Falcor
             static_assert(sizeof(MeshLightData) % (sizeof(float) * 4) == 0, "MeshLightData size should be a multiple of 16");
 
             // Bind mesh data.
-            pBlock[prefix + "meshData"] = mpMeshData;
-
-            // Validate that the emissive textures array exists and is of correct size.
-            auto pTexVar = pBlock->getReflection()->getResource(prefix + "emissiveTextures");
-            assert(pTexVar && pTexVar->getType()->asArrayType()->getArraySize() == mMeshLights.size());
-
-            // Bind array of emissive textures. One texture per mesh light (can be the same for multiple lights).
-            // TODO: Index into a compact array of emissive textures instead.
-            for (size_t lightIdx = 0; lightIdx < mMeshLights.size(); lightIdx++)
-            {
-                const MeshInstanceData& instanceData = mpScene->getMeshInstance(mMeshLights[lightIdx].meshInstanceID);
-                const Material::SharedPtr& pMaterial = mpScene->getMaterial(instanceData.materialID);
-                assert(pMaterial);
-
-                const std::string texVar = prefix + "emissiveTextures[" + std::to_string(lightIdx) + "]";
-                pBlock[texVar] = pMaterial->getEmissiveTexture();   // May be nullptr
-            }
-        }
-
-        // Set sampler state. We only have a single sampler that is used for all emissive textures.
-        if (mpSamplerState)
-        {
-            bool success = pBlock->setSampler(prefix + "samplerState", mpSamplerState);
-            assert(success);
+            var["meshData"] = mpMeshData;
         }
 
         return true;
@@ -609,7 +574,7 @@ namespace Falcor
         const glm::vec3* vertexPos = reinterpret_cast<const glm::vec3*>(mappedData);
         const glm::vec2* vertexTexCrd = reinterpret_cast<const glm::vec2*>(reinterpret_cast<uintptr_t>(mappedData) + mpMeshLightsVertexPos->getSize());
         assert(mpTriangleData);
-        if (mpTriangleData->getElementSize() != sizeof(EmissiveTriangle)) throw std::exception("Struct EmissiveTriangle size mismatch between CPU/GPU");
+        if (mpTriangleData->getStructSize() != sizeof(EmissiveTriangle)) throw std::exception("Struct EmissiveTriangle size mismatch between CPU/GPU");
         const EmissiveTriangle* triangleData = reinterpret_cast<const EmissiveTriangle*>(reinterpret_cast<uintptr_t>(mappedData) + mpMeshLightsVertexPos->getSize() + mpMeshLightsTexCoords->getSize());
 
         assert(mTriangleCount > 0);

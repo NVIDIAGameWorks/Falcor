@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "ResourceViews.h"
 #include <unordered_map>
@@ -33,10 +33,7 @@ namespace Falcor
 {
     class Texture;
     class Buffer;
-    class StructuredBuffer;
-    class TypedBufferBase;
-    template<typename BufferType> class TypedBuffer;
-    class ConstantBuffer;
+    class ParameterBlock;
 
     class dlldecl Resource : public std::enable_shared_from_this<Resource>
     {
@@ -79,6 +76,7 @@ namespace Falcor
             Present,
             GenericRead,
             Predication,
+            PixelShader,
             NonPixelShader,
 #ifdef FALCOR_D3D12
             AccelerationStructure,
@@ -87,6 +85,7 @@ namespace Falcor
 
         using SharedPtr = std::shared_ptr<Resource>;
         using SharedConstPtr = std::shared_ptr<const Resource>;
+        using ConstSharedPtrRef = const SharedPtr&;
 
         /** Default value used in create*() methods
         */
@@ -148,15 +147,16 @@ namespace Falcor
         */
         const std::string& getName() const { return mName; }
 
+        /** Get a SRV/UAV for the entire resource.
+            Buffer and Texture have overloads which allow you to create a view into part of the resource
+        */
+        virtual ShaderResourceView::SharedPtr getSRV() = 0;
+        virtual UnorderedAccessView::SharedPtr getUAV() = 0;
+
         /** Conversions to derived classes
         */
         std::shared_ptr<Texture> asTexture() { return this ? std::dynamic_pointer_cast<Texture>(shared_from_this()) : nullptr; }
         std::shared_ptr<Buffer> asBuffer() { return this ? std::dynamic_pointer_cast<Buffer>(shared_from_this()) : nullptr; }
-        std::shared_ptr<StructuredBuffer> asStructuredBuffer() { return this ? std::dynamic_pointer_cast<StructuredBuffer>(shared_from_this()) : nullptr; }
-        std::shared_ptr<TypedBufferBase> asTypedBufferBase() { return this ? std::dynamic_pointer_cast<TypedBufferBase>(shared_from_this()) : nullptr; }
-        template<typename BufferType>
-        std::shared_ptr<TypedBuffer<BufferType>> asTypedBuffer() { return this ? std::dynamic_pointer_cast<TypedBuffer<BufferType>>(shared_from_this()) :nullptr; }
-        std::shared_ptr<ConstantBuffer> asConstantBuffer() { return this ? std::dynamic_pointer_cast<ConstantBuffer>(shared_from_this()) : nullptr; }
 
     protected:
         friend class CopyContext;

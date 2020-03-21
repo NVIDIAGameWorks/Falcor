@@ -7,7 +7,7 @@
     <ClInclude Include="BSDFViewer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="BSDFViewerParams.h" />
     <ShaderSource Include="BSDFViewer.cs.slang" />
+    <ShaderSource Include="BSDFViewerParams.slang" />
   </ItemGroup>
 </Project>

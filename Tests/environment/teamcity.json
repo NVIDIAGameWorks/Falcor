@@ -1,0 +1,8 @@
+{
+    "name": "TeamCity Environment",
+    "image_tests": {
+        "result_dir": "C:/FalcorResults/${vcs_root}/${hostname}/${build_id}/${build_config}",
+        "ref_dir": "C:/FalcorRefs/${vcs_root}/${hostname}/${branch}/${build_config}",
+        "remote_ref_dir": "//netapp-wa02/public/Falcor/References/${vcs_root}/${hostname}/${branch}/${build_config}"
+    }
+}

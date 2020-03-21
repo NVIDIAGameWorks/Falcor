@@ -1,36 +1,36 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
-#include <experimental/filesystem>
 #include "Utils/StringUtils.h"
+#include <filesystem>
 #include <fstream>
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 namespace Falcor
 {
@@ -47,46 +47,98 @@ namespace Falcor
         return 1 << bitScanReverse(a);
     }
 
-    std::vector<std::string> gDataDirectories =
+    inline std::vector<std::string> getInitialShaderDirectories()
     {
-        // Ordering matters here, we want that while developing, resources will be loaded from the development media directory
-        std::string(getWorkingDirectory()),
-        std::string(getWorkingDirectory() + "/Data"),
-        std::string(_PROJECT_DIR_) + "/ShadingUtils",
-        std::string(_PROJECT_DIR_) + "../Internal",
-        std::string(getExecutableDirectory()),
-        std::string(getExecutableDirectory() + "/Data"),
+        std::vector<std::string> developmentDirectories =
+        {
+            // First we search in source folders.
+            std::string(_PROJECT_DIR_),
+            std::string(_PROJECT_DIR_) + "../",
+            std::string(_PROJECT_DIR_) + "../Tools/FalcorTest/",
+            // Then we search in deployment folder (necessary to pickup NVAPI and other third-party shaders).
+            getExecutableDirectory() + "/Shaders"
+        };
 
-        // The local solution media folder
+        std::vector<std::string> deploymentDirectories =
+        {
+            getExecutableDirectory() + "/Shaders"
+        };
+
+        return isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
+    }
+
+    static std::vector<std::string> gShaderDirectories = getInitialShaderDirectories();
+
+    inline std::vector<std::string> getInitialDataDirectories()
+    {
+        std::vector<std::string> developmentDirectories =
+        {
+            std::string(_PROJECT_DIR_) + "/Data",
+            getExecutableDirectory() + "/Data",
+        };
+
+        std::vector<std::string> deploymentDirectories =
+        {
+            getExecutableDirectory() + "/Data"
+        };
+
+        std::vector<std::string> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
+
+        // Add development media folder.
 #ifdef _MSC_VER
-        std::string(getExecutableDirectory() + "/../../../Media"), // Relative to Visual Studio output folder
+        directories.push_back(getExecutableDirectory() + "/../../../Media"); // Relative to Visual Studio output folder
 #else
-        std::string(getExecutableDirectory() + "/../Media"), // Relative to Makefile output folder
+        directories.push_back(getExecutableDirectory() + "/../Media"); // Relative to Makefile output folder
 #endif
-    };
+
+        // Add additional media folders.
+        std::string mediaFolders;
+        if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", mediaFolders))
+        {
+            auto folders = splitString(mediaFolders, ";");
+            directories.insert(directories.end(), folders.begin(), folders.end());
+        }
+
+        return directories;
+    }
+
+    static std::vector<std::string> gDataDirectories = getInitialDataDirectories();
 
     const std::vector<std::string>& getDataDirectoriesList()
     {
         return gDataDirectories;
     }
 
-    void addDataDirectory(const std::string& dataDir)
+    void addDataDirectory(const std::string& dir)
     {
-        //Insert unique elements
-        if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dataDir) == gDataDirectories.end())
+        if (std::find(gDataDirectories.begin(), gDataDirectories.end(), dir) == gDataDirectories.end())
         {
-            gDataDirectories.push_back(dataDir);
+            gDataDirectories.push_back(dir);
         }
     }
 
-    void removeDataDirectory(const std::string& dataDir)
+    void removeDataDirectory(const std::string& dir)
     {
-        //Insert unique elements
-        auto it = std::find(gDataDirectories.begin(), gDataDirectories.end(), dataDir);
+        auto it = std::find(gDataDirectories.begin(), gDataDirectories.end(), dir);
         if (it != gDataDirectories.end())
         {
             gDataDirectories.erase(it);
         }
+    }
+
+    bool isDevelopmentMode()
+    {
+        static bool initialized = false;
+        static bool devMode = false;
+
+        if (!initialized)
+        {
+            std::string value;
+            devMode = getEnvironmentVariable("FALCOR_DEVMODE", value) && value == "1";
+            initialized = true;
+        }
+
+        return devMode;
     }
 
     std::string canonicalizeFilename(const std::string& filename)
@@ -95,31 +147,38 @@ namespace Falcor
         return fs::exists(path) ? fs::canonical(path).string() : "";
     }
 
-    bool findFileInDataDirectories(const std::string& filename, std::string& fullpath)
+    bool findFileInDataDirectories(const std::string& filename, std::string& fullPath)
     {
-        static bool bInit = false;
-        if (bInit == false)
-        {
-            std::string dataDirs;
-            if (getEnvironmentVariable("FALCOR_MEDIA_FOLDERS", dataDirs))
-            {
-                auto folders = splitString(dataDirs, ";");
-                gDataDirectories.insert(gDataDirectories.end(), folders.begin(), folders.end());
-            }
-            bInit = true;
-        }
-
         // Check if this is an absolute path
         if (doesFileExist(filename))
         {
-            fullpath = canonicalizeFilename(filename);
+            fullPath = canonicalizeFilename(filename);
             return true;
         }
 
-        for (const auto& Dir : gDataDirectories)
+        for (const auto& dir : gDataDirectories)
         {
-            fullpath = canonicalizeFilename(Dir + '/' + filename);
-            if (doesFileExist(fullpath))
+            fullPath = canonicalizeFilename(dir + '/' + filename);
+            if (doesFileExist(fullPath))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    const std::vector<std::string>& getShaderDirectoriesList()
+    {
+        return gShaderDirectories;
+    }
+
+    bool findFileInShaderDirectories(const std::string& filename, std::string& fullPath)
+    {
+        for (const auto& dir : gShaderDirectories)
+        {
+            fullPath = canonicalizeFilename(dir + '/' + filename);
+            if (doesFileExist(fullPath))
             {
                 return true;
             }

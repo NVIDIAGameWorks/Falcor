@@ -1,41 +1,42 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Light.h"
 #include "Utils/UI/Gui.h"
+#include "Utils/Color/ColorHelpers.slang"
 
 namespace Falcor
 {
-    bool checkOffset(const std::string& structName, size_t cbOffset, size_t cppOffset, const char* field)
+    bool checkOffset(const std::string& structName, UniformShaderVarOffset cbOffset, size_t cppOffset, const char* field)
     {
-        if (cbOffset != cppOffset)
+        if (cbOffset.getByteOffset() != cppOffset)
         {
-            logError("Light::" + std::string(structName) + ":: " + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset) + ", C++ data offset is " + std::to_string(cppOffset));
+            logError("Light::" + std::string(structName) + ":: " + std::string(field) + " CB offset mismatch. CB offset is " + std::to_string(cbOffset.getByteOffset()) + ", C++ data offset is " + std::to_string(cppOffset));
             return false;
         }
         return true;
@@ -65,29 +66,17 @@ namespace Falcor
         return getChanges();
     }
 
-    void Light::setIntoParameterBlock(const ParameterBlock::SharedPtr& pBlock, const std::string& varName)
+    void Light::setShaderData(const ShaderVar& var)
     {
-        ConstantBuffer* pCb = pBlock->getDefaultConstantBuffer().get();
-        size_t offset = pCb->getVariableOffset(varName);
-
 #if _LOG_ENABLED
-#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", pCb->getVariableOffset(varName + "." + #_a) - offset, offsetof(LightData, _a), #_a));} b = false;}
+#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("LightData", var.getType()->getMemberOffset(#_a), offsetof(LightData, _a), #_a));} b = false;}
         check_offset(dirW);
         check_offset(intensity);
         check_offset(penumbraAngle);
 #undef check_offset
 #endif
 
-        setIntoVariableBuffer(pCb, offset);
-    }
-
-    void Light::setIntoVariableBuffer(VariablesBuffer* pBuffer, size_t offset)
-    {
-        static_assert(kDataSize % sizeof(vec4) == 0, "LightData size should be a multiple of 16");
-        assert(offset + kDataSize <= pBuffer->getSize());
-
-        // Set everything except for the material
-        pBuffer->setBlob(&mData, offset, kDataSize);
+        var.setBlob(mData);
     }
 
     glm::vec3 Light::getColorForUI()
@@ -110,28 +99,10 @@ namespace Falcor
         return mUiLightIntensityColor;
     }
 
-    void updateAreaLightIntensity(LightData& light)
-    {
-        // Update material
-        if (light.type == LightArea)
-        {
-            //            for (int i = 0; i < MatMaxLayers; ++i)
-            {
-                /*TODO(tfoley) HACK:SPIRE
-                if (light.material.desc.layers[i].type == MatEmissive)
-                {
-                    light.material.values.layers[i].albedo = v4(light.intensity, 0.f);
-                }
-                */
-            }
-        }
-    }
-
     void Light::setColorFromUI(const glm::vec3& uiColor)
     {
         mUiLightIntensityColor = uiColor;
         setIntensity(mUiLightIntensityColor * mUiLightIntensityScale);
-        updateAreaLightIntensity(mData);
     }
 
     float Light::getIntensityForUI()
@@ -158,7 +129,6 @@ namespace Falcor
     {
         mUiLightIntensityScale = intensity;
         setIntensity(mUiLightIntensityColor * mUiLightIntensityScale);
-        updateAreaLightIntensity(mData);
     }
 
     void Light::renderUI(Gui* pGui, const char* group)
@@ -184,12 +154,12 @@ namespace Falcor
 
     DirectionalLight::DirectionalLight() : mDistance(-1.0f)
     {
-        mData.type = LightDirectional;
+        mData.type = LightType::Directional;
     }
 
     DirectionalLight::SharedPtr DirectionalLight::create()
     {
-        DirectionalLight* pLight = new DirectionalLight();
+        DirectionalLight* pLight = new DirectionalLight;
         return SharedPtr(pLight);
     }
 
@@ -237,7 +207,7 @@ namespace Falcor
 
     PointLight::PointLight()
     {
-        mData.type = LightPoint;
+        mData.type = LightType::Point;
     }
 
     PointLight::~PointLight() = default;
@@ -297,241 +267,14 @@ namespace Falcor
         mData.penumbraAngle = angle;
     }
 
-    AreaLight::SharedPtr AreaLight::create()
-    {
-        AreaLight* pLight = new AreaLight;
-        return SharedPtr(pLight);
-    }
-
-    AreaLight::AreaLight()
-    {
-    }
-
-    AreaLight::~AreaLight() = default;
-
-    float AreaLight::getPower() const
-    {
-        return luminance(mAreaLightData.intensity) * (float)M_PI * mAreaLightData.surfaceArea;
-    }
-
-    void AreaLight::setIntoParameterBlock(const ParameterBlock::SharedPtr& pBlock, const std::string& varName)
-    {
-        // Set data except for material and mesh buffers
-        VariablesBuffer* pBuffer = pBlock->getDefaultConstantBuffer().get();
-        size_t offset = pBuffer->getVariableOffset(varName);
-        static_assert(kDataSize % sizeof(vec4) == 0, "AreaLightData size should be a multiple of 16");
-        assert(offset + kAreaLightDataSize <= pBuffer->getSize());
-        pBuffer->setBlob(&mData, offset, kAreaLightDataSize);
-
-#if _LOG_ENABLED
-#define check_offset(_a) {static bool b = true; if(b) {assert(checkOffset("AreaLightData", pBuffer->getVariableOffset(varName + "." + #_a) - offset, offsetof(AreaLightData, _a), #_a));} b = false;}
-        check_offset(dirW);
-        check_offset(intensity);
-        check_offset(tangent);
-        check_offset(bitangent);
-        check_offset(aabbMin);
-        check_offset(aabbMax);
-#undef check_offset
-#endif
-
-        // Set buffers and material
-        pBlock->setRawBuffer(varName + ".resources.indexBuffer", mpIndexBuffer);
-        pBlock->setRawBuffer(varName + ".resources.vertexBuffer", mpVertexBuffer);
-        pBlock->setRawBuffer(varName + ".resources.meshCDFBuffer", mpMeshCDFBuffer);
-    }
-
-    void AreaLight::setIntoVariableBuffer(VariablesBuffer* pBuffer, size_t offset)
-    {
-        logWarning("AreaLight::setIntoVariableBuffer() - Area light data contains resources that cannot be bound by offset. Ignoring call.");
-    }
-
-    void AreaLight::renderUI(Gui* pGui, const char* group)
-    {
-        if (!group) group = "Area Light Settings";
-        Gui::Group g(pGui, group);
-        if (g.open())
-        {
-            //if (mpMeshInstance)
-            //{
-                // TODO: Premultiply by mpModelInstance->getTransformMatrix() or do it in the shader
-            //    vec3 posW = mpMeshInstance->getTransformMatrix()[3];
-            //    if (pGui->addFloat3Var("World Position", posW, -FLT_MAX, FLT_MAX))
-            //    {
-            //        mpMeshInstance->setTranslation(posW, true);
-            //    }
-            //}
-
-//            float intensity = mAreaLightData.intensity.r;
-//            if (pGui->addFloatVar("Intensity", intensity, 0.0f))
-//            {
-//                mAreaLightData.intensity = vec3(intensity);
-//            }
-            g.release();
-        }
-    }
-
-    void AreaLight::setMeshData(const std::shared_ptr<Scene>& pScene, uint32_t instanceId)
-    {
-        if (pScene && instanceId < pScene->getMeshInstanceCount())
-        {
-            const MeshInstanceData& instance = pScene->getMeshInstance(instanceId);
-
-            mMeshDesc = pScene->getMesh(instance.meshID);
-            mAreaLightData.materialId = mMeshDesc.materialID;
-            mInstanceId = instanceId;
-            mpScene = pScene;
-
-            // Fetch the mesh instance transformation
-            // TODO: Premultiply by mpModelInstance->getTransformMatrix() or do it in the shader
-            // #SCENE TODO: Interface for getting instance transform?
-            // mAreaLightData.transMat = pScene->mpAnimationController()->getGlobalMatrices()[instance.globalMatrixID];
-
-            const auto& pVao = pScene->getVao();
-            mpIndexBuffer = pVao->getIndexBuffer();
-            mAreaLightData.numTriangles = uint32_t(mpIndexBuffer->getSize() / sizeof(glm::ivec3));
-
-            // TODO SCENE: Remove hard-code index once SceneBuilder buffer/drawlist indices aren't confined to the cpp
-            mpVertexBuffer = pVao->getVertexBuffer(0); // Static mesh data in index 0, SceneBuilder::sStaticMeshIndex
-            assert(mpVertexBuffer != nullptr);
-
-            // Compute surface area of the mesh and generate probability
-            // densities for importance sampling a triangle mesh
-            computeSurfaceArea(pScene);
-
-            const Material::SharedPtr& pMaterial = pScene->getMaterial(mMeshDesc.materialID);
-            assert(pMaterial != nullptr);
-            mAreaLightData.intensity = pMaterial->getEmissiveColor();
-        }
-    }
-
-    void AreaLight::computeSurfaceArea(const std::shared_ptr<Scene>& pScene)
-    {
-        assert(pScene != nullptr && mInstanceId < pScene->getMeshInstanceCount());
-        assert(pScene->getVao()->getPrimitiveTopology() == Vao::Topology::TriangleList);
-
-        const uint32_t primitiveCount = mMeshDesc.indexCount / 3;
-        if (primitiveCount != 2 || mMeshDesc.vertexCount != 4)
-        {
-            logWarning("Only support sampling of rectangular light sources made of 2 triangles.");
-            return;
-        }
-
-        // Read data from the buffers
-        const glm::ivec3* pIndices = (const glm::ivec3*)mpIndexBuffer->map(Buffer::MapType::Read);
-        const uint8_t* pVb = (const uint8_t*)mpVertexBuffer->map(Buffer::MapType::Read);
-        // TODO SCENE: Remove hard-code index once SceneBuilder buffer/drawlist indices aren't confined to the cpp
-        const uint32_t vertexStride = pScene->getVao()->getVertexLayout()->getBufferLayout(0)->getStride();
-
-        // The buffer has an array-of-structs layout, so some extra work is necessary
-        auto getPos = [&](uint32_t i) { return *(vec3*)(pVb + vertexStride * i); };
-
-        // Calculate surface area of the mesh
-        mAreaLightData.surfaceArea = 0.f;
-        mMeshCDF.push_back(0.f);
-        for (uint32_t i = 0; i < primitiveCount; ++i)
-        {
-            glm::ivec3 pId = pIndices[i];
-            const vec3 p0(getPos(pId.x)), p1(getPos(pId.y)), p2(getPos(pId.z));
-
-            mAreaLightData.surfaceArea += 0.5f * glm::length(glm::cross(p1 - p0, p2 - p0));
-
-            // Add an entry using surface area measure as the discrete probability
-            mMeshCDF.push_back(mMeshCDF[mMeshCDF.size() - 1] + mAreaLightData.surfaceArea);
-        }
-
-        // Normalize the probability densities
-        if (mAreaLightData.surfaceArea > 0.f)
-        {
-            float invSurfaceArea = 1.f / mAreaLightData.surfaceArea;
-            for (uint32_t i = 1; i < mMeshCDF.size(); ++i)
-            {
-                mMeshCDF[i] *= invSurfaceArea;
-            }
-
-            mMeshCDF[mMeshCDF.size() - 1] = 1.f;
-        }
-
-        // Calculate basis tangent vectors and their lengths
-        ivec3 pId = pIndices[0];
-        const vec3 p0(getPos(pId.x)), p1(getPos(pId.y)), p2(getPos(pId.z));
-
-        mAreaLightData.tangent = p0 - p1;
-        mAreaLightData.bitangent = p2 - p1;
-
-        // Create a CDF buffer
-        mpMeshCDFBuffer.reset();
-        mpMeshCDFBuffer = Buffer::create(sizeof(mMeshCDF[0])*mMeshCDF.size(), Buffer::BindFlags::ShaderResource, Buffer::CpuAccess::None, mMeshCDF.data());
-
-        // Set the world position and world direction of this light
-        if (mpIndexBuffer->getSize() != 0 && mpVertexBuffer->getSize() != 0)
-        {
-            glm::vec3 boxMin = getPos(0);
-            glm::vec3 boxMax = boxMin;
-            for (uint32_t id = 1; id < mMeshDesc.vertexCount; id++)
-            {
-                boxMin = glm::min(boxMin, getPos(id));
-                boxMax = glm::max(boxMax, getPos(id));
-            }
-
-            mAreaLightData.posW = BoundingBox::fromMinMax(boxMin, boxMax).center;
-
-            // This holds only for planar light sources
-            const glm::vec3& p0 = getPos(pIndices[0].x);
-            const glm::vec3& p1 = getPos(pIndices[0].y);
-            const glm::vec3& p2 = getPos(pIndices[0].z);
-
-            // Take the normal of the first triangle as a light normal
-            mAreaLightData.dirW = normalize(cross(p1 - p0, p2 - p0));
-
-            // Save the axis-aligned bounding box
-            mAreaLightData.aabbMin = boxMin;
-            mAreaLightData.aabbMax = boxMax;
-        }
-
-        mpIndexBuffer->unmap();
-        mpVertexBuffer->unmap();
-    }
-
-    AreaLight::SharedPtr createAreaLight(const std::shared_ptr<Scene>& pScene, uint32_t instanceId)
-    {
-        // Create an area light
-        AreaLight::SharedPtr pAreaLight = AreaLight::create();
-        if (pAreaLight)
-        {
-            // Set the geometry mesh
-            pAreaLight->setMeshData(pScene, instanceId);
-        }
-
-        return pAreaLight;
-    }
-
-    // #SCENE Not used right now
-    std::vector<AreaLight::SharedPtr> createAreaLightsForScene(const std::shared_ptr<Scene>& pScene)
-    {
-        assert(pScene);
-        std::vector<AreaLight::SharedPtr> areaLights;
-
-        // Get meshes for this model
-        for (uint32_t instanceId = 0; instanceId < pScene->getMeshInstanceCount(); instanceId++)
-        {
-            uint32_t meshId = pScene->getMeshInstance(instanceId).meshID;
-            uint32_t materialId = pScene->getMesh(meshId).materialID;
-            if (pScene->getMaterial(materialId)->isEmissive())
-            {
-                areaLights.push_back(createAreaLight(pScene, instanceId));
-            }
-        }
-        return areaLights;
-    }
-
     // Code for analytic area lights.
-    AnalyticAreaLight::SharedPtr AnalyticAreaLight::create(uint32_t type)
+    AnalyticAreaLight::SharedPtr AnalyticAreaLight::create(LightType type)
     {
         AnalyticAreaLight* pLight = new AnalyticAreaLight(type);
         return SharedPtr(pLight);
     }
 
-    AnalyticAreaLight::AnalyticAreaLight(uint32_t type)
+    AnalyticAreaLight::AnalyticAreaLight(LightType type)
     {
         mData.type = type;
         mData.tangent = float3(1, 0, 0);
@@ -570,7 +313,7 @@ namespace Falcor
         switch (mData.type)
         {
 
-        case LightAreaRect:
+        case LightType::Rect:
         {
             float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
             float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
@@ -578,7 +321,7 @@ namespace Falcor
         }
         break;
 
-        case LightAreaSphere:
+        case LightType::Sphere:
         {
             float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
             float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
@@ -588,7 +331,7 @@ namespace Falcor
         }
         break;
 
-        case LightAreaDisc:
+        case LightType::Disc:
         {
             float rx = glm::length(mData.transMat * vec4(1.0f, 0.0f, 0.0f, 0.0f));
             float ry = glm::length(mData.transMat * vec4(0.0f, 1.0f, 0.0f, 0.0f));
@@ -604,10 +347,20 @@ namespace Falcor
 
     SCRIPT_BINDING(Light)
     {
-        m.regClass(Light);
-        m.regClass(DirectionalLight);
-        m.regClass(PointLight);
-        m.regClass(AnalyticAreaLight);
-        m.regClass(AreaLight);
+        auto light = m.regClass(Light);
+        light.roProperty("name", &Light::getName);
+        light.property("intensity", &Light::getIntensityForScript, &Light::setIntensityFromScript);
+        light.property("color", &Light::getColorForScript, &Light::setColorFromScript);
+
+        auto directionalLight = m.class_<DirectionalLight, Light>("DirectionalLight");
+        directionalLight.property("direction", &DirectionalLight::getWorldDirection, &DirectionalLight::setWorldDirection);
+
+        auto pointLight = m.class_<PointLight, Light>("PointLight");
+        pointLight.property("position", &PointLight::getWorldPosition, &PointLight::setWorldPosition);
+        pointLight.property("direction", &PointLight::getWorldDirection, &PointLight::setWorldDirection);
+        pointLight.property("openingAngle", &PointLight::getOpeningAngle, &PointLight::setOpeningAngle);
+        pointLight.property("penumbraAngle", &PointLight::getPenumbraAngle, &PointLight::setPenumbraAngle);
+
+        m.class_<AnalyticAreaLight, Light>("AnalyticAreaLight");
     }
 }

@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "ParticleSystem.h"
 #include "Core/API/RenderContext.h"
@@ -33,11 +33,11 @@
 
 namespace Falcor
 {
-    const char* ParticleSystem::kVertexShader = "Effects/ParticleVertex.vs.slang";
-    const char* ParticleSystem::kSortShader = "Effects/ParticleSort.cs.slang";
-    const char* ParticleSystem::kEmitShader = "Effects/ParticleEmit.cs.slang";
-    const char* ParticleSystem::kDefaultPixelShader = "Effects/ParticleTexture.ps.slang";
-    const char* ParticleSystem::kDefaultSimulateShader = "Effects/ParticleSimulate.cs.slang";
+    const char* ParticleSystem::kVertexShader = "Scene/ParticleSystem/ParticleVertex.vs.slang";
+    const char* ParticleSystem::kSortShader = "Scene/ParticleSystem/ParticleSort.cs.slang";
+    const char* ParticleSystem::kEmitShader = "Scene/ParticleSystem/ParticleEmit.cs.slang";
+    const char* ParticleSystem::kDefaultPixelShader = "Scene/ParticleSystem/ParticleTexture.ps.slang";
+    const char* ParticleSystem::kDefaultSimulateShader = "Scene/ParticleSystem/ParticleSimulate.cs.slang";
 
     ParticleSystem::SharedPtr ParticleSystem::create(RenderContext* pCtx, uint32_t maxParticles, uint32_t maxEmitPerFrame,
         std::string drawPixelShader, std::string simulateComputeShader, bool sorted)
@@ -84,13 +84,13 @@ namespace Falcor
         GraphicsProgram::SharedPtr pDrawProgram = GraphicsProgram::create(d, defineList);
 
         //ParticlePool
-        mpParticlePool = StructuredBuffer::create(pEmitCs.get(), "particlePool", mMaxParticles);
+        mpParticlePool = Buffer::createStructured(pEmitCs.get(), "particlePool", mMaxParticles);
 
         //emitList
-        mpEmitList = StructuredBuffer::create(pEmitCs.get(), "emitList", mMaxEmitPerFrame);
+        mpEmitList = Buffer::createStructured(pEmitCs.get(), "emitList", mMaxEmitPerFrame);
 
         //Dead List
-        mpDeadList = StructuredBuffer::create(pEmitCs.get(), "deadList", mMaxParticles);
+        mpDeadList = Buffer::createStructured(pEmitCs.get(), "deadList", mMaxParticles);
 
         // Init data in dead list buffer
         mpDeadList->getUAVCounter()->setBlob(&mMaxParticles, 0, sizeof(uint32_t));
@@ -101,11 +101,11 @@ namespace Falcor
         mpDeadList->setBlob(indices.data(), 0, indices.size() * sizeof(uint32_t));
 
         // Alive list
-        mpAliveList = StructuredBuffer::create(pSimulateCs.get(), "aliveList", mMaxParticles);
+        mpAliveList = Buffer::createStructured(pSimulateCs.get(), "aliveList", mMaxParticles);
 
         // Indirect args
         Resource::BindFlags indirectBindFlags = Resource::BindFlags::IndirectArg | Resource::BindFlags::UnorderedAccess;
-        mpIndirectArgs = StructuredBuffer::create(pSimulateCs.get(), "drawArgs", 1, indirectBindFlags);
+        mpIndirectArgs = Buffer::createStructured(pSimulateCs.get(), "drawArgs", 1, indirectBindFlags);
 
         //initialize the first member of the args, vert count per instance, to be 4 for particle billboards
         uint32_t vertexCountPerInstance = 4;
@@ -114,29 +114,29 @@ namespace Falcor
         //Vars
         //emit
         mEmitResources.pVars = ComputeVars::create(pEmitCs->getReflector());
-        mEmitResources.pVars->setStructuredBuffer("deadList", mpDeadList);
-        mEmitResources.pVars->setStructuredBuffer("particlePool", mpParticlePool);
-        mEmitResources.pVars->setStructuredBuffer("emitList", mpEmitList);
-        mEmitResources.pVars->setRawBuffer("numAlive", mpAliveList->getUAVCounter());
+        mEmitResources.pVars->setBuffer("deadList", mpDeadList);
+        mEmitResources.pVars->setBuffer("particlePool", mpParticlePool);
+        mEmitResources.pVars->setBuffer("emitList", mpEmitList);
+        mEmitResources.pVars->setBuffer("numAlive", mpAliveList->getUAVCounter());
         //simulate
         mSimulateResources.pVars = ComputeVars::create(pSimulateCs->getReflector());
-        mSimulateResources.pVars->setStructuredBuffer("deadList", mpDeadList);
-        mSimulateResources.pVars->setStructuredBuffer("particlePool", mpParticlePool);
-        mSimulateResources.pVars->setStructuredBuffer("drawArgs", mpIndirectArgs);
-        mSimulateResources.pVars->setStructuredBuffer("aliveList", mpAliveList);
-        mSimulateResources.pVars->setRawBuffer("numDead", mpDeadList->getUAVCounter());
+        mSimulateResources.pVars->setBuffer("deadList", mpDeadList);
+        mSimulateResources.pVars->setBuffer("particlePool", mpParticlePool);
+        mSimulateResources.pVars->setBuffer("drawArgs", mpIndirectArgs);
+        mSimulateResources.pVars->setBuffer("aliveList", mpAliveList);
+        mSimulateResources.pVars->setBuffer("numDead", mpDeadList->getUAVCounter());
         if (mShouldSort)
         {
-            mSimulateResources.pVars->setStructuredBuffer("sortIterationCounter", mSortResources.pSortIterationCounter);
+            mSimulateResources.pVars->setBuffer("sortIterationCounter", mSortResources.pSortIterationCounter);
             //sort
-            mSortResources.pVars->setStructuredBuffer("sortList", mpAliveList);
-            mSortResources.pVars->setStructuredBuffer("iterationCounter", mSortResources.pSortIterationCounter);
+            mSortResources.pVars->setBuffer("sortList", mpAliveList);
+            mSortResources.pVars->setBuffer("iterationCounter", mSortResources.pSortIterationCounter);
         }
 
         //draw
         mDrawResources.pVars = GraphicsVars::create(pDrawProgram->getReflector());
-        mDrawResources.pVars->setStructuredBuffer("aliveList", mpAliveList);
-        mDrawResources.pVars->setStructuredBuffer("particlePool", mpParticlePool);
+        mDrawResources.pVars->setBuffer("aliveList", mpAliveList);
+        mDrawResources.pVars->setBuffer("particlePool", mpParticlePool);
 
         //State
         mEmitResources.pState = ComputeState::create();
@@ -184,8 +184,8 @@ namespace Falcor
         mpEmitList->setBlob(emittedParticles.data(), 0, emittedParticles.size() * sizeof(Particle));
 
         //Send vars and call
-        mEmitResources.pVars->getDefaultBlock()->getConstantBuffer(mBindLocations.emitCB, 0)->setBlob(&emitData, 0u, sizeof(EmitData));
-        uint32_t numGroups = div_round_up(num, (uint32_t)EMIT_THREADS);
+        mEmitResources.pVars->getParameterBlock(mBindLocations.emitCB)->setBlob(&emitData, 0u, sizeof(EmitData));
+        uint32_t numGroups = div_round_up(num, kParticleEmitThreads);
         pCtx->dispatch(mEmitResources.pState.get(), mEmitResources.pVars.get(), {1, numGroups, 1});
     }
 
@@ -206,7 +206,7 @@ namespace Falcor
             perFrame.view = view;
             perFrame.dt = dt;
             perFrame.maxParticles = mMaxParticles;
-            mSimulateResources.pVars->getDefaultBlock()->getConstantBuffer(mBindLocations.simulateCB, 0)->setBlob(&perFrame, 0u, sizeof(SimulateWithSortPerFrame));
+            mSimulateResources.pVars->getParameterBlock(mBindLocations.simulateCB)->setBlob(&perFrame, 0u, sizeof(SimulateWithSortPerFrame));
             mpAliveList->setBlob(mSortDataReset.data(), 0, sizeof(SortData) * mMaxParticles);
         }
         else
@@ -214,7 +214,7 @@ namespace Falcor
             SimulatePerFrame perFrame;
             perFrame.dt = dt;
             perFrame.maxParticles = mMaxParticles;
-            mSimulateResources.pVars->getDefaultBlock()->getConstantBuffer(mBindLocations.simulateCB, 0)->setBlob(&perFrame, 0u, sizeof(SimulatePerFrame));
+            mSimulateResources.pVars->getParameterBlock(mBindLocations.simulateCB)->setBlob(&perFrame, 0u, sizeof(SimulatePerFrame));
         }
 
         //reset alive list counter to 0
@@ -232,7 +232,7 @@ namespace Falcor
         VSPerFrame cbuf;
         cbuf.view = view;
         cbuf.proj = proj;
-        mDrawResources.pVars->getDefaultBlock()->getConstantBuffer(mBindLocations.drawCB, 0)->setBlob(&cbuf, 0, sizeof(cbuf));
+        mDrawResources.pVars->getParameterBlock(mBindLocations.drawCB)->setBlob(&cbuf, 0, sizeof(cbuf));
 
         //particle draw uses many of render context's existing state's properties 
         mDrawResources.pState->setFbo(pDst);
@@ -277,7 +277,7 @@ namespace Falcor
         ComputeProgram::SharedPtr pSortCs = ComputeProgram::createFromFile(kSortShader, "main");
 
         //iteration counter buffer
-        mSortResources.pSortIterationCounter = StructuredBuffer::create(pSortCs.get(), "iterationCounter", 2);
+        mSortResources.pSortIterationCounter = Buffer::createStructured(pSortCs.get(), "iterationCounter", 2);
 
         //Sort data reset buffer
         SortData resetData;

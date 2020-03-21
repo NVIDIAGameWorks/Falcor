@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "SceneBuilder.h"
 #include "../Externals/mikktspace/mikktspace.h"
@@ -87,7 +87,7 @@ namespace Falcor
                 int32_t index = getIndex(face, vert);
                 vec3 T(*(vec3*)tangent), N;
                 getNormal(&N[0], face, vert);
-                // bitangent = fSign * cross(vN, tangent); 
+                // bitangent = fSign * cross(vN, tangent);
                 mBitangents[index] = cross(N, T); // Not using fSign because... I don't know why. It flips the tangent space. Need to go read the paper
             }
         };
@@ -129,15 +129,21 @@ namespace Falcor
 
     bool SceneBuilder::import(const std::string& filename, const InstanceMatrices& instances)
     {
-        if (std::filesystem::path(filename).extension() == ".fscene")
+        bool success = false;
+        if (std::filesystem::path(filename).extension() == ".py")
         {
-            mFilename = filename;
-            return SceneImporter::import(filename, *this);
+            success = PythonImporter::import(filename, *this);
+        }
+        else if (std::filesystem::path(filename).extension() == ".fscene")
+        {
+            success = SceneImporter::import(filename, *this);
         }
         else
         {
-            return AssimpImporter::import(filename, *this, instances);
+            success = AssimpImporter::import(filename, *this, instances);
         }
+        mFilename = filename;
+        return success;
     }
 
     size_t SceneBuilder::addNode(const Node& node)
@@ -148,6 +154,7 @@ namespace Falcor
         assert(newNodeID <= UINT32_MAX);
         mSceneGraph.push_back(InternalNode(node));
         if(node.parent != kInvalidNode) mSceneGraph[node.parent].children.push_back(newNodeID);
+        mDirty = true;
         return newNodeID;
     }
 
@@ -156,6 +163,7 @@ namespace Falcor
         assert(meshID < mMeshes.size());
         mSceneGraph.at(nodeID).meshes.push_back(meshID);
         mMeshes.at(meshID).instances.push_back((uint32_t)nodeID);
+        mDirty = true;
     }
 
     size_t SceneBuilder::addMesh(const Mesh& mesh)
@@ -173,7 +181,7 @@ namespace Falcor
         spec.indexCount = mesh.indexCount;
         spec.vertexCount = mesh.vertexCount;
         spec.topology = mesh.topology;
-        spec.materialId = addMaterial(mesh.pMaterial, !is_set(mFlags, Flags::RemoveDuplicateMaterials));
+        spec.materialId = addMaterial(mesh.pMaterial, is_set(mFlags, Flags::RemoveDuplicateMaterials));
 
         // Error checking
         auto throw_on_missing_element = [&](const std::string& element)
@@ -239,24 +247,40 @@ namespace Falcor
 //             }
         }
 
+        mDirty = true;
+
         return mMeshes.size() - 1;
     }
 
-    uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial, bool forceNew)
+    uint32_t SceneBuilder::addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate)
     {
         assert(pMaterial);
 
-        if (!forceNew)
+        // Reuse previously added materials
+        if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
         {
-            // Check if the material already exists
-            for (uint32_t i = 0; i < mMaterials.size(); i++)
+            return (uint32_t)std::distance(mMaterials.begin(), it);
+        }
+
+        // Try to find previously added material with equal properties (duplicate)
+        if (auto it = std::find_if(mMaterials.begin(), mMaterials.end(), [&pMaterial] (const auto& m) { return *m == *pMaterial; }); it != mMaterials.end())
+        {
+            const auto& equalMaterial = *it;
+
+            // ASSIMP sometimes creates internal copies of a material: Always de-duplicate if name and properties are equal.
+            if (removeDuplicate || pMaterial->getName() == equalMaterial->getName())
             {
-                if (*mMaterials[i] == *pMaterial) return i;
+                return (uint32_t)std::distance(mMaterials.begin(), it);
+            }
+            else
+            {
+                logWarning("Material '" + pMaterial->getName() + "' is a duplicate (has equal properties) of material '" + equalMaterial->getName() + "'.");
             }
         }
 
         mMaterials.push_back(pMaterial);
         assert(mMaterials.size() <= UINT32_MAX);
+        mDirty = true;
         return (uint32_t)mMaterials.size() - 1;
     }
 
@@ -264,6 +288,7 @@ namespace Falcor
     {
         mCamera.nodeID = nodeID;
         mCamera.pObject = pCamera;
+        mDirty = true;
     }
 
     size_t SceneBuilder::addLight(const Light::SharedPtr& pLight, size_t nodeID)
@@ -272,6 +297,7 @@ namespace Falcor
         light.pObject = pLight;
         light.nodeID = nodeID;
         mLights.push_back(light);
+        mDirty = true;
         return mLights.size() - 1;
     }
 
@@ -285,10 +311,8 @@ namespace Falcor
         Buffer::SharedPtr pIB = Buffer::create((uint32_t)ibSize, ibBindFlags, Buffer::CpuAccess::None, mBuffersData.indices.data());
 
         // Create the static vertex data as a structured-buffer
-        ComputeProgram::SharedPtr pSkinning = ComputeProgram::createFromFile("Skinning.slang", "main");
-        ReflectionVar::SharedConstPtr pReflector = pSkinning->getReflector()->getParameterBlock("gData")->getResource("skinnedVertices");
         ResourceBindFlags vbBindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex;
-        StructuredBuffer::SharedPtr pStaticBuffer = StructuredBuffer::create(pReflector->getName(), std::dynamic_pointer_cast<const ReflectionResourceType>(pReflector->getType()), (uint32_t)mBuffersData.staticData.size(), vbBindFlags);
+        Buffer::SharedPtr pStaticBuffer = Buffer::createStructured(sizeof(StaticVertexData), (uint32_t)mBuffersData.staticData.size(), vbBindFlags);
 
         Vao::BufferVec pVBs(Scene::kVertexBufferCount);
         pVBs[Scene::kStaticDataBufferIndex] = pStaticBuffer;
@@ -384,29 +408,35 @@ namespace Falcor
 
     Scene::SharedPtr SceneBuilder::getScene()
     {
+        // We cache the scene because creating it is not cheap.
+        // With the PythonImporter, the scene is fetched twice, once for running
+        // the scene script and another time when the scene has finished loading.
+        if (mpScene && !mDirty) return mpScene;
+
         if (mMeshes.size() == 0)
         {
             logError("Can't build scene. No meshes were loaded");
             return nullptr;
         }
-        Scene::SharedPtr pScene = Scene::create();
+        mpScene = Scene::create();
         if (mCamera.pObject == nullptr) mCamera.pObject = Camera::create();
-        pScene->mCamera = mCamera;
-        pScene->mCameraSpeed = mCameraSpeed;
-        pScene->mLights = mLights;
-        pScene->mMaterials = mMaterials;
-        pScene->mpLightProbe = mpLightProbe;
-        pScene->mpEnvMap = mpEnvMap;
-        pScene->mFilename = mFilename;
+        mpScene->mCamera = mCamera;
+        mpScene->mCameraSpeed = mCameraSpeed;
+        mpScene->mLights = mLights;
+        mpScene->mMaterials = mMaterials;
+        mpScene->mpLightProbe = mpLightProbe;
+        mpScene->mpEnvMap = mpEnvMap;
+        mpScene->mFilename = mFilename;
 
-        createGlobalMatricesBuffer(pScene.get());
-        uint32_t drawCount = createMeshData(pScene.get());
-        pScene->mpVao = createVao(drawCount);
-        calculateMeshBoundingBoxes(pScene.get());
-        createAnimationController(pScene.get());
-        pScene->finalize();
+        createGlobalMatricesBuffer(mpScene.get());
+        uint32_t drawCount = createMeshData(mpScene.get());
+        mpScene->mpVao = createVao(drawCount);
+        calculateMeshBoundingBoxes(mpScene.get());
+        createAnimationController(mpScene.get());
+        mpScene->finalize();
+        mDirty = false;
 
-        return pScene;
+        return mpScene;
     }
 
     void SceneBuilder::calculateMeshBoundingBoxes(Scene* pScene)
@@ -434,6 +464,7 @@ namespace Falcor
     {
         assert(meshID < mMeshes.size());
         mMeshes[meshID].animations.push_back(pAnimation);
+        mDirty = true;
         return mMeshes[meshID].animations.size() - 1;
     }
 
@@ -447,5 +478,19 @@ namespace Falcor
                 pScene->mpAnimationController->addAnimation(i, pAnim);
             }
         }
+    }
+
+    SCRIPT_BINDING(SceneBuilder)
+    {
+        auto buildFlags = m.enum_<SceneBuilder::Flags>("SceneBuilderFlags");
+        buildFlags.regEnumVal(SceneBuilder::Flags::None);
+        buildFlags.regEnumVal(SceneBuilder::Flags::RemoveDuplicateMaterials);
+        buildFlags.regEnumVal(SceneBuilder::Flags::UseOriginalTangentSpace);
+        buildFlags.regEnumVal(SceneBuilder::Flags::AssumeLinearSpaceTextures);
+        buildFlags.regEnumVal(SceneBuilder::Flags::DontMergeMeshes);
+        buildFlags.regEnumVal(SceneBuilder::Flags::BuffersAsShaderResource);
+        buildFlags.regEnumVal(SceneBuilder::Flags::UseSpecGlossMaterials);
+        buildFlags.regEnumVal(SceneBuilder::Flags::UseMetalRoughMaterials);
+        buildFlags.addBinaryOperators();
     }
 }

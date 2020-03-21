@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "CameraController.h"
 #include "Utils/UI/UserInput.h"
@@ -120,41 +120,45 @@ namespace Falcor
     bool FirstPersonCameraControllerCommon<b6DoF>::onKeyEvent(const KeyboardEvent& event)
     {
         bool handled = false;
-        bool keyPressed = (event.type == KeyboardEvent::Type::KeyPressed);
 
-        switch(event.key)
+        if (event.type == KeyboardEvent::Type::KeyPressed || event.type == KeyboardEvent::Type::KeyReleased)
         {
-        case KeyboardEvent::Key::W:
-            mMovement[Direction::Forward] = keyPressed;
-            handled = true;
-            break;
-        case KeyboardEvent::Key::S:
-            mMovement[Direction::Backward] = keyPressed;
-            handled = true;
-            break;
-        case KeyboardEvent::Key::A:
-            mMovement[Direction::Right] = keyPressed;
-            handled = true;
-            break;
-        case KeyboardEvent::Key::D:
-            mMovement[Direction::Left] = keyPressed;
-            handled = true;
-            break;
-        case KeyboardEvent::Key::Q:
-            mMovement[Direction::Down] = keyPressed;
-            handled = true;
-            break;
-        case KeyboardEvent::Key::E:
-            mMovement[Direction::Up] = keyPressed;
-            handled = true;
-            break;
-        default:
-            break;
-        }
+            bool keyPressed = (event.type == KeyboardEvent::Type::KeyPressed);
 
-        mSpeedModifier = 1.0f;
-        if (event.mods.isCtrlDown) mSpeedModifier = 0.25f;
-        else if (event.mods.isShiftDown) mSpeedModifier = 10.0f;
+            switch(event.key)
+            {
+            case KeyboardEvent::Key::W:
+                mMovement[Direction::Forward] = keyPressed;
+                handled = true;
+                break;
+            case KeyboardEvent::Key::S:
+                mMovement[Direction::Backward] = keyPressed;
+                handled = true;
+                break;
+            case KeyboardEvent::Key::A:
+                mMovement[Direction::Right] = keyPressed;
+                handled = true;
+                break;
+            case KeyboardEvent::Key::D:
+                mMovement[Direction::Left] = keyPressed;
+                handled = true;
+                break;
+            case KeyboardEvent::Key::Q:
+                mMovement[Direction::Down] = keyPressed;
+                handled = true;
+                break;
+            case KeyboardEvent::Key::E:
+                mMovement[Direction::Up] = keyPressed;
+                handled = true;
+                break;
+            default:
+                break;
+            }
+
+            mSpeedModifier = 1.0f;
+            if (event.mods.isCtrlDown) mSpeedModifier = 0.25f;
+            else if (event.mods.isShiftDown) mSpeedModifier = 10.0f;
+        }
 
         return handled;
     }

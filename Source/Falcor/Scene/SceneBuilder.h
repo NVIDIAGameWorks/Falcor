@@ -1,33 +1,33 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Scene.h"
-#include "Data/VertexAttrib.h"
+#include "VertexAttrib.slangh"
 
 namespace Falcor
 {
@@ -49,7 +49,7 @@ namespace Falcor
             UseSpecGlossMaterials       = 0x20,   ///< Set materials to use Spec-Gloss shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else
             UseMetalRoughMaterials      = 0x40,   ///< Set materials to use Metal-Rough shading model. Otherwise default is Spec-Gloss for OBJ, Metal-Rough for everything else
 
-            Default = RemoveDuplicateMaterials
+            Default = None
         };
 
         /** Mesh description
@@ -141,7 +141,8 @@ namespace Falcor
         */
         void setLightProbe(LightProbe::ConstSharedPtrRef pProbe) { mpLightProbe = pProbe; }
 
-        /** Set an environment map
+        /** Set an environment map.
+            \param[in] pEnvMap Texture to use as environment map. Can be nullptr.
         */
         void setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap) { mpEnvMap = pEnvMap; }
 
@@ -197,11 +198,13 @@ namespace Falcor
             std::vector<uint32_t> indices;
             std::vector<StaticVertexData> staticData;
             std::vector<DynamicVertexData> dynamicData;
-//            std::vector<OptionalVertexData> optionalData;
-        } mBuffersData;        
+        } mBuffersData;
 
         using SceneGraph = std::vector<InternalNode>;
         using MeshList = std::vector<MeshSpec>;
+
+        bool mDirty = true;
+        Scene::SharedPtr mpScene;
 
         SceneGraph mSceneGraph;
         Flags mFlags;
@@ -216,7 +219,7 @@ namespace Falcor
         Texture::SharedPtr mpEnvMap;
         float mCameraSpeed = 1.0f;
 
-        uint32_t addMaterial(const Material::SharedPtr& pMaterial, bool forceNew);
+        uint32_t addMaterial(const Material::SharedPtr& pMaterial, bool removeDuplicate);
         Vao::SharedPtr createVao(uint16_t drawCount);
 
         uint32_t createMeshData(Scene* pScene);
@@ -224,7 +227,27 @@ namespace Falcor
         void calculateMeshBoundingBoxes(Scene* pScene);
         void createAnimationController(Scene* pScene);
         std::string mFilename;
-};
+    };
+
+    inline std::string to_string(SceneBuilder::Flags flags)
+    {
+#define t2s(t_) case SceneBuilder::Flags::t_: return #t_;
+        switch (flags)
+        {
+            t2s(None);
+            t2s(RemoveDuplicateMaterials);
+            t2s(UseOriginalTangentSpace);
+            t2s(AssumeLinearSpaceTextures);
+            t2s(DontMergeMeshes);
+            t2s(BuffersAsShaderResource);
+            t2s(UseSpecGlossMaterials);
+            t2s(UseMetalRoughMaterials);
+        default:
+            should_not_get_here();
+            return "";
+        }
+#undef t2s
+    }
 
     enum_class_operators(SceneBuilder::Flags);
 }

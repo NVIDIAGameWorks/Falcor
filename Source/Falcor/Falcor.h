@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #ifdef _WIN32
 #define NOMINMAX
@@ -70,10 +70,7 @@
 #include "Core/API/VertexLayout.h"
 
 // Core/BufferTypes
-#include "Core/BufferTypes/ConstantBuffer.h"
-#include "Core/BufferTypes/StructuredBuffer.h"
-#include "Core/BufferTypes/TypedBuffer.h"
-#include "Core/BufferTypes/VariablesBuffer.h"
+#include "Core/BufferTypes/ParameterBlock.h"
 #include "Core/BufferTypes/VariablesBufferUI.h"
 
 // Core/Platform
@@ -83,7 +80,6 @@
 // Core/Program
 #include "Core/Program/ComputeProgram.h"
 #include "Core/Program/GraphicsProgram.h"
-#include "Core/Program/ParameterBlock.h"
 #include "Core/Program/Program.h"
 #include "Core/Program/ProgramReflection.h"
 #include "Core/Program/ProgramVars.h"
@@ -93,15 +89,6 @@
 // Core/State
 #include "Core/State/ComputeState.h"
 #include "Core/State/GraphicsState.h"
-
-// Effects
-#include "Effects/AmbientOcclusion/SSAOPass.h"
-#include "Effects/FXAA/FXAAPass.h"
-#include "Effects/Shadows/CSM.h"
-#include "Effects/SkyBox/SkyBox.h"
-#include "Effects/TAA/TAAPass.h"
-#include "Effects/ToneMapping/ToneMappingPass.h"
-#include "Effects/Utils/GaussianBlurPass.h"
 
 // RenderGraph
 #include "RenderGraph/RenderGraph.h"
@@ -129,6 +116,7 @@
 #include "Scene/Animation/Animation.h"
 #include "Scene/Animation/AnimationController.h"
 #include "Scene/Importers/AssimpImporter.h"
+#include "Scene/Importers/PythonImporter.h"
 #include "Scene/ParticleSystem/ParticleSystem.h"
 
 // Utils
@@ -137,6 +125,7 @@
 #include "Utils/BinaryFileStream.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
+#include "Utils/TermColor.h"
 #include "Utils/Threading.h"
 #include "Utils/Algorithm/DirectedGraph.h"
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
@@ -158,10 +147,8 @@
 #include "Utils/Timing/FrameRate.h"
 #include "Utils/Timing/Profiler.h"
 #include "Utils/UI/Font.h"
-#include "Utils/UI/Gizmo.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/UI/DebugDrawer.h"
-#include "Utils/UI/Picking.h"
 #include "Utils/UI/PixelZoom.h"
 #include "Utils/UI/TextRenderer.h"
 #include "Utils/UI/UserInput.h"
@@ -172,7 +159,7 @@
 
 #ifdef FALCOR_D3D12
 #include "Raytracing/RtProgramVars.h"
-#include "Raytracing/RtState.h"
+#include "Raytracing/RtStateObject.h"
 #include "Raytracing/RtProgram/RtProgram.h"
 #endif
 

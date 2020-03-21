@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "Window.h"
 #include "API/Device.h"
@@ -48,20 +48,20 @@ namespace Falcor
     {
     public:
         /** Entry-point to Sample. User should call this to start processing.
-            \param[in] config Requested sample configuration
-            \param[in] pRenderer The user's renderer
-            \param[in] argc Optional. The number of strings in `argv`
-            \param[in] argv Optional. The command line arguments
-            Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr
+            \param[in] config Requested sample configuration.
+            \param[in] pRenderer The user's renderer. The Sample takes ownership of the renderer.
+            \param[in] argc Optional. The number of strings in `argv`.
+            \param[in] argv Optional. The command line arguments.
+            Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
         */
         static void run(const SampleConfig& config, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
         /** Entry-point to Sample. User should call this to start processing.
-            \param[in] filename A filename containing the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration
-            \param[in] pRenderer The user's renderer
-            \param[in] argc Optional. The number of strings in `argv`
-            \param[in] argv Optional. The command line arguments
-            Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr
+            \param[in] filename A filename containing the sample configuration. If the file is not found, the sample will issue an error and lunch with the default configuration.
+            \param[in] pRenderer The user's renderer. The Sample takes ownership of the renderer.
+            \param[in] argc Optional. The number of strings in `argv`.
+            \param[in] argv Optional. The command line arguments.
+            Note that when running a Windows application (with WinMain()), the command line arguments will be retrieved and parsed even if argc and argv are nullptr.
         */
         static void run(const std::string& filename, IRenderer::UniquePtr& pRenderer, uint32_t argc = 0, char** argv = nullptr);
 
@@ -94,7 +94,7 @@ namespace Falcor
         */
         Gui::UniquePtr mpGui;                               ///< Main sample GUI
         Fbo::SharedPtr mpTargetFBO;                         ///< The FBO available to renderers
-        bool mRendererPaused = false;                      ///< Freezes the renderer
+        bool mRendererPaused = false;                       ///< Freezes the renderer
         ArgList mArgList;                                   ///< Arguments passed in by command line
         Window::SharedPtr mpWindow;                         ///< The application's window
 
@@ -110,7 +110,7 @@ namespace Falcor
         void initUI();
         void saveConfigToFile();
 
-        void startVideoCapture();
+        bool startVideoCapture();
         void endVideoCapture();
         void captureVideoFrame();
         void renderUI();
@@ -120,6 +120,7 @@ namespace Falcor
         void startScripting();
         void registerScriptBindings(ScriptBindings::Module& m);
 
+        bool mSuppressInput = false;
         bool mVsyncOn = false;
         bool mShowUI = true;
         bool mCaptureScreen = false;

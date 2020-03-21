@@ -1,35 +1,37 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
-#include "MeshLightData.h"
+#include "MeshLightData.slang"
 
 namespace Falcor
 {
+    class Scene;
+
     /** Class that holds a collection of mesh lights for a scene.
 
         Each mesh light is represented by a mesh instance with an emissive material.
@@ -42,9 +44,8 @@ namespace Falcor
     {
     public:
         using SharedPtr = std::shared_ptr<LightCollection>;
+        using ConstSharedPtrRef = const std::shared_ptr<LightCollection>&;
         using SharedConstPtr = std::shared_ptr<const LightCollection>;
-
-        static const uint32_t kInvalidIndex = -1;
 
         enum class UpdateFlags : uint32_t
         {
@@ -104,7 +105,7 @@ namespace Falcor
         };
 
 
-        virtual ~LightCollection() = default;
+        ~LightCollection() = default;
 
         /** Creates a light collection for the given scene.
             Note that update() must be called before the collection is ready to use.
@@ -112,7 +113,7 @@ namespace Falcor
             \param[in] pScene The scene.
             \return Ptr to the created object, or nullptr if an error occured.
         */
-        static SharedPtr create(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
+        static SharedPtr create(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
 
         /** Updates the light collection to the current state of the scene.
             \param[in] pRenderContext The render context.
@@ -122,44 +123,15 @@ namespace Falcor
         bool update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus = nullptr);
 
         /** Render the GUI.
-            \return True if options that may affect the rendering have changed.
         */
-        virtual bool renderUI(Gui::Widgets& widgets);
+        void renderUI(Gui::Widgets& widgets);
 
-        /** Specialize a program to use this light collection.
-            Note that ProgramVars may need to be re-created after this call, check the return value.
-            \param[in] pProgram The Program to which macro definitions will be added.
-            \return True if the ProgramVars needs to be re-created.
-        */
-        bool prepareProgram(ProgramBase* pProgram) const;
-
-        /** Bind the light collection data to a program vars object.
-            The default implementation calls setIntoBlockCommon().
+        /** Bind the light collection data to a given shader var
             Note that prepareProgram() must have been called before this function.
-            \param[in] pVars The program vars to set the data into.
-            \param[in] pCB The constant buffer to set the data into.
-            \param[in] varName The name of the data variable in the constant buffer.
+            \param[in] var The shader variable to set the data into.
             \return True if successful, false otherwise.
         */
-        bool setIntoProgramVars(ProgramVars* pVars, const ConstantBuffer::SharedPtr& pCB, const std::string& varName) const { return setIntoBlockCommon(pVars->getDefaultBlock(), pCB, varName); }
-
-        /** Bind the light collection data to a parameter block object.
-            The default implementation calls setIntoBlockCommon().
-            Note that prepareProgram() must have been called before this function.
-            \param[in] pBlock The parameter block to set the data into.
-            \param[in] varName The name of the data variable in the parameter block.
-            \return True if successful, false otherwise.
-        */
-        bool setIntoParameterBlock(const ParameterBlock::SharedPtr& pBlock, const std::string& varName) const { return setIntoBlockCommon(pBlock, pBlock->getDefaultConstantBuffer(), varName); }
-
-        /** Bind the light collection data to a given constant buffer in a parameter block.
-            Note that prepareProgram() must have been called before this function.
-            \param[in] pBlock The parameter block to set the data into (possibly the default parameter block).
-            \param[in] pCB The constant buffer in the parameter block to set the data into.
-            \param[in] varName The name of the data variable.
-            \return True if successful, false otherwise.
-        */
-        bool setIntoBlockCommon(const ParameterBlock::SharedPtr& pBlock, const ConstantBuffer::SharedPtr& pCB, const std::string& varName) const;
+        bool setShaderData(const ShaderVar& var) const;
 
         /** Returns the total number of active (non-culled) triangle lights.
         */
@@ -204,7 +176,7 @@ namespace Falcor
     protected:
         LightCollection() = default;
 
-        bool init(RenderContext* pRenderContext, const Scene::SharedPtr& pScene);
+        bool init(RenderContext* pRenderContext, const std::shared_ptr<Scene>& pScene);
         bool initIntegrator();
         bool setupMeshLights();
         void build(RenderContext* pRenderContext);
@@ -219,7 +191,7 @@ namespace Falcor
         void syncCPUData() const;
 
         // Internal state
-        Scene::SharedPtr                        mpScene;
+        std::shared_ptr<Scene>                  mpScene;
 
         std::vector<MeshLightData>              mMeshLights;            ///< List of all mesh lights.
         uint32_t                                mTriangleCount = 0;     ///< Total number of triangles in all mesh lights (= mMeshLightTriangles.size()). This may include culled triangles.
@@ -229,13 +201,13 @@ namespace Falcor
         mutable bool                            mStatsValid = false;    ///< True when stats are valid.
 
         // GPU resources for the mesh light vertex/triangle data.
-        // TODO: Perf of individual buffers vs StructuredBuffer<vertex>? 
+        // TODO: Perf of individual buffers vs StructuredBuffer<vertex>?
         // We should profile. The code would be simpler with StructuredBuffer.
         Buffer::SharedPtr                       mpMeshLightsVertexPos;  ///< Vertex positions in world space for all mesh light triangles (3 * mTriangleCount elements).
         Buffer::SharedPtr                       mpMeshLightsTexCoords;  ///< Texture coordinates for all mesh light triangles (3 * mTriangleCount elements).
-        StructuredBuffer::SharedPtr             mpTriangleData;         ///< Per-triangle data for emissive triangles (mTriangleCount elements).
-        StructuredBuffer::SharedPtr             mpMeshData;             ///< Per-mesh data for emissive meshes (mMeshLights.size() elements).
-        TypedBuffer<uint32_t>::SharedPtr        mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).
+        Buffer::SharedPtr                       mpTriangleData;         ///< Per-triangle data for emissive triangles (mTriangleCount elements).
+        Buffer::SharedPtr                       mpMeshData;             ///< Per-mesh data for emissive meshes (mMeshLights.size() elements).
+        Buffer::SharedPtr                       mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).
 
         mutable Buffer::SharedPtr               mpStagingBuffer;        ///< Staging buffer used for retrieving the vertex positions, texture coordinates and light IDs from the GPU.
         GpuFence::SharedPtr                     mpStagingFence;         ///< Fence used for waiting on the staging buffer being filled in.

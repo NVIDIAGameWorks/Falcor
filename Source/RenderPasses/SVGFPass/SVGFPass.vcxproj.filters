@@ -10,8 +10,8 @@
     <ShaderSource Include="SVGFAtrous.ps.slang" />
     <ShaderSource Include="SVGFFilterMoments.ps.slang" />
     <ShaderSource Include="SVGFReproject.ps.slang" />
-    <ShaderSource Include="SVGFCommon.slang.h" />
     <ShaderSource Include="SVGFPackLinearZAndNormal.ps.slang" />
     <ShaderSource Include="SVGFFinalModulate.ps.slang" />
+    <ShaderSource Include="SVGFCommon.slang" />
   </ItemGroup>
 </Project>

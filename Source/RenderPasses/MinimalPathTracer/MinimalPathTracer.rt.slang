@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 
 /** Minimal path tracer.
 
@@ -52,18 +52,16 @@
     is_valid_<name>     1 if optional I/O buffer with this name should be used.
 */
 
-#include "Utils/Math/MathConstants.slang"
+#include "Utils/Math/MathConstants.slangh"
 
-import Scene;
-import Raytracing;
-import Shading;
+import Scene.Raytracing;
 import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 import Experimental.Scene.Material.MaterialShading;
 import Experimental.Scene.Lights.EnvProbe;
 import Experimental.Scene.Lights.LightHelpers;
 
-shared cbuffer CB
+cbuffer CB
 {
     uint        gFrameCount;        // Frame count since scene was loaded.
     uint        gPRNGDimension;     // First available PRNG dimension.
@@ -71,18 +69,18 @@ shared cbuffer CB
 }
 
 // Inputs
-shared Texture2D<float4> gWorldPosition;
-shared Texture2D<float4> gWorldShadingNormal;
-shared Texture2D<float4> gWorldShadingBitangent; // Optional
-shared Texture2D<float4> gWorldFaceNormal;
-shared Texture2D<float4> gWorldView; // Optional
-shared Texture2D<float4> gMaterialDiffuseOpacity;
-shared Texture2D<float4> gMaterialSpecularRoughness;
-shared Texture2D<float4> gMaterialEmissive;
-shared Texture2D<float4> gMaterialExtraParams;
+Texture2D<float4> gWorldPosition;
+Texture2D<float4> gWorldShadingNormal;
+Texture2D<float4> gWorldShadingBitangent; // Optional
+Texture2D<float4> gWorldFaceNormal;
+Texture2D<float4> gWorldView; // Optional
+Texture2D<float4> gMaterialDiffuseOpacity;
+Texture2D<float4> gMaterialSpecularRoughness;
+Texture2D<float4> gMaterialEmissive;
+Texture2D<float4> gMaterialExtraParams;
 
 // Outputs
-shared RWTexture2D<float4> gOutputColor;
+RWTexture2D<float4> gOutputColor;
 
 // Static configuration based on defines set from the host.
 #define isValid(name) (is_valid_##name != 0)
@@ -138,8 +136,6 @@ struct ScatterRayData
 MaterialParams loadMaterialParams(uint2 pixelPos)
 {
     MaterialParams matParams;
-    matParams = matParams.init();
-
     matParams.diffuseOpacity = gMaterialDiffuseOpacity[pixelPos];
     matParams.specularRoughness = gMaterialSpecularRoughness[pixelPos];
     matParams.emissive = gMaterialEmissive[pixelPos];
@@ -150,7 +146,7 @@ MaterialParams loadMaterialParams(uint2 pixelPos)
 
 /** Returns the primary ray's direction.
 */
-float3 getPrimaryRayDir(uint2 launchIndex, uint2 launchDim, const CameraData camera)
+float3 getPrimaryRayDir(uint2 launchIndex, uint2 launchDim, const Camera camera)
 {
     if (isValid(gWorldView))
     {
@@ -162,15 +158,7 @@ float3 getPrimaryRayDir(uint2 launchIndex, uint2 launchDim, const CameraData cam
         // Compute the view vector. This must exactly match what the G-buffer pass is doing (jitter etc.).
         // Note that we do not take depth-of-field into account as it would require exactly matching the
         // sample generator between the passes, which is error prone. The host side will issue a warning instead.
-
-        // Compute sample position in screen space in [0,1] with origin at the top-left corner.
-        // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
-        float2 p = (launchIndex + float2(0.5f, 0.5f)) / launchDim + float2(-camera.jitterX, camera.jitterY);
-
-        // Compute the normalized ray direction assuming a pinhole camera.
-        float2 ndc = float2(2, -2) * p + float2(-1, 1);
-        float3 rayDir = ndc.x * camera.cameraU + ndc.y * camera.cameraV + camera.cameraW;
-        return normalize(rayDir);
+        return camera.computeRayPinhole(launchIndex, launchDim).dir;
     }
 }
 
@@ -226,14 +214,14 @@ float3 evalDirectAnalytic(const ShadingData sd, float3 rayOrigin, inout SampleGe
 
     // Sample local light source.
     AnalyticLightSample ls;
-    sampleLight(rayOrigin, gScene.getLight(lightIndex), sampleNext2D(sg), ls);
+    bool valid = sampleLight(rayOrigin, gScene.getLight(lightIndex), sg, ls);
 
     // Reject sample if lower hemisphere.
-    if (dot(ls.dir, sd.N) <= kMinCosTheta) return float3(0, 0, 0);
+    if (!valid || dot(ls.dir, sd.N) <= kMinCosTheta) return float3(0);
 
     // Test visibility by tracing a shadow ray.
     bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
-    return V ? evalBRDFCosine(sd, ls.dir) * ls.Li * invPdf : float3(0);
+    return V ? evalBSDFCosine(sd, ls.dir) * ls.Li * invPdf : float3(0);
 }
 
 /** Processes a hit point to generate a scatter ray or terminate.
@@ -244,12 +232,15 @@ float3 evalDirectAnalytic(const ShadingData sd, float3 rayOrigin, inout SampleGe
 */
 void generateScatterRay(const ShadingData sd, float3 rayOrigin, inout ScatterRayData rayData)
 {
-    // Generate scatter ray as cosine-weighted direction.
-    float pdf;
-    float3 dir = sampleHemisphereCosine(sd, sampleNext2D(rayData.sg), pdf); // pdf = cos(theta) / pi
+    // Generate scatter ray as cosine-weighted direction over the hemisphere.
+    float pdf = 0.f;
+    float2 u = sampleNext2D(rayData.sg);
+    float3 wi = sample_cosine_hemisphere_concentric(u, pdf);
+    wi = fromLocal(wi, sd);
+
     rayData.origin = rayOrigin;
-    rayData.direction = dir;
-    rayData.thp *= evalBRDF(sd, dir) * M_PI; // dot(N,L) / pdf = pi
+    rayData.direction = wi;
+    rayData.thp *= pdf > 0.f ? evalBSDFCosine(sd, wi) / pdf : float3(0);
 }
 
 /** ********************* Ray index 0: Scatter ray ************************ */
@@ -269,25 +260,29 @@ void scatterMiss(inout ScatterRayData rayData : SV_RayPayload)
 }
 
 [shader("anyhit")]
-void scatterAnyHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterAnyHit(
+    uniform HitShaderParams hitParams,
+    inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(PrimitiveIndex(), attribs);
-    if (alphaTest(v, gScene.materials[gScene.getMaterialID(getGlobalHitID())], 0.f)) IgnoreHit();
+    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
 }
 
 [shader("closesthit")]
-void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterClosestHit(
+    uniform HitShaderParams hitParams,
+    inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     // Evaluate Falcor's material parameters at the hit point.
-    // Note we pass hitPos-rayDir as "camera position" to avoid zero-length rays causing NaNs
-    // in the view direction. It'd been cleaner if prepareShadingData() took ray dir directly.
     // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
-    const float3 rayDir = WorldRayDirection();
-    VertexData v = getVertexData(PrimitiveIndex(), attribs);
-    ShadingData sd = prepareShadingData(v, gScene.materials[gScene.getMaterialID(getGlobalHitID())], v.posW - rayDir, 0.f);
+    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    ShadingData sd = prepareShadingData(v, materialID, gScene.materials[materialID], gScene.materialResources[materialID], -WorldRayDirection(), 0.f);
 
     // Compute tangent space if it is invalid.
+    // TODO: Remove this check when we're sure the tangent space is always valid.
     if (!(dot(sd.B, sd.B) > 0.f))   // Note: Comparison written so that NaNs trigger
     {
         sd.B = perp_stark(sd.N);
@@ -334,11 +329,14 @@ void shadowMiss(inout ShadowRayData rayData : SV_RayPayload)
 }
 
 [shader("anyhit")]
-void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void shadowAnyHit(
+    uniform HitShaderParams hitParams,
+    inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
     // Alpha test for non-opaque geometry.
-    VertexData v = getVertexData(PrimitiveIndex(), attribs);
-    if (alphaTest(v, gScene.materials[gScene.getMaterialID(getGlobalHitID())], 0.f)) IgnoreHit();
+    VertexData v = getVertexData(hitParams, PrimitiveIndex(), attribs);
+    const uint materialID = gScene.getMaterialID(hitParams.getGlobalHitID());
+    if (alphaTest(v, gScene.materials[materialID], gScene.materialResources[materialID], 0.f)) IgnoreHit();
 }
 
 /** ******************************** RayGen ******************************** */

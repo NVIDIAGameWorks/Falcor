@@ -1,38 +1,41 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
-#include "BSDFViewerParams.h"
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+#include "Utils/Math/MathConstants.slangh"
+#include "Scene/Material/MaterialDefines.slangh"
 
-import Scene;
+import Scene.Scene;
+import Scene.TextureSampler;
 import Experimental.Scene.Material.MaterialShading;
 import Experimental.Scene.Lights.EnvProbe;
 import Utils.Sampling.SampleGenerator;
 import Utils.Math.BitTricks;
 import Utils.Math.MathHelpers;
+import BSDFViewerParams;
 
 cbuffer PerFrameCB
 {
@@ -51,7 +54,6 @@ struct SurfaceData
 
     // Additional fields we want to inspect that are not part of Falcor's ShadingData.
     float3 baseColor;
-    float  metallic;
     float3 wi;
 };
 
@@ -89,7 +91,7 @@ float3 calculateSliceGeometry(float2 uv, out VertexData v, out float3 viewDir)
     float theta_d = (1.f - uv.y) * (M_PI / 2);
 
     float NdotH = cos(theta_h);
-    float HdotL = cos(theta_d);     // Note: HdotL = HdotV 
+    float HdotL = cos(theta_d);     // Note: HdotL = HdotV
 
     // Place the H vector at (0,0,1) to start.
     // Compute L, V that are mirrored about the yz-plane.
@@ -206,20 +208,13 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
     if (gParams.useSceneMaterial)
     {
         // Setup Falcor's ShadingData based on scene material.
-        float3 camPosW = v.posW + viewDir;
         ExplicitLodTextureSampler lod = { 0.f };
-        data.sd = _prepareShadingData(v, gScene.materials[gParams.materialID], camPosW, lod, gParams.useNormalMapping);
+        data.sd = _prepareShadingData(v, gParams.materialID, gScene.materials[gParams.materialID], gScene.materialResources[gParams.materialID], viewDir, lod, gParams.useNormalMapping);
 
         // Setup additional fields not currently available in ShadingData.
-        MaterialData m = gScene.materials[gParams.materialID];
-        float4 baseColor = sampleTexture(m.resources.baseColor, m.resources.samplerState, v.texC, m.baseColor, EXTRACT_DIFFUSE_TYPE(m.flags), lod);
-        float4 spec = sampleTexture(m.resources.specular, m.resources.samplerState, v.texC, m.specular, EXTRACT_SPECULAR_TYPE(m.flags), lod);
-
-        data.baseColor = baseColor.rgb;
-        if (EXTRACT_SHADING_MODEL(m.flags) == ShadingModelMetalRough)
-        {
-            data.metallic = spec.b;
-        }
+        MaterialData md = gScene.materials[gParams.materialID];
+        MaterialResources mr = gScene.materialResources[gParams.materialID];
+        data.baseColor = sampleTexture(mr.baseColor, mr.samplerState, v.texC, md.baseColor, EXTRACT_DIFFUSE_TYPE(md.flags), lod).rgb;
     }
     else
     {
@@ -238,22 +233,23 @@ SurfaceData prepareMaterial(VertexData v, float3 viewDir)
         sd.doubleSided = false;
 
         // Set material parameters.
+        // Calculate the specular reflectance for dielectrics from the IoR.
+        sd.IoR = gParams.IoR;
+        float f = (sd.IoR - 1.f) / (sd.IoR + 1.f);
+        float F0 = f * f;
         sd.diffuse = lerp(gParams.baseColor.rgb, float3(0), gParams.metallic);
-        sd.specular = lerp(float3(0.04f), gParams.baseColor.rgb, gParams.metallic);
+        sd.specular = lerp(float3(F0), gParams.baseColor.rgb, gParams.metallic);
         sd.linearRoughness = gParams.linearRoughness;
         sd.ggxAlpha = sd.linearRoughness * sd.linearRoughness;
-        sd.frontFacing = true;
-        sd.doubleSided = false;
+        sd.metallic = gParams.metallic;
 
         // Unused
         sd.opacity = 1;
         sd.occlusion = 1;
-        sd.IoR = 1;
 
         // Store outputs
         data.sd = sd;
         data.baseColor = gParams.baseColor;
-        data.metallic = gParams.metallic;
     }
 
     return data;
@@ -290,27 +286,15 @@ float3 evalLighting(float3 dir)
     return L * gParams.lightIntensity;
 }
 
-/** Helper function for evaluates the currently configured BRDF.
+/** Returns the BSDF lobe mask for the currently enabled lobes.
 */
-float3 evaluateBRDF(const ShadingData sd, const float3 L, bool useNdotL)
+uint getActiveLobes()
 {
-    float3 f;
-    if (gParams.originalDisney)
-    {
-        f = evalDisneyBRDF(sd, L, gParams.enableDiffuse, gParams.enableSpecular);
-    }
-    else
-    {
-        f = evalBRDF(sd, L, gParams.enableDiffuse, gParams.enableSpecular);
-    }
-
-    // Apply dot(N,L) to result.
-    if (useNdotL)
-    {
-        float NdotL = saturate(dot(sd.N, L));
-        f *= NdotL;
-    }
-    return f;
+    uint lobes = 0;
+    if (gParams.enableDiffuse) lobes |= (uint)LobeType::DiffuseReflection;
+    if (gParams.enableSpecular) lobes |= (uint)LobeType::SpecularReflection;
+    // TODO: Viewer doesn't support transmission lobes yet
+    return lobes;
 }
 
 /** Evaluates the BSDF slice for a given viewport coordinate.
@@ -328,48 +312,40 @@ float3 evalBSDFSlice(float2 uv, inout SurfaceData data)
     data.wi = lightDir;
 
     // Evaluate BRDF at this point.
-    return evaluateBRDF(data.sd, data.wi, gParams.applyNdotL);
+    float3 f = evalBSDFCosine(data.sd, data.wi, getActiveLobes());
+
+    // Remove cosine term if it's disabled in the viewer.
+    if (!gParams.applyNdotL)
+    {
+        float NdotL = dot(data.sd.N, data.wi);
+        f = NdotL > 0.f ? f / NdotL : float3(0);
+    }
+
+    return f;
 }
 
 /** Samples the BSDF to evaluate incident illumination.
     This is done differently depending on the configuration.
-    \return True if a valid sample is returned.
+    \param[in] sd Shading point data.
+    \param[in] sg Sample generator.
+    \param[out] s Generated sample. Only valid if true is returned.
+    \return True if a sample was generated, false otherwise.
 */
-bool sampleBSDF(const ShadingData sd, inout SampleGenerator sg, out BRDFSample s)
+bool generateBSDFSample(const ShadingData sd, inout SampleGenerator sg, out BSDFSample s)
 {
     if (gParams.useDirectionalLight)
     {
         // With directional light, disable BSDF sampling and just return a sample in the light's direction.
-        s.dir = -normalize(gParams.lightDir);
-        s.thp = evaluateBRDF(sd, s.dir, true);
-        s.pdf = dot(sd.N, s.dir) > 0.f ? 1.f : 0.f; // Set pdf to zero if light is backfacing.
+        s.wi = -normalize(gParams.lightDir);
+        s.weight = evalBSDFCosine(sd, s.wi);
+        s.pdf = 1.f;
+        return dot(sd.N, s.wi) > 0.f;
     }
     else
     {
-        if (gParams.useBrdfSampling)
-        {
-            // Draw BRDF sample.
-            if (gParams.originalDisney)
-            {
-                sampleDisneyBRDF(sd, sg, s);
-            }
-            else
-            {
-                sampleBRDF(sd, sg, s);
-            }
-        }
-        else
-        {
-            // Draw cosine sample over the hemisphere.
-            float2 u = sampleNext2D(sg);
-            float pdf = 0.f;
-            s.dir = sampleHemisphereCosine(sd, u, pdf);
-            s.thp = evaluateBRDF(sd, s.dir, false) * M_PI; // pdf = NdotL / pi
-            s.pdf = pdf;
-        }
+        if (gParams.useBrdfSampling) return sampleBSDF(sd, sg, s);
+        else return sampleBSDF_Reference(sd, sg, s);
     }
-
-    return s.pdf > 0.f;
 }
 
 /** Evaluates the lit sphere for a given viewport coordinate.
@@ -389,20 +365,20 @@ float3 evalSphere(float2 uv, inout SurfaceData data, inout SampleGenerator sg)
     data = prepareMaterial(v, -rayDir);
 
     float3 output = 0;
-    BRDFSample s = {};
-    if (sampleBSDF(data.sd, sg, s))
+    BSDFSample s = {};
+    if (generateBSDFSample(data.sd, sg, s))
     {
-        data.wi = s.dir;
-        float3 L = evalLighting(s.dir);
+        data.wi = s.wi;
+        float3 L = evalLighting(s.wi);
 
         // Use computed pdf explicitly (for debugging).
         if (gParams.usePdf)
         {
-            output = L * evaluateBRDF(data.sd, s.dir, true) / s.pdf;
+            output = L * evalBSDFCosine(data.sd, s.wi) / s.pdf;
         }
         else
         {
-            output = L * s.thp;
+            output = L * s.weight;
         }
     }
 
@@ -452,7 +428,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
         px.diffuse = data.sd.diffuse;
         px.specular = data.sd.specular;
         px.linearRoughness = data.sd.linearRoughness;
-        px.metallic = data.metallic;
+        px.metallic = data.sd.metallic;
         px.N = data.sd.N;
         px.T = data.sd.T;
         px.B = data.sd.B;

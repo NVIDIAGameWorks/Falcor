@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "HelloDXR.h"
 
 static const glm::vec4 kClearColor(0.38f, 0.52f, 0.10f, 1);
@@ -70,27 +70,25 @@ void HelloDXR::loadScene(const std::string& filename, const Fbo* pTargetFbo)
     mpCamera->setDepthRange(nearZ, farZ);
     mpCamera->setAspectRatio((float)pTargetFbo->getWidth() / (float)pTargetFbo->getHeight());
 
-    mpRasterPass = RasterScenePass::create(mpScene, "HelloDXR.ps.hlsl", "", "main");
+    mpRasterPass = RasterScenePass::create(mpScene, "Samples/HelloDXR/HelloDXR.ps.slang", "", "main");
 
     RtProgram::Desc rtProgDesc;
-    rtProgDesc.addShaderLibrary("HelloDXR.rt.hlsl").setRayGen("rayGen");
-    rtProgDesc.addHitGroup(0, "primaryClosestHit", "").addMiss(0, "primaryMiss");
+    rtProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.rt.slang").setRayGen("rayGen");
+    rtProgDesc.addHitGroup(0, "primaryClosestHit", "primaryAnyHit").addMiss(0, "primaryMiss");
     rtProgDesc.addHitGroup(1, "", "shadowAnyHit").addMiss(1, "shadowMiss");
     rtProgDesc.addDefines(mpScene->getSceneDefines());
+    rtProgDesc.setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray ClosestHitShader for reflections, 1 for reflection ray tracing a shadow ray
 
     mpRaytraceProgram = RtProgram::create(rtProgDesc);
     mpRtVars = RtProgramVars::create(mpRaytraceProgram, mpScene);
-
-    mpRtState = RtState::create();
-    mpRtState->setProgram(mpRaytraceProgram);
-    mpRtState->setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray ClosestHitShader for reflections, 1 for reflection ray tracing a shadow ray
+    mpRaytraceProgram->setScene(mpScene);
 }
 
 void HelloDXR::onLoad(RenderContext* pRenderContext)
 {
     if (gpDevice->isFeatureSupported(Device::SupportedFeatures::Raytracing) == false)
     {
-        logErrorAndExit("Device does not support raytracing!");
+        logFatal("Device does not support raytracing!");
     }
 
     loadScene(kDefaultScene, gpFramework->getTargetFbo().get());
@@ -99,14 +97,14 @@ void HelloDXR::onLoad(RenderContext* pRenderContext)
 void HelloDXR::setPerFrameVars(const Fbo* pTargetFbo)
 {
     PROFILE("setPerFrameVars");
-    GraphicsVars* pVars = mpRtVars->getGlobalVars().get();
-    ConstantBuffer::SharedPtr pCB = pVars->getConstantBuffer("PerFrameCB");
-    pCB["invView"] = glm::inverse(mpCamera->getViewMatrix());
-    pCB["viewportDims"] = vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
+    auto cb = mpRtVars["PerFrameCB"];
+    cb["invView"] = glm::inverse(mpCamera->getViewMatrix());
+    cb["viewportDims"] = vec2(pTargetFbo->getWidth(), pTargetFbo->getHeight());
     float fovY = focalLengthToFovY(mpCamera->getFocalLength(), Camera::kDefaultFrameHeight);
-    pCB["tanHalfFovY"] = tanf(fovY * 0.5f);
-    pCB["sampleIndex"] = mSampleIndex++;
-    pCB["useDOF"] = mUseDOF;
+    cb["tanHalfFovY"] = tanf(fovY * 0.5f);
+    cb["sampleIndex"] = mSampleIndex++;
+    cb["useDOF"] = mUseDOF;
+    mpRtVars->getRayGenVars()["gOutput"] = mpRtOut;
 }
 
 void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
@@ -115,9 +113,7 @@ void HelloDXR::renderRT(RenderContext* pContext, const Fbo* pTargetFbo)
     setPerFrameVars(pTargetFbo);
 
     pContext->clearUAV(mpRtOut->getUAV().get(), kClearColor);
-    mpRtVars->getRayGenVars()->setTexture("gOutput", mpRtOut);
-
-    mpScene->raytrace(pContext, mpRtState, mpRtVars, uvec3(pTargetFbo->getWidth(), pTargetFbo->getHeight(), 1));
+    mpScene->raytrace(pContext, mpRaytraceProgram.get(), mpRtVars, uvec3(pTargetFbo->getWidth(), pTargetFbo->getHeight(), 1));
     pContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 

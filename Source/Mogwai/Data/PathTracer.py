@@ -1,15 +1,16 @@
-def render_graph_DefaultRenderGraph():
+def render_graph_PathTracerGraph():
     g = RenderGraph("PathTracerGraph")
     loadRenderPassLibrary("AccumulatePass.dll")
     loadRenderPassLibrary("GBuffer.dll")
-    loadRenderPassLibrary("PathTracer.dll")
+    loadRenderPassLibrary("ToneMapper.dll")
+    loadRenderPassLibrary("WavefrontPathTracer.dll")
     AccumulatePass = RenderPass("AccumulatePass", {'enableAccumulation': True})
     g.addPass(AccumulatePass, "AccumulatePass")
-    ToneMappingPass = RenderPass("ToneMappingPass", {'operator': ToneMapOp.Photo, 'exposureValue': 0.0, 'filmSpeed': 100.0, 'whitePoint': 6500.0, 'applyAcesCurve': 1})
+    ToneMappingPass = RenderPass("ToneMapper")
     g.addPass(ToneMappingPass, "ToneMappingPass")
     GBufferRT = RenderPass("GBufferRT", {'forceCullMode': False, 'cull': CullMode.CullBack, 'samplePattern': SamplePattern.Stratified, 'sampleCount': 16})
     g.addPass(GBufferRT, "GBufferRT")
-    MegakernelPathTracer = RenderPass("MegakernelPathTracer")
+    MegakernelPathTracer = RenderPass("MegakernelPathTracer", {'mSharedParams': PathTracerParams(useVBuffer=0)})
     g.addPass(MegakernelPathTracer, "MegakernelPathTracer")
     g.addEdge("GBufferRT.posW", "MegakernelPathTracer.posW")
     g.addEdge("GBufferRT.normW", "MegakernelPathTracer.normalW")
@@ -25,6 +26,6 @@ def render_graph_DefaultRenderGraph():
     g.markOutput("ToneMappingPass.dst")
     return g
 
-DefaultRenderGraph = render_graph_DefaultRenderGraph()
-try: m.addGraph(DefaultRenderGraph)
+PathTracerGraph = render_graph_PathTracerGraph()
+try: m.addGraph(PathTracerGraph)
 except NameError: None

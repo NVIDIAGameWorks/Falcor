@@ -1,35 +1,35 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 // #include "Utils/StringUtils.h"
 // #include "Utils/Platform/OS.h"
 // #include "Utils/Logger.h"
-// 
+//
 // #include <sys/types.h>
 // #include <sys/stat.h>
 // #include <sys/ptrace.h>
@@ -41,7 +41,6 @@
 // #include <algorithm>
 // #include <experimental/filesystem>
 // #include <dlfcn.h>
-namespace fs = std::experimental::filesystem;
 
 namespace Falcor
 {
@@ -55,9 +54,6 @@ namespace Falcor
 
     MsgBoxButton msgBox(const std::string& msg, MsgBoxType mbType)
     {
-#ifdef _TEST_
-        throw std::exception(msg.c_str());
-#endif
         if (!gtk_init_check(0, nullptr))
         {
             should_not_get_here();
@@ -163,7 +159,7 @@ namespace Falcor
         {
             if (execv(linuxAppName.c_str(), (char* const*)argv.data()))
             {
-                msgBox("Failed to launch process");    
+                msgBox("Failed to launch process");
             }
         }
 
@@ -197,7 +193,7 @@ namespace Falcor
         struct stat sb;
         return (stat(pathname, &sb) == 0) && S_ISDIR(sb.st_mode);
     }
-    
+
     void monitorFileUpdates(const std::string& filePath, const std::function<void()>& callback)
     {
         (void)filePath; (void)callback;
@@ -212,9 +208,9 @@ namespace Falcor
 
     std::string getTempFilename()
     {
-        std::string filePath = std::experimental::filesystem::temp_directory_path();
+        std::string filePath = std::filesystem::temp_directory_path();
         filePath += "/fileXXXXXX";
-        
+
         // The if is here to avoid the warn_unused_result attribute on mkstemp
         if(mkstemp(&filePath.front())) {}
         return filePath;
@@ -246,7 +242,7 @@ namespace Falcor
 
     const std::string& getExecutableName()
     {
-        static std::string filename = fs::path(program_invocation_name).filename();
+        static std::string filename = std::filesystem::path(program_invocation_name).filename();
         return filename;
     }
 

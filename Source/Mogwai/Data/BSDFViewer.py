@@ -1,5 +1,5 @@
-def render_graph_DefaultRenderGraph():
-    g = RenderGraph("DefaultRenderGraph")
+def render_graph_BSDFViewerGraph():
+    g = RenderGraph("BSDFViewerGraph")
     loadRenderPassLibrary("AccumulatePass.dll")
     loadRenderPassLibrary("BSDFViewer.dll")
     BSDFViewer = RenderPass("BSDFViewer")
@@ -10,6 +10,6 @@ def render_graph_DefaultRenderGraph():
     g.markOutput("AccumulatePass.output")
     return g
 
-DefaultRenderGraph = render_graph_DefaultRenderGraph()
-try: m.addGraph(DefaultRenderGraph)
+BSDFViewerGraph = render_graph_BSDFViewerGraph()
+try: m.addGraph(BSDFViewerGraph)
 except NameError: None

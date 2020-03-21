@@ -1,31 +1,32 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "BSDFViewer.h"
+#include "Experimental/Scene/Material/BxDFConfig.slangh"
 
 // Don't remove this. it's required for hot-reload to function properly
 extern "C" __declspec(dllexport) const char* getProjDir()
@@ -48,36 +49,29 @@ const char* BSDFViewer::sDesc = "BSDF Viewer";
 
 BSDFViewer::SharedPtr BSDFViewer::create(RenderContext* pRenderContext, const Dictionary& dict)
 {
-    SharedPtr pPass = SharedPtr(new BSDFViewer);
-    return pPass->init(dict) ? pPass : nullptr;
+    return SharedPtr(new BSDFViewer(dict));
 }
 
-bool BSDFViewer::init(const Dictionary& dict)
+BSDFViewer::BSDFViewer(const Dictionary& dict)
 {
     // Defines to disable discard and gradient operations in Falcor's material system.
     Program::DefineList defines =
     {
         {"_MS_DISABLE_ALPHA_TEST", ""},
         {"_DEFAULT_ALPHA_TEST", ""},
+        {"MATERIAL_COUNT", "1"},
     };
 
     // Create programs.
-    Program::Desc desc;
-    desc.addShaderLibrary(kFileViewerPass).csEntry("main").setShaderModel("6_0");
-    mpViewerPass = ComputePass::create(desc, defines, false);
-    if (!mpViewerPass) return false;
+    mpViewerPass = ComputePass::create(kFileViewerPass, "main", defines, false);
 
     // Create a high-quality pseudorandom number generator.
     mpSampleGenerator = SampleGenerator::create(SAMPLE_GENERATOR_UNIFORM);
-    if (!mpSampleGenerator) return false;
     mpSampleGenerator->prepareProgram(mpViewerPass->getProgram().get());
     mpViewerPass->setVars(nullptr); // Trigger vars creation
 
     // Create readback buffer.
-    mPixelDataBuffer = StructuredBuffer::create(mpViewerPass->getProgram().get(), "gPixelData", 1u, ResourceBindFlags::UnorderedAccess);
-    if (!mPixelDataBuffer) return false;
-
-    return true;
+    mPixelDataBuffer = Buffer::createStructured(mpViewerPass->getProgram().get(), "gPixelData", 1u, ResourceBindFlags::UnorderedAccess);
 }
 
 Dictionary BSDFViewer::getScriptingDictionary()
@@ -120,9 +114,10 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const Scene::SharedPtr&
     }
     else
     {
+        mParams.useSceneMaterial = true;
+
         // Bind the scene to our program.
-        Shader::DefineList defines = mpScene->getSceneDefines();
-        mpViewerPass->getProgram()->addDefines(defines);
+        mpViewerPass->getProgram()->addDefines(mpScene->getSceneDefines());
         mpViewerPass->setVars(nullptr); // Trigger vars creation
         mpViewerPass["gScene"] = mpScene->getParameterBlock();
 
@@ -160,11 +155,19 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
         mOptionsChanged = false;
     }
 
+    // Set compile-time constants.
+    mpViewerPass->addDefine("_USE_LEGACY_SHADING_CODE", mParams.useLegacyBSDF ? "1" : "0");
+
+    if (mParams.useDisneyDiffuse) mpViewerPass->addDefine("DiffuseBrdf", "DiffuseBrdfDisney");
+    else mpViewerPass->removeDefine("DiffuseBrdf");
+    if (mParams.useSeparableMaskingShadowing) mpViewerPass->addDefine("SpecularMaskingFunction", "SpecularMaskingFunctionSmithGGXSeparable");
+    else mpViewerPass->removeDefine("SpecularMaskingFunction");
+
     // Setup constants.
     mParams.cameraViewportScale = std::tan(glm::radians(mParams.cameraFovY / 2.f)) * mParams.cameraDistance;
 
     // Set resources.
-    if (!mpSampleGenerator->setIntoProgramVars(mpViewerPass->getVars().get())) throw std::exception("Failed to bind sample generator");
+    if (!mpSampleGenerator->setShaderData(mpViewerPass->getVars()->getRootVar())) throw std::exception("Failed to bind sample generator");
     mpViewerPass["gOutput"] = renderData[kOutput]->asTexture();
     mpViewerPass["gPixelData"] = mPixelDataBuffer;
     mpViewerPass["PerFrameCB"]["gParams"].setBlob(mParams);
@@ -234,6 +237,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
             dirty |= mtlGroup.rgbColor("Base color", mParams.baseColor);
             dirty |= mtlGroup.var("Roughness", mParams.linearRoughness, 0.f, 1.f, 1e-2f);
             dirty |= mtlGroup.var("Metallic", mParams.metallic, 0.f, 1.f, 1e-2f);
+            dirty |= mtlGroup.var("IoR", mParams.IoR, 1.f, std::numeric_limits<float>::max(), 1e-2f);
         }
 
         mtlGroup.release();
@@ -242,18 +246,29 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
     auto bsdfGroup = Gui::Group(widget, "BSDF", true);
     if (bsdfGroup.open())
     {
-        dirty |= bsdfGroup.checkbox("Original Disney BRDF", mParams.originalDisney);
-        bsdfGroup.tooltip("When enabled uses the original Disney BRDF, otherwise the modified version by Frostbite.", true);
-        dirty |= bsdfGroup.checkbox("Enable diffuse", mParams.enableDiffuse);
-        dirty |= bsdfGroup.checkbox("Enable specular", mParams.enableSpecular, true);
+        dirty |= bsdfGroup.checkbox("Use legacy BSDF code", mParams.useLegacyBSDF);
+
+        dirty |= bsdfGroup.checkbox("Use Disney' diffuse BRDF", mParams.useDisneyDiffuse);
+        bsdfGroup.tooltip("When enabled uses the original Disney diffuse BRDF, otherwise use Falcor's default (Frostbite's version).", true);
+        dirty |= bsdfGroup.checkbox("Use separable masking-shadowing", mParams.useSeparableMaskingShadowing);
+        bsdfGroup.tooltip("Use the separable form of Smith's masking-shadowing function which is used by the original Disney BRDF, otherwise use Falcor's default (the correlated form).", true);
 
         dirty |= bsdfGroup.checkbox("Use BRDF sampling", mParams.useBrdfSampling);
         bsdfGroup.tooltip("When enabled uses BSDF importance sampling, otherwise hemispherical cosine-weighted sampling for verification purposes.", true);
         dirty |= bsdfGroup.checkbox("Use pdf", mParams.usePdf);
         bsdfGroup.tooltip("When enabled evaluates BRDF * NdotL / pdf explicitly for verification purposes.\nOtherwise the weight computed by the importance sampling is used.", true);
 
-        dirty |= bsdfGroup.checkbox("Multiply BSDF slice by NdotL", mParams.applyNdotL);
-        bsdfGroup.tooltip("Note: This setting Only affects the BSDF slice viewer. NdotL is always enabled in lighting mode.", true);
+        if (mParams.sliceViewer)
+        {
+            bsdfGroup.dummy("#space1", vec2(1, 8));
+            bsdfGroup.text("Slice viewer settings:");
+
+            dirty |= bsdfGroup.checkbox("Enable diffuse", mParams.enableDiffuse);
+            dirty |= bsdfGroup.checkbox("Enable specular", mParams.enableSpecular, true);
+
+            dirty |= bsdfGroup.checkbox("Multiply BSDF slice by NdotL", mParams.applyNdotL);
+            bsdfGroup.tooltip("Note: This setting Only affects the BSDF slice viewer. NdotL is always enabled in lighting mode.", true);
+        }
 
         bsdfGroup.release();
     }
@@ -298,7 +313,6 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
         {
             // Get file dialog filters.
             auto filters = Bitmap::getFileDialogFilters();
-            filters.push_back({ "hdr", "High Dynamic Range" });
             filters.push_back({ "dds", "DDS textures" });
 
             std::string fn;
@@ -417,7 +431,7 @@ bool BSDFViewer::loadEnvMap(RenderContext* pRenderContext, const std::string& fi
     mEnvProbeFilename = getFilenameFromPath(mpEnvProbe->getEnvMap()->getSourceFilename());
 
     auto pVars = mpViewerPass->getVars();
-    if (!mpEnvProbe->setIntoConstantBuffer(pVars.get(), pVars->getConstantBuffer("PerFrameCB").get(), "gEnvProbe"))
+    if (!mpEnvProbe->setShaderData(pVars["PerFrameCB"]["gEnvProbe"]))
     {
         throw std::exception("Failed to bind EnvProbe to program");
     }

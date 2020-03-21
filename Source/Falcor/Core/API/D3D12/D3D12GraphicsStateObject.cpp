@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include "stdafx.h"
 #include "Core/API/GraphicsStateObject.h"
@@ -35,29 +35,25 @@
 namespace Falcor
 {
 #if _ENABLE_NVAPI
-    void getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
+    bool getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs)
     {
         auto ret = NvAPI_Initialize();
 
         if (ret != NVAPI_OK)
         {
             logError("Failed to initialize NvApi");
+            return false;
         }
 
-        if (desc.getSinglePassStereoEnabled())
+        if (auto optRegisterIndex = findNvApiShaderRegister(desc.getProgramKernels()))
         {
+            auto registerIndex = *optRegisterIndex;
             nvApiPsoExDescs.push_back(NvApiPsoExDesc());
-            createNvApiVsExDesc(nvApiPsoExDescs.back());
+            createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), registerIndex);
         }
-
-        ReflectionVar::SharedConstPtr pUav = desc.getProgramVersion()->getReflector()->getDefaultParameterBlock()->getResource("g_NvidiaExt");
-        if ((pUav != nullptr) && (pUav->getRegisterIndex() != ProgramReflection::kInvalidLocation))
-        {
-            nvApiPsoExDescs.push_back(NvApiPsoExDesc());
-            createNvApiUavSlotExDesc(nvApiPsoExDescs.back(), pUav->getRegisterIndex());
-        }
+        return true;
     }
-    
+
     GraphicsStateObject::ApiHandle getNvApiGraphicsPsoHandle(const std::vector<NvApiPsoExDesc>& nvDescVec, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc)
     {
         const NVAPI_D3D12_PSO_EXTENSION_DESC* ppPSOExtensionsDesc[5];
@@ -88,16 +84,15 @@ namespace Falcor
 
     bool getIsNvApiGraphicsPsoRequired(const GraphicsStateObject::Desc& desc)
     {
-        ReflectionVar::SharedConstPtr pUav = desc.getProgramVersion()->getReflector()->getDefaultParameterBlock()->getResource("g_NvidiaExt");
-        return ((pUav != nullptr) && (pUav->getRegisterIndex() != ProgramReflection::kInvalidLocation)) || desc.getSinglePassStereoEnabled();
+        return findNvApiShaderRegister(desc.getProgramKernels()).has_value();
     }
 #else
-    void getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs) { should_not_get_here(); }
+    bool getNvApiGraphicsPsoDesc(const GraphicsStateObject::Desc& desc, std::vector<NvApiPsoExDesc>& nvApiPsoExDescs) { should_not_get_here(); return false; }
     GraphicsStateObject::ApiHandle getNvApiGraphicsPsoHandle(const std::vector<NvApiPsoExDesc>& psoDesc, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& desc) { should_not_get_here(); return nullptr; }
     bool getIsNvApiGraphicsPsoRequired(const GraphicsStateObject::Desc& desc) { return false; }
 #endif
-    
-    bool GraphicsStateObject::apiInit()
+
+    void GraphicsStateObject::apiInit()
     {
         D3D12_GRAPHICS_PIPELINE_STATE_DESC d3dDesc;
         InputLayoutDesc inputDesc;
@@ -106,13 +101,15 @@ namespace Falcor
         if (getIsNvApiGraphicsPsoRequired(mDesc))
         {
             std::vector<NvApiPsoExDesc> nvApiDesc;
-            getNvApiGraphicsPsoDesc(mDesc, nvApiDesc);
+            bool ret = getNvApiGraphicsPsoDesc(mDesc, nvApiDesc);
+            if (!ret) throw std::exception("Failed to create graphics PSO desc with NVAPI extensions");
+
             mApiHandle = getNvApiGraphicsPsoHandle(nvApiDesc, d3dDesc);
+            if (mApiHandle == nullptr) throw std::exception("Failed to create graphics PSO with NVAPI extensions");
         }
         else
         {
             d3d_call(gpDevice->getApiHandle()->CreateGraphicsPipelineState(&d3dDesc, IID_PPV_ARGS(&mApiHandle)));
         }
-        return true;
     }
 }

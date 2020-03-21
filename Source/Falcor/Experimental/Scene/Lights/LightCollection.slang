@@ -1,34 +1,35 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
-#include "LightCollectionShared.h"
-#include "MeshLightData.h"
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+#include "Scene/Material/MaterialDefines.slangh"
 
-import Shading;
+import Scene.ShadingData;
+__exported import Experimental.Scene.Lights.LightCollectionShared;
+__exported import Experimental.Scene.Lights.MeshLightData;
 
 /** This struct represents all emissive geometry in the scene.
 
@@ -42,18 +43,13 @@ struct LightCollection
 {
     uint                triangleCount;                      ///< Total number of triangles in all mesh lights.
     uint                meshCount;                          ///< Total number of mesh lights.
+    uint                _pad[2];
 
     ByteAddressBuffer   meshLightsVertexPos;                ///< Vertex positions in world space for all mesh light triangles. Size: triangleCount * 3 * sizeof(float3).
     ByteAddressBuffer   meshLightsTexCoords;                ///< Texture coordinates for all mesh light triangles. Size: triangleCount * 3 * sizeof(float2).
     Buffer<uint>        perMeshInstanceOffset;              ///< Per-mesh instance offset into emissive triangles array. Size: meshInstanceCount * sizeof(uint).
     StructuredBuffer<EmissiveTriangle>  triangleData;       ///< Per-triangle data for emissive triangles. Size: triangleCount * sizeof(EmissiveTriangle).
-    StructuredBuffer<MeshLightData>     meshData;           ///< Per-mesh data for emissive meshes. Size. _NUM_MESH_LIGHTS * sizeof(MeshLightData).
-
-#if _NUM_MESH_LIGHTS > 0
-    // TODO: Replace emissive textures array by materialID indices into the Scene's material array.
-    Texture2D           emissiveTextures[_NUM_MESH_LIGHTS]; ///< Per-mesh light emissive textures, or null if not textured.
-#endif
-    SamplerState        samplerState;                       ///< Sampler state to be used for textured lights.
+    StructuredBuffer<MeshLightData>     meshData;           ///< Per-mesh data for emissive meshes. Size: meshCount * sizeof(MeshLightData).
 
     // Accessors
 
@@ -61,11 +57,22 @@ struct LightCollection
     */
     uint getTriangleCount() { return triangleCount; }
 
+    /** Returns true if light collection contains no emissive triangles.
+    */
+    bool isEmpty() { return triangleCount == 0; }
+
     /** Returns the data for a given triangle.
     */
     EmissiveTriangle getTriangleData(uint triIdx)
     {
         return triangleData[triIdx];
+    }
+
+    /** Returns a triangle index given the mesh instance ID and primitive index.
+    */
+    uint getTriangleIndex(uint meshInstanceID, uint primitiveIndex)
+    {
+        return perMeshInstanceOffset[meshInstanceID] + primitiveIndex;
     }
 
     /** Returns the mesh light index for a given triangle.
@@ -81,13 +88,7 @@ struct LightCollection
     */
     MeshLightData getMeshData(uint triIdx)
     {
-#if _NUM_MESH_LIGHTS > 0
         return meshData[getLightIdx(triIdx)];
-#else
-        MeshLightData data;
-        data.init();
-        return data;
-#endif
     }
 
     /** Returns world space vertex position based on global vertex index.
@@ -143,27 +144,13 @@ struct LightCollection
                getVtxTexCoord(triIdx * 3 + 2) * barycentrics[2];
     }
 
-#if _NUM_MESH_LIGHTS > 0
-    /** Evaluates the outgoing radiance on the front-facing side of a given triangle.
-        This function samples the triangle's emissive texture if its textured.
-        Note the caller check the facing status themselves to discard back-facing hits.
+    /** Returns the material ID for a given triangle.
         \param[in] triIdx Emissive triangle index.
-        \param[in] barycentrics Barycentric coordinates.
-        \return Evaluated outgoing radiance on the front-facing side.
+        \return Material ID.
     */
-    float3 getEmissive(uint triIdx, float3 barycentrics)
+    uint getMaterialID(uint triIdx)
     {
-        // Get the mesh light index. We need this below to fetch material properties
-        // in order to evaluate the triangles emissive color (possibly textured).
-        uint lightIndex = getLightIdx(triIdx);
-
-        // Interpolate the tex coords.
-        float2 uv = getTexCoord(triIdx, barycentrics);
-
-        // Sample emitted radiance.
-        ExplicitLodTextureSampler lod = { 0.f };
-        float3 emissiveColor = meshData[lightIndex].emissiveColor;
-        return sampleTexture(emissiveTextures[lightIndex], samplerState, uv, float4(emissiveColor, 1.0f), EXTRACT_EMISSIVE_TYPE(meshData[lightIndex].flags), lod).rgb * meshData[lightIndex].emissiveFactor;
+        return meshData[getLightIdx(triIdx)].materialID;
     }
-#endif
+
 };

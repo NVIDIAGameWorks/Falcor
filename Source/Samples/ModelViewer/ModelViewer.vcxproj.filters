@@ -7,13 +7,6 @@
     <ClInclude Include="ModelViewer.h" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Data">
-      <UniqueIdentifier>{8f4b49db-cf13-4168-abde-51760776cfd1}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Data\ModelViewer.ps.hlsl">
-      <Filter>Data</Filter>
-    </FxCompile>
+    <ShaderSource Include="ModelViewer.ps.slang" />
   </ItemGroup>
 </Project>

@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 
 /** Helper functions for the material/shading system.
 
@@ -38,33 +38,20 @@
     suitable for storing in the G-buffer.
 */
 
-__exported import Shading;
+__exported import Scene.ShadingData;
 
 /** Struct representing the material parameters at a hit point.
 */
 struct MaterialParams
 {
     float4 diffuseOpacity;      ///< Diffuse color (rgb) and opacity (a).
-    float4 specularRoughness; ///< Specular color (rgb) and roughness (a).
+    float4 specularRoughness;   ///< Specular color (rgb) and roughness (a).
     float4 emissive;            ///< Emissive color (rgb). TODO: Use the alpha channel either for a luminance scaler, or 1.0/IoR.
-    float4 extraParams;         ///< Extra parameters (IoR, doubleSided, 0, 0).
+    float4 extraParams;         ///< Extra parameters (IoR, doubleSided, specularTransmission, metallic).
 
     /** Returns the roughness parameter.
     */
     float getRoughness() { return specularRoughness.w; }
-
-    /** Initialize MaterialParams to its default values.
-        TODO: Try new Slang "setter" functionality.
-    */
-    MaterialParams init()
-    {
-        MaterialParams params;
-        params.diffuseOpacity = float4(0, 0, 0, 1);
-        params.specularRoughness = float4(0, 0, 0, 1);
-        params.emissive = float4(0, 0, 0, 0);
-        params.extraParams = float4(1, 1, 0, 0);
-        return params;
-    }
 };
 
 /** Struct representing the geometry at a hit point, plus a few related fields.
@@ -95,7 +82,7 @@ MaterialParams getMaterialParams(ShadingData sd)
     matParams.diffuseOpacity = float4(sd.diffuse, sd.opacity);
     matParams.specularRoughness = float4(sd.specular, sd.linearRoughness);
     matParams.emissive = float4(sd.emissive, 0.f);
-    matParams.extraParams = float4(sd.IoR, sd.doubleSided ? 1.f : 0.f, 0.f, 0.f);
+    matParams.extraParams = float4(sd.IoR, sd.doubleSided ? 1.f : 0.f, sd.specularTransmission, sd.metallic);
     return matParams;
 }
 
@@ -166,10 +153,13 @@ ShadingData prepareShadingData(GeometryParams geoParams, MaterialParams matParam
     sd.ggxAlpha = sd.linearRoughness * sd.linearRoughness;
     sd.emissive = matParams.emissive.rgb;
     sd.IoR = matParams.extraParams.x;
+    sd.eta = sd.frontFacing ? 1.f / sd.IoR : sd.IoR;
     sd.doubleSided = matParams.extraParams.y != 0.f;
+    sd.specularTransmission = matParams.extraParams.z;
+    sd.metallic = matParams.extraParams.w;
 
-    // Flip the normal if it's backfacing.
-    if (sd.NdotV <= 0 && sd.doubleSided)
+    // Flip the shading normal for back-facing hits on double-sided materials.
+    if (!sd.frontFacing && sd.doubleSided)
     {
         sd.N = -sd.N;
         sd.NdotV = -sd.NdotV;

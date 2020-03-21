@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Mogwai.h"
 #include "MogwaiSettings.h"
@@ -37,7 +37,6 @@ namespace Mogwai
     {
         std::map<std::string, Extension::CreateFunc>* gExtensions; // Map ensures ordering
 
-        const std::string gkDefaultScene = "Arcade/Arcade.fscene";
         const char* kEditorExecutableName = "RenderGraphEditor";
         const char* kEditorSwitch = "editor";
         const char* kOutfileDirSwitch = "outputdir";
@@ -45,7 +44,7 @@ namespace Mogwai
         const char* kGraphFileSwitch = "graphFile";
         const char* kGraphNameSwitch = "graphName";
     }
-    
+
     size_t Renderer::DebugWindow::index = 0;
 
     void Renderer::extend(Extension::CreateFunc func, const std::string& name)
@@ -65,7 +64,7 @@ namespace Mogwai
         gpDevice->flushAndSync(); // Need to do that because clearing the graphs will try to release some state objects which might be in use
         mGraphs.clear();
     }
-    
+
     void Renderer::onLoad(RenderContext* pRenderContext)
     {
         mpExtensions.push_back(MogwaiSettings::create(this));
@@ -310,7 +309,7 @@ namespace Mogwai
     {
         auto pGraph = getGraph(graphName);
         if (pGraph) removeGraph(pGraph);
-        else msgBox("Can't find a graph named `" + graphName + "`. There's nothing to remove");
+        else logError("Can't find a graph named `" + graphName + "`. There's nothing to remove.");
     }
 
     RenderGraph::SharedPtr Renderer::getGraph(const std::string& graphName) const
@@ -321,7 +320,7 @@ namespace Mogwai
         }
         return nullptr;
     }
-    
+
     void Renderer::removeActiveGraph()
     {
         if (mGraphs.size()) removeGraph(mGraphs[mActiveGraph].pGraph);
@@ -345,7 +344,6 @@ namespace Mogwai
         GraphData& data = *pData;
         // Set input image if it exists
         data.pGraph = pGraph;
-        if (!mpScene) loadScene(gkDefaultScene);
         data.pGraph->setScene(mpScene);
         if (data.pGraph->getOutputCount() != 0) data.mainOutput = data.pGraph->getOutputName(0);
 
@@ -366,13 +364,13 @@ namespace Mogwai
 
         try
         {
-            auto pBar = ProgressBar::show("Loading Configuration");
+            if (ProgressBar::isActive()) ProgressBar::show("Loading Configuration");
             auto c = Scripting::getGlobalContext();
             Scripting::runScriptFromFile(filename, c);
         }
-        catch (std::exception e)
+        catch (const std::exception& e)
         {
-            logError("Error when loading configuration file.\n" + std::string(e.what()));
+            logError("Error when loading configuration file: " + filename + "\n" + std::string(e.what()));
         }
     }
 
@@ -380,7 +378,7 @@ namespace Mogwai
     {
         if (pGraph == nullptr)
         {
-            msgBox("Can't add an empty graph", MsgBoxType::Ok);
+            logError("Can't add an empty graph");
             return;
         }
 
@@ -390,7 +388,7 @@ namespace Mogwai
         {
             if (mGraphs[i].pGraph->getName() == pGraph->getName())
             {
-                if (msgBox("Graph `" + pGraph->getName() + "` already exists. Replace it?", MsgBoxType::YesNo) == MsgBoxButton::No) return;
+                logWarning("Replacing existing graph `" + pGraph->getName() + "` with new graph.");
                 pGraphData = &mGraphs[i];
                 break;
             }
@@ -398,23 +396,40 @@ namespace Mogwai
         initGraph(pGraph, pGraphData);
     }
 
-    void Renderer::loadScene(std::string filename)
+    void Renderer::loadSceneDialog()
     {
-        if (filename.empty())
+        std::string filename;
+        if (openFileDialog(Scene::kFileExtensionFilters, filename))
         {
-            if (!openFileDialog(Scene::kFileExtensionFilters, filename)) return;
+            loadScene(filename);
         }
+    }
 
-#ifdef FALCOR_D3D12
-        mpScene = SceneBuilder::create(filename)->getScene();
-#else
-        mpScene = Scene::loadFromFile(filename);
-#endif
-        const auto& pFbo = gpFramework->getTargetFbo();
-        float ratio = float(pFbo->getWidth()) / float(pFbo->getHeight());
+    void Renderer::loadScene(std::string filename, SceneBuilder::Flags buildFlags)
+    {
+        setScene(SceneBuilder::create(filename, buildFlags)->getScene());
+    }
+
+    // Temporary workaround for setting environment maps for non-fscenes, remove when all scene files support environment maps
+    void Renderer::setEnvMap(std::string filename)
+    {
         if (mpScene)
         {
+            Texture::SharedPtr pEnvMap = Texture::createFromFile(filename, false, true);
+            mpScene->setEnvironmentMap(pEnvMap);
+        }
+    }
+
+    void Renderer::setScene(Scene::ConstSharedPtrRef pScene)
+    {
+        mpScene = pScene;
+
+        if (mpScene)
+        {
+            const auto& pFbo = gpFramework->getTargetFbo();
+            float ratio = float(pFbo->getWidth()) / float(pFbo->getHeight());
             mpScene->setCameraAspectRatio(ratio);
+
             if (mpSampler == nullptr)
             {
                 // create common texture sampler
@@ -443,19 +458,28 @@ namespace Mogwai
 
         if (mEditorScript.empty()) return;
 
-        // Unmark the current output if it wasn't an original one
-        bool unmarkOut = (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false);
-        if (unmarkOut) mGraphs[mActiveGraph].pGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
+        // Unmark the current output if it wasn't originally marked
+        auto pActiveGraph = mGraphs[mActiveGraph].pGraph;
+        bool hasUnmarkedOut = (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false);
+        if (hasUnmarkedOut) pActiveGraph->unmarkOutput(mGraphs[mActiveGraph].mainOutput);
 
         // Run the scripting
-        Scripting::getGlobalContext().setObject("g", mGraphs[mActiveGraph].pGraph);
+        Scripting::getGlobalContext().setObject("g", pActiveGraph);
         Scripting::runScript(mEditorScript);
 
-        // Update the original output list
-        mGraphs[mActiveGraph].originalOutputs = getGraphOutputs(mGraphs[mActiveGraph].pGraph);
+        // Update the list of marked outputs
+        mGraphs[mActiveGraph].originalOutputs = getGraphOutputs(pActiveGraph);
 
-        // Mark the current output if it's required
-        if (unmarkOut) mGraphs[mActiveGraph].pGraph->markOutput(mGraphs[mActiveGraph].mainOutput);
+        // If the output before the update was not initially marked but still exists, re-mark it.
+        // If it no longer exists, mark a new output from the list of currently marked outputs.
+        if (hasUnmarkedOut && isInVector(pActiveGraph->getAvailableOutputs(), mGraphs[mActiveGraph].mainOutput))
+        {
+            pActiveGraph->markOutput(mGraphs[mActiveGraph].mainOutput);
+        }
+        else if (isInVector(mGraphs[mActiveGraph].originalOutputs, mGraphs[mActiveGraph].mainOutput) == false)
+        {
+            mGraphs[mActiveGraph].mainOutput = mGraphs[mActiveGraph].originalOutputs[0];
+        }
 
         mEditorScript.clear();
     }
@@ -470,9 +494,14 @@ namespace Mogwai
         pGraph->execute(pRenderContext);
     }
 
-    void Renderer::startFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+    void Renderer::beginFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
     {
         for (auto& pe : mpExtensions)  pe->beginFrame(pRenderContext, pTargetFbo);
+    }
+
+    void Renderer::endFrame(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
+    {
+        for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
     }
 
     void Renderer::onFrameRender(RenderContext* pRenderContext, const Fbo::SharedPtr& pTargetFbo)
@@ -484,7 +513,7 @@ namespace Mogwai
             loadScript(s);
         }
 
-        startFrame(pRenderContext, pTargetFbo);
+        beginFrame(pRenderContext, pTargetFbo);
         applyEditorChanges();
 
         // Clear frame buffer.
@@ -512,7 +541,7 @@ namespace Mogwai
             }
         }
 
-        for (auto& pe : mpExtensions) pe->endFrame(pRenderContext, pTargetFbo);
+        endFrame(pRenderContext, pTargetFbo);
     }
 
     bool Renderer::onMouseEvent(const MouseEvent& mouseEvent)
@@ -547,9 +576,11 @@ namespace Mogwai
         if (mpScene) mpScene->setCameraAspectRatio((float)width / (float)height);
     }
 
-    void Renderer::onDataReload()
+    void Renderer::onHotReload(HotReloadFlags reloaded)
     {
         RenderPassLibrary::instance().reloadLibraries(gpFramework->getRenderContext());
+        RenderGraph* pActiveGraph = getActiveGraph();
+        if (pActiveGraph) pActiveGraph->onHotReload(reloaded);
     }
 
     size_t Renderer::findGraph(std::string_view name)
@@ -592,11 +623,28 @@ int main(int argc, char** argv)
         config.argv = argv;
 #endif
 
+        if (args.argExists("silent"))
+        {
+            config.suppressInput = true;
+            config.showMessageBoxOnError = false;
+            config.windowDesc.mode = Window::WindowMode::Minimized;
+
+            // Set early to not show message box on errors that occur before setting the sample configuration.
+            Logger::showBoxOnError(false);
+        }
+
+        if (args.argExists("logfile"))
+        {
+            auto values = args.getValues("logfile");
+            if (!values.empty()) Logger::setLogFilePath(values.front().asString());
+        }
+
         Sample::run(config, pRenderer, argc, argv);
     }
-    catch (std::exception e)
+    catch (const std::exception& e)
     {
-        msgBox("Mogwai crashed unexpectedly...\n" + std::string(e.what()));
+        // Note: This can only trigger from the setup code above. Sample::run() handles all exceptions internally.
+        logFatal("Mogwai crashed unexpectedly...\n" + std::string(e.what()));
     }
     return 0;
 }

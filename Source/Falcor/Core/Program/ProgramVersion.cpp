@@ -1,79 +1,228 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "ProgramVersion.h"
 
+#include <slang/slang.h>
+
 namespace Falcor
 {
-    ProgramVersion::ProgramVersion(const ProgramReflection::SharedPtr& pReflector, const Shader::SharedPtr& pVS, const Shader::SharedPtr& pPS, const Shader::SharedPtr& pGS, const Shader::SharedPtr& pHS, const Shader::SharedPtr& pDS, const Shader::SharedPtr& pCS, const std::string& name)
-        : mName(name), mpReflector(pReflector)
+    //
+    // EntryPointGroupKernels
+    //
+
+    EntryPointGroupKernels::SharedPtr EntryPointGroupKernels::create(
+        EntryPointGroupKernels::Type type,
+        const EntryPointGroupKernels::Shaders& shaders)
     {
-        mpShaders[(uint32_t)ShaderType::Vertex] = pVS;
-        mpShaders[(uint32_t)ShaderType::Pixel] = pPS;
-        mpShaders[(uint32_t)ShaderType::Geometry] = pGS;
-        mpShaders[(uint32_t)ShaderType::Domain] = pDS;
-        mpShaders[(uint32_t)ShaderType::Hull] = pHS;
-        mpShaders[(uint32_t)ShaderType::Compute] = pCS;
+        return SharedPtr(new EntryPointGroupKernels(type, shaders));
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::create(
+    EntryPointGroupKernels::EntryPointGroupKernels(Type type, const Shaders& shaders)
+        : mType(type)
+        , mShaders(shaders)
+    {}
+
+    const Shader* EntryPointGroupKernels::getShader(ShaderType type) const
+    {
+        for( auto& pShader : mShaders )
+        {
+            if(pShader->getType() == type)
+                return pShader.get();
+        }
+        return nullptr;
+    }
+
+    RtEntryPointGroupKernels::SharedPtr RtEntryPointGroupKernels::create(
+            Type type,
+            const Shaders& shaders,
+            std::string const& exportName,
+            RootSignature::SharedPtr const& localRootSignature,
+            uint32_t maxPayloadSize,
+            uint32_t maxAttributeSize)
+    {
+        return SharedPtr(new RtEntryPointGroupKernels(type, shaders, exportName, localRootSignature, maxPayloadSize, maxAttributeSize));
+    }
+
+    RtEntryPointGroupKernels::RtEntryPointGroupKernels(
+        Type type,
+        const Shaders& shaders,
+        std::string const& exportName,
+        RootSignature::SharedPtr const& localRootSignature,
+        uint32_t maxPayloadSize,
+        uint32_t maxAttributeSize)
+        : EntryPointGroupKernels(type, shaders)
+        , mExportName(exportName)
+        , mLocalRootSignature(localRootSignature)
+        , mMaxPayloadSize(maxPayloadSize)
+        , mMaxAttributesSize(maxAttributeSize)
+    {}
+
+    //
+    // ProgramKernels
+    //
+
+    ProgramKernels::ProgramKernels(
+        const ProgramVersion* pVersion,
         const ProgramReflection::SharedPtr& pReflector,
-        const Shader::SharedPtr& pVS,
-        const Shader::SharedPtr& pPS,
-        const Shader::SharedPtr& pGS,
-        const Shader::SharedPtr& pHS,
-        const Shader::SharedPtr& pDS,
+        const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
+        const std::string& name)
+        : mName(name)
+        , mpReflector(pReflector)
+        , mpVersion(pVersion)
+        , mUniqueEntryPointGroups(uniqueEntryPointGroups)
+    {
+        mpRootSignature = RootSignature::create(pReflector.get());
+    }
+
+    ProgramKernels::SharedPtr ProgramKernels::create(
+        const ProgramVersion* pVersion,
+        const ProgramReflection::SharedPtr& pReflector,
+        const ProgramKernels::UniqueEntryPointGroups& uniqueEntryPointGroups,
         std::string& log,
         const std::string& name)
     {
-        // We must have at least a VS.
-        if(pVS == nullptr)
-        {
-            log = "Program " + name + " doesn't contain a vertex-shader. This is illegal.";
-            return nullptr;
-        }
-        SharedPtr pProgram = SharedPtr(new ProgramVersion(pReflector, pVS, pPS, pGS, pHS, pDS, nullptr, name));
+        SharedPtr pProgram = SharedPtr(new ProgramKernels(pVersion, pReflector, uniqueEntryPointGroups, name));
         return pProgram;
     }
 
-    ProgramVersion::SharedPtr ProgramVersion::create(
-        const ProgramReflection::SharedPtr& pReflector,
-        const Shader::SharedPtr& pCS,
-        std::string& log,
-        const std::string& name)
+    ProgramVersion::SharedConstPtr ProgramKernels::getProgramVersion() const
     {
-        // We must have at least a CS
-        if (pCS == nullptr)
+        return mpVersion->shared_from_this();
+    }
+
+    const Shader* ProgramKernels::getShader(ShaderType type) const
+    {
+        for( auto& pEntryPointGroup : mUniqueEntryPointGroups )
         {
-            log = "Program " + name + " doesn't contain a compute-shader. This is illegal.";
-            return nullptr;
+            if(auto pShader = pEntryPointGroup->getShader(type))
+                return pShader;
         }
-        SharedPtr pProgram = SharedPtr(new ProgramVersion(pReflector, nullptr, nullptr, nullptr, nullptr, nullptr, pCS, name));
-        return pProgram;
+        return nullptr;
+    }
+
+
+    ProgramVersion::ProgramVersion(Program* pProgram)
+        : mpProgram(pProgram->shared_from_this())
+    {
+        assert(pProgram);
+    }
+
+    void ProgramVersion::init(
+        const DefineList&                                   defineList,
+        const ProgramReflection::SharedPtr&                 pReflector,
+        const std::string&                                  name,
+        slang::IComponentType*                              pSlangGlobalScope,
+        std::vector<ComPtr<slang::IComponentType>> const&   pSlangEntryPoints)
+    {
+        assert(pReflector);
+        mDefines = defineList,
+        mpReflector = pReflector;
+        mName = name;
+        mpSlangGlobalScope = pSlangGlobalScope;
+        mpSlangEntryPoints = pSlangEntryPoints;
+    }
+
+    ProgramVersion::SharedPtr ProgramVersion::createEmpty(Program* pProgram)
+    {
+        return SharedPtr(new ProgramVersion(pProgram));
+    }
+
+    ProgramKernels::SharedConstPtr ProgramVersion::getKernels(ProgramVars const* pVars) const
+    {
+        // We need are going to look up or create specialized kernels
+        // based on how parameters are bound in `pVars`.
+        //
+        // To do this we need to identify those parameters that are relevant
+        // to specialization, and what argument type/value is bound to
+        // those parameters.
+        //
+        std::string specializationKey;
+
+        ParameterBlock::SpecializationArgs specializationArgs;
+        pVars->collectSpecializationArgs(specializationArgs);
+
+        bool first = true;
+        for( auto specializationArg : specializationArgs )
+        {
+            if(!first) specializationKey += ",";
+            specializationKey += std::string(specializationArg.type->getName());
+            first = false;
+        }
+
+        auto foundKernels = mpKernels.find(specializationKey);
+        if( foundKernels != mpKernels.end() )
+        {
+            return foundKernels->second;
+        }
+
+        // Loop so that user can trigger recompilation on error
+        for(;;)
+        {
+            std::string log;
+            auto pKernels = mpProgram->preprocessAndCreateProgramKernels(this, pVars, log);
+            if( pKernels )
+            {
+                // Success
+
+                if (!log.empty())
+                {
+                    std::string warn = "Warnings in program:\n" + getName() + "\n" + log;
+                    logWarning(warn);
+                }
+
+                mpKernels[specializationKey] = pKernels;
+                return pKernels;
+            }
+            else
+            {
+                // Failure
+
+                std::string error = "Failed to link program:\n" + getName() + "\n\n" + log;
+                logError(error, Logger::MsgBox::RetryAbort);
+
+                // Continue loop to keep trying...
+            }
+        }
+    }
+
+    slang::ISession* ProgramVersion::getSlangSession() const
+    {
+        return getSlangGlobalScope()->getSession();
+    }
+
+    slang::IComponentType* ProgramVersion::getSlangGlobalScope() const
+    {
+        return mpSlangGlobalScope;
+    }
+
+    slang::IComponentType* ProgramVersion::getSlangEntryPoint(uint32_t index) const
+    {
+        return mpSlangEntryPoints[index];
     }
 }

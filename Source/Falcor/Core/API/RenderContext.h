@@ -1,30 +1,30 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include <stack>
 #include <vector>
@@ -35,8 +35,8 @@
 namespace Falcor
 {
 #ifdef FALCOR_D3D12
+    class RtProgram;
     class RtProgramVars;
-    class RtState;
 #endif
 
     class FullScreenPass;
@@ -48,8 +48,6 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<RenderContext>;
         using SharedConstPtr = std::shared_ptr<const RenderContext>;
-
-        ~RenderContext();
 
         /**
             This flag control which aspects of the GraphicState will be bound into the pipeline before drawing.
@@ -69,7 +67,11 @@ namespace Falcor
             All             = uint32_t(-1)
         };
 
-        /** Create a new object.
+        ~RenderContext();
+
+        /** Create a new render context.
+            \param[in] queue The command queue.
+            \return A new object, or throws an exception if creation failed.
         */
         static SharedPtr create(CommandQueueHandle queue);
 
@@ -185,17 +187,16 @@ namespace Falcor
 #ifdef FALCOR_D3D12
         /** Submit a raytrace command. This function doesn't change the state of the render-context. Graphics/compute vars and state will stay the same.
         */
-        void raytrace(std::shared_ptr<RtProgramVars> pVars, std::shared_ptr<RtState> pState, uint32_t width, uint32_t height, uint32_t depth);
+        void raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth);
 #endif
 
     private:
-        RenderContext();
-        GraphicsVars* mpLastBoundGraphicsVars;
-        bool applyGraphicsVars(GraphicsVars* pVars);
-
-        // Internal functions used by the API layers
+        RenderContext(CommandQueueHandle queue);
+        bool applyGraphicsVars(GraphicsVars* pVars, RootSignature* pRootSignature);
         bool prepareForDraw(GraphicsState* pState, GraphicsVars* pVars);
+
         StateBindFlags mBindFlags = StateBindFlags::All;
+        GraphicsVars* mpLastBoundGraphicsVars = nullptr;
     };
 
     enum_class_operators(RenderContext::StateBindFlags);

@@ -1,34 +1,35 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "Scene.h"
-#include "Raytracing/RtState.h"
+#include "Raytracing/RtProgram/RtProgram.h"
 #include "Raytracing/RtProgramVars.h"
+#include <sstream>
 
 namespace Falcor
 {
@@ -45,8 +46,15 @@ namespace Falcor
         const std::string kMeshInstanceBufferName = "meshInstances";
         const std::string kIndexBufferName = "indices";
         const std::string kVertexBufferName = "vertices";
+        const std::string kMaterialsBufferName = "materials";
         const std::string kLightsBufferName = "lights";
         const std::string kCameraVarName = "camera";
+
+        const std::string kCamera = "c";
+        const std::string kViewpoint = "viewpoint";
+        const std::string kPosition = "position";
+        const std::string kTarget = "target";
+        const std::string kUp = "up";
     }
 
     const FileDialogFilterVec Scene::kFileExtensionFilters =
@@ -89,7 +97,6 @@ namespace Falcor
     Scene::Scene()
     {
         mpFrontClockwiseRS = RasterizerState::create(RasterizerState::Desc().setFrontCounterCW(false));
-        mpNoCullRS = RasterizerState::create(RasterizerState::Desc().setCullMode(RasterizerState::CullMode::None));
     }
 
     Scene::SharedPtr Scene::create(const std::string& filename)
@@ -103,11 +110,21 @@ namespace Falcor
         return Scene::SharedPtr(new Scene());
     }
 
-    Shader::DefineList Scene::getSceneDefines()
+    Shader::DefineList Scene::getSceneDefines() const
     {
         Shader::DefineList defines;
         defines.add("MATERIAL_COUNT", std::to_string(mMaterials.size()));
         return defines;
+    }
+
+    LightCollection::ConstSharedPtrRef Scene::getLightCollection(RenderContext* pContext)
+    {
+        if (!mpLightCollection)
+        {
+            mpLightCollection = LightCollection::create(pContext, shared_from_this());
+            mpLightCollection->setShaderData(mpSceneBlock["lightCollection"]);
+        }
+        return mpLightCollection;
     }
 
     void Scene::render(RenderContext* pContext, GraphicsState* pState, GraphicsVars* pVars, RenderFlags flags)
@@ -132,94 +149,45 @@ namespace Falcor
             pContext->drawIndexedIndirect(pState, pVars, mDrawClockwiseMeshes.count, mDrawClockwiseMeshes.pBuffer.get(), 0, nullptr, 0);
         }
 
-        if (mDrawAlphaTestedMeshes.count)
-        {
-            if (overrideRS) pState->setRasterizerState(mpNoCullRS);
-            pContext->drawIndexedIndirect(pState, pVars, mDrawAlphaTestedMeshes.count, mDrawAlphaTestedMeshes.pBuffer.get(), 0, nullptr, 0);
-        }
-
         if (overrideRS) pState->setRasterizerState(pCurrentRS);
     }
 
-    void Scene::raytrace(RenderContext* pContext, const std::shared_ptr<RtState>& pState, const std::shared_ptr<RtProgramVars>& pRtVars, uvec3 dispatchDims)
+    void Scene::raytrace(RenderContext* pContext, RtProgram* pProgram, const std::shared_ptr<RtProgramVars>& pVars, uvec3 dispatchDims)
     {
-        // On first execution, create BLAS for each mesh
-        if (mBlasData.empty())
+        PROFILE("raytraceScene");
+
+        auto rayTypeCount = pProgram->getHitProgramCount();
+        setRaytracingShaderData(pContext, pVars->getRootVar(), rayTypeCount);
+
+        // If not set yet, set geometry indices for this RtProgramVars.
+        if (pVars->getSceneForGeometryIndices().get() != this)
         {
-            initGeomDesc();
-            buildBlas(pContext);
-            updateAsToInstanceDataMapping();
+            setGeometryIndexIntoRtVars(pVars);
+            pVars->setSceneForGeometryIndices(shared_from_this());
         }
 
-        // If not set yet, set geometry indices for this RtProgramVars
-        if (mRtVarsWithGeometryIndex.count(pRtVars.get()) == 0)
-        {
-            setGeometryIndexIntoRtVars(pRtVars);
-            mRtVarsWithGeometryIndex.insert(pRtVars.get());
-        }
+        // Set ray type constant.
+        pVars->getRootVar()["DxrPerFrame"]["hitProgramCount"] = rayTypeCount;
 
-        // On first execution, when meshes have moved, when there's a new ray count, or when a BLAS has changed, create/update the TLAS
-        auto tlasIt = mTlasCache.find(pRtVars->getHitProgramsCount());
-        if (tlasIt == mTlasCache.end())
-        {
-            // We need a hit entry per mesh right now to pass GeometryIndex()
-            assert(pRtVars->hasPerMeshHitEntry());
-            buildTlas(pContext, pRtVars->getHitProgramsCount(), true);
-
-            // If new TLAS was just created, get it so the iterator is valid
-            if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(pRtVars->getHitProgramsCount());
-        }
-
-        {
-            PROFILE("applyRtVars");
-            // Bind Scene Param Block
-            const GraphicsVars::SharedPtr& pGlobalVars = pRtVars->getGlobalVars();
-            mCamera.pObject->setIntoConstantBuffer(mpSceneBlock->getDefaultConstantBuffer().get(), kCameraVarName);
-            pGlobalVars->setParameterBlock("gScene", mpSceneBlock);
-
-            // Bind TLAS
-            ParameterBlockReflection::BindLocation loc = pGlobalVars->getReflection()->getDefaultParameterBlock()->getResourceBinding("gRtScene");
-            if (loc.setIndex != ProgramReflection::kInvalidLocation)
-            {
-                pGlobalVars->getDefaultBlock()->setSrv(loc, 0, tlasIt->second.pSrv);
-            }
-
-            // Nothing to set? Materials, etc is global in the param block already
-            // Set miss-shader data
-            pGlobalVars["DxrPerFrame"]["hitProgramCount"] = pRtVars->getHitProgramsCount();
-            pGlobalVars->setRawBuffer("gAsToInstance", mpAsToInstanceMapping);
-
-            if (!pRtVars->apply(pContext, pState->getRtso().get()))
-            {
-                logError("Scene::raytrace() - applying RtProgramVars failed, most likely because we ran out of descriptors.");
-                assert(false);
-
-            }
-        }
-
-        PROFILE("raytrace");
-        pContext->raytrace(pRtVars, pState, dispatchDims.x, dispatchDims.y, dispatchDims.z);
+        pContext->raytrace(pProgram, pVars.get(), dispatchDims.x, dispatchDims.y, dispatchDims.z);
     }
 
     void Scene::initResources()
     {
-        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Framework/Shaders/SceneBlock.slang", "", "main");
+        GraphicsProgram::SharedPtr pProgram = GraphicsProgram::createFromFile("Scene/SceneBlock.slang", "", "main");
         pProgram->addDefines(getSceneDefines());
         ParameterBlockReflection::SharedConstPtr pReflection = pProgram->getReflector()->getParameterBlock(kParameterBlockName);
         assert(pReflection);
 
-        mpSceneBlock = ParameterBlock::create(pReflection, true);
+        mpSceneBlock = ParameterBlock::create(pReflection);
+        mpMeshesBuffer = Buffer::createStructured(mpSceneBlock[kMeshBufferName], (uint32_t)mMeshDesc.size(), Resource::BindFlags::ShaderResource);
+        mpMeshInstancesBuffer = Buffer::createStructured(mpSceneBlock[kMeshInstanceBufferName], (uint32_t)mMeshInstanceData.size(), Resource::BindFlags::ShaderResource);
 
-        ReflectionVar::SharedConstPtr pMeshRefl = pReflection->getResource(kMeshBufferName);
-        mpMeshesBuffer = StructuredBuffer::create(pMeshRefl->getName(), std::dynamic_pointer_cast<const ReflectionResourceType>(pMeshRefl->getType()), mMeshDesc.size(), Resource::BindFlags::ShaderResource);
+        mpMaterialsBuffer = Buffer::createStructured(mpSceneBlock[kMaterialsBufferName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource);
 
-        ReflectionVar::SharedConstPtr pInstRefl = pReflection->getResource(kMeshInstanceBufferName);
-        mpMeshInstancesBuffer = StructuredBuffer::create(pInstRefl->getName(), std::dynamic_pointer_cast<const ReflectionResourceType>(pInstRefl->getType()), mMeshInstanceData.size(), Resource::BindFlags::ShaderResource);
-
-        if(mLights.size())
+        if (mLights.size())
         {
-            ReflectionVar::SharedConstPtr pLightsRefl = pReflection->getResource(kLightsBufferName);
-            mpLightsBuffer = StructuredBuffer::create(pLightsRefl->getName(), std::dynamic_pointer_cast<const ReflectionResourceType>(pLightsRefl->getType()), mLights.size(), Resource::BindFlags::ShaderResource);
+            mpLightsBuffer = Buffer::createStructured(mpSceneBlock[kLightsBufferName], (uint32_t)mLights.size(), Resource::BindFlags::ShaderResource);
         }
     }
 
@@ -230,27 +198,47 @@ namespace Falcor
         mpMeshesBuffer->setBlob(mMeshDesc.data(), 0, sizeof(MeshDesc) * mMeshDesc.size());
         mpMeshInstancesBuffer->setBlob(mMeshInstanceData.data(), 0, sizeof(MeshInstanceData) * mMeshInstanceData.size());
 
-        mpSceneBlock->setStructuredBuffer(kMeshInstanceBufferName, mpMeshInstancesBuffer);
-        mpSceneBlock->setStructuredBuffer(kMeshBufferName, mpMeshesBuffer);
-        mpSceneBlock->setStructuredBuffer(kLightsBufferName, mpLightsBuffer);
-        mpSceneBlock->setRawBuffer(kIndexBufferName, mpVao->getIndexBuffer());
-        mpSceneBlock->setStructuredBuffer(kVertexBufferName, mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex)->asStructuredBuffer());
-
-        // Set material data
-        for (uint32_t i = 0; i < (uint32_t)mMaterials.size(); i++)
-        {
-            mMaterials[i]->setIntoParameterBlock(mpSceneBlock, "materials[" + std::to_string(i) + "]");
-        }
+        mpSceneBlock->setBuffer(kMeshInstanceBufferName, mpMeshInstancesBuffer);
+        mpSceneBlock->setBuffer(kMeshBufferName, mpMeshesBuffer);
+        mpSceneBlock->setBuffer(kLightsBufferName, mpLightsBuffer);
+        mpSceneBlock->setBuffer(kMaterialsBufferName, mpMaterialsBuffer);
+        mpSceneBlock->setBuffer(kIndexBufferName, mpVao->getIndexBuffer());
+        mpSceneBlock->setBuffer(kVertexBufferName, mpVao->getVertexBuffer(Scene::kStaticDataBufferIndex));
 
         if (mpLightProbe)
         {
-            LightProbe::setSharedIntoParameterBlock(mpSceneBlock, "probeShared");
-            mpLightProbe->setIntoParameterBlock(mpSceneBlock, "lightProbe");
+            mpLightProbe->setShaderData(mpSceneBlock["lightProbe"]);
         }
+    }
+
+    // TODO: On initial upload of materials, we could improve this by not having separate calls to setElement()
+    // but instead prepare a buffer containing all data.
+    void Scene::uploadMaterial(uint32_t materialID)
+    {
+        assert(materialID < mMaterials.size());
+
+        const auto &material = mMaterials[materialID];
+
+        mpMaterialsBuffer->setElement(materialID, material->getData());
+
+        const auto& resources = material->getResources();
+
+        auto var = mpSceneBlock["materialResources"][materialID];
+
+#define set_texture(texName) var[#texName] = resources.texName;
+        set_texture(baseColor);
+        set_texture(specular);
+        set_texture(emissive);
+        set_texture(normalMap);
+        set_texture(occlusionMap);
+#undef set_texture
+
+        var["samplerState"] = resources.samplerState;
     }
 
     void Scene::checkOffsets()
     {
+#if 0 // #SHADER_VAR fix this after we get rid of StructuredBuffer
         // Reflector, Struct type, Member
 #define assert_offset(_r, _s, _m) assert(_r->getOffsetDesc(offsetof(_s, _m)).type != ReflectionBasicType::Type::Unknown)
 
@@ -268,6 +256,7 @@ namespace Falcor
         assert_offset(pInstanceReflector, MeshInstanceData, globalMatrixID);
 
 #undef assert_offset
+#endif
     }
 
     void Scene::updateBounds()
@@ -323,10 +312,33 @@ namespace Falcor
         }
         setCameraController(mCamCtrlType);
         updateCamera(true);
+        saveNewViewpoint();
         updateLights(true);
+        updateMaterials(true);
         uploadResources(); // Upload data after initialization is complete
+        updateGeometryStats();
 
         if (mpAnimationController->getMeshAnimationCount(0)) mpAnimationController->setActiveAnimation(0, 0);
+    }
+
+    void Scene::updateGeometryStats()
+    {
+        mGeometryStats = {};
+        auto& s = mGeometryStats;
+
+        for (uint32_t meshID = 0; meshID < getMeshCount(); meshID++)
+        {
+            const auto& mesh = getMesh(meshID);
+            s.uniqueVertexCount += mesh.vertexCount;
+            s.uniqueTriangleCount += mesh.indexCount / 3;
+        }
+        for (uint32_t instanceID = 0; instanceID < getMeshInstanceCount(); instanceID++)
+        {
+            const auto& instance = getMeshInstance(instanceID);
+            const auto& mesh = getMesh(instance.meshID);
+            s.instancedVertexCount += mesh.vertexCount;
+            s.instancedTriangleCount += mesh.indexCount / 3;
+        }
     }
 
     template<>
@@ -378,6 +390,20 @@ namespace Falcor
         return false;
     }
 
+    Scene::UpdateFlags Scene::updateCamera(bool forceUpdate)
+    {
+        UpdateFlags flags = UpdateFlags::None;
+        mCamera.enabled(forceUpdate) ? mCamera.update(mpAnimationController.get(), forceUpdate) : mpCamCtrl->update();
+        auto cameraChanges = mCamera.pObject->beginFrame();
+        if (cameraChanges != Camera::Changes::None)
+        {
+            mCamera.pObject->setShaderData(mpSceneBlock[kCameraVarName]);
+            if (is_set(cameraChanges, Camera::Changes::Movement)) flags |= UpdateFlags::CameraMoved;
+            if ((cameraChanges & (~Camera::Changes::Movement)) != Camera::Changes::None) flags |= UpdateFlags::CameraPropertiesChanged;
+        }
+        return flags;
+    }
+
     Scene::UpdateFlags Scene::updateLights(bool forceUpdate)
     {
         UpdateFlags flags = UpdateFlags::None;
@@ -390,7 +416,8 @@ namespace Falcor
 
             if (lightChanges != Light::Changes::None)
             {
-                l.pObject->setIntoVariableBuffer(mpLightsBuffer.get(), sizeof(LightData)*i);
+                // TODO: This is slow since the buffer is not CPU writable. Copy into CPU buffer and upload once instead.
+                mpLightsBuffer->setBlob(&l.pObject->getData(), sizeof(LightData) * i, sizeof(LightData));
                 if (is_set(lightChanges, Light::Changes::Intensity)) flags |= UpdateFlags::LightIntensityChanged;
                 if (is_set(lightChanges, Light::Changes::Position)) flags |= UpdateFlags::LightsMoved;
                 if (is_set(lightChanges, Light::Changes::Direction)) flags |= UpdateFlags::LightsMoved;
@@ -401,17 +428,27 @@ namespace Falcor
         return flags;
     }
 
-    Scene::UpdateFlags Scene::updateCamera(bool force)
+    Scene::UpdateFlags Scene::updateMaterials(bool forceUpdate)
     {
         UpdateFlags flags = UpdateFlags::None;
-        mCamera.enabled(force) ? mCamera.update(mpAnimationController.get(), force) : mpCamCtrl->update();
-        auto cameraChanges = mCamera.pObject->beginFrame();
-        if (cameraChanges != Camera::Changes::None)
+
+        // Early out if no materials have changed
+        if (!forceUpdate && Material::getGlobalUpdates() == Material::UpdateFlags::None) return flags;
+
+        for (uint32_t i = 0; i < (uint32_t)mMaterials.size(); ++i)
         {
-            mCamera.pObject->setIntoConstantBuffer(mpSceneBlock->getDefaultConstantBuffer().get(), kCameraVarName);
-            if (is_set(cameraChanges, Camera::Changes::Movement)) flags |= UpdateFlags::CameraMoved;
-            if ((cameraChanges & (~Camera::Changes::Movement)) != Camera::Changes::None) flags |= UpdateFlags::CameraPropertiesChanged;
+            auto& material = mMaterials[i];
+            auto materialUpdates = material->getUpdates();
+            if (forceUpdate || materialUpdates != Material::UpdateFlags::None)
+            {
+                material->clearUpdates();
+                uploadMaterial(i);
+                flags |= UpdateFlags::MaterialsChanged;
+            }
         }
+
+        Material::clearGlobalUpdates();
+
         return flags;
     }
 
@@ -432,6 +469,7 @@ namespace Falcor
 
         mUpdates |= updateCamera(false);
         mUpdates |= updateLights(false);
+        mUpdates |= updateMaterials(false);
         pContext->flush();
         if (is_set(mUpdates, UpdateFlags::MeshesMoved))
         {
@@ -446,6 +484,9 @@ namespace Falcor
             buildBlas(pContext);
         }
 
+        // Update light collection
+        if (mpLightCollection && mpLightCollection->update(pContext)) mUpdates |= UpdateFlags::LightCollectionChanged;
+
         return mUpdates;
     }
 
@@ -456,7 +497,18 @@ namespace Falcor
 
         auto cameraGroup = Gui::Group(widget, "Camera");
         if (cameraGroup.open())
-        {            
+        {
+            if (cameraGroup.button("Save New Viewpoint")) saveNewViewpoint();
+            Gui::DropdownList viewpoints;
+            viewpoints.push_back({ 0, "Default Viewpoint" });
+            for (uint32_t i = 1; i < mViewpoints.size(); i++)
+            {
+                viewpoints.push_back({ i, "Saved Viewpoint " + to_string(i) });
+            }
+            uint32_t index = mCurrentViewpoint;
+            if (cameraGroup.dropdown("Saved Viewpoints", viewpoints, index)) gotoViewpoint(index);
+            if (cameraGroup.button("Remove Current Viewpoint")) removeViewpoint();
+
             if (cameraGroup.var("Camera Speed", mCameraSpeed, 0.f, FLT_MAX, 0.01f))
             {
                 mpCamCtrl->setCameraSpeed(mCameraSpeed);
@@ -487,6 +539,57 @@ namespace Falcor
             lightsGroup.release();
         }
 
+        auto mtlGroup = Gui::Group(widget, "Materials");
+        if (mtlGroup.open())
+        {
+            uint32_t materialID = 0;
+            for (auto& material : mMaterials)
+            {
+                auto name = material->getName();
+                auto g = Gui::Group(widget, std::to_string(materialID) + ": " + name);
+                if (g.open())
+                {
+                    if (material->renderUI(g))
+                    {
+                        uploadMaterial(materialID);
+                    }
+                }
+                materialID++;
+            }
+
+            mtlGroup.release();
+        }
+
+        auto statsGroup = Gui::Group(widget, "Statistics");
+        if (statsGroup.open())
+        {
+            uint32_t lightProbeCount = getLightProbe() != nullptr ? 1 : 0;
+            std::ostringstream oss;
+            oss << "Mesh count: " << getMeshCount() << std::endl
+                << "Mesh instance count: " << getMeshInstanceCount() << std::endl
+                << "Unique triangle count: " << mGeometryStats.uniqueTriangleCount << std::endl
+                << "Unique vertex count: " << mGeometryStats.uniqueVertexCount << std::endl
+                << "Instanced triangle count: " << mGeometryStats.instancedTriangleCount << std::endl
+                << "Instanced vertex count: " << mGeometryStats.instancedVertexCount << std::endl
+                << "Material count: " << getMaterialCount() << std::endl
+                << "Analytic light count: " << getLightCount() << std::endl
+                << "Light probe count: " << lightProbeCount << std::endl;
+            statsGroup.text(oss.str());
+
+            if (mpLightCollection)
+            {
+                auto lightCollectionGroup = Gui::Group(widget, "Mesh lights", true);
+                if (lightCollectionGroup.open()) mpLightCollection->renderUI(lightCollectionGroup);
+                lightCollectionGroup.release();
+            }
+            else
+            {
+                statsGroup.text("Mesh light count: N/A");
+            }
+
+            statsGroup.release();
+        }
+
         // Filtering mode
         // Camera controller
     }
@@ -506,11 +609,72 @@ namespace Falcor
         }
     }
 
+    void Scene::saveNewViewpoint()
+    {
+        auto camera = getCamera();
+        auto position = camera->getPosition();
+        auto target = camera->getTarget();
+        auto up = camera->getUpVector();
+
+        Viewpoint v = { position, target, up };
+        mViewpoints.push_back(v);
+    }
+
+    void Scene::removeViewpoint()
+    {
+        if (mCurrentViewpoint == 0)
+        {
+            logWarning("Cannot remove default viewpoint");
+            return;
+        }
+        mViewpoints.erase(mViewpoints.begin() + mCurrentViewpoint);
+        mCurrentViewpoint = 0;
+    }
+
+    void Scene::gotoViewpoint(uint32_t index)
+    {
+        auto camera = getCamera();
+        camera->setPosition(mViewpoints[index].position);
+        camera->setTarget(mViewpoints[index].target);
+        camera->setUpVector(mViewpoints[index].up);
+        mCurrentViewpoint = index;
+    }
+
+    Material::SharedPtr Scene::getMaterialByName(const std::string &name) const
+    {
+        for (const auto& m : mMaterials)
+        {
+            if (m->getName() == name) return m;
+        }
+
+        return nullptr;
+    }
+
+    Light::SharedPtr Scene::getLightByName(const std::string &name) const
+    {
+        for (const auto& l : mLights)
+        {
+            if (l.pObject->getName() == name) return l.pObject;
+        }
+
+        return nullptr;
+    }
+
+    void Scene::toggleAnimations(bool animate)
+    {
+        for (int i = 0; i < mLights.size(); i++)
+        {
+            toggleLightAnimation(i, animate);
+        }
+        toggleCameraAnimation(animate);
+        mpAnimationController->toggleAnimations(animate);
+    }
+
     void Scene::createDrawList()
     {
-        std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes, drawAlphaTestedMeshes;
-        auto pMatricesBuffer = mpSceneBlock->getTypedBuffer("worldMatrices");
-        const mat4* matrices = (mat4*)pMatricesBuffer->getData();
+        std::vector<D3D12_DRAW_INDEXED_ARGUMENTS> drawClockwiseMeshes, drawCounterClockwiseMeshes;
+        auto pMatricesBuffer = mpSceneBlock->getBuffer("worldMatrices");
+        const mat4* matrices = (mat4*)pMatricesBuffer->map(Buffer::MapType::Read); // #SCENEV2 This will cause the pipeline to flush and sync, but it's probably not too bad as this only happens once
 
         for (const auto& instance : mMeshInstanceData)
         {
@@ -522,16 +686,9 @@ namespace Falcor
             draw.InstanceCount = 1;
             draw.StartIndexLocation = mesh.ibOffset;
             draw.BaseVertexLocation = mesh.vbOffset;
-            draw.StartInstanceLocation = (uint32_t)(drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size() + drawAlphaTestedMeshes.size());
+            draw.StartInstanceLocation = (uint32_t)(drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size());
 
-            if (mMaterials[mesh.materialID]->getAlphaMode() == AlphaModeMask)
-            {
-                drawAlphaTestedMeshes.push_back(draw);
-            }
-            else
-            {
-                (doesTransformFlip(transform)) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
-            }
+            (doesTransformFlip(transform)) ? drawClockwiseMeshes.push_back(draw) : drawCounterClockwiseMeshes.push_back(draw);
         }
 
         // Create the draw-indirect buffer
@@ -547,13 +704,7 @@ namespace Falcor
             mDrawClockwiseMeshes.count = (uint32_t)drawClockwiseMeshes.size();
         }
 
-        if (drawAlphaTestedMeshes.size())
-        {
-            mDrawAlphaTestedMeshes.pBuffer = Buffer::create(sizeof(drawAlphaTestedMeshes[0]) * drawAlphaTestedMeshes.size(), Resource::BindFlags::IndirectArg, Buffer::CpuAccess::None, drawAlphaTestedMeshes.data());
-            mDrawAlphaTestedMeshes.count = (uint32_t)drawAlphaTestedMeshes.size();
-        }
-
-        size_t drawCount = drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size() + drawAlphaTestedMeshes.size();
+        size_t drawCount = drawClockwiseMeshes.size() + drawCounterClockwiseMeshes.size();
         assert(drawCount <= UINT32_MAX);
     }
 
@@ -611,7 +762,9 @@ namespace Falcor
                 desc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
                 desc.Triangles.Transform3x4 = 0;
                 // If this is an opaque mesh, set the opaque flag
-                desc.Flags = (mMaterials[mesh.materialID]->getAlphaMode() == AlphaModeOpaque) ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+                const auto& material = mMaterials[mesh.materialID];
+                bool opaque = (material->getAlphaMode() == AlphaModeOpaque) && material->getSpecularTransmission() == 0.f;
+                desc.Flags = opaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 
                 // Set the position data
                 desc.Triangles.VertexBuffer.StartAddress = pVb->getGpuAddress() + (mesh.vbOffset * pVbLayout->getStride());
@@ -701,9 +854,11 @@ namespace Falcor
             // Insert a UAV barrier
             pContext->uavBarrier(blas.pBlas.get());
 
-            if (!blas.hasSkinnedMesh) blas.pScratchBuffer.reset(); // Release 
+            if (!blas.hasSkinnedMesh) blas.pScratchBuffer.reset(); // Release
             else blas.updateMode = mBlasUpdateMode;
         }
+
+        updateAsToInstanceDataMapping();
     }
 
     void Scene::fillInstanceDesc(std::vector<D3D12_RAYTRACING_INSTANCE_DESC>& instanceDescs, uint32_t rayCount, bool perMeshHitEntry)
@@ -840,7 +995,6 @@ namespace Falcor
             DescriptorSet::Layout layout;
             layout.addRange(DescriptorSet::Type::TextureSrv, 0, 1);
             DescriptorSet::SharedPtr pSet = DescriptorSet::create(gpDevice->getCpuDescriptorPool(), layout);
-            assert(pSet);
             gpDevice->getApiHandle()->CreateShaderResourceView(nullptr, &srvDesc, pSet->getCpuHandle(0));
 
             ResourceWeakPtr pWeak = tlas.pTlas;
@@ -858,7 +1012,7 @@ namespace Falcor
         std::vector<uint32_t> asToInstanceMapping;
         for (uint32_t blasIndex = 0; blasIndex < (uint32_t)mBlasData.size(); blasIndex++)
         {
-            for (const uint32_t& meshId : mBlasData[blasIndex].meshList)
+            for (const uint32_t meshId : mBlasData[blasIndex].meshList)
             {
                 auto& instList = mMeshIdToInstanceIds[meshId];
                 for (const uint32_t instId : instList)
@@ -868,32 +1022,80 @@ namespace Falcor
             }
         }
 
-        mpAsToInstanceMapping = Buffer::create(asToInstanceMapping.size() * sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, asToInstanceMapping.data());
+        mpAsToInstanceMapping = Buffer::createTyped<uint32_t>((uint32_t)asToInstanceMapping.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, asToInstanceMapping.data());
     }
 
-    void Scene::setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pRtVars)
+    void Scene::setGeometryIndexIntoRtVars(const std::shared_ptr<RtProgramVars>& pVars)
     {
-        // Set BLAS geometry index as constant buffer data
-        for (uint32_t ray = 0; ray < pRtVars->getHitProgramsCount(); ray++)
+        assert(!mBlasData.empty());
+        auto meshCount = getMeshCount();
+        uint32_t descHitCount = pVars->getDescHitGroupCount();
+
+        uint32_t blasIndex = 0;
+        uint32_t geometryIndex = 0;
+        for (uint32_t i = 0; i < meshCount; i++)
         {
-            RtProgramVars::VarsVector& rayVars = pRtVars->getHitVars(ray);
-
-            uint32_t blasIndex = 0;
-            uint32_t geometryIndex = 0;
-            for (uint32_t i = 0; i < rayVars.size(); i++)
+            for (uint32_t hit = 0; hit < descHitCount; hit++)
             {
-                auto& pVar = rayVars[i];
-                pVar["DxrPerGeometry"]["geometryIndex"] = geometryIndex++;
-
-                // If at the end of this BLAS, reset counters and start checking next BLAS
-                uint32_t geomCount = (uint32_t)mBlasData[blasIndex].meshList.size();
-                if (geometryIndex == geomCount)
+                auto pHitVars = pVars->getHitVars(hit, i);
+                auto var = pHitVars->findMember(0).findMember("geometryIndex");
+                if( var.isValid() )
                 {
-                    geometryIndex = 0;
-                    blasIndex++;
+                    var = geometryIndex;
                 }
             }
+
+            geometryIndex++;
+
+            // If at the end of this BLAS, reset counters and start checking next BLAS
+            uint32_t geomCount = (uint32_t)mBlasData[blasIndex].meshList.size();
+            if (geometryIndex == geomCount)
+            {
+                geometryIndex = 0;
+                blasIndex++;
+            }
         }
+    }
+
+    void Scene::setRaytracingShaderData(RenderContext* pContext, const ShaderVar& var, uint32_t rayTypeCount)
+    {
+        // On first execution, create BLAS for each mesh.
+        if (mBlasData.empty())
+        {
+            initGeomDesc();
+            buildBlas(pContext);
+            updateAsToInstanceDataMapping();
+        }
+
+        // On first execution, when meshes have moved, when there's a new ray count, or when a BLAS has changed, create/update the TLAS
+        //
+        // TODO: The notion of "ray count" is being treated as fundamental here, and intrinsicly
+        // linked to the number of hit groups in the program, without checking if this matches
+        // other things like the number of miss shaders. If/when we support meshes with custom
+        // intersection shaders, then the assumption that number of ray types and number of
+        // hit groups match will be incorrect.
+        //
+        // It really seems like a first-class notion of ray types (and the number thereof) is required.
+        //
+        auto tlasIt = mTlasCache.find(rayTypeCount);
+        if (tlasIt == mTlasCache.end())
+        {
+            // We need a hit entry per mesh right now to pass GeometryIndex()
+            buildTlas(pContext, rayTypeCount, true);
+
+            // If new TLAS was just created, get it so the iterator is valid
+            if (tlasIt == mTlasCache.end()) tlasIt = mTlasCache.find(rayTypeCount);
+        }
+
+        // Bind Scene parameter block.
+        mCamera.pObject->setShaderData(mpSceneBlock[kCameraVarName]);
+        var["gScene"] = mpSceneBlock;
+
+        // Bind TLAS.
+        var["gRtScene"].setSrv(tlasIt->second.pSrv);
+
+        // Bind lookup table for mesh instance ID.
+        var["gAsToInstance"] = mpAsToInstanceMapping;
     }
 
     void Scene::setEnvironmentMap(Texture::ConstSharedPtrRef pEnvMap)
@@ -945,6 +1147,50 @@ namespace Falcor
 
     bool Scene::onKeyEvent(const KeyboardEvent& keyEvent)
     {
+        if (keyEvent.type == KeyboardEvent::Type::KeyPressed)
+        {
+            if (!(keyEvent.mods.isAltDown || keyEvent.mods.isCtrlDown || keyEvent.mods.isShiftDown))
+            {
+                if (keyEvent.key == KeyboardEvent::Key::F3)
+                {
+                    saveNewViewpoint();
+                    return true;
+                }
+            }
+        }
         return mpCamCtrl->onKeyEvent(keyEvent);
+    }
+
+    std::string Scene::getConfig()
+    {
+        std::string c;
+        c += std::string(kCamera) + " = " + Scripting::makeMemberFunc(kScene, kCameraVarName);
+        for (int i = 0; i < mViewpoints.size(); i++)
+        {
+            if (i == 0) continue;
+            auto v = mViewpoints[i];
+            c += std::string(kCamera) + "." + kPosition + "=" + to_string(v.position) + "\n";
+            c += std::string(kCamera) + "." + kTarget + "=" + to_string(v.target) + "\n";
+            c += std::string(kCamera) + "." + kUp + "=" + to_string(v.up) + "\n";
+            c += Scripting::makeMemberFunc(kScene, kViewpoint);
+        }
+        c += Scripting::makeMemberFunc(kScene, kViewpoint, 0);
+        return c;
+    }
+
+    SCRIPT_BINDING(Scene)
+    {
+        auto s = m.regClass(Scene);
+        s.func_("animate", &Scene::toggleAnimations); // toggle animations on or off
+        s.func_("light", &Scene::getLight); // get specific light
+        s.func_("light", &Scene::getLightByName); // get specific light
+        s.func_("animateLight", &Scene::toggleLightAnimation); // toggle animation for a specific light on or off
+        s.func_("material", &Scene::getMaterial); // get specific material
+        s.func_("material", &Scene::getMaterialByName); // get specific material
+        s.func_("camera", &Scene::getCamera); // get camera
+        s.func_("animateCamera", &Scene::toggleCameraAnimation); // toggle camera animation on or off
+        s.func_("viewpoint", &Scene::saveNewViewpoint); // save the current camera position etc.
+        s.func_("viewpoint", &Scene::gotoViewpoint); // select a previously saved camera viewpoint
+        s.func_("removeViewpoint", &Scene::removeViewpoint); // remove the current camera viewpoint
     }
 }

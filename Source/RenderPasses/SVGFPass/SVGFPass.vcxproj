@@ -14,7 +14,7 @@
     <ProjectGuid>{691F64DD-0941-49DE-B52E-949341192154}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>SVGFPass</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
     <ProjectName>SVGFPass</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -28,7 +28,7 @@
     <ClCompile Include="SVGFPass.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ShaderSource Include="SVGFCommon.slang.h" />
+    <ShaderSource Include="SVGFCommon.slang" />
     <ShaderSource Include="SVGFFinalModulate.ps.slang" />
     <ShaderSource Include="SVGFPackLinearZAndNormal.ps.slang" />
     <ClInclude Include="SVGFPass.h" />
@@ -46,17 +46,17 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <ShaderSourceSubDir>Data\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
+    <ShaderSourceSubDir>Shaders\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
-    <ShaderSourceSubDir>Data\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
+    <ShaderSourceSubDir>Shaders\RenderPasses\$(ProjectName)</ShaderSourceSubDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">

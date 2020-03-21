@@ -1,34 +1,37 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "RtProgramVars.h"
+
 #include "Core/API/Device.h"
-#include "RtStateObject.h"
+//#include "RtStateObject.h"
+
+#include "RtProgramVarsHelper.h"
 
 namespace Falcor
 {
@@ -40,7 +43,7 @@ namespace Falcor
             return false;
         }
 
-        if (pProgram->getRayGenProgram() == nullptr)
+        if (pProgram == nullptr || pProgram->getRayGenProgramCount() == 0)
         {
             logError("RtProgramVars must have a ray-gen program attached to it");
             return false;
@@ -48,203 +51,257 @@ namespace Falcor
         return true;
     }
     
-    RtProgramVars::RtProgramVars(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene, bool perMeshHitEntry) : mpProgram(pProgram), mpScene(pScene), mPerMeshHitEntry(perMeshHitEntry)
+    RtProgramVars::RtProgramVars(
+        const RtProgram::SharedPtr& pProgram,
+        const Scene::SharedPtr& pScene)
+        : ProgramVars(pProgram->getReflector())
+        , mpScene(pScene)
     {
+        if (checkParams(pProgram, pScene) == false)
+        {
+            throw std::exception("Failed to create RtProgramVars object");
+        }
         mpRtVarsHelper = RtVarsContext::create();
+        assert(mpRtVarsHelper);
+        init();
     }
 
-    RtProgramVars::SharedPtr RtProgramVars::create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene, bool perMeshHitEntry)
+    RtProgramVars::SharedPtr RtProgramVars::create(const RtProgram::SharedPtr& pProgram, const Scene::SharedPtr& pScene)
     {
-        SharedPtr pVars = SharedPtr(new RtProgramVars(pProgram, pScene, perMeshHitEntry));
-        if ((checkParams(pProgram, pScene) == false) || (pVars->init() == false))
+        return SharedPtr(new RtProgramVars(pProgram, pScene));
+    }
+
+    void RtProgramVars::init()
+    {
+        // We must create sub-shader-objects for all the entry point
+        // groups that are required by the scene.
+        //
+        assert(mpProgramVersion);
+        auto pProgram = (RtProgram*) mpProgramVersion->getProgram().get();
+        auto pReflector = mpProgramVersion->getReflector();
+
+        auto& descExtra = pProgram->getDescExtra();
+
+        // Ray generation and miss programs are easy: we just allocate space
+        // for one parameter block per entry-point of the given type in
+        // the original `RtProgram::Desc`.
+        //
+        // TODO: We could easily support multiple "instances" of ray generation
+        // programs without requiring the SBT for miss or hit shaders to be
+        // rebuild on parameter changes. It might make sense for ray-gen programs
+        // to be more flexibly allocated.
+        //
+        uint32_t rayGenProgCount    = uint32_t(descExtra.mRayGenEntryPoints.size());
+        uint32_t missProgCount      = uint32_t(descExtra.mMissEntryPoints.size());
+
+        mRayGenVars.resize(rayGenProgCount);
+        mMissVars.resize(missProgCount);
+
+        // Hit groups are more complicated than ray generation and miss shaders.
+        // We typically want a distinct parameter block per declared hit group
+        // and per mesh in the scene (and sometimes even per mesh instance).
+        //
+        // We need to take this extra complexity into account when allocating
+        // space for the hit group parameter blocks.
+        //
+        uint32_t descHitGroupCount = uint32_t(descExtra.mHitGroups.size());
+        uint32_t blockCountPerHitGroup = mpScene->getMeshCount();
+
+        uint32_t totalHitBlockCount = descHitGroupCount * blockCountPerHitGroup;
+
+        mHitVars.resize(totalHitBlockCount);
+        mDescHitGroupCount = descHitGroupCount;
+
+        for(uint32_t i = 0; i < rayGenProgCount; ++i)
         {
-            return nullptr;
+            auto& info = descExtra.mRayGenEntryPoints[i];
+            if(info.groupIndex < 0) continue;
+
+            mRayGenVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
         }
-        return pVars;
-    }
 
-    template<typename ProgType>
-    void getSigSizeAndCreateVars(ProgType pProg, uint32_t& maxRootSigSize, GraphicsVars::SharedPtr pVars[], uint32_t varCount)
-    {
-        RtProgramVersion::SharedConstPtr pVersion = pProg->getActiveVersion();
-        assert(pVersion);
-        maxRootSigSize = max(pVersion->getLocalRootSignature()->getSizeInBytes(), maxRootSigSize);
-        for (uint32_t i = 0 ; i < varCount ; i++)
+        for(uint32_t i = 0; i < descHitGroupCount; ++i)
         {
-            pVars[i] = GraphicsVars::create(pProg->getLocalReflector(), true, pVersion->getLocalRootSignature());
-        }
-    }
+            auto& info = descExtra.mHitGroups[i];
+            if(info.groupIndex < 0) continue;
 
-    bool RtProgramVars::init()
-    {
-        // Find the max root-signature size and create the programVars
-        uint32_t maxRootSigSize = 0;
-        getSigSizeAndCreateVars(mpProgram->getRayGenProgram(), maxRootSigSize, &mRayGenVars, 1);
-
-        mHitProgCount = mpProgram->getHitProgramCount();
-        mMissProgCount = mpProgram->getMissProgramCount();
-        mFirstHitVarEntry = kFirstMissRecordIndex + mMissProgCount;
-        mMissVars.resize(mMissProgCount);
-        mHitVars.resize(mHitProgCount);
-        uint32_t recordCountPerHit = mPerMeshHitEntry ? mpScene.lock()->getMeshCount() : 1;
-
-        for (uint32_t i = 0 ; i < mHitProgCount; i++)
-        {
-            if(mpProgram->getHitProgram(i))
+            for(uint32_t j = 0; j < blockCountPerHitGroup; ++j)
             {
-                mHitVars[i].resize(recordCountPerHit);
-                getSigSizeAndCreateVars(mpProgram->getHitProgram(i), maxRootSigSize, mHitVars[i].data(), recordCountPerHit);
+                mHitVars[j*descHitGroupCount + i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
             }
         }
 
-        for (uint32_t i = 0; i < mMissProgCount; i++)
+        for(uint32_t i = 0; i < missProgCount; ++i)
         {
-            if(mpProgram->getMissProgram(i))
-            {
-                getSigSizeAndCreateVars(mpProgram->getMissProgram(i), maxRootSigSize, &mMissVars[i], 1);
-            }
+            auto& info = descExtra.mMissEntryPoints[i];
+            if(info.groupIndex < 0) continue;
+
+            mMissVars[i].pVars = EntryPointGroupVars::create(pReflector->getEntryPointGroup(info.groupIndex), info.groupIndex);
         }
 
+        for(auto entryPointGroupInfo : mRayGenVars)
+            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
+        for(auto entryPointGroupInfo : mHitVars)
+            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
+        for(auto entryPointGroupInfo : mMissVars)
+            mpEntryPointGroupVars.push_back(entryPointGroupInfo.pVars);
+    }
 
-        // Get the program identifier size
-        DeviceHandle pRtDevice = gpDevice->getApiHandle();
+    bool applyRtProgramVars(
+        uint8_t*                        pRecord,
+        const RtEntryPointGroupKernels* pKernels,
+        uint32_t                        uniqueEntryPointGroupIndex,
+        const RtStateObject*            pRtso,
+        ParameterBlock*                 pVars,
+        RtVarsContext*                  pContext
+        )
+    {
+        assert(pKernels);
 
-        // Create the shader-table buffer
-        mHitRecordCount = recordCountPerHit * mHitProgCount;
-        uint32_t numEntries = mMissProgCount + mHitRecordCount + 1; // 1 is for the ray-gen
+        auto pShaderIdentifier = pRtso->getShaderIdentifier(uniqueEntryPointGroupIndex);
+        memcpy(pRecord, pShaderIdentifier, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        pRecord += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
-        // Calculate the record size
-        mRecordSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES + maxRootSigSize;
-        mRecordSize = align_to(D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT, mRecordSize); // We align to SHADER_TABLE_ALIGNMENT instead of SHADER_RECORD_ALIGNMENT because we pack all three tables in the same buffer
-        assert(mRecordSize != 0);
+        auto pLocalRootSignature = pKernels->getLocalRootSignature();
 
-        // Create the buffer and allocate the temporary storage
-        mpShaderTable = Buffer::create(numEntries * mRecordSize, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None);
-        assert(mpShaderTable);
-        mShaderTableData.resize(mpShaderTable->getSize());
-
-        // Create the global variables
-        mpGlobalVars = GraphicsVars::create(mpProgram->getGlobalReflector(), true, mpProgram->getGlobalRootSignature());
+        pContext->getRtVarsCmdList()->setRootParams(pLocalRootSignature, pRecord);
+        return applyProgramVarsCommon<true>(pVars, pContext, true, pLocalRootSignature.get());
 
         return true;
     }
 
-    // We are using the following layout for the shader-table:
-    //
-    // +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-    // |            |         |         | ... |        |         |        | ... |        |        | ... |        | ... |        |        | ... |        |
-    // |   RayGen   |   Ray0  |   Ray1  | ... |  RayN  |   Ray0  |  Ray1  | ... |  RayN  |  Ray0  | ... |  RayN  | ... |  Ray0  |  Ray0  | ... |  RayN  |   
-    // |   Entry    |   Miss  |   Miss  | ... |  Miss  |   Hit   |   Hit  | ... |  Hit   |  Hit   | ... |  Hit   | ... |  Hit   |  Hit   | ... |  Hit   |
-    // |            |         |         | ... |        |  Mesh0  |  Mesh0 | ... |  Mesh0 |  Mesh1 | ... |  Mesh1 | ... | MeshN  |  MeshN | ... |  MeshN |
-    // +------------+---------+---------+-----+--------+---------+--------+-----+--------+--------+-----+--------+-----+--------+--------+-----+--------+
-    //
-    // The first record is the ray gen, followed by the miss records, followed by the meshes records.
-    // For each mesh we have N hit records, N == number of ray types in the program
-    // The size of each record is mRecordSize
-    // 
-    // If this layout changes, we also need to change the constants kRayGenRecordIndex and kFirstMissRecordIndex
-
-    uint8_t* RtProgramVars::getRayGenRecordPtr()
+    static RtEntryPointGroupKernels* getUniqueRtEntryPointGroupKernels(
+        const ProgramKernels::SharedConstPtr&   pKernels,
+        uint32_t                                uniqueEntryPointGroupIndex)
     {
-        return mShaderTableData.data() + (kRayGenRecordIndex * mRecordSize);
+        if(uniqueEntryPointGroupIndex < 0) return nullptr;
+        auto pEntryPointGroup = pKernels->getUniqueEntryPointGroup(uniqueEntryPointGroupIndex);
+        assert(dynamic_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get()));
+        return static_cast<RtEntryPointGroupKernels*>(pEntryPointGroup.get());
     }
 
-    uint8_t* RtProgramVars::getMissRecordPtr(uint32_t missId)
+    bool RtProgramVars::apply(
+        RenderContext*  pCtx,
+        RtStateObject*  pRtso)
     {
-        assert(missId < mMissProgCount);
-        uint32_t offset = mRecordSize * (kFirstMissRecordIndex + missId);
-        return mShaderTableData.data() + offset;
-    }
+        auto pKernels = pRtso->getKernels();
+        auto pProgram = static_cast<RtProgram*>(pKernels->getProgramVersion()->getProgram().get());
 
-    uint8_t* RtProgramVars::getHitRecordPtr(uint32_t hitId, uint32_t meshId)
-    {   
-        assert(hitId < mHitProgCount);
-        uint32_t meshIndex = mFirstHitVarEntry + mHitProgCount * meshId;    // base record of the requested mesh
-        uint32_t recordIndex = meshIndex + hitId;
-        return mShaderTableData.data() + (recordIndex * mRecordSize);
-    }
-
-    bool applyRtProgramVars(uint8_t* pRecord, const RtProgramVersion* pProgVersion, const RtStateObject* pRtso, ProgramVars* pVars, RtVarsContext* pContext)
-    {
-        assert(pProgVersion);
-        MAKE_SMART_COM_PTR(ID3D12StateObjectProperties);
-        ID3D12StateObjectPropertiesPtr pRtsoPtr = pRtso->getApiHandle();
-        memcpy(pRecord, pRtsoPtr->GetShaderIdentifier(pProgVersion->getExportName().c_str()), D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-        pRecord += D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
-        pContext->getRtVarsCmdList()->setRootParams(pProgVersion->getLocalRootSignature(), pRecord);
-        return pVars->applyProgramVarsCommon<true>(pContext, true);
-    }
-
-    bool RtProgramVars::updateSBT(RenderContext* pCtx, RtStateObject* pRtso)
-    {
-        if (mpLastUsedRtpso == pRtso) return true;
-        mpLastUsedRtpso = pRtso;
-
+        bool needShaderTableUpdate = false;
+        if(!mpShaderTable)
         {
-            PROFILE("applyRayGen");
-            // We always have a ray-gen program, apply it first
-            uint8_t* pRayGenRecord = getRayGenRecordPtr();
-            if (!applyRtProgramVars(pRayGenRecord, mpProgram->getRayGenProgram()->getActiveVersion().get(), pRtso, getRayGenVars().get(), mpRtVarsHelper.get()))
+            mpShaderTable = ShaderTable::create();
+            needShaderTableUpdate = true;
+        }
+
+        if( !needShaderTableUpdate )
+        {
+            if( pRtso != mpShaderTable->getRtso() )
             {
-                return false;
+                needShaderTableUpdate = true;
             }
         }
 
+        if( !needShaderTableUpdate )
         {
-            PROFILE("applyHit");
+            // We need to check if anything has changed that would require the shader
+            // table to be rebuilt.
+            //
+            uint32_t rayGenCount = getRayGenVarsCount();
+            for (uint32_t r = 0; r < rayGenCount; r++)
+            {
+                auto& varsInfo = mRayGenVars[r];
+                auto pBlock = varsInfo.pVars.get();
+
+                auto changeEpoch = computeEpochOfLastChange(pBlock);
+
+                if(changeEpoch != varsInfo.lastObservedChangeEpoch)
+                {
+                    needShaderTableUpdate = true;
+                }
+            }
+        }
+
+        if(needShaderTableUpdate)
+        {
+            mpShaderTable->update(pCtx, pRtso, this, mpScene.get());
+
+            // We will iterate over the sub-tables (ray-gen, hit, miss)
+            // in a specific order that matches the way that we have
+            // enumerated the entry-point-group "instances" for indexing
+            // in other parts of the code.
+            //
+
+            uint32_t rayGenCount = getRayGenVarsCount();
+            for (uint32_t r = 0; r < rayGenCount; r++)
+            {
+                auto& varsInfo = mRayGenVars[r];
+                auto pBlock = varsInfo.pVars.get();
+
+                auto uniqueGroupIndex = pBlock->getGroupIndexInProgram();
+
+                auto pGroupKernels = getUniqueRtEntryPointGroupKernels(pKernels, uniqueGroupIndex);
+                if(!pGroupKernels) { continue; }
+
+                uint8_t* pRecord = mpShaderTable->getRecordPtr(ShaderTable::SubTableType::RayGen, r);
+
+                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get()))
+                {
+                    return false;
+                }
+                varsInfo.lastObservedChangeEpoch = getEpochOfLastChange(pBlock);
+            }
+
+
             // Loop over the rays
-            uint32_t hitCount = mpProgram->getHitProgramCount();
+            uint32_t hitCount = getTotalHitVarsCount();
             for (uint32_t h = 0; h < hitCount; h++)
             {
-                if (mpProgram->getHitProgram(h))
+                auto& varsInfo = mHitVars[h];
+                auto pBlock = varsInfo.pVars.get();
+
+                auto uniqueGroupIndex = pBlock->getGroupIndexInProgram();
+
+                auto pGroupKernels = getUniqueRtEntryPointGroupKernels(pKernels, uniqueGroupIndex);
+                if(!pGroupKernels) { continue; }
+
+                uint8_t* pRecord = mpShaderTable->getRecordPtr(ShaderTable::SubTableType::Hit, h);
+
+                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get()))
                 {
-                    uint32_t entriesPerRayType = mPerMeshHitEntry ? mpScene.lock()->getMeshCount() : 1;
-                    for (uint32_t i = 0; i < entriesPerRayType; i++)
-                    {
-                        uint8_t* pHitRecord = getHitRecordPtr(h, i);
-                        if (!applyRtProgramVars(pHitRecord, mpProgram->getHitProgram(h)->getActiveVersion().get(), pRtso, getHitVars(h)[i].get(), mpRtVarsHelper.get()))
-                        {
-                            return false;
-                        }
-                    }
+                    return false;
                 }
+                varsInfo.lastObservedChangeEpoch = getEpochOfLastChange(pBlock);
             }
-        }
 
-        {
-            PROFILE("applyMiss");
-            for (uint32_t m = 0; m < mpProgram->getMissProgramCount(); m++)
+            uint32_t missCount = pProgram->getMissProgramCount();
+            for (uint32_t m = 0; m < missCount; m++)
             {
-                if (mpProgram->getMissProgram(m))
+                auto& varsInfo = mMissVars[m];
+                auto pBlock = varsInfo.pVars.get();
+
+                auto uniqueGroupIndex = pBlock->getGroupIndexInProgram();
+
+                auto pGroupKernels = getUniqueRtEntryPointGroupKernels(pKernels, uniqueGroupIndex);
+                if(!pGroupKernels) { continue; }
+
+                uint8_t* pRecord = mpShaderTable->getRecordPtr(ShaderTable::SubTableType::Miss, m);
+
+                if (!applyRtProgramVars(pRecord, pGroupKernels, uniqueGroupIndex, pRtso, pBlock, mpRtVarsHelper.get()))
                 {
-                    uint8_t* pMissRecord = getMissRecordPtr(m);
-                    if (!applyRtProgramVars(pMissRecord, mpProgram->getMissProgram(m)->getActiveVersion().get(), pRtso, getMissVars(m).get(), mpRtVarsHelper.get()))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
+                varsInfo.lastObservedChangeEpoch = getEpochOfLastChange(pBlock);
             }
+
+            mpShaderTable->flushBuffer(pCtx);
         }
 
+        if( !applyProgramVarsCommon<false>(this, pCtx, true, pRtso->getGlobalRootSignature().get()) )
         {
-            PROFILE("updateSBT");
-            pCtx->updateBuffer(mpShaderTable.get(), mShaderTableData.data());
+            return false;
         }
 
-        return true;
-    }
-
-    bool RtProgramVars::apply(RenderContext* pCtx, RtStateObject* pRtso)
-    {
-        if (!updateSBT(pCtx, pRtso)) return false;
-
-        {
-            PROFILE("applyGlobal");
-            if (!mpGlobalVars->applyProgramVarsCommon<false>(pCtx, true))
-            {
-                return false;
-            }
-        }
         return true;
     }
 }

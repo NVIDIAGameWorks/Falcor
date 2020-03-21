@@ -1,37 +1,41 @@
 /***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #pragma once
 #include <vector>
 
 namespace Falcor
 {
     class Resource;
+    class Texture;
+    class Buffer;
     using ResourceWeakPtr = std::weak_ptr<Resource>;
+    using ConstTextureSharedPtrRef = const std::shared_ptr<Texture>&;
+    using ConstBufferSharedPtrRef = const std::shared_ptr<Buffer>&;
 
     struct dlldecl ResourceViewInfo
     {
@@ -104,16 +108,16 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<ShaderResourceView>;
         using SharedConstPtr = std::shared_ptr<const ShaderResourceView>;
 
-        static SharedPtr create(ResourceWeakPtr pResource, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
-        static SharedPtr create(ResourceWeakPtr pResource, uint32_t firstElement, uint32_t elementCount);
+        static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize);
+        static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
         static SharedPtr getNullView();
 
         // This is currently used by RtScene to create an SRV for the TLAS, since the create() functions above assume texture or buffer types.
-        ShaderResourceView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+        ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
             : ResourceView(pResource, handle, mostDetailedMip, mipCount, firstArraySlice, arraySize) {}
     private:
 
-        ShaderResourceView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
+        ShaderResourceView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
             : ResourceView(pResource, handle, firstElement, elementCount) {}
     };
 
@@ -123,10 +127,10 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<DepthStencilView>;
         using SharedConstPtr = std::shared_ptr<const DepthStencilView>;
 
-        static SharedPtr create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+        static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
         static SharedPtr getNullView();
     private:
-        DepthStencilView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        DepthStencilView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
     };
 
@@ -136,14 +140,14 @@ namespace Falcor
         using SharedPtr = std::shared_ptr<UnorderedAccessView>;
         using SharedConstPtr = std::shared_ptr<const UnorderedAccessView>;
 
-        static SharedPtr create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
-        static SharedPtr create(ResourceWeakPtr pResource, uint32_t firstElement, uint32_t elementCount);
+        static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+        static SharedPtr create(ConstBufferSharedPtrRef pBuffer, uint32_t firstElement, uint32_t elementCount);
         static SharedPtr getNullView();
     private:
-        UnorderedAccessView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
 
-        UnorderedAccessView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
+        UnorderedAccessView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t firstElement, uint32_t elementCount)
             : ResourceView(pResource, handle, firstElement, elementCount) {}
     };
 
@@ -152,11 +156,11 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<RenderTargetView>;
         using SharedConstPtr = std::shared_ptr<const RenderTargetView>;
-        static SharedPtr create(ResourceWeakPtr pResource, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
+        static SharedPtr create(ConstTextureSharedPtrRef pTexture, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize);
         static SharedPtr getNullView();
         ~RenderTargetView();
     private:
-        RenderTargetView(ResourceWeakPtr& pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
+        RenderTargetView(ResourceWeakPtr pResource, ApiHandle handle, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize) :
             ResourceView(pResource, handle, mipLevel, 1, firstArraySlice, arraySize) {}
     };
 
@@ -165,11 +169,11 @@ namespace Falcor
     public:
         using SharedPtr = std::shared_ptr<ConstantBufferView>;
         using SharedConstPtr = std::shared_ptr<const ConstantBufferView>;
-        static SharedPtr create(ResourceWeakPtr pResource);
+        static SharedPtr create(ConstBufferSharedPtrRef pBuffer);
         static SharedPtr getNullView();
 
     private:
-        ConstantBufferView(ResourceWeakPtr& pResource, ApiHandle handle) :
+        ConstantBufferView(ResourceWeakPtr pResource, ApiHandle handle) :
             ResourceView(pResource, handle, 0, 1, 0, 1) {}        
     };
 

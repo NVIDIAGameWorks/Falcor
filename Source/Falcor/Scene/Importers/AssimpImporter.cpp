@@ -1,30 +1,30 @@
-#/***************************************************************************
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+/***************************************************************************
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 #include "stdafx.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
@@ -41,6 +41,15 @@ namespace Falcor
     {
         using BoneMeshMap = std::map<std::string, std::vector<uint32_t>>;
         using MeshInstanceList = std::vector<std::vector<const aiNode*>>;
+
+        /** Converts specular power to roughness. Note there is no "the conversion".
+            Reference: http://simonstechblog.blogspot.com/2011/12/microfacet-brdf.html
+            \param specPower specular power of an obsolete Phong BSDF
+        */
+        float convertSpecPowerToRoughness(float specPower)
+        {
+            return clamp(sqrt(2.0f / (specPower + 2.0f)), 0.f, 1.f);
+        }
 
         enum class ImportMode {
             Default,
@@ -74,61 +83,95 @@ namespace Falcor
             return quat(q.w, q.x, q.y, q.z);
         }
 
-        void setTexture(aiTextureType type, ImportMode importMode, Material* pMaterial, Texture::SharedPtr pTexture)
+        /** Texture types used in Falcor materials.
+        */
+        enum class TextureType
+        {
+            BaseColor,
+            Specular,
+            Emissive,
+            Normal,
+            Occlusion,
+        };
+
+        /** Mapping from ASSIMP to Falcor texture type.
+        */
+        struct TextureMapping
+        {
+            aiTextureType aiType;
+            unsigned int aiIndex;
+            TextureType targetType;
+        };
+
+        /** Mapping tables for different import modes.
+        */
+        static const std::vector<TextureMapping> kTextureMappings[3] =
+        {
+            // Default mappings,
+            {
+                { aiTextureType_DIFFUSE, 0, TextureType::BaseColor },
+                { aiTextureType_SPECULAR, 0, TextureType::Specular },
+                { aiTextureType_EMISSIVE, 0, TextureType::Emissive },
+                { aiTextureType_NORMALS, 0, TextureType::Normal },
+                { aiTextureType_AMBIENT, 0, TextureType::Occlusion },
+            },
+            // OBJ mappings,
+            {
+                { aiTextureType_DIFFUSE, 0, TextureType::BaseColor },
+                { aiTextureType_SPECULAR, 0, TextureType::Specular },
+                { aiTextureType_EMISSIVE, 0, TextureType::Emissive },
+                { aiTextureType_AMBIENT, 0, TextureType::Occlusion },
+                // OBJ does not offer a normal map, thus we use the bump map instead.
+                { aiTextureType_HEIGHT, 0, TextureType::Normal },
+                { aiTextureType_DISPLACEMENT, 0, TextureType::Normal },
+            },
+            // GLTF2 mapings,
+            {
+                { aiTextureType_DIFFUSE, 0, TextureType::BaseColor },
+                { aiTextureType_EMISSIVE, 0, TextureType::Emissive },
+                { aiTextureType_NORMALS, 0, TextureType::Normal },
+                { aiTextureType_AMBIENT, 0, TextureType::Occlusion },
+                // GLTF2 exposes metallic roughness texture.
+                { AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_METALLICROUGHNESS_TEXTURE, TextureType::Specular },
+            }
+        };
+
+        void setTexture(TextureType type, Material* pMaterial, Texture::SharedPtr pTexture)
         {
             switch (type)
             {
-            case aiTextureType_DIFFUSE:
+            case TextureType::BaseColor:
                 pMaterial->setBaseColorTexture(pTexture);
                 break;
-            case aiTextureType_SPECULAR:
+            case TextureType::Specular:
                 pMaterial->setSpecularTexture(pTexture);
                 break;
-            case aiTextureType_EMISSIVE:
+            case TextureType::Emissive:
                 pMaterial->setEmissiveTexture(pTexture);
                 break;
-            case aiTextureType_HEIGHT:
-            case aiTextureType_DISPLACEMENT:
-                // OBJ doesn't support normal maps, so they are usually placed in the height map slot. For consistency with other formats, we move them to the normal map slot.
-                importMode == ImportMode::OBJ ? pMaterial->setNormalMap(pTexture) : pMaterial->setHeightMap(pTexture);
-                break;
-            case aiTextureType_NORMALS:
+            case TextureType::Normal:
                 pMaterial->setNormalMap(pTexture);
                 break;
-            case aiTextureType_AMBIENT:
+            case TextureType::Occlusion:
                 pMaterial->setOcclusionMap(pTexture);
                 break;
-            case aiTextureType_LIGHTMAP:
-                pMaterial->setLightMap(pTexture);
-                break;
             default:
-                logWarning("Unsupported Assimp texture type " + std::to_string(type));
+                should_not_get_here();
             }
         }
 
-        bool isSrgbRequired(aiTextureType aiType, bool isSrgbRequested, uint32_t shadingModel)
+        bool isSrgbRequired(TextureType type, uint32_t shadingModel)
         {
-            if (isSrgbRequested == false)
+            switch (type)
             {
-                return false;
-            }
-
-            switch (aiType)
-            {
-            case aiTextureType_SPECULAR:
+            case TextureType::Specular:
                 assert(shadingModel == ShadingModelMetalRough || shadingModel == ShadingModelSpecGloss);
                 return (shadingModel == ShadingModelSpecGloss);
-            case aiTextureType_DIFFUSE:
-            case aiTextureType_AMBIENT:
-            case aiTextureType_EMISSIVE:
-            case aiTextureType_LIGHTMAP:
-            case aiTextureType_REFLECTION:
+            case TextureType::BaseColor:
+            case TextureType::Emissive:
+            case TextureType::Occlusion:
                 return true;
-            case aiTextureType_HEIGHT:
-            case aiTextureType_NORMALS:
-            case aiTextureType_SHININESS:
-            case aiTextureType_OPACITY:
-            case aiTextureType_DISPLACEMENT:
+            case TextureType::Normal:
                 return false;
             default:
                 should_not_get_here();
@@ -160,7 +203,7 @@ namespace Falcor
                 {
                     return getFalcorNode(mAiNodes.at(aiNodeName)[index]);
                 }
-                catch (std::exception)
+                catch (const std::exception&)
                 {
                     return SceneBuilder::kInvalidNode;
                 }
@@ -275,7 +318,7 @@ namespace Falcor
             return pAnimation;
         }
 
-        bool createCamera(ImporterData& data)
+        bool createCamera(ImporterData& data, ImportMode importMode)
         {
             if (data.pScene->mNumCameras == 0) return true;
             if (data.pScene->mNumCameras > 1)
@@ -295,8 +338,12 @@ namespace Falcor
             pCamera->setPosition(aiCast(pAiCamera->mPosition));
             pCamera->setUpVector(aiCast(pAiCamera->mUp));
             pCamera->setTarget(aiCast(pAiCamera->mLookAt) + aiCast(pAiCamera->mPosition));
-            pCamera->setFocalLength(35);// fovYToFocalLength(pAiCamera->mHorizontalFOV * 2 / pAiCamera->mAspect, pCamera->getFrameHeight()));
-            pCamera->setAspectRatio(pAiCamera->mAspect);
+            // Some importers don't provide the aspect ratio, use default for that case.
+            float aspectRatio = pAiCamera->mAspect != 0.f ? pAiCamera->mAspect : pCamera->getAspectRatio();
+            // Load focal length only when using GLTF2, use fixed 35mm for backwards compatibility with FBX files.
+            float focalLength = importMode == ImportMode::GLTF2 ? fovYToFocalLength(pAiCamera->mHorizontalFOV * 2 / aspectRatio, pCamera->getFrameHeight()) : 35.f;
+            pCamera->setFocalLength(focalLength);
+            pCamera->setAspectRatio(aspectRatio);
             pCamera->setDepthRange(pAiCamera->mClipPlaneNear, pAiCamera->mClipPlaneFar);
 
             size_t nodeID = data.getFalcorNode(pAiCamera->mName.C_Str(), 0);
@@ -307,6 +354,8 @@ namespace Falcor
                 n.name = "Camera.BaseMatrix";
                 n.parent = nodeID;
                 n.transform = pCamera->getViewMatrix();
+                // GLTF2 has the view direction reversed.
+                if (importMode == ImportMode::GLTF2) n.transform[2] = -n.transform[2];
                 nodeID = data.builder.addNode(n);
             }
 
@@ -520,7 +569,7 @@ namespace Falcor
                 case 2: mesh.topology = Vao::Topology::LineList; break;
                 case 3: mesh.topology = Vao::Topology::TriangleList; break;
                 default:
-                    logError(std::string("Error when creating mesh. Unknown topology with " + std::to_string(pAiMesh->mFaces[0].mNumIndices) + " indices."));
+                    logError("Error when creating mesh. Unknown topology with " + std::to_string(pAiMesh->mFaces[0].mNumIndices) + " indices.");
                     should_not_get_here();
                 }
 
@@ -558,14 +607,16 @@ namespace Falcor
                     const aiNode* pChild = pNode->mChildren[i];
                     std::string parent = pNode->mName.C_Str();
                     std::string parentType = getNodeType(data, pNode);
+                    std::string parentID = to_string(data.getFalcorNode(pNode));
                     std::string me = pChild->mName.C_Str();
                     std::string myType = getNodeType(data, pChild);
+                    std::string myID = to_string(data.getFalcorNode(pChild));
                     std::replace(parent.begin(), parent.end(), '.', '_');
                     std::replace(me.begin(), me.end(), '.', '_');
                     std::replace(parent.begin(), parent.end(), '$', '_');
                     std::replace(me.begin(), me.end(), '$', '_');
 
-                    dotfile << parent << " (" << parentType << ") " << " -> " << me << " (" << myType << ") " << std::endl;
+                    dotfile << parentID << " " << parent << " (" << parentType << ") " << " -> " << myID << " " << me << " (" << myType << ") " << std::endl;
 
                     dumpNode(pChild);
                 }
@@ -628,7 +679,7 @@ namespace Falcor
             aiNode* pRoot = data.pScene->mRootNode;
             assert(isBone(data, pRoot->mName.C_Str()) == false);
             bool success = parseNode(data, pRoot, false);
-//            dumpSceneGraphHierarchy(data, "graph.dotfile", pRoot);
+            //dumpSceneGraphHierarchy(data, "graph.dotfile", pRoot); // used for debugging
             return success;
         }
 
@@ -670,53 +721,44 @@ namespace Falcor
 
         void loadTextures(ImporterData& data, const aiMaterial* pAiMaterial, const std::string& folder, Material* pMaterial, ImportMode importMode, bool useSrgb)
         {
-            for (int i = 0; i < AI_TEXTURE_TYPE_MAX; ++i)
+            const auto& textureMappings = kTextureMappings[int(importMode)];
+
+            for (const auto& source : textureMappings)
             {
-                aiTextureType aiType = (aiTextureType)i;
+                // Skip if texture of requested type is not available
+                if (pAiMaterial->GetTextureCount(source.aiType) < source.aiIndex + 1) continue;
 
-                uint32_t textureCount = pAiMaterial->GetTextureCount(aiType);
-
-                if (textureCount >= 1)
+                // Get the texture name
+                aiString aiPath;
+                pAiMaterial->GetTexture(source.aiType, source.aiIndex, &aiPath);
+                std::string path(aiPath.data);
+                if (path.empty())
                 {
-                    if (textureCount != 1)
-                    {
-                        logError("Can't create material with more then one texture per Type");
-                        return;
-                    }
-
-                    // Get the texture name
-                    aiString path;
-                    pAiMaterial->GetTexture(aiType, 0, &path);
-                    std::string s(path.data);
-                    Texture::SharedPtr pTex = nullptr;
-
-                    if (s.empty())
-                    {
-                        logWarning("Texture has empty file name, ignoring.");
-                        continue;
-                    }
-
-                    // Check if the texture was already loaded
-                    const auto& a = data.textureCache.find(s);
-                    if (a != data.textureCache.end())
-                    {
-                        pTex = a->second;
-                    }
-                    else
-                    {
-                        // create a new texture
-                        std::string fullpath = folder + '/' + s;
-                        fullpath = replaceSubstring(fullpath, "\\", "/");
-                        pTex = Texture::createFromFile(fullpath, true, isSrgbRequired(aiType, useSrgb, pMaterial->getShadingModel()));
-                        if (pTex)
-                        {
-                            data.textureCache[s] = pTex;
-                        }
-                    }
-
-                    assert(pTex != nullptr);
-                    setTexture(aiType, importMode, pMaterial, pTex);
+                    logWarning("Texture has empty file name, ignoring.");
+                    continue;
                 }
+
+                // Check if the texture was already loaded
+                Texture::SharedPtr pTex;
+                const auto& cacheItem = data.textureCache.find(path);
+                if (cacheItem != data.textureCache.end())
+                {
+                    pTex = cacheItem->second;
+                }
+                else
+                {
+                    // create a new texture
+                    std::string fullpath = folder + '/' + path;
+                    fullpath = replaceSubstring(fullpath, "\\", "/");
+                    pTex = Texture::createFromFile(fullpath, true, useSrgb && isSrgbRequired(source.targetType, pMaterial->getShadingModel()));
+                    if (pTex)
+                    {
+                        data.textureCache[path] = pTex;
+                    }
+                }
+
+                assert(pTex != nullptr);
+                setTexture(source.targetType, pMaterial, pTex);
             }
 
             // Flush upload heap after every material so we don't accumulate a ton of memory usage when loading a model with a lot of textures
@@ -735,8 +777,7 @@ namespace Falcor
                 logWarning("Material with no name found -> renaming to `unnamed`");
                 nameStr = "unnamed";
             }
-            auto nameVec = splitString(nameStr, ".");   // The name might contain information about the material
-            Material::SharedPtr pMaterial = Material::create(nameVec[0]);
+            Material::SharedPtr pMaterial = Material::create(nameStr);
 
             // Determine shading model.
             // MetalRough is the default for everything except OBJ. Check that both flags aren't set simultaneously.
@@ -751,7 +792,7 @@ namespace Falcor
             loadTextures(data, pAiMaterial, folder, pMaterial.get(), importMode, useSrgb);
 
             // Opacity
-            float opacity;
+            float opacity = 1.f;
             if (pAiMaterial->Get(AI_MATKEY_OPACITY, opacity) == AI_SUCCESS)
             {
                 vec4 diffuse = pMaterial->getBaseColor();
@@ -763,8 +804,7 @@ namespace Falcor
             float bumpScaling;
             if (pAiMaterial->Get(AI_MATKEY_BUMPSCALING, bumpScaling) == AI_SUCCESS)
             {
-                float bumpOffset = pMaterial->getHeightOffset();
-                pMaterial->setHeightScaleOffset(bumpScaling, bumpOffset);
+                // TODO this should probably be a multiplier to the normal map
             }
 
             // Shininess
@@ -774,7 +814,7 @@ namespace Falcor
                 // Convert OBJ/MTL Phong exponent to glossiness.
                 if (importMode == ImportMode::OBJ)
                 {
-                    float roughness = convertShininessToRoughness(shininess);
+                    float roughness = convertSpecPowerToRoughness(shininess);
                     shininess = 1.f - roughness;
                 }
                 vec4 spec = pMaterial->getSpecularParams();
@@ -815,7 +855,7 @@ namespace Falcor
                 pMaterial->setDoubleSided((isDoubleSided != 0));
             }
 
-            // Handle GLTF PBR materials
+            // Handle GLTF2 PBR materials
             if (importMode == ImportMode::GLTF2)
             {
                 if (pAiMaterial->Get(AI_MATKEY_GLTF_PBRMETALLICROUGHNESS_BASE_COLOR_FACTOR, color) == AI_SUCCESS)
@@ -842,7 +882,8 @@ namespace Falcor
             }
 
             // Parse the information contained in the name
-            // The first part is the material name, the other parts provides some info about the material properties
+            // Tokens following a '.' are interpreted as special flags
+            auto nameVec = splitString(nameStr, ".");
             if (nameVec.size() > 1)
             {
                 for (size_t i = 1; i < nameVec.size(); i++)
@@ -853,6 +894,15 @@ namespace Falcor
                     else logWarning("Unknown material property found in the material's name - `" + nameVec[i] + "`");
                 }
             }
+
+            // Use scalar opacity value for controlling specular transmission
+            // TODO: Remove this workaround when we have a better way to define materials.
+            if (opacity < 1.f)
+            {
+                pMaterial->setSpecularTransmission(1.f - opacity);
+                pMaterial->setDoubleSided(true);
+            }
+
             return pMaterial;
         }
 
@@ -888,7 +938,7 @@ namespace Falcor
                     {
                         boneMap.at(pMesh->mBones[boneID]->mName.C_Str()).push_back(meshID);
                     }
-                    catch (std::out_of_range e)
+                    catch (const std::out_of_range&)
                     {
                         std::vector<uint32_t> meshIDs;
                         meshIDs.push_back(meshID);
@@ -971,7 +1021,7 @@ namespace Falcor
         std::string fullpath;
         if (findFileInDataDirectories(filename, fullpath) == false)
         {
-            logError(std::string("Can't find model file ") + filename);
+            logError("Can't find model file " + filename);
             return false;
         }
 
@@ -983,6 +1033,7 @@ namespace Falcor
         assimpFlags &= ~(aiProcess_CalcTangentSpace); // Never use Assimp's tangent gen code
         assimpFlags &= ~(aiProcess_FindDegenerates); // Avoid converting degenerated triangles to lines
         assimpFlags &= ~(aiProcess_OptimizeGraph); // Never use as it doesn't handle transforms with negative determinants
+        assimpFlags &= ~(aiProcess_RemoveRedundantMaterials); // Avoid merging materials
         if (is_set(builderFlags, SceneBuilder::Flags::DontMergeMeshes)) assimpFlags &= ~aiProcess_OptimizeMeshes; // Avoid merging original meshes
 
         Assimp::Importer importer;
@@ -1011,43 +1062,43 @@ namespace Falcor
 
         if (createAllMaterials(data, modelFolder, importMode) == false)
         {
-            logError(std::string("Can't create materials for model ") + filename);
+            logError("Can't create materials for model " + filename);
             return false;
         }
 
         if (createSceneGraph(data) == false)
         {
-            logError(std::string("Can't create draw lists for model ") + filename);
+            logError("Can't create draw lists for model " + filename);
             return false;
         }
 
         if (createMeshes(data) == false)
         {
-            logError(std::string("Can't create meshes for model ") + filename);
+            logError("Can't create meshes for model " + filename);
             return false;
         }
 
         if (addMeshes(data, data.pScene->mRootNode) == false)
         {
-            logError(std::string("Can't add meshes for model ") + filename);
+            logError("Can't add meshes for model " + filename);
             return false;
         }
 
         if (createAnimations(data) == false)
         {
-            logError(std::string("Can't create animations for model ") + filename);
+            logError("Can't create animations for model " + filename);
             return false;
         }
 
-        if (createCamera(data) == false)
+        if (createCamera(data, importMode) == false)
         {
-            logError(std::string("Can't create a camera for model ") + filename);
+            logError("Can't create a camera for model " + filename);
             return false;
         }
 
         if (createLights(data) == false)
         {
-            logError(std::string("Can't create a lights for model ") + filename);
+            logError("Can't create a lights for model " + filename);
             return false;
         }
         return true;

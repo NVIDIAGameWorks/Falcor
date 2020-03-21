@@ -1,34 +1,35 @@
 /***************************************************************************
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-#  * Neither the name of NVIDIA CORPORATION nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
-# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
 
 /** Raster program that integrates each textured emissive triangle.
-    The host is expected to set _VIEWPORT_DIMENSION and _NUM_MESH_LIGHTS.
+    The host is expected to set _VIEWPORT_DIMENSION.
 */
+import Scene.Scene;
 import Experimental.Scene.Lights.LightCollection;
 
 // Setup NvApi. We need this for fp32 atomics.
@@ -41,14 +42,7 @@ import Experimental.Scene.Lights.LightCollection;
 #error _VIEWPORT_DIM is not defined
 #endif
 
-#if _NUM_MESH_LIGHTS == 0
-#error No mesh lights
-#endif
-
-cbuffer CB
-{
-    LightCollection gLights;            ///< The light sources we are integrating.
-}
+ParameterBlock<LightCollection> gLightCollection;
 
 RWByteAddressBuffer gTexelSum;          ///< Sum over texels (RGB) + number of texels (A) in RGBA32Float format. Using raw buffer for fp32 atomics compatibility.
 SamplerState        gPointSampler;      ///< Sampler for fetching individual texels without filtering.
@@ -70,7 +64,7 @@ VsOut vsMain(uint vtxIdx : SV_VertexID)
 {
     // Fetch light index
     const uint triIdx = vtxIdx / 3;
-    const uint id = gLights.getLightIdx(triIdx);
+    const uint id = gLightCollection.getLightIdx(triIdx);
 
     VsOut vsOut;
     vsOut.uv = float2(0, 0);
@@ -78,7 +72,7 @@ VsOut vsMain(uint vtxIdx : SV_VertexID)
     vsOut.lightIdx = id;
 
     // Check if triangle is textured.
-    if (gLights.meshData[id].isTextured())
+    if (gScene.isEmissiveTextured(gLightCollection.getMaterialID(triIdx)))
     {
         // TODO: We could do these computations in a geometry shader once per triangle,
         // instead of duplicated per-vertex. Which is faster? This code is not performance critical.
@@ -87,17 +81,17 @@ VsOut vsMain(uint vtxIdx : SV_VertexID)
         float2 uv[3];
         for (uint j = 0; j < 3; j++)
         {
-            uv[j] = gLights.getVtxTexCoord(triIdx + j);
+            uv[j] = gLightCollection.getVtxTexCoord(triIdx + j);
         }
         const float2 uvMin = min(min(uv[0], uv[1]), uv[2]);
         const float2 uvMax = max(max(uv[0], uv[1]), uv[2]);
 
         // Pass on texture coordinate unmodified for pixel to use.
-        vsOut.uv = gLights.getVtxTexCoord(vtxIdx);                 // Normalized (u,v) coordinate.
+        vsOut.uv = gLightCollection.getVtxTexCoord(vtxIdx);                 // Normalized (u,v) coordinate.
 
         // Query texture dimensions.
         float width = 0, height = 0, mips = 0;
-        gLights.emissiveTextures[id].GetDimensions(0, width, height, mips);
+        gScene.materialResources[gLightCollection.meshData[id].materialID].emissive.GetDimensions(0, width, height, mips);
 
         // Compute raster position in texture space.
         // We do this by offsetting UV so that it's always positive, scaled by texture dimension.
@@ -117,7 +111,7 @@ VsOut vsMain(uint vtxIdx : SV_VertexID)
     return vsOut;
 }
 
-/** Pixel shader. 
+/** Pixel shader.
     This is executed once per texel that the emissive triangle covers.
 */
 void psMain(VsOut vsIn, uint triIdx : SV_PrimitiveID)
@@ -130,7 +124,7 @@ void psMain(VsOut vsIn, uint triIdx : SV_PrimitiveID)
     // Fetch texel using nearest-neighbor sampling.
     const float2 uv = vsIn.uv;        // Interpolated texture coordinate.
     const uint lightIdx = vsIn.lightIdx;
-    float3 color = gLights.emissiveTextures[lightIdx].SampleLevel(gPointSampler, uv, 0.f).rgb;  // Sampler at mip 0
+    float3 color = gScene.materialResources[gLightCollection.meshData[lightIdx].materialID].emissive.SampleLevel(gPointSampler, uv, 0.f).rgb;  // Sampler at mip 0
 
     // Compute weighted color. TODO: For now assume full coverage (= 1.0 in weight).
     float weight = 1.f;
